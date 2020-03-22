@@ -4204,6 +4204,12 @@
 	rcupdate.rcu_cpu_stall_suppress= [KNL]
 			Suppress RCU CPU stall warning messages.
 
+	rcupdate.rcu_cpu_stall_suppress_at_boot= [KNL]
+			Suppress RCU CPU stall warning messages and
+			rcutorture writer stall warnings that occur
+			during early boot, that is, during the time
+			before the init task is spawned.
+
 	rcupdate.rcu_cpu_stall_timeout= [KNL]
 			Set timeout for RCU CPU stall warning messages.
 
@@ -4875,6 +4881,10 @@
 			Specify if the kernel should ignore (off)
 			topology updates sent by the hypervisor to this
 			LPAR.
+
+	torture.disable_onoff_at_boot= [KNL]
+			Prevent the CPU-hotplug component of torturing
+			until after init has spawned.
 
 	tp720=		[HW,PS2]
 
