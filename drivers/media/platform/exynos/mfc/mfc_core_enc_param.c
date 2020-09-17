@@ -440,9 +440,12 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_RC_CONFIG);
 
 	/*
-	 * frame rate
-	 * delta is timestamp diff
-	 * ex) 30fps: 33, 60fps: 16
+	 * Delta value for framerate is timestamp(ms * 10) diff.
+	 * ex) 30fps: 333, 60fps: 166
+	 * Resolution unit is most sophisticated value
+	 * that can be determined within 16bit.
+	 * F/W calculates fps through resolution / delta.
+	 * ex) 10000 / 166 = 60fps
 	 */
 	p->rc_frame_delta = p->rc_framerate_res / p->rc_framerate;
 	reg = MFC_CORE_RAW_READL(MFC_REG_E_RC_FRAME_RATE);
@@ -917,7 +920,7 @@ static void __mfc_set_enc_params_h263(struct mfc_core *core,
 	mfc_debug_enter();
 
 	/* For H.263 only 8 bit is used and maximum value can be 0xFF */
-	p->rc_framerate_res = 100;
+	p->rc_framerate_res = 255;
 	__mfc_set_enc_params(core, ctx);
 
 	/* set gop_size with I_FRM_CTRL mode */
