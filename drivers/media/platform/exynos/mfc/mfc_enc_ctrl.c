@@ -1741,10 +1741,15 @@ static int mfc_enc_set_buf_ctrls_val_nal_q(struct mfc_ctx *ctx,
 				p->rc_frame_delta = p->rc_framerate_res / p->rc_framerate;
 				mfc_debug(3, "[NALQ][DROPCTRL] default delta: %d\n", p->rc_frame_delta);
 			} else {
-				if (IS_H263_ENC(ctx))
-					p->rc_frame_delta = (ctx->ts_last_interval / 100) / p->rc_framerate_res;
-				else
-					p->rc_frame_delta = ctx->ts_last_interval / p->rc_framerate_res;
+				/*
+				 * FRAME_DELTA specifies the amount of
+				 * increment of frame modulo base time.
+				 * So, we will take to framerate resolution / fps concept.
+				 * - delta unit = framerate resolution / fps
+				 * - fps = 1000000(us) / timestamp interval
+				 */
+				p->rc_frame_delta = (u64)ctx->ts_last_interval *
+					p->rc_framerate_res / 1000000;
 			}
 			pInStr->RcFrameRate &= ~(0xFFFF << 16);
 			pInStr->RcFrameRate |= (p->rc_framerate_res & 0xFFFF) << 16;
