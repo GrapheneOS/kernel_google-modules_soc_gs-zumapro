@@ -70,7 +70,7 @@
 
 #define NUM_MPEG4_LF_BUF	2
 
-#define FRAME_RATE_RESOLUTION	1000
+#define FRAME_RATE_RESOLUTION	10000
 
 #define DEFAULT_TAG		(0xE05)
 #define IGNORE_TAG		(0xD5C) /* ex) encoder DRC */
