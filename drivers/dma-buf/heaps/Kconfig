@@ -1,4 +1,7 @@
 config DMABUF_HEAPS_DEFERRED_FREE
 	tristate
 
+config DMABUF_HEAPS_PAGE_POOL
+	tristate
+
 source "device-modules/drivers/dma-buf/heaps/samsung/Kconfig"
