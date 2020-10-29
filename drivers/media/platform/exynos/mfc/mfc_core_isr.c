@@ -310,6 +310,7 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 	unsigned int is_video_signal_type = 0, is_colour_description = 0;
 	unsigned int is_content_light = 0, is_display_colour = 0;
 	unsigned int is_hdr10_plus_sei = 0, is_av1_film_grain_sei = 0;
+	unsigned int is_hdr10_plus_full = 0;
 	unsigned int is_uncomp = 0;
 	unsigned int i, index, idr_flag, is_last_display;
 
@@ -325,6 +326,9 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus))
 		is_hdr10_plus_sei = mfc_core_get_sei_avail_st_2094_40();
+
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus_full))
+		is_hdr10_plus_full = mfc_core_get_sei_nal_meta_status();
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->av1_film_grain))
 		is_av1_film_grain_sei = mfc_core_get_sei_avail_film_grain();
@@ -419,13 +423,23 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 				mfc_core_get_hdr_plus_info(core, ctx,
 						&dec->hdr10_plus_info[index]);
 				mfc_set_mb_flag(dst_mb, MFC_FLAG_HDR_PLUS);
-				mfc_debug(2, "[HDR+] HDR10 plus dyanmic SEI metadata parsed\n");
+				mfc_debug(2, "[HDR+] HDR10 plus dynamic SEI metadata parsed\n");
 			} else {
 				mfc_ctx_err("[HDR+] HDR10 plus cannot be copied\n");
 			}
 		} else {
 			if (dec->hdr10_plus_info)
 				dec->hdr10_plus_info[index].valid = 0;
+		}
+
+		if (is_hdr10_plus_full) {
+			if (dec->hdr10_plus_full) {
+				mfc_core_get_dec_metadata_sei_nal(core, ctx, index);
+				mfc_set_mb_flag(dst_mb, MFC_FLAG_HDR_PLUS);
+				mfc_debug(2, "[HDR+] HDR10 plus full SEI metadata parsed\n");
+			} else {
+				mfc_ctx_err("[HDR+] HDR10 plus full cannot be copied\n");
+			}
 		}
 
 		if (is_av1_film_grain_sei) {
@@ -440,7 +454,6 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 		} else {
 			if (dec->av1_film_grain_info)
 				dec->av1_film_grain_info[index].apply_grain = 0;
-
 		}
 
 		if (is_uncomp) {
