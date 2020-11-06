@@ -248,8 +248,16 @@ static unsigned long __mfc_qos_get_fps_by_timestamp(struct mfc_ctx *ctx, struct 
 	}
 
 	/* Calculation the last frame fps for drop control */
-	temp_ts = list_entry(head->prev, struct mfc_timestamp, list);
-	ctx->ts_last_interval = temp_ts->interval;
+	if (ctx->type == MFCINST_ENCODER) {
+		temp_ts = list_entry(head->prev, struct mfc_timestamp, list);
+		if (temp_ts->interval > USEC_PER_SEC) {
+			mfc_ctx_info("[TS] ts interval(%d) couldn't over 1sec(1fps)\n",
+					temp_ts->interval);
+			ctx->ts_last_interval = 0;
+		} else {
+			ctx->ts_last_interval = temp_ts->interval;
+		}
+	}
 
 	if (!ctx->ts_is_full) {
 		if (debug_ts == 1)

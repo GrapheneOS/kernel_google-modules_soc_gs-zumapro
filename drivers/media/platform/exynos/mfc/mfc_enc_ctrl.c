@@ -1746,7 +1746,7 @@ static int mfc_enc_set_buf_ctrls_val_nal_q(struct mfc_ctx *ctx,
 				 * increment of frame modulo base time.
 				 * So, we will take to framerate resolution / fps concept.
 				 * - delta unit = framerate resolution / fps
-				 * - fps = 1000000(us) / timestamp interval
+				 * - fps = 1000000(usec per sec) / timestamp interval
 				 */
 				p->rc_frame_delta = (u64)ctx->ts_last_interval *
 					p->rc_framerate_res / 1000000;
