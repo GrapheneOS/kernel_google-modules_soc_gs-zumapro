@@ -156,9 +156,10 @@ static inline u32 __sysmmu_get_intr_status(struct sysmmu_drvdata *data, bool is_
 	return val;
 }
 
-static inline u64 __sysmmu_get_fault_address(struct sysmmu_drvdata *data, bool is_secure, int vmid)
+static inline sysmmu_iova_t __sysmmu_get_fault_address(struct sysmmu_drvdata *data,
+						       bool is_secure, int vmid)
 {
-	u64 va = 0x0;
+	sysmmu_iova_t va = 0x0;
 	u32 val;
 
 	if (is_secure) {
@@ -484,7 +485,7 @@ static inline void dump_sysmmu_status(struct sysmmu_drvdata *drvdata, phys_addr_
 }
 
 static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata, int intr_type,
-						 unsigned long fault_addr, int vmid)
+						 sysmmu_iova_t fault_addr, int vmid)
 {
 	const char *port_name = NULL;
 	unsigned int info0, info1, info2;
@@ -501,7 +502,7 @@ static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata,
 	of_property_read_string(drvdata->dev->of_node, "port-name", &port_name);
 
 	pr_crit("----------------------------------------------------------\n");
-	pr_crit("From [%s], SysMMU %s %s at %#011lx (page table @ %pa)\n",
+	pr_crit("From [%s], SysMMU %s %s at %#011llx (page table @ %pa)\n",
 		port_name ? port_name : dev_name(drvdata->dev),
 		IS_READ_FAULT(info0) ? "READ" : "WRITE",
 		sysmmu_fault_name[intr_type], fault_addr, &pgtable);
@@ -547,7 +548,7 @@ finish:
 }
 
 static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int intr_type,
-					  unsigned long fault_addr, int vmid)
+					  sysmmu_iova_t fault_addr, int vmid)
 {
 	const char *port_name = NULL;
 	phys_addr_t pgtable;
@@ -562,7 +563,7 @@ static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int in
 	info0 = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_FAULT_INFO0_VM, vmid));
 	info1 = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_FAULT_INFO1_VM, vmid));
 
-	pr_crit("From [%s], SysMMU %s %s for VID %d at %#011lx (pgtable @ %pa, AxID: %#x)\n",
+	pr_crit("From [%s], SysMMU %s %s for VID %d at %#011llx (pgtable @ %pa, AxID: %#x)\n",
 		port_name ? port_name : dev_name(drvdata->dev),
 		IS_READ_FAULT(info0) ? "READ" : "WRITE",
 		sysmmu_fault_name[intr_type], vmid, fault_addr, &pgtable,
@@ -570,7 +571,7 @@ static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int in
 }
 
 static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata, int intr_type,
-					  unsigned long fault_addr, int vmid)
+					  sysmmu_iova_t fault_addr, int vmid)
 {
 	unsigned int i;
 	phys_addr_t pgtable[MAX_VIDS];
@@ -636,7 +637,7 @@ finish:
 }
 
 static void sysmmu_get_interrupt_info(struct sysmmu_drvdata *data,
-				      int *intr_type, unsigned long *addr,
+				      int *intr_type, sysmmu_iova_t *addr,
 				      int *vmid, bool is_secure)
 {
 	*intr_type = __ffs(__sysmmu_get_intr_status(data, is_secure, vmid));
@@ -653,7 +654,7 @@ static void sysmmu_clear_interrupt(struct sysmmu_drvdata *data, int *vmid)
 irqreturn_t samsung_sysmmu_irq(int irq, void *dev_id)
 {
 	int itype, vmid;
-	unsigned long addr;
+	sysmmu_iova_t addr;
 	struct sysmmu_drvdata *drvdata = dev_id;
 	bool is_secure = (irq == drvdata->secure_irq);
 
@@ -699,7 +700,7 @@ static int samsung_sysmmu_fault_notifier(struct device *dev, void *data)
 irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 {
 	int itype, vmid, ret;
-	unsigned long addr;
+	sysmmu_iova_t addr;
 	struct sysmmu_drvdata *drvdata = dev_id;
 	bool is_secure = (irq == drvdata->secure_irq);
 	struct iommu_group *group = drvdata->group;
