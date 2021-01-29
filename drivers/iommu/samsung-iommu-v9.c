@@ -828,8 +828,8 @@ static struct iommu_device *samsung_sysmmu_probe_device(struct device *dev)
 				device_link_del(client->dev_link[i]);
 			return ERR_PTR(-EINVAL);
 		}
-		dev_info(dev, "device link to %s\n",
-			 dev_name(client->sysmmus[i]->dev));
+		dev_dbg(dev, "device link to %s\n",
+			dev_name(client->sysmmus[i]->dev));
 	}
 
 	return &client->sysmmus[0]->iommu;
@@ -1192,7 +1192,6 @@ static int __sysmmu_secure_irq_init(struct device *sysmmu, struct sysmmu_drvdata
 		dev_err(sysmmu, "failed to get secure base address\n");
 		return ret;
 	}
-	dev_info(sysmmu, "secure base address = %#010x\n", data->secure_base);
 
 	return ret;
 }
