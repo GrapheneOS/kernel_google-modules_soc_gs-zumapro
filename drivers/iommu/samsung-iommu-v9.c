@@ -1306,7 +1306,6 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 
 	data->clk = devm_clk_get(dev, "gate");
 	if (PTR_ERR(data->clk) == -ENOENT) {
-		dev_info(dev, "no gate clock exists. it's okay.\n");
 		data->clk = NULL;
 	} else if (IS_ERR(data->clk)) {
 		dev_err(dev, "failed to get clock!\n");
@@ -1358,10 +1357,11 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 	}
 	mutex_unlock(&sysmmu_global_mutex);
 
-	dev_info(dev, "initialized IOMMU. Ver %d.%d.%d\n",
+	dev_info(dev, "initialized IOMMU. Ver %d.%d.%d, %sgate clock\n",
 		 MMU_VERSION_MAJOR(data->version),
 		 MMU_VERSION_MINOR(data->version),
-		 MMU_VERSION_REVISION(data->version));
+		 MMU_VERSION_REVISION(data->version),
+		 data->clk ? "" : "no ");
 	return 0;
 
 err_global_init:
