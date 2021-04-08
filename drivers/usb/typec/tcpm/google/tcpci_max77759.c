@@ -1703,7 +1703,7 @@ static void max77759_store_partner_src_caps(void *unused, struct tcpm_port *port
 			      PDO_MAX_OBJECTS : *nr_source_caps;
 
 	for (i = 0; i < nr_partner_src_caps; i++)
-		partner_src_caps[i] = *(source_caps[i]);
+		partner_src_caps[i] = (*source_caps)[i];
 
 	spin_unlock(&g_caps_lock);
 }
