@@ -16,6 +16,10 @@
 #define SYSMMU_FAULT_UNKNOWN		4
 #define SYSMMU_FAULTS_NUM		(SYSMMU_FAULT_UNKNOWN + 1)
 
+#define SYSMMU_SEC_FAULT_MASK		(BIT(SYSMMU_FAULT_PTW_ACCESS) | \
+					 BIT(SYSMMU_FAULT_PAGE) | \
+					 BIT(SYSMMU_FAULT_ACCESS))
+
 #define REG_MMU_PMMU_PTLB_INFO(n)		(0x3400 + ((n) * 0x4))
 #define REG_MMU_STLB_INFO(n)			(0x3800 + ((n) * 0x4))
 #define REG_MMU_S1L1TLB_INFO			0x3C00
@@ -86,7 +90,9 @@
 #define SLPT_BASE_FLAG		0x6
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
-#define SMC_DRM_SEC_SMMU_INFO          (0x820020D0)
+#define SMC_DRM_SEC_SMMU_INFO		(0x820020D0)
+#define SMC_DRM_SEC_SYSMMU_INT_CLEAR	(0x820020D7)
+
 /* secure SysMMU SFR access */
 enum sec_sysmmu_sfr_access_t {
 	SEC_SMMU_SFR_READ,
@@ -106,11 +112,28 @@ static inline u32 read_sec_info(unsigned int addr)
 
 	return (u32)res.a0;
 }
+
+static inline u32 clear_sec_fault(unsigned int addr, unsigned int val)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SMC_DRM_SEC_SYSMMU_INT_CLEAR,
+		      (unsigned long)addr, (unsigned long)val, 0, 0, 0, 0, 0,
+		      &res);
+	return (u32)res.a0;
+}
+
 #else
 static inline u32 read_sec_info(unsigned int addr)
 {
 	return 0xdead;
 }
+
+static inline u32 clear_sec_fault(unsigned int addr, unsigned int val)
+{
+	return 0;
+}
+
 #endif
 
 static char *sysmmu_fault_name[SYSMMU_FAULTS_NUM] = {
@@ -678,16 +701,35 @@ static void sysmmu_get_interrupt_info(struct sysmmu_drvdata *data,
 	*addr = __sysmmu_get_fault_address(data, is_secure, *vmid);
 }
 
-static void sysmmu_clear_interrupt(struct sysmmu_drvdata *data, int *vmid)
+static int sysmmu_clear_interrupt(struct sysmmu_drvdata *data, bool is_secure, int *vmid)
 {
-	u32 val = __sysmmu_get_intr_status(data, false, vmid);
+	u32 val = __sysmmu_get_intr_status(data, is_secure, vmid);
 
 	if (!val) {
 		dev_err_ratelimited(data->dev, "Cannot clear spurious interrupt\n");
-		return;
+		return -EINVAL;
 	}
 
+	if (is_secure) {
+		if (val & ~SYSMMU_SEC_FAULT_MASK) {
+			dev_warn(data->dev, "Unknown secure fault (%x)\n", val);
+			val &= SYSMMU_SEC_FAULT_MASK;
+		}
+		/* LDFW calculates the physical address of the
+		 * MMU_FAULT_CLEAR_VM_n using the formula
+		 * base + REG_MMU_FAULT_CLEAR_VM
+		 * where base is the value of the first parameter that we pass
+		 * to clear_sec_fault().  If we pass
+		 * MMU_VM_ADDR(data->secure_base, *vmid) as base, then the
+		 * resulting address will be
+		 * MMU_VM_ADDR(data->secure_base, *vmid) + REG_MMU_FAULT_CLEAR_VM
+		 * which is the same as
+		 * MMU_VM_ADDR(data->secure_base + REG_MMU_FAULT_CLEAR_VM, *vmid)
+		 */
+		return clear_sec_fault(MMU_VM_ADDR(data->secure_base, *vmid), val);
+	}
 	writel(val, MMU_VM_ADDR(data->sfrbase + REG_MMU_FAULT_CLEAR_VM, *vmid));
+	return 0;
 }
 
 irqreturn_t samsung_sysmmu_irq(int irq, void *dev_id)
@@ -764,9 +806,19 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 
 	ret = iommu_group_for_each_dev(group, &fi,
 				       samsung_sysmmu_fault_notifier);
-	if (ret == -EAGAIN && !is_secure) {
-		sysmmu_show_fault_info_simple(drvdata, itype, addr, vmid);
-		sysmmu_clear_interrupt(drvdata, &vmid);
+	if (ret == -EAGAIN) {
+		if (is_secure) {
+			if (drvdata->async_fault_mode)
+				sysmmu_show_secure_fault_information(drvdata, itype, addr, vmid);
+			ret = sysmmu_clear_interrupt(drvdata, true, &vmid);
+			if (ret) {
+				dev_err(drvdata->dev, "Failed to clear secure fault (%d)\n", ret);
+				goto out;
+			}
+		} else  {
+			sysmmu_show_fault_info_simple(drvdata, itype, addr, vmid);
+			sysmmu_clear_interrupt(drvdata, false, &vmid);
+		}
 		return IRQ_HANDLED;
 	}
 
@@ -777,6 +829,7 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 			sysmmu_show_fault_information(drvdata, itype, addr, vmid);
 	}
 
+out:
 	sysmmu_get_fault_msg(drvdata, itype, vmid, addr, is_secure, fault_msg, sizeof(fault_msg));
 
 	panic(fault_msg);
