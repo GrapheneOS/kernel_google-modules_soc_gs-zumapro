@@ -1994,7 +1994,7 @@ static void max77759_get_timer_value(void *unused, const char *state, enum typec
 {
 	switch (timer) {
 	case SINK_DISCOVERY_BC12:
-		*val = 500;
+		*val = sink_discovery_delay_ms;
 		break;
 	case SINK_WAIT_CAP:
 		*val = 450;
