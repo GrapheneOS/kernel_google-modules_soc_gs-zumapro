@@ -108,6 +108,7 @@ def define_zuma():
             "drivers/soc/google/debug/itmon.ko",
             "drivers/soc/google/exynos-pd_el3.ko",
             "drivers/soc/google/gs-chipid.ko",
+            "drivers/soc/google/vh/kernel/pixel_em/pixel_em.ko",
             "drivers/soc/google/vh/kernel/systrace.ko",
             "drivers/tty/serial/exynos_tty.ko",
         ],
