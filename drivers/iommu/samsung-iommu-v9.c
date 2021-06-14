@@ -153,7 +153,7 @@ static inline void __sysmmu_invalidate(struct sysmmu_drvdata *data,
 {
 	__sysmmu_write_all_vm(data, (ALIGN_DOWN(start, SPAGE_SIZE) >> 4),
 			      data->sfrbase + REG_MMU_RANGE_INV_START_VPN_VM);
-	__sysmmu_write_all_vm(data, ((ALIGN_DOWN(end - 1, (SPAGE_SIZE)) >> 4) | 0x1),
+	__sysmmu_write_all_vm(data, ((ALIGN_DOWN(end, (SPAGE_SIZE)) >> 4) | 0x1),
 			      data->sfrbase + REG_MMU_RANGE_INV_END_VPN_AND_TRIG_VM);
 
 	SYSMMU_EVENT_LOG_RANGE(data, SYSMMU_EVENT_INVALIDATE_RANGE, start, end);
@@ -619,7 +619,7 @@ static int lv1set_section(struct samsung_sysmmu_domain *domain,
 	if (pent_to_free) {
 		struct iommu_iotlb_gather gather = {
 			.start = iova,
-			.end = iova + SECT_SIZE,
+			.end = iova + SECT_SIZE - 1,
 		};
 
 		iommu_iotlb_sync(&domain->domain, &gather);
