@@ -7,6 +7,7 @@
 
 #include <linux/smc.h>
 #include <linux/arm-smccc.h>
+#include <linux/pm_runtime.h>
 #include "samsung-iommu-v9.h"
 
 #define SYSMMU_FAULT_PTW_ACCESS		0
@@ -795,6 +796,9 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 	};
 	char fault_msg[128];
 
+	/* Prevent power down while handling faults */
+	pm_runtime_get(drvdata->dev);
+
 	sysmmu_get_interrupt_info(drvdata, &itype, &addr, &vmid, is_secure);
 	reason = sysmmu_fault_type[itype];
 
@@ -826,6 +830,7 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 				sysmmu_show_fault_info_simple(drvdata, itype, addr, vmid);
 			sysmmu_clear_interrupt(drvdata, false, &vmid);
 		}
+		pm_runtime_put(drvdata->dev);
 		return IRQ_HANDLED;
 	}
 
@@ -838,6 +843,8 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 
 out:
 	sysmmu_get_fault_msg(drvdata, itype, vmid, addr, is_secure, fault_msg, sizeof(fault_msg));
+
+	pm_runtime_put(drvdata->dev);
 
 	panic(fault_msg);
 
