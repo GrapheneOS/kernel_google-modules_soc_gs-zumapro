@@ -187,6 +187,7 @@ struct sysmmu_drvdata {
 	int secure_irq;
 	unsigned int secure_base;
 	bool async_fault_mode;
+	bool hide_page_fault;
 	struct stream_props *props;
 	struct samsung_iommu_log log;
 };
