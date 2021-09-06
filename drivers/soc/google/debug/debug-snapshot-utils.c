@@ -597,7 +597,11 @@ static int dbg_snapshot_restart_handler(struct notifier_block *nb,
 	if (dss_desc.in_panic)
 		return NOTIFY_DONE;
 
-	if (dss_desc.in_reboot) {
+	if (dss_desc.in_warm) {
+		dev_emerg(dss_desc.dev, "warm reset\n");
+		dbg_snapshot_report_reason(DSS_SIGN_WARM_REBOOT);
+		dbg_snapshot_dump_task_info();
+	} else if (dss_desc.in_reboot) {
 		dev_emerg(dss_desc.dev, "normal reboot starting\n");
 		dbg_snapshot_report_reason(DSS_SIGN_NORMAL_REBOOT);
 	} else {
