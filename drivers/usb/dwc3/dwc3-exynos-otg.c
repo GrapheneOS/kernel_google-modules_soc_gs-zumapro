@@ -548,21 +548,22 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		del_timer_sync(&exynos->usb_connect_timer);
 
 		/* Wait until dwc connected is off */
-		evt_count = dwc3_exynos_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
-		evt_count &= DWC3_GEVNTCOUNT_MASK;
-		while (evt_count) {
-			wait_counter++;
-			msleep(20);
-
-			if (wait_counter > 20) {
-				dev_err(dev, "Can't wait dwc disconnect!\n");
-				break;
-			}
+		if (exynos_usbdrd_get_ldo_status()) {
 			evt_count = dwc3_exynos_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
 			evt_count &= DWC3_GEVNTCOUNT_MASK;
-			dev_dbg(dev, "%s: evt = %d\n", __func__, evt_count);
-		}
+			while (evt_count) {
+				wait_counter++;
+				msleep(20);
 
+				if (wait_counter > 20) {
+					dev_err(dev, "Can't wait dwc disconnect!\n");
+					break;
+				}
+				evt_count = dwc3_exynos_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
+				evt_count &= DWC3_GEVNTCOUNT_MASK;
+				dev_dbg(dev, "%s: evt = %d\n", __func__, evt_count);
+			}
+		}
 		/*
 		 * we can extra work corresponding each functions by
 		 * the following function.
