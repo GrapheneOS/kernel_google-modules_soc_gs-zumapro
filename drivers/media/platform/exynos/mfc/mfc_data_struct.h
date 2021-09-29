@@ -845,6 +845,7 @@ struct mfc_platdata {
 	struct mfc_feature hdr10_plus_full;
 	struct mfc_feature enc_capability;
 	struct mfc_feature enc_sub_gop;
+	struct mfc_feature enc_ts_delta;
 
 	/* AV1 Decoder */
 	unsigned int support_av1_dec;
@@ -984,7 +985,8 @@ typedef struct __EncoderInputStr {
 	int SourcePlane2BitStride[2];
 	int MVHorRange;
 	int MVVerRange;
-} EncoderInputStr; /* 88*4 = 352 bytes */
+	int TimeStampDelta;
+} EncoderInputStr; /* 89*4 = 356 bytes */
 
 typedef struct __DecoderOutputStr {
 	int StartCode; /* NAL_Q_DECODER_MARKER */

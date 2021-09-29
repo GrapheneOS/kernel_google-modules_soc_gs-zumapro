@@ -298,4 +298,32 @@ static inline void mfc_core_change_idle_mode(struct mfc_core *core,
 		mfc_core_idle_checker_start_tick(core);
 }
 
+static inline int mfc_enc_get_ts_delta(struct mfc_ctx *ctx)
+{
+	struct mfc_enc *enc = ctx->enc_priv;
+	struct mfc_enc_params *p = &enc->params;
+	int ts_delta = 0;
+
+	if (!ctx->ts_last_interval) {
+		ts_delta = p->rc_framerate_res / p->rc_framerate;
+		mfc_debug(3, "[DFR] default delta: %d\n", ts_delta);
+	} else {
+		/*
+		 * FRAME_DELTA specifies the amount of
+		 * increment of frame modulo base time.
+		 * - delta unit = framerate resolution / fps
+		 * - fps = 1000000(usec per sec) / timestamp interval
+		 * For the sophistication of calculation, we will divide later.
+		 * Excluding H.263, resolution is fixed to 10000,
+		 * so thie is also divided into pre-calculated 100.
+		 * (Preventing both overflow and calculation duplication)
+		 */
+		if (IS_H263_ENC(ctx))
+			ts_delta = ctx->ts_last_interval *
+				p->rc_framerate_res / 1000000;
+		else
+			ts_delta = ctx->ts_last_interval / 100;
+	}
+	return ts_delta;
+}
 #endif /* __MFC_UTILS_H */
