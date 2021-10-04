@@ -132,12 +132,7 @@
 				/* RCAM_RST_L GPP2[2] */
 				reset-gpios = <&gpp2 2 GPIO_ACTIVE_HIGH>;
 
-				/* Power sequence */
-				regulators =
-					<&slg51000_ldo1 &slg51000_ldo2
-					 &slg51000_ldo3>;
-				regulator-voltages =
-					<0 0 0>;
+				/* Power supplies */
 				ldo1-supply = <&slg51000_ldo1>;
 				ldo2-supply = <&slg51000_ldo2>;
 				ldo3-supply = <&slg51000_ldo3>;
@@ -216,11 +211,7 @@
 				/* GPIOs */
 				reset-gpios = <&gpp4 2 GPIO_ACTIVE_HIGH>;
 
-				/* Power sequence */
-				regulators =
-					<&slg51000_ldo1 &slg51000_ldo_dummy>;
-				regulator-voltages =
-					<0 0>;
+				/* Power supplies */
 				ldo1-supply = <&slg51000_ldo1>;
 				ldo_dummy-supply = <&slg51000_ldo_dummy>;
 
@@ -292,11 +283,7 @@
 				/* GPIOs */
 				reset-gpios = <&gpp6 3 GPIO_ACTIVE_HIGH>;
 
-				/* Power sequence */
-				regulators =
-					<&slg51000_ldo1 &slg51000_ldo4>;
-				regulator-voltages =
-					<0 0>;
+				/* Power supplies */
 				ldo1-supply = <&slg51000_ldo1>;
 				ldo4-supply = <&slg51000_ldo4>;
 
@@ -365,12 +352,7 @@
 				reg-addr-bitwidth = <16>;
 				reg-value-bitwidth = <32>;
 
-				/* Power sequence */
-				regulators =
-					<&slg51000_ldo1 &slg51000_ldo2
-					 &slg51000_ldo3>;
-				regulator-voltages =
-					<0 0 0>;
+				/* Power supplies */
 				ldo1-supply = <&slg51000_ldo1>;
 				ldo2-supply = <&slg51000_ldo2>;
 				ldo3-supply = <&slg51000_ldo3>;
@@ -420,11 +402,7 @@
 				reg-addr-bitwidth = <16>;
 				reg-value-bitwidth = <8>;
 
-				/* Power sequence */
-				regulators =
-					<&slg51000_ldo1>;
-				regulator-voltages =
-					<0>;
+				/* Power supplies */
 				ldo1-supply = <&slg51000_ldo1>;
 
 				/* Power up sequence */
@@ -459,11 +437,7 @@
 				reg-addr-bitwidth = <16>;
 				reg-value-bitwidth = <8>;
 
-				/* Power sequence */
-				regulators =
-					<&slg51000_ldo1>;
-				regulator-voltages =
-					<0>;
+				/* Power supplies */
 				ldo1-supply = <&slg51000_ldo1>;
 
 				/* Power up sequence */
@@ -498,12 +472,7 @@
 				reg-addr-bitwidth = <8>;
 				reg-value-bitwidth = <8>;
 
-				/* Power sequence */
-				regulators =
-					<&slg51000_ldo1 &slg51000_ldo2
-					 &slg51000_ldo3>;
-				regulator-voltages =
-					<0 0 0>;
+				/* Power supplies */
 				ldo1-supply = <&slg51000_ldo1>;
 				ldo2-supply = <&slg51000_ldo2>;
 				ldo3-supply = <&slg51000_ldo3>;
@@ -552,12 +521,7 @@
 				reg-addr-bitwidth = <16>;
 				reg-value-bitwidth = <32>;
 
-				/* Power sequence */
-				regulators =
-					<&slg51000_ldo1 &slg51000_ldo2
-					 &slg51000_ldo3>;
-				regulator-voltages =
-					<0 0 0>;
+				/* Power supplies */
 				ldo1-supply = <&slg51000_ldo1>;
 				ldo2-supply = <&slg51000_ldo2>;
 				ldo3-supply = <&slg51000_ldo3>;
