@@ -16,6 +16,8 @@
 #include <linux/soc/samsung/exynos-smc.h>
 #include <linux/slab.h>
 #include <linux/panic_notifier.h>
+#include <linux/atomic.h>
+#include <linux/android_debug_symbols.h>
 
 #include <linux/suspend.h>
 #include <linux/sched/task.h>
@@ -148,7 +150,9 @@ static unsigned long hardlockup_debug_get_locked_cpu_mask(void)
 
 static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned int esr)
 {
+	static atomic_t show_mem_once = ATOMIC_INIT(1);
 	static atomic_t print_schedstat_once = ATOMIC_INIT(1);
+
 	int cpu = raw_smp_processor_id();
 	unsigned int val;
 	unsigned long flags;
@@ -207,6 +211,12 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned int esr)
 
 		dump_backtrace(regs, NULL, KERN_DEFAULT);
 		dbg_snapshot_save_context(regs, false);
+
+		if (atomic_cmpxchg(&show_mem_once, 1, 0)) {
+			void (*show_mem)(unsigned int, nodemask_t *) =
+				android_debug_symbol(ADS_SHOW_MEM);
+			show_mem(0, NULL);
+		}
 
 		if (atomic_cmpxchg(&print_schedstat_once, 1, 0)) {
 			s3c2410wdt_print_schedstat(KERN_EMERG);
@@ -425,3 +435,4 @@ module_platform_driver(hardlockup_debug_driver);
 
 MODULE_DESCRIPTION("Module for Debugging Hardlockups via FIQ");
 MODULE_LICENSE("GPL v2");
+MODULE_IMPORT_NS(MINIDUMP);
