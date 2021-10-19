@@ -2764,8 +2764,6 @@ int exynos_pcie_rc_poweron(int ch_num)
 	struct device *dev;
 	u32 val, vendor_id, device_id;
 	int ret;
-	struct irq_data *irq_data;
-	struct irq_desc *exynos_pcie_desc = NULL;
 	unsigned long flags;
 
 	if (!exynos_pcie) {
@@ -2777,9 +2775,6 @@ int exynos_pcie_rc_poweron(int ch_num)
 	pci = exynos_pcie->pci;
 	pp = &pci->pp;
 	dev = pci->dev;
-	irq_data = irq_get_irq_data(pp->irq);
-	if (irq_data)
-		exynos_pcie_desc = irq_data_to_desc(irq_data);
 
 	dev_dbg(dev, "start poweron, state: %d\n", exynos_pcie->state);
 	if (exynos_pcie->state == STATE_LINK_DOWN) {
@@ -2833,10 +2828,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 		exynos_pcie->state = STATE_LINK_UP_TRY;
 		spin_unlock_irqrestore(&exynos_pcie->reg_lock, flags);
 
-		if ((exynos_pcie_desc) && (exynos_pcie_desc->depth > 0))
-			enable_irq(pp->irq);
-		else
-			dev_info(pci->dev, "%s, already enable_irq, so skip\n", __func__);
+		enable_irq(pp->irq);
 
 		if (exynos_pcie_rc_establish_link(pp)) {
 			dev_err(dev, "pcie link up fail\n");
