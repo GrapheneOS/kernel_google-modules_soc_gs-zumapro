@@ -1,0 +1,10 @@
+# List of modules loaded during first stage init from vendor_boot
+# Sort order defined by
+# LC_ALL=C sort
+exynos_mct.ko
+exynos_tty.ko
+gs-chipid.ko
+i2c-dev.ko
+i2c-exynos5.ko
+pinctrl-exynos-gs.ko
+systrace.ko
