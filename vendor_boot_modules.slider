@@ -23,7 +23,7 @@ bcm47765.ko
 bcm_dbg.ko
 bigocean.ko
 boot_device_spi.ko
-clk_exynos.ko
+clk_exynos_gs.ko
 cmupmucal.ko
 cp_thermal_zone.ko
 cpif.ko

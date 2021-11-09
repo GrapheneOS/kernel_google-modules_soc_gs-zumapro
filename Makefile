@@ -4,6 +4,8 @@ obj-y += drivers/pinctrl/
 
 obj-y += drivers/pci/controller/dwc/
 
+obj-y += drivers/clk/gs/
+
 obj-y += drivers/scsi/ufs/
 
 obj-y += drivers/spi/

@@ -569,6 +569,6 @@ static void exynos_pd_exit(void)
 }
 module_exit(exynos_pd_exit);
 
-MODULE_SOFTDEP("pre: clk_exynos");
+MODULE_SOFTDEP("pre: clk_exynos_gs");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Exynos PM domain Support");

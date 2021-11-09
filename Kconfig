@@ -9,6 +9,8 @@ if DEVICE_MODULES
 
 source "device-modules/drivers/pci/controller/dwc/Kconfig"
 
+source "device-modules/drivers/clk/gs/Kconfig"
+
 source "device-modules/drivers/scsi/ufs/Kconfig"
 
 source "device-modules/drivers/i2c/busses/Kconfig"
