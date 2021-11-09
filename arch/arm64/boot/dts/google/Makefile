@@ -54,4 +54,14 @@ gs101-dpm-eng.dtbo-base := gs101-b0.dtb
 gs101-dpm-user.dtbo-base := gs101-b0.dtb
 gs101-dpm-userdebug.dtbo-base := gs101-b0.dtb
 
+
+dtb-$(CONFIG_SOC_ZUMA) += \
+	zuma-a0.dtb
+
+dtbo-$(CONFIG_BOARD_ZUMA_EMULATOR) += \
+	zuma-emulator.dtbo \
+	zuma-hybrid.dtbo
+
+zuma-emulator.dtbo-base := zuma-a0.dtb
+
 MKDTIMG_FLAGS += --page_size=4096  --id=/:board_id --rev=/:board_rev
