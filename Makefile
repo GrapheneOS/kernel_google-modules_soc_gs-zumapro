@@ -6,6 +6,8 @@ obj-y += drivers/pci/controller/dwc/
 
 obj-y += drivers/clk/gs/
 
+obj-y += drivers/dma/
+
 obj-y += drivers/soc/google/
 
 obj-y += drivers/tty/serial/
