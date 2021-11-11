@@ -20,6 +20,8 @@ obj-y += drivers/spi/
 
 obj-y += drivers/i2c/busses/
 
+obj-y += drivers/watchdog/
+
 obj-y += drivers/cpufreq/
 
 obj-y += drivers/devfreq/google/
