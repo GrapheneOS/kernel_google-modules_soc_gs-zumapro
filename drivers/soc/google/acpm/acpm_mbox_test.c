@@ -28,7 +28,7 @@
 #include <soc/google/cal-if.h>
 #include <dt-bindings/clock/gs101.h>
 #include <soc/google/exynos-devfreq.h>
-#include "../../../soc/google/cal-if/acpm_dvfs.h"
+#include "../cal-if/acpm_dvfs.h"
 #include <linux/mfd/samsung/s2mpg10.h>
 #include <linux/mfd/samsung/s2mpg11.h>
 #include <linux/mfd/samsung/rtc-s2mpg10.h>
