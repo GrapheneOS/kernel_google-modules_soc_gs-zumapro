@@ -8,6 +8,8 @@ obj-y += drivers/clk/gs/
 
 obj-y += drivers/soc/google/
 
+obj-y += drivers/tty/serial/
+
 obj-y += drivers/scsi/ufs/
 
 obj-y += drivers/spi/
