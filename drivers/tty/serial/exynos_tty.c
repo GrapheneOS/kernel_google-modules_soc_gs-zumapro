@@ -3012,7 +3012,7 @@ exynos_serial_console_write(struct console *co, const char *s,
 	uart_console_write(cons_uart, s, count, exynos_serial_console_putchar);
 }
 
-static void __init
+static void
 exynos_serial_get_options(struct uart_port *port, int *baud, int *parity,
 			  int *bits)
 {
@@ -3069,7 +3069,7 @@ exynos_serial_get_options(struct uart_port *port, int *baud, int *parity,
 	}
 }
 
-static int __init
+static int
 exynos_serial_console_setup(struct console *co, char *options)
 {
 	struct uart_port *port;
