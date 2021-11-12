@@ -47,11 +47,11 @@
 #endif
 #include <soc/google/debug-snapshot.h>
 
-#include "../governor.h"
+#include "governor.h"
 
 #include "gs-ppc.h"
 #include "../../soc/google/vh/kernel/systrace.h"
-#include "../../thermal/thermal_core.h"
+#include "thermal_core.h"
 
 #define HZ_PER_KHZ	1000
 

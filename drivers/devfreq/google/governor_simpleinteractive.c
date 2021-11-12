@@ -19,7 +19,7 @@
 #include <linux/timer.h>
 #include <linux/kthread.h>
 #include <linux/pm_opp.h>
-#include "../governor.h"
+#include "governor.h"
 
 #include <linux/devfreq.h>
 #include <soc/google/exynos-devfreq.h>

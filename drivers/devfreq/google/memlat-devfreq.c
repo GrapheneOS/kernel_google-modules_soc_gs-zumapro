@@ -17,7 +17,7 @@
 #include <soc/google/ect_parser.h>
 #include <dt-bindings/soc/google/gs101-devfreq.h>
 #include <trace/events/power.h>
-#include "../governor.h"
+#include "governor.h"
 
 
 #define MEMLAT_DEVFREQ_MODULE_NAME	"gs101-memlat-devfreq"

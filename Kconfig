@@ -21,4 +21,6 @@ source "device-modules/drivers/pinctrl/Kconfig"
 
 source "device-modules/drivers/cpufreq/Kconfig"
 
+source "device-modules/drivers/devfreq/google/Kconfig"
+
 endif # DEVICE_MODULES

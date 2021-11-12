@@ -22,7 +22,7 @@
 #include <linux/cpu_pm.h>
 #include <linux/cpu.h>
 #include <linux/of_fdt.h>
-#include "../governor.h"
+#include "governor.h"
 #include "governor_memlat.h"
 #include <linux/perf_event.h>
 #include <linux/of_device.h>
