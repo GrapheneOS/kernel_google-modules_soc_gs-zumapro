@@ -1,0 +1,2 @@
+# SPDX-License-Identifier: GPL-2.0
+obj-$(CONFIG_CLKSRC_EXYNOS_MCT_GS)	+= exynos_mct.o

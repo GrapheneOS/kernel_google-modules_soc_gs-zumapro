@@ -24,6 +24,8 @@ obj-y += drivers/watchdog/
 
 obj-y += drivers/cpufreq/
 
+obj-y += drivers/clocksource/
+
 obj-y += drivers/devfreq/google/
 
 obj-y += drivers/staging/android/
