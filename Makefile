@@ -19,3 +19,5 @@ obj-y += drivers/i2c/busses/
 obj-y += drivers/cpufreq/
 
 obj-y += drivers/devfreq/google/
+
+obj-y += drivers/staging/android/

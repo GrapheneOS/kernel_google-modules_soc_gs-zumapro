@@ -27,4 +27,6 @@ source "device-modules/drivers/cpufreq/Kconfig"
 
 source "device-modules/drivers/devfreq/google/Kconfig"
 
+source "device-modules/drivers/staging/android/Kconfig"
+
 endif # DEVICE_MODULES
