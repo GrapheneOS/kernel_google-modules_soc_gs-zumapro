@@ -19,4 +19,6 @@ source "device-modules/drivers/spi/Kconfig"
 
 source "device-modules/drivers/pinctrl/Kconfig"
 
+source "device-modules/drivers/cpufreq/Kconfig"
+
 endif # DEVICE_MODULES
