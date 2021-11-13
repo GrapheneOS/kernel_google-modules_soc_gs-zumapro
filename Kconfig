@@ -13,6 +13,8 @@ source "device-modules/drivers/clk/gs/Kconfig"
 
 source "device-modules/drivers/soc/google/Kconfig"
 
+source "device-modules/drivers/char/hw_random/Kconfig"
+
 source "device-modules/drivers/tty/serial/Kconfig"
 
 source "device-modules/drivers/scsi/ufs/Kconfig"

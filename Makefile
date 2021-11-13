@@ -10,6 +10,8 @@ obj-y += drivers/soc/google/
 
 obj-y += drivers/tty/serial/
 
+obj-y += drivers/char/hw_random/
+
 obj-y += drivers/scsi/ufs/
 
 obj-y += drivers/spi/
