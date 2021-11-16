@@ -20,9 +20,9 @@ config INPUT_KEYCOMBO
 	  Say Y here if you want to take action when some keys are pressed;
 
 
-source "device-modules/drivers/input/misc/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/input/misc/Kconfig"
 
-source "device-modules/drivers/input/fingerprint/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/input/fingerprint/Kconfig"
 
 endif
 

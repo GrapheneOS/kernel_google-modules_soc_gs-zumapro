@@ -118,7 +118,7 @@ config EXYNOS_CPUPM
 	help
 	Support CPU Power Control for GS101 SoC.
 
-source "device-modules/drivers/soc/google/acpm/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/acpm/Kconfig"
 
 config ACPM_DVFS
 	tristate "ACPM DVFS manager"
@@ -194,17 +194,17 @@ config EXYNOS_CONTENT_PATH_PROTECTION
 	help
 	  Enable content path protection of EXYNOS.
 
-source "device-modules/drivers/soc/google/gsa/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/gsa/Kconfig"
 
-source "device-modules/drivers/soc/google/cpif/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif/Kconfig"
 
-source "device-modules/drivers/soc/google/debug/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/debug/Kconfig"
 
-source "device-modules/drivers/soc/google/eh/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/eh/Kconfig"
 
-source "device-modules/drivers/soc/google/s2mpu/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/s2mpu/Kconfig"
 
-source "device-modules/drivers/soc/google/vh/kernel/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/vh/kernel/Kconfig"
 
 config HARDLOCKUP_DEBUG
 	tristate "Hardlockup Debugging"

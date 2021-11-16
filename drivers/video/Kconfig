@@ -5,6 +5,6 @@
 
 if HAS_IOMEM
 
-source "device-modules/drivers/gpu/exynos/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/exynos/Kconfig"
 
 endif

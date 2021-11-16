@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0
+#
+# This file should be included by external modules that need to link to this
+# project.
 
-LINUXINCLUDE += \
-		-I$(srctree)/device-modules/include \
-		-I$(srctree)/device-modules/include/uapi \
-		-I$(srctree)/device-modules/arch/$(SRCARCH)/include/uapi
+EXTRA_CFLAGS += -I$(KERNEL_SRC)/../gs/kernel/device-modules/include
+EXTRA_CFLAGS += -I$(KERNEL_SRC)/../gs/kernel/device-modules/include/uapi
 
-dtstree := device-modules/arch/$(SRCARCH)/boot/dts
-
+EXTRA_SYMBOLS += $(OUT_DIR)/../gs/kernel/device-modules/Module.symvers
