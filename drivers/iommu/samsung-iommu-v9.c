@@ -268,6 +268,8 @@ void samsung_sysmmu_dump_pagetable(struct device *dev, dma_addr_t iova)
 static struct iommu_device *samsung_sysmmu_probe_device(struct device *dev)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
+	struct sysmmu_clientdata *client;
+	int i;
 
 	if (!fwspec) {
 		dev_dbg(dev, "IOMMU instance data is not initialized\n");
@@ -279,15 +281,47 @@ static struct iommu_device *samsung_sysmmu_probe_device(struct device *dev)
 		return ERR_PTR(-ENODEV);
 	}
 
-	return 0;
+	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
+	if (client->dev_link) {
+		dev_info(dev, "is already added. It's okay.\n");
+		return 0;
+	}
+	client->dev_link = kcalloc(client->sysmmu_count,
+				   sizeof(*client->dev_link), GFP_KERNEL);
+	if (!client->dev_link)
+		return ERR_PTR(-ENOMEM);
+
+	for (i = 0; i < client->sysmmu_count; i++) {
+		client->dev_link[i] =
+			device_link_add(dev, client->sysmmus[i]->dev,
+					DL_FLAG_STATELESS | DL_FLAG_PM_RUNTIME);
+		if (!client->dev_link[i]) {
+			dev_err(dev, "failed to add device link of %s\n",
+				dev_name(client->sysmmus[i]->dev));
+			while (i-- > 0)
+				device_link_del(client->dev_link[i]);
+			return ERR_PTR(-EINVAL);
+		}
+		dev_info(dev, "device link to %s\n",
+			 dev_name(client->sysmmus[i]->dev));
+	}
+
+	return &client->sysmmus[0]->iommu;
 }
 
 static void samsung_sysmmu_release_device(struct device *dev)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
+	struct sysmmu_clientdata *client;
+	int i;
 
 	if (!fwspec || fwspec->ops != &samsung_sysmmu_ops)
 		return;
+
+	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
+	for (i = 0; i < client->sysmmu_count; i++)
+		device_link_del(client->dev_link[i]);
+	kfree(client->dev_link);
 
 	iommu_fwspec_free(dev);
 }
