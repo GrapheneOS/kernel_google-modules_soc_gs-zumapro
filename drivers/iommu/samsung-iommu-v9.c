@@ -19,6 +19,11 @@ struct samsung_sysmmu_domain {
 	struct iommu_domain domain;
 };
 
+static inline u32 __sysmmu_get_hw_version(struct sysmmu_drvdata *data)
+{
+	return MMU_VERSION_RAW(readl_relaxed(data->sfrbase + REG_MMU_VERSION));
+}
+
 static struct samsung_sysmmu_domain *to_sysmmu_domain(struct iommu_domain *dom)
 {
 	return container_of(dom, struct samsung_sysmmu_domain, domain);
@@ -184,15 +189,72 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.pgsize_bitmap		= -1UL << 12,
 };
 
+static irqreturn_t samsung_sysmmu_irq(int irq, void *dev_id)
+{
+	struct sysmmu_drvdata *drvdata = dev_id;
+
+	dev_info(drvdata->dev, "irq(%d) happened\n", irq);
+
+	/* TODO: Call the fault handler */
+
+	return IRQ_HANDLED;
+}
+
+static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
+{
+	data->version = __sysmmu_get_hw_version(data);
+
+	/* TODO: read more capability in HW */
+
+	return 0;
+}
+
 static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 {
 	struct sysmmu_drvdata *data;
 	struct device *dev = &pdev->dev;
-	int err = 0;
+	struct resource *res;
+	int irq, ret, err = 0;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(dev, "failed to get resource info\n");
+		return -ENOENT;
+	}
+
+	data->sfrbase = devm_ioremap_resource(dev, res);
+	if (IS_ERR(data->sfrbase))
+		return PTR_ERR(data->sfrbase);
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		return irq;
+
+	ret = devm_request_irq(dev, irq, samsung_sysmmu_irq, 0,
+			       dev_name(dev), data);
+	if (ret) {
+		dev_err(dev, "unabled to register handler of irq %d\n", irq);
+		return ret;
+	}
+
+	data->clk = devm_clk_get(dev, "gate");
+	if (PTR_ERR(data->clk) == -ENOENT) {
+		dev_info(dev, "no gate clock exists. it's okay.\n");
+		data->clk = NULL;
+	} else if (IS_ERR(data->clk)) {
+		dev_err(dev, "failed to get clock!\n");
+		return PTR_ERR(data->clk);
+	}
+
+	ret = sysmmu_get_hw_info(data);
+	if (ret) {
+		dev_err(dev, "failed to get h/w info\n");
+		return ret;
+	}
 
 	data->dev = dev;
 	platform_set_drvdata(pdev, data);
@@ -215,7 +277,10 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 	if (!iommu_present(&platform_bus_type))
 		bus_set_iommu(&platform_bus_type, &samsung_sysmmu_ops);
 
-	dev_info(dev, "initialized IOMMU\n");
+	dev_info(dev, "initialized IOMMU. Ver %d.%d.%d\n",
+		 MMU_VERSION_MAJOR(data->version),
+		 MMU_VERSION_MINOR(data->version),
+		 MMU_VERSION_REVISION(data->version));
 	return 0;
 
 err_iommu_register:
