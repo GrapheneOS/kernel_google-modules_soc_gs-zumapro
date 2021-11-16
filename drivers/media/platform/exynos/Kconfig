@@ -8,7 +8,7 @@ config VIDEO_EXYNOS
           This is a representative exynos multimedia device.
 
 if VIDEO_EXYNOS
-	source "drivers/media/platform/exynos/mfc/Kconfig"
+	source "device-modules/drivers/media/platform/exynos/mfc/Kconfig"
 endif
 
 config MEDIA_EXYNOS

@@ -35,6 +35,8 @@ source "device-modules/drivers/pinctrl/Kconfig"
 
 source "device-modules/drivers/watchdog/Kconfig"
 
+source "device-modules/drivers/media/platform/Kconfig"
+
 source "device-modules/drivers/clocksource/Kconfig"
 
 source "device-modules/drivers/iommu/Kconfig"
