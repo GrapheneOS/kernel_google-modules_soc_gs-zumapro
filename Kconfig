@@ -37,6 +37,8 @@ source "device-modules/drivers/watchdog/Kconfig"
 
 source "device-modules/drivers/clocksource/Kconfig"
 
+source "device-modules/drivers/iommu/Kconfig"
+
 source "device-modules/drivers/cpufreq/Kconfig"
 
 source "device-modules/drivers/devfreq/google/Kconfig"
