@@ -9,7 +9,7 @@
 #ifndef _XHCI_EXYNOS_H
 #define _XHCI_EXYNOS_H
 
-#include "xhci.h"	/* for hcd_to_xhci() */
+#include <host/xhci.h> /* $(srctree)/drivers/usb/host/xhci.h */ /* for hcd_to_xhci() */
 
 #define PORTSC_OFFSET		0x430
 #define DIS_RX_DETECT		BIT(9)
