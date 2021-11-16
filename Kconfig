@@ -23,6 +23,8 @@ source "device-modules/drivers/i2c/busses/Kconfig"
 
 source "device-modules/drivers/usb/host/Kconfig"
 
+source "device-modules/drivers/usb/dwc3/Kconfig"
+
 source "device-modules/drivers/dma/Kconfig"
 
 source "device-modules/drivers/spi/Kconfig"

@@ -18,6 +18,8 @@ obj-y += drivers/scsi/ufs/
 
 obj-y += drivers/spi/
 
+obj-y += drivers/usb/dwc3/
+
 obj-y += drivers/usb/host/
 
 obj-y += drivers/i2c/busses/

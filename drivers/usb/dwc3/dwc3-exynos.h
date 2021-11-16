@@ -20,7 +20,7 @@
 #ifndef __LINUX_USB_DWC3_EXYNOS_H
 #define __LINUX_USB_DWC3_EXYNOS_H
 
-#include "core.h"
+#include <dwc3/core.h> /* $(srctree)/drivers/usb/dwc3/core.h */
 
 /* Exynos Specific Register Definition */
 

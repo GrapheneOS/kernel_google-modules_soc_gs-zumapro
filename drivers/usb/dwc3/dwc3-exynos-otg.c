@@ -14,12 +14,11 @@
 #include <linux/workqueue.h>
 #include <linux/suspend.h>
 
-#include "core.h"
+#include <dwc3/core.h> /* $(srctree)/drivers/usb/dwc3/core.h */
 #include "core-exynos.h"
 #include "exynos-otg.h"
-#include "io.h"
+#include <dwc3/io.h> /* $(srctree)/drivers/usb/dwc3/io.h */
 #include <linux/of_device.h>
-#include "../../base/base.h"
 #include <linux/usb/composite.h>
 #include <linux/reboot.h>
 #include "dwc3-exynos.h"

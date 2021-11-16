@@ -290,7 +290,7 @@ static int of_get_devfreq_sync_volt_idx(const struct device_node *device)
 
 static bool exynos_pd_power_down_ok_usb(void)
 {
-#if IS_ENABLED(CONFIG_USB_DWC3_EXYNOS)
+#if IS_ENABLED(CONFIG_USB_DWC3_EXYNOS_GS)
 	return !dwc3_otg_is_connect();
 #else
 	return true;
