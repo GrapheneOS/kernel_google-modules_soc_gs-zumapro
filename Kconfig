@@ -27,6 +27,8 @@ source "device-modules/drivers/usb/dwc3/Kconfig"
 
 source "device-modules/drivers/dma/Kconfig"
 
+source "device-modules/drivers/dma-buf/heaps/Kconfig"
+
 source "device-modules/drivers/spi/Kconfig"
 
 source "device-modules/drivers/pinctrl/Kconfig"
