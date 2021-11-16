@@ -13,6 +13,7 @@ config SAMSUNG_IOMMU_V9
 	tristate "Samsung IOMMU V9 Support"
 	select ARM_DMA_USE_IOMMU
 	select IOMMU_DMA
+	select SAMSUNG_IOMMU_GROUP
 	help
 	  Support for IOMMU V9 on Samsung Exynos SoCs.
 
