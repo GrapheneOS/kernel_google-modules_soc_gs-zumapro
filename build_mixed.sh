@@ -85,5 +85,5 @@ if [ -z "${DEVICE_KERNEL_BUILD_CONFIG}" ]; then
   exit_if_error 1 "No DEVICE_KERNEL_BUILD_CONFIG set"
 fi
 
-build_gki
-build_device_kernel
+build_gki "$@"
+build_device_kernel "$@"

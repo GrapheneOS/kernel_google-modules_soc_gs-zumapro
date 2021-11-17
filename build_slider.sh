@@ -38,6 +38,6 @@ DEVICE_KERNEL_BUILD_CONFIG=${DEVICE_KERNEL_BUILD_CONFIG} \
   GKI_KERNEL_BUILD_CONFIG=${GKI_KERNEL_BUILD_CONFIG} \
   GKI_KERNEL_OUT_DIR=${GKI_KERNEL_OUT_DIR} \
   GKI_DEFCONFIG_FRAGMENT=${GKI_DEFCONFIG_FRAGMENT} \
-  ./build_mixed.sh
+  ./build_mixed.sh "$@"
 
 exit_if_error $? "Failed to create mixed build"
