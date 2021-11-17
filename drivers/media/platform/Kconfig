@@ -18,3 +18,5 @@ config VIDEO_EXYNOS_SMFC
 	help
 	  Still MFC(Multi Format Codec) V4L2 Driver for Exynos SoCs.
 	  The driver supports for mem2mem V4L2 device.
+
+source "device-modules/drivers/media/platform/bigocean/Kconfig"

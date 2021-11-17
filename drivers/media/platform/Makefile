@@ -5,3 +5,4 @@
 
 obj-$(CONFIG_VIDEO_EXYNOS)		+= exynos/
 obj-$(CONFIG_VIDEO_EXYNOS_SMFC)		+= exynos/smfc/
+obj-$(CONFIG_BIGOCEAN)			+= bigocean/
