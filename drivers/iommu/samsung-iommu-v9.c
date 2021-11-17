@@ -454,7 +454,25 @@ static void samsung_sysmmu_iotlb_sync(struct iommu_domain *dom, struct iommu_iot
 
 static phys_addr_t samsung_sysmmu_iova_to_phys(struct iommu_domain *dom, dma_addr_t d_iova)
 {
-	return 0;
+	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
+	sysmmu_iova_t iova = (sysmmu_iova_t)d_iova;
+	sysmmu_pte_t *entry;
+	phys_addr_t phys = 0;
+
+	entry = section_entry(domain->page_table, iova);
+
+	if (lv1ent_section(entry)) {
+		phys = section_phys(entry) + section_offs(iova);
+	} else if (lv1ent_page(entry)) {
+		entry = page_entry(entry, iova);
+
+		if (lv2ent_large(entry))
+			phys = lpage_phys(entry) + lpage_offs(iova);
+		else if (lv2ent_small(entry))
+			phys = spage_phys(entry) + spage_offs(iova);
+	}
+
+	return phys;
 }
 
 void samsung_sysmmu_dump_pagetable(struct device *dev, dma_addr_t iova)
