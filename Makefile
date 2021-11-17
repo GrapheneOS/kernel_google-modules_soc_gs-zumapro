@@ -10,6 +10,8 @@ obj-y += drivers/dma/
 
 obj-y += drivers/soc/google/
 
+obj-y += drivers/regulator/
+
 obj-y += drivers/tty/serial/
 
 obj-y += drivers/char/hw_random/
