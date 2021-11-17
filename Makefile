@@ -18,6 +18,8 @@ obj-y += drivers/char/hw_random/
 
 obj-y += drivers/iommu/
 
+obj-y += drivers/mfd/
+
 obj-y += drivers/dma-buf/heaps/
 
 obj-y += drivers/scsi/ufs/

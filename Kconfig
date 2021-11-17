@@ -37,6 +37,8 @@ source "device-modules/drivers/watchdog/Kconfig"
 
 source "device-modules/drivers/regulator/Kconfig"
 
+source "device-modules/drivers/mfd/Kconfig"
+
 source "device-modules/drivers/media/platform/Kconfig"
 
 source "device-modules/drivers/clocksource/Kconfig"
