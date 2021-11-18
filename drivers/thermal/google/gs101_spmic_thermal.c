@@ -18,7 +18,7 @@
 #include <linux/mfd/samsung/s2mpg11.h>
 #include <linux/mfd/samsung/s2mpg11-register.h>
 
-#include "../thermal_core.h"
+#include <thermal_core.h>
 
 #define GTHERM_CHAN_NUM 8
 

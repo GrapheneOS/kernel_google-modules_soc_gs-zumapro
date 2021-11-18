@@ -24,7 +24,7 @@
 #include <soc/google/cal-if.h>
 #include <soc/google/ect_parser.h>
 #include <soc/google/exynos_cpu_cooling.h>
-#include "../thermal_core.h"
+#include <thermal_core.h>
 
 #include <trace/events/power.h>
 #include <trace/events/thermal_exynos.h>

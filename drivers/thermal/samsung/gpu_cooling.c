@@ -16,7 +16,7 @@
 #include <soc/google/gpu_cooling.h>
 #include <soc/google/tmu.h>
 
-#include "../thermal_core.h"
+#include <thermal_core.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/thermal_exynos_gpu.h>

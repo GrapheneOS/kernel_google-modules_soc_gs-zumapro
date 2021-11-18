@@ -34,7 +34,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #endif
-#include "../thermal_core.h"
+#include <thermal_core.h>
 
 /* This driver determines if HW was throttled due to SMPL/OCP */
 

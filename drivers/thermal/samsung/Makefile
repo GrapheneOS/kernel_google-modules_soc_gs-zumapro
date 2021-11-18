@@ -2,8 +2,8 @@
 #
 # Samsung thermal specific Makefile
 #
-obj-$(CONFIG_EXYNOS_THERMAL)			+= exynos_thermal.o
-exynos_thermal-y				:= exynos_tmu.o
+
+ccflags-y += -I$(srctree)/drivers/thermal
 
 obj-$(CONFIG_GS101_THERMAL_V2)			+= gs101_thermal.o
 gs101_thermal-y					+= gs101_tmu_v2.o

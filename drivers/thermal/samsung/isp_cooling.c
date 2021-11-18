@@ -17,7 +17,7 @@
 #include <soc/google/ect_parser.h>
 #endif
 
-#include "../thermal_core.h"
+#include <thermal_core.h>
 
 /**
  * struct isp_cooling_device - data for cooling device with isp

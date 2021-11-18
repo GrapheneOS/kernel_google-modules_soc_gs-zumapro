@@ -35,6 +35,8 @@ source "device-modules/drivers/spi/Kconfig"
 
 source "device-modules/drivers/pinctrl/Kconfig"
 
+source "device-modules/drivers/thermal/Kconfig"
+
 source "device-modules/drivers/trusty/Kconfig"
 
 source "device-modules/drivers/watchdog/Kconfig"

@@ -32,7 +32,7 @@
 #include <soc/google/exynos-mcinfo.h>
 #endif
 
-#include "../thermal_core.h"
+#include <thermal_core.h>
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 #include "exynos_acpm_tmu.h"
 #endif
