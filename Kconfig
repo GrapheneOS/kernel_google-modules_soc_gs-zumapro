@@ -25,9 +25,7 @@ source "device-modules/drivers/scsi/ufs/Kconfig"
 
 source "device-modules/drivers/i2c/busses/Kconfig"
 
-source "device-modules/drivers/usb/host/Kconfig"
-
-source "device-modules/drivers/usb/dwc3/Kconfig"
+source "device-modules/drivers/usb/Kconfig"
 
 source "device-modules/drivers/rtc/Kconfig"
 
