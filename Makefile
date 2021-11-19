@@ -18,6 +18,8 @@ obj-y += drivers/char/hw_random/
 
 obj-y += drivers/iommu/
 
+obj-y += drivers/gpu/
+
 obj-y += drivers/misc/
 
 obj-y += drivers/mfd/

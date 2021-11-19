@@ -51,6 +51,8 @@ source "device-modules/drivers/mfd/Kconfig"
 
 source "device-modules/drivers/media/platform/Kconfig"
 
+source "device-modules/drivers/video/Kconfig"
+
 source "device-modules/drivers/clocksource/Kconfig"
 
 source "device-modules/drivers/iommu/Kconfig"
