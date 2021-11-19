@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Makefile of cpif
 
-EXTRA_CFLAGS += -Idrivers/soc/samsung/cpif \
-		-DCONFIG_OPTION_REGION=\"$(PROJECT_REGION)\"
+EXTRA_CFLAGS += -DCONFIG_OPTION_REGION=\"$(PROJECT_REGION)\"
 
 obj-$(CONFIG_MCU_IPC) += mcu_ipc.o
 obj-$(CONFIG_SHM_IPC) += shm_ipc.o
