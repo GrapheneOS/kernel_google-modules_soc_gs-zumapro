@@ -36,6 +36,8 @@ obj-y += drivers/usb/host/
 
 obj-y += drivers/input/
 
+obj-y += drivers/rtc/
+
 obj-y += drivers/i2c/busses/
 
 obj-y += drivers/media/platform/

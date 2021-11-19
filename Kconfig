@@ -29,6 +29,8 @@ source "device-modules/drivers/usb/host/Kconfig"
 
 source "device-modules/drivers/usb/dwc3/Kconfig"
 
+source "device-modules/drivers/rtc/Kconfig"
+
 source "device-modules/drivers/dma/Kconfig"
 
 source "device-modules/drivers/dma-buf/heaps/Kconfig"
