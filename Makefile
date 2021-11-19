@@ -38,6 +38,8 @@ obj-y += drivers/i2c/busses/
 
 obj-y += drivers/media/platform/
 
+obj-y += drivers/power/
+
 obj-y += drivers/thermal/
 
 obj-y += drivers/trusty/
