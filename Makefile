@@ -51,3 +51,5 @@ obj-y += drivers/clocksource/
 obj-y += drivers/devfreq/google/
 
 obj-y += drivers/staging/android/
+
+obj-y += drivers/bts/
