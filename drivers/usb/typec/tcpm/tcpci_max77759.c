@@ -28,7 +28,7 @@
 #include "bc_max77759.h"
 #include "max77759_export.h"
 #include "max77759_helper.h"
-#include "tcpci.h"
+#include <tcpci.h>
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
 #include "usb_icl_voter.h"
@@ -77,6 +77,8 @@ enum gbms_charger_modes {
 #define VOLTAGE_ALARM_HI_DIS_MV		21000
 #define VOLTAGE_ALARM_LOW_EN_MV		1500
 #define VOLTAGE_ALARM_LOW_DIS_MV	0
+
+#define TCPC_ALERT_VENDOR		BIT(15)
 
 static struct logbuffer *tcpm_log;
 

@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
+
+ccflags-y += -I$(srctree)/drivers/usb/typec/tcpm
+
 obj-$(CONFIG_TYPEC_FUSB307)		+= tcpci_fusb307.o slg46826.o
 obj-$(CONFIG_USB_PSY)			+= usb_psy.o
 obj-$(CONFIG_TYPEC_MAX77759)		+= tcpci_max77759.o max77759_helper.o
