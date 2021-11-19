@@ -57,6 +57,8 @@ source "device-modules/drivers/cpufreq/Kconfig"
 
 source "device-modules/drivers/devfreq/google/Kconfig"
 
+source "device-modules/drivers/iio/Kconfig"
+
 source "device-modules/drivers/staging/android/Kconfig"
 
 source "device-modules/drivers/bts/Kconfig"
