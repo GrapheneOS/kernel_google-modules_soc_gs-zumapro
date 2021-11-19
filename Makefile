@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
+obj-y += drivers/phy/
+
 obj-y += drivers/pinctrl/
 
 obj-y += drivers/pci/controller/dwc/
