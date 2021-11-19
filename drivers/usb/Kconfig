@@ -13,6 +13,8 @@ endif
 
 source "device-modules/drivers/usb/dwc3/Kconfig"
 
+source "device-modules/drivers/usb/gadget/Kconfig"
+
 source "device-modules/drivers/usb/typec/Kconfig"
 
 endif # USB_SUPPORT

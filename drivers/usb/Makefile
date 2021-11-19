@@ -5,4 +5,5 @@
 
 obj-$(CONFIG_USB_DWC3)		+= dwc3/
 obj-$(CONFIG_USB_XHCI_HCD)	+= host/
+obj-$(CONFIG_USB_GADGET)	+= gadget/
 obj-$(CONFIG_TYPEC)		+= typec/
