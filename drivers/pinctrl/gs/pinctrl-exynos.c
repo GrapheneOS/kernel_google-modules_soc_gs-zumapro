@@ -25,7 +25,7 @@
 #include <linux/spinlock.h>
 #include <linux/regmap.h>
 #include <linux/err.h>
-#include <linux/soc/samsung/exynos-pmu.h>
+#include <soc/google/exynos-pmu-if.h>
 #include <linux/soc/samsung/exynos-regs-pmu.h>
 
 #include <dt-bindings/pinctrl/samsung.h>
