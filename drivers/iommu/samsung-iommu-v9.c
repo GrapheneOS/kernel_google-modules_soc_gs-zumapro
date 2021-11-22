@@ -894,6 +894,71 @@ static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *a
 	return ret;
 }
 
+static void samsung_sysmmu_put_resv_regions(struct device *dev,
+					    struct list_head *head)
+{
+	struct iommu_resv_region *entry, *next;
+
+	list_for_each_entry_safe(entry, next, head, list)
+		kfree(entry);
+}
+
+#define NR_IOMMU_RESERVED_TYPES 2
+static void samsung_sysmmu_get_resv_regions(struct device *dev, struct list_head *head)
+{
+	const char *propname[NR_IOMMU_RESERVED_TYPES] = {
+		"samsung,iommu-identity-map",
+		"samsung,iommu-reserved-map"
+	};
+	enum iommu_resv_type resvtype[NR_IOMMU_RESERVED_TYPES] = {
+		IOMMU_RESV_DIRECT, IOMMU_RESV_RESERVED
+	};
+	int n_addr_cells = of_n_addr_cells(dev->of_node);
+	int n_size_cells = of_n_size_cells(dev->of_node);
+	int n_all_cells = n_addr_cells + n_size_cells;
+	int type;
+
+	for (type = 0; type < 2; type++) {
+		const __be32 *prop;
+		u64 base, size;
+		int i, cnt;
+
+		prop = of_get_property(dev->of_node, propname[type], &cnt);
+		if (!prop)
+			continue;
+
+		cnt /=  sizeof(u32);
+		if (cnt % n_all_cells != 0) {
+			dev_err(dev, "Invalid number(%d) of values in %s\n", cnt, propname[type]);
+			goto err;
+		}
+
+		for (i = 0; i < cnt; i += n_all_cells) {
+			struct iommu_resv_region *region;
+
+			base = of_read_number(prop + i, n_addr_cells);
+			size = of_read_number(prop + i + n_addr_cells, n_size_cells);
+			if (base & ~dma_get_mask(dev) || (base + size) & ~dma_get_mask(dev)) {
+				dev_err(dev, "Unreachable DMA region in %s, [%#llx..%#llx)\n",
+					propname[type], base, base + size);
+				goto err;
+			}
+
+			region = iommu_alloc_resv_region(base, size, 0, resvtype[type]);
+			if (!region)
+				goto err; /* memory allocation failure with detailed information */
+
+			list_add_tail(&region->list, head);
+			dev_info(dev, "Reserved IOMMU mapping [%#x..%#x)\n", base, base + size);
+		}
+	}
+
+	return;
+err:
+	samsung_sysmmu_put_resv_regions(dev, head);
+	INIT_LIST_HEAD(head);
+}
+
 static struct iommu_ops samsung_sysmmu_ops = {
 	.capable		= samsung_sysmmu_capable,
 	.domain_alloc		= samsung_sysmmu_domain_alloc,
@@ -909,6 +974,8 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.release_device		= samsung_sysmmu_release_device,
 	.device_group		= samsung_sysmmu_device_group,
 	.of_xlate		= samsung_sysmmu_of_xlate,
+	.get_resv_regions	= samsung_sysmmu_get_resv_regions,
+	.put_resv_regions	= samsung_sysmmu_put_resv_regions,
 	.pgsize_bitmap		= SECT_SIZE | LPAGE_SIZE | SPAGE_SIZE,
 };
 
