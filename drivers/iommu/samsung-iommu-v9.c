@@ -904,7 +904,8 @@ static void samsung_sysmmu_put_resv_regions(struct device *dev,
 }
 
 #define NR_IOMMU_RESERVED_TYPES 2
-static void samsung_sysmmu_get_resv_regions(struct device *dev, struct list_head *head)
+static int  samsung_sysmmu_get_resv_regions_by_node(struct device_node *np, struct device *dev,
+						    struct list_head *head)
 {
 	const char *propname[NR_IOMMU_RESERVED_TYPES] = {
 		"samsung,iommu-identity-map",
@@ -930,7 +931,7 @@ static void samsung_sysmmu_get_resv_regions(struct device *dev, struct list_head
 		cnt /=  sizeof(u32);
 		if (cnt % n_all_cells != 0) {
 			dev_err(dev, "Invalid number(%d) of values in %s\n", cnt, propname[type]);
-			goto err;
+			return -EINVAL;
 		}
 
 		for (i = 0; i < cnt; i += n_all_cells) {
@@ -941,20 +942,60 @@ static void samsung_sysmmu_get_resv_regions(struct device *dev, struct list_head
 			if (base & ~dma_get_mask(dev) || (base + size) & ~dma_get_mask(dev)) {
 				dev_err(dev, "Unreachable DMA region in %s, [%#llx..%#llx)\n",
 					propname[type], base, base + size);
-				goto err;
+				return -EINVAL;
 			}
 
 			region = iommu_alloc_resv_region(base, size, 0, resvtype[type]);
 			if (!region)
-				goto err; /* memory allocation failure with detailed information */
+				return -ENOMEM;
 
 			list_add_tail(&region->list, head);
 			dev_info(dev, "Reserved IOMMU mapping [%#x..%#x)\n", base, base + size);
 		}
 	}
 
+	return 0;
+}
+
+static void samsung_sysmmu_get_resv_regions(struct device *dev, struct list_head *head)
+{
+	struct device_node *curr_node, *target_node, *node;
+	struct platform_device *pdev;
+	int ret;
+
+	target_node = of_parse_phandle(dev->of_node, "samsung,iommu-group", 0);
+	if (!target_node) {
+		dev_err(dev, "doesn't have iommu-group property\n");
+		return;
+	}
+
+	for_each_node_with_property(node, "samsung,iommu-group") {
+		curr_node = of_parse_phandle(node, "samsung,iommu-group", 0);
+		if (!curr_node || curr_node != target_node) {
+			of_node_put(curr_node);
+			continue;
+		}
+
+		pdev = of_find_device_by_node(node);
+		if (!pdev) {
+			of_node_put(curr_node);
+			continue;
+		}
+
+		ret = samsung_sysmmu_get_resv_regions_by_node(dev->of_node, &pdev->dev, head);
+
+		put_device(&pdev->dev);
+		of_node_put(curr_node);
+
+		if (ret)
+			goto err;
+	}
+
+	of_node_put(target_node);
+
 	return;
 err:
+	of_node_put(target_node);
 	samsung_sysmmu_put_resv_regions(dev, head);
 	INIT_LIST_HEAD(head);
 }
