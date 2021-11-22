@@ -298,6 +298,59 @@ static inline void samsung_sysmmu_detach_drvdata(struct sysmmu_drvdata *data)
 	spin_unlock_irqrestore(&data->lock, flags);
 }
 
+static int samsung_sysmmu_set_domain_range(struct iommu_domain *dom,
+					   struct device *dev)
+{
+	struct iommu_domain_geometry *geom = &dom->geometry;
+	dma_addr_t start, end;
+	size_t size;
+
+	if (of_get_dma_window(dev->of_node, NULL, 0, NULL, &start, &size))
+		return 0;
+
+	end = start + size;
+
+	if (end > DMA_BIT_MASK(32))
+		end = DMA_BIT_MASK(32);
+
+	if (geom->force_aperture) {
+		dma_addr_t d_start, d_end;
+
+		d_start = max(start, geom->aperture_start);
+		d_end = min(end, geom->aperture_end);
+
+		if (d_start >= d_end) {
+			dev_err(dev, "current range is [%pad..%pad]\n",
+				&geom->aperture_start, &geom->aperture_end);
+			dev_err(dev, "requested range [%zx @ %pad] is not allowed\n",
+				size, &start);
+			return -ERANGE;
+		}
+
+		geom->aperture_start = d_start;
+		geom->aperture_end = d_end;
+	} else {
+		geom->aperture_start = start;
+		geom->aperture_end = end;
+		/*
+		 * All CPUs should observe the change of force_aperture after
+		 * updating aperture_start and aperture_end because dma-iommu
+		 * restricts dma virtual memory by this aperture when
+		 * force_aperture is set.
+		 * We allow allocating dma virtual memory during changing the
+		 * aperture range because the current allocation is free from
+		 * the new restricted range.
+		 */
+		smp_wmb();
+		geom->force_aperture = true;
+	}
+
+	dev_info(dev, "changed DMA range [%pad..%pad] successfully.\n",
+		 &geom->aperture_start, &geom->aperture_end);
+
+	return 0;
+}
+
 static int samsung_sysmmu_attach_dev(struct iommu_domain *dom, struct device *dev)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
@@ -308,7 +361,7 @@ static int samsung_sysmmu_attach_dev(struct iommu_domain *dom, struct device *de
 	struct iommu_group *group = dev->iommu_group;
 	unsigned long flags;
 	phys_addr_t page_table;
-	int i;
+	int i, ret = -EINVAL;
 
 	if (!fwspec || fwspec->ops != &samsung_sysmmu_ops) {
 		dev_err(dev, "failed to attach, IOMMU instance data %s.\n",
@@ -347,7 +400,11 @@ static int samsung_sysmmu_attach_dev(struct iommu_domain *dom, struct device *de
 		spin_unlock_irqrestore(&drvdata->lock, flags);
 	}
 
-	dev_info(dev, "attached with pgtable %p\n", &domain->page_table);
+	ret = samsung_sysmmu_set_domain_range(dom, dev);
+	if (ret)
+		goto err_drvdata_add;
+
+	dev_info(dev, "attached with pgtable %pa\n", &domain->page_table);
 
 	return 0;
 
@@ -358,7 +415,7 @@ err_drvdata_add:
 		samsung_sysmmu_detach_drvdata(drvdata);
 	}
 
-	return -EINVAL;
+	return ret;
 }
 
 static void samsung_sysmmu_detach_dev(struct iommu_domain *dom, struct device *dev)
@@ -379,7 +436,7 @@ static void samsung_sysmmu_detach_dev(struct iommu_domain *dom, struct device *d
 		samsung_sysmmu_detach_drvdata(drvdata);
 	}
 
-	dev_info(dev, "detached from pgtable %p\n", &domain->page_table);
+	dev_info(dev, "detached from pgtable %pa\n", &domain->page_table);
 }
 
 static inline sysmmu_pte_t make_sysmmu_pte(phys_addr_t paddr, int pgsize, int attr)
