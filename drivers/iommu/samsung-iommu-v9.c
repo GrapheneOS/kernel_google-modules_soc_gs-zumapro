@@ -981,10 +981,20 @@ static struct iommu_ops samsung_sysmmu_ops = {
 
 static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
 {
+	int ret;
+
+	ret = pm_runtime_get_sync(data->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(data->dev);
+		return ret;
+	}
+
 	data->version = __sysmmu_get_hw_version(data);
 	data->max_vm = __sysmmu_get_num_vm(data);
 	data->num_pmmu = __sysmmu_get_num_pmmu(data);
 	data->va_width = __sysmmu_get_va_width(data);
+
+	pm_runtime_put(data->dev);
 
 	return 0;
 }
@@ -1210,18 +1220,18 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 	ret = sysmmu_get_hw_info(data);
 	if (ret) {
 		dev_err(dev, "failed to get h/w info\n");
-		return ret;
+		goto err_get_hw_info;
 	}
 	data->vmid_mask = SYSMMU_MASK_VMID;
 
 	ret = sysmmu_parse_dt(data->dev, data);
 	if (ret)
-		return ret;
+		goto err_get_hw_info;
 
-	err = iommu_device_sysfs_add(&data->iommu, data->dev, NULL, dev_name(dev));
-	if (err) {
+	ret = iommu_device_sysfs_add(&data->iommu, data->dev, NULL, dev_name(dev));
+	if (ret) {
 		dev_err(dev, "failed to register iommu in sysfs\n");
-		return err;
+		goto err_get_hw_info;
 	}
 
 	iommu_device_set_ops(&data->iommu, &samsung_sysmmu_ops);
@@ -1254,6 +1264,8 @@ err_global_init:
 	iommu_device_unregister(&data->iommu);
 err_iommu_register:
 	iommu_device_sysfs_remove(&data->iommu);
+err_get_hw_info:
+	pm_runtime_disable(dev);
 	return err;
 }
 
