@@ -432,6 +432,7 @@ static int lv1set_section(struct samsung_sysmmu_domain *domain,
 			  phys_addr_t paddr, int prot, atomic_t *pgcnt)
 {
 	int attr = !!(prot & IOMMU_CACHE) ? FLPD_SHAREABLE_FLAG : 0;
+	bool need_sync = false;
 
 	if (lv1ent_section(sent)) {
 		WARN(1, "Trying mapping 1MB@%#08llx on valid FLPD", iova);
@@ -446,10 +447,20 @@ static int lv1set_section(struct samsung_sysmmu_domain *domain,
 
 		kmem_cache_free(slpt_cache, page_entry(sent, 0));
 		atomic_set(pgcnt, NUM_LV2ENTRIES);
+		need_sync = true;
 	}
 
 	*sent = make_sysmmu_pte(paddr, SECT_FLAG, attr);
 	pgtable_flush(sent, sent + 1);
+
+	if (need_sync) {
+		struct iommu_iotlb_gather gather = {
+			.start = iova,
+			.end = iova + SECT_SIZE,
+		};
+
+		iommu_iotlb_sync(&domain->domain, &gather);
+	}
 
 	return 0;
 }
