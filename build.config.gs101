@@ -7,6 +7,7 @@ POST_DEFCONFIG_CMDS="rm ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/${DEFCONFIG
 
 LIBUFDT_PREBUILTS_BIN=prebuilts/misc/linux-x86/libufdt
 DTC_OVERLAY_TEST_EXT=${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/bin/ufdt_apply_overlay
+DTC_FLAGS="--symbols"
 
 MAKE_GOALS=
 KERNEL_BINARY=Image.lz4
