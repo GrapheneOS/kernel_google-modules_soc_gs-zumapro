@@ -308,6 +308,6 @@ copy_to_dist_dir(
         ":slider_for_dist",
         ":slider_images",
         ":slider_modules_install",
-        "//common:kernel_aarch64_for_dist",
+        "//common:kernel_aarch64",
     ],
 )
