@@ -166,10 +166,6 @@ smfc.ko
 snd-soc-cs35l41-i2c.ko
 snd-soc-cs35l41-spi.ko
 snd-soc-cs35l41.ko
-snd-soc-max98357a.ko
-snd-soc-rl6231.ko
-snd-soc-rt5682-i2c.ko
-snd-soc-rt5682.ko
 snd-soc-wm-adsp.ko
 softdog.ko
 spi-s3c64xx.ko
