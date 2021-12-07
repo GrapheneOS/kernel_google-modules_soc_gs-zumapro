@@ -5,7 +5,6 @@
 
 #include <linux/dma-iommu.h>
 #include <linux/kmemleak.h>
-#include <linux/iommu.h>
 #include <linux/module.h>
 #include <linux/of_iommu.h>
 #include <linux/of_platform.h>
@@ -765,17 +764,6 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.pgsize_bitmap		= SECT_SIZE | LPAGE_SIZE | SPAGE_SIZE,
 };
 
-static irqreturn_t samsung_sysmmu_irq(int irq, void *dev_id)
-{
-	struct sysmmu_drvdata *drvdata = dev_id;
-
-	dev_info(drvdata->dev, "irq(%d) happened\n", irq);
-
-	/* TODO: Call the fault handler */
-
-	return IRQ_HANDLED;
-}
-
 static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
 {
 	data->version = __sysmmu_get_hw_version(data);
@@ -852,8 +840,9 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 	if (irq < 0)
 		return irq;
 
-	ret = devm_request_irq(dev, irq, samsung_sysmmu_irq, 0,
-			       dev_name(dev), data);
+	ret = devm_request_threaded_irq(dev, irq, samsung_sysmmu_irq,
+					samsung_sysmmu_irq_thread,
+					IRQF_ONESHOT, dev_name(dev), data);
 	if (ret) {
 		dev_err(dev, "unabled to register handler of irq %d\n", irq);
 		return ret;

@@ -8,11 +8,14 @@
 
 #include <linux/clk.h>
 #include <linux/interrupt.h>
+#include <linux/device.h>
+#include <linux/iommu.h>
 
 #define SYSMMU_VM_OFFSET	0x1000
 #define SYSMMU_MASK_VMID	0x1
 
 #define REG_MMU_CTRL				0x0000
+#define REG_MMU_STATUS				0x0008
 #define REG_MMU_VERSION				0x0034
 #define REG_MMU_CTRL_VM				0x8000
 #define REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM	0x8404
@@ -118,6 +121,9 @@ struct sysmmu_drvdata {
 	int max_vm;
 	int num_pmmu;
 	int attached_count;
+	int secure_irq;
+	unsigned int secure_base;
+	bool async_fault_mode;
 };
 
 struct sysmmu_clientdata {
@@ -126,5 +132,8 @@ struct sysmmu_clientdata {
 	struct device_link **dev_link;
 	int sysmmu_count;
 };
+
+irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id);
+irqreturn_t samsung_sysmmu_irq(int irq, void *dev_id);
 
 #endif
