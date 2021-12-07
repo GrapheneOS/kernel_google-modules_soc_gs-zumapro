@@ -16,22 +16,35 @@
 
 #define REG_MMU_NUM_CONTEXT			0x0100
 
+#define REG_MMU_STREAM_CFG(n)			(0x2000 + ((n) * (0x10)))
+#define REG_MMU_STREAM_MATCH_CFG(n)		(0x2000 + ((n) * (0x10)) + 0x4)
+#define REG_MMU_STREAM_MATCH_SID_VALUE(n)	(0x2000 + ((n) * (0x10)) + 0x8)
+#define REG_MMU_STREAM_MATCH_SID_MASK(n)	(0x2000 + ((n) * (0x10)) + 0xC)
+
 #define REG_MMU_PMMU_INDICATOR			0x2FFC
 #define REG_MMU_PMMU_INFO			0x3000
 #define REG_MMU_SWALKER_INFO			0x3004
 
 #define MMU_NUM_CONTEXT(reg)			((reg) & 0x1F)
 
-#define SET_PMMU_INDICATOR(val)			((val) & 0xF)
-#define MMU_PMMU_INFO_VA_WIDTH(reg)		((reg) & 0x1)
-#define MMU_SWALKER_INFO_NUM_PMMU(reg)		((reg) & 0xFFFF)
-
-#define FLPD_SHAREABLE_FLAG	BIT(6)
-#define SLPD_SHAREABLE_FLAG	BIT(4)
-
 #define REG_MMU_ALL_INV_VM			0x8010
 #define REG_MMU_RANGE_INV_START_VPN_VM		0x8020
 #define REG_MMU_RANGE_INV_END_VPN_AND_TRIG_VM	0x8024
+
+#define SET_PMMU_INDICATOR(val)			((val) & 0xF)
+#define MMU_PMMU_INFO_VA_WIDTH(reg)		((reg) & 0x1)
+#define MMU_SWALKER_INFO_NUM_PMMU(reg)		((reg) & 0xFFFF)
+#define MMU_PMMU_INFO_NUM_STREAM_TABLE(reg)	(((reg) >> 16) & 0xFFFF)
+
+#define FLPD_SHAREABLE_FLAG	BIT(6)
+#define SLPD_SHAREABLE_FLAG	BIT(4)
+#define DEFAULT_QOS_VALUE	-1
+#define DEFAULT_STREAM_NONE	~0U
+#define UNUSED_STREAM_INDEX	~0U
+
+#define MMU_STREAM_CFG_MASK(reg)		((reg) & (GENMASK(31, 16) | GENMASK(6, 0)))
+#define MMU_STREAM_MATCH_CFG_MASK(reg)		((reg) & (GENMASK(9, 8)))
+
 
 static struct iommu_ops samsung_sysmmu_ops;
 static struct platform_driver samsung_sysmmu_driver_v9;
@@ -43,6 +56,28 @@ struct samsung_sysmmu_domain {
 	atomic_t *lv2entcnt;
 	spinlock_t pgtablelock;	/* spinlock to access pagetable	*/
 	bool is_va_36bit;
+};
+
+static const char *pmmu_default_stream[PMMU_MAX_NUM] = {
+	"pmmu0,default_stream",
+	"pmmu1,default_stream",
+	"pmmu2,default_stream",
+	"pmmu3,default_stream",
+	"pmmu4,default_stream",
+	"pmmu5,default_stream",
+	"pmmu6,default_stream",
+	"pmmu7,default_stream"
+};
+
+static const char *pmmu_stream_property[PMMU_MAX_NUM] = {
+	"pmmu0,stream_property",
+	"pmmu1,stream_property",
+	"pmmu2,stream_property",
+	"pmmu3,stream_property",
+	"pmmu4,stream_property",
+	"pmmu5,stream_property",
+	"pmmu6,stream_property",
+	"pmmu7,stream_property"
 };
 
 static bool sysmmu_global_init_done;
@@ -112,11 +147,64 @@ static inline void __sysmmu_disable(struct sysmmu_drvdata *data)
 	__sysmmu_invalidate_all(data);
 }
 
+static inline void __sysmmu_set_stream(struct sysmmu_drvdata *data, int pmmu_id)
+{
+	struct stream_props *props = &data->props[pmmu_id];
+	struct stream_config *cfg = props->cfg;
+	int id_cnt = props->id_cnt;
+	unsigned int i, index;
+
+	writel_relaxed(SET_PMMU_INDICATOR(pmmu_id), data->sfrbase + REG_MMU_PMMU_INDICATOR);
+
+	writel_relaxed(MMU_STREAM_CFG_MASK(props->default_cfg),
+		       data->sfrbase + REG_MMU_STREAM_CFG(0));
+
+	for (i = 0; i < id_cnt; i++) {
+		if (cfg[i].index == UNUSED_STREAM_INDEX)
+			continue;
+
+		index = cfg[i].index;
+		writel_relaxed(MMU_STREAM_CFG_MASK(cfg[i].cfg),
+			       data->sfrbase + REG_MMU_STREAM_CFG(index));
+		writel_relaxed(MMU_STREAM_MATCH_CFG_MASK(cfg[i].match_cfg),
+			       data->sfrbase + REG_MMU_STREAM_MATCH_CFG(index));
+		writel_relaxed(cfg[i].match_id_value,
+			       data->sfrbase + REG_MMU_STREAM_MATCH_SID_VALUE(index));
+		writel_relaxed(cfg[i].match_id_mask,
+			       data->sfrbase + REG_MMU_STREAM_MATCH_SID_MASK(index));
+	}
+}
+
+static inline void __sysmmu_init_config(struct sysmmu_drvdata *data)
+{
+	int i;
+	u32 cfg;
+
+	for (i = 0; i < data->max_vm; i++) {
+		if (!(data->vmid_mask & BIT(i)))
+			continue;
+
+		cfg = readl_relaxed(MMU_VM_ADDR(data->sfrbase + REG_MMU_CONTEXT0_CFG_ATTRIBUTE_VM,
+						i));
+
+		if (data->qos != DEFAULT_QOS_VALUE) {
+			cfg &= ~CFG_QOS(0xF);
+			cfg |= CFG_QOS_OVRRIDE | CFG_QOS(data->qos);
+		}
+		writel_relaxed(cfg, MMU_VM_ADDR(data->sfrbase + REG_MMU_CONTEXT0_CFG_ATTRIBUTE_VM,
+						i));
+	}
+
+	for (i = 0; i < data->num_pmmu; i++)
+		__sysmmu_set_stream(data, i);
+}
+
 static inline void __sysmmu_enable(struct sysmmu_drvdata *data)
 {
 	__sysmmu_write_all_vm(data, MMU_CTRL_ENABLE, data->sfrbase + REG_MMU_CTRL_VM);
 	__sysmmu_write_all_vm(data, data->pgtable / SPAGE_SIZE,
 			      data->sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM);
+	__sysmmu_init_config(data);
 	__sysmmu_invalidate_all(data);
 }
 
@@ -771,9 +859,138 @@ static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
 	data->num_pmmu = __sysmmu_get_num_pmmu(data);
 	data->va_width = __sysmmu_get_va_width(data);
 
-	/* TODO: read more capability in HW */
+	return 0;
+}
+
+static int sysmmu_parse_stream_property(struct device *dev, struct sysmmu_drvdata *drvdata,
+					int pmmu_id)
+{
+	const char *default_props_name = pmmu_default_stream[pmmu_id];
+	const char *props_name = pmmu_stream_property[pmmu_id];
+	struct stream_props *props = &drvdata->props[pmmu_id];
+	struct stream_config *cfg;
+	int i, readsize, cnt, ret, num_stream;
+	u32 pmmu;
+
+	if (of_property_read_u32(dev->of_node, default_props_name, &props->default_cfg))
+		props->default_cfg = DEFAULT_STREAM_NONE;
+
+	cnt = of_property_count_elems_of_size(dev->of_node, props_name, sizeof(*cfg));
+	if (cnt <= 0)
+		return 0;
+
+	cfg = devm_kcalloc(dev, cnt, sizeof(*cfg), GFP_KERNEL);
+	if (!cfg)
+		return -ENOMEM;
+
+	readsize = cnt * sizeof(*cfg) / sizeof(u32);
+	ret = of_property_read_variable_u32_array(dev->of_node, props_name, (u32 *)cfg,
+						  readsize, readsize);
+	if (ret < 0) {
+		dev_err(dev, "failed to get stream property %s, ret %d\n", props_name, ret);
+		return ret;
+	}
+
+	/* get num stream */
+	writel_relaxed(SET_PMMU_INDICATOR(pmmu_id),
+		       drvdata->sfrbase + REG_MMU_PMMU_INDICATOR);
+	pmmu = readl_relaxed(drvdata->sfrbase + REG_MMU_PMMU_INFO);
+	num_stream = MMU_PMMU_INFO_NUM_STREAM_TABLE(pmmu);
+
+	for (i = 0; i < cnt; i++) {
+		if (cfg[i].index >= num_stream) {
+			dev_err(dev, "invalid index %u is ignored. (max:%d)\n",
+				cfg[i].index, num_stream);
+			cfg[i].index = UNUSED_STREAM_INDEX;
+		}
+	}
+
+	props->id_cnt = cnt;
+	props->cfg = cfg;
 
 	return 0;
+}
+
+static int __sysmmu_secure_irq_init(struct device *sysmmu, struct sysmmu_drvdata *data)
+{
+	struct platform_device *pdev = to_platform_device(sysmmu);
+	int ret;
+
+	ret = platform_get_irq(pdev, 1);
+	if (ret <= 0) {
+		dev_err(sysmmu, "unable to find secure IRQ resource\n");
+		return -EINVAL;
+	}
+	data->secure_irq = ret;
+
+	ret = devm_request_threaded_irq(sysmmu, data->secure_irq, samsung_sysmmu_irq,
+					samsung_sysmmu_irq_thread, IRQF_ONESHOT,
+					dev_name(sysmmu), data);
+	if (ret) {
+		dev_err(sysmmu, "failed to set secure irq handler %d, ret:%d\n",
+			data->secure_irq, ret);
+		return ret;
+	}
+
+	ret = of_property_read_u32(sysmmu->of_node, "sysmmu,secure_base", &data->secure_base);
+	if (ret) {
+		dev_err(sysmmu, "failed to get secure base address\n");
+		return ret;
+	}
+	dev_info(sysmmu, "secure base = %#x\n", data->secure_base);
+
+	return ret;
+}
+
+static int sysmmu_parse_dt(struct device *sysmmu, struct sysmmu_drvdata *data)
+{
+	unsigned int mask, num_pmmu;
+	int ret, qos = DEFAULT_QOS_VALUE, i;
+	struct stream_props *props;
+
+	/* Parsing QoS */
+	ret = of_property_read_u32_index(sysmmu->of_node, "qos", 0, &qos);
+	if (!ret && qos > 15) {
+		dev_err(sysmmu, "Invalid QoS value %d, use default.\n", qos);
+		qos = DEFAULT_QOS_VALUE;
+	}
+	data->qos = qos;
+
+	/* Secure IRQ */
+	if (of_find_property(sysmmu->of_node, "sysmmu,secure-irq", NULL)) {
+		ret = __sysmmu_secure_irq_init(sysmmu, data);
+		if (ret) {
+			dev_err(sysmmu, "failed to init secure irq\n");
+			return ret;
+		}
+	}
+
+	/* use async fault mode */
+	data->async_fault_mode = of_property_read_bool(sysmmu->of_node, "sysmmu,async-fault");
+
+	ret = of_property_read_u32_index(sysmmu->of_node, "vmid_mask", 0, &mask);
+	if (!ret && (mask & ((1 << data->max_vm) - 1)))
+		data->vmid_mask = mask;
+
+	/* Parsing pmmu num */
+	ret = of_property_read_u32_index(sysmmu->of_node, "num_pmmu", 0, &num_pmmu);
+	if (ret) {
+		dev_err(sysmmu, "failed to init number of pmmu\n");
+		return ret;
+	}
+	data->num_pmmu = num_pmmu;
+	props = devm_kcalloc(sysmmu, num_pmmu, sizeof(*props), GFP_KERNEL);
+	if (!props)
+		return -ENOMEM;
+
+	data->props = props;
+
+	for (i = 0; i < data->num_pmmu; i++) {
+		ret = sysmmu_parse_stream_property(sysmmu, data, i);
+		if (ret)
+			dev_err(sysmmu, "Failed to parse PMMU %d streams\n", i);
+	}
+	return ret;
 }
 
 static int samsung_sysmmu_init_global(void)
@@ -857,6 +1074,11 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 		return PTR_ERR(data->clk);
 	}
 
+	INIT_LIST_HEAD(&data->list);
+	spin_lock_init(&data->lock);
+	data->dev = dev;
+	platform_set_drvdata(pdev, data);
+
 	pm_runtime_enable(dev);
 	ret = sysmmu_get_hw_info(data);
 	if (ret) {
@@ -865,10 +1087,9 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 	}
 	data->vmid_mask = SYSMMU_MASK_VMID;
 
-	INIT_LIST_HEAD(&data->list);
-	spin_lock_init(&data->lock);
-	data->dev = dev;
-	platform_set_drvdata(pdev, data);
+	ret = sysmmu_parse_dt(data->dev, data);
+	if (ret)
+		return ret;
 
 	err = iommu_device_sysfs_add(&data->iommu, data->dev, NULL, dev_name(dev));
 	if (err) {

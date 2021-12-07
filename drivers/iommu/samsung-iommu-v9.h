@@ -13,6 +13,7 @@
 
 #define SYSMMU_VM_OFFSET	0x1000
 #define SYSMMU_MASK_VMID	0x1
+#define PMMU_MAX_NUM		8
 
 #define REG_MMU_CTRL				0x0000
 #define REG_MMU_STATUS				0x0008
@@ -35,6 +36,9 @@
 
 typedef u64 sysmmu_iova_t;
 typedef u32 sysmmu_pte_t;
+
+#define CFG_QOS_OVRRIDE			BIT(11)
+#define CFG_QOS(n)			(((n) & 0xF) << 7)
 
 #define SECT_ORDER	20
 #define LPAGE_ORDER	16
@@ -106,6 +110,20 @@ static inline sysmmu_pte_t *section_entry(sysmmu_pte_t *pgtable, sysmmu_iova_t i
 	return pgtable + lv1ent_offset(iova);
 }
 
+struct stream_config {
+	unsigned int index;
+	u32 cfg;
+	u32 match_cfg;
+	u32 match_id_value;
+	u32 match_id_mask;
+};
+
+struct stream_props {
+	int id_cnt;
+	u32 default_cfg;
+	struct stream_config *cfg;
+};
+
 struct sysmmu_drvdata {
 	struct list_head list;
 	struct iommu_device iommu;
@@ -120,10 +138,12 @@ struct sysmmu_drvdata {
 	u32 vmid_mask;
 	int max_vm;
 	int num_pmmu;
+	int qos;
 	int attached_count;
 	int secure_irq;
 	unsigned int secure_base;
 	bool async_fault_mode;
+	struct stream_props *props;
 };
 
 struct sysmmu_clientdata {
