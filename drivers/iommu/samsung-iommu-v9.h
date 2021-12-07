@@ -9,12 +9,26 @@
 #include <linux/clk.h>
 #include <linux/interrupt.h>
 
+#define SYSMMU_VM_OFFSET	0x1000
+#define SYSMMU_MASK_VMID	0x1
+
+#define REG_MMU_CTRL				0x0000
 #define REG_MMU_VERSION				0x0034
+#define REG_MMU_CTRL_VM				0x8000
+#define REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM	0x8404
+#define REG_MMU_CONTEXT0_CFG_ATTRIBUTE_VM	0x8408
+
 
 #define MMU_VERSION_MAJOR(val)			((val) >> 12)
 #define MMU_VERSION_MINOR(val)			(((val) >> 8) & 0xF)
 #define MMU_VERSION_REVISION(val)		((val) & 0xFF)
 #define MMU_VERSION_RAW(reg)			(((reg) >> 16) & 0xFFFF)
+#define MMU_VM_ADDR(reg, idx)			((reg) + ((idx) * SYSMMU_VM_OFFSET))
+
+#define MMU_CTRL_ENABLE			0x5
+#define MMU_CTRL_DISABLE		0x0
+
+#define MMU_CONTEXT0_CFG_FLPT_BASE_PPN(reg)	((reg) & 0xFFFFFF)
 
 typedef u64 sysmmu_iova_t;
 typedef u32 sysmmu_pte_t;
@@ -100,6 +114,8 @@ struct sysmmu_drvdata {
 	spinlock_t lock; /* protect atomic update to H/W status */
 	u32 version;
 	u32 va_width;
+	u32 vmid_mask;
+	int max_vm;
 	int num_pmmu;
 	int attached_count;
 };
