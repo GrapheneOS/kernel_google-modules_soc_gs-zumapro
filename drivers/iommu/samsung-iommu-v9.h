@@ -125,6 +125,36 @@ static inline sysmmu_pte_t *section_entry(sysmmu_pte_t *pgtable, sysmmu_iova_t i
 	return pgtable + lv1ent_offset(iova);
 }
 
+#define SYSMMU_EVENT_MAX	2048
+enum sysmmu_event_type {
+	/* init value*/
+	SYSMMU_EVENT_NONE,
+	/* event for sysmmu drvdata */
+	SYSMMU_EVENT_ENABLE,
+	SYSMMU_EVENT_DISABLE,
+	SYSMMU_EVENT_POWERON,
+	SYSMMU_EVENT_POWEROFF,
+	SYSMMU_EVENT_INVALIDATE_RANGE,
+	SYSMMU_EVENT_INVALIDATE_ALL,
+	SYSMMU_EVENT_IOTLB_SYNC,
+	/* event for iommu domain */
+	SYSMMU_EVENT_MAP,
+	SYSMMU_EVENT_UNMAP,
+};
+
+struct sysmmu_log {
+	unsigned long long time;
+	enum sysmmu_event_type type;
+	u64 start;
+	u64 end;
+};
+
+struct samsung_iommu_log {
+	atomic_t index;
+	u32 len;
+	struct sysmmu_log *log;
+};
+
 struct stream_config {
 	unsigned int index;
 	u32 cfg;
@@ -160,6 +190,7 @@ struct sysmmu_drvdata {
 	unsigned int secure_base;
 	bool async_fault_mode;
 	struct stream_props *props;
+	struct samsung_iommu_log log;
 };
 
 struct sysmmu_clientdata {
