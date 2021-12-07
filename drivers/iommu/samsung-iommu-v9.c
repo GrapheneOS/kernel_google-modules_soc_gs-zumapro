@@ -4,6 +4,7 @@
  */
 
 #include <linux/dma-iommu.h>
+#include <linux/kmemleak.h>
 #include <linux/iommu.h>
 #include <linux/module.h>
 #include <linux/of_iommu.h>
@@ -19,6 +20,9 @@
 #define SET_PMMU_INDICATOR(val)			((val) & 0xF)
 #define MMU_PMMU_INFO_VA_WIDTH(reg)		((reg) & 0x1)
 #define MMU_SWALKER_INFO_NUM_PMMU(reg)		((reg) & 0xFFFF)
+
+#define FLPD_SHAREABLE_FLAG	BIT(6)
+#define SLPD_SHAREABLE_FLAG	BIT(4)
 
 static struct iommu_ops samsung_sysmmu_ops;
 static struct platform_driver samsung_sysmmu_driver_v9;
@@ -236,15 +240,207 @@ static void samsung_sysmmu_detach_dev(struct iommu_domain *dom, struct device *d
 	dev_info(dev, "detached from pgtable %p\n", &domain->page_table);
 }
 
+static inline sysmmu_pte_t make_sysmmu_pte(phys_addr_t paddr, int pgsize, int attr)
+{
+	return ((sysmmu_pte_t)((paddr) >> PG_ENT_SHIFT)) | pgsize | attr;
+}
+
+static sysmmu_pte_t *alloc_lv2entry(struct samsung_sysmmu_domain *domain,
+				    sysmmu_pte_t *sent, sysmmu_iova_t iova,
+				    atomic_t *pgcounter)
+{
+	if (lv1ent_section(sent)) {
+		WARN(1, "trying mapping on %#08llx mapped with 1MiB page", iova);
+		return ERR_PTR(-EADDRINUSE);
+	}
+
+	if (lv1ent_unmapped(sent)) {
+		unsigned long flags;
+		sysmmu_pte_t *pent;
+
+		pent = kmem_cache_zalloc(slpt_cache, GFP_KERNEL);
+		if (!pent)
+			return ERR_PTR(-ENOMEM);
+
+		spin_lock_irqsave(&domain->pgtablelock, flags);
+		if (lv1ent_unmapped(sent)) {
+			*sent = make_sysmmu_pte(virt_to_phys(pent),
+						SLPD_FLAG, 0);
+			kmemleak_ignore(pent);
+			atomic_set(pgcounter, 0);
+			pgtable_flush(pent, pent + NUM_LV2ENTRIES);
+			pgtable_flush(sent, sent + 1);
+		} else {
+			/* allocated entry is not used, so free it. */
+			kmem_cache_free(slpt_cache, pent);
+		}
+		spin_unlock_irqrestore(&domain->pgtablelock, flags);
+	}
+
+	return page_entry(sent, iova);
+}
+
+static inline void clear_lv2_page_table(sysmmu_pte_t *ent, int n)
+{
+	memset(ent, 0, sizeof(*ent) * n);
+}
+
+static int lv1set_section(struct samsung_sysmmu_domain *domain,
+			  sysmmu_pte_t *sent, sysmmu_iova_t iova,
+			  phys_addr_t paddr, int prot, atomic_t *pgcnt)
+{
+	int attr = !!(prot & IOMMU_CACHE) ? FLPD_SHAREABLE_FLAG : 0;
+
+	if (lv1ent_section(sent)) {
+		WARN(1, "Trying mapping 1MB@%#08llx on valid FLPD", iova);
+		return -EADDRINUSE;
+	}
+
+	if (lv1ent_page(sent)) {
+		if (WARN_ON(atomic_read(pgcnt) != 0)) {
+			WARN(1, "Trying mapping 1MB@%#08llx on valid SLPD", iova);
+			return -EADDRINUSE;
+		}
+
+		kmem_cache_free(slpt_cache, page_entry(sent, 0));
+		atomic_set(pgcnt, NUM_LV2ENTRIES);
+	}
+
+	*sent = make_sysmmu_pte(paddr, SECT_FLAG, attr);
+	pgtable_flush(sent, sent + 1);
+
+	return 0;
+}
+
+static int lv2set_page(sysmmu_pte_t *pent, phys_addr_t paddr,
+		       size_t size, int prot, atomic_t *pgcnt)
+{
+	int attr = !!(prot & IOMMU_CACHE) ? SLPD_SHAREABLE_FLAG : 0;
+
+	if (size == SPAGE_SIZE) {
+		if (WARN_ON(!lv2ent_unmapped(pent)))
+			return -EADDRINUSE;
+
+		*pent = make_sysmmu_pte(paddr, SPAGE_FLAG, attr);
+		pgtable_flush(pent, pent + 1);
+		atomic_inc(pgcnt);
+	} else {	/* size == LPAGE_SIZE */
+		unsigned long i;
+
+		for (i = 0; i < SPAGES_PER_LPAGE; i++, pent++) {
+			if (WARN_ON(!lv2ent_unmapped(pent))) {
+				clear_lv2_page_table(pent - i, i);
+				return -EADDRINUSE;
+			}
+
+			*pent = make_sysmmu_pte(paddr, LPAGE_FLAG, attr);
+		}
+		pgtable_flush(pent - SPAGES_PER_LPAGE, pent);
+		atomic_add(SPAGES_PER_LPAGE, pgcnt);
+	}
+
+	return 0;
+}
+
 static int samsung_sysmmu_map(struct iommu_domain *dom, unsigned long l_iova, phys_addr_t paddr,
 			      size_t size, int prot, gfp_t unused)
 {
-	return 0;
+	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
+	sysmmu_iova_t iova = (sysmmu_iova_t)l_iova;
+	atomic_t *lv2entcnt = &domain->lv2entcnt[lv1ent_offset(iova)];
+	sysmmu_pte_t *entry;
+	int ret = -ENOMEM;
+
+	/* Do not use IO coherency if iOMMU_PRIV exists */
+	if (!!(prot & IOMMU_PRIV))
+		prot &= ~IOMMU_CACHE;
+
+	entry = section_entry(domain->page_table, iova);
+
+	if (size == SECT_SIZE) {
+		ret = lv1set_section(domain, entry, iova, paddr, prot, lv2entcnt);
+	} else {
+		sysmmu_pte_t *pent;
+
+		pent = alloc_lv2entry(domain, entry, iova, lv2entcnt);
+
+		if (IS_ERR(pent))
+			ret = PTR_ERR(pent);
+		else
+			ret = lv2set_page(pent, paddr, size, prot, lv2entcnt);
+	}
+
+	if (ret)
+		pr_err("failed to map %#zx @ %#x, ret:%d\n", size, iova, ret);
+
+	return ret;
 }
 
 static size_t samsung_sysmmu_unmap(struct iommu_domain *dom, unsigned long l_iova, size_t size,
 				   struct iommu_iotlb_gather *gather)
 {
+	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
+	sysmmu_iova_t iova = (sysmmu_iova_t)l_iova;
+	atomic_t *lv2entcnt = &domain->lv2entcnt[lv1ent_offset(iova)];
+	sysmmu_pte_t *sent, *pent;
+	size_t err_pgsize;
+
+	sent = section_entry(domain->page_table, iova);
+
+	if (lv1ent_section(sent)) {
+		if (WARN_ON(size < SECT_SIZE)) {
+			err_pgsize = SECT_SIZE;
+			goto err;
+		}
+
+		*sent = 0;
+		pgtable_flush(sent, sent + 1);
+		size = SECT_SIZE;
+		goto done;
+	}
+
+	if (unlikely(lv1ent_unmapped(sent))) {
+		if (size > SECT_SIZE)
+			size = SECT_SIZE;
+		goto done;
+	}
+
+	/* lv1ent_page(sent) == true here */
+
+	pent = page_entry(sent, iova);
+
+	if (unlikely(lv2ent_unmapped(pent))) {
+		size = SPAGE_SIZE;
+		goto done;
+	}
+
+	if (lv2ent_small(pent)) {
+		*pent = 0;
+		size = SPAGE_SIZE;
+		pgtable_flush(pent, pent + 1);
+		atomic_dec(lv2entcnt);
+		goto done;
+	}
+
+	/* lv1ent_large(pent) == true here */
+	if (WARN_ON(size < LPAGE_SIZE)) {
+		err_pgsize = LPAGE_SIZE;
+		goto err;
+	}
+
+	clear_lv2_page_table(pent, SPAGES_PER_LPAGE);
+	pgtable_flush(pent, pent + SPAGES_PER_LPAGE);
+	size = LPAGE_SIZE;
+	atomic_sub(SPAGES_PER_LPAGE, lv2entcnt);
+
+done:
+	iommu_iotlb_gather_add_page(dom, gather, iova, size);
+
+	return size;
+
+err:
+	pr_err("failed: size(%#zx) @ %#llx is smaller than page size %#zx\n",
+	       size, iova, err_pgsize);
 	return 0;
 }
 
