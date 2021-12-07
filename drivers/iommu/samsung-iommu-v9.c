@@ -672,8 +672,7 @@ static void samsung_sysmmu_flush_iotlb_all(struct iommu_domain *dom)
 
 	list_for_each_entry(drvdata, sysmmu_list, list) {
 		spin_lock_irqsave(&drvdata->lock, flags);
-		if (drvdata->attached_count &&
-		    !pm_runtime_suspended(drvdata->dev))
+		if (drvdata->attached_count && drvdata->rpm_count > 0)
 			__sysmmu_invalidate_all(drvdata);
 		spin_unlock_irqrestore(&drvdata->lock, flags);
 	}
@@ -697,8 +696,7 @@ static void samsung_sysmmu_iotlb_sync(struct iommu_domain *dom, struct iommu_iot
 
 	list_for_each_entry(drvdata, sysmmu_list, list) {
 		spin_lock_irqsave(&drvdata->lock, flags);
-		if (drvdata->attached_count &&
-		    !pm_runtime_suspended(drvdata->dev))
+		if (drvdata->attached_count && drvdata->rpm_count > 0)
 			__sysmmu_invalidate(drvdata, gather->start, gather->end);
 		spin_unlock_irqrestore(&drvdata->lock, flags);
 	}
@@ -1202,6 +1200,7 @@ static int __maybe_unused samsung_sysmmu_runtime_suspend(struct device *sysmmu)
 	struct sysmmu_drvdata *drvdata = dev_get_drvdata(sysmmu);
 
 	spin_lock_irqsave(&drvdata->lock, flags);
+	drvdata->rpm_count--;
 	if (drvdata->attached_count > 0)
 		__sysmmu_disable(drvdata);
 	spin_unlock_irqrestore(&drvdata->lock, flags);
@@ -1215,6 +1214,7 @@ static int __maybe_unused samsung_sysmmu_runtime_resume(struct device *sysmmu)
 	struct sysmmu_drvdata *drvdata = dev_get_drvdata(sysmmu);
 
 	spin_lock_irqsave(&drvdata->lock, flags);
+	drvdata->rpm_count++;
 	if (drvdata->attached_count > 0)
 		__sysmmu_enable(drvdata);
 	spin_unlock_irqrestore(&drvdata->lock, flags);

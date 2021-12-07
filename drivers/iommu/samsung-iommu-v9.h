@@ -155,6 +155,7 @@ struct sysmmu_drvdata {
 	int num_pmmu;
 	int qos;
 	int attached_count;
+	int rpm_count;
 	int secure_irq;
 	unsigned int secure_base;
 	bool async_fault_mode;
