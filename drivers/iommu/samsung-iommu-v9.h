@@ -37,13 +37,18 @@ typedef u32 sysmmu_pte_t;
 #define LV2TABLE_SIZE		(NUM_LV2ENTRIES * sizeof(sysmmu_pte_t))
 
 struct sysmmu_drvdata {
+	struct list_head list;
 	struct iommu_device iommu;
 	struct device *dev;
+	struct iommu_group *group;
 	void __iomem *sfrbase;
 	struct clk *clk;
+	phys_addr_t pgtable;
+	spinlock_t lock; /* protect atomic update to H/W status */
 	u32 version;
 	u32 va_width;
 	int num_pmmu;
+	int attached_count;
 };
 
 struct sysmmu_clientdata {
