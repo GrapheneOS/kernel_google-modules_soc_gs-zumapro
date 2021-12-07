@@ -16,11 +16,6 @@
 
 #define REG_MMU_NUM_CONTEXT			0x0100
 
-#define REG_MMU_STREAM_CFG(n)			(0x2000 + ((n) * (0x10)))
-#define REG_MMU_STREAM_MATCH_CFG(n)		(0x2000 + ((n) * (0x10)) + 0x4)
-#define REG_MMU_STREAM_MATCH_SID_VALUE(n)	(0x2000 + ((n) * (0x10)) + 0x8)
-#define REG_MMU_STREAM_MATCH_SID_MASK(n)	(0x2000 + ((n) * (0x10)) + 0xC)
-
 #define REG_MMU_PMMU_INDICATOR			0x2FFC
 #define REG_MMU_PMMU_INFO			0x3000
 #define REG_MMU_SWALKER_INFO			0x3004
@@ -44,7 +39,6 @@
 
 #define MMU_STREAM_CFG_MASK(reg)		((reg) & (GENMASK(31, 16) | GENMASK(6, 0)))
 #define MMU_STREAM_MATCH_CFG_MASK(reg)		((reg) & (GENMASK(9, 8)))
-
 
 static struct iommu_ops samsung_sysmmu_ops;
 static struct platform_driver samsung_sysmmu_driver_v9;

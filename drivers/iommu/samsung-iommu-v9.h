@@ -18,6 +18,16 @@
 #define REG_MMU_CTRL				0x0000
 #define REG_MMU_STATUS				0x0008
 #define REG_MMU_VERSION				0x0034
+
+#define REG_MMU_STREAM_CFG(n)			(0x2000 + ((n) * 0x10))
+#define REG_MMU_STREAM_MATCH_CFG(n)		(0x2000 + ((n) * 0x10) + 0x4)
+#define REG_MMU_STREAM_MATCH_SID_VALUE(n)	(0x2000 + ((n) * 0x10) + 0x8)
+#define REG_MMU_STREAM_MATCH_SID_MASK(n)	(0x2000 + ((n) * 0x10) + 0xC)
+
+#define REG_MMU_PMMU_INDICATOR			0x2FFC
+#define REG_MMU_PMMU_INFO			0x3000
+#define REG_MMU_SWALKER_INFO			0x3004
+
 #define REG_MMU_CTRL_VM				0x8000
 #define REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM	0x8404
 #define REG_MMU_CONTEXT0_CFG_ATTRIBUTE_VM	0x8408
@@ -31,6 +41,11 @@
 
 #define MMU_CTRL_ENABLE			0x5
 #define MMU_CTRL_DISABLE		0x0
+
+#define MMU_STREAM_CFG_STLB_ID(val)		(((val) >> 24) & 0xFF)
+#define MMU_STREAM_CFG_PTLB_ID(val)		(((val) >> 16) & 0xFF)
+
+#define MMU_SET_PMMU_INDICATOR(val)		((val) & 0xF)
 
 #define MMU_CONTEXT0_CFG_FLPT_BASE_PPN(reg)	((reg) & 0xFFFFFF)
 
