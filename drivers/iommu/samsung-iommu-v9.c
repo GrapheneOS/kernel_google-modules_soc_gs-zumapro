@@ -12,21 +12,64 @@
 #include <linux/slab.h>
 #include "samsung-iommu-v9.h"
 
+#define REG_MMU_PMMU_INDICATOR			0x2FFC
+#define REG_MMU_PMMU_INFO			0x3000
+#define REG_MMU_SWALKER_INFO			0x3004
+
+#define SET_PMMU_INDICATOR(val)			((val) & 0xF)
+#define MMU_PMMU_INFO_VA_WIDTH(reg)		((reg) & 0x1)
+#define MMU_SWALKER_INFO_NUM_PMMU(reg)		((reg) & 0xFFFF)
+
 static struct iommu_ops samsung_sysmmu_ops;
 static struct platform_driver samsung_sysmmu_driver_v9;
 
 struct samsung_sysmmu_domain {
 	struct iommu_domain domain;
+	sysmmu_pte_t *page_table;
+	atomic_t *lv2entcnt;
+	spinlock_t pgtablelock;	/* spinlock to access pagetable	*/
+	bool is_va_36bit;
 };
+
+static bool sysmmu_global_init_done;
+DEFINE_MUTEX(sysmmu_global_mutex); /* Global driver mutex */
+static struct device sync_dev;
+static struct kmem_cache *flpt_cache_32bit, *flpt_cache_36bit, *slpt_cache;
+static bool exist_36bit_va;
 
 static inline u32 __sysmmu_get_hw_version(struct sysmmu_drvdata *data)
 {
 	return MMU_VERSION_RAW(readl_relaxed(data->sfrbase + REG_MMU_VERSION));
 }
 
+static inline u32 __sysmmu_get_num_pmmu(struct sysmmu_drvdata *data)
+{
+	return MMU_SWALKER_INFO_NUM_PMMU(readl_relaxed(data->sfrbase + REG_MMU_SWALKER_INFO));
+}
+
+static inline u32 __sysmmu_get_va_width(struct sysmmu_drvdata *data)
+{
+	int i;
+
+	for (i = 0; i < data->num_pmmu; i++) {
+		writel_relaxed(SET_PMMU_INDICATOR(i), data->sfrbase + REG_MMU_PMMU_INDICATOR);
+
+		if (MMU_PMMU_INFO_VA_WIDTH(readl_relaxed(data->sfrbase + REG_MMU_PMMU_INFO)))
+			return VA_WIDTH_36BIT;
+	}
+
+	return VA_WIDTH_32BIT;
+}
+
 static struct samsung_sysmmu_domain *to_sysmmu_domain(struct iommu_domain *dom)
 {
 	return container_of(dom, struct samsung_sysmmu_domain, domain);
+}
+
+static inline void pgtable_flush(void *vastart, void *vaend)
+{
+	dma_sync_single_for_device(&sync_dev, virt_to_phys(vastart),
+				   vaend - vastart, DMA_TO_DEVICE);
 }
 
 static bool samsung_sysmmu_capable(enum iommu_cap cap)
@@ -37,6 +80,8 @@ static bool samsung_sysmmu_capable(enum iommu_cap cap)
 static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 {
 	struct samsung_sysmmu_domain *domain;
+	struct kmem_cache *flpt_cache;
+	size_t num_lv1entries;
 
 	if (type != IOMMU_DOMAIN_UNMANAGED &&
 	    type != IOMMU_DOMAIN_DMA &&
@@ -49,24 +94,50 @@ static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 	if (!domain)
 		return NULL;
 
+	flpt_cache = exist_36bit_va ? flpt_cache_36bit : flpt_cache_32bit;
+	num_lv1entries = exist_36bit_va ? NUM_LV1ENTRIES_36BIT : NUM_LV1ENTRIES_32BIT;
+	domain->is_va_36bit = exist_36bit_va;
+	exist_36bit_va = false;
+
+	domain->page_table = (sysmmu_pte_t *)kmem_cache_alloc(flpt_cache, GFP_KERNEL | __GFP_ZERO);
+	if (!domain->page_table)
+		goto err_pgtable;
+
+	domain->lv2entcnt = kcalloc(num_lv1entries, sizeof(*domain->lv2entcnt), GFP_KERNEL);
+	if (!domain->lv2entcnt)
+		goto err_counter;
+
 	if (type == IOMMU_DOMAIN_DMA) {
 		int ret = iommu_get_dma_cookie(&domain->domain);
 
 		if (ret) {
 			pr_err("failed to get dma cookie (%d)\n", ret);
-			kfree(domain);
-			return NULL;
+			goto err_get_dma_cookie;
 		}
 	}
 
+	spin_lock_init(&domain->pgtablelock);
+
 	return &domain->domain;
+
+err_get_dma_cookie:
+	kfree(domain->lv2entcnt);
+err_counter:
+	kmem_cache_free(flpt_cache, domain->page_table);
+err_pgtable:
+	kfree(domain);
+
+	return NULL;
 }
 
 static void samsung_sysmmu_domain_free(struct iommu_domain *dom)
 {
 	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
+	struct kmem_cache *flpt_cache = domain->is_va_36bit ? flpt_cache_36bit : flpt_cache_32bit;
 
 	iommu_put_dma_cookie(dom);
+	kmem_cache_free(flpt_cache, domain->page_table);
+	kfree(domain->lv2entcnt);
 	kfree(domain);
 }
 
@@ -169,6 +240,9 @@ static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *a
 
 	fwspec = dev_iommu_fwspec_get(dev);
 
+	if (!exist_36bit_va && data->va_width == VA_WIDTH_36BIT)
+		exist_36bit_va = true;
+
 	return ret;
 }
 
@@ -186,7 +260,7 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.release_device		= samsung_sysmmu_release_device,
 	.device_group		= samsung_sysmmu_device_group,
 	.of_xlate		= samsung_sysmmu_of_xlate,
-	.pgsize_bitmap		= -1UL << 12,
+	.pgsize_bitmap		= SECT_SIZE | LPAGE_SIZE | SPAGE_SIZE,
 };
 
 static irqreturn_t samsung_sysmmu_irq(int irq, void *dev_id)
@@ -203,10 +277,51 @@ static irqreturn_t samsung_sysmmu_irq(int irq, void *dev_id)
 static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
 {
 	data->version = __sysmmu_get_hw_version(data);
+	data->num_pmmu = __sysmmu_get_num_pmmu(data);
+	data->va_width = __sysmmu_get_va_width(data);
 
 	/* TODO: read more capability in HW */
 
 	return 0;
+}
+
+static int samsung_sysmmu_init_global(void)
+{
+	int ret = 0;
+
+	flpt_cache_32bit = kmem_cache_create("samsung-iommu-32bit_lv1table", LV1TABLE_SIZE_32BIT,
+					     LV1TABLE_SIZE_32BIT, 0, NULL);
+	if (!flpt_cache_32bit)
+		return -ENOMEM;
+
+	flpt_cache_36bit = kmem_cache_create("samsung-iommu-36bit_lv1table", LV1TABLE_SIZE_36BIT,
+					     LV1TABLE_SIZE_36BIT, 0, NULL);
+	if (!flpt_cache_36bit) {
+		ret = -ENOMEM;
+		goto err_init_flpt_fail;
+	}
+
+	slpt_cache = kmem_cache_create("samsung-iommu-lv2table", LV2TABLE_SIZE, LV2TABLE_SIZE,
+				       0, NULL);
+	if (!slpt_cache) {
+		ret = -ENOMEM;
+		goto err_init_slpt_fail;
+	}
+
+	bus_set_iommu(&platform_bus_type, &samsung_sysmmu_ops);
+
+	device_initialize(&sync_dev);
+	sysmmu_global_init_done = true;
+
+	return 0;
+
+err_init_slpt_fail:
+	kmem_cache_destroy(flpt_cache_36bit);
+
+err_init_flpt_fail:
+	kmem_cache_destroy(flpt_cache_32bit);
+
+	return ret;
 }
 
 static int samsung_sysmmu_device_probe(struct platform_device *pdev)
@@ -274,8 +389,16 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 		goto err_iommu_register;
 	}
 
-	if (!iommu_present(&platform_bus_type))
-		bus_set_iommu(&platform_bus_type, &samsung_sysmmu_ops);
+	mutex_lock(&sysmmu_global_mutex);
+	if (!sysmmu_global_init_done) {
+		err = samsung_sysmmu_init_global();
+		if (err) {
+			dev_err(dev, "failed to initialize global data\n");
+			mutex_unlock(&sysmmu_global_mutex);
+			goto err_global_init;
+		}
+	}
+	mutex_unlock(&sysmmu_global_mutex);
 
 	dev_info(dev, "initialized IOMMU. Ver %d.%d.%d\n",
 		 MMU_VERSION_MAJOR(data->version),
@@ -283,6 +406,8 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 		 MMU_VERSION_REVISION(data->version));
 	return 0;
 
+err_global_init:
+	iommu_device_unregister(&data->iommu);
 err_iommu_register:
 	iommu_device_sysfs_remove(&data->iommu);
 	return err;
