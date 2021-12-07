@@ -46,4 +46,10 @@ struct sysmmu_drvdata {
 	int num_pmmu;
 };
 
+struct sysmmu_clientdata {
+	struct device *dev;
+	struct sysmmu_drvdata **sysmmus;
+	int sysmmu_count;
+};
+
 #endif

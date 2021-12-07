@@ -223,10 +223,19 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 	return generic_device_group(dev);
 }
 
+static void samsung_sysmmu_clientdata_release(struct device *dev, void *res)
+{
+	struct sysmmu_clientdata *client = res;
+
+	kfree(client->sysmmus);
+}
+
 static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *args)
 {
 	struct platform_device *sysmmu = of_find_device_by_node(args->np);
 	struct sysmmu_drvdata *data = platform_get_drvdata(sysmmu);
+	struct sysmmu_drvdata **new_link;
+	struct sysmmu_clientdata *client;
 	struct iommu_fwspec *fwspec;
 	unsigned int fwid = 0;
 	int ret;
@@ -239,6 +248,28 @@ static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *a
 	}
 
 	fwspec = dev_iommu_fwspec_get(dev);
+	if (!dev_iommu_priv_get(dev)) {
+		client = devres_alloc(samsung_sysmmu_clientdata_release,
+				      sizeof(*client), GFP_KERNEL);
+		if (!client)
+			return -ENOMEM;
+		client->dev = dev;
+		dev_iommu_priv_set(dev, client);
+		devres_add(dev, client);
+	}
+
+	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
+	new_link = krealloc(client->sysmmus,
+			    sizeof(data) * (client->sysmmu_count + 1),
+			    GFP_KERNEL);
+	if (!new_link)
+		return -ENOMEM;
+
+	client->sysmmus = new_link;
+	client->sysmmus[client->sysmmu_count++] = data;
+
+	dev_info(dev, "has sysmmu %s (total count:%d)\n",
+		 dev_name(data->dev), client->sysmmu_count);
 
 	if (!exist_36bit_va && data->va_width == VA_WIDTH_36BIT)
 		exist_36bit_va = true;
