@@ -63,8 +63,9 @@ kernel_build(
     ],
     outs = [
         # Sync with build.config.slider
-        "arch/arm64/boot/dts/google/gs101-a0.dtb",
-        "arch/arm64/boot/dts/google/gs101-b0.dtb",
+        "device-modules/arch/arm64/boot/dts/google/gs101-a0.dtb",
+        "device-modules/arch/arm64/boot/dts/google/gs101-b0.dtb",
+        "device-modules/arch/arm64/boot/dts/google/dtbo.img",
     ],
     base_kernel = "//common:kernel_aarch64",
     build_config = ":build.config.slider.mix",
