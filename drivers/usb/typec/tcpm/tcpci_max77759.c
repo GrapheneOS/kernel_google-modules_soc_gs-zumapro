@@ -26,7 +26,7 @@
 #include <trace/hooks/typec.h>
 
 #include "bc_max77759.h"
-#include "max77759_export.h"
+#include <linux/usb/max77759_export.h>
 #include "max77759_helper.h"
 #include <tcpci.h>
 #include "tcpci_max77759.h"
