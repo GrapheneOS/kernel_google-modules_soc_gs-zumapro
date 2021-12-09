@@ -118,9 +118,6 @@ kernel_build(
     ],
     # Keep in sync with build.config.common
     toolchain_version = "r433403",
-    deps = [
-        "//prebuilts/misc/linux-x86/libufdt:mkdtimg",
-    ],
 )
 
 filegroup(
