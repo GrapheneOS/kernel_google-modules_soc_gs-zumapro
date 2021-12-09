@@ -1,6 +1,6 @@
 #ifndef __PMUCAL_GNSS_H__
 #define __PMUCAL_GNSS_H__
-#include "pmucal_common.h"
+#include <soc/google/pmucal_common.h>
 
 struct pmucal_gnss {
 	struct pmucal_seq *init;

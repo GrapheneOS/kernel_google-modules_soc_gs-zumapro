@@ -1,4 +1,4 @@
-#include "pmucal_system.h"
+#include <soc/google/pmucal_system.h>
 #include "pmucal_rae.h"
 #include "pmucal_powermode.h"
 #include <soc/google/debug-snapshot.h>

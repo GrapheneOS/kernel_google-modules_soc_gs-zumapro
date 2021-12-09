@@ -1,8 +1,8 @@
-#include "../pmucal_common.h"
+#include <soc/google/pmucal_common.h>
 #include "../pmucal_cpu.h"
 #include "../pmucal_local.h"
 #include "../pmucal_rae.h"
-#include "../pmucal_system.h"
+#include <soc/google/pmucal_system.h>
 #include "../pmucal_powermode.h"
 
 #include "flexpmu_cal_cpu_gs101.h"

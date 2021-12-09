@@ -6,8 +6,8 @@
  */
 
 #include <soc/google/cal-if.h>
-#include "pwrcal-env.h"
-#include "pmucal_system.h"
+#include <soc/google/pwrcal-env.h>
+#include <soc/google/pmucal_system.h>
 #include "pmucal_powermode.h"
 #include "pmucal_rae.h"
 #include "pmucal_cpu.h"

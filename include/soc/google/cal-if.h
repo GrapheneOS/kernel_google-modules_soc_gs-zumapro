@@ -9,7 +9,7 @@
 #define __CAL_IF_H__
 
 #ifdef CONFIG_PWRCAL
-#include "../../../drivers/soc/google/pwrcal/pwrcal.h"
+#include <soc/google/pwrcal.h>
 
 static inline int cal_qch_init(unsigned int vclkid, unsigned int use_qch)
 {
@@ -21,7 +21,7 @@ static inline int cal_if_init(void)
 	return 0;
 }
 #else
-#include "../../../drivers/soc/google/cal-if/pmucal_system.h"
+#include <soc/google/pmucal_system.h>
 
 #define BLKPWR_MAGIC	0xB1380000
 

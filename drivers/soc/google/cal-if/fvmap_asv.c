@@ -5,7 +5,7 @@
  * Copyright (c) 2020 Samsung Electronics Co., Ltd.
  */
 #include "fvmap_asv.h"
-#include "pwrcal.h"
+#include <soc/google/pwrcal.h>
 #include "vclk.h"
 #include <soc/google/ect_parser.h>
 #include "cmucal.h"

@@ -20,7 +20,7 @@
 
 #include "pmucal_cpu.h"
 #include "pmucal_local.h"
-#include "pmucal_system.h"
+#include <soc/google/pmucal_system.h>
 
 #define PMUCAL_DBG_PREFIX	"PMUCAL-DBG"
 

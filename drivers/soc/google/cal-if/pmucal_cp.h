@@ -1,6 +1,6 @@
 #ifndef __PMUCAL_CP_H__
 #define __PMUCAL_CP_H__
-#include "pmucal_common.h"
+#include <soc/google/pmucal_common.h>
 
 #if defined(CONFIG_SOC_EXYNOS9820)
 #define PMU_CP_CTRL_NS_OFFSET	0x3010
