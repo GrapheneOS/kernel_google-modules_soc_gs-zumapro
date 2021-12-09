@@ -95,7 +95,7 @@ static inline void samsung_iommu_write_event(struct samsung_iommu_log *iommu_log
 					samsung_iommu_write_event(&(data)->log, type, s, e)
 
 static bool sysmmu_global_init_done;
-DEFINE_MUTEX(sysmmu_global_mutex); /* Global driver mutex */
+static DEFINE_MUTEX(sysmmu_global_mutex); /* Global driver mutex */
 static struct device sync_dev;
 static struct kmem_cache *flpt_cache_32bit, *flpt_cache_36bit, *slpt_cache;
 static bool exist_36bit_va;
@@ -941,17 +941,23 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 		return ERR_PTR(-EPROBE_DEFER);
 	}
 
-	if (iommu_group_get_iommudata(group))
+	mutex_lock(&sysmmu_global_mutex);
+	if (iommu_group_get_iommudata(group)) {
+		mutex_unlock(&sysmmu_global_mutex);
 		return group;
+	}
 
 	list = kzalloc(sizeof(*list), GFP_KERNEL);
-	if (!list)
+	if (!list) {
+		mutex_unlock(&sysmmu_global_mutex);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	INIT_LIST_HEAD(list);
 	iommu_group_set_iommudata(group, list,
 				  samsung_sysmmu_group_data_release);
 
+	mutex_unlock(&sysmmu_global_mutex);
 	return group;
 }
 
