@@ -17,10 +17,11 @@
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
-#include <linux/samsung-dma-heap.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/sort.h>
+
+#include "samsung-dma-heap.h"
 
 struct chunk_heap {
 	struct cma *cma;

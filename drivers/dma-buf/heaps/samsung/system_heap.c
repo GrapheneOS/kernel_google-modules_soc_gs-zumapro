@@ -18,12 +18,12 @@
 #include <linux/highmem.h>
 #include <linux/mm.h>
 #include <linux/module.h>
-#include <linux/samsung-dma-heap.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/of.h>
 
+#include "samsung-dma-heap.h"
 #include "../deferred-free-helper.h"
 #include "../page_pool.h"
 
