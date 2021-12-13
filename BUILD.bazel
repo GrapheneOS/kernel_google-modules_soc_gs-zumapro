@@ -126,8 +126,15 @@ kernel_build(
 filegroup(
     name = "gs101_soc_headers",
     srcs = glob([
+        # Standard pixel headers
         "include/**/*.h",
         "include/**/uapi/*.h",
+    ] + [
+        # List of headers needed by external modules
+        "drivers/dma-buf/heaps/deferred-free-helper.h",
+        "drivers/dma-buf/heaps/samsung/samsung-dma-heap.h",
+
+        # Needed for external modules to include in their makefiles
         "Makefile.include",
     ]),
     visibility = [
