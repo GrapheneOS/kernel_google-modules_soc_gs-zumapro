@@ -47,7 +47,7 @@ function modify_vendor_ramdisk() {
 
 EXT_MODULES+="
 gs/kernel/device-modules
-gs/google-modules/display/samsung
+gs/google-modules/display
 gs/google-modules/wlan/bcmdhd4389
 gs/google-modules/gpu/mali_pixel
 gs/google-modules/gpu/mali_kbase

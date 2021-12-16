@@ -310,7 +310,7 @@ kernel_modules_install(
         "//gs/google-modules/aoc/alsa:alsa.slider",
         "//gs/google-modules/bluetooth/broadcom:broadcom.slider",
         "//gs/google-modules/bms:bms.slider",
-        "//gs/google-modules/display/samsung:samsung.slider",
+        "//gs/google-modules/display:samsung.slider",
         "//gs/google-modules/edgetpu/drivers/edgetpu:edgetpu.slider",
         "//gs/google-modules/gpu/mali_kbase:mali_kbase.slider",
         "//gs/google-modules/gpu/mali_pixel:mali_pixel.slider",
