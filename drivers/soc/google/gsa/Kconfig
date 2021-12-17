@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0
+
 config GSA
 	tristate "GSA driver"
 	default n
