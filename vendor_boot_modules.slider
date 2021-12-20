@@ -32,7 +32,6 @@ debug-reboot.ko
 debug-snapshot-debug-kinfo.ko
 debug-snapshot-qd.ko
 debug-snapshot-sfrdump.ko
-deferred-free-helper.ko
 dss.ko
 dw3000.ko
 dwc3-exynos-usb.ko
