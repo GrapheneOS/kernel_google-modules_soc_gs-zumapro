@@ -275,7 +275,9 @@ kernel_modules_install(
 kernel_images(
     name = "slider_images",
     build_boot_images = True,
+    build_dtbo = True,
     build_vendor_dlkm = True,
+    dtbo_srcs = [":slider/" + e for e in slider_dtbos],
     kernel_build = ":slider",
     kernel_modules_install = ":slider_modules_install",
     deps = [
@@ -297,16 +299,16 @@ kernel_images(
         # selinux_fc
         "//prebuilts/boot-artifacts/selinux:file_contexts",
     ],
-    build_dtbo = True,
-    dtbo_srcs = [ ":slider/" + e for e in slider_dtbos],
 )
 
 copy_to_dist_dir(
     name = "slider_dist",
     data = [
-        ":slider_for_dist",
+        ":slider",
         ":slider_images",
         ":slider_modules_install",
         "//common:kernel_aarch64",
+        "//common:kernel_aarch64_headers",
+        "//common:kernel_aarch64_uapi_headers",
     ],
 )
