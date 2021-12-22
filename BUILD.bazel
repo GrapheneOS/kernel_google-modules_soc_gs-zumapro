@@ -49,8 +49,6 @@ kernel_build_config(
 )
 
 slider_dtbos = [
-    # TODO (b/209015867): move these to implicit_outs so they don't land in
-    # the DIST_DIR.
     "device-modules/arch/arm64/boot/dts/google/gs101-oriole.dtbo",
     "device-modules/arch/arm64/boot/dts/google/gs101-oriole-evt1_1.dtbo",
     "device-modules/arch/arm64/boot/dts/google/gs101-oriole-evt1.dtbo",
@@ -88,9 +86,10 @@ kernel_build(
         # Sync with build.config.slider
         "device-modules/arch/arm64/boot/dts/google/gs101-a0.dtb",
         "device-modules/arch/arm64/boot/dts/google/gs101-b0.dtb",
-    ] + slider_dtbos,
+    ],
     base_kernel = "//common:kernel_aarch64",
     build_config = ":build.config.slider.mix",
+    implicit_outs = slider_dtbos,
     module_outs = [
         # keep sorted
         "acpm_flexpmu_dbg.ko",
