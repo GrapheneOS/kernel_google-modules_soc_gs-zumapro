@@ -251,7 +251,7 @@ static inline int exynos_devfreq_lock_freq(unsigned int devfreq_type, unsigned i
 }
 
 static int exynos_devfreq_get_boundary(unsigned int devfreq_type,
-				       unsigned int *max_freq, unsigned int *min_freq);
+				       unsigned int *max_freq, unsigned int *min_freq)
 {
 	return 0;
 }
@@ -262,7 +262,7 @@ int exynos_devfreq_parse_ect(struct exynos_devfreq_data *data,
 				    const char *dvfs_domain_name);
 #else
 static inline int exynos_devfreq_parse_ect(struct exynos_devfreq_data *data,
-				    const char *dvfs_domain_name);
+				    const char *dvfs_domain_name)
 {
 	return 0;
 }
