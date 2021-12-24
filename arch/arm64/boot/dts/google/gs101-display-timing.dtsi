@@ -20,6 +20,23 @@
 		k-bits = <16>; /* K is a two's complement 16-bit intger */
 
 		dsim-modes {
+			1080x1920 {
+				mode-name = "1080x1920";
+				/*
+				 * p m s k
+				 * mfr mrr sel_pf icp
+				 * afc_enb extafc feed_en fsel
+				 * fout_mask rsel
+				 */
+				pmsk = <
+					0x2 0xB3 0x2 0x0955
+					0xd 0x3 0x0 0x0
+					0x0 0x0 0x0 0x0
+					0x0 0x0
+					>;
+				hs-clk = <1100>;
+				esc-clk = <20>;
+			};
 			1440x3040 {
 				mode-name = "1440x3040";
 				/*
