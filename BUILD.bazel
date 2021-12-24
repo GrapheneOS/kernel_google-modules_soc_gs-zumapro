@@ -311,4 +311,5 @@ copy_to_dist_dir(
         "//common:kernel_aarch64_headers",
         "//common:kernel_aarch64_uapi_headers",
     ],
+    flat = True,
 )
