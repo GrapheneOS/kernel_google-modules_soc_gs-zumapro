@@ -1,0 +1,443 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Zuma SoC device tree source
+ *
+ * Copyright (c) 2019 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ */
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/zuma.h>
+#include <dt-bindings/display/exynos-display.h>
+#include "gs101-display-timing.dtsi"
+
+/ {
+	drmdpp0: drmdpp@0x19900000 {	/* L0 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19900000 0x1000>,	/* DPU_DMA */
+		      <0x0 0x19930000 0x1000>,	/* DPP */
+		      <0x0 0x19950000 0x1000>,	/* SRAMCON */
+		      <0x0 0x19980000 0x1000>;	/* HDR */
+		reg-names = "dma", "dpp", "sramc", "hdr";
+
+		/* DPU_DMA IRQ, DPP IRQ */
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L0_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF0_DPP_L0_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		/* Each bit indicates DPP attribute */
+		/* 0:AFBC 1:BLOCK 2:FLIP 3:ROT 4:CSC 5:SCALE 6:HDR 11:HDR10P */
+		/* 16:IDMA 17:ODMA 18:DPP 19:SRAMC*/
+		attr = <0xD0047>;
+		port = <0>; /* AXI port number */
+
+		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
+		scale_down = <1>;
+		/* 1: scale X, 2: 2x scale up, 4: 4x scale up */
+		scale_up = <1>;
+
+		dpp,id = <0>;
+	};
+
+	drmdpp1: drmdpp@0x19901000 {	/* L1 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19901000 0x1000>,
+		      <0x0 0x19931000 0x1000>,
+		      <0x0 0x19951000 0x1000>,
+		      <0x0 0x19981000 0x1000>;
+		reg-names = "dma", "dpp", "sramc", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L1_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF0_DPP_L1_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0xD0C7F>;
+		port = <0>;
+		scale_down = <4>;
+		scale_up = <8>;
+
+		dpp,id = <1>;
+		dpp,video;
+	};
+
+	drmdpp2: drmdpp@0x19902000 {    /* L2 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19902000 0x1000>,
+		      <0x0 0x19932000 0x1000>,
+		      <0x0 0x19952000 0x1000>,
+		      <0x0 0x19982000 0x1000>;
+		reg-names = "dma", "dpp", "sramc", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L2_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF0_DPP_L2_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0xD0047>;
+		port = <1>;
+		scale_down = <1>;
+		scale_up = <1>;
+
+		dpp,id = <2>;
+	};
+
+	drmdpp3: drmdpp@0x19903000 {    /* L3 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19903000 0x1000>,
+		      <0x0 0x19933000 0x1000>,
+		      <0x0 0x19953000 0x1000>,
+		      <0x0 0x19983000 0x1000>;
+		reg-names = "dma", "dpp", "sramc", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L3_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF0_DPP_L3_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0xD0C7F>;
+		port = <1>;
+		scale_down = <4>;
+		scale_up = <8>;
+
+		dpp,id = <3>;
+		dpp,video;
+	};
+
+	drmdpp4: drmdpp@0x19904000 {    /* L4 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19904000 0x1000>,
+		      <0x0 0x19934000 0x1000>,
+		      <0x0 0x19954000 0x1000>,
+		      <0x0 0x19984000 0x1000>;
+		reg-names = "dma", "dpp", "sramc", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L4_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF0_DPP_L4_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0xD0047>;
+		port = <2>;
+		scale_down = <1>;
+		scale_up = <1>;
+
+		dpp,id = <4>;
+	};
+
+	drmdpp5: drmdpp@0x19905000 {    /* L5 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19905000 0x1000>,
+		      <0x0 0x19935000 0x1000>,
+		      <0x0 0x19955000 0x1000>,
+		      <0x0 0x19985000 0x1000>;
+		reg-names = "dma", "dpp", "sramc", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L5_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF0_DPP_L5_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0xD0C7F>;
+		port = <2>;
+		scale_down = <4>;
+		scale_up = <8>;
+
+		dpp,id = <5>;
+		dpp,video;
+	};
+
+	drmdpp12: drmdpp@0x19908000 {   /* L12 : WB */
+		compatible = "samsung,exynos-writeback";
+		reg = <0x0 0x19908000 0x1000>, <0x0 0x19938000 0x1000>;
+		reg-names = "dma", "dpp";
+
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_WB0_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma";
+
+		/* 4:CSC 10:SBWC 17:ODMA 18:DPP */
+		attr = <0x60410>;
+		port = <2>;
+		scale_down = <1>;
+		scale_up = <1>;
+
+		dpp,id = <6>;
+	};
+
+	disp_ss: disp_ss@0x19421000 {
+		compatible = "samsung,exynos9-disp_ss";
+		reg = <0x0 0x19421000 0x10>;
+		reg-names = "sys";
+	};
+
+	mipi_phy_dsim0_m4m4: dphy_m4s4_dsim0@0x19460000 {
+		compatible = "samsung,mipi-phy-m4m4";
+		isolation = <0x3eb8>;
+		owner = <0>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	drmdsim0: drmdsim@0x19440000 {
+		compatible = "samsung,exynos-dsim";
+		reg = <0x0 0x19440000 0x300>,	/* DSI */
+		      <0x0 0x19460100 0x700>,	/* M4M4S0 PHY */
+		      <0x0 0x19460000 0x100>;	/* M4M4S0 PHY BIAS */
+		reg-names = "dsi", "dphy", "dphy-extra";
+
+		dsim,id = <0>;
+
+		interrupts = <GIC_SPI IRQ_DPUB_DSIM0_DPUB IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dsim";
+
+		//phys = <&mipi_phy_dsim0_m4m4 0>;
+		//phy-names = "dsim_dphy";
+
+		dsim_mode = <&dsim_modes>;
+		dphy_diag = <&dphy_diags>;
+
+		//te_from = <0>;
+		///* EINT for TE */
+		//te-gpio = <&gpp0 3 0xf>;
+
+		/* pinctrl */
+		//pinctrl-names = "hw_te_on", "hw_te_off";
+		//pinctrl-0 = <&disp_te_pri_on>;
+		//pinctrl-1 = <&disp_te_pri_off>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	drmdsim1: drmdsim@0x19450000 {
+		status = "disabled";
+
+		compatible = "samsung,exynos-dsim";
+		reg = <0x0 0x19450000 0x300>,	/* DSI */
+		      <0x0 0x19460900 0x700>,	/* M4M4S0 PHY */
+		      <0x0 0x19460000 0x100>;	/* M4M4S0 PHY BIAS */
+		reg-names = "dsi", "dphy", "dphy-extra";
+
+		dsim,id = <1>;
+
+		interrupts = <GIC_SPI IRQ_DPUB_DSIM1_DPUB IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dsim";
+
+		//phys = <&mipi_phy_dsim0_m4m4 0>;
+		//phy-names = "dsim_dphy";
+
+		dsim_mode = <&dsim_modes>;
+		dphy_diag = <&dphy_diags>;
+
+		//te_from = <1>;
+		///* EINT for TE */
+		//te-gpio = <&gpp0 4 0xf>;
+
+		//pinctrl-names = "hw_te_on", "hw_te_off";
+		//pinctrl-0 = <&disp_te_sec_on>;
+		//pinctrl-1 = <&disp_te_sec_off>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	drmdecon0: drmdecon@0x19470000 {
+		compatible = "samsung,exynos-decon";
+		reg = <0x0 0x19470000 0x6000>,	/* DECON0_MAIN */
+		      <0x0 0x19480000 0x6000>,	/* DECON_WIN */
+		      <0x0 0x19490000 0x10000>,	/* DECON_SUB */
+		      <0x0 0x194A0000 0x6000>,	/* DECON0_WINCON */
+		      <0x0 0x194D0000 0xF000>;	/* DQE */
+		reg-names = "main", "win", "sub", "wincon", "dqe";
+
+		decon,id = <0>;
+
+		interrupts = <GIC_SPI IRQ_DPUB_DECON0_FRAME_START_DPUB
+				IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUB_DECON0_FRAME_DONE_DPUB
+				IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUB_DECON0_EXTRA_DPUB
+				IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUB_DECON0_DQE_DIMMING_START_DPUB
+				IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUB_DECON0_DQE_DIMMING_END_DPUB
+				IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "frame_start", "frame_done", "extra",
+				"dimming_start", "dimming_end";
+		//iommus = <&sysmmu_dpu0>, <&sysmmu_dpu1>, <&sysmmu_dpu2>;
+		//samsung,iommu-group = <&iommu_group_dpu>;
+		samsung,tzmp;
+
+		max_win = <6>;
+
+		/* BTS */
+		ppc = <2>;		/* pixel per clock */
+		ppc_rotator = <4>;	/* rotator ppc : 4(9830), 8(9840) */
+		ppc_scaler = <2>;	/* scaler ppc : 2(9830), 4(9840) */
+		delay_comp = <4>;	/* line delay for afbc or sbwc : DMA */
+		delay_scaler = <3>;	/* line delay for scaler : DPP */
+
+		/* bus info */
+		bus_width = <16>;	/* 16-Byte : 128-bit bus */
+		bus_util = <65>;	/* 65% */
+		rot_util = <60>;	/* UTIL gets worse at rotation */
+
+		/* dpu dvfs */
+		dfs_lv_cnt = <7>;
+		dfs_lv = <664000 533000 465000 400000 310000 267000 134000>;
+
+		/* Urgent */
+		rd_en = <1>;
+		rd_hi_thres = <0x800>;
+		rd_lo_thres = <0x400>;
+		rd_wait_cycle = <0x10>;
+		wr_en = <0>;
+		wr_hi_thres = <0x0>;
+		wr_lo_thres = <0x0>;
+
+		/* DTA */
+		dta_en = <1>;
+		dta_hi_thres = <0x3200>;
+		dta_lo_thres = <0x600>;
+
+		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5>;
+
+		/*
+		 * connector type that can be connected to the DECON. please
+		 * refer to enum exynos_drm_output_type in exynos_drm_drv.h
+		 *
+		 * DSI0(0x1), DSI1(0x2), VIDI(0x8)
+		 */
+		connector = <0x1 0x2 0x8>;
+
+		hibernation;
+	};
+
+	drmdecon1: drmdecon@0x19471000 {
+		status = "disabled";
+		compatible = "samsung,exynos-decon";
+		reg = <0x0 0x19471000 0x6000>,	/* DECON1_MAIN */
+		      <0x0 0x19480000 0x6000>,	/* DECON_WIN */
+		      <0x0 0x19490000 0x10000>,	/* DECON_SUB */
+		      <0x0 0x194B0000 0x6000>,	/* DECON1_WINCON */
+		      <0x0 0x194E0000 0xF000>;	/* DQE */
+		reg-names = "main", "win", "sub", "wincon", "dqe";
+
+		decon,id = <1>;
+
+		interrupts = <GIC_SPI IRQ_DPUB_DECON1_FRAME_START_DPUB IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUB_DECON1_FRAME_DONE_DPUB IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUB_DECON1_EXTRA_DPUB IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "frame_start", "frame_done", "extra";
+		//iommus = <&sysmmu_dpu0>, <&sysmmu_dpu1>, <&sysmmu_dpu2>;
+		//samsung,iommu-group = <&iommu_group_dpu>;
+
+		max_win = <6>;
+
+		/* BTS */
+		ppc = <2>;
+		line_mem_cnt = <4>;
+		cycle_per_line = <8>;   /* 4ppc */
+
+		/* Urgent */
+		rd_en = <1>;
+		rd_hi_thres = <0x800>;
+		rd_lo_thres = <0x400>;
+		rd_wait_cycle = <0x11>;
+		wr_en = <0>;
+		wr_hi_thres = <0x0>;
+		wr_lo_thres = <0x0>;
+
+		/* DTA */
+		dta_en = <1>;
+		dta_hi_thres = <0x3200>;
+		dta_lo_thres = <0x600>;
+
+		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5>;
+
+		/*
+		 * connector type that can be connected to the DECON. please
+		 * refer to enum exynos_drm_output_type in exynos_drm_drv.h
+		 *
+		 * DSI0(0x1), DSI1(0x2), VIDI(0x8)
+		 */
+		connector = <0x1 0x2 0x8>;
+	};
+
+	drmdecon2: drmdecon@0x19472000 {
+		status = "disabled";
+		compatible = "samsung,exynos-decon";
+		reg = <0x0 0x19472000 0x4000>,	/* DECON2_MAIN */
+		      <0x0 0x19480000 0x6000>,	/* DECON_WIN */
+		      <0x0 0x19490000 0x10000>,	/* DECON_SUB */
+		      <0x0 0x194C0000 0x6000>;	/* DECON2_WINCON */
+		reg-names = "main", "win", "sub", "wincon";
+
+		decon,id = <2>;
+
+		interrupts = <GIC_SPI IRQ_DPUB_DECON2_FRAME_START_DPUB
+				IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUB_DECON2_FRAME_DONE_DPUB
+				IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUB_DECON2_EXTRA_DPUB
+				IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "frame_start", "frame_done", "extra";
+		//iommus = <&sysmmu_dpu0>, <&sysmmu_dpu1>, <&sysmmu_dpu2>;
+		//samsung,iommu-group = <&iommu_group_dpu>;
+		samsung,tzmp;
+
+		max_win = <6>;
+
+		/* BTS */
+		ppc = <2>;		/* pixel per clock */
+		ppc_rotator = <4>;	/* rotator ppc : 4(9830), 8(9840) */
+		ppc_scaler = <2>;	/* scaler ppc : 2(9830), 4(9840) */
+		delay_comp = <4>;	/* line delay for afbc or sbwc : DMA */
+		delay_scaler = <3>;	/* line delay for scaler : DPP */
+
+		/* bus info */
+		bus_width = <16>;	/* 16-Byte : 128-bit bus */
+		bus_util = <65>;	/* 65% */
+		rot_util = <60>;	/* UTIL gets worse at rotation */
+
+		/* dpu dvfs */
+		dfs_lv_cnt = <7>;
+		dfs_lv = <664000 533000 465000 400000 310000 267000 134000>;
+
+		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5>;
+		/*
+		 * connector type that can be connected to the DECON. please
+		 * refer to enum exynos_drm_output_type in exynos_drm_drv.h
+		 *
+		 * DSI0(0x1), DSI1(0x2), VIDI(0x8)
+		 */
+		connector = <0x8>;
+	};
+
+	disp_vddi: disp-vddi {
+		status = "disabled";
+		compatible = "regulator-fixed";
+		regulator-name = "disp_vddi";
+		regulator-boot-on;
+		enable-active-high;
+	};
+
+	disp_vddr_en: disp-vddr_en {
+		status = "disabled";
+		compatible = "regulator-fixed";
+		regulator-name = "disp_vddr_en";
+		regulator-boot-on;
+		enable-active-high;
+	};
+
+	disp_vddr_0: disp-vddr_0 {
+		status = "disabled";
+		compatible = "regulator-fixed";
+		regulator-name = "disp_vddr_0";
+		regulator-boot-on;
+		enable-active-high;
+	};
+
+	disp_vddr_1: disp-vddr_1 {
+		status = "disabled";
+		compatible = "regulator-fixed";
+		regulator-name = "disp_vddr_1";
+		regulator-boot-on;
+		enable-active-high;
+	};
+};

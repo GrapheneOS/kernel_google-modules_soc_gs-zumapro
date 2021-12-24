@@ -8,6 +8,8 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zuma.h>
 
+#include "zuma-drm-dpu.dtsi"
+
 / {
 	compatible = "google,zuma";
 	interrupt-parent = <&gic>;
