@@ -69,6 +69,17 @@ slider_dtbos = [
     "device-modules/arch/arm64/boot/dts/google/gs101-whitefin.dtbo",
 ]
 
+filegroup(
+    name = "slider_dt-bindings",
+    srcs = glob([
+        "include/dt-bindings/**",
+        "scripts/dtc/include-prefixes/**",
+    ]),
+    visibility = [
+        "//gs/kernel/device-modules/arch/arm64/boot/dts:__pkg__",
+    ],
+)
+
 kernel_build(
     name = "slider",
     srcs = glob(
@@ -89,6 +100,7 @@ kernel_build(
     ],
     base_kernel = "//common:kernel_aarch64",
     build_config = ":build.config.slider.mix",
+    dtstree = "//gs/kernel/device-modules/arch/arm64/boot/dts:slider_dt",
     implicit_outs = slider_dtbos,
     module_outs = [
         # keep sorted
