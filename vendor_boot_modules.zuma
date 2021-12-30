@@ -1,6 +1,8 @@
 # List of modules loaded during first stage init from vendor_boot
 # Sort order defined by
 # LC_ALL=C sort
+exynos-drm.ko
+exynos-pd_el3.ko
 exynos_mct.ko
 exynos_tty.ko
 gs-chipid.ko
