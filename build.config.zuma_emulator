@@ -33,3 +33,7 @@ $DEVICE_KERNEL_FILES
 fi
 
 MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.zuma
+
+EXT_MODULES+="
+private/google-modules/display/samsung
+"
