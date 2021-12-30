@@ -704,7 +704,7 @@ static void pixel_ufs_prepare_command(void *data, struct ufs_hba *hba,
 
 		iov_iter_bvec(&iter, READ, &bv, 1, bv.bv_len);
 		iter.iov_offset = 500;
-		copy_from_iter(&cur_wc, 4, &iter);
+		WARN_ON(copy_from_iter(&cur_wc, 4, &iter) != 4);
 		cur_wc = cpu_to_be32(cur_wc);
 		if (cur_wc)
 			pr_info("%s RPMB write counter = %8x\n", __func__, cur_wc);
