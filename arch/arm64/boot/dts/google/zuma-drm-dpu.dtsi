@@ -2,7 +2,7 @@
 /*
  * Zuma SoC device tree source
  *
- * Copyright (c) 2019 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2022 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  *
  */
@@ -259,8 +259,8 @@
 				IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "frame_start", "frame_done", "extra",
 				"dimming_start", "dimming_end";
-		//iommus = <&sysmmu_dpu0>, <&sysmmu_dpu1>, <&sysmmu_dpu2>;
-		//samsung,iommu-group = <&iommu_group_dpu>;
+		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
+		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
 
 		max_win = <6>;
@@ -324,8 +324,8 @@
 			     <GIC_SPI IRQ_DPUB_DECON1_FRAME_DONE_DPUB IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUB_DECON1_EXTRA_DPUB IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "frame_start", "frame_done", "extra";
-		//iommus = <&sysmmu_dpu0>, <&sysmmu_dpu1>, <&sysmmu_dpu2>;
-		//samsung,iommu-group = <&iommu_group_dpu>;
+		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
+		samsung,iommu-group = <&iommu_group_dpu>;
 
 		max_win = <6>;
 
@@ -377,8 +377,8 @@
 			     <GIC_SPI IRQ_DPUB_DECON2_EXTRA_DPUB
 				IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "frame_start", "frame_done", "extra";
-		//iommus = <&sysmmu_dpu0>, <&sysmmu_dpu1>, <&sysmmu_dpu2>;
-		//samsung,iommu-group = <&iommu_group_dpu>;
+		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
+		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
 
 		max_win = <6>;
