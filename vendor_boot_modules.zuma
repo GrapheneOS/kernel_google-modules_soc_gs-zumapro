@@ -7,4 +7,5 @@ gs-chipid.ko
 i2c-dev.ko
 i2c-exynos5.ko
 pinctrl-exynos-gs.ko
+samsung_iommu_v9.ko
 systrace.ko
