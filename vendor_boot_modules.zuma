@@ -1,6 +1,7 @@
 # List of modules loaded during first stage init from vendor_boot
 # Sort order defined by
 # LC_ALL=C sort
+deferred-free-helper.ko
 exynos-drm.ko
 exynos-pd_el3.ko
 exynos_mct.ko
@@ -8,6 +9,8 @@ exynos_tty.ko
 gs-chipid.ko
 i2c-dev.ko
 i2c-exynos5.ko
+page_pool.ko
 pinctrl-exynos-gs.ko
+samsung_dma_heap.ko
 samsung_iommu_v9.ko
 systrace.ko
