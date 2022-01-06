@@ -13,12 +13,14 @@ DIST_CMDS="${LIBUFDT_PREBUILTS_BIN}/ufdt_apply_overlay \${DIST_DIR}/zuma-a0.dtb 
 
 MAKE_GOALS="$MAKE_GOALS
 modules
+google/dtbo.img
 google/zuma-a0.dtb
 google/zuma-emulator.dtbo
 
 "
 
 FILES="
+device-modules/arch/arm64/boot/dts/google/dtbo.img
 device-modules/arch/arm64/boot/dts/google/zuma-a0.dtb
 device-modules/arch/arm64/boot/dts/google/zuma-emulator.dtbo
 
