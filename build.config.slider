@@ -66,5 +66,5 @@ gs/google-modules/touch/sec
 gs/google-modules/power/reset
 gs/google-modules/bluetooth/broadcom
 gs/google-modules/nfc
+gs/google-modules/uwb/kernel
 "
-#gs/google-modules/aoc/usb
