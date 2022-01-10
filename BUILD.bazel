@@ -28,6 +28,7 @@ load(
     "kernel_module",
     "kernel_modules_install",
 )
+load("@kernel_toolchain_info//:dict.bzl", "CLANG_VERSION")
 
 genrule(
     name = "build.config.mix",
@@ -117,7 +118,7 @@ kernel_build(
         "zsmalloc.ko",
     ],
     # Keep in sync with build.config.common
-    toolchain_version = "r433403",
+    toolchain_version = CLANG_VERSION,
 )
 
 filegroup(
