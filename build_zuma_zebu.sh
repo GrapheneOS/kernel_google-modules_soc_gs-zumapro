@@ -6,8 +6,12 @@ set -e
 : ${OUT_DIR:="out/"}
 export OUT_DIR
 
+: ${BUILD_CONFIG:="private/gs-google/device-modules/build.config.zuma_hybrid"}
+
+echo "Using build config ${BUILD_CONFIG}"
+
 LTO=thin \
-BUILD_CONFIG=private/gs-google/device-modules/build.config.zuma_emulator \
+BUILD_CONFIG="${BUILD_CONFIG}" \
 build/build.sh "$@"
 
 BASE_OUT=${OUT_DIR}/
