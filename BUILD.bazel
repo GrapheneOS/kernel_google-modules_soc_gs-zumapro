@@ -67,12 +67,16 @@ kernel_build(
         "build.config.*",
         "arch/arm64/configs/slider_gki.fragment",
         "Kconfig.ext",
+        "Kconfig.ext_modules",
         "**/Kconfig",
         "arch/arm64/boot/dts/**",
         "include/dt-bindings/**",
         "include/dtc/**",
     ]) + [
         "//common:kernel_aarch64_sources",
+        "//gs/google-modules/touch/common:common.kconfig",
+        "//gs/google-modules/touch/fts/ftm5:ftm5.kconfig",
+        "//gs/google-modules/touch/sec:sec.kconfig",
     ],
     outs = [
         # Sync with build.config.slider

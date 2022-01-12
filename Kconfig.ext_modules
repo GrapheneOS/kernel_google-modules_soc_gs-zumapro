@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0
+
+source "$(KCONFIG_EXT_MODULES_PREFIX)gs/google-modules/touch/common/Kconfig"
+source "$(KCONFIG_EXT_MODULES_PREFIX)gs/google-modules/touch/fts/ftm5/Kconfig"
+source "$(KCONFIG_EXT_MODULES_PREFIX)gs/google-modules/touch/sec/Kconfig"

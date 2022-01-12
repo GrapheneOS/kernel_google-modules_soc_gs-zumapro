@@ -37,6 +37,7 @@ function modify_vendor_ramdisk() {
   ln -f init.recovery.gs101.rc init.recovery.raven.rc
 }
 
+KCONFIG_EXT_MODULES_PREFIX=$(rel_path ${ROOT_DIR} ${KERNEL_DIR})/
 EXT_MODULES+="
 gs/google-modules/soc-modules
 gs/google-modules/display
