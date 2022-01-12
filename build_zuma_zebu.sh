@@ -19,8 +19,8 @@ export DIST_DIR=${DIST_DIR:-${BASE_OUT}/dist/}
 export UNPACK_BOOTIMG_PATH="tools/mkbootimg/unpack_bootimg.py"
 mkdir -p "${DIST_DIR}/zebu/"
 #set -x
-python3 "$UNPACK_BOOTIMG_PATH" --boot_img "${DIST_DIR}/boot.img" --out "${DIST_DIR}/ext_bootimg"
-python3 "$UNPACK_BOOTIMG_PATH" --boot_img "${DIST_DIR}/vendor_boot.img" --out "${DIST_DIR}/ext_vendor_bootimg"
+"$UNPACK_BOOTIMG_PATH" --boot_img "${DIST_DIR}/boot.img" --out "${DIST_DIR}/ext_bootimg"
+"$UNPACK_BOOTIMG_PATH" --boot_img "${DIST_DIR}/vendor_boot.img" --out "${DIST_DIR}/ext_vendor_bootimg"
 cat "${DIST_DIR}/ext_vendor_bootimg/vendor_ramdisk00" "${DIST_DIR}/ext_vendor_bootimg/vendor_ramdisk01" "${DIST_DIR}/ext_bootimg/ramdisk" > \
 	      "${DIST_DIR}/zebu/zebu_ramdisk.img"
 #set +x
