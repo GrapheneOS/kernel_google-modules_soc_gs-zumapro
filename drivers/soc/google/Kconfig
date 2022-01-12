@@ -26,6 +26,12 @@ config BOARD_ZUMA_EMULATOR
 	help
 	Support Zuma on emulator
 
+config BOARD_ZUMA_HYBRID
+	bool "Google Zuma on hybrid emulator"
+	depends on SOC_ZUMA
+	help
+	Support Zuma on hybrid emulator
+
 config GS_CHIPID
 	tristate "GS Chipid controller driver"
 	depends on ARM64

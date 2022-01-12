@@ -59,7 +59,9 @@ dtb-$(CONFIG_SOC_ZUMA) += \
 	zuma-a0.dtb
 
 dtbo-$(CONFIG_BOARD_ZUMA_EMULATOR) += \
-	zuma-emulator.dtbo \
+	zuma-emulator.dtbo
+
+dtbo-$(CONFIG_BOARD_ZUMA_HYBRID) += \
 	zuma-hybrid.dtbo
 
 zuma-emulator.dtbo-base := zuma-a0.dtb
