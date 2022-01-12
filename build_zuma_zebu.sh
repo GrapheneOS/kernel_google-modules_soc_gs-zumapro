@@ -6,7 +6,7 @@ set -e
 : ${OUT_DIR:="out/"}
 export OUT_DIR
 
-: ${BUILD_CONFIG:="private/gs-google/device-modules/build.config.zuma_hybrid"}
+: ${BUILD_CONFIG:="private/gs-google/device-modules/build.config.zuma_emulator"}
 
 echo "Using build config ${BUILD_CONFIG}"
 
