@@ -15,8 +15,13 @@ BUILD_CONFIG="${BUILD_CONFIG}" \
 build/build.sh "$@"
 
 BASE_OUT=${OUT_DIR}/
-export DIST_DIR=${DIST_DIR:-${BASE_OUT}/dist/}
-export UNPACK_BOOTIMG_PATH="tools/mkbootimg/unpack_bootimg.py"
+DIST_DIR=${DIST_DIR:-${BASE_OUT}/dist/}
+BUILDTOOLS_PREBUILT_BIN=build/build-tools/path/linux-x86
+BUILDTOOLS_PREBUILT_BIN_PATH=$(readlink -f $(dirname $0)/../../../${BUILDTOOLS_PREBUILT_BIN})
+if [ -d "${BUILDTOOLS_PREBUILT_BIN_PATH}" ]; then
+	PATH=${BUILDTOOLS_PREBUILT_BIN_PATH}:${PATH}
+fi
+UNPACK_BOOTIMG_PATH="tools/mkbootimg/unpack_bootimg.py"
 mkdir -p "${DIST_DIR}/zebu/"
 #set -x
 "$UNPACK_BOOTIMG_PATH" --boot_img "${DIST_DIR}/boot.img" --out "${DIST_DIR}/ext_bootimg"
