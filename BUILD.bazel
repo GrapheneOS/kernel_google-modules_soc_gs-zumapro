@@ -74,7 +74,7 @@ filegroup(
     name = "slider_dt-bindings",
     srcs = glob([
         "include/dt-bindings/**",
-        "scripts/dtc/include-prefixes/**",
+        "include/dtc/**",
     ]),
     visibility = [
         "//gs/google-modules/soc-modules/arch/arm64/boot/dts:__pkg__",
@@ -90,7 +90,7 @@ kernel_build(
         "**/Kconfig",
         "arch/arm64/boot/dts/**",
         "include/dt-bindings/**",
-        "scripts/dtc/include-prefixes/**",
+        "include/dtc/**",
     ]) + [
         "//common:kernel_aarch64_sources",
     ],
