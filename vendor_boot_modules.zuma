@@ -9,6 +9,8 @@ exynos_tty.ko
 gs-chipid.ko
 i2c-dev.ko
 i2c-exynos5.ko
+mali_kbase.ko
+mali_pixel.ko
 page_pool.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
