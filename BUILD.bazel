@@ -114,6 +114,7 @@ kernel_build(
         "sg.ko",
         "softdog.ko",
         "spidev.ko",
+        "test_stackinit.ko",
         "videobuf2-dma-sg.ko",
         "zsmalloc.ko",
     ],
