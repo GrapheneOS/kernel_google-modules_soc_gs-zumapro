@@ -30,9 +30,9 @@ kernel_dtstree(
             "**/*.bzl",
         ],
     ) + [
-        "//gs/kernel/device-modules:slider_dt-bindings",
+        "//gs/google-modules/soc-modules:slider_dt-bindings",
     ],
     visibility = [
-        "//gs/kernel/device-modules:__pkg__",
+        "//gs/google-modules/soc-modules:__pkg__",
     ],
 )
