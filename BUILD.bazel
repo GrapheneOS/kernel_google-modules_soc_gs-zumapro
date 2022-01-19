@@ -37,7 +37,7 @@ genrule(
     # incorrect. Set it manually.
     cmd = """
         echo MIXED_BUILD=1 > $@
-        echo KERNEL_DIR=gs/kernel/device-modules >> $@
+        echo KERNEL_DIR=gs/google-modules/soc-modules >> $@
         """,
 )
 
@@ -78,7 +78,7 @@ filegroup(
         "scripts/dtc/include-prefixes/**",
     ]),
     visibility = [
-        "//gs/kernel/device-modules/arch/arm64/boot/dts:__pkg__",
+        "//gs/google-modules/soc-modules/arch/arm64/boot/dts:__pkg__",
     ],
 )
 
@@ -102,7 +102,7 @@ kernel_build(
     ],
     base_kernel = "//common:kernel_aarch64",
     build_config = ":build.config.slider.mix",
-    dtstree = "//gs/kernel/device-modules/arch/arm64/boot/dts:slider_dt",
+    dtstree = "//gs/google-modules/soc-modules/arch/arm64/boot/dts:slider_dt",
     implicit_outs = slider_dtbos,
     kconfig_ext = "Kconfig.ext",
     module_outs = [
@@ -288,7 +288,7 @@ kernel_module(
         "drivers/usb/typec/tcpm/usbc_cooling_dev.ko",
         "drivers/watchdog/s3c2410_wdt.ko",
     ],
-    kernel_build = "//gs/kernel/device-modules:slider",
+    kernel_build = "//gs/google-modules/soc-modules:slider",
     visibility = [
         # keep sorted
         "//gs/google-modules:__subpackages__",
@@ -320,7 +320,7 @@ kernel_modules_install(
         "//gs/google-modules/touch/sec:sec.slider",
         "//gs/google-modules/uwb/kernel:kernel.slider",
         "//gs/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
-        "//gs/kernel/device-modules:gs101_soc",
+        "//gs/google-modules/soc-modules:gs101_soc",
     ],
 )
 

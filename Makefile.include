@@ -3,7 +3,7 @@
 # This file should be included by external modules that need to link to this
 # project.
 
-EXTRA_CFLAGS += -I$(KERNEL_SRC)/../gs/kernel/device-modules/include
-EXTRA_CFLAGS += -I$(KERNEL_SRC)/../gs/kernel/device-modules/include/uapi
+EXTRA_CFLAGS += -I$(KERNEL_SRC)/../gs/google-modules/soc-modules/include
+EXTRA_CFLAGS += -I$(KERNEL_SRC)/../gs/google-modules/soc-modules/include/uapi
 
-EXTRA_SYMBOLS += $(OUT_DIR)/../gs/kernel/device-modules/Module.symvers
+EXTRA_SYMBOLS += $(OUT_DIR)/../gs/google-modules/soc-modules/Module.symvers
