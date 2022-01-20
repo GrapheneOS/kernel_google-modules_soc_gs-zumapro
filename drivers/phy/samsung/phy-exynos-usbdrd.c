@@ -1322,6 +1322,7 @@ static int exynos_usbdrd_get_iptype(struct exynos_usbdrd_phy *phy_drd)
 	case TYPE_USB2HOST:
 		phy_drd->ip_type = TYPE_USB2HOST;
 		dev_info(dev, "It is TYPE USB2HOST");
+		break;
 	default:
 		break;
 	}
@@ -1912,6 +1913,7 @@ static void exynos_usbdrd_utmi_set(struct exynos_usbdrd_phy *phy_drd,
 		break;
 	case SET_DPDM_PULLDOWN:
 		phy_exynos_usb_v3p1_config_host_mode(&phy_drd->usbphy_info);
+		break;
 	default:
 		break;
 	}
