@@ -6,7 +6,7 @@
 #ifndef __GOOGLE_LOGBUFFER_H_
 #define __GOOGLE_LOGBUFFER_H_
 
-#include <stdarg.h>
+#include <linux/stdarg.h>
 
 struct logbuffer;
 #if IS_ENABLED(CONFIG_GOOGLE_LOGBUFFER)
