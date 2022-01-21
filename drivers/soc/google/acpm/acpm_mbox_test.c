@@ -1285,6 +1285,7 @@ static int acpm_dvfs_test_setting(struct acpm_info *acpm, u64 subcmd)
 				      dvfs_test->dm[DVFS_CPUCL1]->min_freq, -1);
 		acpm_dvfs_set_cpufreq(DVFS_CPUCL2,
 				      dvfs_test->dm[DVFS_CPUCL2]->min_freq, -1);
+		fallthrough;
 	case ACPM_DVFS_TEST_CPUCL1:
 	case ACPM_DVFS_TEST_CPUCL2:
 		while (cycle < DVFS_TEST_CYCLE) {
