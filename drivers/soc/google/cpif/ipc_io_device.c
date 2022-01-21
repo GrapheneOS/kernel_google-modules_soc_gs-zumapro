@@ -107,6 +107,7 @@ static unsigned int ipc_poll(struct file *filp, struct poll_table_struct *wait)
 				return 0;
 		}
 		/* fall through, if sim_state has been changed */
+		fallthrough;
 	case STATE_CRASH_EXIT:
 	case STATE_CRASH_RESET:
 	case STATE_NV_REBUILDING:
@@ -126,6 +127,7 @@ static unsigned int ipc_poll(struct file *filp, struct poll_table_struct *wait)
 	case STATE_OFFLINE:
 		if (iod->ch == EXYNOS_CH_ID_CPLOG && ld->protocol == PROTOCOL_SIT)
 			return POLLHUP;
+		fallthrough;
 	default:
 		break;
 	}
