@@ -12,6 +12,21 @@
 		/* Device node name */
 		node-name = "top";
 	};
+
+	lwis_isp_fe: lwis_isp_fe@1C000000 {
+		compatible = "google,lwis-ioreg-device";
+
+		/* Device node name */
+		node-name = "isp-fe";
+
+		/* Register space */
+		reg =
+			<0x0 0x1C300000 0x100000>, /* ISPFE */
+			<0x0 0x1C040000 0xD0000>;  /* CSIS LINK & PHY*/
+		reg-names =
+			"isp-fe",
+			"csis-link-phy";
+	}
 };
 
 
