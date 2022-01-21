@@ -229,6 +229,7 @@ void pmucal_rae_save_seq(struct pmucal_seq *seq, unsigned int seq_size)
 		case PMUCAL_COND_SAVE_RESTORE:
 			if (!pmucal_rae_check_condition(&seq[i]))
 				break;
+			fallthrough;
 		case PMUCAL_SAVE_RESTORE:
 			pmucal_rae_read(&seq[i]);
 			seq[i].need_restore = true;
@@ -269,6 +270,7 @@ int pmucal_rae_restore_seq(struct pmucal_seq *seq, unsigned int seq_size)
 		case PMUCAL_COND_SAVE_RESTORE:
 			if (!pmucal_rae_check_condition(&seq[i]))
 				break;
+			fallthrough;
 		case PMUCAL_SAVE_RESTORE:
 			if (seq[i].need_restore) {
 				seq[i].need_restore = false;
