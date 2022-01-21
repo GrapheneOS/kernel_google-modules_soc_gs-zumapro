@@ -18,6 +18,7 @@
 #include <linux/of_address.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <linux/sched/clock.h>
 
 #include "ufshcd.h"
 #include "ufs-vs-mmio.h"
