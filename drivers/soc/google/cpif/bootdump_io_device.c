@@ -108,6 +108,7 @@ static unsigned int bootdump_poll(struct file *filp, struct poll_table_struct *w
 				return 0;
 		}
 		/* fall through, if sim_state has been changed */
+		fallthrough;
 	case STATE_CRASH_EXIT:
 	case STATE_CRASH_RESET:
 	case STATE_NV_REBUILDING:
@@ -147,6 +148,7 @@ static unsigned int bootdump_poll(struct file *filp, struct poll_table_struct *w
 		if (ld->protocol == PROTOCOL_SIT)
 			return POLLHUP;
 		/* fall through */
+		fallthrough;
 	default:
 		break;
 	}
