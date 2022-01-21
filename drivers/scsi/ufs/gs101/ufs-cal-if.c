@@ -549,6 +549,7 @@ static enum ufs_cal_errno ufs_cal_config_uic(struct ufs_cal_param *p,
 				case PHY_PLL_WAIT:
 				case COMMON_WAIT:
 					skip = 1;
+					break;
 				default:
 					break;
 				}
@@ -562,6 +563,7 @@ static enum ufs_cal_errno ufs_cal_config_uic(struct ufs_cal_param *p,
 				case PHY_EMB_CDR_WAIT:
 				case PHY_CDR_AFC_WAIT:
 					skip = 1;
+					break;
 				default:
 					break;
 				}
