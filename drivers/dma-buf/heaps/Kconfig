@@ -1,3 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 
+config DMABUF_HEAPS_PAGE_POOL
+	tristate
+
 source "$(KCONFIG_EXT_PREFIX)drivers/dma-buf/heaps/samsung/Kconfig"
