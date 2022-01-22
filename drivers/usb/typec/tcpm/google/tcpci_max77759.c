@@ -1070,6 +1070,13 @@ static void max77759_cache_cc(struct max77759_plat *chip)
 	chip->cc2 = cc2;
 }
 
+/**
+ * The patch introducing tcpm_is_debouncing() was reverted in android-mainline
+ * (See aosp/1911031). While we wait for such patch to be sent upstream let's
+ * stub out tcpm_is_debouncing() here. TODO(b/215766959): revert this hack.
+ **/
+static inline bool tcpm_is_debouncing(struct tcpm_port *tcpm) { return false; }
+
 static irqreturn_t _max77759_irq(struct max77759_plat *chip, u16 status,
 				 struct logbuffer *log)
 {
