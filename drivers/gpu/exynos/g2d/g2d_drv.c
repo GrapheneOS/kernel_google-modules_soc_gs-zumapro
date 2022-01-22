@@ -984,3 +984,4 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Cho KyongHo <pullip.cho@samsung.com>");
 MODULE_AUTHOR("Hyesoo Yu <hyesoo.yu@samsung.com>");
 MODULE_DESCRIPTION("Exynos FIMG2D device driver");
+MODULE_IMPORT_NS(DMA_BUF);

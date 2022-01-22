@@ -1334,3 +1334,4 @@ module_platform_driver(mfc_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Kamil Debski <k.debski@samsung.com>");
+MODULE_IMPORT_NS(DMA_BUF);
