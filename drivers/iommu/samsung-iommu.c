@@ -274,23 +274,12 @@ static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 	if (!domain->lv2entcnt)
 		goto err_counter;
 
-	if (type == IOMMU_DOMAIN_DMA) {
-		int ret = iommu_get_dma_cookie(&domain->domain);
-
-		if (ret) {
-			pr_err("failed to get dma cookie (%d)\n", ret);
-			goto err_get_dma_cookie;
-		}
-	}
-
 	pgtable_flush(domain->page_table, domain->page_table + NUM_LV1ENTRIES);
 
 	spin_lock_init(&domain->pgtablelock);
 
 	return &domain->domain;
 
-err_get_dma_cookie:
-	kfree(domain->lv2entcnt);
 err_counter:
 	kmem_cache_free(flpt_cache, domain->page_table);
 err_pgtable:
@@ -302,8 +291,6 @@ static void samsung_sysmmu_domain_free(struct iommu_domain *dom)
 {
 	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
 	int i;
-
-	iommu_put_dma_cookie(dom);
 
 	for (i = 0; i < NUM_LV1ENTRIES; i++) {
 		sysmmu_pte_t *sent = domain->page_table + i;
