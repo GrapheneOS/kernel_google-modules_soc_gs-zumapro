@@ -98,13 +98,11 @@ typedef u32 sysmmu_pte_t;
 #define lv1ent_unmapped(sent)	((*(sent) & FLPD_FLAG_MASK) == UNMAPPED_FLAG)
 #define lv1ent_page(sent)	((*(sent) & FLPD_FLAG_MASK) == SLPD_FLAG)
 #define lv1ent_section(sent)	((*(sent) & FLPD_FLAG_MASK) == SECT_FLAG)
-#define lv1ent_offset(iova)	((iova) >> SECT_ORDER)
 
 #define lv2table_base(sent)	((phys_addr_t)(*(sent) & ~0x3FU) << PG_ENT_SHIFT)
 #define lv2ent_unmapped(pent)	((*(pent) & SLPD_FLAG_MASK) == UNMAPPED_FLAG)
 #define lv2ent_small(pent)	((*(pent) & SLPD_FLAG_MASK) == SPAGE_FLAG)
 #define lv2ent_large(pent)	((*(pent) & SLPD_FLAG_MASK) == LPAGE_FLAG)
-#define lv2ent_offset(iova)	(((iova) & ~SECT_MASK) >> SPAGE_ORDER)
 
 #define	PGBASE_TO_PHYS(pgent)	((phys_addr_t)(pgent) << PG_ENT_SHIFT)
 #define ENT_TO_PHYS(ent)	((phys_addr_t)(*(ent)))
@@ -194,7 +192,6 @@ struct sysmmu_drvdata {
 };
 
 struct sysmmu_clientdata {
-	struct device *dev;
 	struct sysmmu_drvdata **sysmmus;
 	struct device_link **dev_link;
 	int sysmmu_count;

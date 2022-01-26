@@ -532,13 +532,10 @@ static void samsung_sysmmu_detach_dev(struct iommu_domain *dom, struct device *d
 {
 	struct sysmmu_clientdata *client;
 	struct samsung_sysmmu_domain *domain;
-	struct list_head *group_list;
 	struct sysmmu_drvdata *drvdata;
-	struct iommu_group *group = dev->iommu_group;
 	int i;
 
 	domain = to_sysmmu_domain(dom);
-	group_list = iommu_group_get_iommudata(group);
 
 	client = dev_iommu_priv_get(dev);
 	for (i = 0; i < client->sysmmu_count; i++) {
@@ -840,10 +837,6 @@ static phys_addr_t samsung_sysmmu_iova_to_phys(struct iommu_domain *dom, dma_add
 	return phys;
 }
 
-void samsung_sysmmu_dump_pagetable(struct device *dev, dma_addr_t iova)
-{
-}
-
 static struct iommu_device *samsung_sysmmu_probe_device(struct device *dev)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
@@ -974,24 +967,12 @@ static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *a
 	struct sysmmu_drvdata *data = platform_get_drvdata(sysmmu);
 	struct sysmmu_drvdata **new_link;
 	struct sysmmu_clientdata *client;
-	struct iommu_fwspec *fwspec;
-	unsigned int fwid = 0;
-	int ret;
 
-	ret = iommu_fwspec_add_ids(dev, &fwid, 1);
-	if (ret) {
-		dev_err(dev, "failed to add fwspec ids (err:%d)\n", ret);
-		iommu_device_unlink(&data->iommu, dev);
-		return ret;
-	}
-
-	fwspec = dev_iommu_fwspec_get(dev);
 	if (!dev_iommu_priv_get(dev)) {
 		client = devres_alloc(samsung_sysmmu_clientdata_release,
 				      sizeof(*client), GFP_KERNEL);
 		if (!client)
 			return -ENOMEM;
-		client->dev = dev;
 		dev_iommu_priv_set(dev, client);
 		devres_add(dev, client);
 	}
@@ -1012,7 +993,7 @@ static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *a
 	if (!exist_36bit_va && data->va_width == VA_WIDTH_36BIT)
 		exist_36bit_va = true;
 
-	return ret;
+	return 0;
 }
 
 static void samsung_sysmmu_put_resv_regions(struct device *dev,
