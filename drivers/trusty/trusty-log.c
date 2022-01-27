@@ -88,8 +88,6 @@ struct trusty_log_sfile {
  * struct trusty_log_sink_state - trusty log sink state
  *
  * @get:              current read unwrapped index
- * @last_successful_next:
- *                    index for the next line after the last successful get
  * @trusty_panicked:  trusty panic status at the start of the sink interation
  *                    (only used for kernel log sink)
  * @sfile:            seq_file used for sinking to a virtual file (misc device);
@@ -106,7 +104,6 @@ struct trusty_log_sfile {
  */
 struct trusty_log_sink_state {
 	u32 get;
-	u32 last_successful_next;
 	bool trusty_panicked;
 
 	/* virtual file sink specific attributes */
@@ -119,11 +116,6 @@ struct trusty_log_state {
 	struct device *trusty_dev;
 	struct trusty_log_sfile log_sfile;
 
-	/*
-	 * This lock is here to ensure only one consumer will read
-	 * from the log ring buffer at a time.
-	 */
-	spinlock_t lock;
 	struct log_rb *log;
 	struct trusty_log_sink_state klog_sink;
 
@@ -292,13 +284,10 @@ static void trusty_log_show(struct trusty_log_state *s,
 	sink->ignore_overflow = false;
 	if (sink->sfile) {
 		seq_printf(sink->sfile, "%s", s->line_buffer);
-		sink->last_successful_next = sink->get;
 	} else {
 		if (sink->trusty_panicked ||
 		    __ratelimit(&trusty_log_rate_limit)) {
 			dev_info(s->dev, "%s", s->line_buffer);
-			/* next line after last successful get */
-			sink->last_successful_next = sink->get;
 		}
 	}
 }
@@ -442,18 +431,13 @@ static int trusty_log_seq_show(struct seq_file *sfile, void *v)
 
 static void trusty_dump_logs(struct trusty_log_state *s)
 {
-	u32 start;
 	int rc;
 	/*
-	 * note: klopg_sink.get and last_successful_next
-	 * initialized to zero by kzalloc
+	 * note: klog_sink.get initialized to zero by kzalloc
 	 */
 	s->klog_sink.trusty_panicked = trusty_get_panic_status(s->trusty_dev);
 
-	start = s->klog_sink.trusty_panicked ?
-			s->klog_sink.last_successful_next :
-			s->klog_sink.get;
-	rc = trusty_log_start(s, &s->klog_sink, start);
+	rc = trusty_log_start(s, &s->klog_sink, s->klog_sink.get);
 	if (rc < 0)
 		return;
 
@@ -479,9 +463,6 @@ static int trusty_log_call_notify(struct notifier_block *nb,
 		wake_up_all(&s->poll_waiters);
 	}
 	spin_unlock_irqrestore(&s->wake_up_lock, flags);
-	spin_lock_irqsave(&s->lock, flags);
-	trusty_dump_logs(s);
-	spin_unlock_irqrestore(&s->lock, flags);
 	return NOTIFY_OK;
 }
 
@@ -558,6 +539,14 @@ static unsigned int trusty_log_sfile_dev_poll(struct file *filp,
 	s = container_of(lb, struct trusty_log_state, log_sfile);
 	poll_wait(filp, &s->poll_waiters, wait);
 	log = s->log;
+
+	/*
+	 * Userspace has read up to filp->f_pos so far. Update klog_sink
+	 * to indicate that, so that we don't end up dumping the entire
+	 * Trusty log in case of panic.
+	 */
+	s->klog_sink.get = (u32)filp->f_pos;
+
 	if (log->put != (u32)filp->f_pos) {
 		/* data ready to read */
 		return EPOLLIN | EPOLLRDNORM;
@@ -651,7 +640,6 @@ static int trusty_log_init(struct platform_device *pdev)
 		goto error_alloc_state;
 	}
 
-	spin_lock_init(&s->lock);
 	s->dev = &pdev->dev;
 	s->trusty_dev = s->dev->parent;
 
