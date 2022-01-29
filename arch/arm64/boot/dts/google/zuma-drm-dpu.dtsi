@@ -17,9 +17,10 @@
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x19900000 0x1000>,	/* DPU_DMA */
 		      <0x0 0x19930000 0x1000>,	/* DPP */
+		      <0x0 0x19940000 0x4000>,  /* SCL_COEF */
 		      <0x0 0x19950000 0x1000>,	/* SRAMCON */
 		      <0x0 0x19980000 0x1000>;	/* HDR */
-		reg-names = "dma", "dpp", "sramc", "hdr";
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr";
 
 		/* DPU_DMA IRQ, DPP IRQ */
 		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L0_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
@@ -44,9 +45,10 @@
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x19901000 0x1000>,
 		      <0x0 0x19931000 0x1000>,
+		      <0x0 0x19940000 0x4000>,
 		      <0x0 0x19951000 0x1000>,
 		      <0x0 0x19981000 0x1000>;
-		reg-names = "dma", "dpp", "sramc", "hdr";
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr";
 
 		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L1_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUF0_DPP_L1_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
@@ -65,9 +67,10 @@
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x19902000 0x1000>,
 		      <0x0 0x19932000 0x1000>,
+		      <0x0 0x19940000 0x4000>,
 		      <0x0 0x19952000 0x1000>,
 		      <0x0 0x19982000 0x1000>;
-		reg-names = "dma", "dpp", "sramc", "hdr";
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr";
 
 		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L2_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUF0_DPP_L2_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
@@ -85,9 +88,10 @@
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x19903000 0x1000>,
 		      <0x0 0x19933000 0x1000>,
+		      <0x0 0x19940000 0x4000>,
 		      <0x0 0x19953000 0x1000>,
 		      <0x0 0x19983000 0x1000>;
-		reg-names = "dma", "dpp", "sramc", "hdr";
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr";
 
 		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L3_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUF0_DPP_L3_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
@@ -106,9 +110,10 @@
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x19904000 0x1000>,
 		      <0x0 0x19934000 0x1000>,
+		      <0x0 0x19940000 0x4000>,
 		      <0x0 0x19954000 0x1000>,
 		      <0x0 0x19984000 0x1000>;
-		reg-names = "dma", "dpp", "sramc", "hdr";
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr";
 
 		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L4_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUF0_DPP_L4_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
@@ -126,9 +131,10 @@
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x19905000 0x1000>,
 		      <0x0 0x19935000 0x1000>,
+		      <0x0 0x19940000 0x4000>,
 		      <0x0 0x19955000 0x1000>,
 		      <0x0 0x19985000 0x1000>;
-		reg-names = "dma", "dpp", "sramc", "hdr";
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr";
 
 		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L5_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUF0_DPP_L5_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
