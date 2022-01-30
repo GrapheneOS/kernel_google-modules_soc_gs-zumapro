@@ -41,6 +41,12 @@
 				reg = <0x0 0x14110000 0x10000>;
 				interrupts = <GIC_SPI 901 IRQ_TYPE_LEVEL_HIGH>;
 			};
+			virtio_9p2000: virtio_block@14200000 {
+				compatible = "virtio,mmio";
+				reg = <0x0 0x14200000 0x10000>;
+				interrupts = <0x0 752 0x4>;
+				phandle = <0x1a>;
+			};
 		};
 	};
 };
