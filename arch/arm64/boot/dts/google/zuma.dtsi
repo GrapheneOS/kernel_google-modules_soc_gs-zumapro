@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright 2020 Google LLC.
+ * Copyright 2022 Google LLC.
  *
  */
 
@@ -9,6 +9,7 @@
 #include <dt-bindings/interrupt-controller/zuma.h>
 
 #include "zuma-drm-dpu.dtsi"
+#include "zuma-dma-heap.dtsi"
 
 / {
 	compatible = "google,zuma";
