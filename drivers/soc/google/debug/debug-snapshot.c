@@ -403,7 +403,7 @@ static int dbg_snapshot_rmem_setup(struct device *dev)
 	struct dbg_snapshot_item *item;
 	bool en;
 	unsigned long i, j;
-	unsigned long flags = VM_NO_GUARD | VM_MAP;
+	unsigned long flags = VM_MAP;
 	pgprot_t prot = __pgprot(PROT_NORMAL_NC);
 	int page_size, mem_count = 0;
 	struct page *page;

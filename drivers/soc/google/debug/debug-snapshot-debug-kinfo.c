@@ -48,7 +48,7 @@ static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)
 	struct device_node *mem_region;
 	phys_addr_t base, size, offset;
 	unsigned int num_pages;
-	unsigned long flags = VM_NO_GUARD | VM_MAP;
+	unsigned long flags = VM_MAP;
 	pgprot_t prot = __pgprot(PROT_NORMAL_NC);
 	struct page **pages;
 	void *vaddr;
