@@ -11,4 +11,5 @@
 };
 
 #include "zuma.dtsi"
+#include "zuma-sysmmu.dtsi"
 
