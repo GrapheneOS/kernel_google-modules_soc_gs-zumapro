@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 / {
-	s2mpu_hsi1: s2mpu@0x11880000 {
+	s2mpu_hsi1: s2mpu@11880000 {
 		compatible = "google,gs101-s2mpu-v1";
 		#address-cells = <2>;
 		#size-cells = <1>;
@@ -15,7 +15,7 @@
 		interrupts = <GIC_SPI IRQ_SYSMMU_HSI1_S2MPU_HSI1 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	s2mpu_hsi2: s2mpu@0x14480000 {
+	s2mpu_hsi2: s2mpu@14480000 {
 		compatible = "google,gs101-s2mpu-v1";
 		#address-cells = <2>;
 		#size-cells = <1>;

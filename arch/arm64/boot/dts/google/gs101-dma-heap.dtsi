@@ -196,7 +196,7 @@
 			       <0x0 0x80000000 0x80000000>;
 	};
 
-	xhci_dma: xhci_dma@0x97000000 {
+	xhci_dma: xhci_dma@97000000 {
 		compatible = "shared-dma-pool";
 		reg = <0x0 0x97000000 0x400000>;
 		no-map;

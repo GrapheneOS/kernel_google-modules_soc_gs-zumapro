@@ -9,7 +9,7 @@
 #include <dt-bindings/thermal/thermal.h>
 
 &acpm_mfd_bus1 {
-	s2mpg11mfd@00 {
+	s2mpg11mfd@0 {
 		gs101_tm1: gs101_spmic_tm1 {
 			compatible = "google,gs101-spmic-thermal";
 			#thermal-sensor-cells = <1>;
