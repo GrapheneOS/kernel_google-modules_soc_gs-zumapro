@@ -278,6 +278,9 @@ static LIST_HEAD(drvdata_list);
 #define RTS_PINCTRL		1
 #define DEFAULT_PINCTRL		0
 
+#define USI_CON			0xC4
+#define USI_OPTION		0xC8
+
 #define USI_RESET		0
 #define USI_SET_RESET		BIT(0)
 #define USI_HWACG_CLKREQ_ON	BIT(1)
