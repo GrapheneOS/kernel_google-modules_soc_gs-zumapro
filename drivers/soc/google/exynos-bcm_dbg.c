@@ -140,9 +140,9 @@ int exynos_bcm_dbg_ipc_send_data(enum exynos_bcm_dbg_ipc_type ipc_type,
 EXPORT_SYMBOL(exynos_bcm_dbg_ipc_send_data);
 
 #if IS_ENABLED(CONFIG_EXYNOS_ADV_TRACER)
-static int adv_tracer_bcm_dbg_handler(struct adv_tracer_ipc_cmd *cmd, unsigned int len)
+static void adv_tracer_bcm_dbg_handler(struct adv_tracer_ipc_cmd *cmd, unsigned int len)
 {
-	return 0;
+	return;
 }
 
 static int exynos_bcm_dbg_ipc_channel_request(struct exynos_bcm_dbg_data *data)
@@ -150,7 +150,7 @@ static int exynos_bcm_dbg_ipc_channel_request(struct exynos_bcm_dbg_data *data)
 	int ret = 0;
 
 	ret = adv_tracer_ipc_request_channel(data->ipc_node,
-				(ipc_callback)adv_tracer_bcm_dbg_handler,
+				adv_tracer_bcm_dbg_handler,
 				&data->ipc_ch_num, &data->ipc_size);
 	if (ret) {
 		BCM_ERR("%s: adv tracer request channel is failed\n", __func__);
