@@ -321,9 +321,10 @@ kernel_modules_install(
         "//gs/google-modules/touch/fts/ftm5:ftm5.slider",
         "//gs/google-modules/touch/sec:sec.slider",
         "//gs/google-modules/uwb/kernel:kernel.slider",
-        "//gs/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
         "//gs/google-modules/soc-modules:gs101_soc",
     ],
+        # TODO(b/217483442) disable till we can fix the Werror errors
+        #"//gs/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
 )
 
 kernel_images(

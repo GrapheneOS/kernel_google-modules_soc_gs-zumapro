@@ -40,7 +40,6 @@ function modify_vendor_ramdisk() {
 EXT_MODULES+="
 gs/google-modules/soc-modules
 gs/google-modules/display
-gs/google-modules/wlan/bcmdhd4389
 gs/google-modules/gpu/mali_pixel
 gs/google-modules/gpu/mali_kbase
 gs/google-modules/lwis
@@ -60,3 +59,5 @@ gs/google-modules/bluetooth/broadcom
 gs/google-modules/nfc
 gs/google-modules/uwb/kernel
 "
+# TODO(b/217483442) disable till we can fix the Werror errors
+#gs/google-modules/wlan/bcmdhd4389
