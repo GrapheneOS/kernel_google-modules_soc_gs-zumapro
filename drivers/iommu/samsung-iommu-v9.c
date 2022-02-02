@@ -1221,7 +1221,7 @@ static int __sysmmu_secure_irq_init(struct device *sysmmu, struct sysmmu_drvdata
 
 static int sysmmu_parse_dt(struct device *sysmmu, struct sysmmu_drvdata *data)
 {
-	unsigned int mask, num_pmmu;
+	unsigned int mask;
 	int ret, qos = DEFAULT_QOS_VALUE, i;
 	struct stream_props *props;
 
@@ -1245,18 +1245,12 @@ static int sysmmu_parse_dt(struct device *sysmmu, struct sysmmu_drvdata *data)
 	/* use async fault mode */
 	data->async_fault_mode = of_property_read_bool(sysmmu->of_node, "sysmmu,async-fault");
 
+	data->vmid_mask = SYSMMU_MASK_VMID;
 	ret = of_property_read_u32_index(sysmmu->of_node, "vmid_mask", 0, &mask);
 	if (!ret && (mask & ((1 << data->max_vm) - 1)))
 		data->vmid_mask = mask;
 
-	/* Parsing pmmu num */
-	ret = of_property_read_u32_index(sysmmu->of_node, "num_pmmu", 0, &num_pmmu);
-	if (ret) {
-		dev_err(sysmmu, "failed to init number of pmmu\n");
-		return ret;
-	}
-	data->num_pmmu = num_pmmu;
-	props = devm_kcalloc(sysmmu, num_pmmu, sizeof(*props), GFP_KERNEL);
+	props = devm_kcalloc(sysmmu, data->num_pmmu, sizeof(*props), GFP_KERNEL);
 	if (!props)
 		return -ENOMEM;
 
@@ -1358,7 +1352,6 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to get h/w info\n");
 		goto err_get_hw_info;
 	}
-	data->vmid_mask = SYSMMU_MASK_VMID;
 
 	ret = sysmmu_parse_dt(data->dev, data);
 	if (ret)
