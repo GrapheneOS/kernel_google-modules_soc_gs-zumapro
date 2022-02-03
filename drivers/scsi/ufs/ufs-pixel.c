@@ -707,7 +707,8 @@ static void pixel_ufs_prepare_command(void *data, struct ufs_hba *hba,
 		WARN_ON(copy_from_iter(&cur_wc, 4, &iter) != 4);
 		cur_wc = cpu_to_be32(cur_wc);
 		if (cur_wc)
-			pr_info("%s RPMB write counter = %8x\n", __func__, cur_wc);
+			pr_info("%s RPMB write counter = %8x; start time %lu\n",
+				__func__, cur_wc, lrbp->cmd->jiffies_at_alloc);
 		if (cur_wc != ufs->security_out_wc)
 			ufs->security_out_wc = cur_wc;
 		else if (cur_wc) {
@@ -1384,15 +1385,11 @@ static ssize_t _name##_show(struct device *dev,				\
 	struct ufs_event_hist *e = &hba->ufs_stats.event[_err_name];	\
 	unsigned long flags;						\
 	u64 val = 0;							\
-	int i, p;							\
+	int p;								\
 	spin_lock_irqsave(hba->host->host_lock, flags);			\
 	switch (_type) {						\
 	case PIXEL_ERR_COUNT:						\
-		for (i = 0; i < UFS_EVENT_HIST_LENGTH; i++) {		\
-			p = (i + e->pos) % UFS_EVENT_HIST_LENGTH;	\
-			if (e->tstamp[p] != 0)				\
-				val++;					\
-		}							\
+		val = e->cnt;						\
 		break;							\
 	case PIXEL_ERR_TIME:						\
 		p = (e->pos + UFS_EVENT_HIST_LENGTH - 1) %		\
