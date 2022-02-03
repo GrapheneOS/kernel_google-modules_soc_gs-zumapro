@@ -254,7 +254,8 @@ static inline size_t get_log_fit_pages(struct samsung_iommu_log *log, int len)
 static void samsung_iommu_deinit_log(struct samsung_iommu_log *log)
 {
 	struct page *page;
-	int i, fit_pages = get_log_fit_pages(log, log->len);
+	unsigned long i;
+	size_t fit_pages = get_log_fit_pages(log, log->len);
 
 	page = virt_to_page(log->log);
 	for (i = 0; i < fit_pages; i++)
@@ -264,7 +265,9 @@ static void samsung_iommu_deinit_log(struct samsung_iommu_log *log)
 static int samsung_iommu_init_log(struct samsung_iommu_log *log, int len)
 {
 	struct page *page;
-	int order, order_pages, fit_pages = get_log_fit_pages(log, len);
+	int order;
+	unsigned long order_pages;
+	size_t fit_pages = get_log_fit_pages(log, len);
 
 	atomic_set(&log->index, 0);
 	order = get_order(fit_pages * PAGE_SIZE);
@@ -276,7 +279,7 @@ static int samsung_iommu_init_log(struct samsung_iommu_log *log, int len)
 
 	order_pages = 1 << order;
 	if (order_pages > fit_pages) {
-		int i;
+		unsigned long i;
 
 		for (i = fit_pages; i < order_pages; i++)
 			__free_page(page + i);
