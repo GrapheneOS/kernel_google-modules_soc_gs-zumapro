@@ -1141,6 +1141,7 @@ static int samsung_sysmmu_def_domain_type(struct device *dev)
 }
 
 static struct iommu_ops samsung_sysmmu_ops = {
+	.owner			= THIS_MODULE,
 	.capable		= samsung_sysmmu_capable,
 	.domain_alloc		= samsung_sysmmu_domain_alloc,
 	.domain_free		= samsung_sysmmu_domain_free,
