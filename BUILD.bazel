@@ -20,7 +20,7 @@ package(
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(
-    "//build/kleaf:kernel.bzl",
+    "//build/kernel/kleaf:kernel.bzl",
     "kernel_build",
     "kernel_build_config",
     "kernel_images",
