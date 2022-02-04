@@ -11,6 +11,7 @@ i2c-dev.ko
 i2c-exynos5.ko
 page_pool.ko
 pinctrl-exynos-gs.ko
+samsung-iommu-group.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
 systrace.ko
