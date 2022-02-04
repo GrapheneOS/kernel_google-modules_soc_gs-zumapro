@@ -5,6 +5,11 @@
  * Copyright 2022 Google LLC.
  */
 
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/zuma.h>
+#include "zuma-isp-event-info.dtsi"
+
 / {
 	lwis_top: lwis_top@0 {
 		compatible = "google,lwis-top-device";
@@ -26,7 +31,37 @@
 		reg-names =
 			"isp-fe",
 			"csis-link-phy";
+
+		interrupts =
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names =
+			"isp_fe_ctx0_fc_bayer",
+			"isp_fe_ctx1_fc_bayer",
+			"isp_fe_ctx2_fc_bayer",
+			"isp_fe_ctx3_fc_bayer",
+			"isp_fe_ctx4_fc_bayer",
+			"isp_fe_ctx0_fc_pdaf",
+			"isp_fe_ctx1_fc_pdaf",
+			"isp_fe_ctx2_fc_pdaf",
+			"isp_fe_ctx3_fc_pdaf";
+		interrupt-event-infos =
+			<&isp_fe_ctx0_fc_bayer>,
+			<&isp_fe_ctx1_fc_bayer>,
+			<&isp_fe_ctx2_fc_bayer>,
+			<&isp_fe_ctx3_fc_bayer>,
+			<&isp_fe_ctx4_fc_bayer>,
+			<&isp_fe_ctx0_fc_pdaf>,
+			<&isp_fe_ctx1_fc_pdaf>,
+			<&isp_fe_ctx2_fc_pdaf>,
+			<&isp_fe_ctx3_fc_pdaf>;
+
 	}
 };
-
-
