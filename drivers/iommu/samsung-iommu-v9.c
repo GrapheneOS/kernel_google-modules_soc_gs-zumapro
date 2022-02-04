@@ -51,7 +51,6 @@ struct samsung_sysmmu_domain {
 	sysmmu_pte_t *page_table;
 	atomic_t *lv2entcnt;
 	spinlock_t pgtablelock;	/* spinlock to access pagetable	*/
-	bool is_va_36bit;
 };
 
 static const char *pmmu_default_stream[PMMU_MAX_NUM] = {
@@ -97,8 +96,7 @@ static inline void samsung_iommu_write_event(struct samsung_iommu_log *iommu_log
 static bool sysmmu_global_init_done;
 static DEFINE_MUTEX(sysmmu_global_mutex); /* Global driver mutex */
 static struct device sync_dev;
-static struct kmem_cache *flpt_cache_32bit, *flpt_cache_36bit, *slpt_cache;
-static bool exist_36bit_va;
+static struct kmem_cache *flpt_cache, *slpt_cache;
 
 static inline u32 __sysmmu_get_hw_version(struct sysmmu_drvdata *data)
 {
@@ -113,20 +111,6 @@ static inline u32 __sysmmu_get_num_vm(struct sysmmu_drvdata *data)
 static inline u32 __sysmmu_get_num_pmmu(struct sysmmu_drvdata *data)
 {
 	return MMU_SWALKER_INFO_NUM_PMMU(readl_relaxed(data->sfrbase + REG_MMU_SWALKER_INFO));
-}
-
-static inline u32 __sysmmu_get_va_width(struct sysmmu_drvdata *data)
-{
-	int i;
-
-	for (i = 0; i < data->num_pmmu; i++) {
-		writel_relaxed(SET_PMMU_INDICATOR(i), data->sfrbase + REG_MMU_PMMU_INDICATOR);
-
-		if (MMU_PMMU_INFO_VA_WIDTH(readl_relaxed(data->sfrbase + REG_MMU_PMMU_INFO)))
-			return VA_WIDTH_36BIT;
-	}
-
-	return VA_WIDTH_32BIT;
 }
 
 static inline void __sysmmu_write_all_vm(struct sysmmu_drvdata *data, u32 value,
@@ -294,8 +278,6 @@ static int samsung_iommu_init_log(struct samsung_iommu_log *log, int len)
 static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 {
 	struct samsung_sysmmu_domain *domain;
-	struct kmem_cache *flpt_cache;
-	size_t num_lv1entries;
 
 	if (type != IOMMU_DOMAIN_UNMANAGED &&
 	    type != IOMMU_DOMAIN_DMA &&
@@ -308,16 +290,11 @@ static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 	if (!domain)
 		return NULL;
 
-	flpt_cache = exist_36bit_va ? flpt_cache_36bit : flpt_cache_32bit;
-	num_lv1entries = exist_36bit_va ? NUM_LV1ENTRIES_36BIT : NUM_LV1ENTRIES_32BIT;
-	domain->is_va_36bit = exist_36bit_va;
-	exist_36bit_va = false;
-
 	domain->page_table = (sysmmu_pte_t *)kmem_cache_alloc(flpt_cache, GFP_KERNEL | __GFP_ZERO);
 	if (!domain->page_table)
 		goto err_pgtable;
 
-	domain->lv2entcnt = kcalloc(num_lv1entries, sizeof(*domain->lv2entcnt), GFP_KERNEL);
+	domain->lv2entcnt = kcalloc(NUM_LV1ENTRIES, sizeof(*domain->lv2entcnt), GFP_KERNEL);
 	if (!domain->lv2entcnt)
 		goto err_counter;
 
@@ -335,7 +312,7 @@ static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 		goto err_init_log;
 	}
 
-	pgtable_flush(domain->page_table, domain->page_table + num_lv1entries);
+	pgtable_flush(domain->page_table, domain->page_table + NUM_LV1ENTRIES);
 
 	spin_lock_init(&domain->pgtablelock);
 
@@ -356,7 +333,6 @@ err_pgtable:
 static void samsung_sysmmu_domain_free(struct iommu_domain *dom)
 {
 	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
-	struct kmem_cache *flpt_cache = domain->is_va_36bit ? flpt_cache_36bit : flpt_cache_32bit;
 
 	samsung_iommu_deinit_log(&domain->log);
 	iommu_put_dma_cookie(dom);
@@ -993,9 +969,6 @@ static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *a
 	dev_info(dev, "has sysmmu %s (total count:%d)\n",
 		 dev_name(data->dev), client->sysmmu_count);
 
-	if (!exist_36bit_va && data->va_width == VA_WIDTH_36BIT)
-		exist_36bit_va = true;
-
 	return 0;
 }
 
@@ -1160,7 +1133,6 @@ static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
 	data->version = __sysmmu_get_hw_version(data);
 	data->max_vm = __sysmmu_get_num_vm(data);
 	data->num_pmmu = __sysmmu_get_num_pmmu(data);
-	data->va_width = __sysmmu_get_va_width(data);
 
 	pm_runtime_put(data->dev);
 
@@ -1302,17 +1274,10 @@ static int samsung_sysmmu_init_global(void)
 {
 	int ret = 0;
 
-	flpt_cache_32bit = kmem_cache_create("samsung-iommu-32bit_lv1table", LV1TABLE_SIZE_32BIT,
-					     LV1TABLE_SIZE_32BIT, 0, NULL);
-	if (!flpt_cache_32bit)
+	flpt_cache = kmem_cache_create("samsung-iommu-lv1table", LV1TABLE_SIZE,
+				       LV1TABLE_SIZE, 0, NULL);
+	if (!flpt_cache)
 		return -ENOMEM;
-
-	flpt_cache_36bit = kmem_cache_create("samsung-iommu-36bit_lv1table", LV1TABLE_SIZE_36BIT,
-					     LV1TABLE_SIZE_36BIT, 0, NULL);
-	if (!flpt_cache_36bit) {
-		ret = -ENOMEM;
-		goto err_init_flpt_fail;
-	}
 
 	slpt_cache = kmem_cache_create("samsung-iommu-lv2table", LV2TABLE_SIZE, LV2TABLE_SIZE,
 				       0, NULL);
@@ -1329,10 +1294,7 @@ static int samsung_sysmmu_init_global(void)
 	return 0;
 
 err_init_slpt_fail:
-	kmem_cache_destroy(flpt_cache_36bit);
-
-err_init_flpt_fail:
-	kmem_cache_destroy(flpt_cache_32bit);
+	kmem_cache_destroy(flpt_cache);
 
 	return ret;
 }

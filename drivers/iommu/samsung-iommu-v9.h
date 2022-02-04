@@ -73,13 +73,9 @@ typedef u32 sysmmu_pte_t;
 
 #define SPAGES_PER_LPAGE	(LPAGE_SIZE / SPAGE_SIZE)
 
-#define VA_WIDTH_32BIT		0x0
-#define VA_WIDTH_36BIT		0x1
-#define NUM_LV1ENTRIES_32BIT	4096
-#define NUM_LV1ENTRIES_36BIT	65536
+#define NUM_LV1ENTRIES		65536
 #define NUM_LV2ENTRIES		(SECT_SIZE / SPAGE_SIZE)
-#define LV1TABLE_SIZE_32BIT	(NUM_LV1ENTRIES_32BIT * sizeof(sysmmu_pte_t))
-#define LV1TABLE_SIZE_36BIT	(NUM_LV1ENTRIES_36BIT * sizeof(sysmmu_pte_t))
+#define LV1TABLE_SIZE		(NUM_LV1ENTRIES * sizeof(sysmmu_pte_t))
 #define LV2TABLE_SIZE		(NUM_LV2ENTRIES * sizeof(sysmmu_pte_t))
 
 #define lv1ent_offset(iova) ((iova) >> SECT_ORDER)
@@ -177,7 +173,6 @@ struct sysmmu_drvdata {
 	phys_addr_t pgtable;
 	spinlock_t lock; /* protect atomic update to H/W status */
 	u32 version;
-	u32 va_width;
 	u32 vmid_mask;
 	int max_vm;
 	int num_pmmu;
