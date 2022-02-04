@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//build/kleaf:kernel.bzl", "kernel_dtstree")
+load("//build/kernel/kleaf:kernel.bzl", "kernel_dtstree")
 
 kernel_dtstree(
     name = "slider_dt",
