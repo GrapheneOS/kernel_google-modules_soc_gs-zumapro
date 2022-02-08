@@ -1193,7 +1193,8 @@ void vh_arch_set_freq_scale_pixel_mod(void *data, const struct cpumask *cpus,
 		scale_freq[i] = *scale;
 }
 
-void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, int *should_iowait_boost)
+void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
+			      int *should_iowait_boost)
 {
 	*should_iowait_boost = p->in_iowait && uclamp_boosted(p);
 }
