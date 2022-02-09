@@ -337,8 +337,8 @@
 		compatible = "samsung,sysmmu-v9";
 		reg = <0x0 0x1D870000 0x10000>;
 
-		interrupts = <0 IRQ_SYSMMU_S2_ISPFE_S1_NONSECURE_ISPFE IRQ_TYPE_LEVEL_HIGH>,
-			     <0 IRQ_SYSMMU_S2_ISPFE_S1_SECURE_ISPFE IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <0 IRQ_SYSMMU_S0_GSE_S1_NS_GSE IRQ_TYPE_LEVEL_HIGH>,
+			     <0 IRQ_SYSMMU_S0_GSE_S1_S_GSE IRQ_TYPE_LEVEL_HIGH>;
 
 		qos = <15>;
 		vmid_mask = <1>;
@@ -348,7 +348,7 @@
 		sysmmu,secure_base = <0x1D880000>;
 /*		power-domains = <&pd_gse>;
  */
-		port-name = "ISPFE S2";
+		port-name = "GSE";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <0x09000107>;
 		pmmu0,stream_property =
