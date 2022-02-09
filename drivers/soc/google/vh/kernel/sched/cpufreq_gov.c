@@ -75,7 +75,7 @@ static DEFINE_PER_CPU(struct sugov_cpu, sugov_cpu);
 DEFINE_PER_CPU(struct uclamp_stats, uclamp_stats);
 
 #if defined(CONFIG_UCLAMP_TASK) && defined(CONFIG_FAIR_GROUP_SCHED)
-extern unsigned long cpu_util_cfs_group_mod(struct rq *rq);
+extern unsigned long cpu_util_cfs_group_mod(int cpu);
 #else
 #define cpu_util_cfs_group_mod cpu_util_cfs
 #endif
@@ -87,8 +87,8 @@ void update_uclamp_stats(int cpu, u64 time)
 	struct uclamp_stats *stats = &per_cpu(uclamp_stats, cpu);
 	s64 delta_ns = time - stats->last_update_time;
 	struct rq *rq = cpu_rq(cpu);
-	unsigned long cpu_util = min(capacity_orig_of(cpu), cpu_util_cfs(rq) + cpu_util_rt(rq));
-	unsigned long cpu_util_max_clamped = min(capacity_orig_of(cpu), cpu_util_cfs_group_mod(rq) +
+	unsigned long cpu_util = min(capacity_orig_of(cpu), cpu_util_cfs(cpu) + cpu_util_rt(rq));
+	unsigned long cpu_util_max_clamped = min(capacity_orig_of(cpu), cpu_util_cfs_group_mod(cpu) +
 						 cpu_util_rt(rq));
 	unsigned int uclamp_min = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
 	unsigned int uclamp_max = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
@@ -458,7 +458,7 @@ unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
 static unsigned long sugov_get_util(struct sugov_cpu *sg_cpu)
 {
 	struct rq *rq = cpu_rq(sg_cpu->cpu);
-	unsigned long util = cpu_util_cfs_group_mod(rq);
+	unsigned long util = cpu_util_cfs_group_mod(sg_cpu->cpu);
 	unsigned long max = arch_scale_cpu_capacity(sg_cpu->cpu);
 
 	sg_cpu->max = max;

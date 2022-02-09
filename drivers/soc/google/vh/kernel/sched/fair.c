@@ -294,8 +294,9 @@ static inline unsigned long cpu_util_cfs_group_mod_no_est(struct rq *rq)
 	return util;
 }
 
-unsigned long cpu_util_cfs_group_mod(struct rq *rq)
+unsigned long cpu_util_cfs_group_mod(int cpu)
 {
+	struct rq *rq = cpu_rq(cpu);
 	unsigned long util = cpu_util_cfs_group_mod_no_est(rq);
 
 	if (sched_feat(UTIL_EST)) {
@@ -313,9 +314,7 @@ unsigned long cpu_util_cfs_group_mod(struct rq *rq)
 
 unsigned long cpu_util(int cpu)
 {
-       struct rq *rq = cpu_rq(cpu);
-
-       unsigned long util = cpu_util_cfs_group_mod(rq);
+       unsigned long util = cpu_util_cfs_group_mod(cpu);
 
        return min_t(unsigned long, util, capacity_of(cpu));
 }
