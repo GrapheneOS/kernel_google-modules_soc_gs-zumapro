@@ -642,7 +642,7 @@ static void __iomem *of_dma_get_arwrapper_address(struct device_node *np, unsign
 	if (!reg_list || num >= count)
 		return NULL;
 
-	return ioremap(of_translate_address(np, reg_list + num), SZ_32);
+	return ioremap(be32_to_cpup(reg_list + num), SZ_32);
 }
 
 /**
@@ -664,7 +664,7 @@ static void __iomem *of_dma_get_awwrapper_address(struct device_node *np, unsign
 	if (!reg_list || num >= count)
 		return NULL;
 
-	return ioremap(of_translate_address(np, reg_list + num), SZ_32);
+	return ioremap(be32_to_cpup(reg_list + num), SZ_32);
 }
 
 /**
