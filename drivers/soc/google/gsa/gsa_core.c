@@ -731,6 +731,15 @@ void gsa_cdev_exit(void)
 	unregister_chrdev_region(gsa_cdev_base_num, MAX_DEVICES);
 }
 
+/*
+ *  External image authentication interface
+ */
+int gsa_authenticate_image(struct device *gsa, dma_addr_t img_meta, phys_addr_t img_body)
+{
+	return gsa_send_load_img_cmd(gsa, GSA_MB_CMD_AUTH_IMG, img_meta, img_body);
+}
+EXPORT_SYMBOL_GPL(gsa_authenticate_image);
+
 /********************************************************************/
 
 static ssize_t gsa_log_show(struct device *gsa, struct device_attribute *attr, char *buf);
