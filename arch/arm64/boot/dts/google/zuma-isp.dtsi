@@ -41,7 +41,22 @@
 			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
 			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
 			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
-			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names =
 			"isp_fe_ctx0_fc_bayer",
 			"isp_fe_ctx1_fc_bayer",
@@ -51,7 +66,22 @@
 			"isp_fe_ctx0_fc_pdaf",
 			"isp_fe_ctx1_fc_pdaf",
 			"isp_fe_ctx2_fc_pdaf",
-			"isp_fe_ctx3_fc_pdaf";
+			"isp_fe_ctx3_fc_pdaf",
+			"isp_fe_ctx0_pdma",
+			"isp_fe_ctx1_pdma",
+			"isp_fe_ctx2_pdma",
+			"isp_fe_ctx3_pdma",
+			"isp_fe_ctx4_pdma",
+			"isp_fe_ctx0_pdma_err",
+			"isp_fe_ctx1_pdma_err",
+			"isp_fe_ctx2_pdma_err",
+			"isp_fe_ctx3_pdma_err",
+			"isp_fe_ctx4_pdma_err",
+			"isp_fe_ctx0_pdma_rstctl",
+			"isp_fe_ctx1_pdma_rstctl",
+			"isp_fe_ctx2_pdma_rstctl",
+			"isp_fe_ctx3_pdma_rstctl",
+			"isp_fe_ctx4_pdma_rstctl";
 		interrupt-event-infos =
 			<&isp_fe_ctx0_fc_bayer>,
 			<&isp_fe_ctx1_fc_bayer>,
@@ -61,7 +91,22 @@
 			<&isp_fe_ctx0_fc_pdaf>,
 			<&isp_fe_ctx1_fc_pdaf>,
 			<&isp_fe_ctx2_fc_pdaf>,
-			<&isp_fe_ctx3_fc_pdaf>;
+			<&isp_fe_ctx3_fc_pdaf>,
+			<&isp_fe_ctx0_pdma>,
+			<&isp_fe_ctx1_pdma>,
+			<&isp_fe_ctx2_pdma>,
+			<&isp_fe_ctx3_pdma>,
+			<&isp_fe_ctx4_pdma>,
+			<&isp_fe_ctx0_pdma_err>,
+			<&isp_fe_ctx1_pdma_err>,
+			<&isp_fe_ctx2_pdma_err>,
+			<&isp_fe_ctx3_pdma_err>,
+			<&isp_fe_ctx4_pdma_err>,
+			<&isp_fe_ctx0_pdma_rstctl>,
+			<&isp_fe_ctx1_pdma_rstctl>,
+			<&isp_fe_ctx2_pdma_rstctl>,
+			<&isp_fe_ctx3_pdma_rstctl>,
+			<&isp_fe_ctx4_pdma_rstctl>;
 
 	}
 };

@@ -225,5 +225,278 @@
 			<ISP_FE_FC_PDAF_CTX3_PDAF_LATE_CONFIG>,
 			<ISP_FE_FC_PDAF_CTX3_PDAF_ERROR>;
 	};
+	/* PDMA interrupt event definitions */
+	isp_fe_ctx0_pdma: isp_fe-event-info@9 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x90020>;
+		irq-reset-reg = <0x0 0x90020>;
+		irq-mask-reg = <0x0 0x9002c>;
+		irq-overflow-reg = <0x0 0x90024>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_IRQ_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_ALMOST_EMPTY>;
+		int-reg-bits =
+			<ISP_FE_PDMA_CTX0_IRQ_CMD>,
+			<ISP_FE_PDMA_CTX0_ALMOST_EMPTY>;
+	};
+	isp_fe_ctx1_pdma: isp_fe-event-info@10 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x91020>;
+		irq-reset-reg = <0x0 0x91020>;
+		irq-mask-reg = <0x0 0x9102c>;
+		irq-overflow-reg = <0x0 0x91024>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_IRQ_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_ALMOST_EMPTY>;
+		int-reg-bits =
+			<ISP_FE_PDMA_CTX1_IRQ_CMD>,
+			<ISP_FE_PDMA_CTX1_ALMOST_EMPTY>;
+	};
+	isp_fe_ctx2_pdma: isp_fe-event-info@11 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x92020>;
+		irq-reset-reg = <0x0 0x92020>;
+		irq-mask-reg = <0x0 0x9202c>;
+		irq-overflow-reg = <0x0 0x92024>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_IRQ_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_ALMOST_EMPTY>;
+		int-reg-bits =
+			<ISP_FE_PDMA_CTX2_IRQ_CMD>,
+			<ISP_FE_PDMA_CTX2_ALMOST_EMPTY>;
+	};
+	isp_fe_ctx3_pdma: isp_fe-event-info@12 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x93020>;
+		irq-reset-reg = <0x0 0x93020>;
+		irq-mask-reg = <0x0 0x9302c>;
+		irq-overflow-reg = <0x0 0x93024>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_IRQ_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_ALMOST_EMPTY>;
+		int-reg-bits =
+			<ISP_FE_PDMA_CTX3_IRQ_CMD>,
+			<ISP_FE_PDMA_CTX3_ALMOST_EMPTY>;
+	};
+	isp_fe_ctx4_pdma: isp_fe-event-info@13 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x94020>;
+		irq-reset-reg = <0x0 0x94020>;
+		irq-mask-reg = <0x0 0x9402c>;
+		irq-overflow-reg = <0x0 0x94024>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_IRQ_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_ALMOST_EMPTY>;
+		int-reg-bits =
+			<ISP_FE_PDMA_CTX4_IRQ_CMD>,
+			<ISP_FE_PDMA_CTX4_ALMOST_EMPTY>;
+	};
+	/* PDMA error interrupt event definitions */
+	isp_fe_ctx0_pdma_err: isp_fe-event-info@14 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x90034>;
+		irq-reset-reg = <0x0 0x90034>;
+		irq-mask-reg = <0x0 0x90040>;
+		irq-overflow-reg = <0x0 0x90038>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_MEM_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_CSR_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_ILLEGAL_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_RECUR_INDIR_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_CMD_SIZE_MISMATCH>;
+		int-reg-bits =
+			<ISP_FE_PDMA_ERR_CTX0_MEM_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX0_CSR_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX0_ILLEGAL_CMD>,
+			<ISP_FE_PDMA_ERR_CTX0_RECUR_INDIR_CMD>,
+			<ISP_FE_PDMA_ERR_CTX0_CMD_SIZE_MISMATCH>;
+	};
+	isp_fe_ctx1_pdma_err: isp_fe-event-info@15 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x91034>;
+		irq-reset-reg = <0x0 0x91034>;
+		irq-mask-reg = <0x0 0x91040>;
+		irq-overflow-reg = <0x0 0x91038>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_MEM_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_CSR_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_ILLEGAL_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_RECUR_INDIR_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_CMD_SIZE_MISMATCH>;
+		int-reg-bits =
+			<ISP_FE_PDMA_ERR_CTX1_MEM_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX1_CSR_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX1_ILLEGAL_CMD>,
+			<ISP_FE_PDMA_ERR_CTX1_RECUR_INDIR_CMD>,
+			<ISP_FE_PDMA_ERR_CTX1_CMD_SIZE_MISMATCH>;
+	};
+	isp_fe_ctx2_pdma_err: isp_fe-event-info@16 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x92034>;
+		irq-reset-reg = <0x0 0x92034>;
+		irq-mask-reg = <0x0 0x92040>;
+		irq-overflow-reg = <0x0 0x92038>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_MEM_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_CSR_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_ILLEGAL_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_RECUR_INDIR_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_CMD_SIZE_MISMATCH>;
+		int-reg-bits =
+			<ISP_FE_PDMA_ERR_CTX2_MEM_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX2_CSR_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX2_ILLEGAL_CMD>,
+			<ISP_FE_PDMA_ERR_CTX2_RECUR_INDIR_CMD>,
+			<ISP_FE_PDMA_ERR_CTX2_CMD_SIZE_MISMATCH>;
+	};
+	isp_fe_ctx3_pdma_err: isp_fe-event-info@17 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x93034>;
+		irq-reset-reg = <0x0 0x93034>;
+		irq-mask-reg = <0x0 0x93040>;
+		irq-overflow-reg = <0x0 0x93038>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_MEM_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_CSR_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_ILLEGAL_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_RECUR_INDIR_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_CMD_SIZE_MISMATCH>;
+		int-reg-bits =
+			<ISP_FE_PDMA_ERR_CTX3_MEM_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX3_CSR_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX3_ILLEGAL_CMD>,
+			<ISP_FE_PDMA_ERR_CTX3_RECUR_INDIR_CMD>,
+			<ISP_FE_PDMA_ERR_CTX3_CMD_SIZE_MISMATCH>;
+	};
+	isp_fe_ctx4_pdma_err: isp_fe-event-info@18 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x94034>;
+		irq-reset-reg = <0x0 0x94034>;
+		irq-mask-reg = <0x0 0x94040>;
+		irq-overflow-reg = <0x0 0x94038>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_MEM_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_CSR_BUS_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_ILLEGAL_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_RECUR_INDIR_CMD>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_CMD_SIZE_MISMATCH>;
+		int-reg-bits =
+			<ISP_FE_PDMA_ERR_CTX4_MEM_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX4_CSR_BUS_ERR>,
+			<ISP_FE_PDMA_ERR_CTX4_ILLEGAL_CMD>,
+			<ISP_FE_PDMA_ERR_CTX4_RECUR_INDIR_CMD>,
+			<ISP_FE_PDMA_ERR_CTX4_CMD_SIZE_MISMATCH>;
+	};
+	/* PDMA Wrap reset controller interrupt event definitions */
+	isp_fe_ctx0_pdma_rstctl: isp_fe-event-info@19 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x95180>;
+		irq-reset-reg = <0x0 0x95180>;
+		irq-mask-reg = <0x0 0x9518c>;
+		irq-overflow-reg = <0x0 0x95184>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_SW_RESET_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_INPUT_FLUSH_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_SW_MODE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_APB_GKP_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX0_AXI_GKP_ERR>;
+		int-reg-bits =
+			<ISP_FE_PDMA_RSTCTL_CTX0_SW_RESET_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX0_INPUT_FLUSH_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX0_SW_MODE>,
+			<ISP_FE_PDMA_RSTCTL_CTX0_APB_GKP_ERR>,
+			<ISP_FE_PDMA_RSTCTL_CTX0_AXI_GKP_ERR>;
+	};
+	isp_fe_ctx1_pdma_rstctl: isp_fe-event-info@20 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x95280>;
+		irq-reset-reg = <0x0 0x95280>;
+		irq-mask-reg = <0x0 0x9528c>;
+		irq-overflow-reg = <0x0 0x95284>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_SW_RESET_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_INPUT_FLUSH_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_SW_MODE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_APB_GKP_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX1_AXI_GKP_ERR>;
+		int-reg-bits =
+			<ISP_FE_PDMA_RSTCTL_CTX1_SW_RESET_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX1_INPUT_FLUSH_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX1_SW_MODE>,
+			<ISP_FE_PDMA_RSTCTL_CTX1_APB_GKP_ERR>,
+			<ISP_FE_PDMA_RSTCTL_CTX1_AXI_GKP_ERR>;
+	};
+	isp_fe_ctx2_pdma_rstctl: isp_fe-event-info@21 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x95380>;
+		irq-reset-reg = <0x0 0x95380>;
+		irq-mask-reg = <0x0 0x9538c>;
+		irq-overflow-reg = <0x0 0x95384>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_SW_RESET_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_INPUT_FLUSH_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_SW_MODE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_APB_GKP_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX2_AXI_GKP_ERR>;
+		int-reg-bits =
+			<ISP_FE_PDMA_RSTCTL_CTX2_SW_RESET_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX2_INPUT_FLUSH_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX2_SW_MODE>,
+			<ISP_FE_PDMA_RSTCTL_CTX2_APB_GKP_ERR>,
+			<ISP_FE_PDMA_RSTCTL_CTX2_AXI_GKP_ERR>;
+	};
+	isp_fe_ctx3_pdma_rstctl: isp_fe-event-info@22 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x95480>;
+		irq-reset-reg = <0x0 0x95480>;
+		irq-mask-reg = <0x0 0x9548c>;
+		irq-overflow-reg = <0x0 0x95484>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_SW_RESET_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_INPUT_FLUSH_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_SW_MODE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_APB_GKP_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX3_AXI_GKP_ERR>;
+		int-reg-bits =
+			<ISP_FE_PDMA_RSTCTL_CTX3_SW_RESET_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX3_INPUT_FLUSH_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX3_SW_MODE>,
+			<ISP_FE_PDMA_RSTCTL_CTX3_APB_GKP_ERR>,
+			<ISP_FE_PDMA_RSTCTL_CTX3_AXI_GKP_ERR>;
+	};
+	isp_fe_ctx4_pdma_rstctl: isp_fe-event-info@23 {
+		irq-reg-space = "isp_fe";
+		irq-src-reg = <0x0 0x95580>;
+		irq-reset-reg = <0x0 0x95580>;
+		irq-mask-reg = <0x0 0x9558c>;
+		irq-overflow-reg = <0x0 0x95584>;
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_SW_RESET_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_INPUT_FLUSH_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_SW_MODE>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_APB_GKP_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CTX4_AXI_GKP_ERR>;
+		int-reg-bits =
+			<ISP_FE_PDMA_RSTCTL_CTX4_SW_RESET_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX4_INPUT_FLUSH_DONE>,
+			<ISP_FE_PDMA_RSTCTL_CTX4_SW_MODE>,
+			<ISP_FE_PDMA_RSTCTL_CTX4_APB_GKP_ERR>,
+			<ISP_FE_PDMA_RSTCTL_CTX4_AXI_GKP_ERR>;
+	};
 
 }
