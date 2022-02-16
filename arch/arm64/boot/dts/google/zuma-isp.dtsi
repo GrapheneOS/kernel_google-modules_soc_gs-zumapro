@@ -66,7 +66,127 @@
 			<GIC_SPI IRQ_ISPFE_3_ISPFE IRQ_TYPE_LEVEL_HIGH>
 			<GIC_SPI IRQ_ISPFE_3_ISPFE IRQ_TYPE_LEVEL_HIGH>
 			<GIC_SPI IRQ_ISPFE_3_ISPFE IRQ_TYPE_LEVEL_HIGH>
-			<GIC_SPI IRQ_ISPFE_2_ISPFE IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI IRQ_ISPFE_2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names =
 			"isp_fe_ctx0_fc_bayer",
 			"isp_fe_ctx1_fc_bayer",
@@ -101,7 +221,127 @@
 			"isp_fe_ctx1_lmp_pdaf",
 			"isp_fe_ctx2_lmp_pdaf",
 			"isp_fe_ctx3_lmp_pdaf",
-			"isp_fe_lmp_debug";
+			"isp_fe_lmp_debug",
+			"isp_fe_csis_core_cmn_ctl",
+			"isp_fe_csis_core_ebuf_ctl",
+			"isp_fe_loch0_csis_core_img_abort_done",
+			"isp_fe_loch1_csis_core_img_abort_done",
+			"isp_fe_loch2_csis_core_img_abort_done",
+			"isp_fe_loch3_csis_core_img_abort_done",
+			"isp_fe_loch4_csis_core_img_abort_done",
+			"isp_fe_loch5_csis_core_img_abort_done",
+			"isp_fe_loch6_csis_core_img_abort_done",
+			"isp_fe_loch0_csis_core_img_proc",
+			"isp_fe_loch1_csis_core_img_proc",
+			"isp_fe_loch2_csis_core_img_proc",
+			"isp_fe_loch3_csis_core_img_proc",
+			"isp_fe_loch4_csis_core_img_proc",
+			"isp_fe_loch5_csis_core_img_proc",
+			"isp_fe_loch6_csis_core_img_proc",
+			"isp_fe_loch0_csis_core_img_err",
+			"isp_fe_loch1_csis_core_img_err",
+			"isp_fe_loch2_csis_core_img_err",
+			"isp_fe_loch3_csis_core_img_err",
+			"isp_fe_loch4_csis_core_img_err",
+			"isp_fe_loch5_csis_core_img_err",
+			"isp_fe_loch6_csis_core_img_err",
+			"isp_fe_loch0_csis_core_img_mute",
+			"isp_fe_loch1_csis_core_img_mute",
+			"isp_fe_loch2_csis_core_img_mute",
+			"isp_fe_loch3_csis_core_img_mute",
+			"isp_fe_loch4_csis_core_img_mute",
+			"isp_fe_loch5_csis_core_img_mute",
+			"isp_fe_loch6_csis_core_img_mute",
+			"isp_fe_loch0_csis_core_pd_abort_done",
+			"isp_fe_loch1_csis_core_pd_abort_done",
+			"isp_fe_loch2_csis_core_pd_abort_done",
+			"isp_fe_loch3_csis_core_pd_abort_done",
+			"isp_fe_loch4_csis_core_pd_abort_done",
+			"isp_fe_loch5_csis_core_pd_abort_done",
+			"isp_fe_loch6_csis_core_pd_abort_done",
+			"isp_fe_loch0_csis_core_pd_proc",
+			"isp_fe_loch1_csis_core_pd_proc",
+			"isp_fe_loch2_csis_core_pd_proc",
+			"isp_fe_loch3_csis_core_pd_proc",
+			"isp_fe_loch4_csis_core_pd_proc",
+			"isp_fe_loch5_csis_core_pd_proc",
+			"isp_fe_loch6_csis_core_pd_proc",
+			"isp_fe_loch0_csis_core_pd_err",
+			"isp_fe_loch1_csis_core_pd_err",
+			"isp_fe_loch2_csis_core_pd_err",
+			"isp_fe_loch3_csis_core_pd_err",
+			"isp_fe_loch4_csis_core_pd_err",
+			"isp_fe_loch5_csis_core_pd_err",
+			"isp_fe_loch6_csis_core_pd_err",
+			"isp_fe_loch0_csis_core_pd_mute",
+			"isp_fe_loch1_csis_core_pd_mute",
+			"isp_fe_loch2_csis_core_pd_mute",
+			"isp_fe_loch3_csis_core_pd_mute",
+			"isp_fe_loch4_csis_core_pd_mute",
+			"isp_fe_loch5_csis_core_pd_mute",
+			"isp_fe_loch6_csis_core_pd_mute",
+			"isp_fe_loch0_csis_core_vc_abort_done",
+			"isp_fe_loch1_csis_core_vc_abort_done",
+			"isp_fe_loch2_csis_core_vc_abort_done",
+			"isp_fe_loch3_csis_core_vc_abort_done",
+			"isp_fe_loch4_csis_core_vc_abort_done",
+			"isp_fe_loch5_csis_core_vc_abort_done",
+			"isp_fe_loch6_csis_core_vc_abort_done",
+			"isp_fe_loch7_csis_core_vc_abort_done",
+			"isp_fe_loch8_csis_core_vc_abort_done",
+			"isp_fe_loch9_csis_core_vc_abort_done",
+			"isp_fe_loch10_csis_core_vc_abort_done",
+			"isp_fe_loch11_csis_core_vc_abort_done",
+			"isp_fe_loch12_csis_core_vc_abort_done",
+			"isp_fe_loch13_csis_core_vc_abort_done",
+			"isp_fe_loch0_csis_core_vc_proc",
+			"isp_fe_loch1_csis_core_vc_proc",
+			"isp_fe_loch2_csis_core_vc_proc",
+			"isp_fe_loch3_csis_core_vc_proc",
+			"isp_fe_loch4_csis_core_vc_proc",
+			"isp_fe_loch5_csis_core_vc_proc",
+			"isp_fe_loch6_csis_core_vc_proc",
+			"isp_fe_loch7_csis_core_vc_proc",
+			"isp_fe_loch8_csis_core_vc_proc",
+			"isp_fe_loch9_csis_core_vc_proc",
+			"isp_fe_loch10_csis_core_vc_proc",
+			"isp_fe_loch11_csis_core_vc_proc",
+			"isp_fe_loch12_csis_core_vc_proc",
+			"isp_fe_loch13_csis_core_vc_proc",
+			"isp_fe_loch0_csis_core_vc_err",
+			"isp_fe_loch1_csis_core_vc_err",
+			"isp_fe_loch2_csis_core_vc_err",
+			"isp_fe_loch3_csis_core_vc_err",
+			"isp_fe_loch4_csis_core_vc_err",
+			"isp_fe_loch5_csis_core_vc_err",
+			"isp_fe_loch6_csis_core_vc_err",
+			"isp_fe_loch7_csis_core_vc_err",
+			"isp_fe_loch8_csis_core_vc_err",
+			"isp_fe_loch9_csis_core_vc_err",
+			"isp_fe_loch10_csis_core_vc_err",
+			"isp_fe_loch11_csis_core_vc_err",
+			"isp_fe_loch12_csis_core_vc_err",
+			"isp_fe_loch13_csis_core_vc_err",
+			"isp_fe_loch0_csis_core_vc_mute",
+			"isp_fe_loch1_csis_core_vc_mute",
+			"isp_fe_loch2_csis_core_vc_mute",
+			"isp_fe_loch3_csis_core_vc_mute",
+			"isp_fe_loch4_csis_core_vc_mute",
+			"isp_fe_loch5_csis_core_vc_mute",
+			"isp_fe_loch6_csis_core_vc_mute",
+			"isp_fe_loch7_csis_core_vc_mute",
+			"isp_fe_loch8_csis_core_vc_mute",
+			"isp_fe_loch9_csis_core_vc_mute",
+			"isp_fe_loch10_csis_core_vc_mute",
+			"isp_fe_loch11_csis_core_vc_mute",
+			"isp_fe_loch12_csis_core_vc_mute",
+			"isp_fe_loch13_csis_core_vc_mute",
+			"isp_fe_ctx0_csis_core_rdma_abort_done",
+			"isp_fe_ctx1_csis_core_rdma_abort_done",
+			"isp_fe_ctx0_csis_core_rdma_proc",
+			"isp_fe_ctx1_csis_core_rdma_proc",
+			"isp_fe_ctx0_csis_core_rdma_err",
+			"isp_fe_ctx1_csis_core_rdma_err";
 		interrupt-event-infos =
 			<&isp_fe_ctx0_fc_bayer>,
 			<&isp_fe_ctx1_fc_bayer>,
@@ -136,7 +376,126 @@
 			<&isp_fe_ctx1_lmp_pdaf>,
 			<&isp_fe_ctx2_lmp_pdaf>,
 			<&isp_fe_ctx3_lmp_pdaf>,
-			<&isp_fe_lmp_debug>;
-
+			<&isp_fe_lmp_debug>,
+			<&isp_fe_csis_core_cmn_ctl>,
+			<&isp_fe_csis_core_ebuf_ctl>,
+			<&isp_fe_loch0_csis_core_img_abort_done>,
+			<&isp_fe_loch1_csis_core_img_abort_done>,
+			<&isp_fe_loch2_csis_core_img_abort_done>,
+			<&isp_fe_loch3_csis_core_img_abort_done>,
+			<&isp_fe_loch4_csis_core_img_abort_done>,
+			<&isp_fe_loch5_csis_core_img_abort_done>,
+			<&isp_fe_loch6_csis_core_img_abort_done>,
+			<&isp_fe_loch0_csis_core_img_proc>,
+			<&isp_fe_loch1_csis_core_img_proc>,
+			<&isp_fe_loch2_csis_core_img_proc>,
+			<&isp_fe_loch3_csis_core_img_proc>,
+			<&isp_fe_loch4_csis_core_img_proc>,
+			<&isp_fe_loch5_csis_core_img_proc>,
+			<&isp_fe_loch6_csis_core_img_proc>,
+			<&isp_fe_loch0_csis_core_img_err>,
+			<&isp_fe_loch1_csis_core_img_err>,
+			<&isp_fe_loch2_csis_core_img_err>,
+			<&isp_fe_loch3_csis_core_img_err>,
+			<&isp_fe_loch4_csis_core_img_err>,
+			<&isp_fe_loch5_csis_core_img_err>,
+			<&isp_fe_loch6_csis_core_img_err>,
+			<&isp_fe_loch0_csis_core_img_mute>,
+			<&isp_fe_loch1_csis_core_img_mute>,
+			<&isp_fe_loch2_csis_core_img_mute>,
+			<&isp_fe_loch3_csis_core_img_mute>,
+			<&isp_fe_loch4_csis_core_img_mute>,
+			<&isp_fe_loch5_csis_core_img_mute>,
+			<&isp_fe_loch6_csis_core_img_mute>,
+			<&isp_fe_loch0_csis_core_pd_abort_done>,
+			<&isp_fe_loch1_csis_core_pd_abort_done>,
+			<&isp_fe_loch2_csis_core_pd_abort_done>,
+			<&isp_fe_loch3_csis_core_pd_abort_done>,
+			<&isp_fe_loch4_csis_core_pd_abort_done>,
+			<&isp_fe_loch5_csis_core_pd_abort_done>,
+			<&isp_fe_loch6_csis_core_pd_abort_done>,
+			<&isp_fe_loch0_csis_core_pd_proc>,
+			<&isp_fe_loch1_csis_core_pd_proc>,
+			<&isp_fe_loch2_csis_core_pd_proc>,
+			<&isp_fe_loch3_csis_core_pd_proc>,
+			<&isp_fe_loch4_csis_core_pd_proc>,
+			<&isp_fe_loch5_csis_core_pd_proc>,
+			<&isp_fe_loch6_csis_core_pd_proc>,
+			<&isp_fe_loch0_csis_core_pd_err>,
+			<&isp_fe_loch1_csis_core_pd_err>,
+			<&isp_fe_loch2_csis_core_pd_err>,
+			<&isp_fe_loch3_csis_core_pd_err>,
+			<&isp_fe_loch4_csis_core_pd_err>,
+			<&isp_fe_loch5_csis_core_pd_err>,
+			<&isp_fe_loch6_csis_core_pd_err>,
+			<&isp_fe_loch0_csis_core_pd_mute>,
+			<&isp_fe_loch1_csis_core_pd_mute>,
+			<&isp_fe_loch2_csis_core_pd_mute>,
+			<&isp_fe_loch3_csis_core_pd_mute>,
+			<&isp_fe_loch4_csis_core_pd_mute>,
+			<&isp_fe_loch5_csis_core_pd_mute>,
+			<&isp_fe_loch6_csis_core_pd_mute>,
+			<&isp_fe_loch0_csis_core_vc_abort_done>,
+			<&isp_fe_loch1_csis_core_vc_abort_done>,
+			<&isp_fe_loch2_csis_core_vc_abort_done>,
+			<&isp_fe_loch3_csis_core_vc_abort_done>,
+			<&isp_fe_loch4_csis_core_vc_abort_done>,
+			<&isp_fe_loch5_csis_core_vc_abort_done>,
+			<&isp_fe_loch6_csis_core_vc_abort_done>,
+			<&isp_fe_loch7_csis_core_vc_abort_done>,
+			<&isp_fe_loch8_csis_core_vc_abort_done>,
+			<&isp_fe_loch9_csis_core_vc_abort_done>,
+			<&isp_fe_loch10_csis_core_vc_abort_done>,
+			<&isp_fe_loch11_csis_core_vc_abort_done>,
+			<&isp_fe_loch12_csis_core_vc_abort_done>,
+			<&isp_fe_loch13_csis_core_vc_abort_done>,
+			<&isp_fe_loch0_csis_core_vc_proc>,
+			<&isp_fe_loch1_csis_core_vc_proc>,
+			<&isp_fe_loch2_csis_core_vc_proc>,
+			<&isp_fe_loch3_csis_core_vc_proc>,
+			<&isp_fe_loch4_csis_core_vc_proc>,
+			<&isp_fe_loch5_csis_core_vc_proc>,
+			<&isp_fe_loch6_csis_core_vc_proc>,
+			<&isp_fe_loch7_csis_core_vc_proc>,
+			<&isp_fe_loch8_csis_core_vc_proc>,
+			<&isp_fe_loch9_csis_core_vc_proc>,
+			<&isp_fe_loch10_csis_core_vc_proc>,
+			<&isp_fe_loch11_csis_core_vc_proc>,
+			<&isp_fe_loch12_csis_core_vc_proc>,
+			<&isp_fe_loch13_csis_core_vc_proc>,
+			<&isp_fe_loch0_csis_core_vc_err>,
+			<&isp_fe_loch1_csis_core_vc_err>,
+			<&isp_fe_loch2_csis_core_vc_err>,
+			<&isp_fe_loch3_csis_core_vc_err>,
+			<&isp_fe_loch4_csis_core_vc_err>,
+			<&isp_fe_loch5_csis_core_vc_err>,
+			<&isp_fe_loch6_csis_core_vc_err>,
+			<&isp_fe_loch7_csis_core_vc_err>,
+			<&isp_fe_loch8_csis_core_vc_err>,
+			<&isp_fe_loch9_csis_core_vc_err>,
+			<&isp_fe_loch10_csis_core_vc_err>,
+			<&isp_fe_loch11_csis_core_vc_err>,
+			<&isp_fe_loch12_csis_core_vc_err>,
+			<&isp_fe_loch13_csis_core_vc_err>,
+			<&isp_fe_loch0_csis_core_vc_mute>,
+			<&isp_fe_loch1_csis_core_vc_mute>,
+			<&isp_fe_loch2_csis_core_vc_mute>,
+			<&isp_fe_loch3_csis_core_vc_mute>,
+			<&isp_fe_loch4_csis_core_vc_mute>,
+			<&isp_fe_loch5_csis_core_vc_mute>,
+			<&isp_fe_loch6_csis_core_vc_mute>,
+			<&isp_fe_loch7_csis_core_vc_mute>,
+			<&isp_fe_loch8_csis_core_vc_mute>,
+			<&isp_fe_loch9_csis_core_vc_mute>,
+			<&isp_fe_loch10_csis_core_vc_mute>,
+			<&isp_fe_loch11_csis_core_vc_mute>,
+			<&isp_fe_loch12_csis_core_vc_mute>,
+			<&isp_fe_loch13_csis_core_vc_mute>,
+			<&isp_fe_ctx0_csis_core_rdma_abort_done>,
+			<&isp_fe_ctx1_csis_core_rdma_abort_done>,
+			<&isp_fe_ctx0_csis_core_rdma_proc>,
+			<&isp_fe_ctx1_csis_core_rdma_proc>,
+			<&isp_fe_ctx0_csis_core_rdma_err>,
+			<&isp_fe_ctx1_csis_core_rdma_err>;
 	}
 };
