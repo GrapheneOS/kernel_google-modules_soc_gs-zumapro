@@ -56,7 +56,17 @@
 			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
 			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
 			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
-			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI IRQ_ISPFE_4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_3_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_3_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_3_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_3_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_ISPFE_2_ISPFE IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names =
 			"isp_fe_ctx0_fc_bayer",
 			"isp_fe_ctx1_fc_bayer",
@@ -81,7 +91,17 @@
 			"isp_fe_ctx1_pdma_rstctl",
 			"isp_fe_ctx2_pdma_rstctl",
 			"isp_fe_ctx3_pdma_rstctl",
-			"isp_fe_ctx4_pdma_rstctl";
+			"isp_fe_ctx4_pdma_rstctl",
+			"isp_fe_ctx0_lmp_bayer",
+			"isp_fe_ctx1_lmp_bayer",
+			"isp_fe_ctx2_lmp_bayer",
+			"isp_fe_ctx3_lmp_bayer",
+			"isp_fe_ctx4_lmp_bayer",
+			"isp_fe_ctx0_lmp_pdaf",
+			"isp_fe_ctx1_lmp_pdaf",
+			"isp_fe_ctx2_lmp_pdaf",
+			"isp_fe_ctx3_lmp_pdaf",
+			"isp_fe_lmp_debug";
 		interrupt-event-infos =
 			<&isp_fe_ctx0_fc_bayer>,
 			<&isp_fe_ctx1_fc_bayer>,
@@ -106,7 +126,17 @@
 			<&isp_fe_ctx1_pdma_rstctl>,
 			<&isp_fe_ctx2_pdma_rstctl>,
 			<&isp_fe_ctx3_pdma_rstctl>,
-			<&isp_fe_ctx4_pdma_rstctl>;
+			<&isp_fe_ctx4_pdma_rstctl>,
+			<&isp_fe_ctx0_lmp_bayer>,
+			<&isp_fe_ctx1_lmp_bayer>,
+			<&isp_fe_ctx2_lmp_bayer>,
+			<&isp_fe_ctx3_lmp_bayer>,
+			<&isp_fe_ctx4_lmp_bayer>,
+			<&isp_fe_ctx0_lmp_pdaf>,
+			<&isp_fe_ctx1_lmp_pdaf>,
+			<&isp_fe_ctx2_lmp_pdaf>,
+			<&isp_fe_ctx3_lmp_pdaf>,
+			<&isp_fe_lmp_debug>;
 
 	}
 };
