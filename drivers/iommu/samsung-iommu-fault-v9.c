@@ -661,7 +661,7 @@ static void sysmmu_get_interrupt_info(struct sysmmu_drvdata *data,
 				      int *intr_type, unsigned long *addr,
 				      int *vmid, bool is_secure)
 {
-	*intr_type = ffs(__sysmmu_get_intr_status(data, is_secure, vmid));
+	*intr_type = __ffs(__sysmmu_get_intr_status(data, is_secure, vmid));
 	*addr = __sysmmu_get_fault_address(data, is_secure, *vmid);
 }
 
