@@ -497,5 +497,61 @@
 			<&isp_fe_ctx1_csis_core_rdma_proc>,
 			<&isp_fe_ctx0_csis_core_rdma_err>,
 			<&isp_fe_ctx1_csis_core_rdma_err>;
-	}
+	};
+
+	lwis_gdc0: lwis_gdc@1D440000 {
+		compatible = "google,lwis-ioreg-device";
+
+		/* Device node name */
+		node-name = "gdc0";
+
+		/* Register space */
+		reg =
+			<0x0 0x1D440000 0x10000>,	/* GDC0 */
+			<0x0 0x1D500000 0x10000>;	/* GDC0 SSMT */
+		reg-names =
+			"gdc",
+			"gdc_ssmt";
+
+		interrupts =
+			<GIC_SPI IRQ_GDC0_IRQ_0_GDC IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_GDC0_IRQ_1_GDC IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_GDC0_IRQ_0_GDC IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names =
+			"gdc-int0",
+			"gdc-int1",
+			"gdc-cmdq-int";
+		interrupt-event-infos =
+			<&gdc_int0>,
+			<&gdc_int1>,
+			<&gdc_cmdq_int>;
+	};
+
+	lwis_gdc1: lwis_gdc@1D470000 {
+		compatible = "google,lwis-ioreg-device";
+
+		/* Device node name */
+		node-name = "gdc1";
+
+		/* Register space */
+		reg =
+			<0x0 0x1D470000 0x10000>,  /* GDC1 */
+			<0x0 0x1D540000 0x10000>;  /* GDC1 SSMT */
+		reg-names =
+			"gdc",
+			"gdc_ssmt";
+
+		interrupts =
+			<GIC_SPI IRQ_GDC1_IRQ_0_GDC IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_GDC1_IRQ_1_GDC IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_GDC1_IRQ_0_GDC IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names =
+			"gdc-int0",
+			"gdc-int1",
+			"gdc-cmdq-int";
+		interrupt-event-infos =
+			<&gdc_int0>,
+			<&gdc_int1>,
+			<&gdc_cmdq_int>;
+	};
 };
