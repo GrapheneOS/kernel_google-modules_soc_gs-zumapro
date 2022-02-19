@@ -97,7 +97,6 @@ kernel_build(
         "sg.ko",
         "softdog.ko",
         "spidev.ko",
-        "videobuf2-dma-sg.ko",
         "zsmalloc.ko",
     ],
     # Keep in sync with build.config.common
