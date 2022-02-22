@@ -186,7 +186,55 @@
 			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
 			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
 			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
-			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI IRQ_ISPFE_0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS3_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS5_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS6_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS7_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS8_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS9_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS10_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS11_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS3_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS5_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS6_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS7_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS8_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS9_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS10_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS11_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS3_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS5_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS6_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS7_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS8_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS9_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS10_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS11_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS0_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS1_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS2_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS3_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS4_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS5_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS6_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS7_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS8_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS9_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS10_ISPFE IRQ_TYPE_LEVEL_HIGH>
+			<GIC_SPI IRQ_CSIS11_ISPFE IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names =
 			"isp_fe_ctx0_fc_bayer",
 			"isp_fe_ctx1_fc_bayer",
@@ -341,7 +389,55 @@
 			"isp_fe_ctx0_csis_core_rdma_proc",
 			"isp_fe_ctx1_csis_core_rdma_proc",
 			"isp_fe_ctx0_csis_core_rdma_err",
-			"isp_fe_ctx1_csis_core_rdma_err";
+			"isp_fe_ctx1_csis_core_rdma_err",
+			"isp_fe_ctx0_csis_int0",
+			"isp_fe_ctx1_csis_int0",
+			"isp_fe_ctx2_csis_int0",
+			"isp_fe_ctx3_csis_int0",
+			"isp_fe_ctx4_csis_int0",
+			"isp_fe_ctx5_csis_int0",
+			"isp_fe_ctx6_csis_int0",
+			"isp_fe_ctx7_csis_int0",
+			"isp_fe_ctx8_csis_int0",
+			"isp_fe_ctx9_csis_int0",
+			"isp_fe_ctx10_csis_int0",
+			"isp_fe_ctx11_csis_int0",
+			"isp_fe_ctx0_csis_int1",
+			"isp_fe_ctx1_csis_int1",
+			"isp_fe_ctx2_csis_int1",
+			"isp_fe_ctx3_csis_int1",
+			"isp_fe_ctx4_csis_int1",
+			"isp_fe_ctx5_csis_int1",
+			"isp_fe_ctx6_csis_int1",
+			"isp_fe_ctx7_csis_int1",
+			"isp_fe_ctx8_csis_int1",
+			"isp_fe_ctx9_csis_int1",
+			"isp_fe_ctx10_csis_int1",
+			"isp_fe_ctx11_csis_int1",
+			"isp_fe_ctx0_fs_int",
+			"isp_fe_ctx1_fs_int",
+			"isp_fe_ctx2_fs_int",
+			"isp_fe_ctx3_fs_int",
+			"isp_fe_ctx4_fs_int",
+			"isp_fe_ctx5_fs_int",
+			"isp_fe_ctx6_fs_int",
+			"isp_fe_ctx7_fs_int",
+			"isp_fe_ctx8_fs_int",
+			"isp_fe_ctx9_fs_int",
+			"isp_fe_ctx10_fs_int",
+			"isp_fe_ctx11_fs_int",
+			"isp_fe_ctx0_fe_int",
+			"isp_fe_ctx1_fe_int",
+			"isp_fe_ctx2_fe_int",
+			"isp_fe_ctx3_fe_int",
+			"isp_fe_ctx4_fe_int",
+			"isp_fe_ctx5_fe_int",
+			"isp_fe_ctx6_fe_int",
+			"isp_fe_ctx7_fe_int",
+			"isp_fe_ctx8_fe_int",
+			"isp_fe_ctx9_fe_int",
+			"isp_fe_ctx10_fe_int",
+			"isp_fe_ctx11_fe_int";
 		interrupt-event-infos =
 			<&isp_fe_ctx0_fc_bayer>,
 			<&isp_fe_ctx1_fc_bayer>,
@@ -496,7 +592,55 @@
 			<&isp_fe_ctx0_csis_core_rdma_proc>,
 			<&isp_fe_ctx1_csis_core_rdma_proc>,
 			<&isp_fe_ctx0_csis_core_rdma_err>,
-			<&isp_fe_ctx1_csis_core_rdma_err>;
+			<&isp_fe_ctx1_csis_core_rdma_err>,
+			<&isp_fe_ctx0_csis_int0>,
+			<&isp_fe_ctx1_csis_int0>,
+			<&isp_fe_ctx2_csis_int0>,
+			<&isp_fe_ctx3_csis_int0>,
+			<&isp_fe_ctx4_csis_int0>,
+			<&isp_fe_ctx5_csis_int0>,
+			<&isp_fe_ctx6_csis_int0>,
+			<&isp_fe_ctx7_csis_int0>,
+			<&isp_fe_ctx8_csis_int0>,
+			<&isp_fe_ctx9_csis_int0>,
+			<&isp_fe_ctx10_csis_int0>,
+			<&isp_fe_ctx11_csis_int0>,
+			<&isp_fe_ctx0_csis_int1>,
+			<&isp_fe_ctx1_csis_int1>,
+			<&isp_fe_ctx2_csis_int1>,
+			<&isp_fe_ctx3_csis_int1>,
+			<&isp_fe_ctx4_csis_int1>,
+			<&isp_fe_ctx5_csis_int1>,
+			<&isp_fe_ctx6_csis_int1>,
+			<&isp_fe_ctx7_csis_int1>,
+			<&isp_fe_ctx8_csis_int1>,
+			<&isp_fe_ctx9_csis_int1>,
+			<&isp_fe_ctx10_csis_int1>,
+			<&isp_fe_ctx11_csis_int1>,
+			<&isp_fe_ctx0_fs_int>,
+			<&isp_fe_ctx1_fs_int>,
+			<&isp_fe_ctx2_fs_int>,
+			<&isp_fe_ctx3_fs_int>,
+			<&isp_fe_ctx4_fs_int>,
+			<&isp_fe_ctx5_fs_int>,
+			<&isp_fe_ctx6_fs_int>,
+			<&isp_fe_ctx7_fs_int>,
+			<&isp_fe_ctx8_fs_int>,
+			<&isp_fe_ctx9_fs_int>,
+			<&isp_fe_ctx10_fs_int>,
+			<&isp_fe_ctx11_fs_int>,
+			<&isp_fe_ctx0_fe_int>,
+			<&isp_fe_ctx1_fe_int>,
+			<&isp_fe_ctx2_fe_int>,
+			<&isp_fe_ctx3_fe_int>,
+			<&isp_fe_ctx4_fe_int>,
+			<&isp_fe_ctx5_fe_int>,
+			<&isp_fe_ctx6_fe_int>,
+			<&isp_fe_ctx7_fe_int>,
+			<&isp_fe_ctx8_fe_int>,
+			<&isp_fe_ctx9_fe_int>,
+			<&isp_fe_ctx10_fe_int>,
+			<&isp_fe_ctx11_fe_int>;
 	};
 
 	lwis_gdc0: lwis_gdc@1D440000 {
