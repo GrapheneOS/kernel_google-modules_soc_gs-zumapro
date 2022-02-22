@@ -70,7 +70,7 @@
 #define MMU_VADDR_FROM_S1L1TLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
 #define MMU_PADDR_FROM_S1L1TLB_PPN(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
 #define MMU_PADDR_FROM_S1L1TLB_BASE(reg)		(((reg) & 0x3FFFFFF) << 10)
-#define MMU_S1L1TLB_ATTRIBUTE_PS(reg)			(((reg) >> 8) & 0x3)
+#define MMU_S1L1TLB_ATTRIBUTE_PS(reg)			(((reg) >> 8) & 0x7)
 
 #define MMU_FAULT_INFO0_VA_36(reg)			(((reg) >> 21) & 0x1)
 #define MMU_FAULT_INFO0_VA_HIGH(reg)			(((reg) & 0x3C00000) << 10)
@@ -370,7 +370,7 @@ static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata, phys_
 }
 
 static inline void sysmmu_s1l1tlb_compare(phys_addr_t pgtable, u32 vpn, u32 base_or_ppn,
-					  int is_slptbase)
+					  bool is_slptbase)
 {
 	sysmmu_pte_t *entry;
 	unsigned long vaddr = MMU_VADDR_FROM_S1L1TLB((unsigned long)vpn), paddr;
@@ -381,7 +381,7 @@ static inline void sysmmu_s1l1tlb_compare(phys_addr_t pgtable, u32 vpn, u32 base
 
 	entry = section_entry(phys_to_virt(pgtable), vaddr);
 
-	if (is_slptbase == SLPT_BASE_FLAG)
+	if (is_slptbase)
 		paddr = MMU_PADDR_FROM_S1L1TLB_BASE((unsigned long)base_or_ppn);
 	else
 		paddr = MMU_PADDR_FROM_S1L1TLB_PPN((unsigned long)base_or_ppn);
@@ -414,7 +414,7 @@ static inline void sysmmu_s1l1tlb_compare(phys_addr_t pgtable, u32 vpn, u32 base
 static inline int dump_s1l1tlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
 				     int way, int set)
 {
-	int is_slptbase;
+	bool is_slptbase;
 	u32 vpn = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_S1L1TLB_VPN);
 
 	if (MMU_READ_S1L1TLB_VPN_VALID(vpn)) {
@@ -422,7 +422,7 @@ static inline int dump_s1l1tlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t
 
 		base_or_ppn = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_S1L1TLB_SLPT_OR_PPN);
 		attr = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_S1L1TLB_ATTRIBUTE);
-		is_slptbase = MMU_S1L1TLB_ATTRIBUTE_PS(attr);
+		is_slptbase = (MMU_S1L1TLB_ATTRIBUTE_PS(attr) == SLPT_BASE_FLAG);
 
 		pr_crit("[%02d][%02d] VPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 			way, set, vpn, base_or_ppn, attr);
