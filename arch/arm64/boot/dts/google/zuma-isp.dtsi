@@ -641,6 +641,12 @@
 			<&isp_fe_ctx9_fe_int>,
 			<&isp_fe_ctx10_fe_int>,
 			<&isp_fe_ctx11_fe_int>;
+
+		iommus =
+			<&sysmmu_ispfe_s0>,
+			<&sysmmu_ispfe_s1>,
+			<&sysmmu_ispfe_s2>;
+		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
 	lwis_gdc0: lwis_gdc@1D440000 {
