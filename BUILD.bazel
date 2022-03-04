@@ -333,21 +333,16 @@ kernel_images(
     dtbo_srcs = [":slider/" + e for e in slider_dtbos],
     kernel_build = ":slider",
     kernel_modules_install = ":slider_modules_install",
+    # Keep the following in sync with build.config.slider:
+    modules_list = "vendor_boot_modules.slider",
+    # No MODULES_BLOCKLIST
+    # Keep the following in sync with build.config.gs101:
+    vendor_dlkm_modules_list = "vendor_dlkm_modules.slider",
+    # No VENDOR_DLKM_MODULES_BLOCKLIST
+    vendor_dlkm_props = "vendor_dlkm.props.slider",
+    # VENDOR_RAMDISK_BINARY
+    vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],
     deps = [
-        # Keep the following in sync with build.config.slider:
-        # MODULES_LIST
-        "vendor_boot_modules.slider",
-        # No MODULES_BLOCKLIST
-
-        # Keep the following in sync with build.config.gs101:
-        # VENDOR_DLKM_MODULES_LIST
-        "vendor_dlkm_modules.slider",
-        # VENDOR_DLKM_PROPS
-        "vendor_dlkm.props.slider",
-        # VENDOR_RAMDISK_BINARY
-        "//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img",
-        # No VENDOR_DLKM_MODULES_BLOCKLIST
-
         # Keep the following in sync with vendor_dlkm.props.slider:
         # selinux_fc
         "//prebuilts/boot-artifacts/selinux:file_contexts",
