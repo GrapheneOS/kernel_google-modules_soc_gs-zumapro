@@ -268,4 +268,35 @@
 		index = <1>; /* if little cluster then index is 0*/
 		use_multistage_wdt; /* Use FIQ debug watchdog */
 	};
+
+	g2d: g2d@1A840000 {
+		compatible = "samsung,zuma-g2d";
+		reg = <0x0 0x1A840000 0xA000>;
+		interrupts = <0 IRQ_G2D_G2D IRQ_TYPE_LEVEL_HIGH>;
+		samsung,iommu-group = <&iommu_group_g2d>;
+		iommus = <&sysmmu_g2d>;
+		samsung,tzmp;
+		hw_ppc =
+			/* sc_up none x1 x1/4 x1/9 x1/16 */
+			<3800 3200 2100 2600 3300 3600 /* rgb32 non-rotated */
+			3500 3600 2100 2700 3300 3800 /* rgb32 rotated */
+			3700 3500 3600 4300 4300 3500 /* yuv2p non-rotated */
+			2600 2800 3200 3900 4300 3600 /* yuv2p rotated */
+			3600 2600 1400 900 1000 1000 /* sbwc non-rotated */
+			2600 2600 1400 900 1000 1000 /* sbwc rotated */
+			1600 3400 300 500 800 700 /* rgb afbc non-rotated */
+			1400 3600 300 800 900 900 /* rgb afbc rotated */
+			2900 2000 800 300 300 400 /* yuv afbc non-rotated */
+			2600 2000 800 300 300 400 /* yuv afbc rotated */
+			2800>; /* colorfill */
+
+		g2d_dvfs_table = <533000 711000
+				465000 400000
+				332000 332000
+				200000 200000
+				100000 100000
+				>;
+		itmon,port = "G2D";
+		itmon,dest = "G2D";
+	};
 };
