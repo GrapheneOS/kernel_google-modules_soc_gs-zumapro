@@ -9,7 +9,8 @@
 #include <dt-bindings/lwis/platform/zuma/gse.h>
 #include <dt-bindings/lwis/platform/zuma/isp_fe.h>
 #include <dt-bindings/lwis/platform/zuma/mcsc.h>
-{
+
+/ {
 	/* FC bayer pipeline interrupt event definitions */
 	isp_fe_ctx0_fc_bayer: isp_fe-event-info@0 {
 		irq-reg-space = "isp_fe";
@@ -6776,4 +6777,4 @@
 			<GSE_CSR_BUS_WRAP_SLV7_ERR>,
 			<GSE_CSR_BUS_WRAP_DEC_ERR>;
 	};
-}
+};
