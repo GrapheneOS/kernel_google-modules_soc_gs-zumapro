@@ -11,6 +11,7 @@
 
 #include "zuma-drm-dpu.dtsi"
 #include "zuma-dma-heap.dtsi"
+#include "zuma-isp.dtsi"
 
 / {
 	compatible = "google,zuma";
