@@ -21,21 +21,6 @@ if [ -z "$KERNEL_BINARY" ]; then
 KERNEL_BINARY=Image.lz4
 fi
 
-if [ -z "$MIXED_BUILD" ]; then
-USING_PREBUILTS=
-
-MAKE_GOALS="
-${KERNEL_BINARY}
-"
-
-DEVICE_KERNEL_FILES="
-.config
-vmlinux
-System.map
-arch/arm64/boot/${KERNEL_BINARY}
-"
-fi
-
 if [ -n "${USING_PREBUILTS}" ]; then
 BUILD_VENDOR_BOOT_IMG=1
 else

@@ -25,12 +25,6 @@ device-modules/arch/arm64/boot/dts/google/zuma-hybrid.dtbo
 
 "
 
-if [ -z "$MIXED_BUILD" ]; then
-FILES="$FILES
-$DEVICE_KERNEL_FILES
-"
-fi
-
 MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.zuma
 
 EXT_MODULES+="
