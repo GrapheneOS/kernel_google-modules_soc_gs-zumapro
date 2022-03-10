@@ -6,12 +6,13 @@ set -e
 : ${OUT_DIR:="out/"}
 export OUT_DIR
 
-: ${BUILD_CONFIG:="private/gs-google/device-modules/build.config.zuma_emulator"}
+: ${BUILD_CONFIG:="private/google-modules/soc-modules/build.config.zuma_emulator"}
 
 echo "Using build config ${BUILD_CONFIG}"
 
-LTO=thin \
+FAST_BUILD=1 \
 BUILD_CONFIG="${BUILD_CONFIG}" \
+GKI_BUILD_CONFIG=aosp/build.config.gki.aarch64 \
 build/build.sh "$@"
 
 BASE_OUT=${OUT_DIR}/
