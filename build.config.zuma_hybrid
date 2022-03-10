@@ -2,7 +2,6 @@ DEVICE_MODULES_DIR=${KERNEL_DIR}
  # This project should be nested inside a kernel tree
 KERNEL_DIR="${KERNEL_DIR}/.."
 
-DEFCONFIG=zuma_gki_defconfig
 GKI_FRAGMENT_DEFCONFIG=${DEVICE_MODULES_DIR}/arch/arm64/configs/zuma_hybrid.fragment
 
 KERNEL_BINARY=Image
