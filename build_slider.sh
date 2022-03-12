@@ -9,7 +9,7 @@ function exit_if_error {
 }
 
 export LTO=${LTO:-thin}
-export BUILD_CONFIG=gs/google-modules/soc-modules/build.config.slider
+export BUILD_CONFIG=private/google-modules/soc-modules/build.config.slider
 
 if [ -z "${GKI_PREBUILTS_DIR}" ]; then
   GKI_BUILD_CONFIG=common/build.config.gki.aarch64 \

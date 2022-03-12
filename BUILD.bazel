@@ -13,7 +13,7 @@
 # limitations under the License.
 package(
     default_visibility = [
-        "//gs/google-modules:__subpackages__",
+        "//private/google-modules:__subpackages__",
     ],
 )
 
@@ -58,7 +58,7 @@ filegroup(
         "include/dtc/**",
     ]),
     visibility = [
-        "//gs/google-modules/soc-modules/arch/arm64/boot/dts:__pkg__",
+        "//private/google-modules/soc-modules/arch/arm64/boot/dts:__pkg__",
     ],
 )
 
@@ -82,7 +82,7 @@ kernel_build(
     ],
     base_kernel = "//common:kernel_aarch64_download_or_build",
     build_config = "build.config.slider",
-    dtstree = "//gs/google-modules/soc-modules/arch/arm64/boot/dts:slider_dt",
+    dtstree = "//private/google-modules/soc-modules/arch/arm64/boot/dts:slider_dt",
     implicit_outs = slider_dtbos,
     kconfig_ext = "Kconfig.ext",
     module_outs = [
@@ -115,7 +115,7 @@ filegroup(
     ]),
     visibility = [
         # keep sorted
-        "//gs/google-modules:__subpackages__",
+        "//private/google-modules:__subpackages__",
     ],
 )
 
@@ -269,36 +269,36 @@ kernel_module(
         "drivers/usb/typec/tcpm/usbc_cooling_dev.ko",
         "drivers/watchdog/s3c2410_wdt.ko",
     ],
-    kernel_build = "//gs/google-modules/soc-modules:slider",
+    kernel_build = "//private/google-modules/soc-modules:slider",
     visibility = [
         # keep sorted
-        "//gs/google-modules:__subpackages__",
+        "//private/google-modules:__subpackages__",
     ],
 )
 
 _slider_modules = [
     # keep sorted
-    "//gs/google-modules/amplifiers/audiometrics:audiometrics.slider",
-    "//gs/google-modules/amplifiers/cs35l41:cs35l41.slider",
-    "//gs/google-modules/amplifiers/cs40l25:cs40l25.slider",
-    "//gs/google-modules/amplifiers/drv2624:drv2624.slider",
-    "//gs/google-modules/aoc:aoc.slider",
-    "//gs/google-modules/aoc/alsa:alsa.slider",
-    "//gs/google-modules/bluetooth/broadcom:broadcom.slider",
-    "//gs/google-modules/bms:bms.slider",
-    "//gs/google-modules/display:samsung.slider",
-    "//gs/google-modules/edgetpu/drivers/edgetpu:edgetpu.slider",
-    "//gs/google-modules/gpu/mali_kbase:mali_kbase.slider",
-    "//gs/google-modules/gpu/mali_pixel:mali_pixel.slider",
-    "//gs/google-modules/lwis:lwis.slider",
-    "//gs/google-modules/nfc:nfc.slider",
-    "//gs/google-modules/power/reset:reset.slider",
-    "//gs/google-modules/soc-modules:gs101_soc",
-    "//gs/google-modules/touch/common:common.slider",
-    "//gs/google-modules/touch/fts/ftm5:ftm5.slider",
-    "//gs/google-modules/touch/sec:sec.slider",
-    "//gs/google-modules/uwb/kernel:kernel.slider",
-    "//gs/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
+    "//private/google-modules/amplifiers/audiometrics:audiometrics.slider",
+    "//private/google-modules/amplifiers/cs35l41:cs35l41.slider",
+    "//private/google-modules/amplifiers/cs40l25:cs40l25.slider",
+    "//private/google-modules/amplifiers/drv2624:drv2624.slider",
+    "//private/google-modules/aoc:aoc.slider",
+    "//private/google-modules/aoc/alsa:alsa.slider",
+    "//private/google-modules/bluetooth/broadcom:broadcom.slider",
+    "//private/google-modules/bms:bms.slider",
+    "//private/google-modules/display:samsung.slider",
+    "//private/google-modules/edgetpu/drivers/edgetpu:edgetpu.slider",
+    "//private/google-modules/gpu/mali_kbase:mali_kbase.slider",
+    "//private/google-modules/gpu/mali_pixel:mali_pixel.slider",
+    "//private/google-modules/lwis:lwis.slider",
+    "//private/google-modules/nfc:nfc.slider",
+    "//private/google-modules/power/reset:reset.slider",
+    "//private/google-modules/soc-modules:gs101_soc",
+    "//private/google-modules/touch/common:common.slider",
+    "//private/google-modules/touch/fts/ftm5:ftm5.slider",
+    "//private/google-modules/touch/sec:sec.slider",
+    "//private/google-modules/uwb/kernel:kernel.slider",
+    "//private/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
 ]
 
 kernel_modules_install(
