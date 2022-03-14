@@ -32,6 +32,7 @@
 #if IS_ENABLED(CONFIG_GS_ACPM)
 #include <soc/google/acpm_ipc_ctrl.h>
 #endif
+#include <soc/google/exynos-debug.h>
 
 #define HARDLOCKUP_DEBUG_MAGIC		(0xDEADBEEF)
 #define BUG_BRK_IMM_HARDLOCKUP		(0x801)
@@ -145,6 +146,7 @@ static unsigned long hardlockup_debug_get_locked_cpu_mask(void)
 
 static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned int esr)
 {
+	static atomic_t print_schedstat_once = ATOMIC_INIT(1);
 	int cpu = raw_smp_processor_id();
 	unsigned int val;
 	unsigned long flags;
@@ -197,6 +199,10 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned int esr)
 
 		dump_backtrace(regs, NULL, KERN_DEFAULT);
 		dbg_snapshot_save_context(regs, false);
+
+		if (atomic_cmpxchg(&print_schedstat_once, 1, 0)) {
+			s3c2410wdt_print_schedstat(KERN_EMERG);
+		}
 
 		if (ret)
 			raw_spin_unlock(&hardlockup_log_lock);
