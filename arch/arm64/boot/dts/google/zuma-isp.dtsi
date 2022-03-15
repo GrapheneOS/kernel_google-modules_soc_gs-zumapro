@@ -788,4 +788,52 @@
 			<&gse_isp_rstctl>,
 			<&gse_csr_bus_wrap>;
 	};
+
+	lwis_be_core: lwis_be_core@1C440000 {
+		compatible = "google,lwis-ioreg-device";
+
+		/* Device node name */
+		node-name = "be-core";
+
+		/* Register space */
+		reg =
+			<0x0 0x1C440000 0x10000>,  /* RGBP */
+			<0x0 0x1C470000 0x10000>,  /* MCFP */
+			<0x0 0x1C840000 0x10000>;  /* YUVP */
+		reg-names =
+			"rgbp",
+			"mcfp",
+			"yuvp";
+
+		interrupts =
+			<GIC_SPI IRQ_RGBP_INTREQ_0_RGBP IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_RGBP_INTREQ_1_RGBP IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_RGBP_INTREQ_0_RGBP IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_MCFP_INTREQ_0_RGBP IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_MCFP_INTREQ_1_RGBP IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_MCFP_INTREQ_0_RGBP IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_YUVP_0_YUVP IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_YUVP_1_YUVP IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_YUVP_0_YUVP IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names =
+			"be_core_rgbp_int0",
+			"be_core_rgbp_int1",
+			"be_core_rgbp_cmdq_int",
+			"be_core_mcfp_int0",
+			"be_core_mcfp_int1",
+			"be_core_mcfp_cmdq_int",
+			"be_core_yuvp_int0",
+			"be_core_yuvp_int1",
+			"be_core_yuvp_cmdq_int";
+		interrupt-event-infos =
+			<&be_core_rgbp_int0>,
+			<&be_core_rgbp_int1>,
+			<&be_core_rgbp_cmdq_int>,
+			<&be_core_mcfp_int0>,
+			<&be_core_mcfp_int1>,
+			<&be_core_mcfp_cmdq_int>,
+			<&be_core_yuvp_int0>,
+			<&be_core_yuvp_int1>,
+			<&be_core_yuvp_cmdq_int>;
+	};
 };
