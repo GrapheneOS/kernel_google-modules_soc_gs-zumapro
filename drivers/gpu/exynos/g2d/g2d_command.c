@@ -909,7 +909,11 @@ static struct command_checker target_command_checker[G2DSFR_DST_FIELD_COUNT] = {
 };
 
 #define TARGET_OFFSET		0x120
+#if defined(CONFIG_SOC_GS101) || defined(CONFIG_SOC_GS201)
 #define LAYER_OFFSET(idx)	((2 + (idx)) << 8)
+#elif defined(CONFIG_SOC_ZUMA)
+#define LAYER_OFFSET(idx)       ((3 + (idx)) << 8)
+#endif
 
 static int g2d_copy_commands(struct g2d_device *g2d_dev, int index,
 			     struct g2d_reg regs[], __u32 cmd[],
