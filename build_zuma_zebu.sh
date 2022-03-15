@@ -12,7 +12,7 @@ echo "Using build config ${BUILD_CONFIG}"
 
 FAST_BUILD=1 \
 BUILD_CONFIG="${BUILD_CONFIG}" \
-GKI_BUILD_CONFIG=aosp/build.config.gki.aarch64 \
+GKI_BUILD_CONFIG=private/google-modules/soc-modules/build.config.zuma.gki \
 build/build.sh "$@"
 
 BASE_OUT=${OUT_DIR}/
