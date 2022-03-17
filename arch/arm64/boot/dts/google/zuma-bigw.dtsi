@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * BigWave device tree source
+ *
+ * Copyright 2022 Google LLC.
+ *
+ */
+
+/ {
+	bigwave: bigwave@1A700000 {
+		compatible = "google,bigwave";
+		status = "ok";
+		reg = <0x0 0x1A700000 0x860>;
+		reg-names = "bw";
+		interrupts = <GIC_SPI IRQ_BW_XINT_BW IRQ_TYPE_LEVEL_HIGH>;
+		iommus = <&sysmmu_bw>;
+		samsung,iommu-group = <&iommu_group_bw>;
+	};
+};
