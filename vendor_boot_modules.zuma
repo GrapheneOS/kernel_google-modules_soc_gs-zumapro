@@ -1,16 +1,24 @@
 # List of modules loaded during first stage init from vendor_boot
 # Sort order defined by
 # LC_ALL=C sort
+9p.ko
+9pnet.ko
+9pnet_virtio.ko
+cachefiles.ko
 deferred-free-helper.ko
 exynos-drm.ko
 exynos-pd_el3.ko
 exynos_mct.ko
 exynos_tty.ko
+failover.ko
+fscache.ko
 gs-chipid.ko
 i2c-dev.ko
 i2c-exynos5.ko
 mali_kbase.ko
 mali_pixel.ko
+net_failover.ko
+netfs.ko
 page_pool.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
@@ -19,3 +27,10 @@ samsung-iommu-group.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
 systrace.ko
+virtio_balloon.ko
+virtio_blk.ko
+virtio_crypto.ko
+virtio_mmio.ko
+virtio_net.ko
+virtio_pci.ko
+virtio_pci_modern_dev.ko
