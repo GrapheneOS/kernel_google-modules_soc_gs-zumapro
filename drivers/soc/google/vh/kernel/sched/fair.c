@@ -48,21 +48,31 @@ unsigned int map_scaling_freq(int cpu, unsigned int freq);
  * Any change for these functions in upstream GKI would require extensive review
  * to make proper adjustment in vendor hook.
  */
+#if IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
+static inline struct task_struct *task_of(struct sched_entity *se)
+{
+	SCHED_WARN_ON(!entity_is_task(se));
+	return container_of(se, struct task_struct, se);
+}
 
-#define lsub_positive(_ptr, _val) do {				\
-	typeof(_ptr) ptr = (_ptr);				\
-	*ptr -= min_t(typeof(*ptr), *ptr, _val);		\
-} while (0)
+static inline struct cfs_rq *cfs_rq_of(struct sched_entity *se)
+{
+	return se->cfs_rq;
+}
+#else
+static inline struct task_struct *task_of(struct sched_entity *se)
+{
+	return container_of(se, struct task_struct, se);
+}
 
-#define sub_positive(_ptr, _val) do {				\
-	typeof(_ptr) ptr = (_ptr);				\
-	typeof(*ptr) val = (_val);				\
-	typeof(*ptr) res, var = READ_ONCE(*ptr);		\
-	res = var - val;					\
-	if (res > var)						\
-		res = 0;					\
-	WRITE_ONCE(*ptr, res);					\
-} while (0)
+static inline struct cfs_rq *cfs_rq_of(struct sched_entity *se)
+{
+	struct task_struct *p = task_of(se);
+	struct rq *rq = task_rq(p);
+
+	return &rq->cfs;
+}
+#endif
 
 #if !IS_ENABLED(CONFIG_64BIT)
 static inline u64 cfs_rq_last_update_time(struct cfs_rq *cfs_rq)
