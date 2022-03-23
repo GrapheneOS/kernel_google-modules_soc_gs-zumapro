@@ -27,10 +27,12 @@
 		/* Register space */
 		reg =
 			<0x0 0x1C300000 0x100000>, /* ISPFE */
-			<0x0 0x1C040000 0xD0000>;  /* CSIS LINK & PHY*/
+			<0x0 0x1C040000 0xD0000>,  /* CSIS LINK & PHY*/
+			<0x0 0x1C020000 0x10000>;  /* SYSREG_ISPFE */
 		reg-names =
 			"isp-fe",
-			"csis-link-phy";
+			"csis-link-phy",
+			"isp-fe-sysreg";
 
 		interrupts =
 			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>,
