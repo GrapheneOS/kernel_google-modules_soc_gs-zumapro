@@ -1502,7 +1502,7 @@ err_exit:
 }
 
 
-static int bcm_spi_remove(struct spi_device *spi)
+static void bcm_spi_remove(struct spi_device *spi)
 {
 	struct bcm_spi_priv *priv = spi_get_drvdata(spi);
 	unsigned long flags;
@@ -1528,8 +1528,6 @@ static int bcm_spi_remove(struct spi_device *spi)
 	device_remove_file(&priv->spi->dev, &dev_attr_nstandby);
 
 	device_remove_file(&priv->spi->dev, &dev_attr_sspmcureq);
-
-	return 0;
 }
 
 static const struct spi_device_id bcm_spi_id[] = {

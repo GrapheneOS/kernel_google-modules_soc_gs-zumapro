@@ -141,13 +141,11 @@ err_setup:
 	return ret;
 }
 
-static int cpboot_spi_remove(struct spi_device *spi)
+static void cpboot_spi_remove(struct spi_device *spi)
 {
 	struct cpboot_spi *cpboot = spi_get_drvdata(spi);
 
 	mutex_destroy(&cpboot->lock);
-
-	return 0;
 }
 
 static const struct of_device_id cpboot_spi_dt_match[] = {
