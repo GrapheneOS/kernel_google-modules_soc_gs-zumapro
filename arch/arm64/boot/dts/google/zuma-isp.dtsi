@@ -838,4 +838,25 @@
 			<&be_core_yuvp_int1>,
 			<&be_core_yuvp_cmdq_int>;
 	};
+
+	lwis_lme: lwis_lme@1D4A0000 {
+		compatible = "google,lwis-ioreg-device";
+
+		/* Device node name */
+		node-name = "lme";
+
+		/* Register space */
+		reg =
+			<0x0 0x1D4A0000 0x10000>;  /* LME */
+		reg-names =
+			"lme";
+
+		interrupts =
+			<GIC_SPI IRQ_LME_IntReq_GDC IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names =
+			"lme_int1";
+		interrupt-event-infos =
+			<&lme_int1>;
+	};
+
 };
