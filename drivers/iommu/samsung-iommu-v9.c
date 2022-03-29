@@ -559,7 +559,7 @@ static sysmmu_pte_t *alloc_lv2entry(struct samsung_sysmmu_domain *domain,
 				    atomic_t *pgcounter)
 {
 	if (lv1ent_section(sent)) {
-		WARN(1, "trying mapping on %#08llx mapped with 1MiB page", iova);
+		WARN(1, "trying mapping on %#011llx mapped with 1MiB page", iova);
 		return ERR_PTR(-EADDRINUSE);
 	}
 
@@ -602,13 +602,13 @@ static int lv1set_section(struct samsung_sysmmu_domain *domain,
 	sysmmu_pte_t *pent_to_free = NULL;
 
 	if (lv1ent_section(sent)) {
-		WARN(1, "Trying mapping 1MB@%#08llx on valid FLPD", iova);
+		WARN(1, "Trying mapping 1MB@%#011llx on valid FLPD", iova);
 		return -EADDRINUSE;
 	}
 
 	if (lv1ent_page(sent)) {
 		if (WARN_ON(atomic_read(pgcnt) != 0)) {
-			WARN(1, "Trying mapping 1MB@%#08llx on valid SLPD", iova);
+			WARN(1, "Trying mapping 1MB@%#011llx on valid SLPD", iova);
 			return -EADDRINUSE;
 		}
 
@@ -1055,7 +1055,8 @@ static int  samsung_sysmmu_get_resv_regions_by_node(struct device_node *np, stru
 				return -ENOMEM;
 
 			list_add_tail(&region->list, head);
-			dev_info(dev, "Reserved IOMMU mapping [%#x..%#x)\n", base, base + size);
+			dev_info(dev, "Reserved IOMMU mapping [%#llx..%#llx)\n", base, base + size);
+
 		}
 	}
 
@@ -1241,7 +1242,7 @@ static int __sysmmu_secure_irq_init(struct device *sysmmu, struct sysmmu_drvdata
 		dev_err(sysmmu, "failed to get secure base address\n");
 		return ret;
 	}
-	dev_info(sysmmu, "secure base = %#x\n", data->secure_base);
+	dev_info(sysmmu, "secure base address = %#010x\n", data->secure_base);
 
 	return ret;
 }

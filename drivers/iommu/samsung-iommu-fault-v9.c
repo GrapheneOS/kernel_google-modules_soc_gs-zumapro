@@ -204,7 +204,7 @@ static inline void sysmmu_ptlb_compare(phys_addr_t pgtable, u32 vpn, u32 ppn)
 
 	if (paddr != phys) {
 		pr_crit(">> PTLB mismatch detected!\n");
-		pr_crit("   PTLB: %#010lx, PT entry: %#010lx\n", paddr, phys);
+		pr_crit("   PTLB: %#011lx, PT entry: %#011lx\n", paddr, phys);
 	}
 }
 
@@ -300,7 +300,7 @@ static inline void sysmmu_stlb_compare(phys_addr_t pgtable, int idx_sub, u32 vpn
 
 	if (paddr != phys) {
 		pr_crit(">> STLB mismatch detected!\n");
-		pr_crit("   STLB: %#010lx, PT entry: %#010lx\n", paddr, phys);
+		pr_crit("   STLB: %#011lx, PT entry: %#011lx\n", paddr, phys);
 	}
 }
 
@@ -407,7 +407,7 @@ static inline void sysmmu_s1l1tlb_compare(phys_addr_t pgtable, u32 vpn, u32 base
 		if (is_slptbase)
 			pr_crit("entry addr: %lx, slpt base addr: %lx\n", paddr, phys);
 		else
-			pr_crit("S1L1TLB: %#010lx, PT entry: %#010lx\n", paddr, phys);
+			pr_crit("S1L1TLB: %#011lx, PT entry: %#011lx\n", paddr, phys);
 	}
 }
 
@@ -529,7 +529,7 @@ static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata,
 	of_property_read_string(drvdata->dev->of_node, "port-name", &port_name);
 
 	pr_crit("----------------------------------------------------------\n");
-	pr_crit("From [%s], SysMMU %s %s at %#010lx (page table @ %pa)\n",
+	pr_crit("From [%s], SysMMU %s %s at %#011lx (page table @ %pa)\n",
 		port_name ? port_name : dev_name(drvdata->dev),
 		IS_READ_FAULT(info0) ? "READ" : "WRITE",
 		sysmmu_fault_name[intr_type], fault_addr, &pgtable);
@@ -589,7 +589,7 @@ static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int in
 
 	info0 = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_FAULT_INFO0_VM, vmid));
 
-	pr_crit("From [%s], SysMMU %s %s at %#010lx (pgtable @ %pa\n",
+	pr_crit("From [%s], SysMMU %s %s at %#011lx (pgtable @ %pa\n",
 		port_name ? port_name : dev_name(drvdata->dev),
 		IS_READ_FAULT(info0) ? "READ" : "WRITE",
 		sysmmu_fault_name[intr_type], fault_addr, &pgtable);
