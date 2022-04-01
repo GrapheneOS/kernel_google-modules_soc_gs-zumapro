@@ -299,4 +299,14 @@
 		itmon,port = "G2D";
 		itmon,dest = "G2D";
 	};
+
+	smfc: smfc@1A860000 {
+		compatible = "samsung,exynos8890-jpeg";
+		reg = <0x0 0x1A860000 0x1000>;
+		interrupts = <0 IRQ_JPEG_G2D IRQ_TYPE_LEVEL_HIGH>;
+		samsung,iommu-group = <&iommu_group_g2d>;
+		iommus = <&sysmmu_g2d>;
+		dma-coherent;
+	};
+
 };
