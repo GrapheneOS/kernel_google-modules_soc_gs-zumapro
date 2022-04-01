@@ -880,7 +880,7 @@ static void g2d_pm_qos_reset_request(struct smfc_dev *smfc)
 		exynos_pm_qos_update_request(&smfc->qosreq_int, 0);
 }
 #else
-static void g2d_pm_qos_add_request(struct smfc_dev *smfc)
+static void g2d_pm_qos_add_request(struct device *dev, struct smfc_dev *smfc)
 {
 }
 
