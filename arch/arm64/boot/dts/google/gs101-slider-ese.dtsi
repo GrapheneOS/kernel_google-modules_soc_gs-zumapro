@@ -41,7 +41,8 @@
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi14_bus &spi14_cs &spi14_cs2 &ese1_spi_rst>;
-	cs-gpios = <&gpp18 3 0>, <&gpp23 6 0>;
+	cs-gpios = <&gpp18 3 GPIO_ACTIVE_LOW>, <&gpp23 6 GPIO_ACTIVE_LOW>;
+	num-cs = <2>;
 
 	ese1: ese@0 {
 		compatible = "st,st54spi";
@@ -51,7 +52,6 @@
 		power_mode = "ST54J";
 
 		controller-data {
-			cs-gpio = <&gpp18 3 0>;
 			cs-clock-delay = <10>;
 			samsung,spi-chip-select-mode = <0>;
 		};
@@ -65,7 +65,6 @@
 		power_mode = "ST33";
 
 		controller-data {
-			cs-gpio = <&gpp23 6 0>;
 			cs-clock-delay = <10>;
 			samsung,spi-chip-select-mode = <0>;
 		};

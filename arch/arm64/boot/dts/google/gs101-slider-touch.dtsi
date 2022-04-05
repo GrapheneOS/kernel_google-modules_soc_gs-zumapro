@@ -47,6 +47,8 @@
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi11_bus &spi11_cs_func>;
+	cs-gpios = <&gpp23 3 GPIO_ACTIVE_LOW>;
+	num-cs = <1>;
 
 	spitouch: touchscreen@0 {
 		status = "ok";
