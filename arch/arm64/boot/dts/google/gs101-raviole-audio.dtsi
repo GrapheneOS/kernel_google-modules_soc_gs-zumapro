@@ -230,7 +230,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi13_bus &spi13_cs_func &cs35l41_cs2
 		     &cs35l41_miso &cs35l41_mosi &cs35l41_clk>;
-	cs-gpios = <&gpp25 3 GPIO_ACTIVE_HIGH>, <&gpp1 0 GPIO_ACTIVE_HIGH>;
+	cs-gpios = <&gpp25 3 GPIO_ACTIVE_LOW>, <&gpp1 0 GPIO_ACTIVE_LOW>;
+	num-cs = <2>;
 
 	cs35l41_l: cs35l41@0 {
 		#sound-dai-cells = <1>;
@@ -267,7 +268,6 @@
 		};
 
 		controller-data {
-			cs-gpio = <&gpp25 3 GPIO_ACTIVE_HIGH>;
 			samsung,spi-feedback-delay = <1>;
 			/* SET SPI CS CONTROL TO AUTOMATIC */
 			samsung,spi-chip-select-mode = <1>;
@@ -311,7 +311,6 @@
 		};
 
 		controller-data {
-			cs-gpio =<&gpp1 0 GPIO_ACTIVE_HIGH>;
 			samsung,spi-feedback-delay = <1>;
 			/* SET SPI CS CONTROL TO AUTOMATIC */
 			samsung,spi-chip-select-mode = <1>;

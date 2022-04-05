@@ -633,9 +633,8 @@ static inline void enable_cs(struct s3c64xx_spi_driver_data *sdd,
 		if (sdd->tgl_spi != spi) { /* if last mssg on diff device */
 			/* Deselect the last toggled device */
 			cs = sdd->tgl_spi->controller_data;
-			if (cs->line != 0)
-				gpio_set_value(cs->line,
-					       spi->mode & SPI_CS_HIGH ? 0 : 1);
+			if (spi->cs_gpiod)
+				gpiod_set_value_cansleep(spi->cs_gpiod, 0);
 			/* Quiesce the signals */
 			writel(spi->mode & SPI_CS_HIGH ?
 				0 : S3C64XX_SPI_SLAVE_SIG_INACT,
@@ -645,8 +644,8 @@ static inline void enable_cs(struct s3c64xx_spi_driver_data *sdd,
 	}
 
 	cs = spi->controller_data;
-	if (cs->line != 0) {
-		gpio_set_value(cs->line, spi->mode & SPI_CS_HIGH ? 1 : 0);
+	if (spi->cs_gpiod) {
+		gpiod_set_value_cansleep(spi->cs_gpiod, 1);
 		if (cs->cs_delay)
 			udelay(cs->cs_delay);
 	}
@@ -750,8 +749,8 @@ static inline void disable_cs(struct s3c64xx_spi_driver_data *sdd,
 	if (sdd->tgl_spi == spi)
 		sdd->tgl_spi = NULL;
 
-	if (cs->line != 0)
-		gpio_set_value(cs->line, spi->mode & SPI_CS_HIGH ? 0 : 1);
+	if (spi->cs_gpiod)
+		gpiod_set_value_cansleep(spi->cs_gpiod, 0);
 
 	if (cs->cs_mode != AUTO_CS_MODE) {
 		/* Quiesce the signals */
@@ -1180,43 +1179,31 @@ static struct s3c64xx_spi_csinfo *s3c64xx_get_slave_ctrldata
 		return ERR_PTR(-EINVAL);
 	}
 
-	data_np = of_get_child_by_name(slave_np, "controller-data");
-	if (!data_np) {
-		dev_err(&spi->dev, "child node 'controller-data' not found\n");
-		return ERR_PTR(-EINVAL);
-	}
-
 	cs = kzalloc(sizeof(*cs), GFP_KERNEL);
 	if (!cs) {
-		of_node_put(data_np);
 		return ERR_PTR(-ENOMEM);
 	}
 
-	if (of_get_property(data_np, "cs-gpio", NULL)) {
-		cs->line = of_get_named_gpio(data_np, "cs-gpio", 0);
-		if (!gpio_is_valid(cs->line))
-			cs->line = 0;
-	} else {
-		cs->line = 0;
-	}
-
-	if (cs->line) {
-		if (!of_property_read_u32(data_np, "cs-clock-delay", &cs_delay))
-			cs->cs_delay = cs_delay;
-		else
-			cs->cs_delay = 0;
-	}
-
+	// Setting defaults in case there's no controller-data
 	cs->cs_init_state = 1;
+	cs->cs_mode = AUTO_CS_MODE;
+
+	data_np = of_get_child_by_name(slave_np, "controller-data");
+	if (!data_np) {
+		dev_warn(&spi->dev, "child node 'controller-data' not found\n");
+		return cs;
+	}
+
+	if (!of_property_read_u32(data_np, "cs-clock-delay", &cs_delay))
+		cs->cs_delay = cs_delay;
+
 	of_property_read_u32(data_np, "cs-init-state", &cs->cs_init_state);
 
 	of_property_read_u32(data_np, "samsung,spi-feedback-delay", &fb_delay);
 	cs->fb_delay = fb_delay;
 
-	if (of_property_read_u32(data_np,
-				 "samsung,spi-chip-select-mode", &cs_mode)) {
-		cs->cs_mode = AUTO_CS_MODE;
-	} else {
+	if (!of_property_read_u32(data_np,
+				  "samsung,spi-chip-select-mode", &cs_mode)) {
 		if (cs_mode)
 			cs->cs_mode = AUTO_CS_MODE;
 		else
@@ -1246,7 +1233,7 @@ static int s3c64xx_spi_setup(struct spi_device *spi)
 		spi->controller_data = cs;
 	}
 
-	if (IS_ERR_OR_NULL(cs)) {
+	if (IS_ERR(cs)) {
 		dev_err(&spi->dev, "No CS for SPI(%d)\n", spi->chip_select);
 		return -ENODEV;
 	}
@@ -1258,20 +1245,8 @@ static int s3c64xx_spi_setup(struct spi_device *spi)
 		return 0;
 	}
 
-	if (!spi_get_ctldata(spi)) {
-		if (cs->line != 0) {
-			err = gpio_request_one(cs->line, cs->cs_init_state ?
-					GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW,
-					dev_name(&spi->dev));
-			if (err) {
-				dev_err(&spi->dev, "Failed to get /CS gpio [%d]: %d\n",
-					cs->line, err);
-				goto err_gpio_req;
-			}
-		}
-
+	if (!spi_get_ctldata(spi))
 		spi_set_ctldata(spi, cs);
-	}
 
 	if (spi->bits_per_word != 8 && spi->bits_per_word != 16 &&
 	    spi->bits_per_word != 32) {
@@ -1329,8 +1304,18 @@ static int s3c64xx_spi_setup(struct spi_device *spi)
 		}
 	}
 
-	if (cs->cs_init_state)
+	if (cs->cs_init_state) {
 		disable_cs(sdd, spi);
+	} else {
+		/* When cs_init_state is set to 0, we want to configure the CS GPIO to be
+		 * low on init. The current spi core driver doesn't let us do that when the
+		 * spi driver is configured as active low. So set it here. Refer to
+		 * b/181043058 for more details.
+		 */
+		if (spi->cs_gpiod)
+			gpiod_set_raw_value_cansleep(spi->cs_gpiod, 0);
+	}
+
 #ifdef CONFIG_PM
 	pm_runtime_mark_last_busy(&sdd->pdev->dev);
 	pm_runtime_put_autosuspend(&sdd->pdev->dev);
@@ -1348,13 +1333,20 @@ static int s3c64xx_spi_setup(struct spi_device *spi)
 
 setup_exit:
 	/* setup() returns with device de-selected */
-	if (cs->cs_init_state)
+	if (cs->cs_init_state) {
 		disable_cs(sdd, spi);
+	} else {
+		/* When cs_init_state is set to 0, we want to configure the CS GPIO to be
+		 * low on init. The current spi core driver doesn't let us do that when the
+		 * spi driver is configured as active low. So set it here. Refer to
+		 * b/181043058 for more details.
+		 */
+		if (spi->cs_gpiod)
+			gpiod_set_raw_value_cansleep(spi->cs_gpiod, 0);
+	}
 
-	gpio_free(cs->line);
 	spi_set_ctldata(spi, NULL);
 
-err_gpio_req:
 	if (spi->dev.of_node)
 		kfree(cs);
 
@@ -1366,7 +1358,6 @@ static void s3c64xx_spi_cleanup(struct spi_device *spi)
 	struct s3c64xx_spi_csinfo *cs = spi_get_ctldata(spi);
 
 	if (cs) {
-		gpio_free(cs->line);
 		if (spi->dev.of_node)
 			kfree(cs);
 	}
@@ -1678,7 +1669,7 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	master->prepare_transfer_hardware = s3c64xx_spi_prepare_transfer;
 	master->transfer_one_message = s3c64xx_spi_transfer_one_message;
 	master->unprepare_transfer_hardware = s3c64xx_spi_unprepare_transfer;
-	master->num_chipselect = sci->num_cs;
+	master->use_gpio_descriptors = true;
 	master->dma_alignment = 8;
 	master->bits_per_word_mask = BIT(32 - 1) | BIT(16 - 1) | BIT(8 - 1);
 	/* the spi->mode bits understood by this driver: */
