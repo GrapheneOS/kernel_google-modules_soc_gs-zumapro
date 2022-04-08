@@ -1103,99 +1103,11 @@ static int samsung_sysmmu_of_xlate(struct device *dev,
 	return ret;
 }
 
-static int samsung_sysmmu_aux_attach_dev(struct iommu_domain *dom, struct device *dev)
-{
-	struct sysmmu_clientdata *client;
-	struct samsung_sysmmu_domain *domain;
-	struct sysmmu_drvdata *drvdata;
-	unsigned long flags;
-	unsigned int vid;
-
-	domain = attach_helper(dom, dev);
-	if (IS_ERR(domain))
-		return (int)PTR_ERR(domain);
-
-	if (domain->group) {
-		dev_err(dev, "IOMMU domain is already in use as vid 0 domain\n");
-		return -EBUSY;
-	}
-	client = (struct sysmmu_clientdata *) dev_iommu_priv_get(dev);
-	if (client->sysmmu_count != 1) {
-		dev_err(dev, "IOMMU AUX domains not supported for devices served by more than one IOMMU\n");
-		return -ENXIO;
-	}
-	drvdata = client->sysmmus[0];
-	if (!drvdata->has_vcr) {
-		dev_err(dev, "SysMMU does not support IOMMU AUX domains\n");
-		return -ENXIO;
-	}
-	spin_lock_irqsave(&drvdata->lock, flags);
-	if (!drvdata->attached_count) {
-		dev_err(dev, "IOMMU needs to be enabled to attach AUX domain\n");
-		spin_unlock_irqrestore(&drvdata->lock, flags);
-		return -ENXIO;
-	}
-	for (vid = 1; vid < MAX_VIDS; vid++)
-		if (!drvdata->pgtable[vid])
-			break;
-	if (vid == MAX_VIDS) {
-		dev_err(dev, "Unable to allocate vid for AUX domain\n");
-		spin_unlock_irqrestore(&drvdata->lock, flags);
-		return -EBUSY;
-	}
-	drvdata->pgtable[vid] = virt_to_phys(domain->page_table);
-	if (pm_runtime_active(drvdata->dev))
-		__sysmmu_enable_vid(drvdata, vid);
-	spin_unlock_irqrestore(&drvdata->lock, flags);
-	domain->vm_sysmmu = drvdata;
-	domain->vid = vid;
-	return 0;
-}
-
-static void samsung_sysmmu_aux_detach_dev(struct iommu_domain *dom, struct device *dev)
-{
-	struct samsung_sysmmu_domain *domain;
-	struct sysmmu_drvdata *drvdata;
-	unsigned long flags;
-	unsigned int vid;
-
-	domain = to_sysmmu_domain(dom);
-
-	if (WARN_ON(!domain->vm_sysmmu || !domain->vid))
-		return;
-
-	drvdata = domain->vm_sysmmu;
-	vid = domain->vid;
-
-	spin_lock_irqsave(&drvdata->lock, flags);
-	drvdata->pgtable[vid] = 0;
-	__sysmmu_disable_vid(drvdata, vid);
-	spin_unlock_irqrestore(&drvdata->lock, flags);
-
-	domain->vm_sysmmu = NULL;
-	domain->vid = 0;
-}
-
-static int samsung_sysmmu_aux_get_pasid(struct iommu_domain *dom, struct device *dev)
-{
-	struct samsung_sysmmu_domain *domain;
-
-	domain = to_sysmmu_domain(dom);
-
-	if (!domain->vm_sysmmu)
-		return -EINVAL;
-
-	return (int)domain->vid;
-}
-
 static bool samsung_sysmmu_dev_has_feat(struct device *dev, enum iommu_dev_features f)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
 	struct sysmmu_clientdata *client;
 	struct sysmmu_drvdata *drvdata;
-
-	if (f != IOMMU_DEV_FEAT_AUX)
-		return false;
 
 	client = (struct sysmmu_clientdata *) dev_iommu_priv_get(dev);
 	if (!fwspec || !client || fwspec->ops != &samsung_sysmmu_ops)
@@ -1277,16 +1189,6 @@ static void samsung_sysmmu_get_resv_regions(struct device *dev, struct list_head
 static struct iommu_ops samsung_sysmmu_ops = {
 	.capable		= samsung_sysmmu_capable,
 	.domain_alloc		= samsung_sysmmu_domain_alloc,
-	.domain_free		= samsung_sysmmu_domain_free,
-	.attach_dev		= samsung_sysmmu_attach_dev,
-	.detach_dev		= samsung_sysmmu_detach_dev,
-	.map			= samsung_sysmmu_map,
-	.unmap			= samsung_sysmmu_unmap,
-	.unmap_pages		= samsung_sysmmu_unmap_pages,
-	.flush_iotlb_all	= samsung_sysmmu_flush_iotlb_all,
-	.iotlb_sync_map		= samsung_sysmmu_iotlb_sync_map,
-	.iotlb_sync		= samsung_sysmmu_iotlb_sync,
-	.iova_to_phys		= samsung_sysmmu_iova_to_phys,
 	.probe_device		= samsung_sysmmu_probe_device,
 	.release_device		= samsung_sysmmu_release_device,
 	.device_group		= samsung_sysmmu_device_group,
@@ -1294,11 +1196,20 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.get_resv_regions	= samsung_sysmmu_get_resv_regions,
 	.dev_enable_feat	= samsung_sysmmu_dev_enable_feat,
 	.dev_disable_feat	= samsung_sysmmu_dev_disable_feat,
-	.aux_attach_dev		= samsung_sysmmu_aux_attach_dev,
-	.aux_detach_dev		= samsung_sysmmu_aux_detach_dev,
-	.aux_get_pasid		= samsung_sysmmu_aux_get_pasid,
 	.pgsize_bitmap		= SECT_SIZE | LPAGE_SIZE | SPAGE_SIZE,
 	.owner						= THIS_MODULE,
+	.default_domain_ops	= &(const struct iommu_domain_ops) {
+		.attach_dev             = samsung_sysmmu_attach_dev,
+		.detach_dev             = samsung_sysmmu_detach_dev,
+		.map                    = samsung_sysmmu_map,
+		.unmap                  = samsung_sysmmu_unmap,
+		.unmap_pages            = samsung_sysmmu_unmap_pages,
+		.flush_iotlb_all        = samsung_sysmmu_flush_iotlb_all,
+		.iotlb_sync_map         = samsung_sysmmu_iotlb_sync_map,
+		.iotlb_sync             = samsung_sysmmu_iotlb_sync,
+		.iova_to_phys           = samsung_sysmmu_iova_to_phys,
+		.free                   = samsung_sysmmu_domain_free,
+	}
 };
 
 static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
