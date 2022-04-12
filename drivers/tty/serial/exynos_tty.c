@@ -3006,7 +3006,7 @@ static void exynos_serial_put_poll_char(struct uart_port *port,
 #endif /* CONFIG_CONSOLE_POLL */
 
 static void
-exynos_serial_console_putchar(struct uart_port *port, int ch)
+exynos_serial_console_putchar(struct uart_port *port, unsigned char ch)
 {
 	unsigned int ufcon = rd_regl(port, S3C2410_UFCON);
 	unsigned int ucon;
