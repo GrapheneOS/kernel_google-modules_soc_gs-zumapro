@@ -14,7 +14,7 @@
 #include <linux/workqueue.h>
 #include <generated/utsrelease.h>
 #include <soc/google/debug-snapshot.h>
-#include "../../../../drivers/staging/android/debug_kinfo.h"
+#include "../../../../drivers/android/debug_kinfo.h"
 
 #define UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS		10
 
