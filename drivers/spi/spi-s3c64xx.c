@@ -1831,10 +1831,13 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 err3:
 #ifdef CONFIG_PM
 	pm_runtime_disable(&pdev->dev);
-#endif
+#else
 	clk_disable_unprepare(sdd->src_clk);
+#endif
 err2:
+#ifndef CONFIG_PM
 	clk_disable_unprepare(sdd->clk);
+#endif
 err0:
 	platform_set_drvdata(pdev, NULL);
 	spi_master_put(master);
