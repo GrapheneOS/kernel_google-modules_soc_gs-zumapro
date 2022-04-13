@@ -13,7 +13,7 @@
 #include <linux/of_reserved_mem.h>
 #include <generated/utsrelease.h>
 #include <soc/google/debug-snapshot.h>
-#include "../../../../drivers/staging/android/debug_kinfo.h"
+#include "../../../../drivers/android/debug_kinfo.h"
 
 struct vendor_kernel_info {
 	/* For linux banner */
