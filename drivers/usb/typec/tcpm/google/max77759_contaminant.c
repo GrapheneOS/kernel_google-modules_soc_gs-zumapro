@@ -13,7 +13,8 @@
 #include <misc/logbuffer.h>
 
 #include "max77759_helper.h"
-#include <tcpci.h>
+/* This header comes from the GKI kernel tree */
+#include <tcpm/tcpci.h>
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
 
