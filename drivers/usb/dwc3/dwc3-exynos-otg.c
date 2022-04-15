@@ -494,11 +494,6 @@ static void dwc3_otg_retry_configuration(struct timer_list *t)
 	dev_dbg(exynos->dev, "retry done\n");
 }
 
-static void dwc3_otg_disable_gadget_irq(struct dwc3 *dwc)
-{
-	dwc3_exynos_writel(dwc->regs, DWC3_DEVTEN, 0x00);
-}
-
 static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 {
 	struct usb_otg	*otg = fsm->otg;
