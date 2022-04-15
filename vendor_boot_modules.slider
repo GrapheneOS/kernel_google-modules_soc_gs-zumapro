@@ -138,6 +138,7 @@ pixel_stat_sysfs.ko
 pl330.ko
 pmic_class.ko
 power_stats.ko
+pps-gpio.ko
 rtc-s2mpg10.ko
 s2mpg10-mfd.ko
 s2mpg10-powermeter.ko
