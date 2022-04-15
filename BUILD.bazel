@@ -211,6 +211,7 @@ kernel_module(
         "drivers/soc/google/debug/debug-snapshot-qd.ko",
         "drivers/soc/google/debug/debug-snapshot-sfrdump.ko",
         "drivers/soc/google/debug/dss.ko",
+        "drivers/soc/google/debug/ehld.ko",
         "drivers/soc/google/debug/exynos-adv-tracer.ko",
         "drivers/soc/google/debug/exynos-adv-tracer-s2d.ko",
         "drivers/soc/google/debug/exynos-coresight.ko",
