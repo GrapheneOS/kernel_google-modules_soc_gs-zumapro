@@ -27,11 +27,11 @@
 #include <soc/google/exynos-cpupm.h>
 #include <soc/google/exynos_cpu_cooling.h>
 #include <soc/google/debug-snapshot.h>
+#include <trace/hooks/systrace.h>
 
 #include <trace/events/power.h>
 
 #include "exynos-acme.h"
-#include "../soc/google/vh/kernel/systrace.h"
 /*
  * list head of cpufreq domain
  */

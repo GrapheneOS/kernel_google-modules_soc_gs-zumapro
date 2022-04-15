@@ -13,6 +13,7 @@
 #if IS_ENABLED(CONFIG_DEBUG_SNAPSHOT)
 #include <soc/google/debug-snapshot.h>
 #endif
+#include <trace/hooks/systrace.h>
 #if IS_ENABLED(CONFIG_GS_ACPM)
 #include "acpm/acpm.h"
 #include "acpm/acpm_ipc.h"
@@ -21,7 +22,6 @@
 #endif
 
 #include <soc/google/exynos-dm.h>
-#include "vh/kernel/systrace.h"
 
 #define DM_EMPTY	0xFF
 static struct exynos_dm_device *exynos_dm;

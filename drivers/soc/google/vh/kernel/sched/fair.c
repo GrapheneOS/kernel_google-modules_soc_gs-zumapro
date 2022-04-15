@@ -8,10 +8,10 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/pelt.h>
 #include <trace/events/power.h>
+#include <trace/hooks/systrace.h>
 
 #include "sched_priv.h"
 #include "sched_events.h"
-#include "../systrace.h"
 
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 extern void update_uclamp_stats(int cpu, u64 time);

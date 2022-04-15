@@ -8,7 +8,7 @@
 #include <linux/module.h>
 
 #define CREATE_TRACE_POINTS
-#include "systrace.h"
+#include <trace/hooks/systrace.h>
 
 EXPORT_TRACEPOINT_SYMBOL_GPL(0);
 

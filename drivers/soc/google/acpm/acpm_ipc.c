@@ -21,6 +21,7 @@
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
 #include <linux/bitmap.h>
+#include <trace/hooks/systrace.h>
 #include <soc/google/exynos-debug.h>
 #include <soc/google/debug-snapshot.h>
 
@@ -28,7 +29,6 @@
 #include "acpm_ipc.h"
 #include "../cal-if/fvmap.h"
 #include "fw_header/framework.h"
-#include "../vh/kernel/systrace.h"
 
 #define IPC_TIMEOUT				(10000000)
 /*The unit of cnt is 10us*/

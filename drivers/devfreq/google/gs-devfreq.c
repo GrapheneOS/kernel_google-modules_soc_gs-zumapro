@@ -31,6 +31,7 @@
 #include <soc/google/bts.h>
 #include <linux/of_platform.h>
 #include <trace/events/power.h>
+#include <trace/hooks/systrace.h>
 #include <dt-bindings/soc/google/gs101-devfreq.h>
 #include "../../soc/google/cal-if/acpm_dvfs.h"
 #include <soc/google/exynos-pd.h>
@@ -50,7 +51,6 @@
 #include "governor.h"
 
 #include "gs-ppc.h"
-#include "../../soc/google/vh/kernel/systrace.h"
 #include "thermal_core.h"
 
 #define HZ_PER_KHZ	1000
