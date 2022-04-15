@@ -250,7 +250,6 @@ kernel_module(
         "drivers/soc/google/s2mpu/s2mpu.ko",
         "drivers/soc/google/sysrq-hook.ko",
         "drivers/soc/google/vh/kernel/systrace.ko",
-        "drivers/soc/google/vh/kernel/mm/vh_mm.ko",
         "drivers/spi/spi-s3c64xx.ko",
         "drivers/staging/android/delay_init.ko",
         "drivers/thermal/google/google_bcl.ko",
