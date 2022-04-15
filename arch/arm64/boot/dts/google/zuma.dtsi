@@ -7,6 +7,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zuma.h>
+#include "zuma-rmem.dtsi"
 #include "zuma-gpu.dtsi"
 #include "zuma-cpu.dtsi"
 #include "zuma-drm-dpu.dtsi"
