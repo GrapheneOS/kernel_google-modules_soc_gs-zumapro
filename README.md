@@ -1,8 +1,8 @@
 # Building with Bazel (recommended)
 
 ```shell
-# set --dist_dir to the distribution directory of your choice
-$ tools/bazel run //gs/google-modules/soc-modules:slider_dist -- --dist_dir=out/dist
+# Files are copied to out/{branch}/dist
+$ tools/bazel run //gs/google-modules/soc-modules:slider_dist
 ```
 
 See `build/kernel/kleaf/README.md` for details.
@@ -12,8 +12,8 @@ See `build/kernel/kleaf/README.md` for details.
 **Note**: This only works on `raviole-mainline` branch.
 
 ```shell
-# set --dist_dir to the distribution directory of your choice
-$ tools/bazel run --lto=none //gs/google-modules/soc-modules:slider_dist -- --dist_dir=out/dist
+# Files are copied to out/{branch}/dist
+$ tools/bazel run --lto=none //gs/google-modules/soc-modules:slider_dist
 ```
 
 # Building with `build_slider.sh` (legacy)
