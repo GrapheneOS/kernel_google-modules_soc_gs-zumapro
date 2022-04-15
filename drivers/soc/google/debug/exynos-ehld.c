@@ -18,6 +18,7 @@
 #include <linux/smpboot.h>
 #include <linux/hrtimer.h>
 #include <linux/reboot.h>
+#include <linux/panic_notifier.h>
 #include <asm/io.h>
 
 #include <soc/google/exynos-ehld.h>
