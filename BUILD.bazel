@@ -28,7 +28,7 @@ load(
     "kernel_modules_install",
     "merged_kernel_uapi_headers",
 )
-load("@kernel_toolchain_info//:dict.bzl", "CLANG_VERSION")
+load("@kernel_toolchain_info//:dict.bzl", "BRANCH", "CLANG_VERSION")
 
 slider_dtbos = [
     "gs101-oriole.dtbo",
@@ -359,5 +359,6 @@ copy_to_dist_dir(
         "//common:kernel_aarch64_download_or_build",
         "//common:kernel_aarch64_additional_artifacts_download_or_build",
     ],
+    dist_dir = "out/{branch}/dist".format(branch = BRANCH),
     flat = True,
 )
