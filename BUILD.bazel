@@ -75,6 +75,7 @@ kernel_build(
         "include/dtc/**",
     ]) + [
         "//common:kernel_aarch64_sources",
+        "//private/google-modules/power/reset:reset.kconfig",
         "//private/google-modules/touch/common:common.kconfig",
         "//private/google-modules/touch/fts/ftm5:ftm5.kconfig",
         "//private/google-modules/touch/sec:sec.kconfig",
