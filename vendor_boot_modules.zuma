@@ -25,6 +25,7 @@ page_pool.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
 pinctrl-exynos-gs.ko
+s3c2410_wdt.ko
 samsung-iommu-group.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
