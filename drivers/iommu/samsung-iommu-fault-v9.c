@@ -245,7 +245,7 @@ static inline int dump_ptlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pg
 }
 
 static inline void dump_sysmmu_ptlb_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
-					   int num_ptlb, int pmmu_id, int fault_ptlb)
+					   int num_ptlb, int pmmu_id)
 {
 	int way, t;
 	unsigned int cnt;
@@ -258,10 +258,7 @@ static inline void dump_sysmmu_ptlb_status(struct sysmmu_drvdata *drvdata, phys_
 		num_way = MMU_PMMU_PTLB_INFO_NUM_WAY(info);
 		num_set = MMU_PMMU_PTLB_INFO_NUM_SET(info);
 
-		pr_crit("PMMU.%d PTLB.%d has %d way, %d set. %s\n",
-			pmmu_id, t, num_way, num_set,
-			(t == fault_ptlb ? "(Fault occurred!)" : ""));
-
+		pr_crit("PMMU.%d PTLB.%d has %d way, %d set.\n", pmmu_id, t, num_way, num_set);
 		pr_crit("------------- PTLB[WAY][SET][ENTRY] -------------\n");
 		for (way = 0, cnt = 0; way < num_way; way++)
 			cnt += dump_ptlb_entry(drvdata, pgtable, t, way, num_set, pmmu_id);
@@ -345,7 +342,7 @@ static unsigned int dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t 
 }
 
 static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
-					   int num_stlb, int fault_stlb)
+					   int num_stlb)
 {
 	int way, t;
 	unsigned int cnt;
@@ -358,8 +355,7 @@ static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata, phys_
 		num_way = MMU_STLB_INFO_NUM_WAY(info);
 		num_set = MMU_STLB_INFO_NUM_SET(info);
 
-		pr_crit("STLB.%d has %d way, %d set. %s\n", t, num_way, num_set,
-			(t == fault_stlb ? "Fault occurred!" : ""));
+		pr_crit("STLB.%d has %d way, %d set.\n", t, num_way, num_set);
 		pr_crit("------------- STLB[WAY][SET][ENTRY] -------------\n");
 		for (way = 0, cnt = 0; way < num_way; way++)
 			cnt += dump_stlb_entry(drvdata, pgtable, t, way, num_set);
@@ -459,13 +455,11 @@ static inline void dump_sysmmu_s1l1tlb_status(struct sysmmu_drvdata *drvdata,
 }
 
 static inline void dump_sysmmu_tlb_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
-					  int pmmu_id, int stream_id)
+					  int pmmu_id)
 {
 	u32 pmmu, swalker;
 	int num_stlb, num_ptlb;
 	void __iomem *sfrbase = drvdata->sfrbase;
-	int fault_ptlb, fault_stlb;
-	u32 stream_cfg;
 
 	swalker = readl_relaxed(sfrbase + REG_MMU_SWALKER_INFO);
 	num_stlb = MMU_SWALKER_INFO_NUM_STLB(swalker);
@@ -474,20 +468,16 @@ static inline void dump_sysmmu_tlb_status(struct sysmmu_drvdata *drvdata, phys_a
 	pmmu = readl_relaxed(sfrbase + REG_MMU_PMMU_INFO);
 	num_ptlb = MMU_PMMU_INFO_NUM_PTLB(pmmu);
 
-	stream_cfg = readl_relaxed(sfrbase + REG_MMU_STREAM_CFG(stream_id));
-	fault_ptlb = MMU_STREAM_CFG_PTLB_ID(stream_cfg);
-	fault_stlb = MMU_STREAM_CFG_STLB_ID(stream_cfg);
-
 	pr_crit("SysMMU has %d PTLBs(PMMU %d), %d STLBs, 1 S1L1TLB\n",
 		num_ptlb, pmmu_id, num_stlb);
 
-	dump_sysmmu_ptlb_status(drvdata, pgtable, num_ptlb, pmmu_id, fault_ptlb);
-	dump_sysmmu_stlb_status(drvdata, pgtable, num_stlb, fault_stlb);
+	dump_sysmmu_ptlb_status(drvdata, pgtable, num_ptlb, pmmu_id);
+	dump_sysmmu_stlb_status(drvdata, pgtable, num_stlb);
 	dump_sysmmu_s1l1tlb_status(drvdata, pgtable);
 }
 
 static inline void dump_sysmmu_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
-				      int vmid, int pmmu_id, int stream_id)
+				      int vmid, int pmmu_id)
 {
 	int info;
 	void __iomem *sfrbase = drvdata->sfrbase;
@@ -507,7 +497,7 @@ static inline void dump_sysmmu_status(struct sysmmu_drvdata *drvdata, phys_addr_
 		readl_relaxed(MMU_VM_ADDR(sfrbase + REG_MMU_CTRL_VM, vmid)),
 		readl_relaxed(MMU_VM_ADDR(sfrbase + REG_MMU_CONTEXT0_CFG_ATTRIBUTE_VM, vmid)));
 
-	dump_sysmmu_tlb_status(drvdata, pgtable, pmmu_id, stream_id);
+	dump_sysmmu_tlb_status(drvdata, pgtable, pmmu_id);
 }
 
 static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata, int intr_type,
@@ -651,7 +641,7 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata, int in
 		pgtable = 0;
 	}
 
-	dump_sysmmu_status(drvdata, pgtable, vmid, pmmu_id, stream_id);
+	dump_sysmmu_status(drvdata, pgtable, vmid, pmmu_id);
 finish:
 	pr_crit("----------------------------------------------------------\n");
 }
