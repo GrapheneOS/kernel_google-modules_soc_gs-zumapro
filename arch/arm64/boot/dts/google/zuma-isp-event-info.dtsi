@@ -7191,9 +7191,9 @@
 	/* LME Interrupt Event Definitions */
 	lme_int1: lme-event-info@0 {
 		irq-reg-space = "lme";
-		irq-src-reg = <0x0 0x20f0c>;
-		irq-reset-reg = <0x0 0x20f10>;
-		irq-mask-reg = <0x0 0x20f08>;
+		irq-src-reg = <0x0 0x08f0c>;
+		irq-reset-reg = <0x0 0x08f10>;
+		irq-mask-reg = <0x0 0x08f08>;
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_LME_INT1_FRAME_START>,
