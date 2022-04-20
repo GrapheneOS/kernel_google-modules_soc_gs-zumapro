@@ -623,16 +623,16 @@ static void print_wd_owner(struct s3c2410_wdt *wdt, const char *loglvl)
 			task->comm, task->pid, task_state_to_char(task), task_cpu(task));
 
 #ifdef CONFIG_SCHED_INFO
-	if (task->state == TASK_RUNNING
+	if (task_is_running(task)
 			&& task->sched_info.last_queued == 0) {
 		status = "running";
 		last_nsecs = task->sched_info.last_arrival;
-	} else if (task->state == TASK_RUNNING
+	} else if (task_is_running(task)
 			&& task->sched_info.last_queued != 0) {
 		status = "queued";
 		last_nsecs = task->sched_info.last_queued;
-	} else if (task->state == TASK_INTERRUPTIBLE
-			|| task->state == TASK_UNINTERRUPTIBLE) {
+	} else if (READ_ONCE(task->__state) == TASK_INTERRUPTIBLE ||
+		   READ_ONCE(task->__state) == TASK_UNINTERRUPTIBLE) {
 		status = "blocked";
 		last_nsecs = task->sched_info.last_arrival;
 	}
@@ -641,7 +641,7 @@ static void print_wd_owner(struct s3c2410_wdt *wdt, const char *loglvl)
 	dev_printk(loglvl, wdt->dev, "  %s for %llu secs\n", status,
 			(sched_clock() - last_nsecs) / NSEC_PER_SEC);
 
-	if (task->state != TASK_RUNNING)
+	if (!task_is_running(current))
 		dump_backtrace(NULL, task, loglvl);
 	else
 		dev_printk(loglvl, wdt->dev, "  (skip dump backtrace; task is running)\n");
