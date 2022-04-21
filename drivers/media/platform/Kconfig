@@ -5,7 +5,7 @@ if V4L_PLATFORM_DRIVERS
 #
 # Platform multimedia device configuration
 #
-source "device-modules/drivers/media/platform/exynos/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/exynos/Kconfig"
 
 endif # V4L_PLATFORM_DRIVERS
 
@@ -19,4 +19,4 @@ config VIDEO_EXYNOS_SMFC
 	  Still MFC(Multi Format Codec) V4L2 Driver for Exynos SoCs.
 	  The driver supports for mem2mem V4L2 device.
 
-source "device-modules/drivers/media/platform/bigocean/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/bigocean/Kconfig"

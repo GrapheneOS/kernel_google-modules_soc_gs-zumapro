@@ -128,6 +128,6 @@ TRACE_EVENT(pt_driver_log,
 
 /* This part must be outside protection */
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH ../../drivers/soc/google/pt
+#define TRACE_INCLUDE_PATH .
 
 #include <trace/define_trace.h>

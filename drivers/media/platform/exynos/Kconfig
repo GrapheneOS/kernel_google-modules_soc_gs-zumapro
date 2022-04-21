@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0
 #
 # Exynos multimedia device drivers
 #
@@ -8,7 +9,7 @@ config VIDEO_EXYNOS
           This is a representative exynos multimedia device.
 
 if VIDEO_EXYNOS
-	source "device-modules/drivers/media/platform/exynos/mfc/Kconfig"
+	source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/exynos/mfc/Kconfig"
 endif
 
 config MEDIA_EXYNOS

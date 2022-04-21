@@ -4,6 +4,7 @@
 obj-$(CONFIG_VH_SCHED)	+= sched/
 
 # systrace
+CFLAGS_systrace.o = -I$(srctree)/$(src)
 obj-$(CONFIG_VH_SYSTRACE) += systrace.o
 
 # vh/kernel/fs

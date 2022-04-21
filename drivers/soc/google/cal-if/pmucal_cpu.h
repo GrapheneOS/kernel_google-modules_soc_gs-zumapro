@@ -1,13 +1,13 @@
 #ifndef __PMUCAL_CPU_H__
 #define __PMUCAL_CPU_H__
-#include "pmucal_common.h"
+#include <soc/google/pmucal_common.h>
 #include <linux/fs.h>
 #include <linux/debugfs.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/uaccess.h>
 #include <soc/google/exynos-pmu-if.h>
-#include "pmucal_dbg.h"
+#include <soc/google/pmucal_dbg.h>
 
 struct pmucal_cpu {
 	u32 id;

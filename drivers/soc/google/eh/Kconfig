@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0
+
 config GOOGLE_EH
         tristate "Google Emerald Hill compression engine driver"
         depends on 64BIT

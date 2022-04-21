@@ -1,7 +1,7 @@
 #ifndef __PMUCAL_LOCAL_H__
 #define __PMUCAL_LOCAL_H__
-#include "pmucal_common.h"
-#include "pmucal_dbg.h"
+#include <soc/google/pmucal_common.h>
+#include <soc/google/pmucal_dbg.h>
 
 /* Number of MAX_POWER_DOMAIN */
 #if defined(CONFIG_SOC_EXYNOS9820)

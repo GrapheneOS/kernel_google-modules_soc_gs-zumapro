@@ -3,7 +3,7 @@
 # PINCTRL infrastructure and drivers
 #
 
-source "device-modules/drivers/pinctrl/gs/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/gs/Kconfig"
 
 config PINCTRL_SLG51000
 	tristate "Dialog Semiconductor SLG51000 pinctrl driver"
