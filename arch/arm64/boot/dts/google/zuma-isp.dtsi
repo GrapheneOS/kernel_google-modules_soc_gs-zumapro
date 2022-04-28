@@ -805,11 +805,15 @@
 		reg =
 			<0x0 0x1C440000 0x10000>,  /* RGBP */
 			<0x0 0x1C470000 0x10000>,  /* MCFP */
-			<0x0 0x1C840000 0x10000>;  /* YUVP */
+			<0x0 0x1C840000 0x10000>,  /* YUVP */
+			<0x0 0x1C5D0000 0x10000>,  /* SSMT D0 RGBP */
+			<0x0 0x1C910000 0x10000>;  /* SSMT D1 YUVP */
 		reg-names =
 			"rgbp",
 			"mcfp",
-			"yuvp";
+			"yuvp",
+			"ssmt_d0_rgbp",
+			"ssmt_d1_yuvp";
 
 		interrupts =
 			<GIC_SPI IRQ_RGBP_INTREQ_0_RGBP IRQ_TYPE_LEVEL_HIGH>,
