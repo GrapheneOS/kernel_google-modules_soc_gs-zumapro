@@ -12,27 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//build/kernel/kleaf:kernel.bzl", "kernel_dtstree")
+load("//build/kernel/kleaf:workspace.bzl", "define_kleaf_workspace")
 
-kernel_dtstree(
-    name = "dt",
-    srcs = glob(
-        [
-            "Makefile",
-            "google/Makefile",
-            "google/**/*.dtsi",
-            "google/**/*.dts",
-        ],
-        exclude = [
-            "**/.*",
-            "**/.*/**",
-            "**/BUILD.bazel",
-            "**/*.bzl",
-        ],
-    ) + [
-        "//private/google-modules/soc-modules:dt-bindings",
-    ],
-    visibility = [
-        "//private/google-modules/soc-modules:__pkg__",
-    ],
-)
+toplevel_output_directories(paths = ["out"])
+define_kleaf_workspace(common_kernel_package = "aosp")

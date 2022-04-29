@@ -1,0 +1,211 @@
+load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
+load("//build/kernel/kleaf:constants.bzl", "aarch64_outs")
+load(
+    "//build/kernel/kleaf:kernel.bzl",
+    "kernel_build",
+    "kernel_build_config",
+    "kernel_images",
+    "kernel_module",
+    "kernel_modules_install",
+    "merged_kernel_uapi_headers",
+)
+load("@kernel_toolchain_info//:dict.bzl", "BRANCH", "CLANG_VERSION")
+
+# TODO(b/221278445): Use real GKI. Delete the zuma_gki targets.
+def _define_zuma_gki():
+    # Note: zuma_gki and zuma_X all writes to zuma_gki_defconfig,
+    # which prevents them to be built without sandboxes (--config=local) in
+    # parallel. This will be fixed by b/229309039.
+    kernel_build(
+        name = "zuma_gki",
+        srcs = native.glob([
+            "arch/arm64/configs/zuma*.fragment",
+        ]) + [
+            "//aosp:kernel_aarch64_sources",
+        ],
+        outs = aarch64_outs,
+        build_config = "build.config.zuma.gki",
+    )
+
+    kernel_modules_install(
+        name = "zuma_gki_modules_install",
+        kernel_modules = [],
+        kernel_build = "zuma_gki",
+    )
+
+    kernel_images(
+        name = "zuma_gki_images",
+        kernel_build = "zuma_gki",
+        kernel_modules_install = "zuma_gki_modules_install",
+        build_system_dlkm = True,
+    )
+
+def define_zuma():
+    _define_zuma_gki()
+    for mode in ("emulator", "hybrid"):
+        zuma_dtbos = [
+            "google/zuma-{}.dtbo".format(mode),
+        ]
+        zuma_modules = [
+            # keep sorted
+            ":zuma_soc_{}".format(mode),
+            "//private/google-modules/display:samsung.zuma_{}".format(mode),
+            "//private/google-modules/gpu/mali_kbase:mali_kbase.zuma_{}".format(mode),
+            "//private/google-modules/gpu/mali_pixel:mali_pixel.zuma_{}".format(mode),
+            "//private/google-modules/lwis:lwis.zuma_{}".format(mode),
+        ]
+
+        kernel_build(
+            name = "zuma_{}".format(mode),
+            srcs = native.glob([
+                "build.config.*",
+                "arch/arm64/configs/zuma*.fragment",
+                "Kconfig.ext",
+                "**/Kconfig",
+                "arch/arm64/boot/dts/**",
+                "include/dt-bindings/**",
+                "include/dtc/**",
+            ]) + [
+                "//aosp:kernel_aarch64_sources",
+            ],
+            outs = [
+                # Sync with build.config.zuma_emulator and build.config.zuma_hybrid
+                "google/zuma-a0.dtb",
+            ] + zuma_dtbos,
+            # TODO(b/221278445): Use real GKI
+            # base_kernel = "//aosp:kernel_aarch64",
+            base_kernel = ":zuma_gki",
+            build_config = "build.config.zuma_{}".format(mode),
+            dtstree = "//private/google-modules/soc-modules/arch/arm64/boot/dts:dt",
+            kconfig_ext = "Kconfig.ext",
+            module_outs = [
+                # keep sorted
+                "drivers/i2c/i2c-dev.ko",
+            ],
+        )
+
+        kernel_module(
+            name = "zuma_soc_{}".format(mode),
+            srcs = native.glob(
+                ["**"],
+                exclude = [
+                    ".*",
+                    ".*/**",
+                    "BUILD.bazel",
+                    "**/*.bzl",
+                    "build.config.*",
+                ],
+            ),
+            outs = [
+                # keep sorted
+                "drivers/clocksource/exynos_mct.ko",
+                "drivers/i2c/busses/i2c-exynos5.ko",
+                "drivers/pinctrl/gs/pinctrl-exynos-gs.ko",
+                "drivers/soc/google/exynos-pd_el3.ko",
+                "drivers/soc/google/gs-chipid.ko",
+                "drivers/soc/google/vh/kernel/systrace.ko",
+                "drivers/tty/serial/exynos_tty.ko",
+            ],
+            kernel_build = "//private/google-modules/soc-modules:zuma_{}".format(mode),
+            visibility = [
+                # keep sorted
+                "//private/google-modules:__subpackages__",
+            ],
+        )
+
+        kernel_modules_install(
+            name = "zuma_{}_modules_install".format(mode),
+            kernel_modules = zuma_modules,
+            kernel_build = ":zuma_{}".format(mode),
+        )
+
+        merged_kernel_uapi_headers(
+            name = "zuma_{}_merged_uapi_headers".format(mode),
+            kernel_modules = zuma_modules,
+            kernel_build = ":zuma_{}".format(mode),
+        )
+
+        kernel_images(
+            name = "zuma_{}_images".format(mode),
+            build_boot = True,
+            build_vendor_boot = True,
+            build_vendor_dlkm = True,
+            build_dtbo = True,
+            dtbo_srcs = [":zuma_{}/{}".format(mode, file) for file in zuma_dtbos],
+            kernel_build = ":zuma_{}".format(mode),
+            kernel_modules_install = ":zuma_{}_modules_install".format(mode),
+            # Keep the following in sync with build.config.zuma:
+            # No MODULES_LIST
+            # No MODULES_BLOCKLIST
+            vendor_dlkm_modules_list = "vendor_dlkm_modules.zuma",
+            # No VENDOR_DLKM_MODULES_BLOCKLIST
+            vendor_dlkm_props = "vendor_dlkm.props.zuma",
+            # VENDOR_RAMDISK_BINARY
+            vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],
+            deps = [
+                # Keep the following in sync with vendor_dlkm.props.zuma:
+                # selinux_fc
+                "//prebuilts/boot-artifacts/selinux:file_contexts",
+            ],
+        )
+
+        native.genrule(
+            name = "zuma_{mode}_ufdt_overlay".format(mode = mode),
+            srcs = [
+                ":zuma_{mode}/google/zuma-a0.dtb".format(mode = mode),
+                ":zuma_{mode}/google/zuma-{mode}.dtbo".format(mode = mode),
+                "//build/kernel:hermetic-tools/ufdt_apply_overlay",
+            ],
+            outs = [
+                # It is a limitation in Bazel that we can't name this
+                # zuma-out.dtb, because the one from zuma_emulator and
+                # zuma_hybrid conflicts.
+                "zuma_{mode}-out.dtb".format(mode = mode),
+            ],
+            cmd = """set -e
+                $(location //build/kernel:hermetic-tools/ufdt_apply_overlay) \\
+                    $(location :zuma_{mode}/google/zuma-a0.dtb)              \\
+                    $(location :zuma_{mode}/google/zuma-{mode}.dtbo)         \\
+                    $(location zuma_{mode}-out.dtb)
+            """.format(mode = mode),
+        )
+
+        copy_to_dist_dir(
+            name = "zuma_{}_dist".format(mode),
+            flat = True,
+            data = [
+                # TODO(b/221278445) use real GKI; replace with //common:kernel_aarch64_additional_artifacts.
+                # This will include abi.xml, abi_symbollist and abi_symbollist.report.
+                ":zuma_gki",
+                ":zuma_gki_headers",
+                ":zuma_gki_kmi_symbol_list",
+                ":zuma_gki_images",
+                "//build/kernel:gki_certification_tools",
+
+                # Device-specific artifacts
+                ":zuma_{}".format(mode),
+                ":zuma_{}_modules_install".format(mode),
+                # At the time of writing (2022-02-04), this intentionally diverges from
+                # the behavior of build.sh-style mixed builds by also incorporating
+                # UAPI headers of external modules, while build.sh-style mixed builds
+                # always uses kernel-uapi-headers.tar.gz from GKI_DIST_DIR.
+                # To use (zuma-)GKI's kernel-uapi-headers.tar.gz in DIST_DIR, use
+                #     :zuma_gki_uapi_headers
+                # instead.
+                ":zuma_{}_merged_uapi_headers".format(mode),
+                ":zuma_{}_images".format(mode),
+                ":zuma_{}_ufdt_overlay".format(mode),
+            ],
+            dist_dir = "out/{branch}/dist".format(branch = BRANCH),
+        )
+
+    # Default is emulator, see build_zuma_zebu.sh
+    native.alias(
+        name = "zuma",
+        actual = ":zuma_emulator",
+    )
+
+    native.alias(
+        name = "zuma_dist",
+        actual = ":zuma_emulator_dist",
+    )

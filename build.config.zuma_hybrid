@@ -24,6 +24,7 @@ MKDTIMG_DTBOS="
 ${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/*.dtbo
 "
 
+# Sync with zuma.bzl
 FILES="
 google/zuma-a0.dtb
 google/zuma-hybrid.dtbo

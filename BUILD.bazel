@@ -29,6 +29,9 @@ load(
     "merged_kernel_uapi_headers",
 )
 load("@kernel_toolchain_info//:dict.bzl", "BRANCH", "CLANG_VERSION")
+load(":zuma.bzl", "define_zuma")
+
+define_zuma()
 
 slider_dtbos = [
     "gs101-oriole.dtbo",
@@ -52,7 +55,7 @@ slider_dtbos = [
 ]
 
 filegroup(
-    name = "slider_dt-bindings",
+    name = "dt-bindings",
     srcs = glob([
         "include/dt-bindings/**",
         "include/dtc/**",
@@ -82,7 +85,7 @@ kernel_build(
     ],
     base_kernel = "//common:kernel_aarch64_download_or_build",
     build_config = "build.config.slider",
-    dtstree = "//private/google-modules/soc-modules/arch/arm64/boot/dts:slider_dt",
+    dtstree = "//private/google-modules/soc-modules/arch/arm64/boot/dts:dt",
     implicit_outs = slider_dtbos,
     kconfig_ext = "Kconfig.ext",
     module_outs = [
@@ -101,7 +104,7 @@ kernel_build(
 )
 
 filegroup(
-    name = "gs101_soc_headers",
+    name = "soc_headers",
     srcs = glob([
         # Standard pixel headers
         "include/**/*.h",
@@ -113,6 +116,15 @@ filegroup(
         # Needed for external modules to include in their makefiles
         "Makefile.include",
     ]),
+    visibility = [
+        # keep sorted
+        "//private/google-modules:__subpackages__",
+    ],
+)
+
+alias(
+    name = "gs101_soc_headers",
+    actual = ":soc_headers",
     visibility = [
         # keep sorted
         "//private/google-modules:__subpackages__",
