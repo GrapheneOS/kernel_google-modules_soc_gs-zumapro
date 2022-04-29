@@ -17,7 +17,7 @@ build/build.sh "$@"
 
 BASE_OUT=${OUT_DIR}/
 DIST_DIR=${DIST_DIR:-${BASE_OUT}/dist/}
-BUILDTOOLS_PREBUILT_BIN=build/build-tools/path/linux-x86
+BUILDTOOLS_PREBUILT_BIN=build/kernel/build-tools/path/linux-x86
 BUILDTOOLS_PREBUILT_BIN_PATH=$(readlink -f $(dirname $0)/../../../${BUILDTOOLS_PREBUILT_BIN})
 if [ -d "${BUILDTOOLS_PREBUILT_BIN_PATH}" ]; then
 	PATH=${BUILDTOOLS_PREBUILT_BIN_PATH}:${PATH}
