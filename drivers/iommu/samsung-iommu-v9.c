@@ -47,28 +47,6 @@ struct samsung_sysmmu_domain {
 	spinlock_t pgtablelock;	/* spinlock to access pagetable	*/
 };
 
-static const char *pmmu_default_stream[PMMU_MAX_NUM] = {
-	"pmmu0,default_stream",
-	"pmmu1,default_stream",
-	"pmmu2,default_stream",
-	"pmmu3,default_stream",
-	"pmmu4,default_stream",
-	"pmmu5,default_stream",
-	"pmmu6,default_stream",
-	"pmmu7,default_stream"
-};
-
-static const char *pmmu_stream_property[PMMU_MAX_NUM] = {
-	"pmmu0,stream_property",
-	"pmmu1,stream_property",
-	"pmmu2,stream_property",
-	"pmmu3,stream_property",
-	"pmmu4,stream_property",
-	"pmmu5,stream_property",
-	"pmmu6,stream_property",
-	"pmmu7,stream_property"
-};
-
 static inline void samsung_iommu_write_event(struct samsung_iommu_log *iommu_log,
 					     enum sysmmu_event_type type,
 					     u64 start, u64 end)
@@ -1136,12 +1114,15 @@ static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
 static int sysmmu_parse_stream_property(struct device *dev, struct sysmmu_drvdata *drvdata,
 					int pmmu_id)
 {
-	const char *default_props_name = pmmu_default_stream[pmmu_id];
-	const char *props_name = pmmu_stream_property[pmmu_id];
+	char default_props_name[32];
+	char props_name[32];
 	struct stream_props *props = &drvdata->props[pmmu_id];
 	struct stream_config *cfg;
 	int i, readsize, cnt, ret, num_stream;
 	u32 pmmu;
+
+	snprintf(default_props_name, sizeof(default_props_name), "pmmu%d,default_stream", pmmu_id);
+	snprintf(props_name, sizeof(props_name), "pmmu%d,stream_property", pmmu_id);
 
 	if (of_property_read_u32(dev->of_node, default_props_name, &props->default_cfg))
 		props->default_cfg = DEFAULT_STREAM_NONE;
