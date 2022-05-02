@@ -1153,7 +1153,10 @@ static ssize_t show_ppmu_ver(struct file *fp, char __user *ubuf, size_t size, lo
 	data->bcm_cnt_nr = ppmu_idx;
 
 	ret = count;
-	copy_to_user(ubuf, buf, ret);
+	if (copy_to_user(ubuf, buf, ret)) {
+		ret = -EFAULT;
+		goto out;
+	}
 	*ppos += ret;
 out:
 	kfree(buf);
@@ -3298,7 +3301,10 @@ static ssize_t show_bcm_dump(struct file *fp, char __user *ubuf, size_t size, lo
 		goto out;
 	}
 
-	copy_to_user(ubuf, buf, ret);
+	if (copy_to_user(ubuf, buf, ret)) {
+		ret = -EFAULT;
+		goto out;
+	}
 	*ppos += ret;
 out:
 	kfree(buf);
