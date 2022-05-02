@@ -312,6 +312,8 @@ enum mfc_nal_q_stop_cause {
 	NALQ_STOP_RC_MODE		= 11,
 	NALQ_STOP_NO_STRUCTURE		= 12,
 	NALQ_STOP_2CORE			= 13,
+	NALQ_STOP_TWO_PASS_ENC		= 14,
+	NALQ_STOP_ADAPTIVE_GOP		= 15,
 	/* nal_q exception cause */
 	NALQ_EXCEPTION_DRC		= 25,
 	NALQ_EXCEPTION_NEED_DPB		= 26,
@@ -1705,6 +1707,8 @@ struct mfc_enc_params {
 	u8 ivf_header_disable;	/* VP8, VP9 */
 	u8 fixed_target_bit;
 	u8 min_quality_mode;	/* H.264, HEVC when RC_MODE is 2(VBR) */
+	u8 wp_two_pass_enable;
+	u8 adaptive_gop_enable;
 
 	u32 check_color_range;
 	u32 color_range;

@@ -594,4 +594,9 @@ enum v4l2_mpeg_mfc51_video_frame_type {
 #define V4L2_CID_MPEG_VIDEO_BPG_HEADER_SIZE			\
 					(V4L2_CID_MPEG_MFC_BASE + 252)
 
+/* CID for encoding info interface */
+#define V4L2_CID_MPEG_VIDEO_WP_TWO_PASS_ENABLE			\
+					(V4L2_CID_MPEG_MFC_BASE + 260)
+#define V4L2_CID_MPEG_VIDEO_ADAPTIVE_GOP_ENABLE			\
+					(V4L2_CID_MPEG_MFC_BASE + 261)
 #endif /* __EXYNOS_MFC_MEDIA_H */

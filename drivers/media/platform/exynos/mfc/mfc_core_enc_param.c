@@ -449,6 +449,18 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_RC_MODE);
 
+	/* high quality mode */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_HIGH_QUALITY_MODE);
+	if (p->wp_two_pass_enable) {
+		mfc_clear_set_bits(reg, 0x1, 0, p->wp_two_pass_enable);
+		mfc_debug(2, "WP two pass encoding is enabled\n");
+	}
+	if (p->adaptive_gop_enable) {
+		mfc_clear_set_bits(reg, 0x1, 4, p->adaptive_gop_enable);
+		mfc_debug(2, "Adaptive gop is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_HIGH_QUALITY_MODE);
+
 	/* extended encoder ctrl */
 	/** vbv buffer size */
 	reg = MFC_CORE_RAW_READL(MFC_REG_E_VBV_BUFFER_SIZE);
@@ -656,6 +668,8 @@ static void __mfc_set_enc_params_h264(struct mfc_core *core,
 	mfc_clear_set_bits(reg, 0x1, 8, p_264->hier_qp_enable);
 	/* Weighted Prediction enable */
 	mfc_clear_set_bits(reg, 0x3, 9, p->weighted_enable);
+	if (p->weighted_enable)
+		mfc_debug(2, "WP mode is %d\n", p->weighted_enable);
 	/* 8x8 transform enable [12]: INTER_8x8_TRANS_ENABLE */
 	mfc_clear_set_bits(reg, 0x1, 12, p_264->_8x8_transform);
 	/* 8x8 transform enable [13]: INTRA_8x8_TRANS_ENABLE */
