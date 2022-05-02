@@ -42,11 +42,64 @@ def _define_zuma_gki():
 
 def define_zuma():
     _define_zuma_gki()
+
+    zuma_in_tree_modules = {
+        "emulator": [
+            # keep sorted
+            "drivers/i2c/i2c-dev.ko",
+        ],
+        "hybrid": [
+            # keep sorted
+            "drivers/block/virtio_blk.ko",
+            "drivers/crypto/virtio/virtio_crypto.ko",
+            "drivers/i2c/i2c-dev.ko",
+            "drivers/net/net_failover.ko",
+            "drivers/net/virtio_net.ko",
+            "drivers/virtio/virtio_balloon.ko",
+            "drivers/virtio/virtio_mmio.ko",
+            "drivers/virtio/virtio_pci.ko",
+            "drivers/virtio/virtio_pci_modern_dev.ko",
+            "fs/9p/9p.ko",
+            "fs/cachefiles/cachefiles.ko",
+            "fs/fscache/fscache.ko",
+            "fs/netfs/netfs.ko",
+            "net/9p/9pnet.ko",
+            "net/9p/9pnet_virtio.ko",
+            "net/core/failover.ko",
+        ],
+    }
+
+    zuma_soc_modules = {
+        "emulator": [
+            # keep sorted
+            "drivers/clocksource/exynos_mct.ko",
+            "drivers/i2c/busses/i2c-exynos5.ko",
+            "drivers/pinctrl/gs/pinctrl-exynos-gs.ko",
+            "drivers/soc/google/exynos-pd_el3.ko",
+            "drivers/soc/google/gs-chipid.ko",
+            "drivers/soc/google/vh/kernel/systrace.ko",
+            "drivers/tty/serial/exynos_tty.ko",
+        ],
+        "hybrid": [
+            # keep sorted
+            "drivers/clocksource/exynos_mct.ko",
+            "drivers/dma-buf/heaps/samsung/samsung_dma_heap.ko",
+            "drivers/i2c/busses/i2c-exynos5.ko",
+            "drivers/iommu/samsung-iommu-group.ko",
+            "drivers/iommu/samsung_iommu_v9.ko",
+            "drivers/pinctrl/gs/pinctrl-exynos-gs.ko",
+            "drivers/soc/google/exynos-pd_el3.ko",
+            "drivers/soc/google/gs-chipid.ko",
+            "drivers/tty/serial/exynos_tty.ko",
+        ],
+    }
+
     for mode in ("emulator", "hybrid"):
         zuma_dtbos = [
             "google/zuma-{}.dtbo".format(mode),
         ]
-        zuma_modules = [
+
+        zuma_external_modules = [
             # keep sorted
             ":zuma_soc_{}".format(mode),
             "//private/google-modules/display:samsung.zuma_{}".format(mode),
@@ -78,10 +131,7 @@ def define_zuma():
             build_config = "build.config.zuma_{}".format(mode),
             dtstree = "//private/google-modules/soc-modules/arch/arm64/boot/dts:dt",
             kconfig_ext = "Kconfig.ext",
-            module_outs = [
-                # keep sorted
-                "drivers/i2c/i2c-dev.ko",
-            ],
+            module_outs = zuma_in_tree_modules[mode],
         )
 
         kernel_module(
@@ -96,16 +146,7 @@ def define_zuma():
                     "build.config.*",
                 ],
             ),
-            outs = [
-                # keep sorted
-                "drivers/clocksource/exynos_mct.ko",
-                "drivers/i2c/busses/i2c-exynos5.ko",
-                "drivers/pinctrl/gs/pinctrl-exynos-gs.ko",
-                "drivers/soc/google/exynos-pd_el3.ko",
-                "drivers/soc/google/gs-chipid.ko",
-                "drivers/soc/google/vh/kernel/systrace.ko",
-                "drivers/tty/serial/exynos_tty.ko",
-            ],
+            outs = zuma_soc_modules[mode],
             kernel_build = "//private/google-modules/soc-modules:zuma_{}".format(mode),
             visibility = [
                 # keep sorted
@@ -115,13 +156,13 @@ def define_zuma():
 
         kernel_modules_install(
             name = "zuma_{}_modules_install".format(mode),
-            kernel_modules = zuma_modules,
+            kernel_modules = zuma_external_modules,
             kernel_build = ":zuma_{}".format(mode),
         )
 
         merged_kernel_uapi_headers(
             name = "zuma_{}_merged_uapi_headers".format(mode),
-            kernel_modules = zuma_modules,
+            kernel_modules = zuma_external_modules,
             kernel_build = ":zuma_{}".format(mode),
         )
 
