@@ -25,6 +25,7 @@ gs101_raviole_dtbs := gs101-a0.dtb gs101-b0.dtb
 zuma_overlays := \
 	zuma-emulator.dtbo \
 	zuma-hybrid.dtbo \
+	zuma-ripcurrent.dtbo \
 
 zuma_dtbs := zuma-a0.dtb
 

@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Ripcurrent board device tree source
+ *
+ * Copyright 2022 Google LLC
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/ {
+	board_id = <0x40101>;
+	board_rev = <0x000000>;
+	fragment@boardbase {
+		target-path = "/";
+		__overlay__ {
+			model = "ZUMA Ripcurrent board based on ZUMA";
+			compatible = "google,ZUMA Ripcurrent", "google,ZUMA";
+		};
+	};
+};
