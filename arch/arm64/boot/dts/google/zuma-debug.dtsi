@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * debug device tree source code for Zuma SoC
+ *
+ * Copyright 2022 Google LLC.
+ */
+
+#include "zuma-ppmu.dtsi"

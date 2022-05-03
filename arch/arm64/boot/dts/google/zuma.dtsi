@@ -14,6 +14,7 @@
 #include "zuma-isp.dtsi"
 #include "zuma-pinctrl.dtsi"
 #include "zuma-usi.dtsi"
+#include "zuma-debug.dtsi"
 
 / {
 	compatible = "google,zuma";
