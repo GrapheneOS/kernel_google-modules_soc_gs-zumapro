@@ -254,7 +254,7 @@
 
 	exynos-adv_tracer {
 		compatible = "google,exynos-adv-tracer";
-		reg = <0x0 0x176c0000 0x1000>;
+		reg = <0x0 0x15260000 0x1000>;
 		reg-names = "mailbox";
 		interrupts = <GIC_SPI IRQ_MAILBOX_DBGCORE2AP_ALIVE IRQ_TYPE_LEVEL_HIGH>;
 		pmu-dbgcore-config = <0x3080>;
@@ -270,13 +270,15 @@
 		pmu-burnin-ctrl = <0x3cd0>;
 		sel-scanmode-bit = <25>;
 		dbgsel-sw-bit = <4>;
-		blk-list = "AOC", "AOCCORE", "BO", "BOCORE", "BUS0", "BUS1",
-			   "BUS2", "CMU", "CORE", "CPUCL0", "CLUSTER0", "CSIS",
-			   "DISP", "DNS", "DPU", "EH", "G2D", "G3AA",
-			   "G3D", "GPU", "GDC", "GSA", "HSI0", "HSI1",
-			   "HSI2", "IPP", "ITP", "MCSC", "MFC", "MIF1",
-			   "MIF2", "MIF3", "PDP", "PERIC0", "PERIC1", "TNR",
-			   "TPU", "TPUCORE", "SLC0", "SLC1", "SLC2", "SLC3";
-		status = "disabled";
+		blk-list = "AOC", "AUR", "BW", "CMU", "CPUCL0", "DPUB",
+			   "DPUF0", "DPUF1", "EH", "G2D", "G3D", "GDC",
+			   "GSA", "GSE", "HSI0", "HSI1", "HSI2", "ISPFE",
+			   "MCSC", "MFC", "MIF0", "MIF1", "MIF2", "MIF3",
+			   "MISC", "NOCL0", "NOCL1A", "NOCL1B", "NOCL2AA", "NOCL2AB",
+			   "PERIC0", "PERIC1", "RGBP", "TNR", "TPU", "YUVP",
+			   "CLUSTER0", "GPU", "AOCCORE", "AURCORE", "BWCORE","TPUCORE",
+			   "ISPFECORE", "SLC0", "SLC1", "SLC2", "SLC3";
+
+		status = "ok";
 	};
 };
