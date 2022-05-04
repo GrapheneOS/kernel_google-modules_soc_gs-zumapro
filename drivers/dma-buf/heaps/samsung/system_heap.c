@@ -24,7 +24,6 @@
 #include <linux/of.h>
 
 #include "samsung-dma-heap.h"
-#include "../deferred-free-helper.h"
 #include "../page_pool.h"
 
 #define HIGH_ORDER_GFP  (((GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN \

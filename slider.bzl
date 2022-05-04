@@ -150,7 +150,6 @@ def define_slider():
             "include/**/uapi/*.h",
         ] + [
             # List of headers needed by external modules
-            "drivers/dma-buf/heaps/deferred-free-helper.h",
             "drivers/dma-buf/heaps/samsung/samsung-dma-heap.h",
 
             # Needed for external modules to include in their makefiles
@@ -185,7 +184,6 @@ def define_slider():
             "drivers/devfreq/google/exynos_devfreq.ko",
             "drivers/devfreq/google/governor_memlat.ko",
             "drivers/devfreq/google/memlat-devfreq.ko",
-            "drivers/dma-buf/heaps/deferred-free-helper.ko",
             "drivers/dma-buf/heaps/page_pool.ko",
             "drivers/dma-buf/heaps/samsung/samsung_dma_heap.ko",
             "drivers/dma/pl330.ko",
