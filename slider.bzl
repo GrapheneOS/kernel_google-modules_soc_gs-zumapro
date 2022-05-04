@@ -20,6 +20,7 @@ load(
     "kernel_images",
     "kernel_module",
     "kernel_modules_install",
+    "kernel_unstripped_modules_archive",
     "merged_kernel_uapi_headers",
 )
 load("@kernel_toolchain_info//:dict.bzl", "BRANCH", "CLANG_VERSION")
@@ -302,6 +303,12 @@ def define_slider():
 
     kernel_modules_install(
         name = "slider_modules_install",
+        kernel_build = ":slider",
+        kernel_modules = _slider_modules,
+    )
+
+    kernel_unstripped_modules_archive(
+        name = "slider_unstripped_modules_archive",
         kernel_build = ":slider",
         kernel_modules = _slider_modules,
     )
