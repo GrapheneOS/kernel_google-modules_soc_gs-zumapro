@@ -14,10 +14,9 @@
 		#dma-size-cells = <1>;
 		/* TPU uses regions under 0x18000000 for special purpose */
 		dma-window = <0x18000000 0xE7FFF000>;
-		reg = <0x0 0x1CE00000 0x200000>;
-		// TODO (b/230393533): re-enable SSMT when we can support multiple IOMMU
-		// domains.
-		reg-names = "tpu";
+		reg = <0x0 0x1CE00000 0x200000
+		       0x0 0x1CCF0000 0x10000>;
+		reg-names = "tpu", "ssmt";
 		interrupts = <GIC_SPI IRQ_NS_TPU_TPU IRQ_TYPE_LEVEL_HIGH>;
 		hardware-id = <0x0 0xb>;
 		iommus = <&sysmmu_tpu>;
