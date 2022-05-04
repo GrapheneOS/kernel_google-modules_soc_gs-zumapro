@@ -108,11 +108,11 @@ static void ufshcd_put_exclusive_access(struct ufs_hba *hba)
 		scsi_unblock_requests(hba->host);
 }
 
-static int pixel_ufs_keyslot_program(struct blk_crypto_profile *profile,
+static int pixel_ufs_keyslot_program(struct blk_keyslot_manager *ksm,
 				     const struct blk_crypto_key *key,
 				     unsigned int slot)
 {
-	struct ufs_hba *hba = container_of(profile, struct ufs_hba, crypto_profile);
+	struct ufs_hba *hba = container_of(ksm, struct ufs_hba, ksm);
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	int err;
 
@@ -135,11 +135,11 @@ static int pixel_ufs_keyslot_program(struct blk_crypto_profile *profile,
 	return err;
 }
 
-static int pixel_ufs_keyslot_evict(struct blk_crypto_profile *profile,
+static int pixel_ufs_keyslot_evict(struct blk_keyslot_manager *ksm,
 				   const struct blk_crypto_key *key,
 				   unsigned int slot)
 {
-	struct ufs_hba *hba = container_of(profile, struct ufs_hba, crypto_profile);
+	struct ufs_hba *hba = container_of(ksm, struct ufs_hba, ksm);
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	int err;
 
@@ -160,23 +160,22 @@ static int pixel_ufs_keyslot_evict(struct blk_crypto_profile *profile,
 	return err;
 }
 
-static int pixel_ufs_derive_sw_secret(struct blk_crypto_profile *profile,
+static int pixel_ufs_derive_raw_secret(struct blk_keyslot_manager *ksm,
 				       const u8 *wrapped_key,
 				       unsigned int wrapped_key_size,
-				       u8 sw_secret[BLK_CRYPTO_SW_SECRET_SIZE])
+				       u8 *secret, unsigned int secret_size)
 {
-	struct ufs_hba *hba = container_of(profile, struct ufs_hba, crypto_profile);
+	struct ufs_hba *hba = container_of(ksm, struct ufs_hba, ksm);
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	int ret;
 
 	dev_info(ufs->dev,
-		 "kdn: deriving sw secret from %u-byte wrapped key\n",
-		 wrapped_key_size);
+		 "kdn: deriving %u-byte raw secret from %u-byte wrapped key\n",
+		 secret_size, wrapped_key_size);
 
-	ret = gsa_kdn_derive_raw_secret(ufs->gsa_dev, sw_secret,
-					BLK_CRYPTO_SW_SECRET_SIZE,
+	ret = gsa_kdn_derive_raw_secret(ufs->gsa_dev, secret, secret_size,
 					wrapped_key, wrapped_key_size);
-	if (ret != BLK_CRYPTO_SW_SECRET_SIZE) {
+	if (ret != secret_size) {
 		dev_err(ufs->dev, "kdn: failed to derive raw secret; ret=%d\n",
 			ret);
 		/*
@@ -188,10 +187,10 @@ static int pixel_ufs_derive_sw_secret(struct blk_crypto_profile *profile,
 	return 0;
 }
 
-static const struct blk_crypto_ll_ops pixel_ufs_crypto_ops = {
+static const struct blk_ksm_ll_ops pixel_ufs_ksm_ops = {
 	.keyslot_program	= pixel_ufs_keyslot_program,
 	.keyslot_evict		= pixel_ufs_keyslot_evict,
-	.derive_sw_secret	= pixel_ufs_derive_sw_secret,
+	.derive_raw_secret	= pixel_ufs_derive_raw_secret,
 };
 
 static void pixel_ufs_release_gsa_device(void *_ufs)
@@ -350,11 +349,11 @@ int pixel_ufs_crypto_init(struct ufs_hba *hba)
 
 	/*
 	 * We need to override the blk_keyslot_manager, firstly in order to
-	 * override the UFSHCI standand blk_crypto_ll_ops with operations that
+	 * override the UFSHCI standand blk_ksm_ll_ops with operations that
 	 * program/evict wrapped keys via the KDN, and secondly in order to
 	 * declare wrapped key support rather than standard key support.
 	 */
-	hba->quirks |= UFSHCD_QUIRK_CUSTOM_CRYPTO_PROFILE;
+	hba->quirks |= UFSHCD_QUIRK_CUSTOM_KEYSLOT_MANAGER;
 
 	/*
 	 * This host controller doesn't support the standard
@@ -367,19 +366,19 @@ int pixel_ufs_crypto_init(struct ufs_hba *hba)
 	hba->sg_entry_size = sizeof(struct pixel_ufs_prdt_entry);
 
 	/* Advertise crypto capabilities to the block layer. */
-	err = devm_blk_crypto_profile_init(hba->dev, &hba->crypto_profile, KDN_SLOT_NUM);
+	err = devm_blk_ksm_init(hba->dev, &hba->ksm, KDN_SLOT_NUM);
 	if (err)
 		return err;
-	hba->crypto_profile.ll_ops = pixel_ufs_crypto_ops;
+	hba->ksm.ksm_ll_ops = pixel_ufs_ksm_ops;
 	/*
 	 * The PRDT entries accept 16-byte IVs, but currently the driver passes
 	 * the DUN through ufshcd_lrb::data_unit_num which is 8-byte.  8 bytes
 	 * is enough for upper layers, so for now just use that as the limit.
 	 */
-	hba->crypto_profile.max_dun_bytes_supported = 8;
-	hba->crypto_profile.key_types_supported = BLK_CRYPTO_KEY_TYPE_HW_WRAPPED;
-	hba->crypto_profile.dev = ufs->dev;
-	hba->crypto_profile.modes_supported[BLK_ENCRYPTION_MODE_AES_256_XTS] =
+	hba->ksm.max_dun_bytes_supported = 8;
+	hba->ksm.features = BLK_CRYPTO_FEATURE_WRAPPED_KEYS;
+	hba->ksm.dev = ufs->dev;
+	hba->ksm.crypto_modes_supported[BLK_ENCRYPTION_MODE_AES_256_XTS] =
 		CRYPTO_DATA_UNIT_SIZE;
 
 	dev_info(ufs->dev,
