@@ -16,6 +16,24 @@ See `build/kernel/kleaf/README.md` for details.
 $ tools/bazel run --lto=none //gs/google-modules/soc-modules:slider_dist
 ```
 
+# ABI monitoring with Bazel (recommended)
+
+**Note**: ABI monitoring is not supported on `raviole-mainline` branch.
+
+```shell
+# Compare ABI and build files for distribution
+$ tools/bazel build //gs/google-modules/soc-modules:slider_abi
+
+# Update symbol list common/android/abi_gki_aarch64_pixel
+$ tools/bazel run //gs/google-modules/soc-modules:slider_abi_update_symbol_list
+
+# Update ABI common/android/abi_gki_aarch64.xml
+$ tools/bazel run //common:kernel_aarch64_abi_update
+
+# Copy files to distribution
+$ tools/bazel run //gs/google-modules/soc-modules:slider_abi_dist
+```
+
 # Building with `build_slider.sh` (legacy)
 
 ```shell
