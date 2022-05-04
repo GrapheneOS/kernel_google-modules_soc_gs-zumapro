@@ -277,14 +277,14 @@ static int exynos_cpufreq_verify(struct cpufreq_policy_data *new_policy)
 
 	policy.freq_table = new_policy->freq_table;
 
-	index = cpufreq_table_find_index_ah(&policy, new_policy->max, false);
+	index = cpufreq_table_find_index_ah(&policy, new_policy->max);
 	if (index == -1) {
 		pr_err("%s : failed to find a proper max frequency\n", __func__);
 		return -EINVAL;
 	}
 	max_freq = policy.freq_table[index].frequency;
 
-	index = cpufreq_table_find_index_al(&policy, new_policy->min, false);
+	index = cpufreq_table_find_index_al(&policy, new_policy->min);
 	if (index == -1) {
 		pr_err("%s : failed to find a proper min frequency\n", __func__);
 		return -EINVAL;
