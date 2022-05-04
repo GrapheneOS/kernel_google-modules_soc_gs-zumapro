@@ -74,7 +74,7 @@ static struct em_perf_domain *clone_pd(const struct em_perf_domain *original_pd)
 	cpumask_copy(em_span_cpus(pd), em_span_cpus(original_pd));
 
 	pd->nr_perf_states = original_pd->nr_perf_states;
-	pd->flags = original_pd->flags;
+	pd->milliwatts = original_pd->milliwatts;
 
 	pd->table = kcalloc(original_pd->nr_perf_states, sizeof(struct em_perf_state), GFP_KERNEL);
 	if (!pd->table) {
