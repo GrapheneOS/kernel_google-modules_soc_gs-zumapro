@@ -24,7 +24,8 @@
 #include <linux/of.h>
 
 #include "samsung-dma-heap.h"
-#include "../page_pool.h"
+/* This header is in ACK under drivers/dma-buf/heaps. */
+#include <heaps/page_pool.h>
 
 #define HIGH_ORDER_GFP  (((GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN \
 				| __GFP_NORETRY) & ~__GFP_RECLAIM) \

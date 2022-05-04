@@ -184,7 +184,6 @@ def define_slider():
             "drivers/devfreq/google/exynos_devfreq.ko",
             "drivers/devfreq/google/governor_memlat.ko",
             "drivers/devfreq/google/memlat-devfreq.ko",
-            "drivers/dma-buf/heaps/page_pool.ko",
             "drivers/dma-buf/heaps/samsung/samsung_dma_heap.ko",
             "drivers/dma/pl330.ko",
             "drivers/dma/samsung-dma.ko",
