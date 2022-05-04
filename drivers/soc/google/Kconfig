@@ -25,6 +25,10 @@ config SOC_ZUMA
 	bool "Google Zuma"
 	depends on SOC_GOOGLE
 
+config BOARD_RIPCURRENT
+	bool "Google Ripcurrent Board"
+	depends on SOC_ZUMA
+
 config BOARD_ZUMA_EMULATOR
 	bool "Google Zuma on full emulator"
 	depends on SOC_ZUMA
