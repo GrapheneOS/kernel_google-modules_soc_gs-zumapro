@@ -30,9 +30,9 @@ kernel_dtstree(
             "**/*.bzl",
         ],
     ) + [
-        "//private/google-modules/soc-modules:dt-bindings",
+        "//private/google-modules/soc/gs:dt-bindings",
     ],
     visibility = [
-        "//private/google-modules/soc-modules:__pkg__",
+        "//private/google-modules/soc/gs:__pkg__",
     ],
 )

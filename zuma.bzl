@@ -129,7 +129,7 @@ def define_zuma():
             # base_kernel = "//aosp:kernel_aarch64",
             base_kernel = ":zuma_gki",
             build_config = "build.config.zuma_{}".format(mode),
-            dtstree = "//private/google-modules/soc-modules/arch/arm64/boot/dts:dt",
+            dtstree = "//private/google-modules/soc/gs/arch/arm64/boot/dts:dt",
             kconfig_ext = "Kconfig.ext",
             module_outs = zuma_in_tree_modules[mode],
         )
@@ -147,7 +147,7 @@ def define_zuma():
                 ],
             ),
             outs = zuma_soc_modules[mode],
-            kernel_build = "//private/google-modules/soc-modules:zuma_{}".format(mode),
+            kernel_build = "//private/google-modules/soc/gs:zuma_{}".format(mode),
             visibility = [
                 # keep sorted
                 "//private/google-modules:__subpackages__",

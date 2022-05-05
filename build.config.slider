@@ -38,7 +38,7 @@ function modify_vendor_ramdisk() {
 }
 
 EXT_MODULES+="
-private/google-modules/soc-modules
+private/google-modules/soc/gs
 private/google-modules/display
 private/google-modules/wlan/bcmdhd4389
 private/google-modules/gpu/mali_pixel

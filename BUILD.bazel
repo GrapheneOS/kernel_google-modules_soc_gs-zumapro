@@ -61,7 +61,7 @@ filegroup(
         "include/dtc/**",
     ]),
     visibility = [
-        "//private/google-modules/soc-modules/arch/arm64/boot/dts:__pkg__",
+        "//private/google-modules/soc/gs/arch/arm64/boot/dts:__pkg__",
     ],
 )
 
@@ -85,7 +85,7 @@ kernel_build(
     ],
     base_kernel = "//common:kernel_aarch64_download_or_build",
     build_config = "build.config.slider",
-    dtstree = "//private/google-modules/soc-modules/arch/arm64/boot/dts:dt",
+    dtstree = "//private/google-modules/soc/gs/arch/arm64/boot/dts:dt",
     implicit_outs = slider_dtbos,
     kconfig_ext = "Kconfig.ext",
     module_outs = [
@@ -281,7 +281,7 @@ kernel_module(
         "drivers/usb/typec/tcpm/usbc_cooling_dev.ko",
         "drivers/watchdog/s3c2410_wdt.ko",
     ],
-    kernel_build = "//private/google-modules/soc-modules:slider",
+    kernel_build = "//private/google-modules/soc/gs:slider",
     visibility = [
         # keep sorted
         "//private/google-modules:__subpackages__",
@@ -305,7 +305,7 @@ _slider_modules = [
     "//private/google-modules/lwis:lwis.slider",
     "//private/google-modules/nfc:nfc.slider",
     "//private/google-modules/power/reset:reset.slider",
-    "//private/google-modules/soc-modules:gs101_soc",
+    "//private/google-modules/soc/gs:gs101_soc",
     "//private/google-modules/touch/common:common.slider",
     "//private/google-modules/touch/fts/ftm5:ftm5.slider",
     "//private/google-modules/touch/sec:sec.slider",

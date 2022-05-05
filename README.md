@@ -2,7 +2,7 @@
 
 ```shell
 # Files are copied to out/{branch}/dist
-$ tools/bazel run //private/google-modules/soc-modules:slider_dist
+$ tools/bazel run //private/google-modules/soc/gs:slider_dist
 ```
 
 See `build/kernel/kleaf/README.md` for details.
@@ -13,7 +13,7 @@ See `build/kernel/kleaf/README.md` for details.
 
 ```shell
 # Files are copied to out/{branch}/dist
-$ tools/bazel run --lto=none //private/google-modules/soc-modules:slider_dist
+$ tools/bazel run --lto=none //private/google-modules/soc/gs:slider_dist
 ```
 
 # Building with `build_slider.sh` (legacy)

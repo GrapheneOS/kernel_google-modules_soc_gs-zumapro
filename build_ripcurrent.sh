@@ -9,11 +9,11 @@ function exit_if_error {
 }
 
 export LTO=${LTO:-thin}
-export BUILD_CONFIG=private/google-modules/soc-modules/build.config.ripcurrent
+export BUILD_CONFIG=private/google-modules/soc/gs/build.config.ripcurrent
 
 if [ -z "${GKI_PREBUILTS_DIR}" ]; then
   CORE_KERNEL_FRAGMENT_DEFCONFIG=ripcurrent_modified_gki.fragment \
-  GKI_BUILD_CONFIG=private/google-modules/soc-modules/build.config.zuma.gki \
+  GKI_BUILD_CONFIG=private/google-modules/soc/gs/build.config.zuma.gki \
     build/build.sh "$@"
 else
   build/build.sh "$@"

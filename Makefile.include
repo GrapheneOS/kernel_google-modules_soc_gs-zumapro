@@ -3,7 +3,7 @@
 # This file should be included by external modules that need to link to this
 # project.
 
-EXTRA_CFLAGS += -I$(KERNEL_SRC)/../private/google-modules/soc-modules/include
-EXTRA_CFLAGS += -I$(KERNEL_SRC)/../private/google-modules/soc-modules/include/uapi
+EXTRA_CFLAGS += -I$(KERNEL_SRC)/../private/google-modules/soc/gs/include
+EXTRA_CFLAGS += -I$(KERNEL_SRC)/../private/google-modules/soc/gs/include/uapi
 
-EXTRA_SYMBOLS += $(OUT_DIR)/../private/google-modules/soc-modules/Module.symvers
+EXTRA_SYMBOLS += $(OUT_DIR)/../private/google-modules/soc/gs/Module.symvers
