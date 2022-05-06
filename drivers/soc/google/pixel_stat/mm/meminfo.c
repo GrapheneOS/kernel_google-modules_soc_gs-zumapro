@@ -7,8 +7,8 @@
  */
 
 #include <linux/module.h>
-#include <linux/samsung-dma-heap.h>
 #include <linux/seq_file.h>
+#include "../../../../dma-buf/heaps/samsung/samsung-dma-heap.h"
 
 /*****************************************************************************/
 /*                       Modified Code Section                               */

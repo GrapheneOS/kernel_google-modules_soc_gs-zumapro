@@ -11,7 +11,7 @@
 #include <soc/google/exynos-bcm_dbg.h>
 #endif
 
-#include "pwrcal-env.h"
+#include <soc/google/pwrcal-env.h>
 #include "pwrcal-rae.h"
 #include "cmucal.h"
 #include "ra.h"
@@ -19,10 +19,10 @@
 #include "fvmap.h"
 #include "asv.h"
 
-#include "pmucal_system.h"
+#include <soc/google/pmucal_system.h>
 #include "pmucal_local.h"
 #include "pmucal_cpu.h"
-#include "pmucal_dbg.h"
+#include <soc/google/pmucal_dbg.h>
 #include "pmucal_cp.h"
 #include "pmucal_rae.h"
 #include "pmucal_powermode.h"

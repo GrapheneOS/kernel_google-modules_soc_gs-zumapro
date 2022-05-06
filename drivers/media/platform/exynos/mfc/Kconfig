@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0
+
 config VIDEO_EXYNOS_MFC
 	tristate "Exynos MFC Driver"
 	default n

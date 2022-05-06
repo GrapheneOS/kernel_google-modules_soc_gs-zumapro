@@ -1,47 +1,22 @@
-if [ -z "$DEVICE_MODULES_DIR" ]; then
-DEVICE_MODULES_DIR=${KERNEL_DIR}
- # This project should be nested inside a kernel tree
-KERNEL_DIR="${KERNEL_DIR}/.."
-fi
+KCONFIG_EXT_PREFIX=${DEVICE_MODULES_DIR}
 
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.common
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.aarch64
 
-DEFCONFIG=${DEFCONFIG:-zuma_gki_defconfig}
-GKI_FRAGMENT_DEFCONFIG=${GKI_FRAGMENT_DEFCONFIG:-${DEVICE_MODULES_DIR}/arch/arm64/configs/zuma_gki.fragment}
-PRE_DEFCONFIG_CMDS="KCONFIG_CONFIG=${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${ROOT_DIR}/${GKI_FRAGMENT_DEFCONFIG}"
-POST_DEFCONFIG_CMDS="rm ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/${DEFCONFIG}"
-
-LIBUFDT_PREBUILTS_BIN=prebuilts/misc/linux-x86/libufdt
-DTC_OVERLAY_TEST_EXT=${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/bin/ufdt_apply_overlay
-DTC_FLAGS="--symbols"
+DEFCONFIG=zuma_gki_defconfig
+GKI_FRAGMENT_DEFCONFIG=${GKI_FRAGMENT_DEFCONFIG:-zuma_gki.fragment}
+CORE_KERNEL_FRAGMENT_DEFCONFIG=${CORE_KERNEL_FRAGMENT_DEFCONFIG:-zuma_emulator_modified_gki.fragment}
+MERGE_CONFIG_EXTRA_ARGS=()
+if [ -n "${CORE_KERNEL_FRAGMENT_DEFCONFIG}" ]; then
+  MERGE_CONFIG_EXTRA_ARGS+=(${ROOT_DIR}/${DEVICE_MODULES_DIR}/arch/arm64/configs/${CORE_KERNEL_FRAGMENT_DEFCONFIG})
+fi
+PRE_DEFCONFIG_CMDS="mkdir -p \${OUT_DIR}/arch/arm64/configs/ && KCONFIG_CONFIG=\${OUT_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${MERGE_CONFIG_EXTRA_ARGS[@]} ${ROOT_DIR}/${DEVICE_MODULES_DIR}/arch/arm64/configs/${GKI_FRAGMENT_DEFCONFIG}"
+POST_DEFCONFIG_CMDS=""
 
 MAKE_GOALS=
-if [ -z "$KERNEL_BINARY" ]; then
 KERNEL_BINARY=Image.lz4
-fi
 
-if [ -z "$MIXED_BUILD" ]; then
-USING_PREBUILTS=
-
-MAKE_GOALS="
-${KERNEL_BINARY}
-"
-
-DEVICE_KERNEL_FILES="
-.config
-vmlinux
-System.map
-arch/arm64/boot/${KERNEL_BINARY}
-"
-fi
-
-if [ -n "${USING_PREBUILTS}" ]; then
-BUILD_VENDOR_BOOT_IMG=1
-else
 BUILD_BOOT_IMG=1
-fi
-
 BUILD_INITRAMFS=1
 INITRAMFS_VENDOR_RAMDISK_FRAGMENT_NAME=dlkm
 LZ4_RAMDISK=1

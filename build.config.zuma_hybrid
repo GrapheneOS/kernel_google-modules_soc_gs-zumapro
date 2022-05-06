@@ -1,41 +1,41 @@
 DEVICE_MODULES_DIR=${KERNEL_DIR}
- # This project should be nested inside a kernel tree
-KERNEL_DIR="${KERNEL_DIR}/.."
+# Compile these modules with the GKI kernel
+KERNEL_DIR="aosp"
+# Compute the path of this project relative to KERNEL_DIR
+DEVICE_MODULES_REL_DIR=$(rel_path ${DEVICE_MODULES_DIR} ${KERNEL_DIR})
 
-DEFCONFIG=zuma_gki_defconfig
-GKI_FRAGMENT_DEFCONFIG=${DEVICE_MODULES_DIR}/arch/arm64/configs/zuma_hybrid.fragment
-
-KERNEL_BINARY=Image
+GKI_FRAGMENT_DEFCONFIG=zuma_hybrid.fragment
 
 . ${ROOT_DIR}/${DEVICE_MODULES_DIR}/build.config.zuma
 
-DIST_CMDS="${LIBUFDT_PREBUILTS_BIN}/ufdt_apply_overlay \${DIST_DIR}/zuma-a0.dtb \${DIST_DIR}/zuma-hybrid.dtbo \${DIST_DIR}/zuma-out.dtb"
+DIST_CMDS="ufdt_apply_overlay \${DIST_DIR}/zuma-a0.dtb \${DIST_DIR}/zuma-hybrid.dtbo \${DIST_DIR}/zuma-out.dtb"
 
 MAKE_GOALS="$MAKE_GOALS
 modules
-google/dtbo.img
+dtbs
+"
+
+DTS_EXT_DIR="${DEVICE_MODULES_DIR}/arch/arm64/boot/dts"
+DTC_INCLUDE=${ROOT_DIR}/${DEVICE_MODULES_DIR}/include/dtc
+BUILD_DTBO_IMG=1
+MKDTIMG_FLAGS="--page_size=4096 --id=/:board_id --rev=/:board_rev"
+# These paths need to be relative to KERNEL_DIR.
+MKDTIMG_DTBOS="
+${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/*.dtbo
+"
+
+# Sync with zuma.bzl
+FILES="
 google/zuma-a0.dtb
 google/zuma-hybrid.dtbo
-
 "
-
-FILES="
-device-modules/arch/arm64/boot/dts/google/dtbo.img
-device-modules/arch/arm64/boot/dts/google/zuma-a0.dtb
-device-modules/arch/arm64/boot/dts/google/zuma-hybrid.dtbo
-
-"
-
-if [ -z "$MIXED_BUILD" ]; then
-FILES="$FILES
-$DEVICE_KERNEL_FILES
-"
-fi
 
 MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.zuma
 
 EXT_MODULES+="
-private/google-modules/display/samsung
+private/google-modules/soc-modules
+private/google-modules/display
 private/google-modules/gpu/mali_kbase
 private/google-modules/gpu/mali_pixel
+private/google-modules/lwis
 "

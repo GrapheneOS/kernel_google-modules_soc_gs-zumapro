@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0
+
 menuconfig DEBUG_SNAPSHOT
 	tristate "Debug SnapShot Support"
 	depends on ARM64

@@ -19,13 +19,13 @@
 #include <linux/highmem.h>
 #include <linux/mm.h>
 #include <linux/module.h>
-#include <linux/samsung-dma-heap.h>
 #include <linux/samsung-dma-mapping.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <uapi/linux/dma-buf.h>
 
 #include "dmabuf_heap_trace.h"
+#include "samsung-dma-heap.h"
 
 struct dma_iovm_map {
 	struct list_head list;

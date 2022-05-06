@@ -6,17 +6,19 @@ set -e
 : ${OUT_DIR:="out/"}
 export OUT_DIR
 
-: ${BUILD_CONFIG:="private/gs-google/device-modules/build.config.zuma_emulator"}
+: ${BUILD_CONFIG:="private/google-modules/soc-modules/build.config.zuma_emulator"}
 
 echo "Using build config ${BUILD_CONFIG}"
 
-LTO=thin \
+FAST_BUILD=1 \
 BUILD_CONFIG="${BUILD_CONFIG}" \
+GKI_BUILD_CONFIG=private/google-modules/soc-modules/build.config.zuma.gki \
+CORE_KERNEL_FRAGMENT_DEFCONFIG=zuma_emulator_modified_gki.fragment \
 build/build.sh "$@"
 
 BASE_OUT=${OUT_DIR}/
 DIST_DIR=${DIST_DIR:-${BASE_OUT}/dist/}
-BUILDTOOLS_PREBUILT_BIN=build/build-tools/path/linux-x86
+BUILDTOOLS_PREBUILT_BIN=build/kernel/build-tools/path/linux-x86
 BUILDTOOLS_PREBUILT_BIN_PATH=$(readlink -f $(dirname $0)/../../../${BUILDTOOLS_PREBUILT_BIN})
 if [ -d "${BUILDTOOLS_PREBUILT_BIN_PATH}" ]; then
 	PATH=${BUILDTOOLS_PREBUILT_BIN_PATH}:${PATH}

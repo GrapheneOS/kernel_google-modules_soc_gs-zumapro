@@ -5,34 +5,10 @@ DEFCONFIG=slider_gki_defconfig
 PRE_DEFCONFIG_CMDS="KCONFIG_CONFIG=${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${ROOT_DIR}/${DEVICE_MODULES_DIR}/arch/arm64/configs/slider_gki.fragment"
 POST_DEFCONFIG_CMDS="rm ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/${DEFCONFIG}"
 
-LIBUFDT_PREBUILTS_BIN=prebuilts/misc/linux-x86/libufdt
-DTC_OVERLAY_TEST_EXT=${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/bin/ufdt_apply_overlay
-DTC_FLAGS="--symbols"
-
 MAKE_GOALS=
 KERNEL_BINARY=Image.lz4
 
-if [ -z "$MIXED_BUILD" ]; then
-USING_PREBUILTS=
-
-MAKE_GOALS="
-${KERNEL_BINARY}
-"
-
-DEVICE_KERNEL_FILES="
-.config
-vmlinux
-System.map
-arch/arm64/boot/${KERNEL_BINARY}
-"
-fi
-
-if [ -n "${USING_PREBUILTS}" ]; then
-BUILD_VENDOR_BOOT_IMG=1
-else
 BUILD_BOOT_IMG=1
-fi
-
 BUILD_INITRAMFS=1
 INITRAMFS_VENDOR_RAMDISK_FRAGMENT_NAME=dlkm
 LZ4_RAMDISK=1
@@ -52,11 +28,6 @@ AVB_SIGN_BOOT_IMG=1
 AVB_BOOT_PARTITION_SIZE=0x04000000
 AVB_BOOT_KEY=${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
 AVB_BOOT_ALGORITHM=SHA256_RSA2048
-
-UWB_MODULE="gs/google-modules/uwb/kernel"
-if [ -d "${ROOT_DIR}/${UWB_MODULE}" ]; then
-EXT_MODULES+=${UWB_MODULE}
-fi
 
 if [ -n "${GKI_DEFCONFIG_FRAGMENT}" ]; then
 source ${GKI_DEFCONFIG_FRAGMENT}

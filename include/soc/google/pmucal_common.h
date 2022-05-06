@@ -1,7 +1,7 @@
 #ifndef __PMUCAL_COMMON_H__
 #define __PMUCAL_COMMON_H__
 
-#include "pwrcal-env.h"
+#include <soc/google/pwrcal-env.h>
 
 #ifdef PWRCAL_TARGET_LINUX
 #include <linux/types.h>

@@ -1,6 +1,6 @@
 #ifndef __PMUCAL_SHUB_H__
 #define __PMUCAL_SHUB_H__
-#include "pmucal_common.h"
+#include <soc/google/pmucal_common.h>
 
 struct pmucal_shub {
 	struct pmucal_seq *init;

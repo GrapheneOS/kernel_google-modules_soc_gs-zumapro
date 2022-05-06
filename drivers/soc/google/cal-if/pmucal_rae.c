@@ -1,5 +1,5 @@
-#include "pwrcal-env.h"
-#include "pmucal_common.h"
+#include <soc/google/pwrcal-env.h>
+#include <soc/google/pmucal_common.h>
 #include "pmucal_rae.h"
 
 #define A_FEW_USECS 10		/* see Documentation/timers/timers-howto.rst */

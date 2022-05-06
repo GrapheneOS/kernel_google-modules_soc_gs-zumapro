@@ -1,7 +1,7 @@
 #ifndef __PMUCAL_SYSTEM_H__
 #define __PMUCAL_SYSTEM_H__
-#include "pmucal_common.h"
-#include "pmucal_dbg.h"
+#include <soc/google/pmucal_common.h>
+#include <soc/google/pmucal_dbg.h>
 
 struct pmucal_lpm {
 	u32 id;
