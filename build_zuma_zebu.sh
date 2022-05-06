@@ -19,8 +19,10 @@ build/build.sh "$@"
 BASE_OUT=${OUT_DIR}/
 DIST_DIR=${DIST_DIR:-${BASE_OUT}/dist/}
 BUILDTOOLS_PREBUILT_BIN=build/kernel/build-tools/path/linux-x86
-BUILDTOOLS_PREBUILT_BIN_PATH=$(readlink -f $(dirname $0)/../../../${BUILDTOOLS_PREBUILT_BIN})
-if [ -d "${BUILDTOOLS_PREBUILT_BIN_PATH}" ]; then
+if ! BUILDTOOLS_PREBUILT_BIN_PATH=$(readlink -f $(dirname $0)/../../../../${BUILDTOOLS_PREBUILT_BIN}); then
+	echo "Failed to find ${BUILDTOOLS_PREBUILT_BIN}" >&2
+	exit 1
+elif [ -d "${BUILDTOOLS_PREBUILT_BIN_PATH}" ]; then
 	PATH=${BUILDTOOLS_PREBUILT_BIN_PATH}:${PATH}
 fi
 UNPACK_BOOTIMG_PATH="tools/mkbootimg/unpack_bootimg.py"
