@@ -32,7 +32,6 @@
 #define REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM	0x8404
 #define REG_MMU_CONTEXT0_CFG_ATTRIBUTE_VM	0x8408
 
-
 #define MMU_VERSION_MAJOR(val)			((val) >> 12)
 #define MMU_VERSION_MINOR(val)			(((val) >> 8) & 0xF)
 #define MMU_VERSION_REVISION(val)		((val) & 0xFF)

@@ -16,18 +16,12 @@
 #include "samsung-iommu-v9.h"
 
 #define REG_MMU_NUM_CONTEXT			0x0100
-
-#define REG_MMU_PMMU_INDICATOR			0x2FFC
-#define REG_MMU_PMMU_INFO			0x3000
-#define REG_MMU_SWALKER_INFO			0x3004
-
 #define MMU_NUM_CONTEXT(reg)			((reg) & 0x1F)
 
 #define REG_MMU_ALL_INV_VM			0x8010
 #define REG_MMU_RANGE_INV_START_VPN_VM		0x8020
 #define REG_MMU_RANGE_INV_END_VPN_AND_TRIG_VM	0x8024
 
-#define SET_PMMU_INDICATOR(val)			((val) & 0xF)
 #define MMU_PMMU_INFO_VA_WIDTH(reg)		((reg) & 0x1)
 #define MMU_SWALKER_INFO_NUM_PMMU(reg)		((reg) & 0xFFFF)
 #define MMU_PMMU_INFO_NUM_STREAM_TABLE(reg)	(((reg) >> 16) & 0xFFFF)
@@ -158,7 +152,7 @@ static inline void __sysmmu_set_stream(struct sysmmu_drvdata *data, int pmmu_id)
 	int id_cnt = props->id_cnt;
 	unsigned int i, index;
 
-	writel_relaxed(SET_PMMU_INDICATOR(pmmu_id), data->sfrbase + REG_MMU_PMMU_INDICATOR);
+	writel_relaxed(MMU_SET_PMMU_INDICATOR(pmmu_id), data->sfrbase + REG_MMU_PMMU_INDICATOR);
 
 	writel_relaxed(MMU_STREAM_CFG_MASK(props->default_cfg),
 		       data->sfrbase + REG_MMU_STREAM_CFG(0));
@@ -1169,7 +1163,7 @@ static int sysmmu_parse_stream_property(struct device *dev, struct sysmmu_drvdat
 	}
 
 	/* get num stream */
-	writel_relaxed(SET_PMMU_INDICATOR(pmmu_id),
+	writel_relaxed(MMU_SET_PMMU_INDICATOR(pmmu_id),
 		       drvdata->sfrbase + REG_MMU_PMMU_INDICATOR);
 	pmmu = readl_relaxed(drvdata->sfrbase + REG_MMU_PMMU_INFO);
 	num_stream = MMU_PMMU_INFO_NUM_STREAM_TABLE(pmmu);

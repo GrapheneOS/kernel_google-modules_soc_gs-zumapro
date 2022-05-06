@@ -54,7 +54,6 @@
 							((set) << 16) | ((way) << 24))
 
 #define MMU_SWALKER_INFO_NUM_STLB(reg)			(((reg) >> 16) & 0xFFFF)
-#define MMU_SWALKER_INFO_NUM_PMMU(reg)			((reg) & 0xF)
 #define MMU_STLB_INFO_NUM_WAY(reg)			(((reg) >> 16) & 0xFFFF)
 #define MMU_STLB_INFO_NUM_SET(reg)			((reg) & 0xFFFF)
 #define MMU_READ_STLB_TPN_VALID(reg)			(((reg) >> 28) & 0x1)
