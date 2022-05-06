@@ -336,7 +336,7 @@ kernel_images(
     # No MODULES_BLOCKLIST
     # Keep the following in sync with build.config.gs101:
     vendor_dlkm_modules_list = "vendor_dlkm_modules.slider",
-    # No VENDOR_DLKM_MODULES_BLOCKLIST
+    vendor_dlkm_modules_blocklist = "vendor_dlkm.blocklist.slider",
     vendor_dlkm_props = "vendor_dlkm.props.slider",
     # VENDOR_RAMDISK_BINARY
     vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],
