@@ -323,6 +323,7 @@ def define_slider():
         name = "slider_images",
         build_boot = True,
         build_dtbo = True,
+        build_initramfs = True,
         build_vendor_boot = True,
         build_vendor_dlkm = True,
         dtbo_srcs = [":slider/" + e for e in slider_dtbos],
