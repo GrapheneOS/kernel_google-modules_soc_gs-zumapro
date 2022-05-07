@@ -171,6 +171,7 @@ def define_zuma():
             build_boot = True,
             build_vendor_boot = True,
             build_vendor_dlkm = True,
+            build_initramfs = True,
             build_dtbo = True,
             dtbo_srcs = [":zuma_{}/{}".format(mode, file) for file in zuma_dtbos],
             kernel_build = ":zuma_{}".format(mode),
