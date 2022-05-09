@@ -8,7 +8,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zuma.h>
 #include "zuma-gpu.dtsi"
-
+#include "zuma-cpu.dtsi"
 #include "zuma-drm-dpu.dtsi"
 #include "zuma-dma-heap.dtsi"
 #include "zuma-isp.dtsi"
@@ -48,88 +48,7 @@
 
 		/* reserved for overlay by ODM */
 	};
-/*
-	cpus {
-		#address-cells = <2>;
-		#size-cells = <0>;
 
-		#define CPU_CL0 "0-3"
-		#define CPU_ALL "0-3"
-
-		cpu-map {
-			cluster0 {
-				core0 {
-					cpu = <&cpu0>;
-				};
-				core1 {
-					cpu = <&cpu1>;
-				};
-				core2 {
-					cpu = <&cpu2>;
-				};
-				core3 {
-					cpu = <&cpu3>;
-				};
-			};
-		};
-
-		cpu0: cpu@0000 {
-			device_type = "cpu";
-			compatible = "arm,armv8";
-			reg = <0x0 0x0000>;
-			enable-method = "psci";
-			cpu-idle-states =  <&KLEIN_CPU_SLEEP>;
-			capacity-dmips-mhz = <193>;
-			dynamic-power-coefficient = <70>;
-		};
-		cpu1: cpu@0100 {
-			device_type = "cpu";
-			compatible = "arm,armv8";
-			reg = <0x0 0x0100>;
-			enable-method = "psci";
-			cpu-idle-states =  <&KLEIN_CPU_SLEEP>;
-			capacity-dmips-mhz = <193>;
-			dynamic-power-coefficient = <70>;
-		};
-		cpu2: cpu@0200 {
-			device_type = "cpu";
-			compatible = "arm,armv8";
-			reg = <0x0 0x0200>;
-			enable-method = "psci";
-			cpu-idle-states =  <&KLEIN_CPU_SLEEP>;
-			capacity-dmips-mhz = <193>;
-			dynamic-power-coefficient = <70>;
-		};
-		cpu3: cpu@0300 {
-			device_type = "cpu";
-			compatible = "arm,armv8";
-			reg = <0x0 0x0300>;
-			enable-method = "psci";
-			cpu-idle-states =  <&KLEIN_CPU_SLEEP>;
-			capacity-dmips-mhz = <193>;
-			dynamic-power-coefficient = <70>;
-		};
-
-		idle-states {
-			entry-method = "arm,psci";
-
-                        KLEIN_CPU_SLEEP: klein-cpu-sleep {
-				idle-state-name = "c2";
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x0010000>;
-				entry-latency-us = <70>;
-				exit-latency-us = <160>;
-				min-residency-us = <2000>;
-                                status = "disabled";
-			};
-		};
-	};
-
-	psci {
-		compatible = "arm,psci-1.0";
-		method = "smc";
-	};
-*/
 	gic: interrupt-controller@10400000 {
 		compatible = "arm,gic-v3";
 		#interrupt-cells = <3>;
