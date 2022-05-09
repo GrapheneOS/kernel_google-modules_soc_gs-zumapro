@@ -732,6 +732,42 @@ static struct mfc_ctrl_cfg mfc_ctrl_list[] = {
 		.flag_addr = 0,
 		.flag_shft = 0,
 	},
+	{	/* The number of skip MB */
+		.type = MFC_CTRL_TYPE_GET_DST,
+		.id = V4L2_CID_MPEG_VIDEO_SUM_SKIP_MB,
+		.is_volatile = 1,
+		.mode = MFC_CTRL_MODE_SFR,
+		.addr = MFC_REG_E_SUM_SKIP_MB,
+		.mask = 0xFFFFFFFF,
+		.shft = 0,
+		.flag_mode = MFC_CTRL_MODE_NONE,
+		.flag_addr = 0,
+		.flag_shft = 0,
+	},
+	{	/* The number of intra MB */
+		.type = MFC_CTRL_TYPE_GET_DST,
+		.id = V4L2_CID_MPEG_VIDEO_SUM_INTRA_MB,
+		.is_volatile = 1,
+		.mode = MFC_CTRL_MODE_SFR,
+		.addr = MFC_REG_E_SUM_INTRA_MB,
+		.mask = 0xFFFFFFFF,
+		.shft = 0,
+		.flag_mode = MFC_CTRL_MODE_NONE,
+		.flag_addr = 0,
+		.flag_shft = 0,
+	},
+	{	/* The number of zero MV MB */
+		.type = MFC_CTRL_TYPE_GET_DST,
+		.id = V4L2_CID_MPEG_VIDEO_SUM_ZERO_MV_MB,
+		.is_volatile = 1,
+		.mode = MFC_CTRL_MODE_SFR,
+		.addr = MFC_REG_E_SUM_ZERO_MV_MB,
+		.mask = 0xFFFFFFFF,
+		.shft = 0,
+		.flag_mode = MFC_CTRL_MODE_NONE,
+		.flag_addr = 0,
+		.flag_shft = 0,
+	},
 	{	/* buffer additional information */
 		.type = MFC_CTRL_TYPE_SRC,
 		.id = V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG,
@@ -1761,6 +1797,15 @@ static int mfc_enc_get_buf_ctrls_val_nal_q(struct mfc_ctx *ctx,
 			break;
 		case V4L2_CID_MPEG_VIDEO_AVERAGE_QP:
 			value = pOutStr->NalDoneInfo;
+			break;
+		case V4L2_CID_MPEG_VIDEO_SUM_SKIP_MB:
+			value = pOutStr->SumSkipMb;
+			break;
+		case V4L2_CID_MPEG_VIDEO_SUM_INTRA_MB:
+			value = pOutStr->SumIntraMb;
+			break;
+		case V4L2_CID_MPEG_VIDEO_SUM_ZERO_MV_MB:
+			value = pOutStr->SumZeroMvMb;
 			break;
 		/* If new dynamic controls are added, insert here */
 		default:

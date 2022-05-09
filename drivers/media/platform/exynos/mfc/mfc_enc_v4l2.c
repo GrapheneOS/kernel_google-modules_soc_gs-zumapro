@@ -1064,6 +1064,9 @@ static int __mfc_enc_ext_info(struct mfc_ctx *ctx)
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->mv_search_mode))
 		val |= ENC_SET_MV_SEARCH_MODE;
 
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->enc_capability))
+		val |= ENC_SET_CAPABILITY;
+
 	mfc_debug(5, "[CTRLS] ext info val: %#x\n", val);
 
 	return val;
@@ -1097,6 +1100,9 @@ static int __mfc_enc_get_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_AVERAGE_QP:
+	case V4L2_CID_MPEG_VIDEO_SUM_SKIP_MB:
+	case V4L2_CID_MPEG_VIDEO_SUM_INTRA_MB:
+	case V4L2_CID_MPEG_VIDEO_SUM_ZERO_MV_MB:
 		list_for_each_entry(ctx_ctrl, &ctx->ctrls, list) {
 			if (!(ctx_ctrl->type & MFC_CTRL_TYPE_GET))
 				continue;

@@ -2641,6 +2641,33 @@ static struct v4l2_queryctrl controls[] = {
 		.step = 1,
 		.default_value = 0,
 	},
+	{
+		.id = V4L2_CID_MPEG_VIDEO_SUM_SKIP_MB,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "The number of skip MB",
+		.minimum = 0,
+		.maximum = INT_MAX,
+		.step = 1,
+		.default_value = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDEO_SUM_INTRA_MB,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "The number of intra MB",
+		.minimum = 0,
+		.maximum = INT_MAX,
+		.step = 1,
+		.default_value = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDEO_SUM_ZERO_MV_MB,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "The number of zero MV MB",
+		.minimum = 0,
+		.maximum = INT_MAX,
+		.step = 1,
+		.default_value = 0,
+	},
 };
 
 #define NUM_CTRLS ARRAY_SIZE(controls)

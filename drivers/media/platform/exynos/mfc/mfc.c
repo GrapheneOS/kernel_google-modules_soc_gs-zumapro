@@ -779,6 +779,8 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 			&pdata->min_quality_mode.support, 2);
 	of_property_read_u32_array(np, "hevc_pic_output_flag",
 			&pdata->hevc_pic_output_flag.support, 2);
+	of_property_read_u32_array(np, "enc_capability",
+			&pdata->enc_capability.support, 2);
 
 	/* Determine whether to enable AV1 decoder */
 	of_property_read_u32(np, "support_av1_dec", &pdata->support_av1_dec);
