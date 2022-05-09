@@ -53,6 +53,9 @@ typedef u32 sysmmu_pte_t;
 
 #define CFG_QOS_OVRRIDE			BIT(11)
 #define CFG_QOS(n)			(((n) & 0xF) << 7)
+#define CFG_PT_CACHEABLE_SHIFT		16
+#define CFG_PT_CACHEABLE_MASK		GENMASK(19, CFG_PT_CACHEABLE_SHIFT)
+#define CFG_PT_CACHEABLE_NORMAL_NC	(0x2 << CFG_PT_CACHEABLE_SHIFT)
 
 #define SECT_ORDER	20
 #define LPAGE_ORDER	16

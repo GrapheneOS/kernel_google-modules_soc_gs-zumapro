@@ -163,6 +163,9 @@ static inline void __sysmmu_init_config(struct sysmmu_drvdata *data)
 		cfg = readl_relaxed(MMU_VM_ADDR(data->sfrbase + REG_MMU_CONTEXT0_CFG_ATTRIBUTE_VM,
 						i));
 
+		cfg &= ~CFG_PT_CACHEABLE_MASK;
+		cfg |= CFG_PT_CACHEABLE_NORMAL_NC;
+
 		if (data->qos != DEFAULT_QOS_VALUE) {
 			cfg &= ~CFG_QOS(0xF);
 			cfg |= CFG_QOS_OVRRIDE | CFG_QOS(data->qos);
