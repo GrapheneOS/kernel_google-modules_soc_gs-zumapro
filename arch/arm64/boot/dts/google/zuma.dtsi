@@ -22,6 +22,7 @@
 #include "zuma-aoc.dtsi"
 #include "zuma-ufs.dtsi"
 #include "zuma-usb.dtsi"
+#include "zuma-pm-domains.dtsi"
 
 / {
 	compatible = "google,zuma";
