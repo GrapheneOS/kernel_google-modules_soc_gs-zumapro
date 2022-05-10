@@ -51,7 +51,7 @@ SLIDER_DTBOS = [
 
 def define_slider():
     native.filegroup(
-        name = "slider_dt-bindings",
+        name = "dt-bindings",
         srcs = native.glob([
             "include/dt-bindings/**",
             "include/dtc/**",
@@ -114,7 +114,7 @@ def define_slider():
         base_kernel = "//common:kernel_aarch64_download_or_build",
         build_config = "build.config.slider",
         define_abi_targets = DEFINE_ABI_TARGETS,
-        dtstree = "//private/google-modules/soc/gs/arch/arm64/boot/dts:slider_dt",
+        dtstree = "//private/google-modules/soc/gs/arch/arm64/boot/dts:dt",
         implicit_outs = SLIDER_DTBOS,
         kconfig_ext = "Kconfig.ext",
         # Also refer to the list of ext modules for ABI monitoring targets

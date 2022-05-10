@@ -15,7 +15,7 @@
 load("//build/kernel/kleaf:kernel.bzl", "kernel_dtstree")
 
 kernel_dtstree(
-    name = "slider_dt",
+    name = "dt",
     srcs = glob(
         [
             "Makefile",
@@ -30,7 +30,7 @@ kernel_dtstree(
             "**/*.bzl",
         ],
     ) + [
-        "//private/google-modules/soc/gs:slider_dt-bindings",
+        "//private/google-modules/soc/gs:dt-bindings",
     ],
     visibility = [
         "//private/google-modules/soc/gs:__pkg__",
