@@ -494,10 +494,11 @@ int cal_if_init(void *np)
 	ret = pmucal_local_init();
 	if (ret < 0)
 		return ret;
-
+#if !IS_ENABLED(CONFIG_SOC_ZUMA)
 	ret = pmucal_cpu_init();
 	if (ret < 0)
 		return ret;
+#endif
 
 	ret = pmucal_cpuinform_init();
 	if (ret < 0)
@@ -517,9 +518,12 @@ int cal_if_init(void *np)
 		cmucal_dbg_set_cmu_top_base(res.start);
 
 	cal_initialized = 1;
+
+/* FIXME: re-enable when a bring-up done.
 #ifdef CONFIG_DEBUG_FS
 	vclk_debug_init();
 #endif
+*/
 	pmucal_dbg_debugfs_init();
 
 	return 0;
