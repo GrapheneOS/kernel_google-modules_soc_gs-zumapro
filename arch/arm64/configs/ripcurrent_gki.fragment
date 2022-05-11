@@ -3,6 +3,7 @@
 # CONFIG_VH_CGROUP is not set
 # CONFIG_VH_FS is not set
 # CONFIG_VH_I2C is not set
+# CONFIG_VH_MM is not set
 CONFIG_SOC_GOOGLE=y
 CONFIG_SOC_ZUMA=y
 CONFIG_BOARD_RIPCURRENT=y
