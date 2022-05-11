@@ -366,4 +366,5 @@ def define_slider():
         data = slider_dist_targets,
         dist_dir = "out/{branch}/dist".format(branch = BRANCH),
         flat = True,
+        log = "info",
     )
