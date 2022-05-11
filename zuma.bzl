@@ -131,12 +131,17 @@ def define_zuma():
                 "build.config.*",
                 "arch/arm64/configs/zuma*.fragment",
                 "Kconfig.ext",
+                "Kconfig.ext_modules",
                 "**/Kconfig",
                 "arch/arm64/boot/dts/**",
                 "include/dt-bindings/**",
                 "include/dtc/**",
             ]) + [
                 "//aosp-bringup:kernel_aarch64_sources",
+                "//private/google-modules/power/reset:reset.kconfig",
+                "//private/google-modules/touch/common:common.kconfig",
+                "//private/google-modules/touch/fts/ftm5:ftm5.kconfig",
+                "//private/google-modules/touch/sec:sec.kconfig",
             ],
             outs = [
                 # Sync with build.config.zuma_emulator and build.config.zuma_hybrid
