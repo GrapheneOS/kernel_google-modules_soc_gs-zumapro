@@ -50,14 +50,12 @@ SLIDER_DTBOS = [
 ]
 
 def define_slider():
-    native.filegroup(
-        name = "dt-bindings",
-        srcs = native.glob([
-            "include/dt-bindings/**",
-            "include/dtc/**",
-        ]),
+    native.alias(
+        name = "gs101_soc_headers",
+        actual = ":soc_headers",
         visibility = [
-            "//private/google-modules/soc/gs/arch/arm64/boot/dts:__pkg__",
+            # keep sorted
+            "//private/google-modules:__subpackages__",
         ],
     )
 
@@ -142,25 +140,6 @@ def define_slider():
         toolchain_version = CLANG_VERSION,
         # Also refer to unstripped modules archive for abi.prop
         unstripped_modules_archive = ":slider_unstripped_modules_archive",
-    )
-
-    native.filegroup(
-        name = "gs101_soc_headers",
-        srcs = native.glob([
-            # Standard pixel headers
-            "include/**/*.h",
-            "include/**/uapi/*.h",
-        ] + [
-            # List of headers needed by external modules
-            "drivers/dma-buf/heaps/samsung/samsung-dma-heap.h",
-
-            # Needed for external modules to include in their makefiles
-            "Makefile.include",
-        ]),
-        visibility = [
-            # keep sorted
-            "//private/google-modules:__subpackages__",
-        ],
     )
 
     kernel_module(
