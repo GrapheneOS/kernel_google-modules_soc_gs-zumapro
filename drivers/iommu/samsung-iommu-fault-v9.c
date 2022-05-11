@@ -48,6 +48,7 @@
 #define MMU_PMMU_PTLB_INFO_NUM_WAY(reg)			(((reg) >> 16) & 0xFFFF)
 #define MMU_PMMU_PTLB_INFO_NUM_SET(reg)			((reg) & 0xFFFF)
 #define MMU_READ_PTLB_TPN_VALID(reg)			(((reg) >> 28) & 0x1)
+#define MMU_READ_PTLB_TPN_S1_ENABLE(reg)		(((reg) >> 24) & 0x1)
 #define MMU_VADDR_FROM_PTLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
 #define MMU_PADDR_FROM_PTLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
 #define MMU_SET_READ_PTLB_ENTRY(way, set, ptlb, pmmu)	((pmmu) | ((ptlb) << 4) |		\
@@ -57,6 +58,7 @@
 #define MMU_STLB_INFO_NUM_WAY(reg)			(((reg) >> 16) & 0xFFFF)
 #define MMU_STLB_INFO_NUM_SET(reg)			((reg) & 0xFFFF)
 #define MMU_READ_STLB_TPN_VALID(reg)			(((reg) >> 28) & 0x1)
+#define MMU_READ_STLB_TPN_S1_ENABLE(reg)		(((reg) >> 24) & 0x1)
 #define MMU_VADDR_FROM_STLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
 #define MMU_PADDR_FROM_STLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
 #define MMU_SET_READ_STLB_ENTRY(way, set, stlb, line)	((set) | ((way) << 8) |			\
@@ -218,9 +220,15 @@ static inline int __dump_ptlb_entry(struct sysmmu_drvdata *drvdata,  phys_addr_t
 		ppn = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_PTLB_PPN);
 		attr = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_PTLB_ATTRIBUTE);
 
-		pr_crit("[%02d][%02d] TPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
-			idx_way, idx_set, tpn, ppn, attr);
-		sysmmu_ptlb_compare(pgtable, tpn, ppn);
+		if (MMU_READ_PTLB_TPN_S1_ENABLE(tpn)) {
+			pr_crit("[%02d][%02d] VPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
+				idx_way, idx_set, tpn, ppn, attr);
+
+			sysmmu_ptlb_compare(pgtable, tpn, ppn);
+		} else {
+			pr_crit("[%02d][%02d] TPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
+				idx_way, idx_set, tpn, ppn, attr);
+		}
 
 		return 1;
 	}
@@ -308,13 +316,20 @@ static inline int __dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t 
 	if (MMU_READ_STLB_TPN_VALID(tpn)) {
 		u32 ppn, attr;
 
-		tpn += idx_sub;
 		ppn = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_STLB_PPN);
 		attr = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_STLB_ATTRIBUTE);
 
-		pr_crit("[%02d][%02d] TPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
-			idx_way, idx_set, tpn, ppn, attr);
-		sysmmu_stlb_compare(pgtable, idx_sub, tpn, ppn);
+		if (MMU_READ_STLB_TPN_S1_ENABLE(tpn)) {
+			tpn += idx_sub;
+
+			pr_crit("[%02d][%02d] VPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
+				idx_way, idx_set, tpn, ppn, attr);
+
+			sysmmu_stlb_compare(pgtable, idx_sub, tpn, ppn);
+		} else {
+			pr_crit("[%02d][%02d] TPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
+				idx_way, idx_set, tpn, ppn, attr);
+		}
 
 		return 1;
 	}
