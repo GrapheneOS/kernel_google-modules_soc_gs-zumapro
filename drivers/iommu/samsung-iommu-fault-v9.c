@@ -176,36 +176,39 @@ static inline u64 __sysmmu_get_fault_address(struct sysmmu_drvdata *data, bool i
 	return va;
 }
 
-static inline void sysmmu_ptlb_compare(phys_addr_t pgtable, u32 vpn, u32 ppn)
+static void sysmmu_tlb_compare(phys_addr_t pgtable, u32 vpn, u32 ppn)
 {
 	sysmmu_pte_t *entry;
-	unsigned long vaddr = MMU_VADDR_FROM_PTLB((unsigned long)vpn);
+	unsigned long iova = MMU_VADDR_FROM_PTLB((unsigned long)vpn);
 	unsigned long paddr = MMU_PADDR_FROM_PTLB((unsigned long)ppn);
-	unsigned long phys = 0;
+	unsigned long phys;
 
 	if (!pgtable)
 		return;
 
-	entry = section_entry(phys_to_virt(pgtable), vaddr);
+	entry = section_entry(phys_to_virt(pgtable), iova);
 
 	if (lv1ent_section(entry)) {
-		phys = section_phys(entry);
+		phys = section_phys(entry) + section_offs(iova);
 	} else if (lv1ent_page(entry)) {
-		entry = page_entry(entry, vaddr);
+		entry = page_entry(entry, iova);
 
-		if (lv2ent_large(entry))
-			phys = lpage_phys(entry);
-		else if (lv2ent_small(entry))
-			phys = spage_phys(entry);
+		if (lv2ent_large(entry)) {
+			phys = lpage_phys(entry) + lpage_offs(iova);
+		} else if (lv2ent_small(entry)) {
+			phys = spage_phys(entry) + spage_offs(iova);
+		} else {
+			pr_crit(">> Invalid SLPD detected: %#010lx\n", (unsigned long)*entry);
+			return;
+		}
 	} else {
-		pr_crit(">> Invalid address detected! entry: %#lx",
-			(unsigned long)*entry);
+		pr_crit(">> Invalid FLPD detected: %#010lx\n", (unsigned long)*entry);
 		return;
 	}
 
 	if (paddr != phys) {
-		pr_crit(">> PTLB mismatch detected!\n");
-		pr_crit("   PTLB: %#011lx, PT entry: %#011lx\n", paddr, phys);
+		pr_crit(">> TLB mismatch detected!\n");
+		pr_crit("   TLB: %#011lx, PT entry: %#011lx\n", paddr, phys);
 	}
 }
 
@@ -224,7 +227,7 @@ static inline int __dump_ptlb_entry(struct sysmmu_drvdata *drvdata,  phys_addr_t
 			pr_crit("[%02d][%02d] VPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 				idx_way, idx_set, tpn, ppn, attr);
 
-			sysmmu_ptlb_compare(pgtable, tpn, ppn);
+			sysmmu_tlb_compare(pgtable, tpn, ppn);
 		} else {
 			pr_crit("[%02d][%02d] TPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 				idx_way, idx_set, tpn, ppn, attr);
@@ -275,39 +278,6 @@ static inline void dump_sysmmu_ptlb_status(struct sysmmu_drvdata *drvdata, phys_
 		pr_crit(">> No Valid PTLB Entries\n");
 }
 
-static inline void sysmmu_stlb_compare(phys_addr_t pgtable, int idx_sub, u32 vpn, u32 ppn)
-{
-	sysmmu_pte_t *entry;
-	unsigned long vaddr = MMU_VADDR_FROM_STLB((unsigned long)vpn);
-	unsigned long paddr = MMU_PADDR_FROM_STLB((unsigned long)ppn);
-	unsigned long phys = 0;
-
-	if (!pgtable)
-		return;
-
-	entry = section_entry(phys_to_virt(pgtable), vaddr);
-
-	if (lv1ent_section(entry)) {
-		phys = section_phys(entry);
-	} else if (lv1ent_page(entry)) {
-		entry = page_entry(entry, vaddr);
-
-		if (lv2ent_large(entry))
-			phys = lpage_phys(entry);
-		else if (lv2ent_small(entry))
-			phys = spage_phys(entry);
-	} else {
-		pr_crit(">> Invalid address detected! entry: %#lx",
-			(unsigned long)*entry);
-		return;
-	}
-
-	if (paddr != phys) {
-		pr_crit(">> STLB mismatch detected!\n");
-		pr_crit("   STLB: %#011lx, PT entry: %#011lx\n", paddr, phys);
-	}
-}
-
 static inline int __dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
 				    int idx_way, int idx_set, int idx_sub)
 {
@@ -325,7 +295,7 @@ static inline int __dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t 
 			pr_crit("[%02d][%02d] VPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 				idx_way, idx_set, tpn, ppn, attr);
 
-			sysmmu_stlb_compare(pgtable, idx_sub, tpn, ppn);
+			sysmmu_tlb_compare(pgtable, tpn, ppn);
 		} else {
 			pr_crit("[%02d][%02d] TPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 				idx_way, idx_set, tpn, ppn, attr);
