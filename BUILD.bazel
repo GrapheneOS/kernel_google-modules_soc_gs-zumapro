@@ -18,5 +18,8 @@ package(
 )
 
 load(":slider.bzl", "define_slider")
+load(":tests.bzl", "define_slider_kleaf_tests")
 
 define_slider()
+
+define_slider_kleaf_tests()
