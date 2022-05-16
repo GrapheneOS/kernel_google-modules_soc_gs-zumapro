@@ -12,4 +12,3 @@
 # CONFIG_ARM64_EPAN is not set
 # CONFIG_ARM64_SVE is not set
 # CONFIG_ARM64_MPAM is not set
-CONFIG_LOG_BUF_SHIFT=22
