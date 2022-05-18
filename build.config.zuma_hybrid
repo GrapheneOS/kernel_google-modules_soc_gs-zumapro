@@ -1,6 +1,6 @@
 DEVICE_MODULES_DIR=${KERNEL_DIR}
 # Compile these modules with the GKI kernel
-KERNEL_DIR="aosp"
+KERNEL_DIR="aosp-bringup"
 # Compute the path of this project relative to KERNEL_DIR
 DEVICE_MODULES_REL_DIR=$(rel_path ${DEVICE_MODULES_DIR} ${KERNEL_DIR})
 

@@ -1,11 +1,11 @@
 DEVICE_MODULES_DIR=${KERNEL_DIR}
 # Compile these modules with the GKI kernel
-KERNEL_DIR="aosp"
+KERNEL_DIR="aosp-bringup"
 
 KMI_SYMBOL_LIST_STRICT_MODE=0
 TRIM_NONLISTED_KMI=0
 
-. ${ROOT_DIR}/aosp/build.config.gki.aarch64
+. ${ROOT_DIR}/aosp-bringup/build.config.gki.aarch64
 
 CORE_KERNEL_FRAGMENT_DEFCONFIG=${CORE_KERNEL_FRAGMENT_DEFCONFIG:-zuma_emulator_modified_gki.fragment}
 
