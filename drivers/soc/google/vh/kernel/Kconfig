@@ -74,3 +74,8 @@ config VH_PREEMPTIRQ_TRACEPOINTS
         tristate "Vendor hooks for long preemptirq trace points"
         depends on VH_SCHED
         default m
+
+config USE_GROUP_THROTTLE
+        bool "Use group throttle of vendor groups"
+        depends on VH_SCHED
+        default n
