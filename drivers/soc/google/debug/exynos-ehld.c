@@ -15,6 +15,7 @@
 #include <linux/cpu_pm.h>
 #include <linux/sched/clock.h>
 #include <linux/notifier.h>
+#include <linux/panic_notifier.h>
 #include <linux/smpboot.h>
 #include <linux/hrtimer.h>
 #include <linux/reboot.h>
@@ -562,10 +563,10 @@ int exynos_ehld_start(void)
 {
 	int cpu;
 
-	get_online_cpus();
+	cpus_read_lock();
 	for_each_online_cpu(cpu)
 		exynos_ehld_start_cpu(cpu);
-	put_online_cpus();
+	cpus_read_unlock();
 
 	return 0;
 }
@@ -574,10 +575,10 @@ void exynos_ehld_stop(void)
 {
 	int cpu;
 
-	get_online_cpus();
+	cpus_read_lock();
 	for_each_online_cpu(cpu)
 		exynos_ehld_stop_cpu(cpu);
-	put_online_cpus();
+	cpus_read_unlock();
 }
 
 void exynos_ehld_prepare_panic(void)
