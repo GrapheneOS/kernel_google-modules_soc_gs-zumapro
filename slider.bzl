@@ -28,28 +28,28 @@ load("@kernel_toolchain_info//:dict.bzl", "BRANCH", "CLANG_VERSION")
 
 DEFINE_ABI_TARGETS = False
 
-def define_slider():
-    slider_dtbos = [
-        "gs101-oriole.dtbo",
-        "gs101-oriole-evt1_1.dtbo",
-        "gs101-oriole-evt1.dtbo",
-        "gs101-oriole-evt-wingboard.dtbo",
-        "gs101-oriole-proto1_1.dtbo",
-        "gs101-oriole-proto1.dtbo",
-        "gs101-raven.dtbo",
-        "gs101-raven-evt1_1.dtbo",
-        "gs101-raven-evt1.dtbo",
-        "gs101-raven-evt-wingboard.dtbo",
-        "gs101-raven-proto1_1.dtbo",
-        "gs101-raven-proto1.dtbo",
-        "gs101-slider2.dtbo",
-        "gs101-slider2-o6r4.dtbo",
-        "gs101-slider.dtbo",
-        "gs101-whitefin2.dtbo",
-        "gs101-whitefin2v2.dtbo",
-        "gs101-whitefin.dtbo",
-    ]
+SLIDER_DTBOS = [
+    "gs101-oriole.dtbo",
+    "gs101-oriole-evt1_1.dtbo",
+    "gs101-oriole-evt1.dtbo",
+    "gs101-oriole-evt-wingboard.dtbo",
+    "gs101-oriole-proto1_1.dtbo",
+    "gs101-oriole-proto1.dtbo",
+    "gs101-raven.dtbo",
+    "gs101-raven-evt1_1.dtbo",
+    "gs101-raven-evt1.dtbo",
+    "gs101-raven-evt-wingboard.dtbo",
+    "gs101-raven-proto1_1.dtbo",
+    "gs101-raven-proto1.dtbo",
+    "gs101-slider2.dtbo",
+    "gs101-slider2-o6r4.dtbo",
+    "gs101-slider.dtbo",
+    "gs101-whitefin2.dtbo",
+    "gs101-whitefin2v2.dtbo",
+    "gs101-whitefin.dtbo",
+]
 
+def define_slider():
     native.filegroup(
         name = "slider_dt-bindings",
         srcs = native.glob([
@@ -114,7 +114,7 @@ def define_slider():
         build_config = "build.config.slider",
         define_abi_targets = DEFINE_ABI_TARGETS,
         dtstree = "//gs/google-modules/soc-modules/arch/arm64/boot/dts:slider_dt",
-        implicit_outs = slider_dtbos,
+        implicit_outs = SLIDER_DTBOS,
         kconfig_ext = "Kconfig.ext",
         # Also refer to the list of ext modules for ABI monitoring targets
         kernel_modules = _slider_modules,
@@ -341,7 +341,7 @@ def define_slider():
         build_initramfs = True,
         build_vendor_boot = True,
         build_vendor_dlkm = True,
-        dtbo_srcs = [":slider/" + e for e in slider_dtbos],
+        dtbo_srcs = [":slider/" + e for e in SLIDER_DTBOS],
         kernel_build = ":slider",
         kernel_modules_install = ":slider_modules_install",
         # Keep the following in sync with build.config.slider:
