@@ -21,7 +21,7 @@ def _define_zuma_gki():
         srcs = native.glob([
             "arch/arm64/configs/zuma*.fragment",
         ]) + [
-            "//aosp:kernel_aarch64_sources",
+            "//aosp-bringup:kernel_aarch64_sources",
         ],
         outs = aarch64_outs,
         build_config = "build.config.zuma.gki",
@@ -122,14 +122,14 @@ def define_zuma():
                 "include/dt-bindings/**",
                 "include/dtc/**",
             ]) + [
-                "//aosp:kernel_aarch64_sources",
+                "//aosp-bringup:kernel_aarch64_sources",
             ],
             outs = [
                 # Sync with build.config.zuma_emulator and build.config.zuma_hybrid
                 "google/zuma-a0.dtb",
             ] + zuma_dtbos,
             # TODO(b/221278445): Use real GKI
-            # base_kernel = "//aosp:kernel_aarch64",
+            # base_kernel = "//aosp-bringup:kernel_aarch64",
             base_kernel = ":zuma_gki",
             build_config = "build.config.zuma_{}".format(mode),
             dtstree = "//private/google-modules/soc/gs/arch/arm64/boot/dts:dt",
