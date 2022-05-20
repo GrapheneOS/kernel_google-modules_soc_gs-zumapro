@@ -3812,6 +3812,8 @@ static int exynos_pcie_rc_add_port(struct platform_device *pdev, struct pcie_por
 
 		return ret;
 	}
+	// Reset this back to 36-bits
+	dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(36));
 
 	if (pp->msi_domain) {
 		msi_domain = pp->msi_domain;
