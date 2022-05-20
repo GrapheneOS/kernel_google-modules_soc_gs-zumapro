@@ -249,7 +249,6 @@ static int exynos_timer_resources(struct device_node *np)
 
 	ret = of_property_read_u32(np, "div", &div);
 	if (ret || !div) {
-		pr_warn("exynos-mct: fail to get the div value. set div to the default\n");
 		div = DEFAULT_CLK_DIV;
 	}
 
@@ -265,7 +264,6 @@ static int exynos_timer_resources(struct device_node *np)
 
 	rtc_clk = of_clk_get_by_name(np, "rtc");
 	if (IS_ERR(rtc_clk)) {
-		pr_warn("exynos-mct: fail to get rtc clock. set to the default\n");
 		rtc_clk_rate = DEFAULT_RTC_CLK_RATE;
 	} else {
 		rtc_clk_rate = clk_get_rate(rtc_clk);
