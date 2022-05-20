@@ -12,7 +12,7 @@ struct itmon_notifier {
 	char *client;			/* The client's name which problem occurred */
 	char *dest;			/* The destination which the client tried to access */
 	bool read;			/* Transaction Type */
-	unsigned long target_addr;	/* The physical address which the master tried to access */
+	unsigned long target_addr;	/* The physical address which the client tried to access */
 	unsigned int errcode;		/* The error code which the problem occurred */
 	bool onoff;			/* Target Block on/off */
 	char *pd_name;			/* Target Block power domain name */
