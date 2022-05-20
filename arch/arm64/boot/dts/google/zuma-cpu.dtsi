@@ -167,6 +167,7 @@
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
+		status = "disabled";
 	};
 
 	cpupm {
@@ -174,7 +175,7 @@
 		#define POWERMODE_TYPE_SYSTEM   1
 
 		compatible = "samsung,exynos-cpupm";
-		status = "okay";
+		status = "disabled";
 
 		cpd_cl0 {
 			device_type = "cpupm";
