@@ -205,7 +205,7 @@ def define_zuma():
             # No VENDOR_DLKM_MODULES_BLOCKLIST
             vendor_dlkm_props = "vendor_dlkm.props.zuma",
             # VENDOR_RAMDISK_BINARY
-            vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],
+            vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-zebu.img"],
             deps = [
                 # Keep the following in sync with vendor_dlkm.props.zuma:
                 # selinux_fc
