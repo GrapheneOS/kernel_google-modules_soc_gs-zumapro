@@ -894,4 +894,25 @@
 			"gse-c2serv";
 	};
 
+	lwis_slc: lwis_slc@0 {
+		compatible = "google,lwis-slc-device";
+
+		/* Device node name */
+		node-name = "slc";
+
+		/* SLC partitions */
+		pt_id =
+			"CAMERA2WAY",
+			"CAMERA4WAY0",
+			"CAMERA4WAY1",
+			"CAMERA4WAY2",
+			"CAMERA6WAY0",
+			"CAMERA6WAY1",
+			"CAMERA6WAY2",
+			"CAMERA8WAY0",
+			"CAMERA12WAY0";
+
+		pt_size = <512 1024 1024 1024 1536 1536 1536 2048 3072>;
+	};
+
 };
