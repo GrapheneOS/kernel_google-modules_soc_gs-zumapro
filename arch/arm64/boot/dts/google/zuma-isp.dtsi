@@ -869,4 +869,29 @@
 			<&lme_int1>;
 	};
 
+	lwis_votf: lwis_votf@1C460000 {
+		compatible = "google,lwis-ioreg-device";
+
+		/* Device node name */
+		node-name = "votf";
+
+		/* Register space */
+		reg =
+			<0x0 0x1C460000 0x10000>,  /* RGBP C2SERV */
+			<0x0 0x1C860000 0x10000>,  /* YUVP C2SERV */
+			<0x0 0x1CC50000 0x10000>,  /* TNR  C2SERV */
+			<0x0 0x1D050000 0x10000>,  /* MCSC C2SERV */
+			<0x0 0x1D450000 0x10000>,  /* GDC0 C2SERV */
+			<0x0 0x1D480000 0x10000>,  /* GDC1 C2SERV */
+			<0x0 0x1D850000 0x10000>;  /* GSE  C2SERV */
+		reg-names =
+			"rgbp-c2serv",
+			"yuvp-c2serv",
+			"tnr-c2serv",
+			"mcsc-c2serv",
+			"gdc0-c2serv",
+			"gdc1-c2serv",
+			"gse-c2serv";
+	};
+
 };
