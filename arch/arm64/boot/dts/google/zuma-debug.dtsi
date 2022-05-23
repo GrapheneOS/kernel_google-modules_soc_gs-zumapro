@@ -100,6 +100,35 @@
 		offset = <0x880>;
 	};
 
+	itmon: exynos-itmon {
+		compatible = "samsung,exynos-itmon-v2";
+		memory-region = <&log_itmon>;
+		interrupts =
+			<GIC_SPI IRQ_TREX_D_NOCL1A_debugInterrupt_NOCL1A
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_D_NOCL1B_debugInterrupt_NOCL1B
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_D_NOCL2AA_debugInterrupt_NOCL2AA
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_D_NOCL2AB_debugInterrupt_NOCL2AB
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_D_NOCL0_debugInterrupt_NOCL0
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_P_NOCL1A_debugInterrupt_NOCL1A
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_P_NOCL1B_debugInterrupt_NOCL1B
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_P_NOCL2AA_debugInterrupt_NOCL2AA
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_P_NOCL2AB_debugInterrupt_NOCL2AB
+							IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TREX_P_NOCL0_debugInterrupt_NOCL0
+							IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-affinity = <0xff>;
+		support-irq-oring;
+		status = "ok";
+	};
+
 	coresight@28000000 {
 		compatible = "google,exynos-coresight";
 		dbg_base = <0x28010000>, <0x28110000>, <0x28210000>, <0x28310000>,
