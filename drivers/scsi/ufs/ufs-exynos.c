@@ -117,6 +117,26 @@ static int ufs_call_cal(struct exynos_ufs *ufs, int init, void *func)
 
 }
 
+static inline void __pm_qos_ctrl(struct exynos_ufs *ufs, bool hold)
+{
+#if defined(CONFIG_EXYNOS_PM_QOS) || defined(CONFIG_EXYNOS_PM_QOS_MODULE)
+	s32 val = hold ? ufs->pm_qos_int_value : 0;
+
+	exynos_pm_qos_update_request(&ufs->pm_qos_int, val);
+#endif
+}
+
+static inline void __sicd_ctrl(struct exynos_ufs *ufs, bool hold)
+{
+#if defined(CONFIG_EXYNOS_CPUPM)
+	/*
+	 * 0 : block to enter system idle state
+	 * 1 : allow to use system idle state
+	 */
+	exynos_update_ip_idle_status(ufs->idle_ip_index, !hold);
+#endif
+}
+
 static void exynos_ufs_update_active_lanes(struct ufs_hba *hba)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
@@ -535,31 +555,18 @@ static int exynos_ufs_setup_clocks(struct ufs_hba *hba, bool on,
 				   enum ufs_notify_change_status notify)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
-	int ret = 0;
 
-	if (on) {
-		if (notify == PRE_CHANGE) {
-			/* Clear for SICD */
-			exynos_update_ip_idle_status(ufs->idle_ip_index, 0);
-		} else {
-			/* PM Qos hold for stability */
-			exynos_pm_qos_update_request(&ufs->pm_qos_int,
-							ufs->pm_qos_int_value);
-			ufs->c_state = C_ON;
-		}
+	if (notify == PRE_CHANGE) {
+		/* Clear for SICD */
+		__sicd_ctrl(ufs, on);
+
+		/* PM Qos hold for stability */
+		__pm_qos_ctrl(ufs, on);
 	} else {
-		if (notify == PRE_CHANGE) {
-			ufs->c_state = C_OFF;
-
-			/* PM Qos Release for stability */
-			exynos_pm_qos_update_request(&ufs->pm_qos_int, 0);
-		} else {
-			/* Set for SICD */
-			exynos_update_ip_idle_status(ufs->idle_ip_index, 1);
-		}
+		ufs->c_state = on ? C_ON : C_OFF;
 	}
 
-	return ret;
+	return 0;
 }
 
 static int exynos_ufs_get_available_lane(struct ufs_hba *hba)
@@ -885,7 +892,9 @@ static int __exynos_ufs_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	    ufs->h_state != H_HIBERN8)
 		PRINT_STATES(ufs);
 
+#if defined(CONFIG_EXYNOS_PM_QOS) || defined(CONFIG_EXYNOS_PM_QOS_MODULE)
 	exynos_pm_qos_update_request(&ufs->pm_qos_int, 0);
+#endif
 
 	hci_writel(&ufs->handle, 0 << 0, HCI_GPIO_OUT);
 
@@ -1498,12 +1507,16 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 	dev_info(dev, "===============================\n");
 
 	/* idle ip nofification for SICD, disable by default */
+#if defined(CONFIG_EXYNOS_CPUPM)
 	ufs->idle_ip_index = exynos_get_idle_ip_index(dev_name(ufs->dev));
-	exynos_update_ip_idle_status(ufs->idle_ip_index, 0);
+#endif
+	__sicd_ctrl(ufs, true);
 
 	/* register pm qos knobs */
+#if defined(CONFIG_EXYNOS_PM_QOS) || defined(CONFIG_EXYNOS_PM_QOS_MODULE)
 	exynos_pm_qos_add_request(&ufs->pm_qos_int,
 				PM_QOS_DEVICE_THROUGHPUT, 0);
+#endif
 
 	/* init dbg */
 	ret = exynos_ufs_init_dbg(&ufs->handle, dev);
