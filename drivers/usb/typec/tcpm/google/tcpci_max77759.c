@@ -1000,13 +1000,6 @@ static int max77759_get_vbus_voltage_mv(struct i2c_client *tcpc_client)
 	return ret ? 0 : ((raw & TCPC_VBUS_VOLTAGE_MASK) * TCPC_VBUS_VOLTAGE_LSB_MV);
 }
 
-/**
- * The patch introducing tcpm_is_debouncing() was reverted in android-mainline
- * (See aosp/1911031). While we wait for such patch to be sent upstream let's
- * stub out tcpm_is_debouncing() here. TODO(b/215766959): revert this hack.
- **/
-static inline bool tcpm_is_debouncing(struct tcpm_port *tcpm) { return false; }
-
 static void reset_ovp_work(struct kthread_work *work)
 {
 	struct max77759_plat *chip  =
