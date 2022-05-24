@@ -169,6 +169,9 @@ struct exynos_ufs {
 	/* ufs command logging */
 	u8 enable_cmd_log;
 	struct pixel_cmd_log cmd_log;
+
+	/* auto hibern8 */
+	u32 ah8_ahit;
 };
 
 static inline struct exynos_ufs *to_exynos_ufs(struct ufs_hba *hba)

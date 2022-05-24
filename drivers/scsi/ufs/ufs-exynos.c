@@ -26,6 +26,7 @@
 #include <linux/spinlock.h>
 #include <soc/google/exynos-pmu-if.h>
 #include <soc/google/exynos-cpupm.h>
+#include <trace/hooks/ufshcd.h>
 
 #define IS_C_STATE_ON(h) ((h)->c_state == C_ON)
 #define PRINT_STATES(h)						\
@@ -362,6 +363,17 @@ static void exynos_ufs_dev_hw_reset(struct ufs_hba *hba)
 	hci_writel(&ufs->handle, 1 << 0, HCI_GPIO_OUT);
 }
 
+static inline void exynos_enable_vendor_irq(struct exynos_ufs *ufs)
+{
+	struct ufs_vs_handle *handle = &ufs->handle;
+	u32 reg;
+
+	/* report to IS.UE reg when UIC error happens during AH8 */
+	reg = hci_readl(handle, HCI_VENDOR_SPECIFIC_IE);
+	reg |= AH8_ERR_REPORT_UE;
+	hci_writel(handle, reg, HCI_VENDOR_SPECIFIC_IE);
+}
+
 static void exynos_ufs_config_host(struct exynos_ufs *ufs)
 {
 	u32 reg;
@@ -400,6 +412,16 @@ static void exynos_ufs_config_host(struct exynos_ufs *ufs)
 			UNIP_PA_DBG_OPTION_SUITE_1);
 	unipro_writel(&ufs->handle, DBG_SUITE2_ENABLE,
 			UNIP_PA_DBG_OPTION_SUITE_2);
+
+	/*
+	 * There are some cases that should be reported as AH8 error,
+	 * i.e. IS.UHES or UHXS, but not. To cover the cases, I enable
+	 * one vendor interrupt source that causes to raise IS.UE.
+	 * I check an UIC error in the vendor hook function named
+	 * __check_int_errors to report it as fatal.
+	 */
+	if (ufshcd_is_auto_hibern8_supported(ufs->hba) && ufs->ah8_ahit)
+		exynos_enable_vendor_irq(ufs);
 }
 
 static int exynos_ufs_config_externals(struct exynos_ufs *ufs)
@@ -462,10 +484,12 @@ out:
 static void exynos_ufs_set_features(struct ufs_hba *hba)
 {
 	struct device_node *np = hba->dev->of_node;
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 
 	/* caps */
-	hba->caps = UFSHCD_CAP_CLK_GATING |
-			UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
+	hba->caps = UFSHCD_CAP_CLK_GATING;
+	if (ufs->ah8_ahit == 0)
+		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
 
 	/* quirks of common driver */
 	hba->quirks = UFSHCD_QUIRK_PRDT_BYTE_GRAN |
@@ -509,6 +533,12 @@ static int exynos_ufs_init(struct ufs_hba *hba)
 
 	/* set features, such as caps or quirks */
 	exynos_ufs_set_features(hba);
+
+	/* deliver ah8 timer and counter values */
+	if (ufshcd_is_auto_hibern8_supported(hba))
+		hba->ahit = ufs->ah8_ahit;
+	else
+		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
 
 	ret = pixel_ufs_crypto_init(hba);
 	if (ret)
@@ -765,6 +795,15 @@ static int exynos_ufs_pwr_change_notify(struct ufs_hba *hba,
 				 (!ret) ? res_token[0] : res_token[1]);
 
 		ufs->h_state = H_LINK_BOOST;
+
+		/*
+		 * There is a bug that phy sometimes doesn't enter hibern8
+		 * state after a UIC command is processed when using auto
+		 * hibern8. This is one of the guides to dismiss it.
+		 * I found the case that a UIC process follows enabling
+		 * auto hibern8 is power mode change.
+		 */
+		ufshcd_dme_peer_get(hba, UIC_ARG_MIB(PA_MAXRXHSGEAR), NULL);
 		break;
 	default:
 		break;
@@ -973,6 +1012,30 @@ static struct ufs_hba_variant_ops exynos_ufs_ops = {
 	.device_reset = __device_reset,
 };
 
+static void __check_int_errors(void *data, struct ufs_hba *hba,
+			       bool queue_eh_work)
+{
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct ufs_vs_handle *handle = &ufs->handle;
+	u32 reg;
+
+	if (!(hba->errors & UIC_ERROR) ||
+	    !ufshcd_is_auto_hibern8_supported(hba))
+		return;
+
+	reg = hci_readl(handle, HCI_AH8_STATE);
+	if (reg & HCI_AH8_STATE_ERROR)
+		ufshcd_set_link_broken(hba);
+
+	hci_writel(handle, AH8_ERR_REPORT_UE, HCI_VENDOR_SPECIFIC_IS);
+}
+
+static void exynos_ufs_register_vendor_hooks(void)
+{
+	register_trace_android_vh_ufs_check_int_errors(__check_int_errors,
+						       NULL);
+}
+
 /*
  * This function is to define offset, mask and shift to access somewhere.
  */
@@ -1129,6 +1192,21 @@ static int exynos_ufs_populate_dt(struct device *dev,
 
 	ufs->cal_param.board = BRD_SMDK;
 	of_property_read_u8(np, "brd-for-cal", &ufs->cal_param.board);
+
+	/* Auto hibern8 */
+	if (of_find_property(np, "samsung,support-ah8", NULL))
+		ufs->ah8_ahit = FIELD_PREP(UFSHCI_AHIBERN8_TIMER_MASK, 10) |
+			    FIELD_PREP(UFSHCI_AHIBERN8_SCALE_MASK, 2);
+	else
+		ufs->ah8_ahit = 0;
+
+	if (ufs->ah8_ahit) {
+		ufs->cal_param.support_ah8_cal = true;
+		ufs->cal_param.ah8_thinern8_time = 3;
+		ufs->cal_param.ah8_brefclkgatingwaittime = 1;
+	} else {
+		ufs->cal_param.support_ah8_cal = false;
+	}
 out:
 	dev_info(dev, "evt version : %d, board: %d\n",
 			ufs->cal_param.evt_ver, ufs->cal_param.board);
@@ -1534,6 +1612,9 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 	/* init specific states */
 	ufs->h_state = H_DISABLED;
 	ufs->c_state = C_OFF;
+
+	/* register vendor hooks */
+	exynos_ufs_register_vendor_hooks();
 
 	/* go to core driver through the glue driver */
 	ret = ufshcd_pltfrm_init(pdev, &exynos_ufs_ops);

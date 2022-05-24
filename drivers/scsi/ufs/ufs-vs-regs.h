@@ -26,6 +26,19 @@
 #define HCI_INVALID_DIN_OFFSET_ADDR	0x24
 #define HCI_VENDOR_SPECIFIC_IS		0x38
 #define HCI_VENDOR_SPECIFIC_IE		0x3C
+
+#define AH8_ERR_UECPA_EN                BIT(10)
+#define AH8_ERR_UECDL_EN                BIT(9)
+#define AH8_ERR_UECN_EN                 BIT(8)
+#define AH8_ERR_UECT_EN                 BIT(7)
+#define AH8_ERR_UECDME_EN               BIT(6)
+/* When the controller is in auto-hibernation sequence and UIC error happens,
+ * report as UIC error with IS.UE register.
+ */
+#define AH8_ERR_REPORT_UE               (AH8_ERR_UECPA_EN | AH8_ERR_UECDL_EN |\
+					AH8_ERR_UECN_EN | AH8_ERR_UECT_EN |\
+					AH8_ERR_UECDME_EN)
+
 #define HCI_UTRL_NEXUS_TYPE		0x40
 #define HCI_UTMRL_NEXUS_TYPE		0x44
 #define HCI_E2EFC_CTRL			0x48
@@ -117,6 +130,12 @@
 #define HCI_UTRL_DBR_31_28_TIMER_EXPIRED_VALUE		0x17C
 
 #define HCI_UTMRL_DBR_3_0_TIMER_EXPIRED_VALUE		0x180
+
+#define HCI_AH8_RESET                   0x500
+#define HCI_AH8_STATE                   0x50C
+#define HCI_AH8_STATE_ERROR             BIT(16)
+#define HCI_AH8_HIBERNATION_STATE       BIT(8)
+#define HCI_AH8_IDLE_STATE              BIT(0)
 
 /* Device fatal error */
 #define DFES_ERR_EN	BIT(31)
