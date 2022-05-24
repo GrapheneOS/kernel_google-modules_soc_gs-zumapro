@@ -1358,7 +1358,8 @@ static int exynos_ufs_sysfs_mon_store(struct exynos_ufs *ufs, u32 value,
 	if (value & UFS_S_MON_LV1) {
 		/* Trigger HCI error */
 		dev_info(ufs->dev, "Interface error test\n");
-		unipro_writel(handle, ((0x1F < 24) | (0x14 << 18)),
+		unipro_writel(handle, DBG_DL_RX_INFO_FORCE |
+			      DBG_DL_RX_INFO_TYPE | DBG_RX_BUFFER_OVERFLOW,
 			      UNIP_DBG_RX_INFO_CONTROL_DIRECT);
 	} else if (value & UFS_S_MON_LV2) {
 		/* Block all the interrupts */
