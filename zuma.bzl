@@ -72,7 +72,7 @@ def define_zuma():
     zuma_soc_modules = {
         "emulator": [
             # keep sorted
-            "drivers/clocksource/exynos_mct.ko",
+            "drivers/clocksource/exynos_mct_v3.ko",
             "drivers/i2c/busses/i2c-exynos5.ko",
             "drivers/pinctrl/gs/pinctrl-exynos-gs.ko",
             "drivers/soc/google/debug/exynos-ecc-handler.ko",
