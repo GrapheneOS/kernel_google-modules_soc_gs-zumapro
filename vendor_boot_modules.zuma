@@ -6,6 +6,9 @@
 9pnet_virtio.ko
 cachefiles.ko
 deferred-free-helper.ko
+dss.ko
+ehld.ko
+exynos-adv-tracer.ko
 exynos-coresight.ko
 exynos-drm.ko
 exynos-ecc-handler.ko
