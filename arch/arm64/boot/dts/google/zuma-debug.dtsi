@@ -281,4 +281,50 @@
 
 		status = "ok";
 	};
+
+	exynos-ehld {
+		compatible = "google,exynos-ehld";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		cs_base = <0x2b000000>;
+		status = "disabled";
+
+		dbgc {
+			/* IPC */
+			plugin-len = <4>;
+			plugin-name = "ELD";
+			support = <1>;
+			interval = <1000>;
+			warn-count = <4>;
+			use-tick-timer = <0>;
+		};
+
+		cpu0 {
+			dbg-offset = <0x110000>;
+		};
+		cpu1 {
+			dbg-offset = <0x210000>;
+		};
+		cpu2 {
+			dbg-offset = <0x310000>;
+		};
+		cpu3 {
+			dbg-offset = <0x410000>;
+		};
+		cpu4 {
+			dbg-offset = <0x510000>;
+		};
+		cpu5 {
+			dbg-offset = <0x610000>;
+		};
+		cpu6 {
+			dbg-offset = <0x710000>;
+		};
+		cpu7 {
+			dbg-offset = <0x810000>;
+		};
+		cpu8 {
+			dbg-offset = <0x910000>;
+		};
+	};
 };
