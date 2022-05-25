@@ -669,6 +669,9 @@
 					<2000
 					 1000
 					 1000>;
+
+				/* Thread priority */
+				periodic-io-thread-priority = <99>;
 			};
 
 			/* Actuator sem1215sa for imx586*/
@@ -718,6 +721,9 @@
 					<1000
 					 4000
 					 1000>;
+
+				/* Thread priority */
+				periodic-io-thread-priority = <99>;
 			};
 
 			/* Ois lc898128 for gn1*/
@@ -767,6 +773,9 @@
 					<2000
 					 1000
 					 1000>;
+
+				/* Thread priority */
+				periodic-io-thread-priority = <99>;
 			};
 
 			/* Ois sem1215sa for imx586*/
@@ -816,6 +825,9 @@
 					<1000
 					 4000
 					 1000>;
+
+				/* Thread priority */
+				periodic-io-thread-priority = <99>;
 			};
 
 			flash0: flash@0 {
