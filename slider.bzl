@@ -26,7 +26,7 @@ load(
 )
 load("@kernel_toolchain_info//:dict.bzl", "BRANCH", "CLANG_VERSION")
 
-DEFINE_ABI_TARGETS = False
+DEFINE_ABI_TARGETS = True
 
 SLIDER_DTBOS = [
     "gs101-oriole.dtbo",
@@ -286,6 +286,9 @@ def define_slider():
             "drivers/soc/google/pt/slc_pt.ko",
             "drivers/soc/google/s2mpu/s2mpu.ko",
             "drivers/soc/google/sysrq-hook.ko",
+            "drivers/soc/google/vh/kernel/sched/sched_tp.ko",
+            "drivers/soc/google/vh/kernel/sched/vh_preemptirq_long.ko",
+            "drivers/soc/google/vh/kernel/sched/vh_sched.ko",
             "drivers/soc/google/vh/kernel/systrace.ko",
             "drivers/spi/spi-s3c64xx.ko",
             "drivers/staging/android/delay_init.ko",
