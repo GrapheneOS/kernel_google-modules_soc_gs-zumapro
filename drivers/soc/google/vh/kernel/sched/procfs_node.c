@@ -24,9 +24,9 @@ DECLARE_PER_CPU(struct uclamp_stats, uclamp_stats);
 unsigned int __read_mostly vendor_sched_uclamp_threshold;
 unsigned int __read_mostly vendor_sched_util_post_init_scale = DEF_UTIL_POST_INIT_SCALE;
 bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
+bool __read_mostly vendor_sched_reduce_prefer_idle = true;
 struct proc_dir_entry *vendor_sched;
 extern unsigned int sched_capacity_margin[CPU_NUM];
-extern struct vendor_group_list vendor_group_list[VG_MAX];
 
 extern void initialize_vendor_group_property(void);
 extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum uclamp_id clamp_id,
@@ -35,8 +35,6 @@ extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum
 
 extern struct vendor_group_property *get_vendor_group_property(enum vendor_group group);
 static void apply_uclamp_change(enum vendor_group group, enum uclamp_id clamp_id);
-
-extern void migrate_vendor_group_util(struct task_struct *p, unsigned int old, unsigned int new);
 
 static struct uclamp_se uclamp_default[UCLAMP_CNT];
 unsigned int pmu_poll_time_ms = 10;
@@ -672,16 +670,16 @@ fail:
 
 static void apply_uclamp_change(enum vendor_group group, enum uclamp_id clamp_id)
 {
-	struct task_struct *p;
+	struct task_struct *p, *t;
 	struct vendor_task_struct *vp;
 
 	rcu_read_lock();
 
-	list_for_each_entry_rcu(vp, &vendor_group_list[group].list, node) {
-		p = __container_of(vp, struct task_struct, android_vendor_data1);
-		get_task_struct(p);
-		uclamp_update_active(p, clamp_id);
-		put_task_struct(p);
+	for_each_process_thread(p, t) {
+		vp = get_vendor_task_struct(t);
+		if (t->on_rq && vp->group == group) {
+			uclamp_update_active(t, clamp_id);
+		}
 	}
 
 	rcu_read_unlock();
@@ -760,8 +758,6 @@ static int update_vendor_group_attribute(const char *buf, enum vendor_group_attr
 	struct task_struct *p, *t;
 	enum uclamp_id clamp_id;
 	pid_t pid;
-	unsigned long flags;
-	int group;
 
 	if (kstrtoint(buf, 0, &pid) || pid <= 0)
 		return -EINVAL;
@@ -784,60 +780,16 @@ static int update_vendor_group_attribute(const char *buf, enum vendor_group_attr
 	switch (vta) {
 	case VTA_TASK_GROUP:
 		vp = get_vendor_task_struct(p);
-		if (p->prio >= MAX_RT_PRIO)
-			migrate_vendor_group_util(p, vp->group, val);
-		if (p->on_rq) {
-			group = vp->group;
-			raw_spin_lock_irqsave(&vendor_group_list[group].lock, flags);
-			if (vp->queued_to_list) {
-				list_del_rcu(&vp->node);
-				vp->queued_to_list = false;
-			}
-			raw_spin_unlock_irqrestore(&vendor_group_list[group].lock, flags);
-		}
 		vp->group = val;
-		// task could be dequeued in between, so need to check on_rq again
-		if (p->on_rq) {
-			group = vp->group;
-			raw_spin_lock_irqsave(&vendor_group_list[group].lock, flags);
-			if (!vp->queued_to_list) {
-				list_add_rcu(&vp->node, &vendor_group_list[group].list);
-				vp->queued_to_list = true;
-			}
-			raw_spin_unlock_irqrestore(&vendor_group_list[group].lock, flags);
-		}
 		for (clamp_id = 0; clamp_id < UCLAMP_CNT; clamp_id++)
 			uclamp_update_active(p, clamp_id);
 		break;
 	case VTA_PROC_GROUP:
 		for_each_thread(p, t) {
-			get_task_struct(t);
 			vp = get_vendor_task_struct(t);
-			if (p->prio >= MAX_RT_PRIO)
-				migrate_vendor_group_util(t, vp->group, val);
-			if (t->on_rq) {
-				group = vp->group;
-				raw_spin_lock_irqsave(&vendor_group_list[group].lock, flags);
-				if (vp->queued_to_list) {
-					list_del_rcu(&vp->node);
-					vp->queued_to_list = false;
-				}
-				raw_spin_unlock_irqrestore(&vendor_group_list[group].lock, flags);
-			}
 			vp->group = val;
-			// task could be dequeued in between, so need to check on_rq again
-			if (t->on_rq) {
-				group = vp->group;
-				raw_spin_lock_irqsave(&vendor_group_list[group].lock, flags);
-				if (!vp->queued_to_list) {
-					list_add_rcu(&vp->node, &vendor_group_list[group].list);
-					vp->queued_to_list = true;
-				}
-				raw_spin_unlock_irqrestore(&vendor_group_list[group].lock, flags);
-			}
 			for (clamp_id = 0; clamp_id < UCLAMP_CNT; clamp_id++)
 				uclamp_update_active(t, clamp_id);
-			put_task_struct(t);
 		}
 		break;
 	default:
@@ -1006,6 +958,37 @@ static ssize_t npi_packing_store(struct file *filp,
 }
 
 PROC_OPS_RW(npi_packing);
+
+static int reduce_prefer_idle_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%s\n", vendor_sched_reduce_prefer_idle ? "true" : "false");
+
+	return 0;
+}
+
+static ssize_t reduce_prefer_idle_store(struct file *filp, const char __user *ubuf,
+					size_t count, loff_t *pos)
+{
+	bool enable;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	vendor_sched_reduce_prefer_idle = enable;
+
+	return count;
+}
+
+PROC_OPS_RW(reduce_prefer_idle);
 
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 static int uclamp_stats_show(struct seq_file *m, void *v)
@@ -1360,6 +1343,7 @@ static struct pentry entries[] = {
 	PROC_ENTRY(util_threshold),
 	PROC_ENTRY(util_post_init_scale),
 	PROC_ENTRY(npi_packing),
+	PROC_ENTRY(reduce_prefer_idle),
 	PROC_ENTRY(dump_task),
 	// pmu limit attribute
 	PROC_ENTRY(pmu_poll_time),

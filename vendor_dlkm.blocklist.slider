@@ -14,3 +14,4 @@ blocklist st54spi
 blocklist uwb_desense.ko
 blocklist uwb-hal.ko
 blocklist uwbcore.ko
+blocklist dw3000-core-tests.ko

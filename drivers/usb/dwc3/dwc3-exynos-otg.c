@@ -173,6 +173,11 @@ static void dwc3_otg_set_host_mode(struct dwc3_otg *dotg)
 		reg &= ~DWC3_OTG_OCTL_PERIMODE;
 		dwc3_exynos_writel(dotg->regs, DWC3_OCTL, reg);
 	} else {
+		/* Disable undefined length burst mode */
+		reg = dwc3_exynos_readl(dwc->regs, DWC3_GSBUSCFG0);
+		reg &= ~(DWC3_GSBUSCFG0_INCRBRSTEN);
+		dwc3_exynos_writel(dwc->regs, DWC3_GSBUSCFG0, reg);
+
 		dwc3_otg_set_mode(dwc, DWC3_GCTL_PRTCAP_HOST);
 	}
 }
@@ -870,6 +875,7 @@ static int dwc3_otg_reboot_notify(struct notifier_block *nb, unsigned long event
 	case SYS_POWER_OFF:
 		exynos->dwc->current_dr_role = DWC3_EXYNOS_IGNORE_CORE_OPS;
 		dotg->in_shutdown = true;
+		del_timer_sync(&exynos->usb_connect_timer);
 		break;
 	}
 
@@ -915,6 +921,9 @@ static void dwc3_otg_recovery_reconnection(struct work_struct *w)
 	struct dwc3_exynos *exynos = dotg->exynos;
 	struct otg_fsm	*fsm = &dotg->fsm;
 	int ret = 0;
+
+	if (dotg->in_shutdown)
+		return;
 
 	__pm_stay_awake(dotg->reconn_wakelock);
 	/* Lock to avoid real cable insert/remove operation. */
@@ -962,6 +971,10 @@ int dwc3_otg_usb_recovery_reconn(struct dwc3_exynos *exynos)
 	}
 
 	dotg = exynos->dotg;
+
+	if (dotg->in_shutdown)
+		return -ESHUTDOWN;
+
 	schedule_work(&dotg->recov_work);
 
 	return 0;

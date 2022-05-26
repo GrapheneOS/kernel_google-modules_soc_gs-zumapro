@@ -33,6 +33,7 @@
 struct trusty_vdev;
 static bool use_high_wq;
 module_param(use_high_wq, bool, 0660);
+
 struct trusty_ctx {
 	struct device		*dev;
 	void			*shared_va;
@@ -46,7 +47,6 @@ struct trusty_ctx {
 	struct mutex		mlock; /* protects vdev_list */
 	struct workqueue_struct	*kick_wq;
 	struct workqueue_struct	*check_wq;
-	struct workqueue_struct	*kick_wq_high;
 	struct workqueue_struct	*check_wq_high;
 };
 
@@ -106,6 +106,7 @@ static int trusty_call_notify(struct notifier_block *nb,
 		queue_work(tctx->check_wq_high, &tctx->check_vqs);
 	else
 		queue_work(tctx->check_wq, &tctx->check_vqs);
+
 	return NOTIFY_OK;
 }
 
@@ -153,10 +154,7 @@ static bool trusty_virtio_notify(struct virtqueue *vq)
 
 	if (api_ver < TRUSTY_API_VERSION_SMP_NOP) {
 		atomic_set(&tvr->needs_kick, 1);
-		if (use_high_wq)
-			queue_work(tctx->kick_wq_high, &tctx->kick_vqs);
-		else
-			queue_work(tctx->kick_wq, &tctx->kick_vqs);
+		queue_work(tctx->kick_wq, &tctx->kick_vqs);
 	} else {
 		trusty_enqueue_nop(tctx->dev->parent, &tvr->kick_nop);
 	}
@@ -759,19 +757,12 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 		goto err_create_kick_wq;
 	}
 
-	tctx->check_wq_high = alloc_workqueue("trusty-check-wq-high", WQ_UNBOUND | WQ_HIGHPRI, 0);
+	tctx->check_wq_high = alloc_workqueue("trusty-check-wq-high",
+					      WQ_UNBOUND | WQ_HIGHPRI, 0);
 	if (!tctx->check_wq_high) {
 		ret = -ENODEV;
 		dev_err(&pdev->dev, "Failed create trusty-check-wq-high\n");
 		goto err_create_check_wq_high;
-	}
-
-	tctx->kick_wq_high = alloc_workqueue("trusty-kick-wq-high",
-					WQ_UNBOUND | WQ_CPU_INTENSIVE | WQ_HIGHPRI, 0);
-	if (!tctx->kick_wq_high) {
-		ret = -ENODEV;
-		dev_err(&pdev->dev, "Failed create trusty-kick-wq-high\n");
-		goto err_create_kick_wq_high;
 	}
 
 	ret = trusty_virtio_add_devices(tctx);
@@ -784,8 +775,6 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	return 0;
 
 err_add_devices:
-	destroy_workqueue(tctx->kick_wq_high);
-err_create_kick_wq_high:
 	destroy_workqueue(tctx->check_wq_high);
 err_create_check_wq_high:
 	destroy_workqueue(tctx->kick_wq);
@@ -813,7 +802,6 @@ static int trusty_virtio_remove(struct platform_device *pdev)
 	/* destroy workqueues */
 	destroy_workqueue(tctx->kick_wq);
 	destroy_workqueue(tctx->check_wq);
-	destroy_workqueue(tctx->kick_wq_high);
 	destroy_workqueue(tctx->check_wq_high);
 
 	/* notify remote that shared area goes away */
