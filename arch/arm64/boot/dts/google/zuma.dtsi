@@ -7,6 +7,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zuma.h>
+#include <dt-bindings/clock/zuma.h>
 #include "zuma-rmem.dtsi"
 #include "zuma-gpu.dtsi"
 #include "zuma-cpu.dtsi"
@@ -68,6 +69,13 @@
 			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>;
 		clock-frequency = <24576000>;
+	};
+
+	clock: clock-controller@0x26040000 {
+		compatible = "samsung,zuma-clock";
+		reg = <0x0 0x26040000 0x8000>;
+		#clock-cells = <1>;
+		acpm-ipc-channel = <0>;
 	};
 
 	ext_24_5m: ext_24_5m {
