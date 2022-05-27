@@ -397,3 +397,12 @@ def define_slider():
         flat = True,
         log = "info",
     )
+
+    native.test_suite(
+        name = "slider_tests",
+        tests = [
+            "//common:kernel_aarch64_tests",
+            ":slider_test",
+            ":slider_modules_test",
+        ] + [m + "_test" for m in _slider_modules],
+    )
