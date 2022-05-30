@@ -62,9 +62,9 @@
 		compatible = "samsung,exynos-sysreg", "syscon";
 		reg = <0x0 0x10C21000 0x1000>;
 	};
-	sysreg_apm: syscon@180204E0 {
+	sysreg_apm: syscon@154204E0 {
 		compatible = "samsung,exynos-sysreg", "syscon";
-		reg = <0x0 0x180204e0 0x1000>;
+		reg = <0x0 0x154204e0 0x1000>;
 	};
 	hsi2c_1: hsi2c@10880000 {
 		compatible = "samsung,exynos5-hsi2c";
