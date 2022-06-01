@@ -29,9 +29,9 @@
 		interrupt-names = "dma", "dpp";
 
 		/* Each bit indicates DPP attribute */
-		/* 0:AFBC 1:BLOCK 2:FLIP 3:ROT 4:CSC 5:SCALE 6:HDR 11:HDR10P */
+		/* 0:AFBC 1:BLOCK 2:FLIP 3:ROT 4:CSC 5:SCALE 6:HDR 10:SBWC 11:HDR10P */
 		/* 16:IDMA 17:ODMA 18:DPP 19:SRAMC 20:RCD 21:SLC_COEF 22:HDR_COMM */
-		attr = <0x6d0847>;
+		attr = <0x6D0867>;
 		port = <0>; /* AXI port number */
 
 		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
@@ -79,8 +79,8 @@
 			     <GIC_SPI IRQ_DPUF0_DPP_L2_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "dma", "dpp";
 
-		attr = <0x6D0847>;
-		port = <1>;
+		attr = <0x6D0867>;
+		port = <0>;
 		scale_down = <1>;
 		scale_up = <1>;
 
@@ -102,7 +102,7 @@
 		interrupt-names = "dma", "dpp";
 
 		attr = <0x6D0C7F>;
-		port = <1>;
+		port = <0>;
 		scale_down = <4>;
 		scale_up = <8>;
 
@@ -124,8 +124,8 @@
 			     <GIC_SPI IRQ_DPUF0_DPP_L4_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "dma", "dpp";
 
-		attr = <0x6D0847>;
-		port = <2>;
+		attr = <0x6D0867>;
+		port = <1>;
 		scale_down = <1>;
 		scale_up = <1>;
 
@@ -147,7 +147,7 @@
 		interrupt-names = "dma", "dpp";
 
 		attr = <0x6D0C7F>;
-		port = <2>;
+		port = <1>;
 		scale_down = <4>;
 		scale_up = <8>;
 
@@ -155,7 +155,226 @@
 		dpp,video;
 	};
 
-	drmdpp12: drmdpp@0x19908000 {   /* L12 : WB */
+	drmdpp6: drmdpp@0x19906000 {	/* L6 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19906000 0x1000>,
+		      <0x0 0x19936000 0x1000>,
+		      <0x0 0x19940000 0x4000>,
+		      <0x0 0x19956000 0x1000>,
+		      <0x0 0x19966000 0x1000>,
+		      <0x0 0x19986000 0x1000>;
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr_comm", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_L6_DPUF0 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF0_DPP_L6_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+		attr = <0x6D0867>;
+		port = <1>; /* AXI port number */
+
+		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
+		scale_down = <1>;
+		/* 1: scale X, 2: 2x scale up, 4: 4x scale up */
+		scale_up = <1>;
+
+		dpp,id = <6>;
+	};
+
+	drmdpp8: drmdpp@0x19D00000 {	/* L8 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19D00000 0x1000>,	/* DPU_DMA */
+		      <0x0 0x19D30000 0x1000>,	/* DPP */
+		      <0x0 0x19D40000 0x4000>,  /* SCL_COEF */
+		      <0x0 0x19D50000 0x1000>,	/* SRAMCON */
+		      <0x0 0x19D60000 0x1000>,	/* HDR COMM*/
+		      <0x0 0x19D80000 0x1000>;	/* HDR*/
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr_comm", "hdr";
+
+		/* DPU_DMA IRQ, DPP IRQ */
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_L0_DPUF1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF1_DPP_L0_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		/* Each bit indicates DPP attribute */
+		/* 0:AFBC 1:BLOCK 2:FLIP 3:ROT 4:CSC 5:SCALE 6:HDR 11:HDR10P */
+		/* 16:IDMA 17:ODMA 18:DPP 19:SRAMC 20:HDR_COMM 21:SLC_COEF */
+		attr = <0x6D0867>;
+		port = <0>; /* AXI port number */
+
+		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
+		scale_down = <1>;
+		/* 1: scale X, 2: 2x scale up, 4: 4x scale up */
+		scale_up = <1>;
+
+		dpp,id = <8>;
+	};
+
+	drmdpp9: drmdpp@0x19D01000 {	/* L9 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19D01000 0x1000>,
+		      <0x0 0x19D31000 0x1000>,
+		      <0x0 0x19D40000 0x4000>,
+		      <0x0 0x19D51000 0x1000>,
+		      <0x0 0x19D61000 0x1000>,
+		      <0x0 0x19D81000 0x1000>;
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr_comm", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_L1_DPUF1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF1_DPP_L1_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0x6D0C7F>;
+		port = <0>;
+		scale_down = <4>;
+		scale_up = <8>;
+
+		dpp,id = <9>;
+		dpp,video;
+	};
+
+	drmdpp10: drmdpp@0x19D02000 {    /* L10 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19D02000 0x1000>,
+		      <0x0 0x19D32000 0x1000>,
+		      <0x0 0x19D40000 0x4000>,
+		      <0x0 0x19D52000 0x1000>,
+		      <0x0 0x19D62000 0x1000>,
+		      <0x0 0x19D82000 0x1000>;
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr_comm", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_L2_DPUF1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF1_DPP_L2_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0x6D0867>;
+		port = <0>;
+		scale_down = <1>;
+		scale_up = <1>;
+
+		dpp,id = <10>;
+	};
+
+	drmdpp11: drmdpp@0x19D03000 {    /* L11 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19D03000 0x1000>,
+		      <0x0 0x19D33000 0x1000>,
+		      <0x0 0x19D40000 0x4000>,
+		      <0x0 0x19D53000 0x1000>,
+		      <0x0 0x19D63000 0x1000>,
+		      <0x0 0x19D83000 0x1000>;
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr_comm", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_L3_DPUF1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF1_DPP_L3_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0x6D0C7F>;
+		port = <0>;
+		scale_down = <4>;
+		scale_up = <8>;
+
+		dpp,id = <11>;
+		dpp,video;
+	};
+
+	drmdpp12: drmdpp@0x19D04000 {    /* L12 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19D04000 0x1000>,
+		      <0x0 0x19D34000 0x1000>,
+		      <0x0 0x19D40000 0x4000>,
+		      <0x0 0x19D54000 0x1000>,
+		      <0x0 0x19D64000 0x1000>,
+		      <0x0 0x19D84000 0x1000>;
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr_comm", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_L4_DPUF1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF1_DPP_L4_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0x6D0867>;
+		port = <1>;
+		scale_down = <1>;
+		scale_up = <1>;
+
+		dpp,id = <12>;
+	};
+
+	drmdpp13: drmdpp@0x19D05000 {    /* L13 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19D05000 0x1000>,
+		      <0x0 0x19D35000 0x1000>,
+		      <0x0 0x19D40000 0x4000>,
+		      <0x0 0x19D55000 0x1000>,
+		      <0x0 0x19D65000 0x1000>,
+		      <0x0 0x19D85000 0x1000>;
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr_comm", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_L5_DPUF1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF1_DPP_L5_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0x6D0C7F>;
+		port = <1>;
+		scale_down = <4>;
+		scale_up = <8>;
+
+		dpp,id = <13>;
+		dpp,video;
+	};
+
+	drmdpp14: drmdpp@0x19D06000 {	/* L14 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19D06000 0x1000>,
+		      <0x0 0x19D36000 0x1000>,
+		      <0x0 0x19D40000 0x4000>,
+		      <0x0 0x19D56000 0x1000>,
+		      <0x0 0x19D66000 0x1000>,
+		      <0x0 0x19D86000 0x1000>;
+		reg-names = "dma", "dpp", "scl_coef", "sramc", "hdr_comm", "hdr";
+
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_L6_DPUF1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF1_DPP_L6_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma", "dpp";
+
+		attr = <0x6D0867>;
+		port = <1>; /* AXI port number */
+
+		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
+		scale_down = <1>;
+		/* 1: scale X, 2: 2x scale up, 4: 4x scale up */
+		scale_up = <1>;
+
+		dpp,id = <14>;
+	};
+
+	drmrcd0: drmdpp@0x1990C000 {	/* L15 : RCD0 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x1990C000 0x1000>;
+		reg-names = "dma";
+
+		interrupts = <GIC_SPI IRQ_DPUF0_DMA_RCDISP0_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma";
+
+		/* 20:RCD */
+		attr = <0x100000>;
+		port = <0>;
+		dpp,id = <15>;
+	};
+
+	drmrcd1: drmdpp@0x19D0C000 {	/* L16 : RCD1 */
+		compatible = "samsung,exynos-dpp";
+		reg = <0x0 0x19D0C000 0x1000>;
+		reg-names = "dma";
+
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_RCDISP0_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma";
+
+		/* 20:RCD */
+		attr = <0x100000>;
+		port = <1>;
+		dpp,id = <16>;
+	};
+
+	drmwb0: drmdpp@0x19908000 {   /* L19 : WB */
 		compatible = "samsung,exynos-writeback";
 		reg = <0x0 0x19908000 0x1000>, <0x0 0x19938000 0x1000>;
 		reg-names = "dma", "dpp";
@@ -165,11 +384,28 @@
 
 		/* 4:CSC 10:SBWC 17:ODMA 18:DPP */
 		attr = <0x60410>;
-		port = <2>;
+		port = <0>;
 		scale_down = <1>;
 		scale_up = <1>;
 
-		dpp,id = <6>;
+		dpp,id = <17>;
+	};
+
+	drmwb1: drmdpp@0x199D8000 {   /* L20 : WB */
+		compatible = "samsung,exynos-writeback";
+		reg = <0x0 0x19D08000 0x1000>, <0x0 0x19D38000 0x1000>;
+		reg-names = "dma", "dpp";
+
+		interrupts = <GIC_SPI IRQ_DPUF1_DMA_WB0_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dma";
+
+		/* 4:CSC 10:SBWC 17:ODMA 18:DPP */
+		attr = <0x60410>;
+		port = <0>;
+		scale_down = <1>;
+		scale_up = <1>;
+
+		dpp,id = <18>;
 	};
 
 	disp_ss: disp_ss@0x19421000 {
@@ -251,9 +487,9 @@
 	drmdecon0: drmdecon@0x19470000 {
 		compatible = "samsung,exynos-decon";
 		reg = <0x0 0x19470000 0x6000>,	/* DECON0_MAIN */
-		      <0x0 0x19480000 0x6000>,	/* DECON_WIN */
+		      <0x0 0x19480000 0xE000>,	/* DECON_WIN */
 		      <0x0 0x19490000 0x10000>,	/* DECON_SUB */
-		      <0x0 0x194A0000 0x6000>,	/* DECON0_WINCON */
+		      <0x0 0x194A0000 0xE000>,	/* DECON0_WINCON */
 		      <0x0 0x194D0000 0xF000>;	/* DQE */
 		reg-names = "main", "win", "sub", "wincon", "dqe";
 
@@ -275,7 +511,7 @@
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
 
-		max_win = <6>;
+		max_win = <14>;
 
 		/* BTS */
 		ppc = <2>;		/* pixel per clock */
@@ -307,7 +543,9 @@
 		dta_hi_thres = <0x3200>;
 		dta_lo_thres = <0x600>;
 
-		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5>;
+		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5
+			&drmdpp6 &drmdpp8 &drmdpp9 &drmdpp10 &drmdpp11 &drmdpp12
+			&drmdpp13 &drmdpp14>;
 
 		/*
 		 * connector type that can be connected to the DECON. please
@@ -318,15 +556,16 @@
 		connector = <0x1 0x2 0x8>;
 
 		hibernation;
+		rcd = <&drmrcd0>;
 	};
 
 	drmdecon1: drmdecon@0x19471000 {
 		status = "disabled";
 		compatible = "samsung,exynos-decon";
 		reg = <0x0 0x19471000 0x6000>,	/* DECON1_MAIN */
-		      <0x0 0x19480000 0x6000>,	/* DECON_WIN */
+		      <0x0 0x19480000 0xE000>,	/* DECON_WIN */
 		      <0x0 0x19490000 0x10000>,	/* DECON_SUB */
-		      <0x0 0x194B0000 0x6000>,	/* DECON1_WINCON */
+		      <0x0 0x194B0000 0xE000>,	/* DECON1_WINCON */
 		      <0x0 0x194E0000 0xF000>;	/* DQE */
 		reg-names = "main", "win", "sub", "wincon", "dqe";
 
@@ -339,7 +578,7 @@
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 
-		max_win = <6>;
+		max_win = <14>;
 
 		/* BTS */
 		ppc = <2>;
@@ -360,7 +599,9 @@
 		dta_hi_thres = <0x3200>;
 		dta_lo_thres = <0x600>;
 
-		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5>;
+		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5
+			&drmdpp6 &drmdpp8 &drmdpp9 &drmdpp10 &drmdpp11 &drmdpp12
+			&drmdpp13 &drmdpp14>;
 
 		/*
 		 * connector type that can be connected to the DECON. please
@@ -369,15 +610,16 @@
 		 * DSI0(0x1), DSI1(0x2), VIDI(0x8)
 		 */
 		connector = <0x1 0x2 0x8>;
+		rcd = <&drmrcd1>;
 	};
 
 	drmdecon2: drmdecon@0x19472000 {
 		status = "disabled";
 		compatible = "samsung,exynos-decon";
 		reg = <0x0 0x19472000 0x4000>,	/* DECON2_MAIN */
-		      <0x0 0x19480000 0x6000>,	/* DECON_WIN */
+		      <0x0 0x19480000 0xE000>,	/* DECON_WIN */
 		      <0x0 0x19490000 0x10000>,	/* DECON_SUB */
-		      <0x0 0x194C0000 0x6000>;	/* DECON2_WINCON */
+		      <0x0 0x194C0000 0xE000>;	/* DECON2_WINCON */
 		reg-names = "main", "win", "sub", "wincon";
 
 		decon,id = <2>;
@@ -393,7 +635,7 @@
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
 
-		max_win = <6>;
+		max_win = <14>;
 
 		/* BTS */
 		ppc = <2>;		/* pixel per clock */
@@ -411,7 +653,9 @@
 		dfs_lv_cnt = <7>;
 		dfs_lv = <664000 533000 465000 400000 310000 267000 134000>;
 
-		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5>;
+		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5
+			&drmdpp6 &drmdpp8 &drmdpp9 &drmdpp10 &drmdpp11 &drmdpp12
+			&drmdpp13 &drmdpp14>;
 		/*
 		 * connector type that can be connected to the DECON. please
 		 * refer to enum exynos_drm_output_type in exynos_drm_drv.h
