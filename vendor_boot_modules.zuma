@@ -6,6 +6,7 @@
 9pnet_virtio.ko
 bigwave.ko
 cachefiles.ko
+cmupmucal.ko
 deferred-free-helper.ko
 dss.ko
 ehld.ko
