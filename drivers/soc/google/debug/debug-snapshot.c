@@ -110,6 +110,12 @@ bool dbg_snapshot_get_panic_status(void)
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_get_panic_status);
 
+bool dbg_snapshot_get_warm_status(void)
+{
+	return dss_desc.in_warm;
+}
+EXPORT_SYMBOL_GPL(dbg_snapshot_get_warm_status);
+
 void dbg_snapshot_scratch_reg(unsigned int val)
 {
 	dbg_snapshot_set_val_offset(val, DSS_OFFSET_SCRATCH);
@@ -313,10 +319,10 @@ void dbg_snapshot_output(void)
 	for (i = 0; i < ARRAY_SIZE(dss_items); i++) {
 		if (!dss_items[i].entry.enabled)
 			continue;
-		pr_info("%-16s: phys:0x%pK / virt:0x%pK / size:0x%zx / en:%d\n",
+		pr_info("%-16s: phys:%pa / virt:%pK / size:0x%zx / en:%d\n",
 				dss_items[i].name,
-				dss_items[i].entry.paddr,
-				dss_items[i].entry.vaddr,
+				&dss_items[i].entry.paddr,
+				(void *) dss_items[i].entry.vaddr,
 				dss_items[i].entry.size,
 				dss_items[i].entry.enabled);
 		size += dss_items[i].entry.size;
@@ -409,7 +415,7 @@ static int dbg_snapshot_rmem_setup(struct device *dev)
 	struct dbg_snapshot_item *item;
 	bool en;
 	unsigned long i, j;
-	unsigned long flags = VM_NO_GUARD | VM_MAP;
+	unsigned long flags = VM_MAP;
 	pgprot_t prot = __pgprot(PROT_NORMAL_NC);
 	int page_size, mem_count = 0;
 	struct page *page;
@@ -425,7 +431,7 @@ static int dbg_snapshot_rmem_setup(struct device *dev)
 	for (i = 0; i < mem_count; i++) {
 		rmem_np = of_parse_phandle(dev->of_node, "memory-region", i);
 		if (!rmem_np) {
-			dev_err(dev, "no such memory-region of index %d\n", i);
+			dev_err(dev, "no such memory-region of index %ld\n", i);
 			continue;
 		}
 
@@ -450,8 +456,8 @@ static int dbg_snapshot_rmem_setup(struct device *dev)
 		}
 
 		if (!rmem->base || !rmem->size) {
-			dev_err(dev, "%s item wrong base(0x%x) or size(0x%x)\n",
-					item->name, rmem->base, rmem->size);
+			dev_err(dev, "%s item wrong base(%pap) or size(%pap)\n",
+					item->name, &rmem->base, &rmem->size);
 			item->entry.enabled = false;
 			continue;
 		}
@@ -465,8 +471,8 @@ static int dbg_snapshot_rmem_setup(struct device *dev)
 		vaddr = vmap(pages, page_size, flags, prot);
 		kfree(pages);
 		if (!vaddr) {
-			dev_err(dev, "%s: paddr:%pK page_size:0x%x failed to vmap\n",
-					item->name, rmem->base, rmem->size);
+			dev_err(dev, "%s: paddr:%pap page_size:%pap failed to vmap\n",
+					item->name, &rmem->base, &rmem->size);
 			item->entry.enabled = false;
 			continue;
 		}

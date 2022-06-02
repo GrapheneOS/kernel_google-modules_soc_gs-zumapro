@@ -7,8 +7,8 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
-&odm {
-	trusty {
+/ {
+	trusty: trusty {
 		compatible = "android,trusty-smc-v1";
 
 		irq {

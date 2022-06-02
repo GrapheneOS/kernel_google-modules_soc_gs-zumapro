@@ -181,6 +181,13 @@ static struct samsung_dma_heap *__samsung_heap_add(struct device *dev, void *pri
 	heap->release = release;
 	heap->priv = priv;
 	heap->name = heap_name;
+	if (dma_heap_flags_static_protected(heap->flags)) {
+		if (!dev->parent) {
+			perrfn("Secure heaps should have Trusty as the parent");
+			return ERR_PTR(-EINVAL);
+		}
+		heap->trusty_dev = dev->parent;
+	}
 
 	exp_info.name = heap_name;
 	exp_info.ops = ops;
@@ -291,6 +298,21 @@ struct dma_buf *samsung_export_dmabuf(struct samsung_dma_buffer *buffer, unsigne
 }
 EXPORT_SYMBOL_GPL(samsung_export_dmabuf);
 
+int trusty_dma_buf_get_shared_mem_id(struct dma_buf *dma_buf,
+				     trusty_shared_mem_id_t *id)
+{
+	struct samsung_dma_buffer *buffer = dma_buf->priv;
+
+	if ((dma_buf->ops == &samsung_dma_buf_ops) &&
+	    (dma_heap_flags_static_protected(buffer->flags))) {
+		*id = buffer->mem_id;
+		return 0;
+	}
+
+	return -ENODATA;
+}
+EXPORT_SYMBOL_GPL(trusty_dma_buf_get_shared_mem_id);
+
 #ifdef CONFIG_TRUSTY_DMA_BUF_FFA_TAG
 static struct buffer_prot_info *samsung_dma_buf_prot_info(struct dma_buf
 							  *dma_buf)
@@ -379,4 +401,5 @@ static void __exit samsung_dma_heap_exit(void)
 module_init(samsung_dma_heap_init);
 module_exit(samsung_dma_heap_exit);
 MODULE_DESCRIPTION("DMA-BUF Samsung Heap");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");

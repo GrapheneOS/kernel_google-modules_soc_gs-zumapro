@@ -34,7 +34,7 @@
 	status = "okay";
 	clock-frequency = <400000>;
 
-	max77729_pmic:max77729pmic@0x66 {
+	max77729_pmic:max77729pmic@66 {
 		status = "okay";
 		compatible = "maxim,max77729pmic";
 		reg = <0x66>;
@@ -50,7 +50,7 @@
 		};
 	};
 
-	max77729_uic:max77729uic@0x25 {
+	max77729_uic:max77729uic@25 {
 		status = "okay";
 		compatible = "maxim,max77729uic";
 		reg = <0x25>;
@@ -60,7 +60,7 @@
 		usb-psy-name = "usb";
 	};
 
-	max77729_fg:max77729fg@0x36 {
+	max77729_fg:max77729fg@36 {
 		status = "okay";
 		compatible = "maxim,max77729f";
 		reg = <0x36>;
@@ -81,7 +81,7 @@
 		};
 	};
 
-	max77729chrg@0x69 {
+	max77729chrg@69 {
 		status = "okay";
 		compatible = "maxim,max77729chrg";
 		reg = <0x69>;

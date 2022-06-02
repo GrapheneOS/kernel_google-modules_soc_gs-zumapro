@@ -15,6 +15,7 @@
 
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/device.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -47,19 +48,18 @@ static void __iomem *usbdp_combo_phy_reg;
 void __iomem *phycon_base_addr;
 EXPORT_SYMBOL_GPL(phycon_base_addr);
 
-struct usb_eom_result_s *eom_result;
-
 /*u32 get_speed_and_disu1u2(void);*/
 
 static ssize_t
 eom_show(struct device *dev,
 	 struct device_attribute *attr, char *buf)
 {
+	struct exynos_usbdrd_phy *phy_drd = dev_get_drvdata(dev);
 	int len = 0;
 	u32 test_cnt = 0;
 	static int current_cnt;
 
-	if (!eom_result) {
+	if (!phy_drd->eom_result) {
 		len += snprintf(buf + len, PAGE_SIZE,
 				"eom_result structure is NULL!!!\n");
 		goto exit;
@@ -68,9 +68,9 @@ eom_show(struct device *dev,
 	while (current_cnt != EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX) {
 		len += snprintf(buf + len, PAGE_SIZE,
 				"phase %d vref %d err %lu\n",
-				eom_result[current_cnt].phase,
-				eom_result[current_cnt].vref,
-				(unsigned long)eom_result[current_cnt].err);
+				phy_drd->eom_result[current_cnt].phase,
+				phy_drd->eom_result[current_cnt].vref,
+				(unsigned long) phy_drd->eom_result[current_cnt].err);
 
 		current_cnt++;
 		test_cnt++;
@@ -89,33 +89,85 @@ static ssize_t
 eom_store(struct device *dev,
 	  struct device_attribute *attr, const char *buf, size_t n)
 {
-	/*struct exynos_usbdrd_phy *phy_drd = dev_get_drvdata(dev);*/
+	struct exynos_usbdrd_phy *phy_drd = dev_get_drvdata(dev);
 	int speed_val;
 
-	kfree(eom_result);
-
-	eom_result = kzalloc(sizeof(*eom_result) *
+	if (!phy_drd->eom_result) {
+		phy_drd->eom_result = kzalloc(sizeof(struct usb_eom_result_s) *
 			EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX, GFP_KERNEL);
-	if (!eom_result)
+	} else {
+		memset(phy_drd->eom_result, 0, sizeof(struct usb_eom_result_s) *
+		       EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX);
+	}
+
+	if (!phy_drd->eom_result)
 		return -ENOMEM;
 
-	/* Disable U1/U2 & get speed */
-	/* Remove Cycle dependency */
-	/* speed_val = get_speed_and_disu1u2(); */
+	/*
+	 * USB3 LPM must be disabled (U1, U2)
+	 * speed_val(1) = Gen2, speed_val(0) = Gen1
+	 * currently, it would be set to Gen1 first.
+	 */
 	speed_val = 0;
 
-	if (speed_val == 0)
-		speed_val = 1; /* Gen2 */
-	else
-		speed_val = 0; /* Gen1 */
-
 	/* Start eom test */
-	//phy_exynos_usbdp_g2_v4_eom(&phy_drd->usbphy_sub_info, speed_val, eom_result);
+	phy_exynos_usbdp_g2_v4_eom(&phy_drd->usbphy_sub_info, phy_drd->eom_result, speed_val);
 
 	return n;
 }
 
 static DEVICE_ATTR_RW(eom);
+
+static ssize_t
+loopback_show(struct device *dev,
+	 struct device_attribute *attr, char *buf)
+{
+	struct exynos_usbdrd_phy *phy_drd = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "loopback test result\n"
+			 "pass_cnt = %d, fail_cnt = %d\n", phy_drd->pass_cnt, phy_drd->fail_cnt);
+}
+
+static ssize_t
+loopback_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t n)
+{
+	struct exynos_usbdrd_phy *phy_drd = dev_get_drvdata(dev);
+	int speed_val, pass, count, i;
+
+	if (kstrtoint(buf, 10, &count) != 0)
+		return -EINVAL;
+
+	/*
+	 * USB3 LPM must be disabled (U1, U2)
+	 * speed_val(1) = Gen2, speed_val(0) = Gen1
+	 * currently, it would be set to Gen1 first.
+	 */
+
+	speed_val = 0;
+
+	phy_drd->pass_cnt = 0;
+	phy_drd->fail_cnt = 0;
+
+	/* Start loopback test */
+	for (i = 0; i < count; i++) {
+		pass = phy_exynos_usbdp_g2_v4_internal_loopback(&phy_drd->usbphy_sub_info,
+								speed_val);
+		if (pass == 0)
+			phy_drd->pass_cnt++;
+		else
+			phy_drd->fail_cnt++;
+	}
+
+	if (phy_drd->pass_cnt == count)
+		dev_info(phy_drd->dev, "loopback test pass, pass cnt = %d\n", phy_drd->pass_cnt);
+	else
+		dev_info(phy_drd->dev, "loopback test fail, fail cnt = %d\n", phy_drd->fail_cnt);
+
+	return n;
+}
+
+static DEVICE_ATTR_RW(loopback);
 
 static ssize_t
 hs_phy_tune_show(struct device *dev,
@@ -153,14 +205,14 @@ static ssize_t
 hs_phy_tune_store(struct device *dev,
 		  struct device_attribute *attr, const char *buf, size_t n)
 {
-	char tune_name[30];
+	char tune_name[20];
 	u32 tune_val;
 	struct device_node *tune_node;
 	struct exynos_usbdrd_phy *phy_drd = dev_get_drvdata(dev);
 	int ret, i;
 	u32 tune_num = 0;
 
-	if (sscanf(buf, "%s %x", tune_name, &tune_val) != 2)
+	if (sscanf(buf, "%19s %x", tune_name, &tune_val) != 2)
 		return -EINVAL;
 
 	tune_node = of_parse_phandle(dev->of_node, "hs_tune_param", 0);
@@ -227,7 +279,7 @@ phy_tune_store(struct device *dev,
 	int ret, i;
 	u32 tune_num = 0;
 
-	if (sscanf(buf, "%s %x", tune_name, &tune_val) != 2)
+	if (sscanf(buf, "%29s %x", tune_name, &tune_val) != 2)
 		return -EINVAL;
 
 	tune_node = of_parse_phandle(dev->of_node, "ss_tune_param", 0);
@@ -558,7 +610,6 @@ static unsigned int exynos_rate_to_clk(struct exynos_usbdrd_phy *phy_drd)
 
 	clk = clk_get_rate(phy_drd->ref_clk);
 	pr_info("%s, ref_clk = %d\n", __func__, clk);
-	pr_info("%s, Whart's this\n", __func__);
 
 	/* EXYNOS_FSEL_MASK */
 	switch (clk) {
@@ -1322,6 +1373,7 @@ static int exynos_usbdrd_get_iptype(struct exynos_usbdrd_phy *phy_drd)
 	case TYPE_USB2HOST:
 		phy_drd->ip_type = TYPE_USB2HOST;
 		dev_info(dev, "It is TYPE USB2HOST");
+		break;
 	default:
 		break;
 	}
@@ -1538,7 +1590,8 @@ static void exynos_usbdrd_pipe3_init(struct exynos_usbdrd_phy *phy_drd)
 		if (ret) {
 			/* set phy port to 0 as default */
 			property.intval = 0;
-			dev_err(phy_drd->dev, "get cc orientation failed, ret=%d\n", __func__, ret);
+			dev_err(phy_drd->dev, "%s: get cc orientation failed, ret=%d\n",
+				__func__, ret);
 		}
 
 		phy_drd->usbphy_info.used_phy_port = property.intval;
@@ -1563,6 +1616,7 @@ static void exynos_usbdrd_utmi_init(struct exynos_usbdrd_phy *phy_drd)
 	u8 otp_index;
 	u8 i;
 #endif
+
 	pr_info("%s: +++\n", __func__);
 
 	//phy reset
@@ -1606,10 +1660,6 @@ static void exynos_usbdrd_utmi_init(struct exynos_usbdrd_phy *phy_drd)
 							  otp_data[i].value);
 	}
 #endif
-	/*phy_drd->idle_ip_idx = get_idle_ip_index();*/
-	//if (phy_drd->idle_ip_idx < 0)
-	//	dev_err(phy_drd->dev, "Failed to get idle ip index\n");
-	//pr_info("%s, idle ip = %d\n", __func__, phy_drd->idle_ip_idx);
 
 	pr_info("%s: ---\n", __func__);
 }
@@ -1717,8 +1767,6 @@ static void exynos_usbdrd_pipe3_tune(struct exynos_usbdrd_phy *phy_drd,
 	struct exynos_usb_tune_param *ss_tune_param = phy_drd->usbphy_sub_info.tune_param;
 	int i;
 
-	dev_info(phy_drd->dev, "%s\n", __func__);
-
 	if (phy_state >= OTG_STATE_A_IDLE) {
 		/* for host mode */
 		for (i = 0; ss_tune_param[i].value != EXYNOS_USB_TUNE_LAST; i++) {
@@ -1746,8 +1794,6 @@ static void exynos_usbdrd_utmi_tune(struct exynos_usbdrd_phy *phy_drd,
 {
 	struct exynos_usb_tune_param *hs_tune_param = phy_drd->usbphy_info.tune_param;
 	int i;
-
-	dev_info(phy_drd->dev, "%s\n", __func__);
 
 	if (phy_state >= OTG_STATE_A_IDLE) {
 		/* for host mode */
@@ -1789,8 +1835,6 @@ void exynos_usbdrd_ldo_control(struct exynos_usbdrd_phy *phy_drd, int on)
 			__func__);
 		return;
 	}
-
-	dev_info(phy_drd->dev, "Turn %s LDOs\n", on ? "on" : "off");
 
 	if (on) {
 		ret1 = regulator_enable(phy_drd->vdd085);
@@ -1836,8 +1880,6 @@ void exynos_usbdrd_l7m_control(struct exynos_usbdrd_phy *phy_drd, int on)
 		dev_err(phy_drd->dev, "%s: not defined regulator L7M\n", __func__);
 		return;
 	}
-
-	dev_info(phy_drd->dev, "Turn %s L7M_VDD_HSI\n", on ? "on" : "off");
 
 	if (on) {
 		ret = regulator_enable(phy_drd->vdd_hsi);
@@ -1912,6 +1954,7 @@ static void exynos_usbdrd_utmi_set(struct exynos_usbdrd_phy *phy_drd,
 		break;
 	case SET_DPDM_PULLDOWN:
 		phy_exynos_usb_v3p1_config_host_mode(&phy_drd->usbphy_info);
+		break;
 	default:
 		break;
 	}
@@ -1987,9 +2030,6 @@ static struct exynos_usbdrd_phy *exynos_usbdrd_get_struct(void)
 		dev = &pdev->dev;
 		of_node_put(np);
 		if (pdev) {
-			pr_info("%s: get the %s platform_device\n",
-				__func__, pdev->name);
-
 			phy_drd = dev->driver_data;
 			return phy_drd;
 		}
@@ -2497,28 +2537,28 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 	dev_info(dev, "Get USB LDO!\n");
 	phy_drd->vdd085 = devm_regulator_get(dev, "vdd085");
 	if (IS_ERR(phy_drd->vdd085)) {
-		dev_err(dev, "%s - vdd085 regulator_get fail: %d\n",
+		dev_err(dev, "%s - vdd085 regulator_get fail: %ld\n",
 			__func__, PTR_ERR(phy_drd->vdd085));
 		return PTR_ERR(phy_drd->vdd085);
 	}
 
 	phy_drd->vdd18 = devm_regulator_get(dev, "vdd18");
 	if (IS_ERR(phy_drd->vdd18)) {
-		dev_err(dev, "%s - vdd18 regulator_get fail: %d\n",
+		dev_err(dev, "%s - vdd18 regulator_get fail: %ld\n",
 			__func__, PTR_ERR(phy_drd->vdd18));
 		return PTR_ERR(phy_drd->vdd18);
 	}
 
 	phy_drd->vdd30 = devm_regulator_get(dev, "vdd30");
 	if (IS_ERR(phy_drd->vdd30)) {
-		dev_err(dev, "%s - vdd30 regulator_get fail: %d\n",
+		dev_err(dev, "%s - vdd30 regulator_get fail: %ld\n",
 			__func__, PTR_ERR(phy_drd->vdd30));
 		return PTR_ERR(phy_drd->vdd30);
 	}
 
 	phy_drd->vdd_hsi = devm_regulator_get(dev, "vdd_hsi");
 	if (IS_ERR(phy_drd->vdd_hsi)) {
-		dev_err(dev, "%s - vdd_hsi regulator_get fail: %d\n",
+		dev_err(dev, "%s - vdd_hsi regulator_get fail: %ld\n",
 			__func__, PTR_ERR(phy_drd->vdd_hsi));
 		return PTR_ERR(phy_drd->vdd_hsi);
 	}
@@ -2541,6 +2581,11 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 	ret = sysfs_create_file(&dev->kobj, &dev_attr_eom.attr);
 	if (ret)
 		dev_err(dev, "%s - Couldn't create sysfs for PHY EOM\n",
+			__func__);
+
+	ret = sysfs_create_file(&dev->kobj, &dev_attr_loopback.attr);
+	if (ret)
+		dev_err(dev, "%s - Couldn't create sysfs for loopback test\n",
 			__func__);
 
 	pr_info("%s: ---\n", __func__);

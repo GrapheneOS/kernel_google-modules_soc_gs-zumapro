@@ -824,7 +824,7 @@ static struct itmon_nodeinfo vec_p2[] = {
 	{S_NODE, "MFC",		0x1F2D3000, 1, 1, 0, 0, TMOUT, 1},
 	{S_NODE, "PDP",		0x1F253000, 1, 1, 0, 0, TMOUT, 1},
 	{S_NODE, "SFR_BUS1",	0x1F213000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_TREX_BUS1", 0x1F213000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "SFR_TREX_BUS1", 0x1F203000, 1, 1, 0, 0, TMOUT, 1},
 	{S_NODE, "TNR",		0x1F2B3000, 1, 1, 0, 0, TMOUT, 1},
 };
 
@@ -833,8 +833,8 @@ static struct itmon_nodeinfo vec_p3[] = {
 	{S_NODE, "GPU",		0x20633000, 1, 1, 0, 0, TMOUT, 1},
 	{S_NODE, "SFR_P0_BUS2",	0x20613000, 1, 1, 0, 0, TMOUT, 1},
 	{S_NODE, "SFR_P1_BUS2",	0x20623000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_TREX_BUS2", 0x20623000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "TPU",		0x20623000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "SFR_TREX_BUS2", 0x20603000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "TPU",		0x20643000, 1, 1, 0, 0, TMOUT, 1},
 };
 
 static struct itmon_nodegroup nodegroup[] = {
@@ -1695,14 +1695,14 @@ static void itmon_collect_errnode(struct itmon_dev *itmon,
 	switch (offset) {
 	case OFFSET_REQ_R:
 		read = TRANS_TYPE_READ;
-		/* fall down */
+		fallthrough;
 	case OFFSET_REQ_W:
 		req = true;
 		/* Only S-Node is able to make log to registers */
 		break;
 	case OFFSET_RESP_R:
 		read = TRANS_TYPE_READ;
-		/* fall down */
+		fallthrough;
 	case OFFSET_RESP_W:
 		req = false;
 		/* Only NOT S-Node is able to make log to registers */

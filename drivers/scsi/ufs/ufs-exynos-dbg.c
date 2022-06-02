@@ -18,6 +18,7 @@
 #include <linux/of_address.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <linux/sched/clock.h>
 
 #include "ufshcd.h"
 #include "ufs-vs-mmio.h"
@@ -493,7 +494,7 @@ static void __ufs_get_sfr(struct ufs_dbg_mgr *mgr,
 {
 	struct ufs_vs_handle *handle = mgr->handle;
 	int sel_api = 0;
-	u32 reg;
+	u32 reg = 0;
 	u32 *pval;
 
 	while (cfg) {
@@ -618,7 +619,7 @@ static void __ufs_print_sfr(struct ufs_vs_handle *handle,
 	dev_err(dev, ":---------------------------------------------------\n");
 	dev_err(dev, ":\t\tREGISTER\n");
 	dev_err(dev, ":---------------------------------------------------\n");
-	dev_err(dev, ":%-30s\t%-012s\t%-014s\n", ufs_sfr_field_name[0],
+	dev_err(dev, ":%-30s\t%-12s\t%-14s\n", ufs_sfr_field_name[0],
 		ufs_sfr_field_name[1], ufs_sfr_field_name[2]);
 
 	while (cfg) {
@@ -628,7 +629,7 @@ static void __ufs_print_sfr(struct ufs_vs_handle *handle,
 		/* show */
 		if (cfg->offset >= LOG_STD_HCI_SFR)
 			dev_err(dev, "\n");
-		dev_err(dev, ":%-30s\t0x%-012x\t0x%-014x\n",
+		dev_err(dev, ":%-30s\t0x%-12x\t0x%-14x\n",
 			cfg->name, cfg->offset, cfg->val[SFR_VAL_H_0]);
 		if (cfg->offset >= LOG_STD_HCI_SFR)
 			dev_err(dev, "\n");
@@ -658,7 +659,7 @@ static void __ufs_print_attr(struct ufs_vs_handle *handle,
 		/* show */
 		if (cfg->offset >= DBG_ATTR_UNIPRO)
 			dev_err(dev, "\n");
-		dev_err(dev, ":0x%-27x\t0x%-012x\t0x%-014x\t0x%-014x\n",
+		dev_err(dev, ":0x%-27x\t0x%-12x\t0x%-14x\t0x%-14x\n",
 			cfg->mib, cfg->offset,
 			cfg->val[ATTR_VAL_H_0_L_0],
 			cfg->val[ATTR_VAL_H_0_L_1]);
@@ -693,8 +694,8 @@ static void __ufs_print_cport(struct ufs_dbg_mgr *mgr, struct device *dev)
 	u32 offset;
 	u32 size = 0;
 	u32 cur_ptr = 0;
-	u32 tag;
-	u32 idx;
+	u32 tag = 0;
+	u32 idx = 0;
 	int tag_printed;
 
 	/*
@@ -826,7 +827,7 @@ static void __ufs_print_cmd_log(struct ufs_dbg_mgr *mgr, struct device *dev)
 	dev_err(dev, ":OP, TAG, LBA, SCT, RETRIES, STIME, ETIME, REQS\n\n");
 
 	for (i = 0 ; i < max ; i++, data++) {
-		dev_err(dev, ":0x%02x, %02d, 0x%08lx, 0x%04x, %d, %llu, %llu, 0x%lx %s",
+		dev_err(dev, ":0x%02x, %02d, 0x%08lx, 0x%04x, %d, %llu, %llu, 0x%llx %s",
 			data->op,
 			data->tag,
 			data->lba,

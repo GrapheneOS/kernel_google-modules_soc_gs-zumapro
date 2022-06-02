@@ -269,8 +269,8 @@ static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 	if (!domain->page_table)
 		goto err_pgtable;
 
-	domain->lv2entcnt = kcalloc(NUM_LV1ENTRIES, sizeof(*domain->lv2entcnt),
-				    GFP_KERNEL);
+	domain->lv2entcnt = kvcalloc(NUM_LV1ENTRIES, sizeof(*domain->lv2entcnt),
+				     GFP_KERNEL);
 	if (!domain->lv2entcnt)
 		goto err_counter;
 
@@ -301,10 +301,21 @@ err_pgtable:
 static void samsung_sysmmu_domain_free(struct iommu_domain *dom)
 {
 	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
+	int i;
 
 	iommu_put_dma_cookie(dom);
+
+	for (i = 0; i < NUM_LV1ENTRIES; i++) {
+		sysmmu_pte_t *sent = domain->page_table + i;
+
+		if (lv1ent_page(sent)) {
+			phys_addr_t base = lv2table_base(sent);
+
+			kmem_cache_free(slpt_cache, phys_to_virt(base));
+		}
+	}
 	kmem_cache_free(flpt_cache, domain->page_table);
-	kfree(domain->lv2entcnt);
+	kvfree(domain->lv2entcnt);
 	kfree(domain);
 }
 
@@ -477,7 +488,7 @@ static int samsung_sysmmu_attach_dev(struct iommu_domain *dom,
 	if (ret)
 		goto err_drvdata_add;
 
-	dev_info(dev, "attached with pgtable %pa\n", &domain->page_table);
+	dev_info(dev, "attached with pgtable %pap\n", &page_table);
 
 	return 0;
 
@@ -499,6 +510,7 @@ static void samsung_sysmmu_detach_dev(struct iommu_domain *dom,
 	struct list_head *group_list;
 	struct sysmmu_drvdata *drvdata;
 	struct iommu_group *group = dev->iommu_group;
+	phys_addr_t page_table;
 	unsigned int i;
 
 	domain = to_sysmmu_domain(dom);
@@ -511,7 +523,8 @@ static void samsung_sysmmu_detach_dev(struct iommu_domain *dom,
 		samsung_sysmmu_detach_drvdata(drvdata);
 	}
 
-	dev_info(dev, "detached from pgtable %pa\n", &domain->page_table);
+	page_table = virt_to_phys(domain->page_table);
+	dev_info(dev, "detached from pgtable %pap\n", &page_table);
 }
 
 static inline sysmmu_pte_t make_sysmmu_pte(phys_addr_t paddr,
@@ -525,8 +538,15 @@ static sysmmu_pte_t *alloc_lv2entry(struct samsung_sysmmu_domain *domain,
 				    atomic_t *pgcounter)
 {
 	if (lv1ent_section(sent)) {
-		WARN(1, "trying mapping on %#08x mapped with 1MiB page", iova);
+		WARN(1, "Trying to install second level page table for va %#010x over valid 1MB descriptor: %#010x",
+		     iova, *sent);
 		return ERR_PTR(-EADDRINUSE);
+	}
+
+	if (!(lv1ent_page(sent) || *sent == 0)) {
+		pr_crit("Found invalid first level page descriptor %#010x when trying to map va %#010x",
+			*sent, iova);
+		BUG();
 	}
 
 	if (lv1ent_unmapped(sent)) {
@@ -555,7 +575,7 @@ static sysmmu_pte_t *alloc_lv2entry(struct samsung_sysmmu_domain *domain,
 	return page_entry(sent, iova);
 }
 
-static inline void clear_lv2_page_table(sysmmu_pte_t *ent, unsigned int n)
+static inline void clear_page_table(sysmmu_pte_t *ent, unsigned int n)
 {
 	memset(ent, 0, sizeof(*ent) * n);
 }
@@ -568,13 +588,15 @@ static int lv1set_section(struct samsung_sysmmu_domain *domain,
 	sysmmu_pte_t *pent_to_free = NULL;
 
 	if (lv1ent_section(sent)) {
-		WARN(1, "Trying mapping 1MB@%#08x on valid FLPD", iova);
+		WARN(1, "Trying to map 1MB@%#010x over valid 1MB descriptor: %#010x",
+		     iova, *sent);
 		return -EADDRINUSE;
 	}
 
 	if (lv1ent_page(sent)) {
-		if (WARN_ON(atomic_read(pgcnt) != 0)) {
-			WARN(1, "Trying mapping 1MB@%#08x on valid SLPD", iova);
+		if (atomic_read(pgcnt) != 0) {
+			WARN(1, "Trying to map 1MB@%#010x over base address of second level page table: %#010x",
+			     iova, *sent);
 			return -EADDRINUSE;
 		}
 
@@ -608,20 +630,18 @@ static int lv2set_page(sysmmu_pte_t *pent, phys_addr_t paddr,
 			return -EADDRINUSE;
 
 		*pent = make_sysmmu_pte(paddr, SPAGE_FLAG, attr);
-		pgtable_flush(pent, pent + 1);
 		atomic_inc(pgcnt);
 	} else {	/* size == LPAGE_SIZE */
 		unsigned int i;
 
 		for (i = 0; i < SPAGES_PER_LPAGE; i++, pent++) {
 			if (WARN_ON(!lv2ent_unmapped(pent))) {
-				clear_lv2_page_table(pent - i, i);
+				clear_page_table(pent - i, i);
 				return -EADDRINUSE;
 			}
 
 			*pent = make_sysmmu_pte(paddr, LPAGE_FLAG, attr);
 		}
-		pgtable_flush(pent - SPAGES_PER_LPAGE, pent);
 		atomic_add(SPAGES_PER_LPAGE, pgcnt);
 	}
 
@@ -717,7 +737,7 @@ static size_t samsung_sysmmu_unmap(struct iommu_domain *dom,
 		goto err;
 	}
 
-	clear_lv2_page_table(pent, SPAGES_PER_LPAGE);
+	clear_page_table(pent, SPAGES_PER_LPAGE);
 	pgtable_flush(pent, pent + SPAGES_PER_LPAGE);
 	size = LPAGE_SIZE;
 	atomic_sub(SPAGES_PER_LPAGE, lv2entcnt);
@@ -732,6 +752,80 @@ err:
 	       size, iova, err_pgsize);
 
 	return 0;
+}
+
+static inline void clear_and_flush_pgtable(sysmmu_pte_t *ent, int count, atomic_t *lv2entcnt)
+{
+	clear_page_table(ent, count);
+	pgtable_flush(ent, ent + count);
+	if (lv2entcnt)
+		atomic_sub(count, lv2entcnt);
+}
+
+static void unmap_slpt(struct samsung_sysmmu_domain *domain, unsigned long iova, size_t size)
+{
+	sysmmu_pte_t *sent, *pent;
+	unsigned long section_end, end = iova + size;
+	atomic_t *lv2entcnt;
+	int nent;
+
+	sent = section_entry(domain->page_table, iova);
+	while (iova < end) {
+		section_end = (iova + SECT_SIZE) & SECT_MASK;
+		if (end < section_end)
+			section_end = end;
+
+		if (WARN_ON(!lv1ent_page(sent)))
+			goto next_section;
+
+		pent = page_entry(sent, iova);
+		lv2entcnt = &domain->lv2entcnt[lv1ent_offset(iova)];
+		nent = (section_end - iova) >> SPAGE_ORDER;
+		clear_and_flush_pgtable(pent, nent, lv2entcnt);
+
+next_section:
+		iova = section_end;
+		sent++;
+	}
+}
+
+size_t samsung_sysmmu_unmap_pages(struct iommu_domain *dom, unsigned long iova_org,
+				  size_t pgsize, size_t pgcount,
+				  struct iommu_iotlb_gather *gather)
+{
+	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
+	unsigned long iova = iova_org;
+	size_t size = pgsize * pgcount;
+
+	if (pgsize == SECT_SIZE) {
+		sysmmu_pte_t *sent, *flush_start;
+		unsigned long flush_count = 0;
+
+		sent = section_entry(domain->page_table, iova);
+		flush_start = sent;
+		while (pgcount--) {
+			if (lv1ent_page(sent)) {
+				if (flush_count) {
+					clear_and_flush_pgtable(flush_start, flush_count, NULL);
+					flush_count = 0;
+				}
+				flush_start = sent + 1;
+				unmap_slpt(domain, iova, SECT_SIZE);
+			} else {
+				flush_count++;
+			}
+			iova += SECT_SIZE;
+			sent++;
+		}
+		if (flush_count)
+			clear_and_flush_pgtable(flush_start, flush_count, NULL);
+	} else {
+		unmap_slpt(domain, iova, size);
+	}
+
+	iommu_iotlb_gather_add_page(dom, gather, iova_org, size);
+
+	return size;
 }
 
 static void samsung_sysmmu_flush_iotlb_all(struct iommu_domain *dom)
@@ -761,6 +855,34 @@ static void samsung_sysmmu_flush_iotlb_all(struct iommu_domain *dom)
 				__sysmmu_tlb_invalidate_all(drvdata, 0);
 			spin_unlock_irqrestore(&drvdata->lock, flags);
 		}
+	}
+}
+
+static void samsung_sysmmu_iotlb_sync_map(struct iommu_domain *dom,
+					  unsigned long iova, size_t size)
+{
+	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
+	sysmmu_pte_t *sent, *pent;
+	unsigned long section_end, end = iova + size;
+	int idx_count;
+
+	sent = section_entry(domain->page_table, iova);
+
+	while (iova < end) {
+		section_end = (iova + SECT_SIZE) & SECT_MASK;
+		if (end < section_end)
+			section_end = end;
+
+		if (lv1ent_section(sent))
+			goto next_section;
+
+		pent = page_entry(sent, iova);
+		idx_count = (section_end - iova) >> SPAGE_ORDER;
+		pgtable_flush(pent, pent + idx_count);
+
+next_section:
+		iova = section_end;
+		sent++;
 	}
 }
 
@@ -837,7 +959,7 @@ static struct iommu_device *samsung_sysmmu_probe_device(struct device *dev)
 
 	client = (struct sysmmu_clientdata *) dev_iommu_priv_get(dev);
 	client->dev_link = kcalloc(client->sysmmu_count,
-				   sizeof(**client->dev_link), GFP_KERNEL);
+				   sizeof(*client->dev_link), GFP_KERNEL);
 	if (!client->dev_link)
 		return ERR_PTR(-ENOMEM);
 
@@ -980,7 +1102,7 @@ static int samsung_sysmmu_of_xlate(struct device *dev,
 
 	client = (struct sysmmu_clientdata *) dev_iommu_priv_get(dev);
 	new_link = krealloc(client->sysmmus,
-			    sizeof(*data) * (client->sysmmu_count + 1),
+			    sizeof(data) * (client->sysmmu_count + 1),
 			    GFP_KERNEL);
 	if (!new_link)
 		return -ENOMEM;
@@ -1176,7 +1298,9 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.detach_dev		= samsung_sysmmu_detach_dev,
 	.map			= samsung_sysmmu_map,
 	.unmap			= samsung_sysmmu_unmap,
+	.unmap_pages		= samsung_sysmmu_unmap_pages,
 	.flush_iotlb_all	= samsung_sysmmu_flush_iotlb_all,
+	.iotlb_sync_map		= samsung_sysmmu_iotlb_sync_map,
 	.iotlb_sync		= samsung_sysmmu_iotlb_sync,
 	.iova_to_phys		= samsung_sysmmu_iova_to_phys,
 	.probe_device		= samsung_sysmmu_probe_device,

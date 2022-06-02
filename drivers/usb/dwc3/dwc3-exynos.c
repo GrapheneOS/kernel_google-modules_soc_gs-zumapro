@@ -534,7 +534,7 @@ int dwc3_exynos_set_bus_clock(struct device *dev, int clk_level)
 			dev_dbg(dev, "Unsupported clock level");
 		}
 
-		dev_dbg(dev, "Changed USB Bus clock %d\n",
+		dev_dbg(dev, "Changed USB Bus clock %lu\n",
 			 clk_get_rate(exynos->bus_clock));
 	}
 
@@ -1272,8 +1272,10 @@ static int dwc3_exynos_runtime_suspend(struct device *dev)
 
 	dwc = exynos->dwc;
 	spin_lock_irqsave(&dwc->lock, flags);
-	if (pm_runtime_suspended(dev))
+	if (pm_runtime_suspended(dev)) {
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		return 0;
+	}
 
 	dwc3_exynos_clk_disable(exynos);
 

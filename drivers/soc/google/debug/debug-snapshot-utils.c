@@ -19,6 +19,7 @@
 #include <linux/kdebug.h>
 #include <linux/arm-smccc.h>
 #include <linux/panic_notifier.h>
+#include <linux/sysfs.h>
 
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
@@ -285,7 +286,7 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 	pr_info("%8d %16llu %16llu %16llu %c(%ld) %3d %16pK %16pK %c %16s\n",
 		tsk->pid, tsk->utime, tsk->stime,
 		tsk->se.exec_start, state_array[idx], (tsk->__state),
-		task_cpu(tsk), pc, tsk, is_main ? '*' : ' ', tsk->comm);
+		task_cpu(tsk), (void *) pc, tsk, is_main ? '*' : ' ', tsk->comm);
 
 	sched_show_task(tsk);
 }
@@ -384,7 +385,7 @@ void dbg_snapshot_ecc_dump(void)
 	case ARM_CPU_PART_CORTEX_X1:
 		asm volatile ("HINT #16");
 		erridr_el1.reg = read_erridr_el1();
-		dev_emerg(dss_desc.dev, "ECC error check erridr_el1.num = 0x%llx\n",
+		dev_emerg(dss_desc.dev, "ECC error check erridr_el1.num = 0x%x\n",
 				erridr_el1.field.num);
 
 		for (i = 0; i < (int)erridr_el1.field.num; i++) {
@@ -420,7 +421,7 @@ void dbg_snapshot_ecc_dump(void)
 				erxmisc0_el1.reg = read_erxmisc0_el1();
 				erxmisc1_el1.reg = read_erxmisc1_el1();
 				dev_emerg(dss_desc.dev,
-					"ERXMISC0_EL1 = 0x%llx ERXMISC1_EL1 = 0x%llx ERXSTATUS_EL1[15:8] = 0x%llx, [7:0] = 0x%llx\n",
+					"ERXMISC0_EL1 = 0x%llx ERXMISC1_EL1 = 0x%llx ERXSTATUS_EL1[15:8] = 0x%x, [7:0] = 0x%x\n",
 					erxmisc0_el1.reg, erxmisc1_el1.reg,
 					erxstatus_el1.field.ierr, erxstatus_el1.field.serr);
 			}
@@ -633,7 +634,11 @@ static int dbg_snapshot_restart_handler(struct notifier_block *nb,
 	if (dss_desc.in_panic)
 		return NOTIFY_DONE;
 
-	if (dss_desc.in_reboot) {
+	if (dss_desc.in_warm) {
+		dev_emerg(dss_desc.dev, "warm reset\n");
+		dbg_snapshot_report_reason(DSS_SIGN_WARM_REBOOT);
+		dbg_snapshot_dump_task_info();
+	} else if (dss_desc.in_reboot) {
 		dev_emerg(dss_desc.dev, "normal reboot starting\n");
 		dbg_snapshot_report_reason(DSS_SIGN_NORMAL_REBOOT);
 	} else {
@@ -715,10 +720,35 @@ static void dbg_snapshot_ipi_stop(void *ignore, struct pt_regs *regs)
 		dbg_snapshot_save_context(regs, true);
 }
 
+static ssize_t in_warm_store(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long val;
+	int ret;
+
+	ret = kstrtoul(buf, 10, &val);
+
+	if (!ret)
+		dss_desc.in_warm = !!val;
+
+	return count;
+}
+
+static ssize_t in_warm_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%sable\n",
+			dss_desc.in_warm ? "en" : "dis");
+}
+
+static struct kobj_attribute in_warm_attr = __ATTR_RW_MODE(in_warm, 0660);
+
 void dbg_snapshot_init_utils(void)
 {
 	size_t vaddr;
 	uintptr_t i;
+	struct kobject *dbg_snapshot_kobj;
 
 	vaddr = dss_items[DSS_ITEM_HEADER_ID].entry.vaddr;
 
@@ -743,6 +773,17 @@ void dbg_snapshot_init_utils(void)
 
 	smp_call_function(dbg_snapshot_save_system, NULL, 1);
 	dbg_snapshot_save_system(NULL);
+
+	dbg_snapshot_kobj = kobject_create_and_add("dbg_snapshot", kernel_kobj);
+	if (!dbg_snapshot_kobj) {
+		dev_emerg(dss_desc.dev, "cannot create kobj for dbg_snapshot!\n");
+		return;
+	}
+
+	if (sysfs_create_file(dbg_snapshot_kobj, &in_warm_attr.attr)) {
+		dev_emerg(dss_desc.dev, "cannot create file in ../dbg_snapshot!\n");
+		kobject_put(dbg_snapshot_kobj);
+	}
 }
 
 int dbg_snapshot_stop_all_cpus(void)

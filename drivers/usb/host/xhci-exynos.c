@@ -201,7 +201,7 @@ static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_dev
 		dev_dbg(ddev, "%s, class = %d, speed = %d\n",
 			__func__, udev->descriptor.bDeviceClass,
 						udev->speed);
-		dev_dbg(ddev, "udev = 0x%8x, state = %d\n", udev, udev->state);
+		dev_dbg(ddev, "udev = %pK, state = %d\n", udev, udev->state);
 		if (udev && udev->state == USB_STATE_CONFIGURED) {
 			if (!dev->config->interface[0])
 				continue;
@@ -524,12 +524,12 @@ static int xhci_exynos_probe(struct platform_device *pdev)
 	xhci->reg_clk = devm_clk_get_optional(&pdev->dev, "reg");
 	if (IS_ERR(xhci->reg_clk)) {
 		ret = PTR_ERR(xhci->reg_clk);
-		goto put_hcd;
+		goto unregister_notify;
 	}
 
 	ret = clk_prepare_enable(xhci->reg_clk);
 	if (ret)
-		goto put_hcd;
+		goto unregister_notify;
 
 	xhci->clk = devm_clk_get_optional(&pdev->dev, NULL);
 	if (IS_ERR(xhci->clk)) {
@@ -644,12 +644,18 @@ disable_clk:
 disable_reg_clk:
 	clk_disable_unprepare(xhci->reg_clk);
 
+unregister_notify:
+	xhci_exynos_unregister_notify();
+
 put_hcd:
 	usb_put_hcd(hcd);
 
 disable_runtime:
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
+
+	wakeup_source_unregister(main_wakelock);
+	wakeup_source_unregister(shared_wakelock);
 
 	return ret;
 }

@@ -32,6 +32,8 @@ struct gs101_pi_param {
 	bool switched_on;
 };
 
+#define TRIP_LEVEL_NUM 8
+
 /**
  * struct gs101_tmu_data : A structure to hold the private data of the TMU
 	driver
@@ -113,6 +115,7 @@ struct gs101_tmu_data {
 	char cpuhp_name[CPUHP_USER_NAME_LEN + 1];
 	void *disable_stats;
 	void *hardlimit_stats;
+	atomic64_t trip_counter[TRIP_LEVEL_NUM];
 };
 
 enum throttling_stats_type {
@@ -131,9 +134,6 @@ struct throttling_stats {
 	ktime_t *disable_time_in_state;
 	ktime_t *hardlimit_time_in_state;
 };
-
-#define TMU_INTPEND_P0				0x00F8
-#define TMU_INTPEND_REG(i)			(TMU_INTPEND_P0 + 0x50 * (i))
 
 #define TMU_SENSOR_PROBE_NUM 16
 
@@ -178,6 +178,68 @@ enum tmu_sensor_t {
 #define TMU_P13_SENSOR_MASK (1 << TMU_P13_SENSOR)
 #define TMU_P14_SENSOR_MASK (1 << TMU_P14_SENSOR)
 #define TMU_P15_SENSOR_MASK (1 << TMU_P15_SENSOR)
+
+#define TMU_REG_TRIMINFO_CONFIG			(0)
+#define TMU_REG_TRIMINFO_0			(0x0010)
+#define TMU_REG_TRIMINFO(p)			((p) * 4 + TMU_REG_TRIMINFO_0)
+#define TMU_REG_CONTROL				(0x0050)
+#define TMU_REG_CONTROL1			(0x0054)
+#define TMU_REG_AVG_CONTROL			(0x0058)
+#define TMU_REG_TMU_TRIM0			(0x005C)
+#define TMU_REG_PROBE_EN_CON			(0x0060)
+#define TMU_REG_CPU_PROBE_REMAP			(0x0068)
+#define TMU_REG_SAMPLING_INTERVAL		(0x0070)
+#define TMU_REG_COUNTER_VALUE0			(0x0074)
+#define TMU_REG_COUNTER_VALUE1			(0x0078)
+#define TMU_REG_COUNTER_VALUE2			(0x007C)
+#define TMU_REG_TMU_STATUS			(0x0080)
+#define TMU_REG_CURRENT_TEMP1_0			(0x0084)
+#define TMU_REG_CURRENT_TEMP(p)			((p / 2) * 0x4 + TMU_REG_CURRENT_TEMP1_0)
+#define TMU_REG_EMUL_CON			(0x00B0)
+#define TMU_REG_P0_THRESHOLD_TEMP_RISE7_6	(0x00D0)
+#define TMU_REG_THRESHOLD_TEMP_RISE7_6(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_RISE7_6)
+#define TMU_REG_P0_THRESHOLD_TEMP_RISE5_4	(0x00D4)
+#define TMU_REG_THRESHOLD_TEMP_RISE5_4(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_RISE5_4)
+#define TMU_REG_P0_THRESHOLD_TEMP_RISE3_2	(0x00D8)
+#define TMU_REG_THRESHOLD_TEMP_RISE3_2(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_RISE3_2)
+#define TMU_REG_P0_THRESHOLD_TEMP_RISE1_0	(0x00DC)
+#define TMU_REG_THRESHOLD_TEMP_RISE1_0(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_RISE1_0)
+#define TMU_REG_P0_THRESHOLD_TEMP_FALL7_6	(0x00E0)
+#define TMU_REG_THRESHOLD_TEMP_FALL7_6(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_FALL7_6)
+#define TMU_REG_P0_THRESHOLD_TEMP_FALL5_4	(0x00E4)
+#define TMU_REG_THRESHOLD_TEMP_FALL5_4(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_FALL5_4)
+#define TMU_REG_P0_THRESHOLD_TEMP_FALL3_2	(0x00E8)
+#define TMU_REG_THRESHOLD_TEMP_FALL3_2(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_FALL3_2)
+#define TMU_REG_P0_THRESHOLD_TEMP_FALL1_0	(0x00EC)
+#define TMU_REG_THRESHOLD_TEMP_FALL1_0(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_FALL1_0)
+#define TMU_REG_P0_INTEN			(0x00F0)
+#define TMU_REG_INTEN(p)			((p) * 0x50 + TMU_REG_P0_INTEN)
+#define TMU_REG_P0_INTPEND			(0x00F8)
+#define TMU_REG_INTPEND(p)			((p) * 0x50 + TMU_REG_P0_INTPEND)
+#define TMU_REG_INTPEND_RISE_MASK(l)		(1 << (l))
+#define TMU_REG_P0_PAST_TEMP1_0			(0x0100)
+#define TMU_REG_PAST_TEMP1_0(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP1_0)
+#define TMU_REG_P0_PAST_TEMP3_2			(0x0104)
+#define TMU_REG_PAST_TEMP3_2(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP3_2)
+#define TMU_REG_P0_PAST_TEMP5_4			(0x0108)
+#define TMU_REG_PAST_TEMP5_4(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP5_4)
+#define TMU_REG_P0_PAST_TEMP7_6			(0x010C)
+#define TMU_REG_PAST_TEMP7_6(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP7_6)
+#define TMU_REG_P0_PAST_TEMP9_8			(0x0110)
+#define TMU_REG_PAST_TEMP9_8(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP9_8)
+#define TMU_REG_P0_PAST_TEMP11_10		(0x0114)
+#define TMU_REG_PAST_TEMP11_10(p)		((p) * 0x50 + TMU_REG_P0_PAST_TEMP11_10)
+#define TMU_REG_P0_PAST_TEMP13_12		(0x0118)
+#define TMU_REG_PAST_TEMP13_12(p)		((p) * 0x50 + TMU_REG_P0_PAST_TEMP13_12)
+#define TMU_REG_P0_PAST_TEMP15_14		(0x011C)
+#define TMU_REG_PAST_TEMP15_14(p)		((p) * 0x50 + TMU_REG_P0_PAST_TEMP15_14)
+
+enum thermal_feature {
+	CPU_THROTTLE = 0,
+	HARD_LIMIT = 1,
+	HOTPLUG = 2,
+	PAUSE = 3,
+};
 
 struct sensor_data {
 	enum tmu_sensor_t probe_id;

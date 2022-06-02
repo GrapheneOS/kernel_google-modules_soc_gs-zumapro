@@ -26,12 +26,22 @@
 #include <linux/random.h>
 #include <linux/cpufreq.h>
 #include <soc/google/cal-if.h>
-#include <dt-bindings/clock/gs101.h>
 #include <soc/google/exynos-devfreq.h>
 #include "../cal-if/acpm_dvfs.h"
+#if defined(CONFIG_SOC_GS101)
+#include <dt-bindings/clock/gs101.h>
 #include <linux/mfd/samsung/s2mpg10.h>
 #include <linux/mfd/samsung/s2mpg11.h>
 #include <linux/mfd/samsung/rtc-s2mpg10.h>
+#include <dt-bindings/soc/google/gs101-devfreq.h>
+#elif defined(CONFIG_SOC_GS201)
+#include <dt-bindings/clock/gs201.h>
+#include <linux/mfd/samsung/s2mpg12.h>
+#include <linux/mfd/samsung/s2mpg13.h>
+#include <linux/mfd/samsung/rtc-s2mpg12.h>
+#include <dt-bindings/soc/google/gs201-devfreq.h>
+#endif
+#include <soc/google/acpm_mfd.h>
 #include <soc/google/pt.h>
 #include <linux/list.h>
 
@@ -70,7 +80,9 @@ static unsigned int get_random_for_type(int type)
 		}
 		break;
 	case DVFS_DOMAIN_ID:
-		ret = random % NUM_OF_DVFS_DOMAINS;
+		do {
+			ret = get_random_int() % NUM_OF_DVFS_DOMAINS;
+		} while (ret == DVFS_G3D || ret == DVFS_G3DL2 || ret == DVFS_TPU);
 		break;
 	case GRANVILLE_M_REG:
 	case GRANVILLE_S_REG:
@@ -254,7 +266,7 @@ static void acpm_mbox_dvfs_rate_random_change(struct work_struct *work)
 	} else {
 		set_rate = get_random_rate(domain);
 
-		if (domain >= DVFS_CPUCL0)
+		if (domain >= DVFS_CPUCL0 && domain <= DVFS_CPUCL2)
 			acpm_dvfs_set_cpufreq(domain, set_rate, -1);
 		else
 			acpm_dvfs_set_devfreq(domain, set_rate, -1);
@@ -556,8 +568,8 @@ static void acpm_mbox_slc_request_send(struct work_struct *work)
 	case STATE:
 		slc_state = acpm_slc_mbox(SLC_STATE, 0, 0);
 		dev_info(mbox->device,
-			 "%s: slc_state: 0x%X, sicd: %d, ap_on: %d, "
-			 "slc_on: %d, mif_on: %d\n", __func__, slc_state,
+			 "%s: slc_state: 0x%X, sicd: %lu, ap_on: %lu, "
+			 "slc_on: %lu, mif_on: %lu\n", __func__, slc_state,
 			 slc_state & BIT(0), (slc_state & BIT(1)) >> 1,
 			 (slc_state & BIT(2)) >> 2, (slc_state & BIT(3)) >> 3);
 		break;
@@ -888,21 +900,24 @@ static void acpm_mbox_test_init(void)
 
 static int dvfs_freq_table_init(void)
 {
-	int cal_id, dm_id, ret;
+	int dm_id, ret;
 	int index, i;
 
 	if (!dvfs_test->init_done) {
-		for (cal_id = ACPM_DVFS_MIF, dm_id = DVFS_MIF;
-		     cal_id <= ACPM_DVFS_CPUCL2; cal_id++, dm_id++) {
-			ret = init_domain_freq_table(dvfs_test, cal_id, dm_id);
+		for (dm_id = DVFS_MIF; dm_id < NUM_OF_DVFS_DOMAINS; dm_id++) {
+			ret = init_domain_freq_table(dvfs_test, dm_id);
 			if (ret < 0) {
 				dev_err(mbox->device, "%s failed, ret = %d\n",
 					__func__, ret);
-				return ret;
+				continue;
 			}
 		}
+
 		if (acpm_dvfs_log) {
 			for (i = DVFS_MIF; i < NUM_OF_DVFS_DOMAINS; i++) {
+				if (i == DVFS_G3D || i == DVFS_G3DL2
+				    || i == DVFS_TPU)
+					continue;
 				for (index = 0; index < dvfs_test->dm[i]->size;
 				     index++)
 					dev_info(mbox->device,
@@ -963,7 +978,7 @@ static int acpm_mbox_test_setting(struct acpm_info *acpm, u64 subcmd)
 	int ret = 0;
 
 	if (subcmd >= ACPM_MBOX_TEST_CMD_MAX) {
-		dev_err(mbox->device, "%s, sub-cmd:%d, out of range!\n",
+		dev_err(mbox->device, "%s, sub-cmd:%llu, out of range!\n",
 			__func__, subcmd);
 		return -EINVAL;
 	} else if (ACPM_MBOX_TEST_START == subcmd) {
@@ -999,36 +1014,27 @@ static int debug_acpm_mbox_test_set(void *data, u64 val)
 	return acpm_mbox_test_setting(acpm, val);
 }
 
-static int get_cpu_policy_num(unsigned int dm_id)
-{
-	int ret;
-
-	switch (dm_id) {
-	case DVFS_CPUCL0:
-		ret = CPUCL0_POLICY;
-		break;
-	case DVFS_CPUCL1:
-		ret = CPUCL1_POLICY;
-		break;
-	case DVFS_CPUCL2:
-		ret = CPUCL2_POLICY;
-		break;
-	default:
-		dev_err(mbox->device, "%s, dm_id: %d not support\n", __func__,
-			dm_id);
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
 static unsigned int get_random_rate(unsigned int dm_id)
 {
-	unsigned int random, index;
+	unsigned int random, index, upper, lower;
 
 	random = get_random_int();
-	index = random % dvfs_test->dm[dm_id]->size;
+
+	if (mbox->dvfs->is_given_range) {
+		upper = mbox->dvfs->upper_bound;
+		lower = mbox->dvfs->lower_bound;
+
+		if (lower == upper)
+			index = lower;
+		else
+			index = (random % (upper - lower + 1)) + lower;
+
+		if (index >= dvfs_test->dm[dm_id]->size)
+			index = dvfs_test->dm[dm_id]->size - 1;
+	} else {
+		index = random % dvfs_test->dm[dm_id]->size;
+	}
+
 	return dvfs_test->dm[dm_id]->table[index].freq;
 }
 
@@ -1052,7 +1058,7 @@ static int acpm_dvfs_set_devfreq(unsigned int dm_id, unsigned int rate,
 	int ret = 0;
 
 	before = sched_clock();
-	ret = exynos_devfreq_lock_freq(dm_id, rate);
+	ret = exynos_devfreq_lock_freq(dvfs_test->dm[dm_id]->devfreq_id, rate);
 	after = sched_clock();
 	latency = after - before;
 
@@ -1061,7 +1067,7 @@ static int acpm_dvfs_set_devfreq(unsigned int dm_id, unsigned int rate,
 
 	mdelay(10);
 
-	get_rate = acpm_dvfs_get_devfreq(dm_id);
+	get_rate = acpm_dvfs_get_devfreq(dvfs_test->dm[dm_id]->devfreq_id);
 	if (cycle >= 0) {
 		dvfs_test->dm[dm_id]->stats[cycle].latency = latency /*ns */ ;
 		dvfs_test->dm[dm_id]->stats[cycle].set_rate = rate;
@@ -1076,7 +1082,7 @@ static int acpm_dvfs_set_devfreq(unsigned int dm_id, unsigned int rate,
 
 	if (acpm_dvfs_log && cycle >= 0) {
 		dev_info(mbox->device, "%s: stats:[%s]set_rate: %d Hz, "
-			 "get_rate: %d Hz, latency: %llu ns, total_cnt:%d\n",
+			 "get_rate: %d Hz, latency: %u ns, total_cnt:%d\n",
 			 __func__, dvfs_test->dm[dm_id]->name,
 			 dvfs_test->dm[dm_id]->stats[cycle].set_rate,
 			 dvfs_test->dm[dm_id]->stats[cycle].get_rate,
@@ -1093,13 +1099,9 @@ static int acpm_dvfs_set_cpufreq(unsigned int dm_id, unsigned int rate,
 	struct cpufreq_policy *policy;
 	unsigned long long before, after, latency;
 	unsigned int cl0freq, cl1freq, cl2freq;
-	int policy_id, ret = 0;
+	int ret = 0;
 
-	policy_id = get_cpu_policy_num(dm_id);
-	if (policy_id < 0)
-		return -EINVAL;
-
-	policy = cpufreq_cpu_get(policy_id);
+	policy = cpufreq_cpu_get(dvfs_test->dm[dm_id]->cpu_policy_id);
 	if (!policy)
 		return -EINVAL;
 
@@ -1119,7 +1121,7 @@ static int acpm_dvfs_set_cpufreq(unsigned int dm_id, unsigned int rate,
 		dvfs_test->dm[dm_id]->stats[cycle].latency = latency /*ns */ ;
 		dvfs_test->dm[dm_id]->stats[cycle].set_rate = rate;
 		dvfs_test->dm[dm_id]->stats[cycle].get_rate =
-		    cpufreq_get(policy_id);
+		    cpufreq_get(dvfs_test->dm[dm_id]->cpu_policy_id);
 		dvfs_test->dm[dm_id]->total_cycle_cnt++;
 	}
 
@@ -1133,7 +1135,7 @@ static int acpm_dvfs_set_cpufreq(unsigned int dm_id, unsigned int rate,
 
 	if (acpm_dvfs_log && cycle >= 0) {
 		dev_info(mbox->device, "%s: stats:[%s]set_rate: %d Hz, "
-			 "get_rate: %d Hz, latency: %llu ns, total_cnt: %d\n",
+			 "get_rate: %d Hz, latency: %u ns, total_cnt: %d\n",
 			 __func__, dvfs_test->dm[dm_id]->name,
 			 dvfs_test->dm[dm_id]->stats[cycle].set_rate,
 			 dvfs_test->dm[dm_id]->stats[cycle].get_rate,
@@ -1168,21 +1170,27 @@ static void acpm_dvfs_stats_dump(void)
 	int dm_id, cycle;
 
 	for (dm_id = 0; dm_id < NUM_OF_DVFS_DOMAINS; dm_id++) {
+		if (dm_id == DVFS_G3D || dm_id == DVFS_G3DL2
+		    || dm_id == DVFS_TPU)
+			continue;
+
 		if (dvfs_test->dm[dm_id]->total_cycle_cnt) {
-			dev_info(mbox->device,
+			pr_info("==================================="
 				 "==================================="
 				 "==================================="
 				 "==================================="
 				 "===================================\n");
 			cycle_cnt = dvfs_test->dm[dm_id]->total_cycle_cnt;
 
-			dev_info(mbox->device,
-				 "dm[%s] >10ms:%2d, 10ms~1ms:%2d, "
-				 "1ms~100us:%2d, 100us~80us:%2d, "
-				 "80us~60us:%2d, 60us~40us:%2d, "
-				 "40us~20us:%2d, 20us~10us:%2d, "
+			pr_info("[%s] >2ms:%2d, 2ms~1ms:%2d, "
+				 "1ms~500us:%2d, 500us~400us:%2d, "
+				 "400us~300us:%2d, 300us~200us:%2d, "
+				 "200us~100us:%2d, 100us~50us:%2d, "
+				 "50us~30us:%2d, 30us~10us:%2d, "
 				 "10us~1us:%2d, <1us:%2d\n",
 				 dvfs_test->dm[dm_id]->name,
+				 dvfs_test->dm[dm_id]->scales[11].count,
+				 dvfs_test->dm[dm_id]->scales[10].count,
 				 dvfs_test->dm[dm_id]->scales[9].count,
 				 dvfs_test->dm[dm_id]->scales[8].count,
 				 dvfs_test->dm[dm_id]->scales[7].count,
@@ -1193,13 +1201,17 @@ static void acpm_dvfs_stats_dump(void)
 				 dvfs_test->dm[dm_id]->scales[2].count,
 				 dvfs_test->dm[dm_id]->scales[1].count,
 				 dvfs_test->dm[dm_id]->scales[0].count);
-			dev_info(mbox->device,
-				 "dm[%s] >10ms:%2d%% 10ms~1ms:%2d%% "
-				 "1ms~100us:%2d%% 100us~80us:%2d%% "
-				 "80us~60us:%2d%% 60us~40us:%2d%% "
-				 "40us~20us:%2d%% 20us~10us:%2d%% "
+			pr_info("[%s] >2ms:%2d%% 2ms~1ms:%2d%% "
+				 "1ms~500us:%2d%% 500us~400us:%2d%% "
+				 "400us~300us:%2d%% 300us~200us:%2d%% "
+				 "200us~100us:%2d%% 100us~50us:%2d%% "
+				 "50us~30us:%2d%% 30us~10us:%2d%% "
 				 "10us~1us:%2d%%, <1us:%2d%%\n",
 				 dvfs_test->dm[dm_id]->name,
+				 dvfs_test->dm[dm_id]->scales[11].count * 100 /
+				 cycle_cnt,
+				 dvfs_test->dm[dm_id]->scales[10].count * 100 /
+				 cycle_cnt,
 				 dvfs_test->dm[dm_id]->scales[9].count * 100 /
 				 cycle_cnt,
 				 dvfs_test->dm[dm_id]->scales[8].count * 100 /
@@ -1221,7 +1233,7 @@ static void acpm_dvfs_stats_dump(void)
 				 dvfs_test->dm[dm_id]->scales[0].count * 100 /
 				 cycle_cnt);
 
-			dev_info(mbox->device,
+			pr_info("==================================="
 				 "==================================="
 				 "==================================="
 				 "==================================="
@@ -1242,7 +1254,7 @@ static void acpm_dvfs_stats_dump(void)
 	}
 }
 
-static int acpm_dvfs_test_setting(struct acpm_info *acpm, u64 subcmd)
+static int dvfs_latency_stats_setting(struct acpm_info *acpm, u64 subcmd)
 {
 	unsigned int domain = (unsigned int)subcmd;
 	static unsigned int pre_set_rate;
@@ -1255,7 +1267,7 @@ static int acpm_dvfs_test_setting(struct acpm_info *acpm, u64 subcmd)
 	}
 
 	if (subcmd >= ACPM_DVFS_CMD_MAX) {
-		dev_err(mbox->device, "%s, sub-cmd:%d, out of range!\n",
+		dev_err(mbox->device, "%s, sub-cmd:%llu, out of range!\n",
 			__func__, subcmd);
 		return -EINVAL;
 	}
@@ -1265,6 +1277,9 @@ static int acpm_dvfs_test_setting(struct acpm_info *acpm, u64 subcmd)
 	switch (domain) {
 	case ACPM_DVFS_TEST_MIF:
 	case ACPM_DVFS_TEST_INT:
+	case ACPM_DVFS_TEST_INTCAM:
+	case ACPM_DVFS_TEST_TNR:
+	case ACPM_DVFS_TEST_CAM:
 		while (cycle < DVFS_TEST_CYCLE) {
 			set_rate = get_random_rate(domain);
 			if (pre_set_rate == set_rate) {
@@ -1279,12 +1294,6 @@ static int acpm_dvfs_test_setting(struct acpm_info *acpm, u64 subcmd)
 		}
 		break;
 	case ACPM_DVFS_TEST_CPUCL0:
-		/* Lock CPUCL1/2 on min freq */
-		/* to prevent CPUCL0 from being restricted to high by minlock */
-		acpm_dvfs_set_cpufreq(DVFS_CPUCL1,
-				      dvfs_test->dm[DVFS_CPUCL1]->min_freq, -1);
-		acpm_dvfs_set_cpufreq(DVFS_CPUCL2,
-				      dvfs_test->dm[DVFS_CPUCL2]->min_freq, -1);
 	case ACPM_DVFS_TEST_CPUCL1:
 	case ACPM_DVFS_TEST_CPUCL2:
 		while (cycle < DVFS_TEST_CYCLE) {
@@ -1303,8 +1312,11 @@ static int acpm_dvfs_test_setting(struct acpm_info *acpm, u64 subcmd)
 	case ACPM_DVFS_TEST_RESULT:
 		acpm_dvfs_stats_dump();
 		break;
+	case ACPM_DVFS_TEST_G3D:
+	case ACPM_DVFS_TEST_G3DL2:
+	case ACPM_DVFS_TEST_TPU:
 	default:
-		dev_err(mbox->device, "%s, subcmd: %d not support\n", __func__,
+		dev_err(mbox->device, "%s, subcmd: %llu not support\n", __func__,
 			subcmd);
 		return -EINVAL;
 	}
@@ -1312,18 +1324,65 @@ static int acpm_dvfs_test_setting(struct acpm_info *acpm, u64 subcmd)
 	return 0;
 }
 
-static int debug_acpm_dvfs_test_set(void *data, u64 val)
+static int debug_dvfs_latency_stats_set(void *data, u64 val)
 {
 	struct acpm_info *acpm = (struct acpm_info *)data;
 
-	return acpm_dvfs_test_setting(acpm, val);
+	return dvfs_latency_stats_setting(acpm, val);
+}
+
+static void acpm_acpm_mbox_dvfs(bool start)
+{
+	if (start) {
+		acpm_mbox_test_init();
+		queue_delayed_work_on(get_random_for_type(CPU_ID),
+				      mbox->dvfs->mbox_stress_trigger_wq,
+				      &mbox->dvfs->mbox_stress_trigger_wk,
+				      msecs_to_jiffies(STRESS_TRIGGER_DELAY));
+	} else {
+		if (mbox->wq_init_done)
+			cancel_delayed_work_sync(&mbox->dvfs->mbox_stress_trigger_wk);
+	}
+}
+
+static int acpm_mbox_dvfs_setting(struct acpm_info *acpm, u64 subcmd)
+{
+	unsigned int temp;
+
+	mbox->dvfs->lower_bound = ((u32)subcmd >> 8) & 0xFF;
+	mbox->dvfs->upper_bound = (u32)subcmd & 0xFF;
+
+	if (mbox->dvfs->lower_bound > mbox->dvfs->upper_bound) {
+		temp = mbox->dvfs->lower_bound;
+		mbox->dvfs->lower_bound = mbox->dvfs->upper_bound;
+		mbox->dvfs->upper_bound = temp;
+	}
+
+	if (subcmd == 0xFFFF) {
+		acpm_acpm_mbox_dvfs(false);
+		mbox->dvfs->is_given_range = false;
+	} else {
+		mbox->dvfs->is_given_range = true;
+		acpm_acpm_mbox_dvfs(true);
+	}
+
+	return 0;
+}
+
+static int debug_acpm_mbox_dvfs_set(void *data, u64 val)
+{
+	struct acpm_info *acpm = (struct acpm_info *)data;
+
+	return acpm_mbox_dvfs_setting(acpm, val);
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_acpm_mbox_test_fops,
 			debug_acpm_mbox_test_get, debug_acpm_mbox_test_set,
 			"0x%016llx\n");
-DEFINE_SIMPLE_ATTRIBUTE(debug_acpm_dvfs_test_fops, NULL,
-			debug_acpm_dvfs_test_set, "0x%016llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(debug_dvfs_latency_stats_fops, NULL,
+			debug_dvfs_latency_stats_set, "0x%016llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(debug_acpm_mbox_dvfs_fops, NULL,
+			debug_acpm_mbox_dvfs_set, "0x%016llx\n");
 
 static void acpm_test_debugfs_init(struct acpm_mbox_test *mbox)
 {
@@ -1332,16 +1391,17 @@ static void acpm_test_debugfs_init(struct acpm_mbox_test *mbox)
 	den_mbox = debugfs_lookup("acpm_framework", NULL);
 	debugfs_create_file("acpm_mbox_test", 0644, den_mbox, mbox,
 			    &debug_acpm_mbox_test_fops);
-	debugfs_create_file("acpm_dvfs_test", 0644, den_mbox, mbox,
-			    &debug_acpm_dvfs_test_fops);
+	debugfs_create_file("dvfs_latency_stats", 0644, den_mbox, mbox,
+			    &debug_dvfs_latency_stats_fops);
+	debugfs_create_file("acpm_mbox_dvfs", 0644, den_mbox, mbox,
+			    &debug_acpm_mbox_dvfs_fops);
 }
 
-static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
-				  int dm_id)
+static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int dm_id)
 {
-	unsigned int orig_table_size;
+	unsigned int orig_table_size, cal_id;
 	unsigned long *cal_freq_table;
-	int index, r_index, ret, policy_id;
+	int index, r_index, ret;
 	struct acpm_dvfs_dm *dm;
 	struct cpufreq_policy *policy;
 
@@ -1350,6 +1410,9 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
 		dev_err(mbox->device, "%s, dm alloc failed\n", __func__);
 		return -ENOMEM;
 	}
+
+	cal_id = dvfs_dm_list[dm_id].cal_id;
+
 	/*
 	 * Set min/max frequency.
 	 * If max-freq property exists in device tree, max frequency is
@@ -1360,8 +1423,12 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
 	switch (cal_id) {
 	case ACPM_DVFS_MIF:
 	case ACPM_DVFS_INT:
+	case ACPM_DVFS_INTCAM:
+	case ACPM_DVFS_TNR:
+	case ACPM_DVFS_CAM:
 		ret =
-		    exynos_devfreq_get_boundary(dm_id, &dvfs->max_freq,
+			exynos_devfreq_get_boundary(dvfs_dm_list[dm_id].devfreq_id,
+						&dvfs->max_freq,
 						&dvfs->min_freq);
 		if (ret < 0) {
 			dvfs->max_freq = cal_dfs_get_max_freq(cal_id);
@@ -1374,11 +1441,7 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
 	case ACPM_DVFS_CPUCL0:
 	case ACPM_DVFS_CPUCL1:
 	case ACPM_DVFS_CPUCL2:
-		policy_id = get_cpu_policy_num(dm_id);
-		if (policy_id < 0)
-			return -EINVAL;
-
-		policy = cpufreq_cpu_get(policy_id);
+		policy = cpufreq_cpu_get(dvfs_dm_list[dm_id].cpu_policy_id);
 		if (policy) {
 			dvfs->max_freq = policy->cpuinfo.max_freq;
 			dvfs->min_freq = policy->cpuinfo.min_freq;
@@ -1390,15 +1453,18 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
 				 __func__, cal_id);
 		}
 		break;
+	case ACPM_DVFS_G3D:
+	case ACPM_DVFS_G3DL2:
+	case ACPM_DVFS_TPU:
 	default:
-		dev_err(mbox->device, "%s, cal_id: %d not support\n", __func__,
+		dev_err(mbox->device, "%s, cal_id: 0x%X not support\n", __func__,
 			cal_id);
 		return -EINVAL;
 	}
 
 	if (acpm_dvfs_log)
-		dev_info(mbox->device, "%s: max_freq = %d, min_freq = %d\n",
-			 __func__, dvfs->max_freq, dvfs->min_freq);
+		dev_info(mbox->device, "%s: cal_id = 0x%X, max_freq = %d, min_freq = %d\n",
+			 __func__, cal_id, dvfs->max_freq, dvfs->min_freq);
 
 	/*
 	 * Allocate temporary frequency and voltage tables
@@ -1422,7 +1488,7 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
 		if (cal_freq_table[index] > dvfs->max_freq) {
 			if (acpm_dvfs_log)
 				dev_info(mbox->device,
-					 "%s: cal_freq_table[%d]: %d > max_freq: %d\n",
+					 "%s: cal_freq_table[%d]: %lu > max_freq: %d\n",
 					 __func__, index, cal_freq_table[index],
 					 dvfs->max_freq);
 			continue;
@@ -1430,7 +1496,7 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
 		if (cal_freq_table[index] < dvfs->min_freq) {
 			if (acpm_dvfs_log)
 				dev_info(mbox->device,
-					 "%s: cal_freq_table[%d]: %d < min_freq: %d\n",
+					 "%s: cal_freq_table[%d]: %lu < min_freq: %d\n",
 					 __func__, index, cal_freq_table[index],
 					 dvfs->min_freq);
 			continue;
@@ -1439,7 +1505,7 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
 
 		if (acpm_dvfs_log)
 			dev_info(mbox->device,
-				 "%s: cal_freq_table[%d] = %d Hz, table_size = %d\n",
+				 "%s: cal_freq_table[%d] = %lu Hz, table_size = %d\n",
 				 __func__, index, cal_freq_table[index],
 				 dvfs->size);
 	}
@@ -1484,13 +1550,14 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int cal_id,
 	    kcalloc(TIME_SCALES, sizeof(struct stats_scale), GFP_KERNEL);
 	memcpy(dm->scales, buckets, TIME_SCALES * sizeof(struct stats_scale));
 
-	cal_id %= NUM_OF_DVFS_DOMAINS;
-	dvfs->dm[cal_id] = dm;
-	dvfs->dm[cal_id]->name = gs101_dvfs_domains[cal_id].name;
-	dvfs->dm[cal_id]->max_freq = dvfs->max_freq;
-	dvfs->dm[cal_id]->min_freq = dvfs->min_freq;
-	dvfs->dm[cal_id]->size = dvfs->size;
-	dvfs->dm[cal_id]->scales = dm->scales;
+	dvfs->dm[dm_id] = dm;
+	dvfs->dm[dm_id]->name = dvfs_dm_list[dm_id].name;
+	dvfs->dm[dm_id]->devfreq_id = dvfs_dm_list[dm_id].devfreq_id;
+	dvfs->dm[dm_id]->cpu_policy_id = dvfs_dm_list[dm_id].cpu_policy_id;
+	dvfs->dm[dm_id]->max_freq = dvfs->max_freq;
+	dvfs->dm[dm_id]->min_freq = dvfs->min_freq;
+	dvfs->dm[dm_id]->size = dvfs->size;
+	dvfs->dm[dm_id]->scales = dm->scales;
 
 	kfree(cal_freq_table);
 
@@ -1622,8 +1689,8 @@ static int acpm_mbox_test_remove(struct platform_device *pdev)
 
 	mutex_destroy(&mbox->mfd->lock);
 
-	kfree(mbox);
 	dev_info(mbox->device, "%s done.\n", __func__);
+	kfree(mbox);
 	return 0;
 }
 

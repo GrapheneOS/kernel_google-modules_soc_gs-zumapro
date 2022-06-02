@@ -103,7 +103,7 @@ static void pixel_ufs_log_slowio(struct ufs_hba *hba,
 	}
 	snprintf(opcode_str, 16, "%02x: %s", opcode, parse_opcode(opcode));
 	dev_err_ratelimited(hba->dev,
-		"Slow UFS (%lld): time = %lld us, opcode = %16s, sector = %ld, "
+		"Slow UFS (%lld): time = %lld us, opcode = %16s, sector = %lld, "
 		"len = %u\n",
 		slowio_cnt, iotime_us, opcode_str, sector, affected_bytes);
 }
@@ -691,33 +691,11 @@ static void pixel_ufs_compl_command(void *data, struct ufs_hba *hba,
 static void pixel_ufs_prepare_command(void *data, struct ufs_hba *hba,
 			struct request *rq, struct ufshcd_lrb *lrbp, int *err)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
-
-	u8 opcode = lrbp->cmd->cmnd[0];
+	u8 opcode;
 
 	*err = 0;
 
-	if (opcode == SECURITY_PROTOCOL_OUT) {
-		u32 cur_wc;
-		struct iov_iter iter;
-		struct bio_vec bv = bio_iovec(rq->bio);
-
-		iov_iter_bvec(&iter, READ, &bv, 1, bv.bv_len);
-		iter.iov_offset = 500;
-		WARN_ON(copy_from_iter(&cur_wc, 4, &iter) != 4);
-		cur_wc = cpu_to_be32(cur_wc);
-		if (cur_wc)
-			pr_info("%s RPMB write counter = %8x; start time %lu\n",
-				__func__, cur_wc, lrbp->cmd->jiffies_at_alloc);
-		if (cur_wc != ufs->security_out_wc)
-			ufs->security_out_wc = cur_wc;
-		else if (cur_wc) {
-			pr_err("%s RPMB write counter mismatch\n", __func__);
-			WARN_ON(1);
-		}
-	}
-
-	if (!(rq->cmd_flags & REQ_META))
+	if (!(rq->cmd_flags & (REQ_META | REQ_IDLE)))
 		return;
 
 	if (hba->dev_info.wspecversion <= 0x300)
@@ -949,7 +927,7 @@ void pixel_init_manual_gc(struct ufs_hba *hba)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	struct ufs_manual_gc *mgc = &ufs->manual_gc;
-	char wq_name[sizeof("ufs_mgc_hibern8_work")];
+	char wq_name[sizeof("ufs_mgc_hibern8_work_#####")];
 
 	mgc->state = MANUAL_GC_ENABLE;
 	mgc->hagc_support = true;
@@ -969,7 +947,7 @@ static ssize_t host_capabilities_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "0x%lx\n", hba->caps);
+	return snprintf(buf, PAGE_SIZE, "0x%x\n", hba->caps);
 }
 
 static ssize_t slowio_store(struct device *dev, struct device_attribute *_attr,
@@ -1668,7 +1646,7 @@ void pixel_print_cmd_log(struct ufs_hba *hba)
 						MAX_CMD_ENTRY_NUM];
 		if (!entry->seq_num)
 			break;
-		dev_err(hba->dev, "%lu: %s tag: %lu cmd: %s sector: %lu len: 0x%lx DB: 0x%lx outstanding: 0x%lx GID: 0x%x\n",
+		dev_err(hba->dev, "%u: %s tag: %d cmd: %s sector: %llu len: 0x%x DB: 0x%llx outstanding: 0x%llx GID: 0x%x\n",
 			entry->seq_num, entry->event,
 			entry->tag, entry->cmd,
 			entry->sector, entry->affected_bytes,

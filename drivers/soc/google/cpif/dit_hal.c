@@ -44,7 +44,7 @@ static ssize_t dit_hal_read(struct file *filp, char *buf, size_t count, loff_t *
 	unsigned long flags;
 
 	if (count < sizeof(event)) {
-		mif_err("not support small buffer size: %d\n", count);
+		mif_err("not support small buffer size: %zu\n", count);
 		return 0;
 	}
 
@@ -304,11 +304,8 @@ static int dit_hal_add_dst_iface(bool is_upstream,
 
 			dhc->dst_iface[i].netdev =
 				dev_get_by_name(&init_net, info->iface);
-			if (dhc->dst_iface[i].netdev) {
+			if (dhc->dst_iface[i].netdev)
 				dhc->dst_iface[i].iface_set = true;
-				/* ToDo: move to dit_hal_remove_dst_iface? */
-				dev_put(dhc->dst_iface[i].netdev);
-			}
 
 			info->dst_ring = i;
 			return i;
@@ -326,10 +323,8 @@ static int dit_hal_add_dst_iface(bool is_upstream,
 		strlcpy(dhc->dst_iface[i].iface, info->iface, IFNAMSIZ);
 		dhc->dst_iface[i].netdev =
 			dev_get_by_name(&init_net, info->iface);
-		if (dhc->dst_iface[i].netdev) {
+		if (dhc->dst_iface[i].netdev)
 			dhc->dst_iface[i].iface_set = true;
-			dev_put(dhc->dst_iface[i].netdev);
-		}
 
 		info->dst_ring = i;
 		return i;
@@ -359,6 +354,7 @@ static void dit_hal_remove_dst_iface(bool is_upstream,
 			continue;
 
 		dhc->dst_iface[i].iface_set = false;
+		dev_put(dhc->dst_iface[i].netdev);
 		break;
 	}
 }
@@ -583,7 +579,7 @@ static long dit_hal_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		dit_hal_set_event(INTERNAL_OFFLOAD_STOPPED);
 
 		/* init port table and take a delay for the prior kick */
-		dit_init(NULL, DIT_INIT_NORMAL);
+		dit_init(NULL, DIT_INIT_NORMAL, DIT_STORE_NONE);
 		msleep(100);
 		ret = dit_manage_rx_dst_data_buffers(false);
 		if (ret)
@@ -651,6 +647,7 @@ static long dit_hal_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				sizeof(struct iface_info)))
 			return -EFAULT;
 
+		msleep(100);
 		dit_hal_remove_dst_iface(false, &info);
 		if (!dit_hal_check_ready_to_start())
 			dit_hal_set_event(OFFLOAD_STOPPED_ERROR);

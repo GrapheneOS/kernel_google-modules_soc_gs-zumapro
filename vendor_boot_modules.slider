@@ -23,6 +23,7 @@ bcm47765.ko
 bcm_dbg.ko
 bigocean.ko
 boot_device_spi.ko
+cfg80211.ko
 clk_exynos_gs.ko
 cmupmucal.ko
 cp_thermal_zone.ko
@@ -37,6 +38,7 @@ dw3000.ko
 dwc3-exynos-usb.ko
 ect_parser.ko
 eh.ko
+ehld.ko
 exynos-acme.ko
 exynos-adv-tracer-s2d.ko
 exynos-adv-tracer.ko
@@ -95,6 +97,7 @@ keydebug.ko
 logbuffer.ko
 lzo-rle.ko
 lzo.ko
+mac80211.ko
 mailbox-wc.ko
 mali_kbase.ko
 mali_pixel.ko
@@ -130,11 +133,13 @@ phy-exynos-usbdrd-super.ko
 pinctrl-exynos-gs.ko
 pixel-boot-metrics.ko
 pixel-debug-test.ko
+pixel_em.ko
 pixel_stat_mm.ko
 pixel_stat_sysfs.ko
 pl330.ko
 pmic_class.ko
 power_stats.ko
+pps-gpio.ko
 rtc-s2mpg10.ko
 s2mpg10-mfd.ko
 s2mpg10-powermeter.ko
@@ -173,6 +178,7 @@ st21nfc.ko
 st33spi.ko
 st54spi.ko
 systrace.ko
+sysrq-hook.ko
 tcpci_fusb307.ko
 tcpci_max77759.ko
 touch_bus_negotiator.ko

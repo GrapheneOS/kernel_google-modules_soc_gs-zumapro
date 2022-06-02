@@ -47,13 +47,24 @@
 				google,cv-tier-ov-cnt = <10>;
 				google,cv-tier-switch-cnt = <3>;
 
+				google,eeprom-pairing;
+
 				/* rest charging */
-				google,chg-rest-rate = <8>;
+				google,chg-rest-rate = <15>;
 				google,chg-rest-soc = <80>;
 				/* TRICKLE-DEFEND threshold */
 				google,bd-trickle-recharge-soc = <80>;
 				/* Enable TRICKLE-DEFEND */
 				google,bd-trickle-enable;
+
+				/* record over temperature time */
+				google,temp-record-thr = <300 350 400>;
+				google,soc-record-thr = <90 90 95>;
+
+				google,bhi-algo-ver = <1>;
+				google,bhi-fcn-count = <3>;
+				google,bhi-status-marginal = <80>;
+				google,bhi-status-need-rep = <70>;
 
 				#thermal-sensor-cells = <0>;
 				#cooling-cells = <2>;
@@ -117,7 +128,7 @@
 	clock-frequency = <400000>;
 
 	/* also as max77759 pmic  */
-	max77729_pmic:max77729pmic@0x66 {
+	max77729_pmic:max77729pmic@66 {
 		status = "okay";
 		compatible = "maxim,max77729pmic";
 		reg = <0x66>;
@@ -141,7 +152,7 @@
 		};
 	};
 
-	max77759_fg:max77759fg@0x36 {
+	max77759_fg:max77759fg@36 {
 		status = "okay";
 		compatible = "maxim,max77759";
 		reg = <0x36>;
@@ -158,12 +169,16 @@
 		maxim,batt-id-range-pct = <0>;
 
 		maxim,psy-type-unknown;
+		maxim,filtercfg-temp = <100>;
+		maxim,filtercfg-temp-hysteresis = <30>;
+		maxim,filtercfg-default = /bits/ 16 <0xc623>;
+		maxim,filtercfg-adjust = /bits/ 16 <0xc615>;
 		maxim,fg-data {
 			#include "gs101-fake-battery-data.dtsi"
 		};
 	};
 
-	max77759_chg:max77759chrg@0x69 {
+	max77759_chg:max77759chrg@69 {
 		status = "okay";
 		compatible = "maxim,max77759chrg";
 		reg = <0x69>;

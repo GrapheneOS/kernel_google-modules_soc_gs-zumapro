@@ -27,6 +27,7 @@ enum vendor_group {
 	VG_NNAPI_HAL,
 	VG_RT,
 	VG_DEX2OAT,
+	VG_OTA,
 	VG_SF,
 	VG_MAX,
 };
@@ -35,6 +36,7 @@ struct vendor_task_struct {
 	enum vendor_group group;
 	unsigned long direct_reclaim_ts;
 	bool uclamp_fork_reset;
+	bool prefer_idle;
 };
 
 ANDROID_VENDOR_CHECK_SIZE_ALIGN(u64 android_vendor_data1[64], struct vendor_task_struct t);

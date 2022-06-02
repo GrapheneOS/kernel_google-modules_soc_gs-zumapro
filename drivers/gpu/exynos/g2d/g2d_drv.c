@@ -784,8 +784,6 @@ static int g2d_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	dma_set_mask(&pdev->dev, DMA_BIT_MASK(36));
-
 	g2d_dev->clock = devm_clk_get(&pdev->dev, "gate");
 	if (PTR_ERR(g2d_dev->clock) == -ENOENT) {
 		perrdev(g2d_dev, "'gate' not found. Ignoring clock gating..\n");
@@ -984,3 +982,4 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Cho KyongHo <pullip.cho@samsung.com>");
 MODULE_AUTHOR("Hyesoo Yu <hyesoo.yu@samsung.com>");
 MODULE_DESCRIPTION("Exynos FIMG2D device driver");
+MODULE_IMPORT_NS(DMA_BUF);

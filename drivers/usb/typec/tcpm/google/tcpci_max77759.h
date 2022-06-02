@@ -31,6 +31,7 @@ struct max77759_plat {
 	struct power_supply *usb_psy;
 	struct max77759_contaminant *contaminant;
 	struct gvotable_election *usb_icl_proto_el;
+	struct gvotable_election *usb_icl_el;
 	struct gvotable_election *charger_mode_votable;
 	bool vbus_enabled;
 	/* Data role notified to the data stack */
@@ -47,6 +48,8 @@ struct max77759_plat {
 	bool attached;
 	/* Reflects the signal sent out to the data stack */
 	bool data_active;
+	/* Alernate data path */
+	bool alt_path_active;
 	/* Reflects whether the current partner can do PD */
 	bool pd_capable;
 	void *usb_psy_data;
@@ -63,7 +66,15 @@ struct max77759_plat {
 	struct usb_psy_ops psy_ops;
 	/* toggle in_switch to kick debug accessory statemachine when already connected */
 	int in_switch_gpio;
+	/* 0:active_low 1:active_high */
+	bool in_switch_gpio_active_high;
 	bool first_toggle;
+	/* Set true to vote "limit_sink_current" on USB ICL */
+	bool limit_sink_enable;
+	/* uA */
+	unsigned int limit_sink_current;
+	/* Indicate that the Vbus OVP is restricted to quick ramp-up time for incoming voltage. */
+	bool quick_ramp_vbus_ovp;
 
 	/* True when TCPC is in SINK DEBUG ACCESSORY CONNECTED state */
 	u8 debug_acc_connected:1;
@@ -71,10 +82,13 @@ struct max77759_plat {
 	u8 sourcing_vbus:1;
 	/* Cache vbus_present as MAX77759 reports vbus present = 0 when vbus < 4V */
 	u8 vbus_present:1;
+	u8 cc1;
+	u8 cc2;
 
 	/* Runtime flags */
 	int frs;
 	bool in_frs;
+	bool vsafe0v;
 
 	/*
 	 * Current status of contaminant detection.
@@ -103,6 +117,8 @@ struct max77759_plat {
 	struct kthread_worker *wq;
 	struct kthread_delayed_work icl_work;
 	struct kthread_delayed_work enable_vbus_work;
+	struct kthread_delayed_work vsafe0v_work;
+	struct kthread_delayed_work reset_ovp_work;
 
 	/* Notifier for data role */
 	struct usb_role_switch *usb_sw;
@@ -160,4 +176,7 @@ enum tcpm_psy_online_states {
 	TCPM_PSY_PROG_ONLINE,
 };
 
+void enable_data_path_locked(struct max77759_plat *chip);
+void data_alt_path_active(struct max77759_plat *chip, bool active);
+void register_data_active_callback(void (*callback)(void *data_active_payload), void *data);
 #endif /* __TCPCI_MAX77759_H */

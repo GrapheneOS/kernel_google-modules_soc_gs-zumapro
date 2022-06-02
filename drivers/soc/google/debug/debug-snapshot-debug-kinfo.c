@@ -48,7 +48,7 @@ static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)
 	struct device_node *mem_region;
 	phys_addr_t base, size, offset;
 	unsigned int num_pages;
-	unsigned long flags = VM_NO_GUARD | VM_MAP;
+	unsigned long flags = VM_MAP;
 	pgprot_t prot = __pgprot(PROT_NORMAL_NC);
 	struct page **pages;
 	void *vaddr;
@@ -70,8 +70,8 @@ static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)
 
 	rmem = of_reserved_mem_lookup(mem_region);
 	if (!rmem) {
-		dev_err(&pdev->dev, "no such reserved mem of node name %s\n",
-				&pdev->dev.of_node->name);
+		dev_err(&pdev->dev, "no such reserved mem of node %pOF\n",
+				dev_of_node(&pdev->dev));
 		return 0;
 	}
 
@@ -98,8 +98,8 @@ static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)
 	vaddr = vmap(pages, num_pages, flags, prot);
 	kfree(pages);
 	if (!vaddr) {
-		dev_err(&pdev->dev, "paddr:%pK page_size:0x%x failed to vmap\n",
-				rmem->base, rmem->size);
+		dev_err(&pdev->dev, "paddr:%pap page_size:0x%pap failed to vmap\n",
+				&rmem->base, &rmem->size);
 		return 0;
 	}
 

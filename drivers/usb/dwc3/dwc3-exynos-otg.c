@@ -173,6 +173,11 @@ static void dwc3_otg_set_host_mode(struct dwc3_otg *dotg)
 		reg &= ~DWC3_OTG_OCTL_PERIMODE;
 		dwc3_exynos_writel(dotg->regs, DWC3_OCTL, reg);
 	} else {
+		/* Disable undefined length burst mode */
+		reg = dwc3_exynos_readl(dwc->regs, DWC3_GSBUSCFG0);
+		reg &= ~(DWC3_GSBUSCFG0_INCRBRSTEN);
+		dwc3_exynos_writel(dwc->regs, DWC3_GSBUSCFG0, reg);
+
 		dwc3_otg_set_mode(dwc, DWC3_GCTL_PRTCAP_HOST);
 	}
 }
@@ -355,7 +360,7 @@ err:
 				if (wait_counter > 10) {
 					dev_err(dev, "Can't wait runtime suspend!!!!\n");
 					dev_err(dev, "RPM Usage Count : %d",
-							dev->power.usage_count);
+							atomic_read(&dev->power.usage_count));
 					break;
 				}
 			}
@@ -383,6 +388,9 @@ static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 	__pm_stay_awake(dotg->wakelock);
 
 	if (on) {
+		if (!dwc3_otg_check_usb_suspend(exynos))
+			dev_err(dev, "too long to wait for dwc3 suspended\n");
+
 		dotg->otg_connection = 1;
 		exynos->need_dr_role = 1;
 		while (dwc->gadget_driver == NULL) {
@@ -494,11 +502,6 @@ static void dwc3_otg_retry_configuration(struct timer_list *t)
 	dev_dbg(exynos->dev, "retry done\n");
 }
 
-static void dwc3_otg_disable_gadget_irq(struct dwc3 *dwc)
-{
-	dwc3_exynos_writel(dwc->regs, DWC3_DEVTEN, 0x00);
-}
-
 static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 {
 	struct usb_otg	*otg = fsm->otg;
@@ -508,7 +511,6 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 	struct device	*dev = dotg->dwc->dev;
 	int ret = 0;
 	int wait_counter = 0;
-	u32 evt_count;
 
 	if (!otg->gadget) {
 		dev_err(dev, "%s does not have any gadget\n", __func__);
@@ -517,6 +519,9 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 
 	if (on) {
 		__pm_stay_awake(dotg->wakelock);
+		if (!dwc3_otg_check_usb_suspend(exynos))
+			dev_err(dev, "too long to wait for dwc3 suspended\n");
+
 		exynos->vbus_state = true;
 		while (dwc->gadget_driver == NULL) {
 			wait_counter++;
@@ -529,6 +534,7 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		}
 
 		exynos->need_dr_role = 1;
+		dwc->connected = true;
 		ret = dwc3_otg_phy_enable(fsm, 0, on);
 		exynos->need_dr_role = 0;
 		if (ret) {
@@ -547,36 +553,10 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		exynos->vbus_state = false;
 		del_timer_sync(&exynos->usb_connect_timer);
 
-		/* Wait until dwc connected is off */
-		evt_count = dwc3_exynos_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
-		evt_count &= DWC3_GEVNTCOUNT_MASK;
-		while (evt_count) {
-			wait_counter++;
-			msleep(20);
-
-			if (wait_counter > 20) {
-				dev_err(dev, "Can't wait dwc disconnect!\n");
-				break;
-			}
-			evt_count = dwc3_exynos_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
-			evt_count &= DWC3_GEVNTCOUNT_MASK;
-			dev_dbg(dev, "%s: evt = %d\n", __func__, evt_count);
-		}
-
-		/*
-		 * we can extra work corresponding each functions by
-		 * the following function.
-		 */
 		if (exynos->config.is_not_vbus_pad && exynos_usbdrd_get_ldo_status() &&
 				!dotg->in_shutdown)
 			dwc3_exynos_gadget_disconnect_proc(dwc);
 
-		dwc3_otg_disable_gadget_irq(dwc);
-
-		/*
-		 * We can block udc core operation by the following flags.
-		 *  - gadget->connected and gadget->deactivated
-		 */
 		if (exynos->extra_delay)
 			msleep(100);
 
@@ -857,6 +837,27 @@ int dwc3_otg_host_enable(bool enabled)
 }
 EXPORT_SYMBOL_GPL(dwc3_otg_host_enable);
 
+bool dwc3_otg_check_usb_suspend(struct dwc3_exynos *exynos)
+{
+	int wait_counter = 0;
+	bool exynos_suspend, dwc_suspend;
+
+	do {
+		exynos_suspend = (pm_runtime_suspend(exynos->dev) &
+				  (atomic_read(&exynos->dev->power.usage_count) < 1));
+		dwc_suspend = (pm_runtime_suspend(exynos->dwc->dev) &
+			       (atomic_read(&exynos->dwc->dev->power.usage_count) < 1));
+
+		if (exynos_suspend && dwc_suspend)
+			break;
+
+		wait_counter++;
+		msleep(20);
+	} while (wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT);
+
+	return wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT;
+}
+
 static int dwc3_otg_reboot_notify(struct notifier_block *nb, unsigned long event, void *buf)
 {
 	struct dwc3_exynos *exynos;
@@ -874,6 +875,7 @@ static int dwc3_otg_reboot_notify(struct notifier_block *nb, unsigned long event
 	case SYS_POWER_OFF:
 		exynos->dwc->current_dr_role = DWC3_EXYNOS_IGNORE_CORE_OPS;
 		dotg->in_shutdown = true;
+		del_timer_sync(&exynos->usb_connect_timer);
 		break;
 	}
 
@@ -887,7 +889,7 @@ u32 dwc3_otg_is_connect(void)
 
 	exynos = exynos_dwusb_get_struct();
 	if (!exynos) {
-		dev_err(exynos->dev, "[%s] error\n", __func__);
+		pr_err("[%s] error\n", __func__);
 		return -ENODEV;
 	}
 	dotg = exynos->dotg;
@@ -919,6 +921,9 @@ static void dwc3_otg_recovery_reconnection(struct work_struct *w)
 	struct dwc3_exynos *exynos = dotg->exynos;
 	struct otg_fsm	*fsm = &dotg->fsm;
 	int ret = 0;
+
+	if (dotg->in_shutdown)
+		return;
 
 	__pm_stay_awake(dotg->reconn_wakelock);
 	/* Lock to avoid real cable insert/remove operation. */
@@ -958,12 +963,17 @@ emeg_out:
 
 int dwc3_otg_usb_recovery_reconn(struct dwc3_exynos *exynos)
 {
-	struct dwc3_otg *dotg = exynos->dotg;
+	struct dwc3_otg *dotg;
 
 	if (exynos == NULL) {
 		pr_err("WARNING : exynos is NULL\n");
 		return -ENODEV;
 	}
+
+	dotg = exynos->dotg;
+
+	if (dotg->in_shutdown)
+		return -ESHUTDOWN;
 
 	schedule_work(&dotg->recov_work);
 

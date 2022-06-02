@@ -12,10 +12,10 @@
 #include <trace/hooks/sched.h>
 #include <trace/hooks/topology.h>
 
+#include "sched_priv.h"
+
 extern void init_uclamp_stats(void);
-extern int create_sysfs_node(void);
-extern void rvh_find_energy_efficient_cpu_pixel_mod(void *data, struct task_struct *p, int prev_cpu,
-						    int sync, int *new_cpu);
+extern int create_procfs_node(void);
 extern void vh_arch_set_freq_scale_pixel_mod(void *data,
 					     const struct cpumask *cpus,
 					     unsigned long freq,
@@ -42,27 +42,45 @@ extern void vh_sched_setscheduler_uclamp_pixel_mod(void *data, struct task_struc
 						   int clamp_id, unsigned int value);
 extern void init_uclamp_stats(void);
 extern void rvh_sched_fork_pixel_mod(void *data, struct task_struct *tsk);
+extern void vh_dup_task_struct_pixel_mod(void *data, struct task_struct *tsk,
+					 struct task_struct *orig);
+extern void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int prev_cpu,
+					      int sd_flag, int wake_flags, int *target_cpu);
+extern void init_vendor_rt_rq(void);
+extern void rvh_update_rt_rq_load_avg_pixel_mod(void *data, u64 now, struct rq *rq,
+						struct task_struct *p, int running);
+extern void rvh_set_task_cpu_pixel_mod(void *data, struct task_struct *p, unsigned int new_cpu);
 
 extern struct cpufreq_governor sched_pixel_gov;
+
+extern int pmu_poll_init(void);
 
 static int vh_sched_init(void)
 {
 	int ret;
 
+	ret = pmu_poll_init();
+	if (ret) {
+		pr_err("pmu poll init failed\n");
+		return ret;
+	}
+
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 	init_uclamp_stats();
 #endif
 
-	ret = create_sysfs_node();
+	ret = create_procfs_node();
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_rvh_find_energy_efficient_cpu(
-						rvh_find_energy_efficient_cpu_pixel_mod, NULL);
+	init_vendor_rt_rq();
+
+	ret = register_trace_android_rvh_update_rt_rq_load_avg(rvh_update_rt_rq_load_avg_pixel_mod,
+							       NULL);
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_vh_arch_set_freq_scale(vh_arch_set_freq_scale_pixel_mod, NULL);
+	ret = register_trace_android_rvh_set_task_cpu(rvh_set_task_cpu_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
@@ -105,6 +123,19 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
+	ret = register_trace_android_rvh_sched_fork(rvh_sched_fork_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_select_task_rq_fair(rvh_select_task_rq_fair_pixel_mod,
+							     NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_vh_arch_set_freq_scale(vh_arch_set_freq_scale_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
 	ret = register_trace_android_vh_setscheduler_uclamp(
 		vh_sched_setscheduler_uclamp_pixel_mod, NULL);
 	if (ret)
@@ -115,6 +146,14 @@ static int vh_sched_init(void)
 		return ret;
 
 	ret = register_trace_android_rvh_sched_fork(rvh_sched_fork_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_vh_dup_task_struct(vh_dup_task_struct_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = acpu_init();
 	if (ret)
 		return ret;
 

@@ -24,7 +24,8 @@
 #include <misc/logbuffer.h>
 
 #include "tcpci_otg_helper.h"
-#include <tcpci.h>
+/* This header comes from the GKI kernel tree */
+#include <tcpm/tcpci.h>
 #include "usb_icl_voter.h"
 #include "usb_psy.h"
 
@@ -209,7 +210,7 @@ static int fusb307b_init_alert(struct fusb307b_plat *chip,
 	return 0;
 }
 
-static enable_load_switch(struct fusb307b_plat *chip)
+static int enable_load_switch(struct fusb307b_plat *chip)
 {
 	int ret;
 
@@ -606,7 +607,7 @@ static int fusb307b_setup_data_notifier(struct fusb307b_plat *chip)
 
 	chip->extcon = devm_extcon_dev_allocate(chip->dev, usbpd_extcon_cable);
 	if (IS_ERR(chip->extcon)) {
-		dev_err(chip->dev, "Error allocating extcon: %d\n",
+		dev_err(chip->dev, "Error allocating extcon: %ld\n",
 			PTR_ERR(chip->extcon));
 		return PTR_ERR(chip->extcon);
 	}
@@ -676,7 +677,7 @@ static int fusb307b_probe(struct i2c_client *client,
 	chip->data.regmap = devm_regmap_init_i2c(client,
 						 &fusb307b_regmap_config);
 	if (IS_ERR(chip->data.regmap)) {
-		dev_err(&client->dev, "regmap init failed: %d\n",
+		dev_err(&client->dev, "regmap init failed: %ld\n",
 			PTR_ERR(chip->data.regmap));
 		return PTR_ERR(chip->data.regmap);
 	}
@@ -690,7 +691,7 @@ static int fusb307b_probe(struct i2c_client *client,
 
 	chip->vbus = devm_regulator_get(&client->dev, "vbus");
 	if (IS_ERR(chip->vbus)) {
-		dev_err(&client->dev, "Regulator init: %d\n", PTR_ERR(
+		dev_err(&client->dev, "Regulator init: %ld\n", PTR_ERR(
 			chip->vbus));
 	}
 
@@ -750,7 +751,7 @@ static int fusb307b_probe(struct i2c_client *client,
 
 	chip->usb_icl_proto_el = gvotable_election_get_handle(USB_ICL_PROTO_EL);
 	if (IS_ERR_OR_NULL(chip->usb_icl_proto_el)) {
-		dev_err(&client->dev, "TCPCI: USB ICL PROTO EL get failed:%d",
+		dev_err(&client->dev, "TCPCI: USB ICL PROTO EL get failed:%ld",
 			PTR_ERR(chip->usb_icl_proto_el));
 		ret = -ENODEV;
 		goto unreg_psy;
@@ -793,7 +794,7 @@ static int fusb307b_probe(struct i2c_client *client,
 
 	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
 	if (IS_ERR_OR_NULL(chip->tcpci)) {
-		dev_err(&client->dev, "TCPCI register failed: %d\n",
+		dev_err(&client->dev, "TCPCI register failed: %ld\n",
 			PTR_ERR(chip->tcpci));
 		ret = PTR_ERR(chip->tcpci);
 		goto unreg_notifier;

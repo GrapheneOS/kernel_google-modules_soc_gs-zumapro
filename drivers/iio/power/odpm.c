@@ -60,9 +60,23 @@
 #define ODPM_FREQ_DECIMAL_UHZ_STR_LEN_MAX 6
 #define ODPM_SAMPLING_FREQ_CHAR_LEN_MAX 20
 
-#define SWITCH_CHIP_FUNC(infop, ret, func, args...)                            \
+#define _SWITCH_METER_FUNC_VOID(info, func, args...)                           \
 	do {                                                                   \
-		switch ((infop)->chip.id) {                                    \
+		switch ((info)->chip.id) {                                     \
+		case ODPM_CHIP_S2MPG10:                                        \
+			s2mpg10_##func(args);                                  \
+			break;                                                 \
+		case ODPM_CHIP_S2MPG11:                                        \
+			s2mpg11_##func(args);                                  \
+			break;                                                 \
+		case ODPM_CHIP_COUNT:                                          \
+			break;                                                 \
+		}                                                              \
+	} while (0)
+
+#define _SWITCH_METER_FUNC(info, ret, func, args...)                           \
+	do {                                                                   \
+		switch ((info)->chip.id) {                                     \
 		case ODPM_CHIP_S2MPG10:                                        \
 			ret = s2mpg10_##func(args);                            \
 			break;                                                 \
@@ -74,8 +88,10 @@
 		}                                                              \
 	} while (0)
 
-#define SWITCH_METER_FUNC(infop, ret, func, args...) \
-	SWITCH_CHIP_FUNC(infop, ret, func, info->meter, args)
+#define SWITCH_METER_FUNC(info, ret, func, args...) \
+	_SWITCH_METER_FUNC(info, ret, func, info->meter, args)
+#define SWITCH_METER_FUNC_VOID(info, func, args...) \
+	_SWITCH_METER_FUNC_VOID(info, func, info->meter, args)
 
 /* At this moment, this driver supports a static 8 channels */
 #define ODPM_CHANNEL_MAX S2MPG1X_METER_CHANNEL_MAX
@@ -318,6 +334,18 @@ static int odpm_io_update_bucken_enable_bits(struct odpm_info *info,
 					    ODPM_BUCK_EN_BYTES);
 }
 
+static void odpm_id_get_lpf_data(struct odpm_info *info, u32 *data)
+{
+	SWITCH_METER_FUNC_VOID(info, meter_read_lpf_data_reg, data);
+}
+
+static int odpm_io_write_lpf_reg(struct odpm_info *info,
+				 int ch, u8 data)
+{
+	return s2mpg1x_meter_set_lpf_coefficient(info->chip.hw_id, info->i2c,
+						 ch, data);
+}
+
 int odpm_configure_chip(struct odpm_info *info)
 {
 	int ch;
@@ -359,7 +387,7 @@ int odpm_configure_start_measurement(struct odpm_info *info)
 
 	info->last_poll_ktime_boot_ns = timestamp_capture_ns;
 
-	pr_info("odpm: Starting at timestamp (ms): %ld\n",
+	pr_info("odpm: Starting at timestamp (ms): %llu\n",
 		to_ms(timestamp_capture_ns));
 
 	/* Initialize boot measurement time to 0. This means that there will be
@@ -719,22 +747,22 @@ static int odpm_parse_dt(struct device *dev, struct odpm_info *info)
 	return odpm_parse_dt_channels(info, channels_np);
 }
 
-static u64 odpm_calculate_uW_sec(struct odpm_info *info, int rail_i,
-				 u64 acc_data, u32 int_sampling_frequency_uhz)
+/**
+ * @brief Return the specific rail's power/bit resolution
+ *
+ * @return u32 - the rail resolution in iq30 in mW/bit. Will return 0 if the
+ *	resolution doesn't exist.
+ */
+static u32 odpm_get_resolution_mW_iq30(struct odpm_info *info, int rail_i)
 {
-	u64 sampling_period_ms_iq30;
-	u32 sampling_period_ms_iq22;
-	u32 resolution_mW_iq30 = INVALID_RESOLUTION;
 	u32 ret = 0;
-	__uint128_t power_acc_mW_iq30;
-	__uint128_t power_acc_uW_s_iq52;
 
 	switch (info->chip.rails[rail_i].type) {
 	case ODPM_RAIL_TYPE_REGULATOR_BUCK:
 	case ODPM_RAIL_TYPE_REGULATOR_LDO:
 	default: {
-		SWITCH_CHIP_FUNC(info, ret, muxsel_to_power_resolution,
-				 info->chip.rails[rail_i].mux_select);
+		_SWITCH_METER_FUNC(info, ret, muxsel_to_power_resolution,
+				   info->chip.rails[rail_i].mux_select);
 
 	} break;
 	case ODPM_RAIL_TYPE_SHUNT: {
@@ -753,7 +781,20 @@ static u64 odpm_calculate_uW_sec(struct odpm_info *info, int rail_i,
 
 	} break;
 	}
-	resolution_mW_iq30 = ret;
+
+	return ret;
+}
+
+static u64 odpm_calculate_uW_sec(struct odpm_info *info, int rail_i,
+				 u64 acc_data, u32 int_sampling_frequency_uhz)
+{
+	u64 sampling_period_ms_iq30;
+	u32 sampling_period_ms_iq22;
+	u32 resolution_mW_iq30 = INVALID_RESOLUTION;
+	__uint128_t power_acc_mW_iq30;
+	__uint128_t power_acc_uW_s_iq52;
+
+	resolution_mW_iq30 = odpm_get_resolution_mW_iq30(info, rail_i);
 
 	/* Maintain as much precision as possible computing period in ms */
 	sampling_period_ms_iq30 =
@@ -837,7 +878,7 @@ static u32 odpm_estimate_sampling_frequency(struct odpm_info *info,
 	 * registers and when the timestamp was captured.
 	 */
 	if (elapsed_refresh_ms >= 100) {
-		pr_err("odpm: %s: refresh registers took too long; %ld ms\n",
+		pr_err("odpm: %s: refresh registers took too long; %u ms\n",
 		       info->chip.name, elapsed_refresh_ms);
 
 		/* Fall back to configured frequency */
@@ -853,7 +894,7 @@ static u32 odpm_estimate_sampling_frequency(struct odpm_info *info,
 	freq_upper_bound = sampling_frequency_table_uhz * 9 / 8;
 	if (sampling_frequency_estimated_uhz < freq_lower_bound ||
 	    sampling_frequency_estimated_uhz > freq_upper_bound) {
-		pr_err("odpm: %s: clock error too large! fsel: %d, fest: %ld, elapsed_ms: %d, acc_count: %d\n",
+		pr_err("odpm: %s: clock error too large! fsel: %llu, fest: %llu, elapsed_ms: %d, acc_count: %d\n",
 		       info->chip.name, sampling_frequency_table_uhz,
 		       sampling_frequency_estimated_uhz,
 		       elapsed_ms, acc_count);
@@ -1262,7 +1303,7 @@ static ssize_t energy_value_show(struct device *dev,
 	/* take snapshot */
 	mutex_lock(&info->lock);
 	if (odpm_take_snapshot_locked(info) < 0) {
-		pr_err("odpm: cannot retrieve energy values");
+		pr_err("odpm: cannot retrieve energy values\n");
 		goto energy_value_show_exit;
 	}
 
@@ -1271,7 +1312,7 @@ static ssize_t energy_value_show(struct device *dev,
 	 * t=<Measurement timestamp, ms>
 	 * CH<N>(T=<Duration, ms>)[<Schematic name>], <Accumulated Energy, uWs>
 	 */
-	count += scnprintf(buf + count, PAGE_SIZE - count, "t=%ld\n",
+	count += scnprintf(buf + count, PAGE_SIZE - count, "t=%llu\n",
 			   info->chip.acc_timestamp_ms);
 
 	for (ch = 0; ch < ODPM_CHANNEL_MAX; ch++) {
@@ -1283,7 +1324,7 @@ static ssize_t energy_value_show(struct device *dev,
 			duration_ms = info->chip.acc_timestamp_ms - start_ms;
 
 		count += scnprintf(buf + count, PAGE_SIZE - count,
-				   "CH%d(T=%ld)[%s], %ld\n", ch,
+				   "CH%d(T=%llu)[%s], %llu\n", ch,
 				   duration_ms,
 				   info->chip.rails[rail_i].schematic_name,
 				   info->channels[ch].acc_power_uW_sec);
@@ -1465,7 +1506,7 @@ static ssize_t measurement_start_show(struct device *dev,
 
 		if (info->channels[ch].enabled) {
 			count += scnprintf(buf + count, PAGE_SIZE - count,
-				"CH%d[%s], %ld\n", ch,
+				"CH%d[%s], %llu\n", ch,
 				info->chip.rails[rail_i].schematic_name,
 				info->channels[ch].measurement_start_ms);
 		}
@@ -1489,13 +1530,79 @@ static ssize_t measurement_stop_show(struct device *dev,
 
 		if (rail->measurement_stop_ms != 0) {
 			count += scnprintf(buf + count, PAGE_SIZE - count,
-					   "%s(%s), %ld, %ld, %ld\n",
+					   "%s(%s), %llu, %llu, %llu\n",
 					   rail->name, rail->schematic_name,
 					   rail->measurement_start_ms_cached,
 					   rail->measurement_stop_ms,
 					   rail->acc_power_uW_sec_cached);
 		}
 	}
+	mutex_unlock(&info->lock);
+
+	return count;
+}
+
+static ssize_t power_lpf_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct odpm_info *info = iio_priv(indio_dev);
+	ssize_t count = 0;
+	int ch;
+	u32 data[ODPM_CHANNEL_MAX];
+
+	mutex_lock(&info->lock);
+	odpm_id_get_lpf_data(info, data);
+
+	/**
+	 * Output format:
+	 * t=<Measurement timestamp, ms>
+	 * CH<N>[<Schematic name>], <LPF power, uW>
+	 */
+	count += scnprintf(buf + count, PAGE_SIZE - count, "t=%lld\n",
+			   to_ms(ktime_get_boottime_ns()));
+
+	for (ch = 0; ch < ODPM_CHANNEL_MAX; ch++) {
+		int rail_i = info->channels[ch].rail_i;
+		u32 reso_mW_iq30 = odpm_get_resolution_mW_iq30(info, rail_i);
+		u32 rail_data = data[ch]; /* 21-bits */
+
+		u64 mW_iq30 = (u64)rail_data * reso_mW_iq30;
+		/* As the data is max 21 bits, we can convert to uW without
+		 * possible overflow (2^(32-21) = 2048, 2048 > 1000).
+		 */
+		u64 uW_iq30 = mW_iq30 * 1000;
+
+		count += scnprintf(buf + count, PAGE_SIZE - count,
+				   "CH%d[%s], %lld\n", ch,
+				   info->chip.rails[rail_i].schematic_name,
+				   _IQ30_to_int(uW_iq30));
+	}
+
+	mutex_unlock(&info->lock);
+	return count;
+}
+
+static ssize_t power_lpf_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct odpm_info *info = iio_priv(indio_dev);
+
+	int channel = -1;
+	int scan_result;
+	u32 coefficient_scan;
+	u8 coefficient;
+
+	scan_result = sscanf(buf, "CH%d=%x", &channel, &coefficient_scan);
+	if (!(scan_result == 2 && channel >= 0 && channel < ODPM_CHANNEL_MAX))
+		return -EINVAL; /* The buffer syntax was invalid */
+
+	coefficient = (u8)coefficient_scan;
+
+	mutex_lock(&info->lock);
+	odpm_io_write_lpf_reg(info, channel, coefficient);
 	mutex_unlock(&info->lock);
 
 	return count;
@@ -1508,6 +1615,7 @@ static IIO_DEVICE_ATTR_RO(available_rails, 0);
 static IIO_DEVICE_ATTR_RW(enabled_rails, 0);
 static IIO_DEVICE_ATTR_RO(measurement_start, 0);
 static IIO_DEVICE_ATTR_RO(measurement_stop, 0);
+static IIO_DEVICE_ATTR_RW(power_lpf, 0);
 
 /**
  * TODO(stayfan): b/156109194
@@ -1525,7 +1633,8 @@ static struct attribute *odpm_custom_attributes[] = {
 	ODPM_DEV_ATTR(sampling_rate),	 ODPM_DEV_ATTR(ext_sampling_rate),
 	ODPM_DEV_ATTR(energy_value),	 ODPM_DEV_ATTR(available_rails),
 	ODPM_DEV_ATTR(enabled_rails),	 ODPM_DEV_ATTR(measurement_start),
-	ODPM_DEV_ATTR(measurement_stop), NULL
+	ODPM_DEV_ATTR(measurement_stop), ODPM_DEV_ATTR(power_lpf),
+	NULL
 };
 
 static const struct attribute_group odpm_group = {
