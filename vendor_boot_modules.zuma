@@ -17,6 +17,7 @@ exynos_mct_v3.ko
 exynos_tty.ko
 failover.ko
 fscache.ko
+g2d.ko
 gs-chipid.ko
 i2c-dev.ko
 i2c-exynos5.ko
