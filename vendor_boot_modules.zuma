@@ -33,6 +33,7 @@ s3c2410_wdt.ko
 samsung-iommu-group.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
+smfc.ko
 systrace.ko
 virtio_balloon.ko
 virtio_blk.ko
