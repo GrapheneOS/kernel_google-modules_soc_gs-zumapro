@@ -30,8 +30,8 @@
 
 		/* Each bit indicates DPP attribute */
 		/* 0:AFBC 1:BLOCK 2:FLIP 3:ROT 4:CSC 5:SCALE 6:HDR 11:HDR10P */
-		/* 16:IDMA 17:ODMA 18:DPP 19:SRAMC 20:HDR_COMM 21:SLC_COEF */
-		attr = <0x3D0847>;
+		/* 16:IDMA 17:ODMA 18:DPP 19:SRAMC 20:RCD 21:SLC_COEF 22:HDR_COMM */
+		attr = <0x6d0847>;
 		port = <0>; /* AXI port number */
 
 		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
@@ -56,7 +56,7 @@
 			     <GIC_SPI IRQ_DPUF0_DPP_L1_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "dma", "dpp";
 
-		attr = <0x3D0C7F>;
+		attr = <0x6D0C7F>;
 		port = <0>;
 		scale_down = <4>;
 		scale_up = <8>;
@@ -79,7 +79,7 @@
 			     <GIC_SPI IRQ_DPUF0_DPP_L2_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "dma", "dpp";
 
-		attr = <0x3D0847>;
+		attr = <0x6D0847>;
 		port = <1>;
 		scale_down = <1>;
 		scale_up = <1>;
@@ -101,7 +101,7 @@
 			     <GIC_SPI IRQ_DPUF0_DPP_L3_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "dma", "dpp";
 
-		attr = <0x3D0C7F>;
+		attr = <0x6D0C7F>;
 		port = <1>;
 		scale_down = <4>;
 		scale_up = <8>;
@@ -124,7 +124,7 @@
 			     <GIC_SPI IRQ_DPUF0_DPP_L4_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "dma", "dpp";
 
-		attr = <0x3D0847>;
+		attr = <0x6D0847>;
 		port = <2>;
 		scale_down = <1>;
 		scale_up = <1>;
@@ -146,7 +146,7 @@
 			     <GIC_SPI IRQ_DPUF0_DPP_L5_DPUF0 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "dma", "dpp";
 
-		attr = <0x3D0C7F>;
+		attr = <0x6D0C7F>;
 		port = <2>;
 		scale_down = <4>;
 		scale_up = <8>;
