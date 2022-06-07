@@ -760,11 +760,15 @@
 		/* Register space */
 		reg =
 			<0x0 0x1D840000 0x10000>,  /* GSE */
+			<0x0 0x1D844000 0x00800>,  /* GSE PDMA */
+			<0x0 0x1D844800 0x00200>,  /* GSE PDMA WARP */
 			<0x0 0x1D930000 0x10000>,  /* SSMT D0 GSE */
 			<0x0 0x1D940000 0x10000>,  /* SSMT D1 GSE */
 			<0x0 0x1D950000 0x10000>;  /* SSMT D2 GSE */
 		reg-names =
 			"gse",
+			"gse_pdma",
+			"gse_pdma_warp",
 			"ssmt_d0_gse",
 			"ssmt_d1_gse",
 			"ssmt_d2_gse";
