@@ -288,7 +288,6 @@ def define_slider():
             "drivers/soc/google/sysrq-hook.ko",
             "drivers/soc/google/vh/kernel/systrace.ko",
             "drivers/spi/spi-s3c64xx.ko",
-            "drivers/staging/android/delay_init.ko",
             "drivers/thermal/google/google_bcl.ko",
             "drivers/thermal/google/gs101_spmic_thermal.ko",
             "drivers/thermal/samsung/gpu_cooling.ko",
