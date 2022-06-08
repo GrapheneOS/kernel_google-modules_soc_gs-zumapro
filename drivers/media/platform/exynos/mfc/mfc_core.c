@@ -323,6 +323,7 @@ static int __mfc_core_register_resource(struct platform_device *pdev,
 #endif
 	struct resource *res;
 	int ret;
+	int irq;
 
 	mfc_perf_register(core);
 
@@ -417,12 +418,12 @@ static int __mfc_core_register_resource(struct platform_device *pdev,
 	}
 #endif
 
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (res == NULL) {
-		dev_err(&pdev->dev, "failed to get irq resource\n");
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_err(&pdev->dev, "failed to get irq\n");
 		goto err_res_irq;
 	}
-	core->irq = res->start;
+	core->irq = irq;
 	ret = request_threaded_irq(core->irq, mfc_core_top_half_irq,
 			mfc_core_irq, IRQF_ONESHOT, pdev->name, core);
 	if (ret != 0) {
