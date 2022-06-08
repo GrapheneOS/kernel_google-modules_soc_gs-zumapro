@@ -966,6 +966,7 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 	struct resource *res;
 	const struct of_device_id *of_id;
 	int ret;
+	int irq;
 
 	atomic_set(&smfc_hwfc_state, SMFC_HWFC_STANDBY);
 	init_waitqueue_head(&smfc_hwfc_sync_wq);
@@ -987,13 +988,13 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 	of_id = of_match_node(exynos_smfc_match, pdev->dev.of_node);
 	smfc->devdata = of_id->data;
 
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!res) {
-		dev_err(&pdev->dev, "Failed to get IRQ resource");
-		return -ENOENT;
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_err(&pdev->dev, "Failed to get IRQ");
+		return irq;
 	}
 
-	ret = devm_request_irq(&pdev->dev, res->start, exynos_smfc_irq_handler,
+	ret = devm_request_irq(&pdev->dev, irq, exynos_smfc_irq_handler,
 			       0, pdev->name, smfc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to install IRQ handler");
