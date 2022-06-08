@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("//build/bazel_common_rules/exec:exec.bzl", "exec_test")
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(
     "//build/kernel/kleaf:kernel.bzl",
@@ -398,11 +399,19 @@ def define_slider():
         log = "info",
     )
 
+    # Test that only builds :slider_test_images, but does nothing else
+    exec_test(
+        name = "slider_images_test",
+        data = [":slider_test_images"],
+        script = "",
+    )
+
     native.test_suite(
         name = "slider_tests",
         tests = [
             "//common:kernel_aarch64_tests",
             ":slider_test",
             ":slider_modules_test",
+            ":slider_images_test",
         ] + [m + "_test" for m in _slider_modules],
     )
