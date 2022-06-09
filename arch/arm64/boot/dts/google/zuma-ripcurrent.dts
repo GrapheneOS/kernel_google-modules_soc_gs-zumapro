@@ -9,6 +9,7 @@
 /plugin/;
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include "zuma-ripcurrent-display.dtsi"
 
 / {
 	board_id = <0x40101>;
