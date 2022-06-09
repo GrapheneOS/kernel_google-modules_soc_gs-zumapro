@@ -149,6 +149,8 @@
 #define PORT_LINK_L1SS_ENABLE		(0xf << 0)
 #define PORT_LINK_TPOWERON_90US		(0x49 << 0)
 #define PORT_LINK_TPOWERON_130US	(0x69 << 0)
+#define PORT_LINK_TPOWERON_180US	(0x89 << 0)
+#define PORT_LINK_TPOWERON_200US	(0xA1 << 0)
 #define PORT_LINK_TPOWERON_3100US	(0xfa << 0)
 #define PORT_LINK_L1SS_T_PCLKACK	(0x3 << 6)
 #define PORT_LINK_L1SS_T_L1_2		(0x4 << 2)
@@ -336,38 +338,40 @@ struct pcie_eom_result {
 
 void exynos_pcie_rc_phy_init(struct pcie_port *pp);
 
-#if IS_ENABLED(CONFIG_EXYNOS_PCIE_IOMMU)
-void pcie_sysmmu_enable(int ch_num);
-void pcie_sysmmu_disable(int ch_num);
-int pcie_iommu_map(int ch_num, unsigned long iova, phys_addr_t paddr, size_t size, int prot);
-size_t pcie_iommu_unmap(int ch_num, unsigned long iova, size_t size);
-
-#else
+#if !IS_ENABLED(CONFIG_EXYNOS_PCIE_IOMMU)
 extern struct dma_map_ops exynos_pcie_dma_ops;
 
-static void __maybe_unused pcie_sysmmu_enable(int ch_num)
+static void __maybe_unused pcie_sysmmu_enable(int hsi_block_num)
 {
 	pr_err("PCIe SysMMU is NOT Enabled!!!\n");
 }
 
-static void __maybe_unused pcie_sysmmu_disable(int ch_num)
+static void __maybe_unused pcie_sysmmu_disable(int hsi_block_num)
 {
 	pr_err("PCIe SysMMU is NOT Enabled!!!\n");
 }
 
-static int __maybe_unused pcie_iommu_map(int ch_num, unsigned long iova, phys_addr_t paddr,
-					 size_t size, int prot)
+static int __maybe_unused pcie_iommu_map(unsigned long iova, phys_addr_t paddr,
+					 size_t size, int prot, int hsi_block_num)
 {
 	pr_err("PCIe SysMMU is NOT Enabled!!!\n");
-
 	return -ENODEV;
 }
 
-static size_t __maybe_unused pcie_iommu_unmap(int ch_num, unsigned long iova, size_t size)
+static size_t __maybe_unused pcie_iommu_unmap(unsigned long iova, size_t size,
+					    int hsi_block_num)
 {
 	pr_err("PCIe SysMMU is NOT Enabled!!!\n");
+	return 0;
+}
+#endif
 
-	return -ENODEV;
+#if !IS_ENABLED(CONFIG_GS_S2MPU)
+static void __maybe_unused s2mpu_update_refcnt(struct device *dev,
+					       dma_addr_t dma_addr, size_t size,
+					       bool incr, enum dma_data_direction dir)
+{
+	pr_err("PCIe S2MPU is NOT Enabled!!!\n");
 }
 #endif
 
