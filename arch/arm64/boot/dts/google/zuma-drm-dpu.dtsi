@@ -10,7 +10,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zuma.h>
 #include <dt-bindings/display/exynos-display.h>
-#include "gs101-display-timing.dtsi"
+#include "zuma-display-timing.dtsi"
 
 / {
 	drmdpp0: drmdpp@0x19900000 {	/* L0 */
