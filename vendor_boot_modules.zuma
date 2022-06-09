@@ -47,6 +47,15 @@ phy-exynos-mipi-dsim.ko
 phy-exynos-mipi.ko
 phy-exynos-usbdrd-super.ko
 pinctrl-exynos-gs.ko
+rtc-s2mpg14.ko
+s2mpg14-key.ko
+s2mpg14-mfd.ko
+s2mpg14-powermeter.ko
+s2mpg14-regulator.ko
+s2mpg1415-gpio.ko
+s2mpg15-mfd.ko
+s2mpg15-powermeter.ko
+s2mpg15-regulator.ko
 s3c2410_wdt.ko
 samsung-iommu-group.ko
 samsung_dma_heap.ko
