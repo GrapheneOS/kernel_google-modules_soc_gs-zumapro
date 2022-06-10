@@ -46,6 +46,9 @@ UWB_MODULE="private/google-modules/uwb/kernel"
 #EXT_MODULES+=${UWB_MODULE}
 #fi
 
+# Prevent GKI kernel build from overwriting our kernel-uapi-headers.tar.gz file
+GKI_SKIP_CP_KERNEL_HDR=1
+
 if [ -n "${GKI_DEFCONFIG_FRAGMENT}" ]; then
 source ${GKI_DEFCONFIG_FRAGMENT}
 fi
