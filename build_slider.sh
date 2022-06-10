@@ -12,7 +12,7 @@ export LTO=${LTO:-thin}
 export BUILD_CONFIG=private/google-modules/soc/gs/build.config.slider
 
 if [ -z "${GKI_PREBUILTS_DIR}" ]; then
-  GKI_BUILD_CONFIG=common/build.config.gki.aarch64 \
+  GKI_BUILD_CONFIG=aosp/build.config.gki.aarch64 \
     build/build.sh "$@"
 else
   build/build.sh "$@"
