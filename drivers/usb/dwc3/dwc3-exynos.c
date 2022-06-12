@@ -2,10 +2,7 @@
 /*
  * dwc3-exynos.c - Samsung Exynos DWC3 Specific Glue layer
  *
- * Copyright (c) 2012 Samsung Electronics Co., Ltd.
- *		http://www.samsung.com
- *
- * Author: Anton Tikhomirov <av.tikhomirov@samsung.com>
+ * Copyright (C) 2022 Samsung Electronics Co., Ltd.
  */
 
 #include <linux/module.h>
@@ -1109,11 +1106,6 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	}
 
 	ret = dwc3_exynos_extcon_register(exynos);
-	if (ret < 0) {
-		dev_err(dev, "failed to register extcon\n");
-		ret = -EPROBE_DEFER;
-		goto vdd33_err;
-	}
 
 	ret = dwc3_exynos_register_phys(exynos);
 	if (ret) {
@@ -1191,10 +1183,7 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	 * To avoid missing notification in kernel booting check extcon
 	 * state to run state machine.
 	 */
-	if (extcon_get_state(exynos->edev, EXTCON_USB) > 0)
-		dwc3_exynos_vbus_event(exynos->dev, 1);
-	else if (extcon_get_state(exynos->edev, EXTCON_USB_HOST) > 0)
-		dwc3_exynos_id_event(exynos->dev, 0);
+	dwc3_exynos_vbus_event(exynos->dev, 1);
 
 	return 0;
 
