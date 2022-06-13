@@ -380,44 +380,40 @@ static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata, phys_
 }
 
 static inline void sysmmu_s1l1tlb_compare(phys_addr_t pgtable, u32 vpn, u32 base_or_ppn,
-					  bool is_slptbase)
+					  bool is_slptbase_tlb)
 {
-	sysmmu_pte_t *entry;
-	unsigned long vaddr = MMU_VADDR_FROM_S1L1TLB((unsigned long)vpn), paddr;
-	unsigned long phys = 0;
+	sysmmu_pte_t *sent;
+	sysmmu_iova_t iova = MMU_VADDR_FROM_S1L1TLB((unsigned long)vpn);
+	unsigned long paddr_tlb;
+	unsigned long paddr_pt = 0;
+	bool is_slptbase_pt = false;
 
 	if (!pgtable)
 		return;
 
-	entry = section_entry(phys_to_virt(pgtable), vaddr);
+	sent = section_entry(phys_to_virt(pgtable), iova);
 
-	if (is_slptbase)
-		paddr = MMU_PADDR_FROM_S1L1TLB_BASE((unsigned long)base_or_ppn);
+	if (is_slptbase_tlb)
+		paddr_tlb = MMU_PADDR_FROM_S1L1TLB_BASE((unsigned long)base_or_ppn);
 	else
-		paddr = MMU_PADDR_FROM_S1L1TLB_PPN((unsigned long)base_or_ppn);
+		paddr_tlb = MMU_PADDR_FROM_S1L1TLB_PPN((unsigned long)base_or_ppn);
 
-	if (lv1ent_section(entry)) {
-		phys = section_phys(entry);
-	} else if (lv1ent_page(entry)) {
-		entry = page_entry(entry, vaddr);
-
-		if (is_slptbase)
-			phys = lv2table_base(entry);
-		else if (lv2ent_large(entry))
-			phys = lpage_phys(entry);
-		else if (lv2ent_small(entry))
-			phys = spage_phys(entry);
+	if (lv1ent_section(sent)) {
+		paddr_pt = section_phys(sent);
+	} else if (lv1ent_page(sent)) {
+		is_slptbase_pt = true;
+		paddr_pt = lv2table_base(sent);
 	} else {
-		pr_crit(">> Invalid address detected! entry: %#lx\n", (unsigned long)*entry);
+		pr_crit(">> Invalid FLPD detected: %#010lx\n", (unsigned long)*sent);
 		return;
 	}
 
-	if (paddr != phys) {
+	if (paddr_tlb != paddr_pt || is_slptbase_tlb != is_slptbase_pt) {
 		pr_crit(">> S1L1TLB mismatch detected!\n");
-		if (is_slptbase)
-			pr_crit("entry addr: %lx, slpt base addr: %lx\n", paddr, phys);
-		else
-			pr_crit("S1L1TLB: %#011lx, PT entry: %#011lx\n", paddr, phys);
+		pr_crit("   TLB: %#011lx SLPT base address: %s\n",
+			paddr_tlb, is_slptbase_tlb ? "yes" : "no");
+		pr_crit("    PT: %#011lx SLPT base address: %s\n",
+			paddr_pt, is_slptbase_pt ? "yes" : "no");
 	}
 }
 
