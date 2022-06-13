@@ -87,11 +87,13 @@ def define_zuma():
         "emulator": [
             # keep sorted
             "drivers/clocksource/exynos_mct_v3.ko",
+            "drivers/gpu/exynos/g2d/g2d.ko",
             "drivers/i2c/busses/i2c-exynos5.ko",
+            "drivers/media/platform/exynos/smfc/smfc.ko",
             "drivers/pinctrl/gs/pinctrl-exynos-gs.ko",
-            "drivers/soc/google/debug/exynos-ecc-handler.ko",
             "drivers/soc/google/debug/dss.ko",
             "drivers/soc/google/debug/exynos-coresight.ko",
+            "drivers/soc/google/debug/exynos-ecc-handler.ko",
             "drivers/soc/google/exynos-pd_el3.ko",
             "drivers/soc/google/gs-chipid.ko",
             "drivers/soc/google/vh/kernel/systrace.ko",
