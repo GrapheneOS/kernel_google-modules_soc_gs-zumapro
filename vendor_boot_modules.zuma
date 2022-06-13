@@ -4,6 +4,7 @@
 9p.ko
 9pnet.ko
 9pnet_virtio.ko
+bigwave.ko
 cachefiles.ko
 deferred-free-helper.ko
 dss.ko
