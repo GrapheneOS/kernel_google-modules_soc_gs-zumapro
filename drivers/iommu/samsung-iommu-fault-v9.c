@@ -259,7 +259,7 @@ static inline void dump_sysmmu_ptlb_status(struct sysmmu_drvdata *drvdata, phys_
 					   int num_ptlb, int pmmu_id)
 {
 	int way, t;
-	unsigned int cnt;
+	unsigned int cnt = 0;
 	u32 info;
 
 	for (t = 0; t < num_ptlb; t++) {
@@ -271,7 +271,7 @@ static inline void dump_sysmmu_ptlb_status(struct sysmmu_drvdata *drvdata, phys_
 
 		pr_crit("PMMU.%d PTLB.%d has %d way, %d set.\n", pmmu_id, t, num_way, num_set);
 		pr_crit("------------- PTLB[WAY][SET][ENTRY] -------------\n");
-		for (way = 0, cnt = 0; way < num_way; way++)
+		for (way = 0; way < num_way; way++)
 			cnt += dump_ptlb_entry(drvdata, pgtable, t, way, num_set, pmmu_id);
 	}
 	if (!cnt)
@@ -330,7 +330,7 @@ static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata, phys_
 					   int num_stlb)
 {
 	int way, t;
-	unsigned int cnt;
+	unsigned int cnt = 0;
 	u32 info;
 
 	for (t = 0; t < num_stlb; t++) {
@@ -342,7 +342,7 @@ static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata, phys_
 
 		pr_crit("STLB.%d has %d way, %d set.\n", t, num_way, num_set);
 		pr_crit("------------- STLB[WAY][SET][ENTRY] -------------\n");
-		for (way = 0, cnt = 0; way < num_way; way++)
+		for (way = 0; way < num_way; way++)
 			cnt += dump_stlb_entry(drvdata, pgtable, t, way, num_set);
 	}
 	if (!cnt)
