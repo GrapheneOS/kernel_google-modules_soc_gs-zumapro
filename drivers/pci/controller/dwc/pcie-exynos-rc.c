@@ -37,16 +37,16 @@
 #include <linux/random.h>
 #include <linux/irqdomain.h>
 
+#include <soc/google/exynos-pm.h>
 #if IS_ENABLED(CONFIG_CPU_IDLE)
 #include <soc/google/exynos-powermode.h>
-#include <soc/google/exynos-pm.h>
 #include <soc/google/exynos-cpupm.h>
 #endif
 #if IS_ENABLED(CONFIG_PM_DEVFREQ)
 #include <soc/google/exynos_pm_qos.h>
 #endif
 
-#include <soc/google/shm_ipc.h>     /* to get Exynos Modem - MSI target addr. */
+#include <linux/shm_ipc.h>     /* to get Exynos Modem - MSI target addr. */
 #if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
 #define MODIFY_MSI_ADDR
 #endif	/* CONFIG_LINK_DEVICE_PCIE */
@@ -62,6 +62,8 @@
 #include "../../../iommu/exynos-pcie-iommu-exp.h"
 #include <trace/hooks/pci.h>
 
+#include <soc/google/exynos-el3_mon.h>
+
 struct exynos_pcie g_pcie_rc[MAX_RC_NUM];
 int pcie_is_linkup;	/* checkpatch: do not initialise globals to 0 */
 static struct separated_msi_vector sep_msi_vec[MAX_RC_NUM][PCIE_MAX_SEPA_IRQ_NUM];
@@ -73,7 +75,7 @@ static bool is_vhook_registered;
 static struct pci_dev *exynos_pcie_get_pci_dev(struct pcie_port *pp);
 
 #if IS_ENABLED(CONFIG_PM_DEVFREQ)
-static struct exynos_pm_qos_request exynos_pcie_int_qos[MAX_RC_NUM];
+struct exynos_pm_qos_request exynos_pcie_int_qos[MAX_RC_NUM];
 #endif
 
 /*
@@ -85,8 +87,8 @@ static struct exynos_pm_qos_request exynos_pcie_int_qos[MAX_RC_NUM];
 static const struct dma_map_ops pcie_dma_ops;
 static struct device fake_dma_dev;
 #define to_pci_dev_from_dev(dev) container_of((dev), struct pci_dev, dev)
-static void exynos_d3_sleep_hook(void *unused, struct pci_dev *dev,
-				 unsigned int *delay);
+//static void exynos_d3_sleep_hook(void *unused, struct pci_dev *dev,
+//				 unsigned int *delay);
 
 #if IS_ENABLED(CONFIG_GS_S2MPU)
 struct phys_mem {
@@ -1045,7 +1047,7 @@ int exynos_pcie_rc_set_bar(int ch_num, u32 bar_num)
 	struct dw_pcie *pci = exynos_pcie->pci;
 	struct pcie_port *pp = &pci->pp;
 	struct pci_dev *ep_pci_dev;
-	u32 val;
+	u32 val, ret;
 
 	pr_info("%s: +++\n", __func__);
 
@@ -1063,7 +1065,9 @@ int exynos_pcie_rc_set_bar(int ch_num, u32 bar_num)
 	ep_pci_dev->resource[bar_num].end =
 		exynos_pcie->btl_target_addr + exynos_pcie->btl_offset + exynos_pcie->btl_size;
 	ep_pci_dev->resource[bar_num].flags = 0x82000000;
-	pci_assign_resource(ep_pci_dev, bar_num);
+	ret = pci_assign_resource(ep_pci_dev, bar_num);
+	if (ret)
+		pr_err("%s: fail\n", __func__);
 
 	pci_read_config_dword(ep_pci_dev, PCI_BASE_ADDRESS_0 + (bar_num * 0x4), &val);
 	pr_info("%s: Check EP BAR[%d] = 0x%x\n", __func__, bar_num, val);
@@ -1323,7 +1327,7 @@ static void exynos_pcie_rc_set_iocc(struct pcie_port *pp, int enable)
 		exynos_sysreg_write(exynos_pcie, val, sysreg_sharability);
 	}
 
-	pcie_sysmmu_set_use_iocc(pcie_ch_to_hsi(exynos_pcie->ch_num));
+	//pcie_sysmmu_set_use_iocc(pcie_ch_to_hsi(exynos_pcie->ch_num));
 
 	exynos_pcie_rc_rd_own_conf(pp, PCIE_COHERENCY_CONTROL_3_OFF, 4, &val);
 	dev_dbg(pci->dev, "PCIe Axcache[1] = 0x%x\n", val);
@@ -2394,8 +2398,6 @@ static int exynos_pcie_rc_msi_init(struct pcie_port *pp)
 			dev_dbg(dev, "EP is Modem but ModemIF is disabled\n");
 #endif
 		} else {
-			dw_pcie_msi_init(pp);
-
 			if ((pp->msi_data >> 32) != 0)
 				dev_info(dev, "MSI memory is allocated over 32bit boundary\n");
 			dev_dbg(dev, "msi_data : %pad\n", &pp->msi_data);
@@ -4305,6 +4307,7 @@ static int setup_s2mpu_mem(struct device *dev, struct exynos_pcie *exynos_pcie)
 }
 #endif
 
+#if 0
 static void exynos_d3_sleep_hook(void *unused, struct pci_dev *dev,
 				 unsigned int *delay_ms)
 {
@@ -4313,6 +4316,7 @@ static void exynos_d3_sleep_hook(void *unused, struct pci_dev *dev,
 		*delay_ms = 0;
 	}
 }
+#endif
 
 static int exynos_pcie_rc_probe(struct platform_device *pdev)
 {
@@ -4337,8 +4341,8 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 	}
 
 	if (!is_vhook_registered) {
-		ret = register_trace_android_rvh_pci_d3_sleep(exynos_d3_sleep_hook,
-							      NULL);
+		ret = 0; //register_trace_android_rvh_pci_d3_sleep(exynos_d3_sleep_hook,
+			 //				      NULL);
 		if (ret) {
 			dev_err(&pdev->dev, "PCI sleep hook failed\n");
 			return ret;
@@ -4504,7 +4508,7 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 
 	if (exynos_pcie->use_pcieon_sleep) {
 		dev_info(&pdev->dev, "## register pcie connection function\n");
-		register_pcie_is_connect(pcie_linkup_stat);
+		//register_pcie_is_connect(pcie_linkup_stat);
 	}
 
 	platform_set_drvdata(pdev, exynos_pcie);
