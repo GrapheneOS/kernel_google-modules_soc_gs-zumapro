@@ -746,7 +746,7 @@ static ssize_t vendor_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%.8s\n", hba->sdev_ufs_device->vendor);
+	return snprintf(buf, PAGE_SIZE, "%.8s\n", hba->ufs_device_wlun->vendor);
 }
 
 static ssize_t model_show(struct device *dev,
@@ -754,7 +754,7 @@ static ssize_t model_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%.16s\n", hba->sdev_ufs_device->model);
+	return snprintf(buf, PAGE_SIZE, "%.16s\n", hba->ufs_device_wlun->model);
 }
 
 static ssize_t rev_show(struct device *dev,
@@ -762,7 +762,7 @@ static ssize_t rev_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%.4s\n", hba->sdev_ufs_device->rev);
+	return snprintf(buf, PAGE_SIZE, "%.4s\n", hba->ufs_device_wlun->rev);
 }
 
 static ssize_t platform_version_show(struct device *dev,
