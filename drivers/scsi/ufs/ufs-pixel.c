@@ -8,6 +8,7 @@
  */
 
 #include <scsi/scsi_cmnd.h>
+#include <ufshcd-priv.h>
 #include "ufs-exynos-gs.h"
 
 #define CREATE_TRACE_POINTS
