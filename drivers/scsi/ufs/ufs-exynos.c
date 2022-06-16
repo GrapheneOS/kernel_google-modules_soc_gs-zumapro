@@ -15,6 +15,7 @@
 #include <linux/of_address.h>
 #include <linux/clk.h>
 #include <linux/smc.h>
+#include <scsi/scsi_cmnd.h>
 #include "ufshcd.h"
 #include "ufshci.h"
 #include "unipro.h"

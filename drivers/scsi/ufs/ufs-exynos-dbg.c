@@ -19,6 +19,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/sched/clock.h>
+#include <scsi/scsi_cmnd.h>
 
 #include "ufshcd.h"
 #include "ufs-vs-mmio.h"

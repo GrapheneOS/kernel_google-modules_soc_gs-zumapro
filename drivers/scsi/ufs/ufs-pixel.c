@@ -7,6 +7,7 @@
  * Authors: Jaegeuk Kim <jaegeuk@google.com>
  */
 
+#include <scsi/scsi_cmnd.h>
 #include "ufs-exynos-gs.h"
 
 #define CREATE_TRACE_POINTS
