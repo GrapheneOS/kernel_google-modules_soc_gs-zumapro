@@ -11,6 +11,8 @@
 #include <linux/device.h>
 #include <linux/iommu.h>
 
+#define MAX_VIDS				8U
+
 #define SYSMMU_VM_OFFSET	0x1000
 #define SYSMMU_MASK_VMID	0x1
 #define PMMU_MAX_NUM		8
@@ -141,6 +143,7 @@ enum sysmmu_event_type {
 struct sysmmu_log {
 	unsigned long long time;
 	enum sysmmu_event_type type;
+	unsigned int vid;
 	u64 start;
 	u64 end;
 };
@@ -172,7 +175,7 @@ struct sysmmu_drvdata {
 	struct iommu_group *group;
 	void __iomem *sfrbase;
 	struct clk *clk;
-	phys_addr_t pgtable;
+	phys_addr_t pgtable[MAX_VIDS];
 	spinlock_t lock; /* protect atomic update to H/W status */
 	u32 version;
 	u32 vmid_mask;

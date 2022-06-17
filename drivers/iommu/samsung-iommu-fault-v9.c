@@ -64,6 +64,8 @@
 #define MMU_SET_READ_STLB_ENTRY(way, set, stlb, line)	((set) | ((way) << 8) |			\
 							((line) << 16) | ((stlb) << 20))
 
+#define MMU_VID_FROM_TLB(reg)				(((reg) >> 19) & 0x7)
+
 #define MMU_S1L1TLB_INFO_NUM_SET(reg)			(((reg) >> 16) & 0xFFFF)
 #define MMU_S1L1TLB_INFO_NUM_WAY(reg)			(((reg) >> 12) & 0xF)
 #define MMU_SET_READ_S1L1TLB_ENTRY(way, set)		((set) | ((way) << 8))
@@ -176,17 +178,18 @@ static inline u64 __sysmmu_get_fault_address(struct sysmmu_drvdata *data, bool i
 	return va;
 }
 
-static void sysmmu_tlb_compare(phys_addr_t pgtable, u32 vpn, u32 ppn)
+static void sysmmu_tlb_compare(phys_addr_t pgtable[MAX_VIDS], u32 vpn, u32 ppn, u32 attr)
 {
 	sysmmu_pte_t *entry;
 	unsigned long iova = MMU_VADDR_FROM_PTLB((unsigned long)vpn);
 	unsigned long paddr = MMU_PADDR_FROM_PTLB((unsigned long)ppn);
+	unsigned int vid = MMU_VID_FROM_TLB(attr);
 	unsigned long phys;
 
-	if (!pgtable)
+	if (!pgtable[vid])
 		return;
 
-	entry = section_entry(phys_to_virt(pgtable), iova);
+	entry = section_entry(phys_to_virt(pgtable[vid]), iova);
 
 	if (lv1ent_section(entry)) {
 		phys = section_phys(entry) + section_offs(iova);
@@ -212,7 +215,7 @@ static void sysmmu_tlb_compare(phys_addr_t pgtable, u32 vpn, u32 ppn)
 	}
 }
 
-static inline int __dump_ptlb_entry(struct sysmmu_drvdata *drvdata,  phys_addr_t pgtable,
+static inline int __dump_ptlb_entry(struct sysmmu_drvdata *drvdata,  phys_addr_t pgtable[MAX_VIDS],
 				    int idx_way, int idx_set)
 {
 	u32 tpn = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_PTLB_TPN);
@@ -227,7 +230,7 @@ static inline int __dump_ptlb_entry(struct sysmmu_drvdata *drvdata,  phys_addr_t
 			pr_crit("[%02d][%02d] VPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 				idx_way, idx_set, tpn, ppn, attr);
 
-			sysmmu_tlb_compare(pgtable, tpn, ppn);
+			sysmmu_tlb_compare(pgtable, tpn, ppn, attr);
 		} else {
 			pr_crit("[%02d][%02d] TPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 				idx_way, idx_set, tpn, ppn, attr);
@@ -239,7 +242,7 @@ static inline int __dump_ptlb_entry(struct sysmmu_drvdata *drvdata,  phys_addr_t
 	return 0;
 }
 
-static inline int dump_ptlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
+static inline int dump_ptlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable[MAX_VIDS],
 				  int ptlb_id, int way, int num_set, int pmmu_id)
 {
 	int cnt = 0;
@@ -255,8 +258,8 @@ static inline int dump_ptlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pg
 	return cnt;
 }
 
-static inline void dump_sysmmu_ptlb_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
-					   int num_ptlb, int pmmu_id)
+static inline void dump_sysmmu_ptlb_status(struct sysmmu_drvdata *drvdata,
+					   phys_addr_t pgtable[MAX_VIDS], int num_ptlb, int pmmu_id)
 {
 	int way, t;
 	unsigned int cnt = 0;
@@ -278,7 +281,7 @@ static inline void dump_sysmmu_ptlb_status(struct sysmmu_drvdata *drvdata, phys_
 		pr_crit(">> No Valid PTLB Entries\n");
 }
 
-static inline int __dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
+static inline int __dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable[MAX_VIDS],
 				    int idx_way, int idx_set, int idx_sub)
 {
 	u32 tpn = readl_relaxed(drvdata->sfrbase + REG_MMU_READ_STLB_TPN);
@@ -295,7 +298,7 @@ static inline int __dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t 
 			pr_crit("[%02d][%02d] VPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 				idx_way, idx_set, tpn, ppn, attr);
 
-			sysmmu_tlb_compare(pgtable, tpn, ppn);
+			sysmmu_tlb_compare(pgtable, tpn, ppn, attr);
 		} else {
 			pr_crit("[%02d][%02d] TPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 				idx_way, idx_set, tpn, ppn, attr);
@@ -308,7 +311,7 @@ static inline int __dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t 
 }
 
 #define MMU_NUM_STLB_SUBLINE		4
-static unsigned int dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
+static unsigned int dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable[MAX_VIDS],
 				    int stlb_id, int way, int num_set)
 {
 	int cnt = 0;
@@ -326,8 +329,8 @@ static unsigned int dump_stlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t 
 	return cnt;
 }
 
-static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
-					   int num_stlb)
+static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata,
+					   phys_addr_t pgtable[MAX_VIDS], int num_stlb)
 {
 	int way, t;
 	unsigned int cnt = 0;
@@ -349,19 +352,20 @@ static inline void dump_sysmmu_stlb_status(struct sysmmu_drvdata *drvdata, phys_
 		pr_crit(">> No Valid STLB Entries\n");
 }
 
-static inline void sysmmu_s1l1tlb_compare(phys_addr_t pgtable, u32 vpn, u32 base_or_ppn,
-					  bool is_slptbase_tlb)
+static inline void sysmmu_s1l1tlb_compare(phys_addr_t pgtable[MAX_VIDS], u32 vpn, u32 base_or_ppn,
+					  u32 attr, bool is_slptbase_tlb)
 {
 	sysmmu_pte_t *sent;
 	sysmmu_iova_t iova = MMU_VADDR_FROM_S1L1TLB((unsigned long)vpn);
+	unsigned int vid = MMU_VID_FROM_TLB(attr);
 	unsigned long paddr_tlb;
 	unsigned long paddr_pt = 0;
 	bool is_slptbase_pt = false;
 
-	if (!pgtable)
+	if (!pgtable[vid])
 		return;
 
-	sent = section_entry(phys_to_virt(pgtable), iova);
+	sent = section_entry(phys_to_virt(pgtable[vid]), iova);
 
 	if (is_slptbase_tlb)
 		paddr_tlb = MMU_PADDR_FROM_S1L1TLB_BASE((unsigned long)base_or_ppn);
@@ -387,7 +391,7 @@ static inline void sysmmu_s1l1tlb_compare(phys_addr_t pgtable, u32 vpn, u32 base
 	}
 }
 
-static inline int dump_s1l1tlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
+static inline int dump_s1l1tlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable[MAX_VIDS],
 				     int way, int set)
 {
 	bool is_slptbase;
@@ -402,7 +406,7 @@ static inline int dump_s1l1tlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t
 
 		pr_crit("[%02d][%02d] VPN: %#010x, PPN: %#010x, ATTR: %#010x\n",
 			way, set, vpn, base_or_ppn, attr);
-		sysmmu_s1l1tlb_compare(pgtable, vpn, base_or_ppn, is_slptbase);
+		sysmmu_s1l1tlb_compare(pgtable, vpn, base_or_ppn, attr, is_slptbase);
 
 		return 1;
 	}
@@ -411,7 +415,7 @@ static inline int dump_s1l1tlb_entry(struct sysmmu_drvdata *drvdata, phys_addr_t
 }
 
 static inline void dump_sysmmu_s1l1tlb_status(struct sysmmu_drvdata *drvdata,
-					      phys_addr_t pgtable)
+					      phys_addr_t pgtable[MAX_VIDS])
 {
 	int way, set;
 	unsigned int cnt;
@@ -435,8 +439,8 @@ static inline void dump_sysmmu_s1l1tlb_status(struct sysmmu_drvdata *drvdata,
 		pr_crit(">> No Valid S1L1TLB Entries\n");
 }
 
-static inline void dump_sysmmu_tlb_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
-					  int pmmu_id)
+static inline void dump_sysmmu_tlb_status(struct sysmmu_drvdata *drvdata,
+					  phys_addr_t pgtable[MAX_VIDS], int pmmu_id)
 {
 	u32 pmmu, swalker;
 	int num_stlb, num_ptlb;
@@ -458,7 +462,7 @@ static inline void dump_sysmmu_tlb_status(struct sysmmu_drvdata *drvdata, phys_a
 	dump_sysmmu_s1l1tlb_status(drvdata, pgtable);
 }
 
-static inline void dump_sysmmu_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable,
+static inline void dump_sysmmu_status(struct sysmmu_drvdata *drvdata, phys_addr_t pgtable[MAX_VIDS],
 				      int vmid, int pmmu_id)
 {
 	int info;
@@ -546,7 +550,7 @@ finish:
 }
 
 static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int intr_type,
-					  unsigned long fault_addr, phys_addr_t *pt, int vmid)
+					  unsigned long fault_addr, int vmid)
 {
 	const char *port_name = NULL;
 	phys_addr_t pgtable;
@@ -564,20 +568,24 @@ static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int in
 		port_name ? port_name : dev_name(drvdata->dev),
 		IS_READ_FAULT(info0) ? "READ" : "WRITE",
 		sysmmu_fault_name[intr_type], fault_addr, &pgtable);
-
-	if (pt)
-		*pt = pgtable;
 }
 
 static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata, int intr_type,
 					  unsigned long fault_addr, int vmid)
 {
-	phys_addr_t pgtable;
+	unsigned int i;
+	phys_addr_t pgtable[MAX_VIDS];
 	u32 info0, info1, info2;
 	int pmmu_id, stream_id;
 
+	for (i = 0; i < MAX_VIDS; i++) {
+		pgtable[i] = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase +
+						       REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM, i));
+		pgtable[i] <<= PAGE_SHIFT;
+	}
+
 	pr_crit("----------------------------------------------------------\n");
-	sysmmu_show_fault_info_simple(drvdata, intr_type, fault_addr, &pgtable, vmid);
+	sysmmu_show_fault_info_simple(drvdata, intr_type, fault_addr, vmid);
 
 	info0 = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_FAULT_INFO0_VM, vmid));
 	info1 = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_FAULT_INFO1_VM, vmid));
@@ -600,16 +608,16 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata, int in
 		goto finish;
 	}
 
-	if (pgtable != drvdata->pgtable)
-		pr_crit("Page table base of driver: %p\n", &drvdata->pgtable);
+	if (pgtable[vmid] != drvdata->pgtable[vmid])
+		pr_crit("Page table base of driver: %p\n", &drvdata->pgtable[vmid]);
 
-	if (!pfn_valid(pgtable >> PAGE_SHIFT)) {
+	if (!pfn_valid(pgtable[vmid] >> PAGE_SHIFT)) {
 		pr_crit("Page table base is not in a valid memory region\n");
-		pgtable = 0;
+		pgtable[vmid] = 0;
 	} else {
 		sysmmu_pte_t *ent;
 
-		ent = section_entry(phys_to_virt(pgtable), fault_addr);
+		ent = section_entry(phys_to_virt(pgtable[vmid]), fault_addr);
 		pr_crit("Lv1 entry: %#010x\n", *ent);
 
 		if (lv1ent_page(ent)) {
@@ -620,7 +628,7 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata, int in
 
 	if (intr_type == SYSMMU_FAULT_PTW_ACCESS) {
 		pr_crit("System MMU has failed to access page table\n");
-		pgtable = 0;
+		pgtable[vmid] = 0;
 	}
 
 	dump_sysmmu_status(drvdata, pgtable, vmid, pmmu_id);
@@ -714,7 +722,7 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 	ret = iommu_group_for_each_dev(group, &fi,
 				       samsung_sysmmu_fault_notifier);
 	if (ret == -EAGAIN && !is_secure) {
-		sysmmu_show_fault_info_simple(drvdata, itype, addr, NULL, vmid);
+		sysmmu_show_fault_info_simple(drvdata, itype, addr, vmid);
 		sysmmu_clear_interrupt(drvdata, &vmid);
 		return IRQ_HANDLED;
 	}
