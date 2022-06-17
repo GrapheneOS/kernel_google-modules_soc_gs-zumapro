@@ -605,4 +605,8 @@ enum v4l2_mpeg_mfc51_video_frame_type {
 					(V4L2_CID_MPEG_MFC_BASE + 263)
 #define V4L2_CID_MPEG_VIDEO_SUM_ZERO_MV_MB			\
 					(V4L2_CID_MPEG_MFC_BASE + 264)
+#define V4L2_CID_MPEG_VIDEO_MV_HOR_RANGE			\
+					(V4L2_CID_MPEG_MFC_BASE + 265)
+#define V4L2_CID_MPEG_VIDEO_MV_VER_RANGE			\
+					(V4L2_CID_MPEG_MFC_BASE + 266)
 #endif /* __EXYNOS_MFC_MEDIA_H */

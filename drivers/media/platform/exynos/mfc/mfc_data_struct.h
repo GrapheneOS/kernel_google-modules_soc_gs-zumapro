@@ -1739,6 +1739,8 @@ struct mfc_enc_params {
 	u32 mv_hor_pos_l1;
 	u32 mv_ver_pos_l0;
 	u32 mv_ver_pos_l1;
+	u32 mv_hor_range;
+	u32 mv_ver_range;
 
 	union {
 		struct mfc_h264_enc_params h264;

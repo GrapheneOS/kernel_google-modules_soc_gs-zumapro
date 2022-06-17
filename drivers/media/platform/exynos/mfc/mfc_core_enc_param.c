@@ -350,6 +350,20 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_ENC_OPTIONS);
 
+	if (p->mv_hor_range) {
+		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_HOR_RANGE);
+		mfc_clear_set_bits(reg, 0x3fff, 0, p->mv_hor_range);
+		MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_MV_HOR_RANGE);
+		mfc_debug(2, "MV HOR Range: %d\n", p->mv_hor_range);
+	}
+
+	if (p->mv_ver_range) {
+		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_VER_RANGE);
+		mfc_clear_set_bits(reg, 0x3fff, 0, p->mv_ver_range);
+		MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_MV_VER_RANGE);
+		mfc_debug(2, "MV VER Range: %d\n", p->mv_ver_range);
+	}
+
 	if (p->mv_search_mode == 2) {
 		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_HOR_RANGE);
 		mfc_clear_set_bits(reg, 0xff, 16, p->mv_hor_pos_l0);

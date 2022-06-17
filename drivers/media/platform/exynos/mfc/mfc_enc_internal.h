@@ -2668,6 +2668,24 @@ static struct v4l2_queryctrl controls[] = {
 		.step = 1,
 		.default_value = 0,
 	},
+	{
+		.id = V4L2_CID_MPEG_VIDEO_MV_HOR_RANGE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "MV HOR Range",
+		.minimum = 0,
+		.maximum = 0x3FFF,
+		.step = 1,
+		.default_value = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDEO_MV_VER_RANGE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "MV VER Range",
+		.minimum = 0,
+		.maximum = 0x3FFF,
+		.step = 1,
+		.default_value = 0,
+	},
 };
 
 #define NUM_CTRLS ARRAY_SIZE(controls)
