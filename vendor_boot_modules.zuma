@@ -39,6 +39,7 @@ samsung_dma_heap.ko
 samsung_iommu_v9.ko
 smfc.ko
 systrace.ko
+ufs-exynos-gs.ko
 virtio_balloon.ko
 virtio_blk.ko
 virtio_crypto.ko
