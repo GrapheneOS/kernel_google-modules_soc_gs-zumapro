@@ -27,6 +27,8 @@ enum s2d_ipc_cmd {
 	eS2D_IPC_CMD_SET_ENABLE,
 	eS2D_IPC_CMD_GET_ENABLE,
 	eS2D_IPC_CMD_SET_BLK,
+	eS2D_IPC_CMD_SET_DISABLE_GPR,
+	eS2D_IPC_CMD_GET_DISABLE_GPR,
 };
 
 struct plugin_s2d_info {
@@ -234,6 +236,37 @@ int adv_tracer_s2d_get_all_blk(void)
 	return 0;
 }
 
+static int adv_tracer_s2d_set_disable_gpr(int en)
+{
+	struct adv_tracer_ipc_cmd cmd = { 0 };
+	int ret = 0;
+
+	cmd.cmd_raw.cmd = eS2D_IPC_CMD_SET_DISABLE_GPR;
+	cmd.buffer[1] = en;
+	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
+	if (ret < 0) {
+		dev_err(plugin_s2d.dev, "ipc can't set disable_gpr (rc = %d)\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int adv_tracer_s2d_get_disable_gpr(void)
+{
+	struct adv_tracer_ipc_cmd cmd = { 0 };
+	int ret = 0;
+
+	cmd.cmd_raw.cmd = eS2D_IPC_CMD_GET_DISABLE_GPR;
+	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
+	if (ret < 0) {
+		dev_err(plugin_s2d.dev, "ipc can't get disable_gpr (rc = %d)\n", ret);
+		return ret;
+	}
+
+	return cmd.buffer[1];
+}
+
 static void adv_tracer_s2d_handler(struct adv_tracer_ipc_cmd *cmd,
 		unsigned int len)
 {
@@ -376,6 +409,38 @@ static ssize_t print_all_block_show(struct device *dev,
 
 static DEVICE_ATTR_RO(print_all_block);
 
+static ssize_t disable_gpr_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t size)
+{
+	unsigned int val;
+	int ret;
+
+	ret = kstrtouint(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	ret = adv_tracer_s2d_set_disable_gpr(!!val);
+	if (ret)
+		return ret;
+
+	return size;
+}
+
+static ssize_t disable_gpr_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	int ret;
+
+	ret = adv_tracer_s2d_get_disable_gpr();
+	if (ret < 0)
+		return ret;
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", ret ? "Disabled" : "Not disabled");
+}
+
+static DEVICE_ATTR_RW(disable_gpr);
+
 static struct attribute *adv_tracer_s2d_sysfs_attrs[] = {
 	&dev_attr_s2d_enable.attr,
 	&dev_attr_enable_block_by_name.attr,
@@ -384,6 +449,7 @@ static struct attribute *adv_tracer_s2d_sysfs_attrs[] = {
 	&dev_attr_disable_block_by_index.attr,
 	&dev_attr_switch_all_block.attr,
 	&dev_attr_print_all_block.attr,
+	&dev_attr_disable_gpr.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(adv_tracer_s2d_sysfs);
