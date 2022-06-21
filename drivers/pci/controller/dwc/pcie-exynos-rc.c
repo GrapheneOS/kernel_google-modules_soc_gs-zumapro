@@ -1732,6 +1732,23 @@ static int exynos_pcie_rc_get_resource(struct platform_device *pdev,
 
 		return ret;
 	}
+
+	temp_rsc = platform_get_resource_byname(pdev, IORESOURCE_MEM, "soc");
+	exynos_pcie->soc_base = devm_ioremap_resource(&pdev->dev, temp_rsc);
+	if (IS_ERR(exynos_pcie->soc_base)) {
+		ret = PTR_ERR(exynos_pcie->soc_base);
+
+		return ret;
+	}
+
+	temp_rsc = platform_get_resource_byname(pdev, IORESOURCE_MEM, "udbg");
+	exynos_pcie->udbg_base = devm_ioremap_resource(&pdev->dev, temp_rsc);
+	if (IS_ERR(exynos_pcie->udbg_base)) {
+		ret = PTR_ERR(exynos_pcie->udbg_base);
+
+		return ret;
+	}
+
 	temp_rsc = platform_get_resource_byname(pdev, IORESOURCE_MEM, "phy");
 	exynos_pcie->phy_base_physical_addr = temp_rsc->start;
 	exynos_pcie->phy_base = devm_ioremap_resource(&pdev->dev, temp_rsc);
@@ -2530,72 +2547,12 @@ static int exynos_pcie_rc_establish_link(struct pcie_port *pp)
 	u32 val, busdev;
 	int count = 0, try_cnt = 0;
 	unsigned int save_before_state = 0xff;
-	u32 i;
-	u32 pll_lock = 0, cdr_lock = 0, oc_done = 0;
+	//u32 i;
+	//u32 pll_lock = 0, cdr_lock = 0, oc_done = 0;
 retry:
 
 	/* to call eyxnos_pcie_rc_pcie_phy_config() in cal.c file */
 	exynos_pcie_rc_assert_phy_reset(pp);
-
-	/* check pll & cdr lock */
-	for (i = 0; i < 1000; i++) {
-		udelay(1);
-		pll_lock = exynos_phy_read(exynos_pcie, 0x03F0) & (1 << 3);
-		cdr_lock = exynos_phy_read(exynos_pcie, 0x0FC0) & (1 << 4);
-
-		if (pll_lock != 0 && cdr_lock != 0)
-			break;
-	}
-	if ((pll_lock == 0) || (cdr_lock == 0))
-		dev_info(dev, "PLL & CDR lock check!\n");
-
-	/* check offset calibration */
-	for (i = 0; i < 2000; i++) {
-		usleep_range(10, 12);
-		oc_done = exynos_phy_read(exynos_pcie, 0x0E18) & (1 << 7);
-
-		if (oc_done != 0)
-			break;
-	}
-	if (oc_done == 0) {
-		pll_lock = exynos_phy_read(exynos_pcie, 0x03F0) & (1 << 3);
-		cdr_lock = exynos_phy_read(exynos_pcie, 0x0FC0) & (1 << 4);
-		oc_done = exynos_phy_read(exynos_pcie, 0x0E18) & (1 << 7);
-		dev_err(dev, "OC Fail : PLL_LOCK : 0x%x, CDR_LOCK : 0x%x, OC : 0x%x\n",
-			pll_lock, cdr_lock, oc_done);
-	}
-
-	/* Soft Power RST */
-	val = exynos_elbi_read(exynos_pcie, PCIE_SOFT_RESET);
-	val &= ~SOFT_PWR_RESET;
-	exynos_elbi_write(exynos_pcie, val, PCIE_SOFT_RESET);
-	/* old: udelay(20); */
-	mdelay(1);
-	val |= SOFT_PWR_RESET;
-	exynos_elbi_write(exynos_pcie, val, PCIE_SOFT_RESET);
-
-	val = exynos_phy_read(exynos_pcie, 0x0E18) & (1 << 7);
-	if (!val) {
-		dev_err(dev, "OC Fail after soft power reset!\n");
-		dev_err(dev, "PMA Info : 0x760(0x%x), 0xE0C(0x%x), 0x3F0(0x%x), 0xFC0(0x%x)\n",
-			exynos_phy_read(exynos_pcie, 0x760),
-			exynos_phy_read(exynos_pcie, 0xE0C),
-			exynos_phy_read(exynos_pcie, 0x3F0),
-			exynos_phy_read(exynos_pcie, 0xFC0));
-	}
-	/* Device Type (Sub Controller: DEVICE_TYPE offset: 0x80  */
-	exynos_elbi_write(exynos_pcie, 0x04, 0x80);
-
-	/* NON-sticky RST */
-	val = exynos_elbi_read(exynos_pcie, PCIE_SOFT_RESET);
-	val |= SOFT_NON_STICKY_RESET;
-	exynos_elbi_write(exynos_pcie, val, PCIE_SOFT_RESET);
-	usleep_range(10, 12);
-	val &= ~SOFT_NON_STICKY_RESET;
-	exynos_elbi_write(exynos_pcie, val, PCIE_SOFT_RESET);
-	mdelay(1);
-	val |= SOFT_NON_STICKY_RESET;
-	exynos_elbi_write(exynos_pcie, val, PCIE_SOFT_RESET);
 
 	/* EQ Off */
 	exynos_pcie_rc_wr_own_conf(pp, 0x890, 4, 0x12000);
