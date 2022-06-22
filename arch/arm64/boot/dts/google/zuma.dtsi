@@ -19,6 +19,7 @@
 #include "zuma-usi.dtsi"
 #include "zuma-debug.dtsi"
 #include "zuma-aoc.dtsi"
+#include "zuma-ufs.dtsi"
 
 / {
 	compatible = "google,zuma";
