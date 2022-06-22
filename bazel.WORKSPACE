@@ -14,5 +14,4 @@
 
 load("//build/kernel/kleaf:workspace.bzl", "define_kleaf_workspace")
 
-toplevel_output_directories(paths = ["out"])
 define_kleaf_workspace(common_kernel_package = "aosp-bringup")
