@@ -681,6 +681,14 @@
 			<&gdc_int0>,
 			<&gdc_int1>,
 			<&gdc_cmdq_int>;
+
+		/*
+		 * GDC0 and GDC1 share the same SysMMU, according to Figure 2 in:
+		 * go/zuma_gdc_blk_hdd
+		*/
+		iommus =
+			<&sysmmu_gdc>;
+		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
 	lwis_gdc1: lwis_gdc@1D470000 {
@@ -709,6 +717,14 @@
 			<&gdc_int0>,
 			<&gdc_int1>,
 			<&gdc_cmdq_int>;
+
+		/*
+		 * GDC0 and GDC1 share the same SysMMU, according to Figure 2 in:
+		 * go/zuma_gdc_blk_hdd
+		*/
+		iommus =
+			<&sysmmu_gdc>;
+		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
 	lwis_mcsc: lwis_mcsc@1D040000 {
@@ -749,6 +765,10 @@
 			<&mcsc_int0>,
 			<&mcsc_int1>,
 			<&mcsc_cmdq_int>;
+
+		iommus =
+			<&sysmmu_mcsc>;
+		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
 	lwis_gse: lwis_gse@0x1D840000 {
@@ -797,6 +817,10 @@
 			<&gse_pdma_rstctl>,
 			<&gse_isp_rstctl>,
 			<&gse_csr_bus_wrap>;
+
+		iommus =
+			<&sysmmu_gse>;
+		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
 	lwis_be_core: lwis_be_core@1C440000 {
@@ -851,6 +875,12 @@
 			<&be_core_yuvp_int0>,
 			<&be_core_yuvp_int1>,
 			<&be_core_yuvp_cmdq_int>;
+
+		iommus =
+			<&sysmmu_yuvp>,
+			<&sysmmu_rgbp_s0>,
+			<&sysmmu_rgbp_s1>;
+		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
 	lwis_gtnr_merge: lwis_gtnr_merge@1CC40000 {
@@ -918,6 +948,14 @@
 			"lme_int1";
 		interrupt-event-infos =
 			<&lme_int1>;
+
+		/*
+		 * LME shares the same SysMMU with GDC0/1, according to Figure 2 in:
+		 * go/zuma_gdc_blk_hdd
+		*/
+		iommus =
+			<&sysmmu_gdc>;
+		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
 	lwis_votf: lwis_votf@1C460000 {
