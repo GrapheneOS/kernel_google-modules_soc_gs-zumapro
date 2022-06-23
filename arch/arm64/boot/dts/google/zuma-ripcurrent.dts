@@ -21,3 +21,7 @@
 		};
 	};
 };
+
+&serial_0 {
+	status = "okay";
+};
