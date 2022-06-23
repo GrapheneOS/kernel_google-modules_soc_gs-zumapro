@@ -1,6 +1,6 @@
+# LC_ALL=C sort
 # List of modules loaded during first stage init from vendor_boot
 # Sort order defined by
-# LC_ALL=C sort
 9p.ko
 9pnet.ko
 9pnet_virtio.ko
@@ -21,6 +21,8 @@ exynos-coresight.ko
 exynos-debug-test.ko
 exynos-drm.ko
 exynos-ecc-handler.ko
+exynos-pd-dbg.ko
+exynos-pd.ko
 exynos-pd_el3.ko
 exynos-pmu-if.ko
 exynos-reboot.ko
