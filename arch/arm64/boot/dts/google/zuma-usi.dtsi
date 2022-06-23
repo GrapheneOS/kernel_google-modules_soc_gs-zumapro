@@ -84,7 +84,7 @@
 		gpio_sda= <&gpp2 1 0x1>;
 		samsung,usi-offset = <0x00000000>;
 		reg = <0x00000000 0x10880000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_2: hsi2c@10890000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -106,7 +106,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000004>;
 		reg = <0x00000000 0x10890000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_3: hsi2c@108A0000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -128,7 +128,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000008>;
 		reg = <0x00000000 0x108A0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_4: hsi2c@108B0000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -150,7 +150,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x0000000c>;
 		reg = <0x00000000 0x108B0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_5: hsi2c@108C0000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -171,7 +171,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000010>;
 		reg = <0x00000000 0x108C0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_6: hsi2c@108D0000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -192,7 +192,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000014>;
 		reg = <0x00000000 0x108D0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_0: hsi2c@10C80000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -213,7 +213,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000000>;
 		reg = <0x00000000 0x10C80000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_9: hsi2c@10C90000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -234,7 +234,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000004>;
 		reg = <0x00000000 0x10C90000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_10: hsi2c@10CA0000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -255,7 +255,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000008>;
 		reg = <0x00000000 0x10CA0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_11: hsi2c@10CB0000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -276,7 +276,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x0000000c>;
 		reg = <0x00000000 0x10CB0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_12: hsi2c@10CC0000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -297,7 +297,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000010>;
 		reg = <0x00000000 0x10CC0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	hsi2c_13: hsi2c@10CE0000 {
 		compatible = "samsung,exynos5-hsi2c";
@@ -318,7 +318,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000018>;
 		reg = <0x00000000 0x10CE0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_1: spi@10880000 {
 		compatible = "samsung,exynos-spi";
@@ -338,7 +338,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000000>;
 		reg = <0x00000000 0x10880000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_2: spi@10890000 {
 		compatible = "samsung,exynos-spi";
@@ -358,7 +358,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000004>;
 		reg = <0x00000000 0x10890000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_3: spi@108A0000 {
 		compatible = "samsung,exynos-spi";
@@ -378,7 +378,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000008>;
 		reg = <0x00000000 0x108A0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_4: spi@108B0000 {
 		compatible = "samsung,exynos-spi";
@@ -398,7 +398,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x0000000c>;
 		reg = <0x00000000 0x108B0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_5: spi@108C0000 {
 		compatible = "samsung,exynos-spi";
@@ -418,7 +418,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000010>;
 		reg = <0x00000000 0x108C0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_6: spi@108D0000 {
 		compatible = "samsung,exynos-spi";
@@ -438,7 +438,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000014>;
 		reg = <0x00000000 0x108D0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_14: spi@10980000 {
 		compatible = "samsung,exynos-spi";
@@ -458,7 +458,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000028>;
 		reg = <0x00000000 0x10980000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_0: spi@10C80000 {
 		compatible = "samsung,exynos-spi";
@@ -478,7 +478,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000000>;
 		reg = <0x00000000 0x10C80000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_9: spi@10C90000 {
 		compatible = "samsung,exynos-spi";
@@ -498,7 +498,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000004>;
 		reg = <0x00000000 0x10C90000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_10: spi@10CA0000 {
 		compatible = "samsung,exynos-spi";
@@ -518,7 +518,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000008>;
 		reg = <0x00000000 0x10CA0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_11: spi@10CB0000 {
 		compatible = "samsung,exynos-spi";
@@ -538,7 +538,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x0000000c>;
 		reg = <0x00000000 0x10CB0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_12: spi@10CC0000 {
 		compatible = "samsung,exynos-spi";
@@ -558,7 +558,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000010>;
 		reg = <0x00000000 0x10CC0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_13: spi@10CD0000 {
 		compatible = "samsung,exynos-spi";
@@ -578,7 +578,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000014>;
 		reg = <0x00000000 0x10CD0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	spi_15: spi@10CE0000 {
 		compatible = "samsung,exynos-spi";
@@ -598,7 +598,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000018>;
 		reg = <0x00000000 0x10CE0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	/* BLK_PERIC0 USI1_USI */
 	serial_1: serial@10880000 {
@@ -618,7 +618,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000000>;
 		reg = <0x00000000 0x10880000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_2: serial@10890000 {
 		compatible = "samsung,exynos-uart";
@@ -637,7 +637,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000004>;
 		reg = <0x00000000 0x10890000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_3: serial@108A0000 {
 		compatible = "samsung,exynos-uart";
@@ -656,7 +656,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000008>;
 		reg = <0x00000000 0x108A0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_4: serial@108B0000 {
 		compatible = "samsung,exynos-uart";
@@ -675,7 +675,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x0000000c>;
 		reg = <0x00000000 0x108B0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_5: serial@108C0000 {
 		compatible = "samsung,exynos-uart";
@@ -694,7 +694,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000010>;
 		reg = <0x00000000 0x108C0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_6: serial@108D0000 {
 		compatible = "samsung,exynos-uart";
@@ -713,7 +713,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000014>;
 		reg = <0x00000000 0x108D0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_14: serial@10980000 {
 		compatible = "samsung,exynos-uart";
@@ -732,7 +732,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		samsung,usi-offset = <0x00000028>;
 		reg = <0x00000000 0x10980000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	/* BLK_PERIC1 USI0_USI */
 	serial_usi0: serial@10C80000 {
@@ -752,7 +752,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000000>;
 		reg = <0x00000000 0x10C80000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_9: serial@10C90000 {
 		compatible = "samsung,exynos-uart";
@@ -771,7 +771,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000004>;
 		reg = <0x00000000 0x10C90000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_10: serial@10CA0000 {
 		compatible = "samsung,exynos-uart";
@@ -790,7 +790,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000008>;
 		reg = <0x00000000 0x10CA0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_11: serial@10CB0000 {
 		compatible = "samsung,exynos-uart";
@@ -809,7 +809,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x0000000c>;
 		reg = <0x00000000 0x10CB0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_12: serial@10CC0000 {
 		compatible = "samsung,exynos-uart";
@@ -828,7 +828,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000010>;
 		reg = <0x00000000 0x10CC0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_13: serial@10CD0000 {
 		compatible = "samsung,exynos-uart";
@@ -847,7 +847,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000014>;
 		reg = <0x00000000 0x10CD0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	serial_15: serial@10CE0000 {
 		compatible = "samsung,exynos-uart";
@@ -866,7 +866,7 @@
 		samsung,usi-phandle = <&sysreg_peric1>;
 		samsung,usi-offset = <0x00000018>;
 		reg = <0x00000000 0x10CE0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	/* BLK_ALIVE APM_USI0_UART */
 	serial_17: serial@155C0000 {
@@ -886,7 +886,7 @@
 		samsung,usi-phandle = <&sysreg_apm>;
 		samsung,usi-offset = <0x00000000>;
 		reg = <0x00000000 0x155C0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	/* BLK_ALIVE APM_USI1_INT_UART */
 	serial_18: serial@155D0000 {
@@ -910,7 +910,7 @@
 		samsung,usi-phandle = <&sysreg_apm>;
 		samsung,usi-offset = <0x00000004>;
 		reg = <0x00000000 0x155D0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	/* BLK_ALIVE APM_USI0_USI */
 	serial_19: serial@155E0000 {
@@ -930,7 +930,7 @@
 		samsung,usi-phandle = <&sysreg_apm>;
 		samsung,usi-offset = <0x00000008>;
 		reg = <0x00000000 0x155E0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 	/* BLK_ALIVE APM_USI0_USI */
 	spi_17: spi@155E0000 {
@@ -947,6 +947,6 @@
 		samsung,usi-phandle = <&sysreg_apm>;
 		samsung,usi-offset = <0x00000008>;
 		reg = <0x00000000 0x155E0000 0x00001000>;
-		status = "okay";
+		status = "disabled";
 	};
 };
