@@ -853,6 +853,53 @@
 			<&be_core_yuvp_cmdq_int>;
 	};
 
+	lwis_gtnr_merge: lwis_gtnr_merge@1CC40000 {
+		compatible = "google,lwis-ioreg-device";
+
+		/* Device node name */
+		node-name = "gtnr-merge";
+
+		/* Register space */
+		reg =
+			<0x0 0x1CC40000 0x10000>,  /* GTNR Merge */
+			<0x0 0x1CF30000 0xA00>,    /* GTNR Merge SSMT D0 */
+			<0x0 0x1CF40000 0xA00>,    /* GTNR Merge SSMT D1 */
+			<0x0 0x1CF50000 0xA00>,    /* GTNR Merge SSMT D2 */
+			<0x0 0x1CF60000 0xA00>,    /* GTNR Merge SSMT D3 */
+			<0x0 0x1CF70000 0xA00>,    /* GTNR Merge SSMT D4 */
+			<0x0 0x1CF80000 0xA00>,    /* GTNR Merge SSMT D5 */
+			<0x0 0x1CF90000 0xA00>,    /* GTNR Merge SSMT D6 */
+			<0x0 0x1CFA0000 0xA00>;    /* GTNR Merge SSMT D7 */
+		reg-names =
+			"gtnr_merge",
+			"gtnr_merge_ssmt_d0",
+			"gtnr_merge_ssmt_d1",
+			"gtnr_merge_ssmt_d2",
+			"gtnr_merge_ssmt_d3",
+			"gtnr_merge_ssmt_d4",
+			"gtnr_merge_ssmt_d5",
+			"gtnr_merge_ssmt_d6",
+			"gtnr_merge_ssmt_d7";
+
+		interrupts =
+			<GIC_SPI IRQ_TNR_0_TNR IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TNR_1_TNR IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TNR_0_TNR IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names =
+			"gtnr-merge-int0",
+			"gtnr-merge-int1",
+			"gtnr-merge-cmdq-int";
+		interrupt-event-infos =
+			<&gtnr_merge_int0>,
+			<&gtnr_merge_int1>,
+			<&gtnr_merge_cmdq_int>;
+
+		iommus =
+			<&sysmmu_tnr_s0>,
+			<&sysmmu_tnr_s1>;
+		samsung,iommu-group = <&iommu_group_isp>;
+	};
+
 	lwis_lme: lwis_lme@1D4A0000 {
 		compatible = "google,lwis-ioreg-device";
 
