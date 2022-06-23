@@ -294,6 +294,11 @@ static inline void exynos_ufs_gate_clk(struct exynos_ufs *ufs, bool en)
 static void exynos_ufs_set_unipro_mclk(struct exynos_ufs *ufs)
 {
 	ufs->mclk_rate = (u32)clk_get_rate(ufs->clk_unipro);
+	dev_info(ufs->dev, "mclk: %lu\n", ufs->mclk_rate);
+
+	/* TODO: should revert this hack, once mclk_rate is set correctly */
+	WARN_ON(ufs->mclk_rate);
+	ufs->mclk_rate = 178000000;
 	if (!ufs->hba->clk_gating.is_suspended)
 		dev_info(ufs->dev, "mclk: %lu\n", ufs->mclk_rate);
 }
