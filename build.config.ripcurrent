@@ -8,6 +8,8 @@ GKI_FRAGMENT_DEFCONFIG=ripcurrent_gki.fragment
 
 . ${ROOT_DIR}/${DEVICE_MODULES_DIR}/build.config.zuma
 
+VENDOR_BOOTCONFIG="androidboot.boot_devices=13200000.ufs"
+
 MAKE_GOALS="$MAKE_GOALS
 modules
 dtbs

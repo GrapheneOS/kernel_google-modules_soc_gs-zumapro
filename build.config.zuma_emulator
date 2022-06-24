@@ -8,6 +8,8 @@ GKI_FRAGMENT_DEFCONFIG=zuma_emulator.fragment
 
 . ${ROOT_DIR}/${DEVICE_MODULES_DIR}/build.config.zuma
 
+VENDOR_BOOTCONFIG="androidboot.boot_devices=14100000.virtio_block"
+
 DIST_CMDS="ufdt_apply_overlay \${DIST_DIR}/zuma-a0.dtb \${DIST_DIR}/zuma-emulator.dtbo \${DIST_DIR}/zuma-out.dtb"
 
 MAKE_GOALS="$MAKE_GOALS
