@@ -1154,8 +1154,8 @@ static int sysmmu_parse_stream_property(struct device *dev, struct sysmmu_drvdat
 
 	for (i = 0; i < cnt; i++) {
 		if (cfg[i].index >= num_stream) {
-			dev_err(dev, "invalid index %u is ignored. (max:%d)\n",
-				cfg[i].index, num_stream);
+			dev_err(dev, "invalid index %u in %s is ignored. (max:%d)\n",
+				cfg[i].index, props_name, num_stream);
 			cfg[i].index = UNUSED_STREAM_INDEX;
 		}
 	}
