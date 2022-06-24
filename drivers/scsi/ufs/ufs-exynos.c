@@ -703,8 +703,6 @@ static int exynos_ufs_link_startup_notify(struct ufs_hba *hba,
 		hci_writel(&ufs->handle, DFES_ERR_EN | DFES_DEF_T_ERRS,
 			   HCI_ERROR_EN_T_LAYER);
 
-		ufs->mclk_rate = clk_get_rate(ufs->clk_unipro);
-
 		/*
 		 * unipro, keep phy context even if link startup fails
 		 * and for unipro v1.8.
