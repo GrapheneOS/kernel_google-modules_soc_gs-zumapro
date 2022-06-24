@@ -8,3 +8,4 @@
 # CONFIG_ARM64_SVE is not set
 # CONFIG_ARM64_MPAM is not set
 # CONFIG_KASAN is not set
+# CONFIG_SCSI_UFS_CRYPTO is not set
