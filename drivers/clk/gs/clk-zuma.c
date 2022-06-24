@@ -326,6 +326,13 @@ struct init_vclk zuma_hsi0_hwacg_vclks[] = {
 		0,
 		VCLK_GATE,
 		NULL),
+	HWACG_VCLK(GATE_HSI0_USI2_USI,
+		USI2_HSI0_QCH,
+		"GATE_HSI0_USI2_USI",
+		NULL,
+		0,
+		VCLK_GATE,
+		NULL),
 };
 
 struct init_vclk zuma_hsi1_hwacg_vclks[] = {
@@ -966,6 +973,12 @@ struct init_vclk zuma_hsi0_vclks[] = {
 	VCLK(DOUT_CLK_HSI0_USB32DRD,
 		DIV_CLK_HSI0_USB32DRD,
 		"DOUT_CLK_HSI0_USB32DRD",
+		0,
+		0,
+		NULL),
+	VCLK(VDOUT_CLK_HSI0_USI2_USI,
+		VCLK_DIV_CLK_HSI0_USI2,
+		"VDOUT_CLK_HSI0_USI2_USI",
 		0,
 		0,
 		NULL),
