@@ -16,6 +16,7 @@ exynos-coresight.ko
 exynos-drm.ko
 exynos-ecc-handler.ko
 exynos-pd_el3.ko
+exynos-pmu-if.ko
 exynos_mct_v3.ko
 exynos_tty.ko
 failover.ko
