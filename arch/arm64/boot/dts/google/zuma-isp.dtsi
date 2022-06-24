@@ -5,6 +5,7 @@
  * Copyright 2022 Google LLC.
  */
 
+#include <dt-bindings/clock/zuma.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zuma.h>
@@ -682,6 +683,13 @@
 			<&gdc_int1>,
 			<&gdc_cmdq_int>;
 
+		clocks =
+			<&clock UMUX_CLKCMU_GDC_GDC0>;
+		clock-names =
+			"UMUX_CLKCMU_GDC_GDC0";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
+
 		/*
 		 * GDC0 and GDC1 share the same SysMMU, according to Figure 2 in:
 		 * go/zuma_gdc_blk_hdd
@@ -717,6 +725,13 @@
 			<&gdc_int0>,
 			<&gdc_int1>,
 			<&gdc_cmdq_int>;
+
+		clocks =
+			<&clock UMUX_CLKCMU_GDC_GDC1>;
+		clock-names =
+			"UMUX_CLKCMU_GDC_GDC1";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
 
 		/*
 		 * GDC0 and GDC1 share the same SysMMU, according to Figure 2 in:
@@ -765,6 +780,13 @@
 			<&mcsc_int0>,
 			<&mcsc_int1>,
 			<&mcsc_cmdq_int>;
+
+		clocks =
+			<&clock UMUX_CLKCMU_MCSC>;
+		clock-names =
+			"UMUX_CLKCMU_MCSC";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
 
 		iommus =
 			<&sysmmu_mcsc>;
@@ -817,6 +839,13 @@
 			<&gse_pdma_rstctl>,
 			<&gse_isp_rstctl>,
 			<&gse_csr_bus_wrap>;
+
+		clocks =
+			<&clock UMUX_CLKCMU_GSE>;
+		clock-names =
+			"UMUX_CLKCMU_GSE";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
 
 		iommus =
 			<&sysmmu_gse>;
@@ -876,6 +905,17 @@
 			<&be_core_yuvp_int1>,
 			<&be_core_yuvp_cmdq_int>;
 
+		clocks =
+			<&clock UMUX_CLKCMU_YUVP>,
+			<&clock UMUX_CLKCMU_RGBP_RGBP>,
+			<&clock UMUX_CLKCMU_RGBP_MCFP>;
+		clock-names =
+			"UMUX_CLKCMU_YUVP",
+			"UMUX_CLKCMU_RGBP_RGBP",
+			"UMUX_CLKCMU_RGBP_MCFP";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
+
 		iommus =
 			<&sysmmu_yuvp>,
 			<&sysmmu_rgbp_s0>,
@@ -924,6 +964,13 @@
 			<&gtnr_merge_int1>,
 			<&gtnr_merge_cmdq_int>;
 
+		clocks =
+			<&clock UMUX_CLKCMU_TNR_MERGE>;
+		clock-names =
+			"UMUX_CLKCMU_TNR_MERGE";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_TNR>;
+
 		iommus =
 			<&sysmmu_tnr_s0>,
 			<&sysmmu_tnr_s1>;
@@ -948,6 +995,13 @@
 			"lme_int1";
 		interrupt-event-infos =
 			<&lme_int1>;
+
+		clocks =
+			<&clock UMUX_CLKCMU_GDC_LME>;
+		clock-names =
+			"UMUX_CLKCMU_GDC_LME";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
 
 		/*
 		 * LME shares the same SysMMU with GDC0/1, according to Figure 2 in:
