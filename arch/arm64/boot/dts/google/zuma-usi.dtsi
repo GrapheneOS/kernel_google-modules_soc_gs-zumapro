@@ -36,6 +36,7 @@
 		spi14 = &spi_14;
 		spi15 = &spi_15;
 		spi17 = &spi_17;	/* BLK_ALIVE APM_USI0_USI */
+		spi20 = &spi_20;	/* BLK_HSI0 USI2_HSI0 */
 		uart1 = &serial_1;
 		uart2 = &serial_2;
 		uart3 = &serial_3;
@@ -971,4 +972,23 @@
 		reg = <0x00000000 0x155E0000 0x00001000>;
 		status = "disabled";
 	};
+	/* BLK_HSI0 USI2_HSI0 */
+	spi_20: spi@111D0000 {
+		#address-cells = <0x00000001>;
+		#size-cells = <0x00000000>;
+		compatible = "samsung,exynos-spi";
+		reg = <0x00000000 0x111d0000 0x00001000>;
+		samsung,spi-fifosize = <64>;
+		swap-mode;
+//		dma-mode;
+//		dmas = <&pdma1 18 &pdma1 19>;
+		dma-names = "tx", "rx";
+		clocks = <&clock VDOUT_CLK_HSI0_USI2_USI>, <&clock GATE_HSI0_USI2_USI>;
+		clock-names = "ipclk_spi", "gate_spi_clk";
+		interrupts = <GIC_SPI IRQ_USI2_HSI0_HSI0 IRQ_TYPE_LEVEL_HIGH>;
+		samsung,usi-phandle = <&sysreg_hsi0>;
+		samsung,usi-offset = <0x0000101C>;
+		status = "disabled";
+	};
+
 };
