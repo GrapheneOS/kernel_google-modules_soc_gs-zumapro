@@ -11,6 +11,7 @@ cmupmucal.ko
 deferred-free-helper.ko
 dss.ko
 dwc3-exynos-usb.ko
+ect_parser.ko
 ehld.ko
 exynos-adv-tracer.ko
 exynos-coresight.ko
