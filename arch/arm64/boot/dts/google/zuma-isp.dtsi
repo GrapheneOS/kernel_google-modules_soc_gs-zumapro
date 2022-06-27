@@ -6,8 +6,8 @@
  */
 
 #include <dt-bindings/clock/zuma.h>
-#include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/zuma.h>
 #include "zuma-isp-event-info.dtsi"
 
@@ -38,6 +38,11 @@
 			"isp-fe-sysreg",
 			"pdma",
 			"pdma-wrap";
+
+		clocks = <&clock UMUX_CLKCMU_ISPFE>;
+		clock-names = "UMUX_CLKCMU_ISPFE";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_CAM>;
 
 		interrupts =
 			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>,
