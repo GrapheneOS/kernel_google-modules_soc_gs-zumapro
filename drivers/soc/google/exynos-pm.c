@@ -112,10 +112,12 @@ static void exynos_show_wakeup_reason(bool sleep_abort)
 	if (sleep_abort) {
 		pr_info("%s early wakeup! Dumping pending registers...\n", EXYNOS_PM_PREFIX);
 
-		pr_info("GIC_PEND:\n");
-		for (i = 0; i < pm_info->num_gic; i++)
-			pr_info("GICD_ISPENDR[%d] = 0x%x\n", i,
-				__raw_readl(pm_info->gic_base + i * 4));
+		if (pm_info->gic_base) {
+			pr_info("GIC_PEND:\n");
+			for (i = 0; i < pm_info->num_gic; i++)
+				pr_info("GICD_ISPENDR[%d] = 0x%x\n", i,
+					__raw_readl(pm_info->gic_base + i * 4));
+		}
 
 		pr_info("%s done.\n", EXYNOS_PM_PREFIX);
 		return;
@@ -434,8 +436,13 @@ static int exynos_pm_drvinit(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	pm_info->gic_base = devm_ioremap_resource(dev, res);
-	if (IS_ERR(pm_info->gic_base))
-		return PTR_ERR(pm_info->gic_base);
+	if (IS_ERR(pm_info->gic_base)) {
+		// GIC now claims its MMIO. So for kernels 5.19+, we can't map this
+		// overlapping memory region. Refer to b/237296335 for more details.
+		dev_warn(dev, "drvinit: unable to map gic dist registers, ret=%ld\n",
+			 PTR_ERR(pm_info->gic_base));
+		pm_info->gic_base = 0;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
 	pm_info->mbox_aoc = devm_ioremap_resource(dev, res);
