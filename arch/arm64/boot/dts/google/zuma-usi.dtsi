@@ -79,8 +79,7 @@
 		samsung,usi-phandle = <&sysreg_peric0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c1_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI1_USI>, <&clock GATE_PERIC0_TOP0_USI1_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI1_USI>, <&clock GATE_PERIC0_TOP0_USI1_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp2 0 0x1>;
 		gpio_sda= <&gpp2 1 0x1>;
@@ -100,8 +99,7 @@
 		interrupts = <GIC_SPI IRQ_USI2_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c2_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI2_USI>, <&clock GATE_PERIC0_TOP0_USI2_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI2_USI>, <&clock GATE_PERIC0_TOP0_USI2_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp4 0 0x1>;
 		gpio_sda= <&gpp4 1 0x1>;
@@ -122,8 +120,7 @@
 		interrupts = <GIC_SPI IRQ_USI3_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c3_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI3_USI>, <&clock GATE_PERIC0_TOP0_USI3_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI3_USI>, <&clock GATE_PERIC0_TOP0_USI3_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp6 0 0x1>;
 		gpio_sda= <&gpp6 1 0x1>;
@@ -144,8 +141,7 @@
 		interrupts = <GIC_SPI IRQ_USI4_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c4_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI4_USI>, <&clock GATE_PERIC0_TOP0_USI4_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI4_USI>, <&clock GATE_PERIC0_TOP0_USI4_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp8 0 0x1>;
 		gpio_sda= <&gpp8 1 0x1>;
@@ -165,8 +161,7 @@
 		interrupts = <GIC_SPI IRQ_USI5_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c5_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI5_USI>, <&clock GATE_PERIC0_TOP0_USI5_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI5_USI>, <&clock GATE_PERIC0_TOP0_USI5_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp10 0 0x1>;
 		gpio_sda= <&gpp10 1 0x1>;
@@ -186,8 +181,7 @@
 		interrupts = <GIC_SPI IRQ_USI6_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c6_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI6_USI>, <&clock GATE_PERIC0_TOP0_USI6_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI6_USI>, <&clock GATE_PERIC0_TOP0_USI6_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp12 0 0x1>;
 		gpio_sda= <&gpp12 1 0x1>;
@@ -207,8 +201,7 @@
 		interrupts = <GIC_SPI IRQ_USI0_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c0_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI0_USI>, <&clock GATE_PERIC1_TOP0_USI0_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI0_USI>, <&clock GATE_PERIC1_TOP0_USI0_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp20 0 0x1>;
 		gpio_sda= <&gpp20 1 0x1>;
@@ -228,8 +221,7 @@
 		interrupts = <GIC_SPI IRQ_USI9_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c9_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI9_USI>, <&clock GATE_PERIC1_TOP0_USI9_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI9_USI>, <&clock GATE_PERIC1_TOP0_USI9_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp19 4 0x1>;
 		gpio_sda= <&gpp19 5 0x1>;
@@ -249,8 +241,7 @@
 		interrupts = <GIC_SPI IRQ_USI10_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c10_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI10_USI>, <&clock GATE_PERIC1_TOP0_USI10_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI10_USI>, <&clock GATE_PERIC1_TOP0_USI10_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp20 0 0x1>;
 		gpio_sda= <&gpp20 1 0x1>;
@@ -270,8 +261,7 @@
 		interrupts = <GIC_SPI IRQ_USI11_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c11_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI11_USI>, <&clock GATE_PERIC1_TOP0_USI11_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI11_USI>, <&clock GATE_PERIC1_TOP0_USI11_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp21 0 0x1>;
 		gpio_sda= <&gpp21 1 0x1>;
@@ -291,8 +281,7 @@
 		interrupts = <GIC_SPI IRQ_USI12_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c12_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI12_USI>, <&clock GATE_PERIC1_TOP0_USI12_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI12_USI>, <&clock GATE_PERIC1_TOP0_USI12_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp21 4 0x1>;
 		gpio_sda= <&gpp21 5 0x1>;
@@ -312,8 +301,7 @@
 		interrupts = <GIC_SPI IRQ_USI15_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c15_bus>;
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI15_USI>, <&clock GATE_PERIC1_TOP0_USI15_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI15_USI>, <&clock GATE_PERIC1_TOP0_USI15_USI>;
 		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
 		gpio_scl= <&gpp23 0 0x1>;
 		gpio_sda= <&gpp23 1 0x1>;
@@ -352,8 +340,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 2 &pdma0 3>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI1_USI>, <&clock GATE_PERIC0_TOP0_USI1_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI1_USI>, <&clock GATE_PERIC0_TOP0_USI1_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi1_bus>;
@@ -372,8 +359,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 4 &pdma0 5>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI2_USI>, <&clock GATE_PERIC0_TOP0_USI2_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI2_USI>, <&clock GATE_PERIC0_TOP0_USI2_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi2_bus>;
@@ -392,8 +378,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 6 &pdma0 7>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI3_USI>, <&clock GATE_PERIC0_TOP0_USI3_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI3_USI>, <&clock GATE_PERIC0_TOP0_USI3_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi3_bus>;
@@ -412,8 +397,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 8 &pdma0 9>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI4_USI>, <&clock GATE_PERIC0_TOP0_USI4_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI4_USI>, <&clock GATE_PERIC0_TOP0_USI4_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi4_bus>;
@@ -432,8 +416,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 10 &pdma0 11>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI5_USI>, <&clock GATE_PERIC0_TOP0_USI5_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI5_USI>, <&clock GATE_PERIC0_TOP0_USI5_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi5_bus>;
@@ -452,8 +435,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 12 &pdma0 13>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC0_USI6_USI>, <&clock GATE_PERIC0_TOP0_USI6_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI6_USI>, <&clock GATE_PERIC0_TOP0_USI6_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi6_bus>;
@@ -473,7 +455,6 @@
 //		dmas = <&pdma0 28 &pdma0 29>;
 		dma-names = "tx", "rx";
 //		clocks = <&clock VDOUT_CLK_PERIC0_USI14_USI>, <&clock GATE_PERIC0_TOP1_USI14_USI>;
-		clocks = <&ext_200m>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi14_bus>;
@@ -492,8 +473,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 0 &pdma0 1>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI0_USI>, <&clock GATE_PERIC1_TOP0_USI0_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI0_USI>, <&clock GATE_PERIC1_TOP0_USI0_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi0_bus>;
@@ -512,8 +492,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 18 &pdma0 19>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI9_USI>, <&clock GATE_PERIC1_TOP0_USI9_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI9_USI>, <&clock GATE_PERIC1_TOP0_USI9_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi9_bus>;
@@ -532,8 +511,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 20 &pdma0 21>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI10_USI>, <&clock GATE_PERIC1_TOP0_USI10_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI10_USI>, <&clock GATE_PERIC1_TOP0_USI10_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi10_bus>;
@@ -552,8 +530,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 22 &pdma0 23>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI11_USI>, <&clock GATE_PERIC1_TOP0_USI11_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI11_USI>, <&clock GATE_PERIC1_TOP0_USI11_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi11_bus>;
@@ -572,8 +549,7 @@
 //		dma-mode;
 //		dmas = <&pdma0 24 &pdma0 25>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI12_USI>, <&clock GATE_PERIC1_TOP0_USI12_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI12_USI>, <&clock GATE_PERIC1_TOP0_USI12_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi12_bus>;
@@ -592,8 +568,7 @@
 //		dma-mode;
 //		dmas = <&pdma1 0 &pdma1 1>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI13_USI>, <&clock GATE_PERIC1_TOP0_USI13_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI13_USI>, <&clock GATE_PERIC1_TOP0_USI13_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi13_bus>;
@@ -612,8 +587,7 @@
 //		dma-mode;
 //		dmas = <&pdma1 2 &pdma1 3>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock VDOUT_CLK_PERIC1_USI15_USI>, <&clock GATE_PERIC1_TOP0_USI15_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock VDOUT_CLK_PERIC1_USI15_USI>, <&clock GATE_PERIC1_TOP0_USI15_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi15_bus>;
@@ -634,8 +608,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart1_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC0_TOP0_USI1_USI>, <&clock VDOUT_CLK_PERIC0_USI1_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC0_TOP0_USI1_USI>, <&clock VDOUT_CLK_PERIC0_USI1_USI>;
 		clock-names = "gate_uart_clk1", "ipclk_uart1";
 		interrupts = <GIC_SPI IRQ_USI1_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
@@ -653,8 +626,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart2_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC0_TOP0_USI2_USI>, <&clock VDOUT_CLK_PERIC0_USI2_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC0_TOP0_USI2_USI>, <&clock VDOUT_CLK_PERIC0_USI2_USI>;
 		clock-names = "gate_uart_clk2", "ipclk_uart2";
 		interrupts = <GIC_SPI IRQ_USI2_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
@@ -672,8 +644,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart3_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC0_TOP0_USI3_USI>, <&clock VDOUT_CLK_PERIC0_USI3_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC0_TOP0_USI3_USI>, <&clock VDOUT_CLK_PERIC0_USI3_USI>;
 		clock-names = "gate_uart_clk3", "ipclk_uart3";
 		interrupts = <GIC_SPI IRQ_USI3_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
@@ -691,8 +662,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart4_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC0_TOP0_USI4_USI>, <&clock VDOUT_CLK_PERIC0_USI4_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC0_TOP0_USI4_USI>, <&clock VDOUT_CLK_PERIC0_USI4_USI>;
 		clock-names = "gate_uart_clk4", "ipclk_uart4";
 		interrupts = <GIC_SPI IRQ_USI4_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
@@ -710,8 +680,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart5_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC0_TOP0_USI5_USI>, <&clock VDOUT_CLK_PERIC0_USI5_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC0_TOP0_USI5_USI>, <&clock VDOUT_CLK_PERIC0_USI5_USI>;
 		clock-names = "gate_uart_clk5", "ipclk_uart5";
 		interrupts = <GIC_SPI IRQ_USI5_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
@@ -729,8 +698,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart6_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC0_TOP0_USI6_USI>, <&clock VDOUT_CLK_PERIC0_USI6_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC0_TOP0_USI6_USI>, <&clock VDOUT_CLK_PERIC0_USI6_USI>;
 		clock-names = "gate_uart_clk6", "ipclk_uart6";
 		interrupts = <GIC_SPI IRQ_USI6_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
@@ -749,7 +717,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart14_bus_single>; /* or _bus_dual */
 //		clocks = <&clock GATE_PERIC0_TOP1_USI14_USI>, <&clock VDOUT_CLK_PERIC0_USI14_USI>;
-		clocks = <&ext_200m>;
 		clock-names = "gate_uart_clk14", "ipclk_uart14";
 		interrupts = <GIC_SPI IRQ_USI14_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
@@ -768,8 +735,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart0_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC0_TOP1_USI0_UART>, <&clock VDOUT_CLK_PERIC0_USI0_UART>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC0_TOP1_USI0_UART>, <&clock VDOUT_CLK_PERIC0_USI0_UART>;
 		clock-names = "gate_uart_clk15", "ipclk_uart15";
 		interrupts = <GIC_SPI IRQ_USI0_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric1>;
@@ -787,8 +753,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart9_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC1_TOP0_USI9_USI>, <&clock VDOUT_CLK_PERIC1_USI9_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC1_TOP0_USI9_USI>, <&clock VDOUT_CLK_PERIC1_USI9_USI>;
 		clock-names = "gate_uart_clk9", "ipclk_uart9";
 		interrupts = <GIC_SPI IRQ_USI9_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric1>;
@@ -806,8 +771,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart10_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC1_TOP0_USI10_USI>, <&clock VDOUT_CLK_PERIC1_USI10_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC1_TOP0_USI10_USI>, <&clock VDOUT_CLK_PERIC1_USI10_USI>;
 		clock-names = "gate_uart_clk10", "ipclk_uart10";
 		interrupts = <GIC_SPI IRQ_USI10_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric1>;
@@ -825,8 +789,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart11_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC1_TOP0_USI11_USI>, <&clock VDOUT_CLK_PERIC1_USI11_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC1_TOP0_USI11_USI>, <&clock VDOUT_CLK_PERIC1_USI11_USI>;
 		clock-names = "gate_uart_clk11", "ipclk_uart11";
 		interrupts = <GIC_SPI IRQ_USI11_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric1>;
@@ -844,8 +807,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart12_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC1_TOP0_USI12_USI>, <&clock VDOUT_CLK_PERIC1_USI12_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC1_TOP0_USI12_USI>, <&clock VDOUT_CLK_PERIC1_USI12_USI>;
 		clock-names = "gate_uart_clk12", "ipclk_uart12";
 		interrupts = <GIC_SPI IRQ_USI12_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric1>;
@@ -863,8 +825,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart13_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC1_TOP0_USI13_USI>, <&clock VDOUT_CLK_PERIC1_USI13_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC1_TOP0_USI13_USI>, <&clock VDOUT_CLK_PERIC1_USI13_USI>;
 		clock-names = "gate_uart_clk13", "ipclk_uart13";
 		interrupts = <GIC_SPI IRQ_USI13_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric1>;
@@ -882,8 +843,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart15_bus_single>; /* or _bus_dual */
-//		clocks = <&clock GATE_PERIC1_TOP0_USI15_USI>, <&clock VDOUT_CLK_PERIC1_USI15_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock GATE_PERIC1_TOP0_USI15_USI>, <&clock VDOUT_CLK_PERIC1_USI15_USI>;
 		clock-names = "gate_uart_clk15", "ipclk_uart15";
 		interrupts = <GIC_SPI IRQ_USI15_USI_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric1>;
@@ -902,8 +862,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart17_bus>; /* or _bus_dual */
-//		clocks = <&clock MUX_APM_FUNC>, <&clock DOUT_CLK_APM_USI0_UART>;
-		clocks = <&ext_200m>;
+		clocks = <&clock MUX_APM_FUNC>, <&clock DOUT_CLK_APM_USI0_UART>;
 		clock-names = "gate_uart_clk17", "ipclk_uart17";
 		interrupts = <GIC_SPI IRQ_APM_USI0_UART_ALIVE IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_apm>;
@@ -926,8 +885,7 @@
 		pinctrl-0 = <&uart18_bus>; /* or _bus_dual */
 		pinctrl-1 = <&uart18_bus_rts &uart18_bus_tx_con>;
 		pinctrl-2 = <&uart18_bus_tx_dat>;
-//		clocks = <&clock MUX_APM_FUNC>, <&clock DOUT_CLK_APM_USI1_UART>;
-		clocks = <&ext_200m>;
+		clocks = <&clock MUX_APM_FUNC>, <&clock DOUT_CLK_APM_USI1_UART>;
 		clock-names = "gate_uart_clk18", "ipclk_uart18";
 		interrupts = <GIC_SPI IRQ_APM_USI1_UART_INT_ALIVE IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_apm>;
@@ -946,8 +904,7 @@
 		#size-cells = <0x00000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart19_bus>; /* or _bus_dual */
-//		clocks = <&clock MUX_APM_FUNC>, <&clock DOUT_CLK_APM_USI0_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock MUX_APM_FUNC>, <&clock DOUT_CLK_APM_USI0_USI>;
 		clock-names = "gate_uart_clk19", "ipclk_uart19";
 		interrupts = <GIC_SPI IRQ_APM_USI0_USI_ALIVE IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_apm>;
@@ -963,8 +920,7 @@
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		dma-names = "tx", "rx";
-//		clocks = <&clock MUX_APM_FUNC>, <&clock DOUT_CLK_APM_USI0_USI>;
-		clocks = <&ext_200m>;
+		clocks = <&clock MUX_APM_FUNC>, <&clock DOUT_CLK_APM_USI0_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
 		interrupts = <GIC_SPI IRQ_APM_USI0_USI_ALIVE IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_apm>;
