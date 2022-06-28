@@ -39,4 +39,5 @@ private/google-modules/display
 private/google-modules/gpu/mali_kbase
 private/google-modules/gpu/mali_pixel
 private/google-modules/lwis
+private/google-modules/video/gchips
 "
