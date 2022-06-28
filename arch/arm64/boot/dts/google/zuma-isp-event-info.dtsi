@@ -12,6 +12,7 @@
 #include <dt-bindings/lwis/platform/zuma/lme.h>
 #include <dt-bindings/lwis/platform/zuma/mcsc.h>
 #include <dt-bindings/lwis/platform/zuma/gtnr_merge.h>
+#include <dt-bindings/lwis/platform/zuma/gtnr_align.h>
 
 / {
 	/* FC bayer pipeline interrupt event definitions */
@@ -7339,5 +7340,54 @@
 			<GTNR_MERGE_CMDQ_INT_STOP_CRPT_OFF_CMDQ_EN>,
 			<GTNR_MERGE_CMDQ_INT_PRELOAD_FLUSH>,
 			<GTNR_MERGE_CMDQ_INT_QUE0_OVERFLOW>;
+	};
+
+	gtnr_align_int: gtnr_align-event-info@0 {
+		irq-reg-space = "gtnr_align";
+		irq-src-reg = <0x0 0x40>;
+		irq-reset-reg = <0x0 0x40>;
+		irq-mask-reg = <0x0 0x44>;
+
+		irq-mask-reg-toggle;
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_GTNR_ALIGN_INT_MSA_FRAME_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_GTNR_ALIGN_INT_NM_FRAME_DONE>,
+			<LWIS_PLATFORM_EVENT_ID_GTNR_ALIGN_INT_FRO_DONE>;
+		int-reg-bits =
+			<GTNR_ALIGN_INT_MSA_FRAME_DONE>,
+			<GTNR_ALIGN_INT_NM_FRAME_DONE>,
+			<GTNR_ALIGN_INT_FRO_DONE>;
+	};
+
+
+	gtnr_align_secu_int_mute: gtnr_align-event-info@1 {
+		irq-reg-space = "gtnr_align";
+		irq-src-reg = <0x0 0xc0>;
+		irq-reset-reg = <0x0 0xc8>;
+		irq-mask-reg = <0x0 0xc4>;
+
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_GTNR_ALIGN_SECU_INT_MUTE_MUTE>,
+			<LWIS_PLATFORM_EVENT_ID_GTNR_ALIGN_SECU_INT_MUTE_UNMUTE>;
+		int-reg-bits =
+			<GTNR_ALIGN_SECU_INT_MUTE_MUTE>,
+			<GTNR_ALIGN_SECU_INT_MUTE_UNMUTE>;
+	};
+
+
+	gtnr_align_secu_int_secu_flg: gtnr_align-event-info@2 {
+		irq-reg-space = "gtnr_align";
+		irq-src-reg = <0x0 0xcc>;
+		irq-reset-reg = <0x0 0xd4>;
+		irq-mask-reg = <0x0 0xd0>;
+
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_GTNR_ALIGN_SECU_INT_SECU_FLG_SECURITY_FILTER_VIOLATION_WDMA>,
+			<LWIS_PLATFORM_EVENT_ID_GTNR_ALIGN_SECU_INT_SECU_FLG_SECURITY_FILTER_VIOLATION_RDMA>;
+		int-reg-bits =
+			<GTNR_ALIGN_SECU_INT_SECU_FLG_SECURITY_FILTER_VIOLATION_WDMA>,
+			<GTNR_ALIGN_SECU_INT_SECU_FLG_SECURITY_FILTER_VIOLATION_RDMA>;
 	};
 };

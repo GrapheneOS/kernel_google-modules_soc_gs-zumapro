@@ -977,6 +977,40 @@
 		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
+	lwis_gtnr_align: lwis_gtnr_align@1CC60000 {
+		compatible = "google,lwis-ioreg-device";
+
+		/* Device node name */
+		node-name = "gtnr-align";
+
+		/* Register space */
+		reg =
+			<0x0 0x1CC60000 0x10000>;  /* GTNR Align */
+		reg-names =
+			"gtnr_align";
+
+		interrupts =
+			<GIC_SPI IRQ_TNR_A_TNR IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI IRQ_TNR_A_TNR IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names =
+			"gtnr-align-int",
+			"gtnr-align-mute";
+		interrupt-event-infos =
+			<&gtnr_align_int>,
+			<&gtnr_align_secu_int_mute>;
+
+		clocks =
+			<&clock UMUX_CLKCMU_TNR_ALIGN>;
+		clock-names =
+			"UMUX_CLKCMU_TNR_ALIGN";
+		clock-rates = <0>;
+		clock-family = <CAMERA_CLOCK_FAMILY_CAM>;
+
+		iommus =
+			<&sysmmu_tnr_s2>;
+		samsung,iommu-group = <&iommu_group_isp>;
+	};
+
 	lwis_lme: lwis_lme@1D4A0000 {
 		compatible = "google,lwis-ioreg-device";
 
