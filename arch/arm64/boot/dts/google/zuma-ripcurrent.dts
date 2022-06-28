@@ -24,6 +24,7 @@
 #include "zuma-ripcurrent-usecases.dtsi"
 #include "zuma-ripcurrent-wcharger.dtsi"
 #include "zuma-ripcurrent-wlan.dtsi"
+#include "zuma-ripcurrent-cp-s5300-sit.dtsi"
 
 #include <dt-bindings/pci/pci.h>
 
