@@ -20,7 +20,6 @@ struct cmucal_pll_table pll_shared0_rate_table[] = {
 
 struct cmucal_pll_table pll_shared1_rate_table[] = {
 	PLL_RATE_MPSK(1866000000, 152, 2, 0, 0),
-	PLL_RATE_MPSK(1864999936, 152, 2, 0, 0),
 };
 
 struct cmucal_pll_table pll_shared2_rate_table[] = {
@@ -29,8 +28,6 @@ struct cmucal_pll_table pll_shared2_rate_table[] = {
 
 struct cmucal_pll_table pll_shared3_rate_table[] = {
 	PLL_RATE_MPSK(667000000, 271, 5, 1, 0),
-	PLL_RATE_MPSK(666000000, 271, 5, 0, 0),
-	PLL_RATE_MPSK(666000000, 271, 5, 1, 0),
 };
 
 struct cmucal_pll_table pll_lf_mif_rate_table[] = {
@@ -3998,6 +3995,14 @@ struct cmucal_gate cmucal_gate_list[] = {
 unsigned int cmucal_gate_size = ARRAY_SIZE(cmucal_gate_list);
 
 struct cmucal_clk_fixed_rate cmucal_fixed_rate_list[] = {
+	FIXEDRATE(PLL_SHARED0_D2, 1067000000, EMPTY_CAL_ID),
+	FIXEDRATE(PLL_SHARED0_D3, 711000000, EMPTY_CAL_ID),
+	FIXEDRATE(PLL_SHARED0_D4, 534000000, EMPTY_CAL_ID),
+	FIXEDRATE(PLL_SHARED1_D2, 933000000, EMPTY_CAL_ID),
+	FIXEDRATE(PLL_SHARED1_D3, 622000000, EMPTY_CAL_ID),
+	FIXEDRATE(PLL_SHARED1_D4, 467000000, EMPTY_CAL_ID),
+	FIXEDRATE(PLL_SHARED2_D2, 400000000, EMPTY_CAL_ID),
+	FIXEDRATE(PLL_SHARED3_D2, 333000000, EMPTY_CAL_ID),
 	FIXEDRATE(I_CLK_AOC_NOC, 787000000, EMPTY_CAL_ID),
 	FIXEDRATE(I_CLK_AOC_TRACE, 787000000, EMPTY_CAL_ID),
 	FIXEDRATE(OSCCLK_APM, 26000000, EMPTY_CAL_ID),
