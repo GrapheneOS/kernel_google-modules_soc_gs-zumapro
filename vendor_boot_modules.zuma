@@ -65,6 +65,8 @@ samsung-iommu-group.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
 smfc.ko
+spi-s3c64xx.ko
+spidev.ko
 sscoredump.ko
 systrace.ko
 ufs-exynos-gs.ko
