@@ -211,7 +211,7 @@ def define_zuma():
         kernel_images(
             name = "zuma_{}_images".format(mode),
             build_boot = True,
-            build_vendor_boot = True,
+            build_vendor_kernel_boot = True,
             build_vendor_dlkm = True,
             build_initramfs = True,
             build_dtbo = True,
@@ -224,8 +224,6 @@ def define_zuma():
             vendor_dlkm_modules_list = "vendor_dlkm_modules.zuma",
             vendor_dlkm_modules_blocklist = "vendor_dlkm.blocklist.zuma",
             vendor_dlkm_props = "vendor_dlkm.props.zuma",
-            # VENDOR_RAMDISK_BINARY
-            vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-ripcurrent.img"],
             deps = [
                 # Keep the following in sync with vendor_dlkm.props.zuma:
                 # selinux_fc
