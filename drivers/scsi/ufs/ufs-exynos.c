@@ -42,6 +42,8 @@
 #define DBG_SUITE2_ENABLE		0xE01C115F
 #define DBG_SUITE2_DISABLE		0xE01C195F
 
+#define H8T_GRANULARITY         100
+
 static struct exynos_ufs *ufs_host_backup[1];
 static int ufs_host_index;
 static const char *res_token[2] = {
@@ -966,6 +968,10 @@ static int __apply_dev_quirks(struct ufs_hba *hba)
 	struct ufs_vs_handle *handle = &ufs->handle;
 	const u32 pa_h8_time_offset = 0x329C;
 	u32 peer_hibern8time;
+	struct ufs_cal_param *p = &ufs->cal_param;
+	/* 50us is a heuristic value, so it could change later */
+	u32 ref_gate_margin = (hba->dev_info.wspecversion >= 0x300) ?
+		hba->dev_info.clk_gating_wait_us : 50;
 
 	/*
 	 * As for tActivate, device value is bigger than host value,
@@ -974,10 +980,17 @@ static int __apply_dev_quirks(struct ufs_hba *hba)
 	 * UFS_DEVICE_QUIRK_HOST_PA_TACTIVATE to one.
 	 * In here, it's handled only for tHibern8.
 	 */
+	peer_hibern8time = unipro_readl(handle, pa_h8_time_offset);
 	if (hba->dev_quirks & UFS_DEVICE_QUIRK_HOST_PA_TACTIVATE) {
-		peer_hibern8time = unipro_readl(handle, pa_h8_time_offset);
-		unipro_writel(handle, peer_hibern8time + 1, pa_h8_time_offset);
+		peer_hibern8time++;
+		unipro_writel(handle, peer_hibern8time, pa_h8_time_offset);
 	}
+
+	/* TODO: confirm PA_Granularity (0x15AA) is set to 6 (100us) in case
+	 * Reset Value changes
+	 */
+	p->ah8_thinern8_time = peer_hibern8time * H8T_GRANULARITY;
+	p->ah8_brefclkgatingwaittime = ref_gate_margin;
 
 	return 0;
 }
