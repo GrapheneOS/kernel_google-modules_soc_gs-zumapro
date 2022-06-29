@@ -294,33 +294,41 @@ enum clk_id cmucal_vclk_div_clk_slc3_dclk[] = {
 };
 enum clk_id cmucal_vclk_div_clk_peric0_usi6_usi[] = {
 	DIV_CLK_PERIC0_USI6_USI,
+	MUX_CLKCMU_PERIC0_USI6_USI_USER,
 };
 enum clk_id cmucal_vclk_mux_clkcmu_peric0_ip[] = {
 	MUX_CLKCMU_PERIC0_IP,
 };
 enum clk_id cmucal_vclk_div_clk_peric0_usi3_usi[] = {
 	DIV_CLK_PERIC0_USI3_USI,
+	MUX_CLKCMU_PERIC0_USI3_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric0_usi4_usi[] = {
 	DIV_CLK_PERIC0_USI4_USI,
+	MUX_CLKCMU_PERIC0_USI4_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric0_usi5_usi[] = {
 	DIV_CLK_PERIC0_USI5_USI,
+	MUX_CLKCMU_PERIC0_USI5_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric0_usi14_usi[] = {
 	DIV_CLK_PERIC0_USI14_USI,
+	MUX_CLKCMU_PERIC0_USI14_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric0_usi1_usi[] = {
 	DIV_CLK_PERIC0_USI1_USI,
+	MUX_CLKCMU_PERIC0_USI1_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric0_usi0_uart[] = {
 	DIV_CLK_PERIC0_USI0_UART,
 };
 enum clk_id cmucal_vclk_div_clk_peric0_usi2_usi[] = {
 	DIV_CLK_PERIC0_USI2_USI,
+	MUX_CLKCMU_PERIC0_USI2_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric1_usi11_usi[] = {
 	DIV_CLK_PERIC1_USI11_USI,
+	MUX_CLKCMU_PERIC1_USI11_USI_USER,
 };
 enum clk_id cmucal_vclk_mux_clkcmu_peric1_ip[] = {
 	MUX_CLKCMU_PERIC1_IP,
@@ -330,21 +338,27 @@ enum clk_id cmucal_vclk_div_clk_peric1_i3c[] = {
 };
 enum clk_id cmucal_vclk_div_clk_peric1_usi12_usi[] = {
 	DIV_CLK_PERIC1_USI12_USI,
+	MUX_CLKCMU_PERIC1_USI12_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric1_usi0_usi[] = {
 	DIV_CLK_PERIC1_USI0_USI,
+	MUX_CLKCMU_PERIC1_USI0_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric1_usi9_usi[] = {
 	DIV_CLK_PERIC1_USI9_USI,
+	MUX_CLKCMU_PERIC1_USI9_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric1_usi10_usi[] = {
 	DIV_CLK_PERIC1_USI10_USI,
+	MUX_CLKCMU_PERIC1_USI10_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric1_usi13_usi[] = {
 	DIV_CLK_PERIC1_USI13_USI,
+	MUX_CLKCMU_PERIC1_USI13_USI_USER,
 };
 enum clk_id cmucal_vclk_div_clk_peric1_usi15_usi[] = {
 	DIV_CLK_PERIC1_USI15_USI,
+	MUX_CLKCMU_PERIC1_USI15_USI_USER,
 };
 enum clk_id cmucal_vclk_clk_tpu_add_ch_clk[] = {
 	CLK_TPU_ADD_CH_CLK,
@@ -5272,24 +5286,20 @@ struct vclk_lut cmucal_vclk_div_clk_gsacore_spi_gsc_lut[] = {
 struct vclk_lut cmucal_vclk_div_clk_gsacore_uart_lut[] = {
 	{196750, div_clk_gsacore_uart_nm_lut_params},
 };
-struct vclk_lut cmucal_vclk_div_clk_hsi0_usi2_lut[] = {
-	{400000, div_clk_hsi0_usi2_nm_lut_params},
-};
 struct vclk_lut cmucal_vclk_clkcmu_hsi0_peri_lut[] = {
 	{533250, clkcmu_hsi0_peri_uud_lut_params},
 	{400000, clkcmu_hsi0_peri_nm_lut_params},
 };
-struct vclk_lut cmucal_vclk_div_clk_hsi0_usi0_lut[] = {
-	{400000, div_clk_hsi0_usi0_nm_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_hsi0_usi1_lut[] = {
-	{400000, div_clk_hsi0_usi1_nm_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_hsi0_usi3_lut[] = {
-	{400000, div_clk_hsi0_usi3_nm_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_hsi0_usi4_lut[] = {
-	{400000, div_clk_hsi0_usi4_nm_lut_params},
+struct vclk_lut cmucal_vclk_div_clk_hsi0_usix_lut[] = {
+	{400000, div_clk_hsi0_usix_nm_lut_params},
+	{200000, div_clk_hsi0_usix_200mhz_lut_params},
+	{100000, div_clk_hsi0_usix_100mhz_lut_params},
+	{50000, div_clk_hsi0_usix_50mhz_lut_params},
+	{40000, div_clk_hsi0_usix_40mhz_lut_params},
+	{24000, div_clk_hsi0_usix_24mhz_lut_params},
+	{12000, div_clk_hsi0_usix_12mhz_lut_params},
+	{8000, div_clk_hsi0_usix_8mhz_lut_params},
+	{4000, div_clk_hsi0_usix_4mhz_lut_params},
 };
 struct vclk_lut cmucal_vclk_div_clk_slc_dclk_lut[] = {
 	{580000, div_clk_slc_dclk_od_lut_params},
@@ -5307,59 +5317,27 @@ struct vclk_lut cmucal_vclk_div_clk_slc3_dclk_lut[] = {
 	{580000, div_clk_slc3_dclk_od_lut_params},
 	{533250, div_clk_slc3_dclk_uud_lut_params},
 };
-struct vclk_lut cmucal_vclk_div_clk_peric0_usi6_usi_lut[] = {
-	{400000, div_clk_peric0_usi6_usi_uud_lut_params},
-};
 struct vclk_lut cmucal_vclk_mux_clkcmu_peric0_ip_lut[] = {
 	{400000, mux_clkcmu_peric0_ip_uud_lut_params},
 };
-struct vclk_lut cmucal_vclk_div_clk_peric0_usi3_usi_lut[] = {
-	{400000, div_clk_peric0_usi3_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric0_usi4_usi_lut[] = {
-	{400000, div_clk_peric0_usi4_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric0_usi5_usi_lut[] = {
-	{400000, div_clk_peric0_usi5_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric0_usi14_usi_lut[] = {
-	{400000, div_clk_peric0_usi14_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric0_usi1_usi_lut[] = {
-	{400000, div_clk_peric0_usi1_usi_uud_lut_params},
+struct vclk_lut cmucal_vclk_div_clk_pericx_usix_usi_lut[] = {
+	{400000, div_clk_pericx_usix_usi_nm_lut_params},
+	{200000, div_clk_pericx_usix_usi_200mhz_lut_params},
+	{100000, div_clk_pericx_usix_usi_100mhz_lut_params},
+	{50000, div_clk_pericx_usix_usi_50mhz_lut_params},
+	{24000, div_clk_pericx_usix_usi_24mhz_lut_params},
+	{12000, div_clk_pericx_usix_usi_12mhz_lut_params},
+	{8000, div_clk_pericx_usix_usi_8mhz_lut_params},
+	{4000, div_clk_pericx_usix_usi_4mhz_lut_params},
 };
 struct vclk_lut cmucal_vclk_div_clk_peric0_usi0_uart_lut[] = {
 	{200000, div_clk_peric0_usi0_uart_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric0_usi2_usi_lut[] = {
-	{400000, div_clk_peric0_usi2_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric1_usi11_usi_lut[] = {
-	{400000, div_clk_peric1_usi11_usi_uud_lut_params},
 };
 struct vclk_lut cmucal_vclk_mux_clkcmu_peric1_ip_lut[] = {
 	{400000, mux_clkcmu_peric1_ip_uud_lut_params},
 };
 struct vclk_lut cmucal_vclk_div_clk_peric1_i3c_lut[] = {
 	{200000, div_clk_peric1_i3c_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric1_usi12_usi_lut[] = {
-	{400000, div_clk_peric1_usi12_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric1_usi0_usi_lut[] = {
-	{400000, div_clk_peric1_usi0_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric1_usi9_usi_lut[] = {
-	{400000, div_clk_peric1_usi9_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric1_usi10_usi_lut[] = {
-	{400000, div_clk_peric1_usi10_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric1_usi13_usi_lut[] = {
-	{400000, div_clk_peric1_usi13_usi_uud_lut_params},
-};
-struct vclk_lut cmucal_vclk_div_clk_peric1_usi15_usi_lut[] = {
-	{400000, div_clk_peric1_usi15_usi_uud_lut_params},
 };
 struct vclk_lut cmucal_vclk_clk_tpu_add_ch_clk_lut[] = {
 	{2167, clk_tpu_add_ch_clk_uud_lut_params},
@@ -5598,34 +5576,34 @@ struct vclk cmucal_vclk_list[] = {
 	CMUCAL_VCLK(VCLK_DIV_CLK_GSACORE_SPI_FPS, cmucal_vclk_div_clk_gsacore_spi_fps_lut, cmucal_vclk_div_clk_gsacore_spi_fps, NULL, NULL),
 	CMUCAL_VCLK(VCLK_DIV_CLK_GSACORE_SPI_GSC, cmucal_vclk_div_clk_gsacore_spi_gsc_lut, cmucal_vclk_div_clk_gsacore_spi_gsc, NULL, NULL),
 	CMUCAL_VCLK(VCLK_DIV_CLK_GSACORE_UART, cmucal_vclk_div_clk_gsacore_uart_lut, cmucal_vclk_div_clk_gsacore_uart, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI2, cmucal_vclk_div_clk_hsi0_usi2_lut, cmucal_vclk_div_clk_hsi0_usi2, NULL, NULL),
 	CMUCAL_VCLK(VCLK_CLKCMU_HSI0_PERI, cmucal_vclk_clkcmu_hsi0_peri_lut, cmucal_vclk_clkcmu_hsi0_peri, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI0, cmucal_vclk_div_clk_hsi0_usi0_lut, cmucal_vclk_div_clk_hsi0_usi0, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI1, cmucal_vclk_div_clk_hsi0_usi1_lut, cmucal_vclk_div_clk_hsi0_usi1, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI3, cmucal_vclk_div_clk_hsi0_usi3_lut, cmucal_vclk_div_clk_hsi0_usi3, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI4, cmucal_vclk_div_clk_hsi0_usi4_lut, cmucal_vclk_div_clk_hsi0_usi4, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI0, cmucal_vclk_div_clk_hsi0_usix_lut, cmucal_vclk_div_clk_hsi0_usi0, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI1, cmucal_vclk_div_clk_hsi0_usix_lut, cmucal_vclk_div_clk_hsi0_usi1, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI2, cmucal_vclk_div_clk_hsi0_usix_lut, cmucal_vclk_div_clk_hsi0_usi2, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI3, cmucal_vclk_div_clk_hsi0_usix_lut, cmucal_vclk_div_clk_hsi0_usi3, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_HSI0_USI4, cmucal_vclk_div_clk_hsi0_usix_lut, cmucal_vclk_div_clk_hsi0_usi4, NULL, NULL),
 	CMUCAL_VCLK(VCLK_DIV_CLK_SLC_DCLK, cmucal_vclk_div_clk_slc_dclk_lut, cmucal_vclk_div_clk_slc_dclk, NULL, NULL),
 	CMUCAL_VCLK(VCLK_DIV_CLK_SLC1_DCLK, cmucal_vclk_div_clk_slc1_dclk_lut, cmucal_vclk_div_clk_slc1_dclk, NULL, NULL),
 	CMUCAL_VCLK(VCLK_DIV_CLK_SLC2_DCLK, cmucal_vclk_div_clk_slc2_dclk_lut, cmucal_vclk_div_clk_slc2_dclk, NULL, NULL),
 	CMUCAL_VCLK(VCLK_DIV_CLK_SLC3_DCLK, cmucal_vclk_div_clk_slc3_dclk_lut, cmucal_vclk_div_clk_slc3_dclk, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI6_USI, cmucal_vclk_div_clk_peric0_usi6_usi_lut, cmucal_vclk_div_clk_peric0_usi6_usi, NULL, NULL),
 	CMUCAL_VCLK(VCLK_MUX_CLKCMU_PERIC0_IP, cmucal_vclk_mux_clkcmu_peric0_ip_lut, cmucal_vclk_mux_clkcmu_peric0_ip, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI3_USI, cmucal_vclk_div_clk_peric0_usi3_usi_lut, cmucal_vclk_div_clk_peric0_usi3_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI4_USI, cmucal_vclk_div_clk_peric0_usi4_usi_lut, cmucal_vclk_div_clk_peric0_usi4_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI5_USI, cmucal_vclk_div_clk_peric0_usi5_usi_lut, cmucal_vclk_div_clk_peric0_usi5_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI14_USI, cmucal_vclk_div_clk_peric0_usi14_usi_lut, cmucal_vclk_div_clk_peric0_usi14_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI1_USI, cmucal_vclk_div_clk_peric0_usi1_usi_lut, cmucal_vclk_div_clk_peric0_usi1_usi, NULL, NULL),
 	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI0_UART, cmucal_vclk_div_clk_peric0_usi0_uart_lut, cmucal_vclk_div_clk_peric0_usi0_uart, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI2_USI, cmucal_vclk_div_clk_peric0_usi2_usi_lut, cmucal_vclk_div_clk_peric0_usi2_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI11_USI, cmucal_vclk_div_clk_peric1_usi11_usi_lut, cmucal_vclk_div_clk_peric1_usi11_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI1_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric0_usi1_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI2_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric0_usi2_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI3_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric0_usi3_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI4_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric0_usi4_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI5_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric0_usi5_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI6_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric0_usi6_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC0_USI14_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric0_usi14_usi, NULL, NULL),
 	CMUCAL_VCLK(VCLK_MUX_CLKCMU_PERIC1_IP, cmucal_vclk_mux_clkcmu_peric1_ip_lut, cmucal_vclk_mux_clkcmu_peric1_ip, NULL, NULL),
 	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_I3C, cmucal_vclk_div_clk_peric1_i3c_lut, cmucal_vclk_div_clk_peric1_i3c, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI12_USI, cmucal_vclk_div_clk_peric1_usi12_usi_lut, cmucal_vclk_div_clk_peric1_usi12_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI0_USI, cmucal_vclk_div_clk_peric1_usi0_usi_lut, cmucal_vclk_div_clk_peric1_usi0_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI9_USI, cmucal_vclk_div_clk_peric1_usi9_usi_lut, cmucal_vclk_div_clk_peric1_usi9_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI10_USI, cmucal_vclk_div_clk_peric1_usi10_usi_lut, cmucal_vclk_div_clk_peric1_usi10_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI13_USI, cmucal_vclk_div_clk_peric1_usi13_usi_lut, cmucal_vclk_div_clk_peric1_usi13_usi, NULL, NULL),
-	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI15_USI, cmucal_vclk_div_clk_peric1_usi15_usi_lut, cmucal_vclk_div_clk_peric1_usi15_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI0_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric1_usi0_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI9_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric1_usi9_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI10_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric1_usi10_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI11_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric1_usi11_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI12_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric1_usi12_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI13_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric1_usi13_usi, NULL, NULL),
+	CMUCAL_VCLK(VCLK_DIV_CLK_PERIC1_USI15_USI, cmucal_vclk_div_clk_pericx_usix_usi_lut, cmucal_vclk_div_clk_peric1_usi15_usi, NULL, NULL),
 	CMUCAL_VCLK(VCLK_CLK_TPU_ADD_CH_CLK, cmucal_vclk_clk_tpu_add_ch_clk_lut, cmucal_vclk_clk_tpu_add_ch_clk, NULL, NULL),
 
 /* COMMON VCLK*/
