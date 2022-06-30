@@ -28,6 +28,7 @@ exynos-pd_el3.ko
 exynos-pmu-if.ko
 exynos-reboot.ko
 exynos_mct_v3.ko
+exynos_mfc.ko
 exynos_tty.ko
 failover.ko
 fscache.ko
