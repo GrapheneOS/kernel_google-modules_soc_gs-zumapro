@@ -112,7 +112,7 @@
 		dbgack-mask = <0xff00000>;
 		halt = <1>;
 		retention = <1>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	ecc-handler {
@@ -260,7 +260,7 @@
 		pmu-dbgcore-config = <0x3080>;
 		pmu-dbgcore-status = <0x3084>;
 		intr-bitoffset = <0>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	exynos_adv_tracer_s2d {
@@ -279,7 +279,7 @@
 			   "CLUSTER0", "GPU", "AOCCORE", "AURCORE", "BWCORE","TPUCORE",
 			   "ISPFECORE", "SLC0", "SLC1", "SLC2", "SLC3";
 
-		status = "ok";
+		status = "okay";
 	};
 
 	exynos-ehld {
