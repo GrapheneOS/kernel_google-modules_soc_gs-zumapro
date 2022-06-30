@@ -24,6 +24,8 @@
 #include "zuma-ripcurrent-usecases.dtsi"
 #include "zuma-ripcurrent-wcharger.dtsi"
 
+#include <dt-bindings/pci/pci.h>
+
 / {
 	board_id = <0x40101>;
 	board_rev = <0x000000>;
@@ -72,4 +74,34 @@
 		gpios = <&gpa6 2 EXYNOS_PIN_FUNC_EINT>;
 		wakeup-source;
 	};
+};
+
+&pcie_0 {       /* pcie ch0 used for the connection with CP */
+	status = "okay";
+	use-cache-coherency = "true";
+	use-msi = "true";
+	use-sicd = "true";
+	use-ia = "true";
+	use-l1ss = "true";
+	phy-power-off = "false";
+	use-pcieon-sleep = "true";
+	use-sysmmu = "disabled";
+	ep-device-type = <EP_SAMSUNG_MODEM>;
+};
+
+&sysmmu_hsi1 {
+	use-map-once = "true";
+	status = "disabled";
+};
+
+&pcie_1 {       /* pcie ch1 used for the connection with WiFi */
+	status = "okay";
+	num-lanes = <1>;
+	use-sicd = "true";
+	use-ia = "true";
+	use-l1ss = "true";
+	use-sysmmu = "disabled";
+	max-link-speed = <LINK_SPEED_GEN2>;
+	ep-device-type = <EP_BCM_WIFI>;
+	pcie,wlan-gpio = <&gph3 4 0x1 /* WLAN_EN */ >;  /* WLAN_REG_ON */
 };
