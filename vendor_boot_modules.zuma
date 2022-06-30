@@ -14,8 +14,10 @@ dss.ko
 dwc3-exynos-usb.ko
 ect_parser.ko
 ehld.ko
+exynos-adv-tracer-s2d.ko
 exynos-adv-tracer.ko
 exynos-coresight.ko
+exynos-debug-test.ko
 exynos-drm.ko
 exynos-ecc-handler.ko
 exynos-pd_el3.ko
@@ -55,6 +57,7 @@ phy-exynos-mipi-dsim.ko
 phy-exynos-mipi.ko
 phy-exynos-usbdrd-super.ko
 pinctrl-exynos-gs.ko
+pixel-debug-test.ko
 pmic_class.ko
 rtc-s2mpg14.ko
 s2mpg14-key.ko
