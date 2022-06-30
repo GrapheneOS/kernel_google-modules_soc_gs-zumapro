@@ -7,7 +7,7 @@
  *
  */
 
-#include <dt-bindings/interrupt-controller/gs201.h>
+#include <dt-bindings/interrupt-controller/zuma.h>
 
 / {
 	mfc: mfc {
@@ -15,7 +15,7 @@
 		compatible = "samsung,exynos-mfc";
 
 		/* for vb2 device */
-		iommus = <&sysmmu_mfc0>, <&sysmmu_mfc1>;
+		iommus = <&sysmmu_mfc>;
 		samsung,iommu-group = <&iommu_group_mfc>;
 		samsung,iommu-reserved-map = <0x0 0x0 0x10000000>,
 					   <0x0 0x10000000 0x100000>;
@@ -25,7 +25,10 @@
 		samsung,tzmp;
 
 		/* MFC version */
-		/* ip_ver is set in gs101-a0.dts and gs101-b0.dts */
+		ip_ver = <0x16060000>;
+
+		/* FW base security ctrl */
+		security_ctrl = <1>;
 
 		/* Debug mode (disable needs sysmmu,async-fault) */
 		debug_mode = <0>;
@@ -199,11 +202,11 @@
 			/* Basic setting */
 			compatible = "samsung,exynos-mfc-core";
 			id = <0>;
-			reg = <0x0 0x1C8D0000 0x10000>;
+			reg = <0x0 0x1A4D0000 0x10000>;
 			interrupts = <0 IRQ_MFC_MFC IRQ_TYPE_LEVEL_HIGH>;
 			clock-names = "aclk_mfc";
 			clocks = <&clock GATE_MFC>;
-			iommus = <&sysmmu_mfc0>, <&sysmmu_mfc1>;
+			iommus = <&sysmmu_mfc>;
 			samsung,iommu-group = <&iommu_group_mfc>;
 			samsung,iommu-reserved-map = <0x0 0x10000000 0x100000>;
 			/* samsung,iommu-identity-map = <0x0 0x15E1F000 0x10000> */
@@ -212,13 +215,16 @@
 			samsung,imgloader-s2mpu-support;
 
 			/* MFC version */
-			/* ip_ver is set in gs101-a0.dts and gs101-b0.dts */
+			ip_ver = <0x16060000>;
 
 			/* Sysmmu check */
 			share_sysmmu = <0>;
 			axid_mask = <0xFFFF>;
 			mfc_fault_num = <0x0>;
-			trans_info_offset = <0x1004>;
+			trans_info_offset = <0x8078>;
+			fault_status_offset = <0x8060>;
+			fault_pmmuid_offset = <0x807C>;
+			fault_pmmuid_shift = <24>;
 
 			/* LLC (Last Level Cache) */
 			llc = <0>;
@@ -251,23 +257,22 @@
 			ranges;
 
 			iommu {
-				reg = <0x0 0x1C870000 0x9000>,
-				    <0x0 0x1C8A0000 0x9000>;
+				reg = <0x0 0x1A470000 0x9000>;
 			};
 			ssmt {
-				reg = <0x0 0x1C8E4000 0x100>,
-				    <0x0 0x1C8F4000 0x100>;
+				reg = <0x0 0x1A4E4000 0x100>,
+				    <0x0 0x1A4F4000 0x100>;
 			};
 			sysreg {
-				reg = <0x0 0x1C820000 0x500>;
+				reg = <0x0 0x1A420000 0x500>;
 			};
 
 			/* Default QoS table */
 			mfc_default_qos_table {
 				mfc_d_qos_variant_0 {
 					thrd_mb = <0>;
-					freq_mfc = <134000>;
-					freq_int = <100000>;
+					freq_mfc = <100000>;
+					freq_int = <178000>;
 					freq_mif = <421000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
@@ -277,7 +282,7 @@
 				};
 				mfc_d_qos_variant_1 {
 					thrd_mb = <265147>;
-					freq_mfc = <267000>;
+					freq_mfc = <310000>;
 					freq_int = <200000>;
 					freq_mif = <421000>;
 					mo_value = <0>;
@@ -288,7 +293,7 @@
 				};
 				mfc_d_qos_variant_2 {
 					thrd_mb = <551811>;
-					freq_mfc = <267000>;
+					freq_mfc = <310000>;
 					freq_int = <200000>;
 					freq_mif = <676000>;
 					mo_value = <0>;
@@ -299,8 +304,8 @@
 				};
 				mfc_d_qos_variant_3 {
 					thrd_mb = <1202239>;
-					freq_mfc = <356000>;
-					freq_int = <332000>;
+					freq_mfc = <400000>;
+					freq_int = <356000>;
 					freq_mif = <1014000>;
 					mo_value = <1>;
 					mo_10bit_value = <0>;
@@ -311,7 +316,7 @@
 				mfc_d_qos_variant_4 {
 					thrd_mb = <1887335>;
 					freq_mfc = <465000>;
-					freq_int = <332000>;
+					freq_int = <356000>;
 					freq_mif = <1014000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
@@ -322,7 +327,7 @@
 				mfc_d_qos_variant_5 {
 					thrd_mb = <2088750>;
 					freq_mfc = <664000>;
-					freq_int = <332000>;
+					freq_int = <356000>;
 					freq_mif = <1539000>;
 					mo_value = <1>;
 					mo_10bit_value = <0>;
@@ -358,8 +363,8 @@
 			mfc_encoder_qos_table {
 				mfc_e_qos_variant_0 {
 					thrd_mb = <0>;
-					freq_mfc = <134000>;
-					freq_int = <100000>;
+					freq_mfc = <100000>;
+					freq_int = <178000>;
 					freq_mif = <421000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
@@ -369,7 +374,7 @@
 				};
 				mfc_e_qos_variant_1 {
 					thrd_mb = <265147>;
-					freq_mfc = <267000>;
+					freq_mfc = <310000>;
 					freq_int = <200000>;
 					freq_mif = <421000>;
 					mo_value = <0>;
@@ -380,7 +385,7 @@
 				};
 				mfc_e_qos_variant_2 {
 					thrd_mb = <551811>;
-					freq_mfc = <267000>;
+					freq_mfc = <310000>;
 					freq_int = <200000>;
 					freq_mif = <676000>;
 					mo_value = <0>;
@@ -391,8 +396,8 @@
 				};
 				mfc_e_qos_variant_3 {
 					thrd_mb = <1202239>;
-					freq_mfc = <356000>;
-					freq_int = <332000>;
+					freq_mfc = <400000>;
+					freq_int = <356000>;
 					freq_mif = <1014000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
@@ -403,7 +408,7 @@
 				mfc_e_qos_variant_4 {
 					thrd_mb = <1887335>;
 					freq_mfc = <465000>;
-					freq_int = <332000>;
+					freq_int = <356000>;
 					freq_mif = <1014000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
@@ -413,7 +418,7 @@
 				};
 				mfc_e_qos_variant_5 {
 					thrd_mb = <2088750>;
-					freq_mfc = <533000>;
+					freq_mfc = <664000>;
 					freq_int = <200000>;
 					freq_mif = <1539000>;
 					mo_value = <1>;
@@ -425,7 +430,7 @@
 				mfc_e_qos_variant_6 {
 					thrd_mb = <2625764>;
 					freq_mfc = <664000>;
-					freq_int = <332000>;
+					freq_int = <356000>;
 					freq_mif = <1539000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
