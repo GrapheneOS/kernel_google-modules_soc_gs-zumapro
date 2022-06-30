@@ -20,6 +20,7 @@
 		hsi2c11 = &hsi2c_11;
 		hsi2c12 = &hsi2c_12;
 		hsi2c13 = &hsi2c_13;
+		hsi2c14 = &hsi2c_14;
 		spi0 = &spi_0;
 		spi1 = &spi_1;
 		spi2 = &spi_2;
@@ -320,6 +321,27 @@
 		reg = <0x00000000 0x10CE0000 0x00001000>;
 		status = "disabled";
 	};
+	hsi2c_14: hsi2c@10980000 {
+		compatible = "samsung,exynos5-hsi2c";
+		samsung,check-transdone-int;
+		#address-cells = <0x00000001>;
+		#size-cells = <0x00000000>;
+		default-clk = <200000000>;
+		samsung,scl-clk-stretching;
+		samsung,usi-i2c-v2;
+		interrupts = <GIC_SPI IRQ_USI14_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hsi2c14_bus>;
+		clocks = <&clock VDOUT_CLK_PERIC0_USI14_USI>, <&clock GATE_PERIC0_TOP0_USI14_USI>;
+		clock-names = "ipclk_hsi2c", "gate_hsi2c_clk";
+		gpio_scl= <&gpp16 0 0x1>;
+		gpio_sda= <&gpp16 1 0x1>;
+		samsung,usi-phandle = <&sysreg_peric0>;
+		samsung,usi-offset = <0x00000028>;
+		reg = <0x00000000 0x10980000 0x00001000>;
+		status = "disabled";
+	};
+
 	spi_1: spi@10880000 {
 		compatible = "samsung,exynos-spi";
 		samsung,spi-fifosize = <64>;
