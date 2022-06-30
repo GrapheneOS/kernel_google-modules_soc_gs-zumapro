@@ -33,15 +33,15 @@ netfs.ko
 page_pool.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
-panel-samsung-s6e3fc3.ko
 panel-samsung-s6e3fc3-p10.ko
+panel-samsung-s6e3fc3.ko
 panel-samsung-s6e3hc2.ko
 panel-samsung-s6e3hc3-c10.ko
 panel-samsung-s6e3hc3.ko
 panel-samsung-s6e3hc4.ko
 panel-samsung-sofef01.ko
-phy-exynos-mipi.ko
 phy-exynos-mipi-dsim.ko
+phy-exynos-mipi.ko
 pinctrl-exynos-gs.ko
 s3c2410_wdt.ko
 samsung-iommu-group.ko
