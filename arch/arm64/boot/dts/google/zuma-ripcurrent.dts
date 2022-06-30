@@ -9,6 +9,8 @@
 /plugin/;
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/pinctrl/gs101.h>
+#include <dt-bindings/pinctrl/samsung.h>
 #include "zuma-ripcurrent-display.dtsi"
 
 / {
@@ -26,3 +28,38 @@
 &serial_0 {
 	status = "okay";
 };
+
+&pinctrl_0 {
+	key_voldown: key-voldown {
+		samsung,pins = "gpa4-1";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+		samsung,pin-drv = <GS101_PIN_DRV_2_5_MA>;
+	};
+
+	key_volup: key-volup {
+		samsung,pins = "gpa6-2";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+		samsung,pin-drv = <GS101_PIN_DRV_2_5_MA>;
+	};
+};
+
+&gpio_keys {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&key_voldown &key_volup>;
+	button@1 {
+		label = "gpio-keys: KEY_VOLUMEDOWN";
+		linux,code = <114>;
+		gpios = <&gpa4 1 EXYNOS_PIN_FUNC_EINT>;
+		wakeup-source;
+	};
+	button@2 {
+		label = "gpio-keys: KEY_VOLUMEUP";
+		linux,code = <115>;
+		gpios = <&gpa6 2 EXYNOS_PIN_FUNC_EINT>;
+		wakeup-source;
+	};
+};
+

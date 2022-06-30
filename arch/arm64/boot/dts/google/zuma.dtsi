@@ -400,6 +400,10 @@
 		reg = <0x0 0x15460000 0x10000>;
 	};
 
+	gpio_keys: gpio_keys {
+		compatible = "gpio-keys";
+	};
+
 	watchdog_cl0@10060000 {
 		compatible = "google,zuma-cl0-wdt";
 		reg = <0x0 0x10060000 0x100>;
