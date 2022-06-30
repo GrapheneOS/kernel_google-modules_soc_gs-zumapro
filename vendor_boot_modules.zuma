@@ -30,6 +30,8 @@ gs_acpm.ko
 i2c-acpm.ko
 i2c-dev.ko
 i2c-exynos5.ko
+keycombo.ko
+keydebug.ko
 mali_kbase.ko
 mali_pixel.ko
 net_failover.ko
