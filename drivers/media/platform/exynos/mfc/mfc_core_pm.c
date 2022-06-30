@@ -190,8 +190,10 @@ void mfc_core_pm_clock_off(struct mfc_core *core)
 
 int mfc_core_pm_power_on(struct mfc_core *core)
 {
+#ifdef CONFIG_MFC_USE_BUS_DEVFREQ
 	struct mfc_dev *dev = core->dev;
 	struct mfc_platdata *pdata = dev->pdata;
+#endif
 	int ret;
 
 	MFC_TRACE_CORE("++ Power on\n");
@@ -238,8 +240,10 @@ err_power_on:
 
 int mfc_core_pm_power_off(struct mfc_core *core)
 {
+#ifdef CONFIG_MFC_USE_BUS_DEVFREQ
 	struct mfc_dev *dev = core->dev;
 	struct mfc_platdata *pdata = dev->pdata;
+#endif
 	int ret;
 
 	MFC_TRACE_CORE("++ Power off\n");
