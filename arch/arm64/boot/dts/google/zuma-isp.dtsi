@@ -666,6 +666,8 @@
 			<&sysmmu_ispfe_s1>,
 			<&sysmmu_ispfe_s2>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains = <&pd_ispfe>;
 	};
 
 	lwis_gdc0: lwis_gdc@1D440000 {
@@ -709,6 +711,8 @@
 		iommus =
 			<&sysmmu_gdc>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains = <&pd_gdc>;
 	};
 
 	lwis_gdc1: lwis_gdc@1D470000 {
@@ -752,6 +756,8 @@
 		iommus =
 			<&sysmmu_gdc>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains = <&pd_gdc>;
 	};
 
 	lwis_mcsc: lwis_mcsc@1D040000 {
@@ -803,6 +809,8 @@
 		iommus =
 			<&sysmmu_mcsc>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains = <&pd_mcsc>;
 	};
 
 	lwis_gse: lwis_gse@0x1D840000 {
@@ -862,6 +870,8 @@
 		iommus =
 			<&sysmmu_gse>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains = <&pd_gse>;
 	};
 
 	lwis_be_core: lwis_be_core@1C440000 {
@@ -933,6 +943,10 @@
 			<&sysmmu_rgbp_s0>,
 			<&sysmmu_rgbp_s1>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains =
+			<&pd_yuvp>,
+			<&pd_rgbp>;
 	};
 
 	lwis_gtnr_merge: lwis_gtnr_merge@1CC40000 {
@@ -987,6 +1001,8 @@
 			<&sysmmu_tnr_s0>,
 			<&sysmmu_tnr_s1>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains = <&pd_tnr>;
 	};
 
 	lwis_gtnr_align: lwis_gtnr_align@1CC60000 {
@@ -1056,6 +1072,8 @@
 		iommus =
 			<&sysmmu_gdc>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains = <&pd_gdc>;
 	};
 
 	lwis_votf: lwis_votf@1C460000 {
@@ -1081,6 +1099,29 @@
 			"gdc0-c2serv",
 			"gdc1-c2serv",
 			"gse-c2serv";
+
+		clocks =
+			<&clock UMUX_CLKCMU_YUVP>,
+			<&clock UMUX_CLKCMU_TNR_MERGE>,
+			<&clock UMUX_CLKCMU_GDC_GDC0>,
+			<&clock UMUX_CLKCMU_GDC_GDC1>,
+			<&clock UMUX_CLKCMU_MCSC>,
+			<&clock UMUX_CLKCMU_GSE>;
+		clock-names =
+			"UMUX_CLKCMU_YUVP",
+			"UMUX_CLKCMU_TNR_MERGE",
+			"UMUX_CLKCMU_GDC_GDC0",
+			"UMUX_CLKCMU_GDC_GDC1",
+			"UMUX_CLKCMU_MCSC",
+			"UMUX_CLKCMU_GSE";
+		clock-rates = <0>;
+
+		power-domains =
+			<&pd_yuvp>,
+			<&pd_tnr>,
+			<&pd_gdc>,
+			<&pd_mcsc>,
+			<&pd_gse>;
 	};
 
 	lwis_slc: lwis_slc@0 {
