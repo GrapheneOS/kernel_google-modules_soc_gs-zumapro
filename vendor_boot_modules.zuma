@@ -26,6 +26,7 @@ fscache.ko
 g2d.ko
 gs-chipid.ko
 gs_acpm.ko
+i2c-acpm.ko
 i2c-dev.ko
 i2c-exynos5.ko
 mali_kbase.ko
