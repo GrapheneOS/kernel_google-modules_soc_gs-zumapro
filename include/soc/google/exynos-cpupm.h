@@ -33,4 +33,7 @@ static inline void disable_power_mode(int cpu, int type) { return; }
 static inline void enable_power_mode(int cpu, int type) { return; }
 #endif
 
+#define PMU_ALLOWED_C2		(1)
+#define PMU_INFORM0		(0x800)
+
 #endif /* __EXYNOS_CPUPM_H */

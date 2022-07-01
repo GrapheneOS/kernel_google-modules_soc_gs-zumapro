@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * GS101 SoC CPU Power Management driver
+ * GS SoC CPU Power Management driver
  *
  * Copyright (c) 2019 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
- *
- * GS101 based board files should include this file.
  *
  */
 
@@ -1440,6 +1438,14 @@ static int exynos_cpupm_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	/*
+	 * In case of ZUMA, we can allow for core to enter C2 by informing TF-A
+	 * using PMU_INFORM0.
+	 */
+	exynos_pmu_write(PMU_INFORM0, PMU_ALLOWED_C2);
+#endif
+
 	ret = register_trace_android_vh_cpu_idle_enter(vendor_hook_cpu_idle_enter, NULL);
 	WARN_ON(ret);
 	ret = register_trace_android_vh_cpu_idle_exit(vendor_hook_cpu_idle_exit, NULL);
@@ -1468,7 +1474,7 @@ static struct platform_driver exynos_cpupm_driver = {
 	.probe		= exynos_cpupm_probe,
 };
 
-MODULE_SOFTDEP("pre: exynos_mct");
+MODULE_SOFTDEP("pre: exynos_mct_v3 exynos_mct");
 MODULE_DESCRIPTION("Exynos CPUPM driver");
 MODULE_LICENSE("GPL");
 module_platform_driver(exynos_cpupm_driver);
