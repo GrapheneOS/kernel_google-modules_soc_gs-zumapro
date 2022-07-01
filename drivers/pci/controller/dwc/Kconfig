@@ -20,3 +20,9 @@ config PCI_EXYNOS_CAL_GS101
 	depends on PCI_MSI_IRQ_DOMAIN
 	select PCIE_DW_HOST
 
+config PCI_EXYNOS_CAL_ZUMA
+	tristate "Samsung Exynos PCIe PHY CAL for ZUMA"
+	depends on PCI
+	depends on OF
+	depends on PCI_MSI_IRQ_DOMAIN
+	select PCIE_DW_HOST
