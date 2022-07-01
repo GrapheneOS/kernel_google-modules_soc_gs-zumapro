@@ -81,7 +81,7 @@
 	use-cache-coherency = "true";
 	use-msi = "true";
 	use-sicd = "true";
-	use-ia = "true";
+	use-ia = "false";
 	use-l1ss = "true";
 	phy-power-off = "false";
 	use-pcieon-sleep = "true";
@@ -98,7 +98,7 @@
 	status = "okay";
 	num-lanes = <1>;
 	use-sicd = "true";
-	use-ia = "true";
+	use-ia = "false";
 	use-l1ss = "true";
 	use-sysmmu = "disabled";
 	max-link-speed = <LINK_SPEED_GEN2>;
