@@ -17,9 +17,9 @@
 		compatible = "dlg,slg51002";
 		reg = <0x75>;
 		status = "ok";
-		dlg,buck-gpios = <&s2mpg13_gpio 3 GPIO_ACTIVE_HIGH>;
-		dlg,bb-gpios = <&s2mpg13_gpio 1 GPIO_ACTIVE_HIGH>;
-		dlg,cs-gpios = <&s2mpg13_gpio 0 GPIO_ACTIVE_HIGH>;
+		dlg,buck-gpios = <&s2mpg15_gpio 3 GPIO_ACTIVE_HIGH>;
+		dlg,bb-gpios = <&s2mpg15_gpio 1 GPIO_ACTIVE_HIGH>;
+		dlg,cs-gpios = <&s2mpg15_gpio 0 GPIO_ACTIVE_HIGH>;
 		dlg,reg-init-cells = <2>;
 
 		regulators {
