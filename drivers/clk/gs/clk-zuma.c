@@ -1034,6 +1034,12 @@ struct init_vclk zuma_hsi0_vclks[] = {
 		0,
 		0,
 		NULL),
+	VCLK(VDOUT_CLK_TOP_HSI0_NOC,
+		CLKCMU_HSI0_NOC,
+		"VDOUT_CLK_TOP_HSI0_NOC",
+		0,
+		0,
+		NULL),
 };
 
 struct init_vclk zuma_hsi2_vclks[] = {
