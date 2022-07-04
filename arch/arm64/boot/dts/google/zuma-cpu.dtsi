@@ -191,7 +191,6 @@
 			type = <POWERMODE_TYPE_CLUSTER>;
 			cal-id = <1>;
 			siblings = CPU_CL1;
-			entry-allowed = CPU_CL1;
 		};
 
 		cpd_cl2 {
@@ -200,7 +199,6 @@
 			type = <POWERMODE_TYPE_CLUSTER>;
 			cal-id = <2>;
 			siblings = CPU_CL2;
-			entry-allowed = CPU_CL2;
 		};
 
 		sicd {
@@ -208,7 +206,6 @@
 			target-residency = <10000>;
 			type = <POWERMODE_TYPE_SYSTEM>;
 			siblings = CPU_ALL;
-			entry-allowed = CPU_ALL;
 		};
 
 		wakeup-mask {
