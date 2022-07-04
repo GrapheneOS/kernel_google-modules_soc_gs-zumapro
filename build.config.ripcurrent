@@ -35,6 +35,8 @@ MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.zuma
 EXT_MODULES+="
 private/google-modules/soc/gs
 private/google-modules/aoc
+private/google-modules/aoc/alsa
+private/google-modules/amplifiers/cs35l41
 private/google-modules/bms
 private/google-modules/display
 private/google-modules/gpu/mali_kbase
