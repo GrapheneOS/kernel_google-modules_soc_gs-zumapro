@@ -141,7 +141,7 @@
 				entry-latency-us = <70>;
 				exit-latency-us = <160>;
 				min-residency-us = <2000>;
-				status = "disabled";
+				status = "okay";
 			};
 			MAKALU_CPU_SLEEP: makalu-cpu-sleep {
 				idle-state-name = "c2";
