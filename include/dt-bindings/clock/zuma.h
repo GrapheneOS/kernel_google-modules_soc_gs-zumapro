@@ -41,6 +41,7 @@
 #define CIS_CLK5			(CLK_TOP_BASE + 14)
 #define CIS_CLK6			(CLK_TOP_BASE + 15)
 #define CIS_CLK7			(CLK_TOP_BASE + 16)
+#define VDOUT_CLK_TOP_HSI0_NOC		(CLK_TOP_BASE + 17)
 
 /* NOC level CLK's ID */
 #define CLK_NOCL1B_BASE			(100)	/* AON bus */
