@@ -805,12 +805,14 @@ static int s2mpg15_pmic_probe(struct platform_device *pdev)
 		config.of_node = pdata->regulators[i].reg_node;
 		s2mpg15->opmode[id] = regulators[id].enable_mask;
 
-		s2mpg15->rdev[i] = regulator_register(&regulators[id], &config);
+		s2mpg15->rdev[i] = devm_regulator_register(&pdev->dev,
+							   &regulators[id],
+							   &config);
 		if (IS_ERR(s2mpg15->rdev[i])) {
 			ret = PTR_ERR(s2mpg15->rdev[i]);
 			dev_err(&pdev->dev, "regulator init failed for %d\n", i);
 			s2mpg15->rdev[i] = NULL;
-			goto err;
+			return ret;
 		}
 	}
 
@@ -820,13 +822,13 @@ static int s2mpg15_pmic_probe(struct platform_device *pdev)
 	ret = s2mpg15_ocp_warn(s2mpg15, pdata);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "s2mpg15_ocp_warn fail\n");
-		goto err;
+		return ret;
 	}
 
 	ret = s2mpg15_set_sel_vgpio(s2mpg15, pdata);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "s2mpg15_set_sel_vgpio fail\n");
-		goto err;
+		return ret;
 	}
 
 	if (pdata->wtsr_en)
@@ -835,7 +837,7 @@ static int s2mpg15_pmic_probe(struct platform_device *pdev)
 	ret = s2mpg15_oi_function(s2mpg15);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "s2mpg15_oi_function fail\n");
-		goto err;
+		return ret;
 	}
 
 #if IS_ENABLED(CONFIG_DRV_SAMSUNG_PMIC)
@@ -846,22 +848,13 @@ static int s2mpg15_pmic_probe(struct platform_device *pdev)
 #endif
 
 	return 0;
-err:
-	for (i = 0; i < S2MPG15_REGULATOR_MAX; i++)
-		regulator_unregister(s2mpg15->rdev[i]);
-
-	return ret;
 }
 
 static int s2mpg15_pmic_remove(struct platform_device *pdev)
 {
-	struct s2mpg15_pmic *s2mpg15 = platform_get_drvdata(pdev);
-	int i;
-
-	for (i = 0; i < S2MPG15_REGULATOR_MAX; i++)
-		regulator_unregister(s2mpg15->rdev[i]);
-
 #if IS_ENABLED(CONFIG_DRV_SAMSUNG_PMIC)
+	struct s2mpg15_pmic *s2mpg15 = platform_get_drvdata(pdev);
+
 	pmic_device_destroy(s2mpg15->dev->devt);
 #endif
 	return 0;
