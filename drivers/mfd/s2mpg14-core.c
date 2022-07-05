@@ -318,15 +318,6 @@ static int s2mpg14_i2c_probe(struct i2c_client *i2c,
 
 	mutex_init(&s2mpg14->i2c_lock);
 
-	ret = s2mpg14_read_reg(i2c, S2MPG14_COMMON_CHIPID, &reg_data);
-	if (ret < 0) {
-		dev_err(s2mpg14->dev,
-			"device not found on this channel (not an error)\n");
-		goto err_w_lock;
-	}
-	s2mpg14->pmic_rev = S2MPG14_EVT0;
-	s2mpg14_pmic_rev = s2mpg14->pmic_rev;
-
 	s2mpg14->pmic = i2c_new_dummy_device(i2c->adapter, I2C_ADDR_PMIC);
 	s2mpg14->rtc = i2c_new_dummy_device(i2c->adapter, I2C_ADDR_RTC);
 	s2mpg14->meter = i2c_new_dummy_device(i2c->adapter, I2C_ADDR_METER);
@@ -346,7 +337,16 @@ static int s2mpg14_i2c_probe(struct i2c_client *i2c,
 	i2c_set_clientdata(s2mpg14->pm_trim1, s2mpg14);
 	i2c_set_clientdata(s2mpg14->pm_trim2, s2mpg14);
 
-	pr_info("%s: device found: rev.0x%02x\n", __func__, s2mpg14->pmic_rev);
+	ret = s2mpg14_read_reg(i2c, S2MPG14_COMMON_CHIPID, &reg_data);
+	if (ret < 0) {
+		dev_warn(s2mpg14->dev,
+			"device not found on this channel (not an error)\n");
+		goto err_w_lock;
+	}
+	s2mpg14->pmic_rev = reg_data;
+	s2mpg14_pmic_rev = s2mpg14->pmic_rev;
+
+	dev_info(s2mpg14->dev, "device found: rev.0x%02x\n", s2mpg14->pmic_rev);
 
 	ret = s2mpg14_irq_init(s2mpg14);
 	if (ret < 0)

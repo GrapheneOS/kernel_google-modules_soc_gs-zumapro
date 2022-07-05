@@ -184,17 +184,11 @@ static int s2mpg15_i2c_probe(struct i2c_client *i2c,
 	i2c->addr = I2C_ADDR_TOP;
 	s2mpg15->i2c = i2c;
 	s2mpg15->device_type = S2MPG15X;
+	s2mpg15->pdata = pdata;
 	s2mpg15->wakeup = pdata->wakeup;
 	s2mpg15->irq_base = pdata->irq_base;
 
 	mutex_init(&s2mpg15->i2c_lock);
-
-	if (s2mpg15_read_reg(i2c, S2MPG15_COMMON_CHIPID, &reg_data) < 0) {
-		dev_warn(s2mpg15->dev, "device not found on this channel\n");
-		ret = -ENODEV;
-		goto err_w_lock;
-	}
-	s2mpg15->pmic_rev = S2MPG15_EVT0;
 
 	s2mpg15->pmic = i2c_new_dummy_device(i2c->adapter, I2C_ADDR_PMIC);
 	s2mpg15->meter = i2c_new_dummy_device(i2c->adapter, I2C_ADDR_METER);
@@ -212,6 +206,13 @@ static int s2mpg15_i2c_probe(struct i2c_client *i2c,
 	i2c_set_clientdata(s2mpg15->mt_trim, s2mpg15);
 	i2c_set_clientdata(s2mpg15->pm_trim1, s2mpg15);
 	i2c_set_clientdata(s2mpg15->pm_trim2, s2mpg15);
+
+	if (s2mpg15_read_reg(i2c, S2MPG15_COMMON_CHIPID, &reg_data) < 0) {
+		dev_warn(s2mpg15->dev, "device not found on this channel\n");
+		ret = -ENODEV;
+		goto err_w_lock;
+	}
+	s2mpg15->pmic_rev = reg_data;
 
 	dev_info(s2mpg15->dev, "device found: rev.0x%02x\n", s2mpg15->pmic_rev);
 
