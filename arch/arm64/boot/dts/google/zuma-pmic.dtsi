@@ -89,7 +89,7 @@
 		buck_ocp_ctrl5 = <0xBB>;
 
 		/* RTC: wtsr/smpl */
-		wtsr_en = "enabled";
+		wtsr_en = <1>;
 		coldrst_en = "enabled";
 		smpl_en = "disabled";
 		wtsr_timer_val = <RTC_WTSRT_2_000_SEC>;
@@ -98,14 +98,14 @@
 		sub_smpl_en = "disabled";
 		check_jigon = <0>;
 
-		/* RTC: If first boot, reset rtc to 1/1/2020 12:00:00(Wed) */
+		/* RTC: If first boot, reset rtc to 1/1/2022 12:00:00(Sat) */
 		init_time,sec = <0>;
 		init_time,min = <0>;
 		init_time,hour = <12>;
 		init_time,mday = <1>;
 		init_time,mon = <0>;
-		init_time,year = <120>;
-		init_time,wday = <3>;
+		init_time,year = <122>;
+		init_time,wday = <6>;
 
 		/* PCTRLSEL(VGPIO) 1~11 (CONTROL_SEL#) */
 		sel_vgpio = <0xD3 0x1C 0xE3 0x01 0x63 0xC6
@@ -354,8 +354,8 @@
 
 			m_ldo22_reg: LDO22M {
 				regulator-name = "S2MPG14_LDO22";
-				regulator-min-microvolt = <2500000>;
-				regulator-max-microvolt = <3300000>;
+				regulator-min-microvolt = <725000>;
+				regulator-max-microvolt = <1300000>;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 			};
 
@@ -430,6 +430,9 @@
 		buck_ocp_ctrl6 = <0xBB>;
 		buck_ocp_ctrl7 = <0xBB>;
 		buck_ocp_ctrl8 = <0xBB>;
+
+		/* wtsr */
+		wtsr_en = <1>;
 
 		/* PCTRLSEL(VGPIO) 1~10 (CONTROL_SEL#) */
 		sel_vgpio = <0xA3 0xF3 0x7A 0x33 0x0B 0xAB
