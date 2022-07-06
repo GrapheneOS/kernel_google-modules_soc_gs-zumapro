@@ -1128,19 +1128,25 @@
 		clocks =
 			<&clock UMUX_CLKCMU_YUVP>,
 			<&clock UMUX_CLKCMU_RGBP_RGBP>,
-			<&clock UMUX_CLKCMU_RGBP_MCFP>;
+			<&clock UMUX_CLKCMU_RGBP_MCFP>,
+			/* RGBP C Loader resides in BLK_GDC */
+			<&clock UMUX_CLKCMU_GDC_GDC0>;
 		clock-names =
 			"UMUX_CLKCMU_YUVP",
 			"UMUX_CLKCMU_RGBP_RGBP",
-			"UMUX_CLKCMU_RGBP_MCFP";
+			"UMUX_CLKCMU_RGBP_MCFP",
+			"UMUX_CLKCMU_GDC_GDC0";
 		clock-rates = <0>;
 		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
 
 		iommus =
 			<&sysmmu_yuvp>,
 			<&sysmmu_rgbp_s0>,
-			<&sysmmu_rgbp_s1>;
+			<&sysmmu_rgbp_s1>,
+			/* TODO(b/235406857): check if the WA can be removed. */
+			<&sysmmu_gdc>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
 		/*
 		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
 		 * writing the packet data to the target's C2SERV registers. Such data is
@@ -1157,6 +1163,11 @@
 			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
 			<0x0 0x1D48D000 0x3000>,  /* GDC1 */
 			<0x0 0x1D85D000 0x3000>;  /* GSE */
+
+		power-domains =
+			<&pd_yuvp>,
+			<&pd_rgbp>,
+			<&pd_gdc>;
 	};
 
 	lwis_gtnr_merge: lwis_gtnr_merge@1CC40000 {
