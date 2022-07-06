@@ -111,7 +111,7 @@ static void s2m_rtc_print_time(struct s2m_rtc_info *info, u8 *time)
 		 time[RTC_YEAR] + 2000,
 		 time[RTC_MONTH],
 		 time[RTC_DATE],
-		 time[RTC_HOUR],
+		 time[RTC_HOUR] & 0x1f,
 		 time[RTC_MIN],
 		 time[RTC_SEC],
 		 time[RTC_WEEKDAY],
