@@ -8,6 +8,7 @@ at24.ko
 bc_max77759.ko
 bigwave.ko
 bts.ko
+cfg80211.ko
 cachefiles.ko
 clk_exynos_gs.ko
 cmupmucal.ko
@@ -52,6 +53,7 @@ itmon.ko
 keycombo.ko
 keydebug.ko
 logbuffer.ko
+mac80211.ko
 mali_kbase.ko
 mali_pixel.ko
 max1720x-battery.ko

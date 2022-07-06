@@ -23,6 +23,7 @@
 #include "zuma-ripcurrent-touch.dtsi"
 #include "zuma-ripcurrent-usecases.dtsi"
 #include "zuma-ripcurrent-wcharger.dtsi"
+#include "zuma-ripcurrent-wlan.dtsi"
 
 #include <dt-bindings/pci/pci.h>
 
@@ -100,6 +101,7 @@
 	use-sicd = "true";
 	use-ia = "false";
 	use-l1ss = "true";
+	use-msi = "true";
 	use-sysmmu = "disabled";
 	max-link-speed = <LINK_SPEED_GEN2>;
 	ep-device-type = <EP_BCM_WIFI>;
