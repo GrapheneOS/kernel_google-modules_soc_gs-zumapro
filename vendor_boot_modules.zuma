@@ -65,6 +65,9 @@ smfc.ko
 sscoredump.ko
 systrace.ko
 ufs-exynos-gs.ko
+usb_f_dm.ko
+usb_f_dm1.ko
+usb_f_rndis.ko
 virtio_balloon.ko
 virtio_blk.ko
 virtio_crypto.ko
