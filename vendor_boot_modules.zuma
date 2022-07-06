@@ -49,8 +49,8 @@ panel-samsung-sofef01.ko
 phy-exynos-mipi-dsim.ko
 phy-exynos-mipi.ko
 phy-exynos-usbdrd-super.ko
-pmic_class.ko
 pinctrl-exynos-gs.ko
+pmic_class.ko
 rtc-s2mpg14.ko
 s2mpg14-key.ko
 s2mpg14-mfd.ko
