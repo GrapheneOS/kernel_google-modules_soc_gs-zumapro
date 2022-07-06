@@ -178,8 +178,9 @@
 		interrupts =    <0>, <1>, <2>, <3>,
 				<4>, <5>, <6>, <7>,
 				<8>, <9>, <10>, <11>;
-		clocks = <&ext_76_8m>, <&ext_76_8m>;
+		clocks = <&clock OSCCLK>, <&clock GATE_MCT>;
 		clock-names = "fin_pll", "mct";
+		div = <1>;
 		use-clockevent-only;
 
 		mct_v3_map: mct-v3-map {
