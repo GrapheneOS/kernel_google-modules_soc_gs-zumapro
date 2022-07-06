@@ -93,8 +93,9 @@
 	udc: usb@11210000 {
 		compatible = "samsung,exynos9-dwusb";
 		clocks = <&clock GATE_USB32DRD_LINK>,
-			<&clock MUX_HSI0_USB20_REF>;
-		clock-names = "aclk", "sclk";
+			<&clock MUX_HSI0_USB20_REF>,
+			<&clock VDOUT_CLK_TOP_HSI0_NOC>;
+		clock-names = "aclk", "sclk", "bus";
 		reg = <0x0 0x11210000 0x10000>;
 		#address-cells = <2>;
 		#size-cells = <1>;
