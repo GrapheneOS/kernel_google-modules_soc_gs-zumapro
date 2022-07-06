@@ -794,6 +794,16 @@ static void max77759_frs_sourcing_vbus(struct tcpci *tcpci, struct tcpci_data *t
 	int ret;
 
 	kthread_flush_work(&chip->enable_vbus_work.work);
+
+	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
+		chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
+		if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
+			logbuffer_log(chip->log, "ERR: GBMS_MODE_VOTABLE lazy get failed",
+				      PTR_ERR(chip->charger_mode_votable));
+			return;
+		}
+	}
+
 	ret = gvotable_cast_vote(chip->charger_mode_votable, TCPCI_MODE_VOTER,
 				 (void *)GBMS_USB_OTG_FRS_ON, true);
 	logbuffer_log(chip->log, "%s: GBMS_MODE_VOTABLE ret:%d", __func__, ret);
@@ -1957,17 +1967,18 @@ static int max77759_probe(struct i2c_client *client,
 		return PTR_ERR(chip->data.regmap);
 	}
 
-	chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
-	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
-		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed: %ld",
-			PTR_ERR(chip->charger_mode_votable));
-		return -EPROBE_DEFER;
-	}
-
 	dn = dev_of_node(&client->dev);
 	if (!dn) {
 		dev_err(&client->dev, "of node not found\n");
 		return -EINVAL;
+	}
+
+	chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
+	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
+		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed: %ld",
+			PTR_ERR(chip->charger_mode_votable));
+		if (!of_property_read_bool(dn, "gvotable-lazy-probe"))
+			return -EPROBE_DEFER;
 	}
 
 	chip->in_switch_gpio = -EINVAL;
