@@ -12,6 +12,8 @@ cfg80211.ko
 cachefiles.ko
 clk_exynos_gs.ko
 cmupmucal.ko
+cpif.ko
+cpif_page.ko
 debug-snapshot-debug-kinfo.ko
 deferred-free-helper.ko
 dss.ko
@@ -99,6 +101,7 @@ s3c2410_wdt.ko
 samsung-iommu-group.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
+shm_ipc.ko
 slc_acpm.ko
 slc_dummy.ko
 slc_pmon.ko
