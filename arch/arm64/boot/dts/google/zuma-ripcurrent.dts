@@ -13,6 +13,7 @@
 #include <dt-bindings/pinctrl/samsung.h>
 #include "zuma-ripcurrent-display.dtsi"
 #include "zuma-pmic.dtsi"
+#include "zuma-typec.dtsi"
 
 / {
 	board_id = <0x40101>;
@@ -75,4 +76,3 @@
 		wakeup-source;
 	};
 };
-
