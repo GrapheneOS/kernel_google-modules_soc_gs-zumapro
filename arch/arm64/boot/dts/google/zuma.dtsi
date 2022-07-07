@@ -9,6 +9,7 @@
 #include <dt-bindings/interrupt-controller/zuma.h>
 #include <dt-bindings/clock/zuma.h>
 #include "zuma-rmem.dtsi"
+#include "gs101-trusty.dtsi"
 #include "zuma-gpu.dtsi"
 #include "zuma-cpu.dtsi"
 #include "zuma-bigw.dtsi"
