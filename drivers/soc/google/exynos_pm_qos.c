@@ -464,34 +464,34 @@ static struct exynos_pm_qos_object tnr_throughput_max_pm_qos = {
 	.name = "tnr_throughput_max",
 };
 
-static BLOCKING_NOTIFIER_HEAD(bo_throughput_notifier);
-static struct exynos_pm_qos_constraints bo_tput_constraints = {
-	.list = PLIST_HEAD_INIT(bo_tput_constraints.list),
-	.target_value = PM_QOS_BO_THROUGHPUT_DEFAULT_VALUE,
-	.default_value = PM_QOS_BO_THROUGHPUT_DEFAULT_VALUE,
+static BLOCKING_NOTIFIER_HEAD(bw_throughput_notifier);
+static struct exynos_pm_qos_constraints bw_tput_constraints = {
+	.list = PLIST_HEAD_INIT(bw_tput_constraints.list),
+	.target_value = PM_QOS_BW_THROUGHPUT_DEFAULT_VALUE,
+	.default_value = PM_QOS_BW_THROUGHPUT_DEFAULT_VALUE,
 	.type = EXYNOS_PM_QOS_MAX,
-	.notifiers = &bo_throughput_notifier,
-	.lock = __SPIN_LOCK_UNLOCKED(bo_tput_constraints.lock),
+	.notifiers = &bw_throughput_notifier,
+	.lock = __SPIN_LOCK_UNLOCKED(bw_tput_constraints.lock),
 };
 
-static struct exynos_pm_qos_object bo_throughput_pm_qos = {
-	.constraints = &bo_tput_constraints,
-	.name = "bo_throughput",
+static struct exynos_pm_qos_object bw_throughput_pm_qos = {
+	.constraints = &bw_tput_constraints,
+	.name = "bw_throughput",
 };
 
-static BLOCKING_NOTIFIER_HEAD(bo_throughput_max_notifier);
-static struct exynos_pm_qos_constraints bo_tput_max_constraints = {
-	.list = PLIST_HEAD_INIT(bo_tput_max_constraints.list),
-	.target_value = PM_QOS_BO_THROUGHPUT_MAX_DEFAULT_VALUE,
-	.default_value = PM_QOS_BO_THROUGHPUT_MAX_DEFAULT_VALUE,
+static BLOCKING_NOTIFIER_HEAD(bw_throughput_max_notifier);
+static struct exynos_pm_qos_constraints bw_tput_max_constraints = {
+	.list = PLIST_HEAD_INIT(bw_tput_max_constraints.list),
+	.target_value = PM_QOS_BW_THROUGHPUT_MAX_DEFAULT_VALUE,
+	.default_value = PM_QOS_BW_THROUGHPUT_MAX_DEFAULT_VALUE,
 	.type = EXYNOS_PM_QOS_MIN,
-	.notifiers = &bo_throughput_max_notifier,
-	.lock = __SPIN_LOCK_UNLOCKED(bo_tput_max_constraints.lock),
+	.notifiers = &bw_throughput_max_notifier,
+	.lock = __SPIN_LOCK_UNLOCKED(bw_tput_max_constraints.lock),
 };
 
-static struct exynos_pm_qos_object bo_throughput_max_pm_qos = {
-	.constraints = &bo_tput_max_constraints,
-	.name = "bo_throughput_max",
+static struct exynos_pm_qos_object bw_throughput_max_pm_qos = {
+	.constraints = &bw_tput_max_constraints,
+	.name = "bw_throughput_max",
 };
 
 static struct exynos_pm_qos_object *exynos_pm_qos_array[] = {
@@ -516,8 +516,8 @@ static struct exynos_pm_qos_object *exynos_pm_qos_array[] = {
 	&mfc_throughput_max_pm_qos,
 	&tnr_throughput_pm_qos,
 	&tnr_throughput_max_pm_qos,
-	&bo_throughput_pm_qos,
-	&bo_throughput_max_pm_qos,
+	&bw_throughput_pm_qos,
+	&bw_throughput_max_pm_qos,
 	&gpu_freq_min_pm_qos,
 	&gpu_freq_max_pm_qos,
 };
