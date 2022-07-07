@@ -10,7 +10,7 @@
 
 &hsi2c_14 {
 	/* SLG51002 */
-	status = "ok";
+	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	slg51002: slg51002@75 {

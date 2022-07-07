@@ -11,10 +11,14 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/pinctrl/gs101.h>
 #include <dt-bindings/pinctrl/samsung.h>
-#include "zuma-ripcurrent-display.dtsi"
+
+#include "zuma.dtsi"
 #include "zuma-pmic.dtsi"
 #include "zuma-typec.dtsi"
 #include "zuma-ripcurrent-usb.dtsi"
+#include "zuma-ripcurrent-camera-pmic.dtsi"
+#include "zuma-ripcurrent-camera.dtsi"
+#include "zuma-ripcurrent-display.dtsi"
 
 / {
 	board_id = <0x40101>;
