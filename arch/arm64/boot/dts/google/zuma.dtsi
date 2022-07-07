@@ -16,6 +16,7 @@
 #include "zuma-gpu.dtsi"
 #include "zuma-cpu.dtsi"
 #include "zuma-bigw.dtsi"
+#include "zuma-bts.dtsi"
 #include "zuma-drm-dpu.dtsi"
 #include "zuma-dma-heap.dtsi"
 #include "zuma-isp.dtsi"

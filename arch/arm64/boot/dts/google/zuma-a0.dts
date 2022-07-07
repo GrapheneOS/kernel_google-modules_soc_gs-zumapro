@@ -13,3 +13,18 @@
 #include "zuma.dtsi"
 #include "zuma-sysmmu.dtsi"
 
+&bts_smc0 {
+	reg = <0x0 0x27C4F534 0x4>;
+};
+
+&bts_smc1 {
+	reg = <0x0 0x27D4F534 0x4>;
+};
+
+&bts_smc2 {
+	reg = <0x0 0x27E4F534 0x4>;
+};
+
+&bts_smc3 {
+	reg = <0x0 0x27F4F534 0x4>;
+};
