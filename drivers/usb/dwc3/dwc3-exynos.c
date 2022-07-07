@@ -778,8 +778,12 @@ static int dwc3_exynos_vbus_notifier(struct notifier_block *nb,
 {
 	struct dwc3_exynos *exynos = container_of(nb, struct dwc3_exynos, vbus_nb);
 
-	if (!exynos->usb_data_enabled)
+	dev_info(exynos->dev, "turn %s USB gadget\n", action ? "on" : "off");
+
+	if (!exynos->usb_data_enabled) {
+		dev_info(exynos->dev, "skip the notification due to USB enumeration disabled\n");
 		return NOTIFY_OK;
+	}
 
 	dwc3_exynos_vbus_event(exynos->dev, action);
 
@@ -791,8 +795,12 @@ static int dwc3_exynos_id_notifier(struct notifier_block *nb,
 {
 	struct dwc3_exynos *exynos = container_of(nb, struct dwc3_exynos, id_nb);
 
-	if (!exynos->usb_data_enabled)
+	dev_info(exynos->dev, "turn %s USB host\n", action ? "on" : "off");
+
+	if (!exynos->usb_data_enabled) {
+		dev_info(exynos->dev, "skip the notification due to USB enumeration disabled\n");
 		return NOTIFY_OK;
+	}
 
 	dwc3_exynos_id_event(exynos->dev, !action);
 
@@ -1106,23 +1114,28 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	}
 
 	ret = dwc3_exynos_extcon_register(exynos);
+	if (ret < 0) {
+		dev_err(dev, "failed to register extcon\n");
+		ret = -EPROBE_DEFER;
+		goto vdd33_err;
+	}
 
 	ret = dwc3_exynos_register_phys(exynos);
 	if (ret) {
 		dev_err(dev, "couldn't register PHYs\n");
-		goto vdd33_err;
+		goto extcon_unregister;
 	}
 
 	ret = dwc3_exynos_get_properties(exynos);
 	if (ret) {
 		dev_err(dev, "couldn't get properties.\n");
-		goto vdd33_err;
+		goto extcon_unregister;
 	}
 
 	pm_runtime_enable(dev);
 	ret = pm_runtime_get_sync(dev);
 	if (ret < 0)
-		goto vdd33_err;
+		goto extcon_unregister;
 
 	pm_runtime_forbid(dev);
 
@@ -1130,7 +1143,7 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	if (!dwc3_np) {
 		dev_err(dev, "failed to find dwc3 core child!\n");
 		ret = -EEXIST;
-		goto vdd33_err;
+		goto extcon_unregister;
 	}
 
 	exynos_usbdrd_vdd_hsi_manual_control(1);
@@ -1183,13 +1196,21 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	 * To avoid missing notification in kernel booting check extcon
 	 * state to run state machine.
 	 */
-	dwc3_exynos_vbus_event(exynos->dev, 1);
+	if (extcon_get_state(exynos->edev, EXTCON_USB) > 0)
+		dwc3_exynos_vbus_event(exynos->dev, 1);
+	else if (extcon_get_state(exynos->edev, EXTCON_USB_HOST) > 0)
+		dwc3_exynos_id_event(exynos->dev, 0);
 
 	return 0;
 
 populate_err:
 	platform_device_unregister(exynos->usb2_phy);
 	platform_device_unregister(exynos->usb3_phy);
+extcon_unregister:
+	if (exynos->edev) {
+		extcon_unregister_notifier(exynos->edev, EXTCON_USB, &exynos->vbus_nb);
+		extcon_unregister_notifier(exynos->edev, EXTCON_USB_HOST, &exynos->id_nb);
+	}
 vdd33_err:
 	dwc3_exynos_clk_disable(exynos);
 	dwc3_exynos_clk_unprepare(exynos);
