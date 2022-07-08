@@ -33,6 +33,10 @@ exynos_tty.ko
 failover.ko
 fscache.ko
 g2d.ko
+google-battery.ko
+google-bms.ko
+google-charger.ko
+google-cpm.ko
 gs-chipid.ko
 gs_acpm.ko
 gvotable.ko
@@ -44,10 +48,14 @@ keydebug.ko
 logbuffer.ko
 mali_kbase.ko
 mali_pixel.ko
+max1720x-battery.ko
+max20339.ko
+max77759_charger.ko
 max77759_contaminant.ko
 max77759_helper.ko
 net_failover.ko
 netfs.ko
+p9221.ko
 page_pool.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
@@ -58,6 +66,7 @@ panel-samsung-s6e3hc3-c10.ko
 panel-samsung-s6e3hc3.ko
 panel-samsung-s6e3hc4.ko
 panel-samsung-sofef01.ko
+pca9468.ko
 phy-exynos-mipi-dsim.ko
 phy-exynos-mipi.ko
 phy-exynos-usbdrd-super.ko
