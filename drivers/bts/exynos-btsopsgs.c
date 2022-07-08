@@ -12,9 +12,9 @@
  */
 
 #include <linux/io.h>
-#include <dt-bindings/soc/google/gs101-bts.h>
+#include <dt-bindings/soc/google/gs-bts.h>
 
-#include "regs-btsgs101.h"
+#include "regs-btsgs.h"
 #include "bts.h"
 
 /****************************************************************
