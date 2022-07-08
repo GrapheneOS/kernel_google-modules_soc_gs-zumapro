@@ -29,6 +29,10 @@
 #define WBLK_UPPER_BUSY 0x050
 #define WBLK_UPPER_MAX 0x054
 #define CORE_QOS_EN 0x4
+#define TIMEOUT_R0  0x008
+#define TIMEOUT_R1  0x00C
+#define TIMEOUT_W0  0x010
+#define TIMEOUT_W1  0x014
 
 #define AXQOS_BYPASS 8
 #define AXQOS_VAL 12
@@ -46,6 +50,10 @@
 #define QURGENT_EN 23
 #define EX_QURGENT_EN 7
 #define BLOCKING_EN 0
+#define TIMEOUT_CNT_VC0 0
+#define TIMEOUT_CNT_VC1 8
+#define TIMEOUT_CNT_VC2 16
+#define TIMEOUT_CNT_VC3 24
 
 #define RMO_PORT_0 0
 #define RMO_PORT_1 16
@@ -57,10 +65,10 @@
 #define CRP_CTL3_1 0x38
 #define CRP_CTL3_2 0x60
 #define CRP_CTL3_3 0x88
-#define TH_IMM_R_0 0x0100
-#define TH_IMM_W_0 0x0180
-#define TH_HIGH_R_0 0x0200
-#define TH_HIGH_W_0 0x0280
+#define TH_IMM_R_0 0x010
+#define TH_IMM_W_0 0x018
+#define TH_HIGH_R_0 0x020
+#define TH_HIGH_W_0 0x028
 
 #define HIGH_THRESHOLD_SHIFT 24
 #define MID_THRESHOLD_SHIFT 16
@@ -72,7 +80,7 @@
 #define DEFAULT_QMAX_RD_TH 0x60
 #define DEFAULT_QMAX_WR_TH 0x30
 
-#define QMAX_THRESHOLD_R 0x0050
-#define QMAX_THRESHOLD_W 0x0054
+#define QMAX_THRESHOLD_R 0x000
+#define QMAX_THRESHOLD_W 0x004
 
 #endif /* __REGS_BTSGS101_H__ */
