@@ -12,7 +12,6 @@
 #include <dt-bindings/pinctrl/gs101.h>
 #include <dt-bindings/pinctrl/samsung.h>
 
-#include "zuma.dtsi"
 #include "zuma-pmic.dtsi"
 #include "zuma-typec.dtsi"
 #include "zuma-ripcurrent-usb.dtsi"

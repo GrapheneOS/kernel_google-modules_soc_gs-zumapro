@@ -6,6 +6,7 @@
  *
  */
 
+#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/power/google-power.h>
 #include <dt-bindings/power/s2mpg1x-power.h>
 #include <dt-bindings/regulator/samsung,s2mpg-regulator.h>
