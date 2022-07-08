@@ -450,6 +450,10 @@ static inline unsigned long __mfc_qos_get_weighted_mb(struct mfc_ctx *ctx,
 			weight = (weight * 100) / qos_weight->weight_num_of_tile;
 			mfc_debug(3, "[QoS] num of tile >= 4, weight: %d\n", weight / 10);
 		}
+		if (dec->is_mbaff) {
+			weight = (weight * 100) / qos_weight->weight_mbaff;
+			mfc_debug(3, "[QoS] MBAFF, weight: %d\n", weight / 10);
+		}
 	}
 
 	weighted_mb = (mb * weight) / 1000;
