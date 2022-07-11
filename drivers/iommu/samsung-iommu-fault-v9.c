@@ -446,6 +446,7 @@ static inline void dump_sysmmu_tlb_status(struct sysmmu_drvdata *drvdata, phys_a
 	num_stlb = MMU_SWALKER_INFO_NUM_STLB(swalker);
 
 	writel_relaxed(MMU_SET_PMMU_INDICATOR(pmmu_id), sfrbase + REG_MMU_PMMU_INDICATOR);
+	readl_relaxed(sfrbase + REG_MMU_PMMU_INDICATOR);
 	pmmu = readl_relaxed(sfrbase + REG_MMU_PMMU_INFO);
 	num_ptlb = MMU_PMMU_INFO_NUM_PTLB(pmmu);
 

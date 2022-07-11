@@ -131,6 +131,7 @@ static inline void __sysmmu_set_stream(struct sysmmu_drvdata *data, int pmmu_id)
 	unsigned int i, index;
 
 	writel_relaxed(MMU_SET_PMMU_INDICATOR(pmmu_id), data->sfrbase + REG_MMU_PMMU_INDICATOR);
+	readl_relaxed(data->sfrbase + REG_MMU_PMMU_INDICATOR);
 
 	writel_relaxed(MMU_STREAM_CFG_MASK(props->default_cfg),
 		       data->sfrbase + REG_MMU_STREAM_CFG(0));
@@ -1149,6 +1150,7 @@ static int sysmmu_parse_stream_property(struct device *dev, struct sysmmu_drvdat
 	/* get num stream */
 	writel_relaxed(MMU_SET_PMMU_INDICATOR(pmmu_id),
 		       drvdata->sfrbase + REG_MMU_PMMU_INDICATOR);
+	readl_relaxed(drvdata->sfrbase + REG_MMU_PMMU_INDICATOR);
 	pmmu = readl_relaxed(drvdata->sfrbase + REG_MMU_PMMU_INFO);
 	num_stream = MMU_PMMU_INFO_NUM_STREAM_TABLE(pmmu);
 
