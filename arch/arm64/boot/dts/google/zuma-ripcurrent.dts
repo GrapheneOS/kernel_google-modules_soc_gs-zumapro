@@ -18,6 +18,10 @@
 #include "zuma-ripcurrent-camera-pmic.dtsi"
 #include "zuma-ripcurrent-camera.dtsi"
 #include "zuma-ripcurrent-display.dtsi"
+#include "zuma-ripcurrent-battery.dtsi"
+#include "zuma-ripcurrent-charging.dtsi"
+#include "zuma-ripcurrent-usecases.dtsi"
+#include "zuma-ripcurrent-wcharger.dtsi"
 
 / {
 	board_id = <0x40101>;
