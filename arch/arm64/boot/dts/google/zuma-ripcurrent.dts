@@ -49,18 +49,12 @@
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
 		samsung,pin-drv = <GS101_PIN_DRV_2_5_MA>;
 	};
-	key_power: key-power {
-		samsung,pins = "gpa4-0";
-		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
-		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-		samsung,pin-drv = <GS101_PIN_DRV_2_5_MA>;
-	};
 };
 
 &gpio_keys {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&key_voldown &key_volup &key_power>;
+	pinctrl-0 = <&key_voldown &key_volup>;
 	button@1 {
 		label = "gpio-keys: KEY_VOLUMEDOWN";
 		linux,code = <114>;
@@ -71,12 +65,6 @@
 		label = "gpio-keys: KEY_VOLUMEUP";
 		linux,code = <115>;
 		gpios = <&gpa6 2 EXYNOS_PIN_FUNC_EINT>;
-		wakeup-source;
-	};
-	button@3 {
-		label = "gpio-keys: KEY_POWER";
-		linux,code = <116>;
-		gpios = <&gpa4 0 EXYNOS_PIN_FUNC_EINT>;
 		wakeup-source;
 	};
 };
