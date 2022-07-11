@@ -9,6 +9,7 @@ bigwave.ko
 cachefiles.ko
 clk_exynos_gs.ko
 cmupmucal.ko
+debug-snapshot-debug-kinfo.ko
 deferred-free-helper.ko
 dss.ko
 dwc3-exynos-usb.ko
