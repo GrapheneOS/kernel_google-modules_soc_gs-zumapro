@@ -104,7 +104,7 @@ struct cmucal_pll_table pll_gsa_rate_table[] = {
 };
 
 struct cmucal_pll_table pll_usb_rate_table[] = {
-	PLL_RATE_MPSK(650000000, 200, 4, 1, 0),
+	PLL_RATE_MPSK(614400000, 200, 4, 1, 0),
 };
 
 struct cmucal_pll_table pll_mif_main_rate_table[] = {

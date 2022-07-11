@@ -34,10 +34,6 @@
 #include <soc/google/cmu_ewf.h>
 
 extern unsigned int fin_hz_var;
-void __iomem *gpio_alive;
-
-#define GPIO_ALIVE_BASE		(0x154d0000)
-#define GPA1_DAT		(0x24)
 
 struct cmu_pmu cmu_pmu_map[] = {
 	/* CMU base addr, power domain */
@@ -77,18 +73,8 @@ void zuma_cal_data_init(void)
 	cpu_inform_c2 = CPU_INFORM_C2;
 	cpu_inform_cpd = CPU_INFORM_CPD;
 
-	gpio_alive = ioremap(GPIO_ALIVE_BASE, SZ_4K);
-	if (!gpio_alive) {
-		pr_err("%s: gpio_alive ioremap failed\n", __func__);
-		BUG();
-	}
-
-	/*FIXME: check DEBUG_SEL and determine FIN src
-	if (__raw_readl(gpio_alive + GPA1_DAT) & (1 << 6))
-		fin_hz_var = FIN_HZ_26M;
-	else
-		fin_hz_var = 24576000;
-	*/
+	/* TODO: add a logic to cover FIN_HZ_26MHZ */
+	fin_hz_var = FIN_HZ_24P576M;
 }
 
 void (*cal_data_init)(void) = zuma_cal_data_init;
