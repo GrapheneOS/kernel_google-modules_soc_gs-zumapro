@@ -528,8 +528,7 @@ static unsigned int exynos_rate_to_clk(struct exynos_usbdrd_phy *phy_drd)
 		break;
 	case 20 * MHZ:
 	case 20312500:
-		//phy_drd->extrefclk = USBPHY_REFCLK_EXT_20MHZ;
-		phy_drd->extrefclk = USBPHY_REFCLK_EXT_19P2MHZ;
+		phy_drd->extrefclk = USBPHY_REFCLK_EXT_20MHZ;
 		break;
 	case 24 * MHZ:
 		phy_drd->extrefclk = USBPHY_REFCLK_EXT_24MHZ;
@@ -2179,6 +2178,7 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	clk_set_rate(phy_drd->ref_clk, 19200000);
 	ret = exynos_rate_to_clk(phy_drd);
 	if (ret) {
 		dev_err(phy_drd->dev, "%s: Not supported ref clock\n",
