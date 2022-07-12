@@ -67,7 +67,7 @@ enum mfd_func {
 	FUNC_BULK_WRITE,
 };
 
-#if IS_ENABLED(CONFIG_GS_ACPM_MODULE)
+#if IS_ENABLED(CONFIG_GS_ACPM)
 int exynos_acpm_read_reg(struct device_node *acpm_mfd_node,
 			 u8 channel,
 			 u16 type,
