@@ -100,6 +100,8 @@ spidev.ko
 sscoredump.ko
 systrace.ko
 tcpci_max77759.ko
+touch_bus_negotiator.ko
+touch_offload.ko
 ufs-exynos-gs.ko
 usb_f_dm.ko
 usb_f_dm1.ko
