@@ -267,6 +267,9 @@ static void xhci_exynos_set_port(struct usb_device *dev, bool on)
 	struct device *ddev = &dev->dev;
 	int check_port;
 
+	/* TODO: wait for power management ready for USB2 phy and xhci-exynos module */
+	return;
+
 	check_port = xhci_exynos_check_port(xhci_exynos, dev, on);
 	if (check_port < 0)
 		return;
