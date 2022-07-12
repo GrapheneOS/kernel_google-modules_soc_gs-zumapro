@@ -526,7 +526,7 @@ static int mfc_dec_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 	struct mfc_dec *dec = ctx->dec_priv;
 	struct v4l2_pix_format_mplane *pix_fmt_mp = &f->fmt.pix_mp;
 	struct mfc_raw_info *raw;
-	int i;
+	int i, ret;
 
 	mfc_debug_enter();
 
@@ -562,8 +562,12 @@ static int mfc_dec_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 		 * If the MFC is parsing the header,
 		 * so wait until it is finished.
 		 */
-		if (mfc_wait_for_done_core_ctx(core_ctx,
-					MFC_REG_R2H_CMD_SEQ_DONE_RET)) {
+		ret = mfc_wait_for_done_core_ctx(core_ctx, MFC_REG_R2H_CMD_SEQ_DONE_RET);
+		if (ret) {
+			if (core_ctx->int_err == MFC_REG_ERR_UNSUPPORTED_FEATURE) {
+				mfc_ctx_err("header parsing failed by unsupported feature\n");
+				return -EINVAL;
+			}
 			mfc_ctx_err("header parsing failed\n");
 			return -EAGAIN;
 		}
