@@ -9,10 +9,6 @@
 #include <dt-bindings/soc/samsung_sysmmu_v9.h>
 
 / {
-	iommu_group_bw: iommu_group_bw {
-		compatible = "samsung,sysmmu-group";
-	};
-
 	iommu_group_g2d: iommu_group_g2d {
 		compatible = "samsung,sysmmu-group";
 	};
