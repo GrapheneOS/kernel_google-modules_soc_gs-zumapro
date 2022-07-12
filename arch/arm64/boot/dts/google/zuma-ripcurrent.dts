@@ -19,6 +19,7 @@
 #include "zuma-ripcurrent-camera.dtsi"
 #include "zuma-ripcurrent-display.dtsi"
 #include "zuma-ripcurrent-battery.dtsi"
+#include "zuma-ripcurrent-bluetooth.dtsi"
 #include "zuma-ripcurrent-charging.dtsi"
 #include "zuma-ripcurrent-gsa-gsc.dtsi"
 #include "zuma-ripcurrent-touch.dtsi"
