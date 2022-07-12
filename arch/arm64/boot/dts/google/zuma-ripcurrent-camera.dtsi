@@ -170,6 +170,19 @@
 	pinctrl-2 = <&hsi2c4_bus_in>;
 };
 
+&hsi2c_14 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	gpios = <&gpp16 0 GPIO_ACTIVE_HIGH &gpp16 1 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+	clock-frequency = <400000>;
+
+	pinctrl-names = "default","on_i2c","off_i2c";
+	pinctrl-0 = <&hsi2c14_bus>;
+	pinctrl-1 = <&hsi2c14_bus>;
+	pinctrl-2 = <&hsi2c14_bus>;
+};
+
 / {
 	fragment@lwiscamera {
 		target-path = "/";
@@ -913,6 +926,32 @@
 
 				/* Thread priority */
 				periodic-io-thread-priority = <99>;
+			};
+
+			flash0: flash@0 {
+				compatible = "google,lwis-i2c-device";
+
+				/* Device node name */
+				node-name = "flash-lm3644";
+
+				/* I2C */
+				i2c-bus = <&hsi2c_14>;
+				i2c-addr = <0x63>;
+
+				/* Registers */
+				reg-addr-bitwidth = <8>;
+				reg-value-bitwidth = <8>;
+
+				/* Power Management hibernation (deep sleep) */
+				/* 1 : enable, 0 : disable */
+				pm-hibernation = <0>;
+
+				/* GPIOs */
+				/* HW_ENABLE GPP8[2] */
+				/* FLASH_STROBE GPP24[0] */
+				enable-gpios =
+					<&gpp8 2 GPIO_ACTIVE_HIGH
+					 &gpp24 0 GPIO_ACTIVE_LOW>;
 			};
 		};
 	};
