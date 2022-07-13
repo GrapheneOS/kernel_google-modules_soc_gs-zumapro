@@ -2223,6 +2223,7 @@ struct mfc_ctx {
 
 	int is_dpb_realloc;
 	enum mfc_dec_wait_state wait_state;
+	struct mutex drc_wait_mutex;
 	int clear_work_bit;
 
 	int mv_buffer_allocated;
