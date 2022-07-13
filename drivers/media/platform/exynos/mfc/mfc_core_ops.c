@@ -135,6 +135,11 @@ static void __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 	atomic_set(&core->hw_run_cnt, 0);
 	mfc_core_change_idle_mode(core, MFC_IDLE_MODE_NONE);
 
+	if (!dev->fw_date)
+		dev->fw_date = core->fw.date;
+	else if (dev->fw_date > core->fw.date)
+		dev->fw_date = core->fw.date;
+
 	if (core->has_llc && (core->llc_on_status == 0))
 		mfc_llc_enable(core);
 
@@ -149,11 +154,6 @@ static void __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	if (perf_boost_mode)
 		mfc_core_perf_boost_enable(core);
-
-	if (!dev->fw_date)
-		dev->fw_date = core->fw.date;
-	else if (dev->fw_date > core->fw.date)
-		dev->fw_date = core->fw.date;
 
 	mfc_perf_init(core);
 }
