@@ -433,6 +433,11 @@
 		panic-action = <GO_WATCHDOG_ID>;
 	};
 
+	acpm_stats {
+		compatible = "google,power-stats";
+		timer-frequency-hz = <49152000>;
+	};
+
 	acpm_mfd_bus0: acpm_mfd_bus@15500000 {
 		compatible = "google,i2c-acpm";
 		status = "okay";
