@@ -1154,10 +1154,16 @@ static unsigned int get_random_rate(unsigned int dm_id)
 		upper = mbox->dvfs->upper_bound;
 		lower = mbox->dvfs->lower_bound;
 
-		if (lower == upper)
+		if (lower == upper) {
 			index = lower;
-		else
+		} else if (mbox->dvfs->is_steep_jump) {
+			if (dvfs_test->dm[dm_id]->prev_jump_idx == upper)
+				dvfs_test->dm[dm_id]->prev_jump_idx = index = lower;
+			else
+				dvfs_test->dm[dm_id]->prev_jump_idx = index = upper;
+		} else {
 			index = (random % (upper - lower + 1)) + lower;
+		}
 
 		if (index >= dvfs_test->dm[dm_id]->size)
 			index = dvfs_test->dm[dm_id]->size - 1;
@@ -1522,11 +1528,44 @@ static int acpm_mbox_dvfs_setting(struct acpm_info *acpm, u64 subcmd)
 	return 0;
 }
 
+static int acpm_dvfs_steep_jump_setting(struct acpm_info *acpm, u64 subcmd)
+{
+	unsigned int temp;
+
+	mbox->dvfs->lower_bound = ((u32)subcmd >> 8) & 0xFF;
+	mbox->dvfs->upper_bound = (u32)subcmd & 0xFF;
+
+	if (mbox->dvfs->lower_bound > mbox->dvfs->upper_bound) {
+		temp = mbox->dvfs->lower_bound;
+		mbox->dvfs->lower_bound = mbox->dvfs->upper_bound;
+		mbox->dvfs->upper_bound = temp;
+	}
+
+	if (subcmd == 0xFFFF) {
+		acpm_acpm_mbox_dvfs(false);
+		mbox->dvfs->is_given_range = false;
+		mbox->dvfs->is_steep_jump = false;
+	} else {
+		mbox->dvfs->is_given_range = true;
+		mbox->dvfs->is_steep_jump = true;
+		acpm_acpm_mbox_dvfs(true);
+	}
+
+	return 0;
+}
+
 static int debug_acpm_mbox_dvfs_set(void *data, u64 val)
 {
 	struct acpm_info *acpm = (struct acpm_info *)data;
 
 	return acpm_mbox_dvfs_setting(acpm, val);
+}
+
+static int debug_acpm_dvfs_steep_jump_set(void *data, u64 val)
+{
+	struct acpm_info *acpm = (struct acpm_info *)data;
+
+	return acpm_dvfs_steep_jump_setting(acpm, val);
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_acpm_mbox_test_fops,
@@ -1537,6 +1576,8 @@ DEFINE_SIMPLE_ATTRIBUTE(debug_dvfs_latency_stats_fops,
 			"0x%016llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(debug_acpm_mbox_dvfs_fops, NULL,
 			debug_acpm_mbox_dvfs_set, "0x%016llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(debug_acpm_dvfs_steep_jump_fops, NULL,
+			debug_acpm_dvfs_steep_jump_set, "0x%016llx\n");
 
 static void acpm_test_debugfs_init(struct acpm_mbox_test *mbox)
 {
@@ -1549,6 +1590,8 @@ static void acpm_test_debugfs_init(struct acpm_mbox_test *mbox)
 			    &debug_dvfs_latency_stats_fops);
 	debugfs_create_file("acpm_mbox_dvfs", 0644, den_mbox, mbox,
 			    &debug_acpm_mbox_dvfs_fops);
+	debugfs_create_file("acpm_dvfs_steep_jump", 0644, den_mbox, mbox,
+			    &debug_acpm_dvfs_steep_jump_fops);
 }
 
 static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int dm_id)

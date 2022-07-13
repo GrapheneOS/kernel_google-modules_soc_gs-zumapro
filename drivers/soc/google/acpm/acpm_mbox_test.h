@@ -261,6 +261,7 @@ struct acpm_dvfs_validity {
 	unsigned int upper_bound;
 	unsigned int lower_bound;
 	bool is_given_range;
+	bool is_steep_jump;
 };
 
 #define PMIC_RANDOM_ADDR_RANGE  0x1FF
@@ -456,6 +457,7 @@ struct acpm_dvfs_dm {
 	unsigned int total_cycle_cnt;
 	unsigned int devfreq_id;
 	unsigned int cpu_policy_id;
+	unsigned int prev_jump_idx;
 	struct dvfs_frequency_table *table;
 	struct acpm_dvfs_test_stats *stats;
 	struct stats_scale *scales;
