@@ -854,11 +854,11 @@ static void mfc_core_shutdown(struct platform_device *pdev)
 
 	if (!core->shutdown) {
 		mfc_core_risc_off(core);
-		core->shutdown = 1;
 		mfc_clear_all_bits(&core->work_bits);
 	}
 
 	mfc_core_release_hwlock_dev(core);
+	core->shutdown = 1;
 	mfc_core_info("core shutdown completed\n");
 }
 

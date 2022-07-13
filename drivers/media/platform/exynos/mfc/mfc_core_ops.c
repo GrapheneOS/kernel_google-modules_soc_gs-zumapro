@@ -788,6 +788,8 @@ void mfc_core_instance_dpb_flush(struct mfc_core *core, struct mfc_ctx *ctx)
 		mfc_err("Failed to get hwlock\n");
 		MFC_TRACE_CTX_LT("[ERR][Release] failed to get hwlock (shutdown: %d)\n",
 				core->shutdown);
+		if (core->shutdown)
+			goto cleanup;
 		return;
 	}
 
@@ -908,6 +910,8 @@ void mfc_core_instance_csd_parsing(struct mfc_core *core, struct mfc_ctx *ctx)
 	if (ret < 0) {
 		mfc_err("Failed to get hwlock\n");
 		MFC_TRACE_CTX_LT("[ERR][Release] failed to get hwlock (shutdown: %d)\n", core->shutdown);
+		if (core->shutdown)
+			goto cleanup;
 		return;
 	}
 
