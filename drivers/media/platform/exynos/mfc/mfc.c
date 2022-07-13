@@ -520,7 +520,8 @@ err_drm_start:
 	call_cop(ctx, cleanup_ctx_ctrls, ctx);
 
 err_ctx_ctrls:
-	vfree(dev->regression_val);
+	if ((dev->num_inst == 1) && dev->regression_val)
+		vfree(dev->regression_val);
 
 err_ctx_init:
 	dev->ctx[ctx->num] = 0;
@@ -597,9 +598,8 @@ static int mfc_release(struct file *file)
 	if (ctx->type == MFCINST_ENCODER)
 		mfc_meminfo_cleanup_outbuf_q(ctx);
 
-	if (dev->num_inst == 0)
-		if (dev->regression_val)
-			vfree(dev->regression_val);
+	if ((dev->num_inst == 0) && dev->regression_val)
+		vfree(dev->regression_val);
 
 	if (ctx->type == MFCINST_DECODER)
 		__mfc_deinit_dec_ctx(ctx);
