@@ -42,6 +42,7 @@ struct s2mpg1415_gpio {
 	struct pinctrl_desc pctrl;
 	enum s2mpg1415_id id;
 	struct i2c_client *i2c;
+	struct device *dev;
 };
 
 static const int GPIO_STATUS[] = { S2MPG14_GPIO_STATUS, S2MPG15_GPIO_STATUS1 };
@@ -71,9 +72,11 @@ static int s2mpg1415_read_gpio_reg(struct s2mpg1415_gpio *gc,
 	ret = s2mpg1415_read_reg(gc->id, gc->i2c,
 				 GPIO_CTRL_BASE[gc->id] + offset, &val);
 	if (ret < 0) {
-		pr_err("Error: %s %s %d", __func__, gc->gc.label, offset);
+		dev_err(gc->dev, "Error: %s %d", gc->gc.label, offset);
 		return ret;
 	}
+	dev_dbg(gc->dev, "offset: %#x, val: %#x\n",
+		GPIO_CTRL_BASE[gc->id] + offset, val);
 
 	return val;
 }
@@ -94,9 +97,11 @@ static int s2mpg1415_read_gpio_status_reg(struct s2mpg1415_gpio *gc,
 				 GPIO_STATUS[gc->id] + over, &val);
 
 	if (ret < 0) {
-		dev_err(&gc->i2c->dev, "Error: %s", gc->gc.label);
+		dev_err(gc->dev, "Error: %s", gc->gc.label);
 		return ret;
 	}
+	dev_dbg(gc->dev, "offset: %#x, val: %#x\n",
+		GPIO_CTRL_BASE[gc->id] + over, val);
 
 	return val;
 }
@@ -116,17 +121,11 @@ static int s2mpg1415_update_gpio_reg(struct s2mpg1415_gpio *gc,
 	ret = s2mpg1415_update_reg(gc->id, gc->i2c,
 				   GPIO_CTRL_BASE[gc->id] + offset, val, mask);
 	if (ret < 0)
-		pr_err("Error: %s %s %d", __func__, gc->gc.label, offset);
+		dev_err(gc->dev, "Error: %s %d", gc->gc.label, offset);
+	dev_dbg(gc->dev, "offset: %#x val: %#x mask: %#x\n",
+		GPIO_CTRL_BASE[gc->id] + offset, val, mask);
 
 	return ret;
-}
-
-static int s2mpg1415_write_gpio_bit(struct s2mpg1415_gpio *gc,
-				    unsigned int offset,
-				    unsigned int bit_mask, int value)
-{
-	return s2mpg1415_update_gpio_reg(gc, offset, (value & 0x1) << bit_mask,
-					 bit_mask);
 }
 
 static int s2mpg1415_gpio_get_direction(struct gpio_chip *chip,
@@ -156,7 +155,9 @@ static void s2mpg1415_gpio_set(struct gpio_chip *chip, unsigned int offset,
 	struct s2mpg1415_gpio *data = gpiochip_get_data(chip);
 
 	if (!s2mpg1415_gpio_get_direction(chip, offset))
-		s2mpg1415_write_gpio_bit(data, offset, GPIO_OUT_MASK, value);
+		s2mpg1415_update_gpio_reg(data, offset,
+					  value << GPIO_OUT_SHIFT,
+					  GPIO_OUT_MASK);
 }
 
 static int s2mpg1415_gpio_direction_input(struct gpio_chip *chip,
@@ -164,7 +165,7 @@ static int s2mpg1415_gpio_direction_input(struct gpio_chip *chip,
 {
 	struct s2mpg1415_gpio *data = gpiochip_get_data(chip);
 
-	return s2mpg1415_write_gpio_bit(data, offset, GPIO_OEN_MASK, 0);
+	return s2mpg1415_update_gpio_reg(data, offset, 0, GPIO_OEN_MASK);
 }
 
 static int s2mpg1415_gpio_direction_output(struct gpio_chip *chip,
@@ -173,9 +174,13 @@ static int s2mpg1415_gpio_direction_output(struct gpio_chip *chip,
 	struct s2mpg1415_gpio *data = gpiochip_get_data(chip);
 	int ret;
 
-	ret = s2mpg1415_write_gpio_bit(data, offset, GPIO_OUT_MASK, value);
+	ret = s2mpg1415_update_gpio_reg(data, offset,
+					value << GPIO_OUT_SHIFT,
+					GPIO_OUT_MASK);
 	if (ret == 0)
-		ret = s2mpg1415_write_gpio_bit(data, offset, GPIO_OEN_MASK, 1);
+		ret = s2mpg1415_update_gpio_reg(data, offset,
+						0x1 << GPIO_OEN_SHIFT,
+						GPIO_OEN_MASK);
 
 	return ret;
 }
@@ -409,16 +414,17 @@ static int s2mpg1415_gpio_probe(struct platform_device *pdev)
 	if (!s2mpg1415_gpio)
 		return -ENOMEM;
 
+	s2mpg1415_gpio->dev = &pdev->dev;
 	s2mpg1415_gpio->id = pdev->id_entry->driver_data;
 	switch (s2mpg1415_gpio->id) {
 	case ID_S2MPG14:
-		s2mpg1415_gpio->i2c = ((struct s2mpg14_dev *)kbdev_parent)->pmic;
+		s2mpg1415_gpio->i2c = ((struct s2mpg14_dev *)kbdev_parent)->gpio;
 		pinctrl_of_name = "s2mpg14_pinctrl";
 		s2mpg1415_gpio->pctrl.pins = s2mpg14_pins;
 		s2mpg1415_gpio->pctrl.npins = ARRAY_SIZE(s2mpg14_pins);
 		break;
 	case ID_S2MPG15:
-		s2mpg1415_gpio->i2c = ((struct s2mpg15_dev *)kbdev_parent)->pmic;
+		s2mpg1415_gpio->i2c = ((struct s2mpg15_dev *)kbdev_parent)->gpio;
 		pinctrl_of_name = "s2mpg15_pinctrl";
 		s2mpg1415_gpio->pctrl.pins = s2mpg15_pins;
 		s2mpg1415_gpio->pctrl.npins = ARRAY_SIZE(s2mpg15_pins);
