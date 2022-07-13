@@ -445,10 +445,6 @@ void __mfc_dump_nal_q_buffer_info(struct mfc_core *core, int curr_ctx)
 	DecoderOutputStr *pDecOut = NULL;
 	int i, offset, Inindex, cnt;
 
-	/* Skip NAL_Q dump when multi instance */
-	if (core->num_inst != 1)
-		return;
-
 	Inindex = mfc_core_get_nal_q_input_count() % NAL_Q_QUEUE_SIZE;
 
 	if (ctx->type == MFCINST_DECODER) {
@@ -464,26 +460,6 @@ void __mfc_dump_nal_q_buffer_info(struct mfc_core *core, int curr_ctx)
 		if (ctx->mv_size)
 			print_hex_dump(KERN_ERR, "MV buffer ", DUMP_PREFIX_OFFSET, 32, 4,
 					core->regs_base + MFC_REG_D_MV_BUFFER0, 0x100, false);
-		dev_err(core->device, "NALQ In(in%d-exe%d): ID CPB DPBFlag DPB0 DPB1\
-		/ Out(%d): ID dispstat diap0 disp1 used decstat dec0 dec1 type\n",
-				mfc_core_get_nal_q_input_count(),
-				nal_q_in_handle->in_exe_count,
-				mfc_core_get_nal_q_output_count());
-		for (i = MFC_TRACE_NAL_QUEUE_PRINT - 1; i >= 0; i--) {
-			cnt = ((Inindex + NAL_Q_QUEUE_SIZE) - i) % NAL_Q_QUEUE_SIZE;
-			offset = dev->pdata->nal_q_entry_size * cnt;
-			pDecIn = (DecoderInputStr *)(nal_q_in_handle->nal_q_in_addr + offset);
-			pDecOut = (DecoderOutputStr *)(nal_q_out_handle->nal_q_out_addr + offset);
-			dev_err(core->device, "[%d] In: %d %x %x[%d] %x %x / Out: %d %d %x %x %x %d %x %x %d\n",
-					cnt, pDecIn->CommandId, pDecIn->CpbBufferAddr,
-					pDecIn->DynamicDpbFlagLower, ffs(pDecIn->DynamicDpbFlagLower) - 1,
-					pDecIn->FrameAddr[0], pDecIn->FrameAddr[1],
-					pDecOut->CommandId, pDecOut->DisplayStatus,
-					pDecOut->DisplayAddr[0], pDecOut->DisplayAddr[1],
-					pDecOut->UsedDpbFlagLower, pDecOut->DecodedStatus,
-					pDecOut->DecodedAddr[0], pDecOut->DecodedAddr[1],
-					pDecOut->DecodedFrameType);
-		}
 	} else if (ctx->type == MFCINST_ENCODER) {
 		dev_err(core->device, "Encoder scratch:%#x++%#x, recon[0]:++%#lx, [1]:++%#lx, ME:++%#lx\n",
 				MFC_CORE_READL(MFC_REG_E_SCRATCH_BUFFER_ADDR),
@@ -497,23 +473,55 @@ void __mfc_dump_nal_q_buffer_info(struct mfc_core *core, int curr_ctx)
 				ctx->raw_buf.plane_size[2]);
 		print_hex_dump(KERN_ERR, "ME buffer ", DUMP_PREFIX_OFFSET, 32, 4,
 				core->regs_base + MFC_REG_E_ME_BUFFER, 0x44, false);
-		dev_err(core->device, "NALQ In: ID src0 src1 dst\
-			/ Out: ID enc0 enc1 strm recon0 recon1 type\n");
-		for (i = MFC_TRACE_NAL_QUEUE_PRINT - 1; i >= 0; i--) {
-			cnt = ((Inindex + NAL_Q_QUEUE_SIZE) - i) % NAL_Q_QUEUE_SIZE;
-			offset = dev->pdata->nal_q_entry_size * cnt;
-			pEncIn = (EncoderInputStr *)(nal_q_in_handle->nal_q_in_addr + offset);
-			pEncOut = (EncoderOutputStr *)(nal_q_out_handle->nal_q_out_addr + offset);
-			dev_err(core->device, "[%d] In: %d %#x %#x %#x / Out: %d %#x %#x %#x %d %#x %#x\n",
-					cnt, pEncIn->CommandId, pEncIn->FrameAddr[0],
-					pEncIn->FrameAddr[1], pEncIn->StreamBufferAddr,
-					pEncOut->CommandId, pEncOut->EncodedFrameAddr[0],
-					pEncOut->EncodedFrameAddr[1], pEncOut->StreamBufferAddr,
-					pEncOut->SliceType, pEncOut->ReconLumaDpbAddr,
-					pEncOut->ReconChromaDpbAddr);
-		}
 	} else {
-		dev_err(core->device, "invalid MFC instnace type(%d)\n", ctx->type);
+		dev_err(core->device, "invalid MFC instance type(%d)\n", ctx->type);
+	}
+
+	dev_err(core->device, "-----------dumping NAL queue In(in%d-exe%d), Out(%d)\n",
+			mfc_core_get_nal_q_input_count(),
+			nal_q_in_handle->in_exe_count,
+			mfc_core_get_nal_q_output_count());
+
+	/* Input queue */
+	for (i = MFC_TRACE_NAL_QUEUE_PRINT - 1; i >= 0; i--) {
+		cnt = ((Inindex + NAL_Q_QUEUE_SIZE) - i) % NAL_Q_QUEUE_SIZE;
+		offset = dev->pdata->nal_q_entry_size * cnt;
+		pDecIn = (DecoderInputStr *)(nal_q_in_handle->nal_q_in_addr + offset);
+		pEncIn = (EncoderInputStr *)(nal_q_in_handle->nal_q_in_addr + offset);
+
+		if (pDecIn->StartCode == NAL_Q_DECODER_MARKER)
+			dev_err(core->device, "[%d] In DEC[ctx:%d] id %d cpb %#x used %#x(%d) dpb [0]%#x [1]%#x\n",
+					cnt, pDecIn->InstanceId, pDecIn->CommandId,
+					pDecIn->CpbBufferAddr, pDecIn->DynamicDpbFlagLower,
+					ffs(pDecIn->DynamicDpbFlagLower) - 1,
+					pDecIn->FrameAddr[0], pDecIn->FrameAddr[1]);
+		else if (pEncIn->StartCode == NAL_Q_ENCODER_MARKER)
+			dev_err(core->device, "[%d] In ENC[ctx:%d] id %d frame [0]%#x [1]%#x stream %#x\n",
+					cnt, pEncIn->InstanceId, pEncIn->CommandId,
+					pEncIn->FrameAddr[0], pEncIn->FrameAddr[1],
+					pEncIn->StreamBufferAddr);
+	}
+
+	/* Output queue */
+	for (i = MFC_TRACE_NAL_QUEUE_PRINT - 1; i >= 0; i--) {
+		cnt = ((Inindex + NAL_Q_QUEUE_SIZE) - i) % NAL_Q_QUEUE_SIZE;
+		offset = dev->pdata->nal_q_entry_size * cnt;
+		pDecOut = (DecoderOutputStr *)(nal_q_out_handle->nal_q_out_addr + offset);
+		pEncOut = (EncoderOutputStr *)(nal_q_out_handle->nal_q_out_addr + offset);
+
+		if (pDecOut->StartCode == NAL_Q_DECODER_MARKER)
+			dev_err(core->device, "[%d] Out DEC[ctx:%d] id %d disp stat %#x disp [0]%#x [1]%#x used %#x dec stat %#x dec [0]%#x [1]%#x type %d\n",
+					cnt, pDecOut->InstanceId, pDecOut->CommandId,
+					pDecOut->DisplayStatus, pDecOut->DisplayAddr[0],
+					pDecOut->DisplayAddr[1], pDecOut->UsedDpbFlagLower,
+					pDecOut->DecodedStatus, pDecOut->DecodedAddr[0],
+					pDecOut->DecodedAddr[1], pDecOut->DecodedFrameType);
+		else if (pEncOut->StartCode == NAL_Q_ENCODER_MARKER)
+			dev_err(core->device, "[%d] Out ENC[ctx:%d] id %d frame [0]%#x [1]%#x stream %#x type %d recon [0]%#x [1]%#x\n",
+					cnt, pEncIn->InstanceId, pEncOut->CommandId,
+					pEncOut->EncodedFrameAddr[0], pEncOut->EncodedFrameAddr[1],
+					pEncOut->StreamBufferAddr, pEncOut->SliceType,
+					pEncOut->ReconLumaDpbAddr, pEncOut->ReconChromaDpbAddr);
 	}
 }
 
@@ -802,10 +810,6 @@ static int __mfc_store_dump_nal_q_buffer_info(struct mfc_core *core, int curr_ct
 	DecoderOutputStr *pDecOut = NULL;
 	int i, offset, Inindex, cnt;
 
-	/* Skip NAL_Q dump when multi instance */
-	if (core->num_inst != 1)
-		return 0;
-
 	Inindex = mfc_core_get_nal_q_input_count() % NAL_Q_QUEUE_SIZE;
 
 	if (ctx->type == MFCINST_DECODER) {
@@ -875,6 +879,57 @@ static int __mfc_store_dump_nal_q_buffer_info(struct mfc_core *core, int curr_ct
 					pEncOut->SliceType, pEncOut->ReconLumaDpbAddr,
 					pEncOut->ReconChromaDpbAddr);
 		}
+	}
+
+	__mfc_store_dump_buf(buf, &idx, 300,
+			"-----------dumping NAL queue buf In(in%d-exe%d), Out(%d)\n",
+			mfc_core_get_nal_q_input_count(),
+			nal_q_in_handle->in_exe_count,
+			mfc_core_get_nal_q_output_count());
+
+	/* Input queue */
+	for (i = MFC_TRACE_NAL_QUEUE_PRINT - 1; i >= 0; i--) {
+		cnt = ((Inindex + NAL_Q_QUEUE_SIZE) - i) % NAL_Q_QUEUE_SIZE;
+		offset = dev->pdata->nal_q_entry_size * cnt;
+		pDecIn = (DecoderInputStr *)(nal_q_in_handle->nal_q_in_addr + offset);
+		pEncIn = (EncoderInputStr *)(nal_q_in_handle->nal_q_in_addr + offset);
+		if (pDecIn->StartCode == NAL_Q_DECODER_MARKER)
+			__mfc_store_dump_buf(buf, &idx, 300,
+					"[%d] In DEC[ctx:%d] id %d cpb %#x used %#x[%d] dpb[0] %#x [1] %#x\n",
+					cnt, pDecIn->InstanceId, pDecIn->CommandId,
+					pDecIn->CpbBufferAddr, pDecIn->DynamicDpbFlagLower,
+					ffs(pDecIn->DynamicDpbFlagLower) - 1,
+					pDecIn->FrameAddr[0], pDecIn->FrameAddr[1]);
+		else if (pEncIn->StartCode == NAL_Q_ENCODER_MARKER)
+			__mfc_store_dump_buf(buf, &idx, 300,
+					"[%d] In ENC[ctx:%d] id %d frame[0] %#x [1] %#x stream %#x\n",
+					cnt, pEncIn->InstanceId, pEncIn->CommandId,
+					pEncIn->FrameAddr[0], pEncIn->FrameAddr[1],
+					pEncIn->StreamBufferAddr);
+	}
+
+	/* Output queue */
+	for (i = MFC_TRACE_NAL_QUEUE_PRINT - 1; i >= 0; i--) {
+		cnt = ((Inindex + NAL_Q_QUEUE_SIZE) - i) % NAL_Q_QUEUE_SIZE;
+		offset = dev->pdata->nal_q_entry_size * cnt;
+		pDecOut = (DecoderOutputStr *)(nal_q_out_handle->nal_q_out_addr + offset);
+		pEncOut = (EncoderOutputStr *)(nal_q_out_handle->nal_q_out_addr + offset);
+
+		if (pDecOut->StartCode == NAL_Q_DECODER_MARKER)
+			__mfc_store_dump_buf(buf, &idx, 300,
+					"[%d] Out DEC[ctx:%d] id %d disp stat %#x disp[0] %#x [1] %#x used %#x dec stat %#x dec[0] %#x [1] %x type %d\n",
+					cnt, pDecOut->InstanceId, pDecOut->CommandId,
+					pDecOut->DisplayStatus, pDecOut->DisplayAddr[0],
+					pDecOut->DisplayAddr[1], pDecOut->UsedDpbFlagLower,
+					pDecOut->DecodedStatus, pDecOut->DecodedAddr[0],
+					pDecOut->DecodedAddr[1], pDecOut->DecodedFrameType);
+		else if (pEncOut->StartCode == NAL_Q_ENCODER_MARKER)
+			__mfc_store_dump_buf(buf, &idx, 300,
+					"[%d] Out ENC[ctx:%d] id %d frame[0] %#x [1] %#x stream %#x type %d recon[0] %#x [1] %#x\n",
+					cnt, pEncIn->InstanceId, pEncOut->CommandId,
+					pEncOut->EncodedFrameAddr[0], pEncOut->EncodedFrameAddr[1],
+					pEncOut->StreamBufferAddr, pEncOut->SliceType,
+					pEncOut->ReconLumaDpbAddr, pEncOut->ReconChromaDpbAddr);
 	}
 
 	return idx;

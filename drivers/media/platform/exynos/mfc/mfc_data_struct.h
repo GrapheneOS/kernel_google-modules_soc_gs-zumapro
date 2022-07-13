@@ -895,9 +895,11 @@ struct mfc_core_platdata {
 
 /* slot 4 * max instance 32 = 128 */
 #define NAL_Q_QUEUE_SIZE		128
+#define NAL_Q_DECODER_MARKER		0xAAAAAAAA
+#define NAL_Q_ENCODER_MARKER		0xBBBBBBBB
 
 typedef struct __DecoderInputStr {
-	int StartCode; /* = 0xAAAAAAAA; Decoder input structure marker */
+	int StartCode; /* NAL_Q_DECODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int PictureTag;
@@ -920,7 +922,7 @@ typedef struct __DecoderInputStr {
 } DecoderInputStr; /* 28*4 = 112 bytes */
 
 typedef struct __EncoderInputStr {
-	int StartCode; /* 0xBBBBBBBB; Encoder input structure marker */
+	int StartCode; /* NAL_Q_ENCODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int PictureTag;
@@ -970,7 +972,7 @@ typedef struct __EncoderInputStr {
 } EncoderInputStr; /* 88*4 = 352 bytes */
 
 typedef struct __DecoderOutputStr {
-	int StartCode; /* 0xAAAAAAAA; Decoder output structure marker */
+	int StartCode; /* NAL_Q_DECODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int ErrorCode;
@@ -1041,7 +1043,7 @@ typedef struct __DecoderOutputStr {
 } DecoderOutputStr; /* 147*4 = 588 bytes */
 
 typedef struct __EncoderOutputStr {
-	int StartCode; /* 0xBBBBBBBB; Encoder output structure marker */
+	int StartCode; /* NAL_Q_ENCODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int ErrorCode;
