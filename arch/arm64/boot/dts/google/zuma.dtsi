@@ -32,6 +32,7 @@
 #include "zuma-pcie.dtsi"
 #include "zuma-gxp.dtsi"
 #include "zuma-audio.dtsi"
+#include "zuma-s2mpu.dtsi"
 
 / {
 	compatible = "google,zuma";
