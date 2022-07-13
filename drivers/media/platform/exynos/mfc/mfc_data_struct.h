@@ -331,9 +331,9 @@ enum mfc_regression_option {
 enum mfc_debug_cause {
 	/* panic cause */
 	MFC_CAUSE_0WRITE_PAGE_FAULT		= 0,
-	MFC_CAUSE_0READ_PAGE_FAULT		= 1,
+	MFC_CAUSE_0PAGE_FAULT			= 1,
 	MFC_CAUSE_1WRITE_PAGE_FAULT		= 2,
-	MFC_CAUSE_1READ_PAGE_FAULT		= 3,
+	MFC_CAUSE_1PAGE_FAULT			= 3,
 	MFC_CAUSE_NO_INTERRUPT			= 4,
 	MFC_CAUSE_NO_SCHEDULING			= 5,
 	MFC_CAUSE_FAIL_STOP_NAL_Q		= 6,
@@ -871,6 +871,7 @@ struct mfc_core_platdata {
 	unsigned int axid_mask;
 	unsigned int mfc_fault_num;
 	unsigned int trans_info_offset;
+	unsigned int fault_status_offset;
 	/* vOTF */
 	unsigned int mfc_votf_base;
 	unsigned int gdc_votf_base;

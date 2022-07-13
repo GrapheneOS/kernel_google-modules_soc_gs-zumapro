@@ -127,7 +127,7 @@ static int __mfc_core_parse_mfc_qos_platdata(struct device_node *np,
 int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 {
 	struct mfc_core *core = (struct mfc_core *)param;
-	unsigned int trans_info;
+	unsigned int trans_info, fault_status;
 	int ret;
 
 	if (core->core_pdata->trans_info_offset)
@@ -135,10 +135,14 @@ int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 	else
 		trans_info = MFC_MMU_FAULT_TRANS_INFO;
 
+	if (core->core_pdata->fault_status_offset)
+		fault_status = core->core_pdata->fault_status_offset;
+	else
+		fault_status = MFC_MMU_INTERRUPT_STATUS;
+
 	/* [OTF] If AxID is 1 in SYSMMU1 fault info, it is TS-MUX fault */
 	if (core->has_hwfc && core->has_2sysmmu) {
-		if (MFC_MMU1_READL(MFC_MMU_INTERRUPT_STATUS) &&
-				((MFC_MMU1_READL(trans_info) &
+		if (MFC_MMU1_READL(fault_status) && ((MFC_MMU1_READL(trans_info) &
 				  MFC_MMU_FAULT_TRANS_INFO_AXID_MASK) == 1)) {
 			mfc_core_err("There is TS-MUX page fault. skip SFR dump\n");
 			return 0;
@@ -154,30 +158,30 @@ int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 		}
 	}
 
-	if (MFC_MMU0_READL(MFC_MMU_INTERRUPT_STATUS)) {
-		if (MFC_MMU0_READL(trans_info) & MFC_MMU_FAULT_TRANS_INFO_RW_MASK)
-			core->logging_data->cause |= (1 << MFC_CAUSE_0WRITE_PAGE_FAULT);
-		else
-			core->logging_data->cause |= (1 << MFC_CAUSE_0READ_PAGE_FAULT);
-		core->logging_data->fault_status = MFC_MMU0_READL(MFC_MMU_INTERRUPT_STATUS);
+	if (MFC_MMU0_READL(fault_status)) {
+		/*
+		 * Since it has become complicated to distinguish
+		 * read or write of page fault in IP driver,
+		 * the cause of page fault in logging data is unified into the page fault.
+		 */
+		core->logging_data->cause |= (1 << MFC_CAUSE_0PAGE_FAULT);
+		core->logging_data->fault_status = MFC_MMU0_READL(fault_status);
 		core->logging_data->fault_trans_info = MFC_MMU0_READL(trans_info);
 	}
 
 	if (core->has_2sysmmu) {
-		if (MFC_MMU1_READL(MFC_MMU_INTERRUPT_STATUS)) {
-			if (MFC_MMU1_READL(trans_info) & MFC_MMU_FAULT_TRANS_INFO_RW_MASK)
-				core->logging_data->cause |= (1 << MFC_CAUSE_1WRITE_PAGE_FAULT);
-			else
-				core->logging_data->cause |= (1 << MFC_CAUSE_1READ_PAGE_FAULT);
-			core->logging_data->fault_status = MFC_MMU1_READL(MFC_MMU_INTERRUPT_STATUS);
+		if (MFC_MMU1_READL(fault_status)) {
+			core->logging_data->cause |= (1 << MFC_CAUSE_1PAGE_FAULT);
+			core->logging_data->fault_status = MFC_MMU1_READL(fault_status);
 			core->logging_data->fault_trans_info = MFC_MMU1_READL(trans_info);
 		}
 	}
 	core->logging_data->fault_addr = (unsigned int)(fault->event.addr);
 
 	snprintf(core->crash_info, MFC_CRASH_INFO_LEN,
-		"MFC-%d SysMMU PAGE FAULT at %#010llx (AxID: %#x)\n",
-		core->id, fault->event.addr, core->logging_data->fault_trans_info);
+		"MFC-%d SysMMU PAGE FAULT at %#010llx (AxID: %#x), fault_status: %#x\n",
+		core->id, fault->event.addr,
+		core->logging_data->fault_trans_info, core->logging_data->fault_status);
 	mfc_core_err("%s", core->crash_info);
 	MFC_TRACE_CORE("%s", core->crash_info);
 
@@ -217,6 +221,7 @@ static int __mfc_core_parse_dt(struct device_node *np, struct mfc_core *core)
 	of_property_read_u32(np, "axid_mask", &pdata->axid_mask);
 	of_property_read_u32(np, "mfc_fault_num", &pdata->mfc_fault_num);
 	of_property_read_u32(np, "trans_info_offset", &pdata->trans_info_offset);
+	of_property_read_u32(np, "fault_status_offset", &pdata->fault_status_offset);
 
 	/* LLC(Last Level Cache) */
 	of_property_read_u32(np, "llc", &core->has_llc);

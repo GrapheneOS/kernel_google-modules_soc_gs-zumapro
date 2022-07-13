@@ -277,8 +277,8 @@ static void __mfc_save_logging_sfr(struct mfc_core *core)
 			core->logging_data->SFRs_set1[i] = MFC_CORE_READL(mfc_logging_sfr_set1[i]);
 
 		/* READ PAGE FAULT at AxID 0 ~ 3: PX */
-		if ((core->logging_data->cause & (1 << MFC_CAUSE_0READ_PAGE_FAULT)) ||
-				(core->logging_data->cause & (1 << MFC_CAUSE_1READ_PAGE_FAULT))) {
+		if ((core->logging_data->cause & (1 << MFC_CAUSE_0PAGE_FAULT)) ||
+				(core->logging_data->cause & (1 << MFC_CAUSE_1PAGE_FAULT))) {
 			if ((core->logging_data->fault_trans_info & 0xff) <= 3) {
 				px_fault = true;
 				for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET2; i++)
