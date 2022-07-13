@@ -93,6 +93,10 @@ s3c2410_wdt.ko
 samsung-iommu-group.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
+slc_acpm.ko
+slc_dummy.ko
+slc_pmon.ko
+slc_pt.ko
 slg51002-core.ko
 slg51002-regulator.ko
 smfc.ko
