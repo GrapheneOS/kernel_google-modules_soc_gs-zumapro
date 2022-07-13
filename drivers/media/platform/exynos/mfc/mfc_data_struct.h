@@ -872,6 +872,9 @@ struct mfc_core_platdata {
 	unsigned int mfc_fault_num;
 	unsigned int trans_info_offset;
 	unsigned int fault_status_offset;
+	unsigned int fault_pmmuid_offset;
+	unsigned int fault_pmmuid_shift;
+
 	/* vOTF */
 	unsigned int mfc_votf_base;
 	unsigned int gdc_votf_base;

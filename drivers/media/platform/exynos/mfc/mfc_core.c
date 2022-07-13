@@ -141,11 +141,21 @@ int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 		fault_status = MFC_MMU_INTERRUPT_STATUS;
 
 	/* [OTF] If AxID is 1 in SYSMMU1 fault info, it is TS-MUX fault */
-	if (core->has_hwfc && core->has_2sysmmu) {
-		if (MFC_MMU1_READL(fault_status) && ((MFC_MMU1_READL(trans_info) &
+	if (core->has_hwfc) {
+		if (core->has_2sysmmu) {
+			if (MFC_MMU1_READL(fault_status) && ((MFC_MMU1_READL(trans_info) &
 				  MFC_MMU_FAULT_TRANS_INFO_AXID_MASK) == 1)) {
-			mfc_core_err("There is TS-MUX page fault. skip SFR dump\n");
-			return 0;
+				mfc_core_err("There is TS-MUX page fault. skip SFR dump\n");
+				return 0;
+			}
+		/* PMMU ID is 1 means that sysmmu1 in sysmmu v9 */
+		} else if (core->core_pdata->fault_pmmuid_offset &&
+				(((MFC_MMU0_READL(core->core_pdata->fault_pmmuid_offset) >>
+				   core->core_pdata->fault_pmmuid_shift) & 0xFF) == 1)) {
+			if ((MFC_MMU0_READL(trans_info) & MFC_MMU_FAULT_TRANS_INFO_AXID_MASK) == 1) {
+				mfc_core_err("There is TS-MUX page fault. skip SFR dump\n");
+				return 0;
+			}
 		}
 	}
 
@@ -222,6 +232,8 @@ static int __mfc_core_parse_dt(struct device_node *np, struct mfc_core *core)
 	of_property_read_u32(np, "mfc_fault_num", &pdata->mfc_fault_num);
 	of_property_read_u32(np, "trans_info_offset", &pdata->trans_info_offset);
 	of_property_read_u32(np, "fault_status_offset", &pdata->fault_status_offset);
+	of_property_read_u32(np, "fault_pmmuid_offset", &pdata->fault_pmmuid_offset);
+	of_property_read_u32(np, "fault_pmmuid_shift", &pdata->fault_pmmuid_shift);
 
 	/* LLC(Last Level Cache) */
 	of_property_read_u32(np, "llc", &core->has_llc);
