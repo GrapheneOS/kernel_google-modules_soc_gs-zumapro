@@ -10,6 +10,7 @@
 #include <dt-bindings/power/google-power.h>
 #include <dt-bindings/power/s2mpg1x-power.h>
 #include <dt-bindings/regulator/samsung,s2mpg-regulator.h>
+#include <dt-bindings/interrupt-controller/zuma.h>
 
 &pinctrl_0 {
 	smpl_warn: smpl-warn {
@@ -31,14 +32,8 @@
 		acpm-speedy-channel = <0>;
 		s2mpg14,wakeup = "enabled";
 		reg = <0x1f>;
-		interrupts = <1 0 0>, // SMPL_WARN
-			     <1 0 1>, // OCP_WARN_CPUCL1
-			     <1 0 2>, // OCP_WARN_CPUCL2
-			     <1 0 3>, // SOFT_OCP_WARN_CPUCL1
-			     <1 0 4>, // SOFT_OCP_WARN_CPUCL2
-			     <1 0 5>, // OCP_WARN_TPU
-			     <1 0 6>; // SOFT_OCP_WARN_TPU
-		interrupt-parent = <&gpa0>;
+		interrupts = <GIC_SPI IRQ_INTCOMB_VGPIO2AP_ALIVE IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&gic>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&smpl_warn>;
 		gpios = <&gpa9 4 GPIO_ACTIVE_HIGH>;
@@ -112,7 +107,7 @@
 		sel_vgpio = <0xD3 0x1C 0xE3 0x01 0x63 0xC6
 			0xE1 0x47 0x4D 0x96 0x09>;
 
-		s2mpg12-keys {
+		s2mpg14-keys {
 			button@1 {
 				label = "pmic-keys: KEY_POWER";
 				linux,code = <116>;
@@ -816,8 +811,8 @@
 		s2mpg15_gpio: s2mpg15_gpio {
 			gpio-controller;
 			#gpio-cells = <2>;
-			ngpios = <6>;
-			gpio-ranges = <&s2mpg15_pinctrl 0 0 6>;
+			ngpios = <10>;
+			gpio-ranges = <&s2mpg15_pinctrl 0 0 10>;
 		};
 
 		s2mpg15_pinctrl: s2mpg15_pinctrl {
