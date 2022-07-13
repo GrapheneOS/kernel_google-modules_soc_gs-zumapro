@@ -26,7 +26,7 @@
 #include "mfc_debug.h"
 #include "mfc_media.h"
 
-#define MFC_DRIVER_INFO		200429
+#define MFC_DRIVER_INFO		220715
 
 #define MFC_MAX_REF_BUFS	2
 #define MFC_FRAME_PLANES	2
