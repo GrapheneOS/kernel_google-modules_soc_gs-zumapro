@@ -71,6 +71,7 @@ max77759_contaminant.ko
 max77759_helper.ko
 net_failover.ko
 netfs.ko
+nitrous.ko
 p9221.ko
 page_pool.ko
 panel-samsung-drv.ko
