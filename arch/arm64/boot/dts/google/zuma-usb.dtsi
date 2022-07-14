@@ -131,7 +131,7 @@
 			/* pm qos int minlock */
 			usb-pm-qos-int = <400000>;
 
-			maximum-speed = "super-speed";
+			maximum-speed = "super-speed-plus";
 			usb3-lpm-capable;
 			usb-psy-name = "usb";
 			snps,quirk-frame-length-adjustment = <0x20>;
