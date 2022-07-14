@@ -13,8 +13,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/soc/samsung/exynos-smc.h>
+#include <ufs/ufshcd.h>
 
-#include "ufshcd.h"
 #include "ufshcd-crypto.h"
 #include "ufs-exynos-gs.h"
 

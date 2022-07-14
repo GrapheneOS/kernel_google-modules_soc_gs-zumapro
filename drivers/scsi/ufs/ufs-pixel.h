@@ -11,7 +11,7 @@
 #define _UFS_PIXEL_H_
 
 #include <asm/unaligned.h>
-#include "ufshcd.h"
+#include <ufs/ufshcd.h>
 
 /* 1% lifetime C */
 #define HEALTH_DESC_DEFAULT_PE_CYCLE		3000

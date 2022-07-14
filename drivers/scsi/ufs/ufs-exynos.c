@@ -14,19 +14,20 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/clk.h>
-#include <linux/smc.h>
-#include <scsi/scsi_cmnd.h>
-#include "ufshcd.h"
-#include "ufshci.h"
-#include "unipro.h"
-#include "ufshcd-pltfrm.h"
-#include "ufs_quirks.h"
-#include "ufs-exynos-gs.h"
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
+#include <linux/smc.h>
 #include <linux/spinlock.h>
+#include <scsi/scsi_cmnd.h>
 #include <soc/google/exynos-pmu-if.h>
 #include <soc/google/exynos-cpupm.h>
+#include <ufs/ufshcd.h>
+#include <ufs/ufshci.h>
+#include <ufs/unipro.h>
+#include <ufs/ufs_quirks.h>
+#include <ufshcd-pltfrm.h>
+
+#include "ufs-exynos-gs.h"
 
 #define IS_C_STATE_ON(h) ((h)->c_state == C_ON)
 #define PRINT_STATES(h)						\
