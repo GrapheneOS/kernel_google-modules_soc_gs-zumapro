@@ -803,15 +803,76 @@ static int additional_cr_reg_update(struct exynos_usbphy_info *info)
 	cr_reg |= (1 << 3) | (0x3 << 1);
 	phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_TX(0x10eb), cr_reg);
 
-#if IS_ENABLED(CONFIG_SOC_S5E9925) && IS_ENABLED(CONFIG_SOC_S5E9925_EVT0)
-	/* P1 mode block power table update: Enable AFE */
-	phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_RX(0x1042), 0x0203);
+	/* lane0 tx_term control : 50 ohms -> 44ohms */
+	cr_reg = phy_exynos_snps_usbdp_cr_read(info, 0x301a);
+	cr_reg &= ~(0x7 << 4);
+	cr_reg |= (1 << 7) | (5 << 4);
+	phy_exynos_snps_usbdp_cr_write(info, 0x301a, cr_reg);
 
-	/* P2 mode block power table update: Enable AFE */
-	phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_RX(0x1043), 0x181);
-#endif
+	/* lane1 rx_term control : 50 ohms -> 44ohms */
+	cr_reg = phy_exynos_snps_usbdp_cr_read(info, 0x311a);
+	cr_reg &= ~(0x7 << 4);
+	cr_reg |= (1 << 7) | (5 << 4);
+	phy_exynos_snps_usbdp_cr_write(info, 0x311a, cr_reg);
+
+	/* lane2 rx_term control : 50 ohms -> 44ohms */
+	cr_reg = phy_exynos_snps_usbdp_cr_read(info, 0x321a);
+	cr_reg &= ~(0x7 << 4);
+	cr_reg |= (1 << 7) | (5 << 4);
+	phy_exynos_snps_usbdp_cr_write(info, 0x321a, cr_reg);
+
+	/* lane3 tx_term control : 50 ohms -> 44ohms */
+	cr_reg = phy_exynos_snps_usbdp_cr_read(info, 0x331a);
+	cr_reg &= ~(0x7 << 4);
+	cr_reg |= (1 << 7) | (5 << 4);
+	phy_exynos_snps_usbdp_cr_write(info, 0x331a, cr_reg);
+
+	/* set tune parameter */
+	phy_exynos_snps_usbdp_tune(info);
 
 	return 0;
+}
+
+void phy_exynos_snps_tx_gen2_deemp_set(struct exynos_usbphy_info *info)
+{
+	void __iomem *link_base;
+	u32 reg;
+
+	if (!info) {
+		return;
+	}
+
+	link_base = info->link_base;
+
+	/* Gen2 Tx DRIVER pre-shoot, de-emphasis ctrl
+	 * [17:12] Deemphasis
+	 * [11:6] Level (not valid)
+	 * [5:0] Preshoot
+	 */
+	/* normal operation, compliance pattern 15 */
+	reg = readl(link_base + USB31DRD_LINK_LCSR_TX_DEEMPH);
+	reg &= ~(0x3FFFF);
+	reg |= (0x8c45 << 0);
+	writel(reg, link_base + USB31DRD_LINK_LCSR_TX_DEEMPH);
+
+	/* compliance pattern 13 */
+	reg = readl(link_base + USB31DRD_LINK_LCSR_TX_DEEMPH_1);
+	reg &= ~(0x3FFFF);
+	reg |= (0xe45 << 0);
+	writel(reg, link_base + USB31DRD_LINK_LCSR_TX_DEEMPH_1);
+
+	/* compliance pattern 14 */
+	reg = readl(link_base + USB31DRD_LINK_LCSR_TX_DEEMPH_2);
+	reg &= ~(0x3FFFF);
+	reg |= (0x8D80 << 0);
+	writel(reg, link_base + USB31DRD_LINK_LCSR_TX_DEEMPH_2);
+
+	/* compliance pattern 16 */
+	reg = readl(link_base + USB31DRD_LINK_LCSR_TX_DEEMPH_3);
+	reg &= ~(0x3FFFF);
+	reg |= (0xf80 << 0);
+	writel(reg, link_base + USB31DRD_LINK_LCSR_TX_DEEMPH_3);
+
 }
 
 int phy_exynos_snps_usbdp_phy_enable(struct exynos_usbphy_info *info)
@@ -835,39 +896,30 @@ int phy_exynos_snps_usbdp_phy_enable(struct exynos_usbphy_info *info)
 	phy_reset(info, 0);
 	lane0_reset(info, 0);
 
-#ifdef PHY_RAM_MODE
-	/* 3.boot up phy : RAM Mode -> SRAM f/w update
-	 * After external access to the SRAM (or any other PHY register) is complete,
-	 * input sram_ext_ld_done should be set high, allowing the FSMs in the
-	 * Raw PCS to start executing the code from SRAM */
 	check_fw_update_done(info);
 
 	/* Override vco_lowfreq_val to 0 all rx lanes */
 	phy_exynos_snps_usbdp_cr_write(info, 0x31c5, 0x8000);
 	phy_exynos_snps_usbdp_cr_write(info, 0x32c5, 0x8000);
+#ifdef PHY_RAM_MODE
+	/* 3.boot up phy : RAM Mode -> SRAM f/w update
+	 * After external access to the SRAM (or any other PHY register) is complete,
+	 * input sram_ext_ld_done should be set high, allowing the FSMs in the
+	 * Raw PCS to start executing the code from SRAM */
+	pr_info(" PHY Boot mode :RAM mode\n");
 
 	/* f/w update */
 	update_fw_to_sram(info);
 
 	/* sram_ext_ld_done = 1 */
 	phy_exynos_snps_usbdp_phy_sram_ext_ld_done(info, 1);
-#else
-	/* 3.boot up phy : ROM Mode -> Bypass SRAM and skip f/w update */
-	check_fw_update_done(info);
-
-	phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_RX(0x30c5), 0x8000);
-
-	phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_RX(0x3018), 0x0f00);
-	phy_exynos_snps_usbdp_cr_read(info, CRREG_LANE_RX(0x3018));
-
-	phy_exynos_snps_usbdp_cr_read(info, 0x63);
-	phy_exynos_snps_usbdp_cr_write(info, 0x63, 0x021f);
-	phy_exynos_snps_usbdp_cr_read(info, 0x63);
 #endif
-
 	/* CR Register update */
 	if (additional_cr_reg_update(info) != 0)
 		return -1;
+
+	/* Link TX Deemphasis Setting */
+	phy_exynos_snps_tx_gen2_deemp_set(info);
 
 	/* Switch from NC to USB : Sync mode */
 	if (phy_exynos_snps_usbdp_nc2usb_mode(info, 1) != 0)
@@ -881,13 +933,18 @@ void phy_exynos_snps_usbdp_phy_disable(struct exynos_usbphy_info *info)
 	u32 reg;
 	void *base = info->regs_base;
 
+	/* 1. Assert reset (phy_reset = 1) */
+	lane0_reset(info, 1);
+	phy_reset(info, 1);
+
 	/* phy test power down */
 	reg = readl(base + SNPS_USBDPPHY_REG_PHY_CONFIG2);
 	((SNPS_USBDPPHY_REG_PHY_CONFIG2_p)(&reg))->b.phy_test_powerdown = 1;
 	writel(reg, base + SNPS_USBDPPHY_REG_PHY_CONFIG2);
-
+#if 0
 	/* Disable Analog phy power */
 	reg = readl(base + SNPS_USBDPPHY_REG_PHY_CONFIG0);
 	((SNPS_USBDPPHY_REG_PHY_CONFIG0_p)(&reg))->b.phy0_ana_pwr_en = 0;
 	writel(reg, base + SNPS_USBDPPHY_REG_PHY_CONFIG0);
+#endif
 }
