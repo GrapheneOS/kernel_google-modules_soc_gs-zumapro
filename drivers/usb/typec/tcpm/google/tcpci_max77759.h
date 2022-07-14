@@ -123,7 +123,7 @@ struct max77759_plat {
 	/* Notifier for data role */
 	struct usb_role_switch *usb_sw;
 	/* Notifier for orientation */
-	struct typec_switch *typec_sw;
+	struct typec_switch_dev *typec_sw;
 
 	/* Reflects whether BC1.2 is still running */
 	bool bc12_running;
