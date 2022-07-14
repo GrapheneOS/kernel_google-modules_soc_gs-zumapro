@@ -343,28 +343,28 @@ unsigned int mux_clkcmu_peric0_ip_uud_lut_params[] = {
 	1,
 };
 unsigned int div_clk_pericx_usix_usi_nm_lut_params[] = {
-	0, 0,
-};
-unsigned int div_clk_pericx_usix_usi_200mhz_lut_params[] = {
-	1, 0,
-};
-unsigned int div_clk_pericx_usix_usi_100mhz_lut_params[] = {
-	3, 0,
-};
-unsigned int div_clk_pericx_usix_usi_50mhz_lut_params[] = {
-	7, 0,
-};
-unsigned int div_clk_pericx_usix_usi_24mhz_lut_params[] = {
 	0, 1,
 };
-unsigned int div_clk_pericx_usix_usi_12mhz_lut_params[] = {
+unsigned int div_clk_pericx_usix_usi_200mhz_lut_params[] = {
 	1, 1,
 };
+unsigned int div_clk_pericx_usix_usi_100mhz_lut_params[] = {
+	3, 1,
+};
+unsigned int div_clk_pericx_usix_usi_50mhz_lut_params[] = {
+	7, 1,
+};
+unsigned int div_clk_pericx_usix_usi_24mhz_lut_params[] = {
+	0, 0,
+};
+unsigned int div_clk_pericx_usix_usi_12mhz_lut_params[] = {
+	1, 0,
+};
 unsigned int div_clk_pericx_usix_usi_8mhz_lut_params[] = {
-	2, 1,
+	2, 0,
 };
 unsigned int div_clk_pericx_usix_usi_4mhz_lut_params[] = {
-	5, 1,
+	5, 0,
 };
 unsigned int div_clk_peric0_usi0_uart_uud_lut_params[] = {
 	1,
