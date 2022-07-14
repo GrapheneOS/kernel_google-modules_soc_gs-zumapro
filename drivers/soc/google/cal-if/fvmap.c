@@ -182,9 +182,11 @@ static void fvmap_copy_from_sram(void *map_base, void __iomem *sram_base)
 		old = sram_base + fvmap_header[i].o_ratevolt;
 		new = map_base + fvmap_header[i].o_ratevolt;
 
+#if 0
 		margin = *margin_table[vclk->id - ACPM_VCLK_TYPE];
 		if (margin)
 			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE, margin);
+#endif
 
 		for (j = 0; j < fvmap_header[i].num_of_members; j++) {
 			clks = sram_base + fvmap_header[i].o_members;
