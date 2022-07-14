@@ -20,6 +20,9 @@
 
 #include <soc/google/pkvm-s2mpu.h>
 
+#define S2MPU_VERSION_9					0x90000000
+#define REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET	0x50
+
 #define S2MPU_NR_WAYS	4
 
 struct s2mpu_data {
@@ -264,12 +267,40 @@ static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
 	return platform_get_drvdata(to_platform_device(dev));
 }
 
+static u32 s2mpu_version(struct s2mpu_data *data)
+{
+	return readl_relaxed(data->base + REG_NS_VERSION);
+}
+
+/*
+ * Configure Zuma S2MPU to a given set of protection bits across all GBs.
+ * This is used during bring-up, until pKVM can be updated and take control.
+ */
+static int pkvm_s2mpu_zuma_config(struct device *dev, enum mpt_prot prot)
+{
+	struct s2mpu_data *data = s2mpu_dev_data(dev);
+	unsigned int gb, vid;
+
+	for_each_gb_and_vid(gb, vid) {
+		writel_relaxed(L1ENTRY_ATTR_1G(prot),
+			       data->base + REG_NS_L1ENTRY_ATTR(vid, gb));
+	}
+	writel_relaxed(INVALIDATION_INVALIDATE,
+		       data->base + REG_NS_ALL_INVALIDATION);
+	writel_relaxed(ALL_VIDS_BITMAP,
+		       data->base + REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET);
+	return 0;
+}
+
 int pkvm_s2mpu_suspend(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
 
 	if (data->pkvm_registered && !data->always_on)
 		return pkvm_iommu_suspend(dev);
+
+	if (s2mpu_version(data) == S2MPU_VERSION_9)
+		return pkvm_s2mpu_zuma_config(dev, MPT_PROT_NONE);
 
 	return 0;
 }
@@ -281,6 +312,9 @@ int pkvm_s2mpu_resume(struct device *dev)
 
 	if (data->pkvm_registered)
 		return pkvm_iommu_resume(dev);
+
+	if (s2mpu_version(data) == S2MPU_VERSION_9)
+		return pkvm_s2mpu_zuma_config(dev, MPT_PROT_RW);
 
 	writel_relaxed(0, data->base + REG_NS_CTRL0);
 	return 0;
@@ -354,10 +388,15 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 */
 	s2mpu_probe_irq(pdev, data);
 
-	ret = pkvm_iommu_s2mpu_register(dev, res->start);
-	if (ret && ret != -ENODEV) {
-		dev_err(dev, "could not register: %d\n", ret);
-		return ret;
+	if (!off_at_boot && s2mpu_version(data) == S2MPU_VERSION_9) {
+		/* Bring-up only. Control from the kernel. */
+		ret = -ENODEV;
+	} else {
+		ret = pkvm_iommu_s2mpu_register(dev, res->start);
+		if (ret && ret != -ENODEV) {
+			dev_err(dev, "could not register: %d\n", ret);
+			return ret;
+		}
 	}
 
 	data->pkvm_registered = ret != -ENODEV;
