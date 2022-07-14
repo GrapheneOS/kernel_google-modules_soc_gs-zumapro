@@ -1484,7 +1484,8 @@ static void max77759_set_partner_usb_comm_capable(struct tcpci *tcpci, struct tc
 	mutex_unlock(&chip->data_path_lock);
 }
 
-static int max77759_usb_set_orientation(struct typec_switch *sw, enum typec_orientation orientation)
+static int max77759_usb_set_orientation(struct typec_switch_dev *sw,
+					enum typec_orientation orientation)
 {
 	struct max77759_plat *chip = typec_switch_get_drvdata(sw);
 	enum typec_cc_polarity polarity = orientation == TYPEC_ORIENTATION_REVERSE ?
