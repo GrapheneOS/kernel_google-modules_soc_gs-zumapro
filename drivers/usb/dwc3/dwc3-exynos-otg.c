@@ -544,8 +544,11 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		}
 
 		ret = usb_gadget_activate(dwc->gadget);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_err(dev, "USB gadget activate failed with %d\n", ret);
+			dwc3_otg_phy_enable(fsm, 0, !on);
+			goto err1;
+		}
 
 		dwc3_otg_set_peripheral_mode(dotg);
 
