@@ -15,9 +15,7 @@
 #include <linux/nmi.h>
 #include <linux/init_task.h>
 #include <linux/reboot.h>
-#include <linux/smc.h>
 #include <linux/kdebug.h>
-#include <linux/arm-smccc.h>
 #include <linux/panic_notifier.h>
 #include <linux/sysfs.h>
 #include <linux/reboot.h>
@@ -33,6 +31,10 @@
 #include "debug-snapshot-local.h"
 
 #include <trace/hooks/debug.h>
+
+static char *ecc_sel_str[] = {
+	"DSU", "L1", "L2", NULL,
+};
 
 struct dbg_snapshot_mmu_reg {
 	long SCTLR_EL1;
@@ -59,66 +61,6 @@ void cache_flush_all(void)
 	flush_cache_all();
 }
 EXPORT_SYMBOL_GPL(cache_flush_all);
-
-static u64 read_errselr_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c3_1\n" : "=r" (reg));
-	return reg;
-}
-
-static void write_errselr_el1(u64 val)
-{
-	asm volatile ("msr S3_0_c5_c3_1, %0\n"
-			"isb\n" :: "r" ((__u64)val));
-}
-
-static u64 read_erridr_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c3_0\n" : "=r" (reg));
-	return reg;
-}
-
-static u64 read_erxstatus_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c4_2\n" : "=r" (reg));
-	return reg;
-}
-
-static void __attribute__((unused)) write_erxstatus_el1(u64 val)
-{
-	asm volatile ("msr S3_0_c5_c4_2, %0\n"
-			"isb\n" :: "r" ((__u64)val));
-}
-
-static u64 read_erxmisc0_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c5_0\n" : "=r" (reg));
-	return reg;
-}
-
-static u64 read_erxmisc1_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c5_1\n" : "=r" (reg));
-	return reg;
-}
-
-static u64 read_erxaddr_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c4_3\n" : "=r" (reg));
-	return reg;
-}
 
 static void dbg_snapshot_dump_panic(char *str, size_t len)
 {
@@ -271,9 +213,9 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 	unsigned long state, pc = 0;
 
 	if ((!tsk) || !try_get_task_stack(tsk) || (tsk->flags & PF_FROZEN) ||
-			!(tsk->__state == TASK_RUNNING ||
-				tsk->__state == TASK_UNINTERRUPTIBLE ||
-				tsk->__state == TASK_KILLABLE))
+	    !(tsk->__state == TASK_RUNNING ||
+	    tsk->__state == TASK_UNINTERRUPTIBLE ||
+	    tsk->__state == TASK_KILLABLE))
 		return;
 
 	state = tsk->__state | tsk->exit_state;
@@ -373,65 +315,148 @@ static void dbg_snapshot_save_system(void *unused)
 	);
 }
 
-void dbg_snapshot_ecc_dump(void)
+static void clear_external_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
 {
-	struct armv8_a_errselr_el1 errselr_el1;
-	struct armv8_a_erridr_el1 erridr_el1;
-	struct armv8_a_erxstatus_el1 erxstatus_el1;
-	struct armv8_a_erxmisc0_el1 erxmisc0_el1;
-	struct armv8_a_erxmisc1_el1 erxmisc1_el1;
-	struct armv8_a_erxaddr_el1 erxaddr_el1;
+	erxstatus_el1.field.CE = 0x3;
+	erxstatus_el1.field.UET = 0x3;
+	erxstatus_el1.field.SERR = 0x0;
+	erxstatus_el1.field.IERR = 0x0;
+
+	write_ERXSTATUS_EL1(erxstatus_el1.reg);
+	write_ERXMISC0_EL1(0);
+	write_ERXMISC1_EL1(0);
+}
+
+const char *get_external_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
+{
+	const char *ext_err;
+
+	if (erxstatus_el1.field.SERR == 0xC)
+		ext_err = "Data value from (non-associative) external memory.";
+	else if (erxstatus_el1.field.SERR == 0x12)
+		ext_err = "Error response from Completer of access.";
+	else
+		ext_err = NULL;
+
+	clear_external_ecc_err(erxstatus_el1);
+
+	return ext_err;
+}
+
+const char *get_correct_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
+{
+	const char *cr_err;
+
+	switch (erxstatus_el1.field.CE) {
+	case BIT(1) | BIT(0):
+		cr_err = "At least persistent was corrected";
+		break;
+	case BIT(1):
+		cr_err = "At least one error was corrected";
+		break;
+	case BIT(0):
+		cr_err = "At least one transient error was corrected";
+		break;
+	default:
+		cr_err = NULL;
+	}
+
+	return cr_err;
+}
+
+static void _dbg_snapshot_ecc_dump(bool call_panic)
+{
+	ERRSELR_EL1_t errselr_el1;
+	ERRIDR_EL1_t erridr_el1;
+	ERXSTATUS_EL1_t erxstatus_el1;
+	const char *msg;
+	bool is_capable_identifing_err = false;
 	int i;
 
+	asm volatile ("HINT #16");
+	erridr_el1.reg = read_ERRIDR_EL1();
+
+	for (i = 0; i < (int)erridr_el1.field.NUM; i++) {
+		char errbuf[SZ_512] = {0, };
+		int n = 0;
+
+		errselr_el1.reg = read_ERRSELR_EL1();
+		errselr_el1.field.SEL = i;
+		write_ERRSELR_EL1(errselr_el1.reg);
+
+		isb();
+
+		erxstatus_el1.reg = read_ERXSTATUS_EL1();
+		msg = erxstatus_el1.field.VALID ? "Error" : "NO Error";
+
+		n = scnprintf(errbuf + n, sizeof(errbuf) - n,
+			      "%3s: %8s: [NUM:%d][ERXSTATUS_EL1:%#016llx]\n",
+			      ecc_sel_str[i] ? ecc_sel_str[i] : "", msg, i, erxstatus_el1.reg);
+
+		if (!erxstatus_el1.field.VALID)
+			goto output_cont;
+
+		if (erxstatus_el1.field.AV)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ AV ] Detected(Address VALID): [ERXADDR_EL1:%#llx]\n",
+				read_ERXADDR_EL1());
+		if (erxstatus_el1.field.OF)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ OF ] Detected(Overflow): There was more than one error has occurred\n");
+		if (erxstatus_el1.field.ER)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ ER ] Detected(Error Report by external abort)\n");
+		if (erxstatus_el1.field.UE)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ UE ] Detected(Uncorrected Error): Not deferred\n");
+		if (erxstatus_el1.field.DE)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ DE ] Detected(Deferred Error)\n");
+		if (erxstatus_el1.field.MV) {
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ MV ] Detected(Miscellaneous Registers VALID): [ERXMISC0_EL1:%#llx][ERXMISC1_EL1:%#llx]\n",
+				read_ERXMISC0_EL1(), read_ERXMISC1_EL1());
+		}
+		if (erxstatus_el1.field.CE) {
+			msg = get_correct_ecc_err(erxstatus_el1);
+			if (msg)
+				n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ CE ] Detected(Corrected Error): %s, [CE:%#x]\n",
+				msg, erxstatus_el1.field.CE);
+		}
+		if (erxstatus_el1.field.SERR) {
+			msg = get_external_ecc_err(erxstatus_el1);
+			if (msg) {
+				n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [SERR] Detected(External ECC Error): %s, [SERR:%#x]\n",
+				msg, erxstatus_el1.field.SERR);
+				goto output_cont;
+			} else {
+				pr_warn("ecc: [SERR] Warning WO msg [CODE:%#x]\n",
+					erxstatus_el1.field.SERR);
+			}
+		}
+		is_capable_identifing_err = true;
+output_cont:
+		pr_emerg("%s", errbuf);
+	}
+
+	if (call_panic && is_capable_identifing_err)
+		panic("RAS(ECC) error occurred");
+}
+
+void dbg_snapshot_ecc_dump(bool call_panic)
+{
 	switch (read_cpuid_part_number()) {
 	case ARM_CPU_PART_CORTEX_A55:
 	case ARM_CPU_PART_CORTEX_A76:
 	case ARM_CPU_PART_CORTEX_A77:
 	case ARM_CPU_PART_CORTEX_A78:
 	case ARM_CPU_PART_CORTEX_X1:
-		asm volatile ("HINT #16");
-		erridr_el1.reg = read_erridr_el1();
-		dev_emerg(dss_desc.dev, "ECC error check erridr_el1.num = 0x%x\n",
-				erridr_el1.field.num);
-
-		for (i = 0; i < (int)erridr_el1.field.num; i++) {
-			errselr_el1.reg = read_errselr_el1();
-			errselr_el1.field.sel = i;
-			write_errselr_el1(errselr_el1.reg);
-
-			isb();
-
-			erxstatus_el1.reg = read_erxstatus_el1();
-			if (!erxstatus_el1.field.valid) {
-				dev_emerg(dss_desc.dev,
-					"ERRSELR_EL1.SEL = %d, NOT Error, ERXSTATUS_EL1 = 0x%llx\n",
-					i, erxstatus_el1.reg);
-				continue;
-			}
-
-			if (erxstatus_el1.field.av) {
-				erxaddr_el1.reg = read_erxaddr_el1();
-				dev_emerg(dss_desc.dev,
-						"Error Address : 0x%llx\n", erxaddr_el1.reg);
-			}
-			if (erxstatus_el1.field.of)
-				dev_emerg(dss_desc.dev,
-					"There was more than one error has occurred. the other error have been discarded.\n");
-			if (erxstatus_el1.field.er)
-				dev_emerg(dss_desc.dev,	"Error Reported by external abort\n");
-			if (erxstatus_el1.field.ue)
-				dev_emerg(dss_desc.dev, "Uncorrected Error (Not deferred)\n");
-			if (erxstatus_el1.field.de)
-				dev_emerg(dss_desc.dev,	"Deferred Error\n");
-			if (erxstatus_el1.field.mv) {
-				erxmisc0_el1.reg = read_erxmisc0_el1();
-				erxmisc1_el1.reg = read_erxmisc1_el1();
-				dev_emerg(dss_desc.dev,
-					"ERXMISC0_EL1 = 0x%llx ERXMISC1_EL1 = 0x%llx ERXSTATUS_EL1[15:8] = 0x%x, [7:0] = 0x%x\n",
-					erxmisc0_el1.reg, erxmisc1_el1.reg,
-					erxstatus_el1.field.ierr, erxstatus_el1.field.serr);
-			}
-		}
+	case ARM_CPU_PART_CORTEX_A510:
+	case ARM_CPU_PART_CORTEX_A710:
+	case ARM_CPU_PART_CORTEX_X2:
+		_dbg_snapshot_ecc_dump(call_panic);
 		break;
 	default:
 		break;
@@ -495,7 +520,7 @@ void dbg_snapshot_save_context(struct pt_regs *regs, bool stack_dump)
 		dbg_snapshot_set_core_panic_stat(DSS_SIGN_PANIC, cpu);
 		dbg_snapshot_save_system(NULL);
 		dbg_snapshot_save_core(regs);
-		dbg_snapshot_ecc_dump();
+		dbg_snapshot_ecc_dump(false);
 		dev_emerg(dss_desc.dev, "context saved(CPU:%d)\n", cpu);
 	} else
 		dev_emerg(dss_desc.dev, "skip context saved(CPU:%d)\n", cpu);

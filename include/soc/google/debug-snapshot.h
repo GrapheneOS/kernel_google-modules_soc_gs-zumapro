@@ -52,7 +52,7 @@ extern int dbg_snapshot_get_sjtag_status(void);
 extern bool dbg_snapshot_get_reboot_status(void);
 extern bool dbg_snapshot_get_panic_status(void);
 extern bool dbg_snapshot_get_warm_status(void);
-extern void dbg_snapshot_ecc_dump(void);
+extern void dbg_snapshot_ecc_dump(bool call_panic);
 extern int dbg_snapshot_start_watchdog(int sec);
 extern int dbg_snapshot_emergency_reboot(const char *str);
 extern int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick);
@@ -153,7 +153,7 @@ static inline void dbg_snapshot_spin_func(void)
 
 #define dbg_snapshot_get_sjtag_status()		do { } while (0)
 #define dbg_snapshot_panic_handler_safe()	do { } while (0)
-#define dbg_snapshot_ecc_dump()			do { } while (0)
+#define dbg_snapshot_ecc_dump(a)		do { } while (0)
 #define dbg_snapshot_register_wdt_ops(a, b, c)	do { } while (0)
 #define dbg_snapshot_register_debug_ops(a, b, c)	do { } while (0)
 #define dbg_snapshot_save_context(a, b)		do { } while (0)
