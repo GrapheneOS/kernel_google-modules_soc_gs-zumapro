@@ -66,6 +66,7 @@
 		/* Support HDR10+ full data */
 		hdr10_plus_full = <1 0x200910>;
 		enc_capability = <1 0x220510>;
+		enc_sub_gop = <1 0x220722>;
 
 		/* AV1 Decoder */
 		support_av1_dec = <0>;
