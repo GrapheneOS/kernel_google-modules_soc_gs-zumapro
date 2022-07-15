@@ -2056,6 +2056,12 @@ static int __mfc_enc_set_param(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 	case V4L2_CID_MPEG_VIDEO_MV_VER_RANGE:
 		p->mv_ver_range = ctrl->value;
 		break;
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_ENABLE:
+		p->codec.h264.sub_gop_enable = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_ENABLE:
+		p->codec.hevc.sub_gop_enable = ctrl->value;
+		break;
 	/* These are stored in specific variables */
 	case V4L2_CID_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_LAYER_CH:
 	case V4L2_CID_MPEG_VIDEO_VP9_HIERARCHICAL_CODING_LAYER_CH:
@@ -2067,6 +2073,8 @@ static int __mfc_enc_set_param(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 	case V4L2_CID_MPEG_MFC_H264_USE_LTR:
 	case V4L2_CID_MPEG_MFC_H264_MARK_LTR:
 	case V4L2_CID_MPEG_MFC51_VIDEO_FRAME_TAG:
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_TYPE:
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE:
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 		break;
@@ -2151,6 +2159,8 @@ static int __mfc_enc_set_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	case V4L2_CID_MPEG_VIDEO_MV_HOR_POSITION_L1:
 	case V4L2_CID_MPEG_VIDEO_MV_VER_POSITION_L0:
 	case V4L2_CID_MPEG_VIDEO_MV_VER_POSITION_L1:
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_TYPE:
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE:
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 		list_for_each_entry(ctx_ctrl, &ctx->ctrls, list) {

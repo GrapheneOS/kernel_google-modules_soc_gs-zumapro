@@ -2686,6 +2686,42 @@ static struct v4l2_queryctrl controls[] = {
 		.step = 1,
 		.default_value = 0,
 	},
+	{
+		.id = V4L2_CID_MPEG_MFC_H264_SUB_GOP_ENABLE,
+		.type = V4L2_CTRL_TYPE_BOOLEAN,
+		.name = "H264 Sub GOP enable",
+		.minimum = 0,
+		.maximum = 1,
+		.step = 1,
+		.default_value = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_MFC_H264_SUB_GOP_TYPE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "H264 Sub GOP type",
+		.minimum = 0,
+		.maximum = 7,
+		.step = 1,
+		.default_value = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_ENABLE,
+		.type = V4L2_CTRL_TYPE_BOOLEAN,
+		.name = "HEVC Sub GOP enable",
+		.minimum = 0,
+		.maximum = 1,
+		.step = 1,
+		.default_value = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "HEVC Sub GOP type",
+		.minimum = 0,
+		.maximum = 7,
+		.step = 1,
+		.default_value = 0,
+	},
 };
 
 #define NUM_CTRLS ARRAY_SIZE(controls)

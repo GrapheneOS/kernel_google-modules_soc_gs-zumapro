@@ -784,6 +784,15 @@ static void __mfc_set_enc_params_h264(struct mfc_core *core,
 		mfc_set_bits(reg, 0xFFFF, 0, p_264->open_gop_size);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_H264_REFRESH_PERIOD);
 
+	/* Sub GOP selection enable */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_H264_OPTIONS_2);
+	mfc_clear_bits(reg, 0x1, 9);
+	if (MFC_FEATURE_SUPPORT(ctx->dev, ctx->dev->pdata->enc_sub_gop) && p_264->sub_gop_enable) {
+		mfc_set_bits(reg, 0x1, 9, 0x1);
+		mfc_debug(2, "[GOP] H264 Sub GOP selection is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_H264_OPTIONS_2);
+
 	/* Temporal SVC */
 	__mfc_set_temporal_svc_h264(core, ctx, p_264);
 
@@ -1396,6 +1405,15 @@ static void __mfc_set_enc_params_hevc(struct mfc_core *core,
 	mfc_clear_set_bits(reg, 0x1, 0, p->roi_enable);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_RC_ROI_CTRL);
 	mfc_debug(3, "[ROI] HEVC ROI enable\n");
+
+	/* Sub GOP selection enable */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_HEVC_OPTIONS_2);
+	mfc_clear_bits(reg, 0x1, 7);
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->enc_sub_gop) && p_hevc->sub_gop_enable) {
+		mfc_set_bits(reg, 0x1, 7, 0x1);
+		mfc_debug(2, "[GOP] HEVC Sub GOP selection is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_HEVC_OPTIONS_2);
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->static_info_enc) &&
 			p->static_info_enable && ctx->is_10bit) {
