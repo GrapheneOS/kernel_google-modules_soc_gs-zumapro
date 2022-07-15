@@ -490,10 +490,14 @@
 		      <0x0 0x19480000 0xE000>,	/* DECON_WIN */
 		      <0x0 0x19490000 0x10000>,	/* DECON_SUB */
 		      <0x0 0x194A0000 0xE000>,	/* DECON0_WINCON */
-		      <0x0 0x194D0000 0xF000>;	/* DQE */
-		reg-names = "main", "win", "sub", "wincon", "dqe";
+		      <0x0 0x194D0000 0xF000>,	/* DQE */
+		      <0x0 0x194F0000 0x10000>, /* DQE CGC */
+		      <0x0 0x1990E000 0x1000>;  /* CGC_DMA */
+		reg-names = "main", "win", "sub", "wincon", "dqe",
+			"dqe-cgc", "cgc-dma";
 
 		decon,id = <0>;
+		cgc-dma,id = <19>;
 
 		interrupts = <GIC_SPI IRQ_DPUB_DECON0_FRAME_START_DPUB
 				IRQ_TYPE_LEVEL_HIGH>,
@@ -504,9 +508,11 @@
 			     <GIC_SPI IRQ_DPUB_DECON0_DQE_DIMMING_START_DPUB
 				IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUB_DECON0_DQE_DIMMING_END_DPUB
+				IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF0_DMA_CGCTRL0_DPUF0
 				IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "frame_start", "frame_done", "extra",
-				"dimming_start", "dimming_end";
+				"dimming_start", "dimming_end", "cgc-dma";
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
@@ -566,15 +572,20 @@
 		      <0x0 0x19480000 0xE000>,	/* DECON_WIN */
 		      <0x0 0x19490000 0x10000>,	/* DECON_SUB */
 		      <0x0 0x194B0000 0xE000>,	/* DECON1_WINCON */
-		      <0x0 0x194E0000 0xF000>;	/* DQE */
-		reg-names = "main", "win", "sub", "wincon", "dqe";
+		      <0x0 0x194E0000 0xF000>,	/* DQE */
+		      <0x0 0x19500000 0x10000>, /* DQE CGC */
+		      <0x0 0x19D0E000 0x1000>;  /* CGC_DMA */
+		reg-names = "main", "win", "sub", "wincon", "dqe",
+			"dqe-cgc", "cgc-dma";
 
 		decon,id = <1>;
+		cgc-dma,id = <20>;
 
 		interrupts = <GIC_SPI IRQ_DPUB_DECON1_FRAME_START_DPUB IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUB_DECON1_FRAME_DONE_DPUB IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI IRQ_DPUB_DECON1_EXTRA_DPUB IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-names = "frame_start", "frame_done", "extra";
+			     <GIC_SPI IRQ_DPUB_DECON1_EXTRA_DPUB IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_DPUF1_DMA_CGCTRL0_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "frame_start", "frame_done", "extra", "cgc-dma";
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 
