@@ -605,8 +605,6 @@
 		interrupts = <0 IRQ_SYSMMU_S1_NS_TPU_TPU IRQ_TYPE_LEVEL_HIGH>,
 			     <0 IRQ_SYSMMU_S1_S_TPU_TPU IRQ_TYPE_LEVEL_HIGH>;
 
-		status = "disabled";
-
 		qos = <15>;
 
 		sysmmu,secure-irq;

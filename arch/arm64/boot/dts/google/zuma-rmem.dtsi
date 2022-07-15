@@ -32,11 +32,6 @@
 			no-map;
 		};
 
-		tpu_fw_ctx_reserved: tpu_ctx@0x91E00000 {
-			reg = <0x0 0x91E00000 0x1200000>;
-			no-map;
-		};
-
 		tpu_fw_reserved: tpu_fw@0x93000000 {
 			reg = <0x0 0x93000000 0x1000000>;
 			no-map;
@@ -59,6 +54,11 @@
 
 		gxp_scratchpad_reserved: gxp_scratchpad@9C400000 {
 			reg = <0x0 0x9C400000 0x00100000>;
+			no-map;
+		};
+
+		tpu_fw_ctx_reserved: tpu_ctx@0x9c500000 {
+			reg = <0x0 0x9c500000 0x3600000>;
 			no-map;
 		};
 

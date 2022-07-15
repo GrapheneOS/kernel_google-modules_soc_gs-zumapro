@@ -27,6 +27,7 @@
 #include "zuma-usb.dtsi"
 #include "zuma-pm-domains.dtsi"
 #include "zuma-mfc.dtsi"
+#include "zuma-tpu.dtsi"
 
 / {
 	compatible = "google,zuma";
