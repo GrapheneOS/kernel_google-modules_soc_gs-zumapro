@@ -796,14 +796,6 @@ static int exynos_ufs_pwr_change_notify(struct ufs_hba *hba,
 
 		ufs->h_state = H_LINK_BOOST;
 
-		/*
-		 * There is a bug that phy sometimes doesn't enter hibern8
-		 * state after a UIC command is processed when using auto
-		 * hibern8. This is one of the guides to dismiss it.
-		 * I found the case that a UIC process follows enabling
-		 * auto hibern8 is power mode change.
-		 */
-		ufshcd_dme_peer_get(hba, UIC_ARG_MIB(PA_MAXRXHSGEAR), NULL);
 		break;
 	default:
 		break;
