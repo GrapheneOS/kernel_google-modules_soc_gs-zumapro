@@ -12,6 +12,125 @@
 #include "zuma-isp-event-info.dtsi"
 
 / {
+	sysreg_csis_reset: system-controller@1C020500 {
+		compatible = "samsung,exynos-csis", "syscon";
+		reg = <0x0 0x1C020500 0x8>;
+	};
+
+	mipi_phy_csis0_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C101200 {
+		/* DPHY 4.5 Gbps 4lane */
+		/* CPHY 2.5 Gbps 3lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <0>; /* reset bit */
+		reg = <0x0 0x1C101200 0x500>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	mipi_phy_csis1_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C101700 {
+		/* DPHY 4.5 Gbps 4lane */
+		/* CPHY 2.5 Gbps 3lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <1>; /* reset bit */
+		reg = <0x0 0x1C101700 0x500>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	mipi_phy_csis2_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C102200 {
+		/* DPHY 4.5 Gbps 4lane */
+		/* CPHY 2.5 Gbps 3lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <2>; /* reset bit */
+		reg = <0x0 0x1C102200 0x500>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	mipi_phy_csis3_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C102700 {
+		/* DPHY 4.5 Gbps 4lane */
+		/* CPHY 2.5 Gbps 3lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <3>; /* reset bit */
+		reg = <0x0 0x1C102700 0x500>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	mipi_phy_csis4_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C102C00 {
+		/* CPHY 2.5 Gbps 1lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <4>; /* reset bit */
+		reg = <0x0 0x1C102C00 0x100>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	mipi_phy_csis5_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C103100 {
+		/* DPHY 4.5 Gbps 4lane */
+		/* CPHY 2.5 Gbps 3lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <5>; /* reset bit */
+		reg = <0x0 0x1C103100 0x500>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	mipi_phy_csis6_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C103600 {
+		/* CPHY 2.5 Gbps 1lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <6>; /* reset bit */
+		reg = <0x0 0x1C103600 0x100>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	mipi_phy_csis7_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C103700 {
+		/* DPHY 4.5 Gbps 4lane */
+		/* CPHY 2.5 Gbps 3lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <7>; /* reset bit */
+		reg = <0x0 0x1C103700 0x500>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
+	mipi_phy_csis8_m0s4s4s4s4s4: dcphy_m0s4s4s4s4s4_csi0@1C103C00 {
+		/* CPHY 2.5 Gbps 1lane */
+		compatible = "samsung,mipi-phy-m0s4s4s4s4s4";
+		samsung,pmu-syscon = <&pmu_system_controller>;
+		isolation = <0x3ebc>; /* PMU address offset */
+		samsung,reset-sysreg = <&sysreg_csis_reset>;
+		reset = <8>; /* reset bit */
+		reg = <0x0 0x1C103C00 0x100>;
+		owner = <1>; /* 0: DSI,  1: CSI */
+		#phy-cells = <1>;
+	};
+
 	lwis_top: lwis_top@0 {
 		compatible = "google,lwis-top-device";
 
@@ -660,6 +779,27 @@
 			<&isp_fe_ctx9_csis_fe_int>,
 			<&isp_fe_ctx10_csis_fe_int>,
 			<&isp_fe_ctx11_csis_fe_int>;
+
+		phys =
+			<&mipi_phy_csis0_m0s4s4s4s4s4 0>,
+			<&mipi_phy_csis1_m0s4s4s4s4s4 0>,
+			<&mipi_phy_csis2_m0s4s4s4s4s4 0>,
+			<&mipi_phy_csis3_m0s4s4s4s4s4 0>,
+			<&mipi_phy_csis4_m0s4s4s4s4s4 0>,
+			<&mipi_phy_csis5_m0s4s4s4s4s4 0>,
+			<&mipi_phy_csis6_m0s4s4s4s4s4 0>,
+			<&mipi_phy_csis7_m0s4s4s4s4s4 0>,
+			<&mipi_phy_csis8_m0s4s4s4s4s4 0>;
+		phy-names =
+			"csis0_dcphy",
+			"csis1_dcphy",
+			"csis2_dcphy",
+			"csis3_dcphy",
+			"csis4_dcphy",
+			"csis5_dcphy",
+			"csis6_dcphy",
+			"csis7_dcphy",
+			"csis8_dcphy";
 
 		iommus =
 			<&sysmmu_ispfe_s0>,
