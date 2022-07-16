@@ -20,6 +20,7 @@ exynos-adv-tracer.ko
 exynos-coresight.ko
 exynos-cpupm.ko
 exynos-debug-test.ko
+exynos-dm.ko
 exynos-drm.ko
 exynos-ecc-handler.ko
 exynos-pd-dbg.ko
