@@ -559,9 +559,6 @@
 			clocks = <&clock UMUX_MIF_DDRPHY2X>;
 			clock-names = "DEVFREQ";
 
-			/* FIXME: remove this when bootloader.img is stable */
-			status = "disabled";
-
 			/* Delay time */
 			use_delay_time = "false";
 
