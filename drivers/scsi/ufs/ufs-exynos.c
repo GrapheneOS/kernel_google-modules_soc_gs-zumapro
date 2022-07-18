@@ -483,6 +483,37 @@ out:
 	return 0;
 }
 
+static int exynos_ufs_check_ah8_fsm_state(struct ufs_hba *hba, u32 state)
+{
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct ufs_vs_handle *handle = &ufs->handle;
+	int retry = 50, ret = -EINVAL;
+	u32 reg;
+
+	while (retry--) {
+		reg = hci_readl(handle, HCI_AH8_STATE);
+
+		if (reg & HCI_AH8_STATE_ERROR)
+			goto out;
+
+		if (reg & state)
+			break;
+
+		usleep_range(1000, 1100);
+	}
+
+	if (!retry)
+		goto out;
+
+	ret = 0;
+out:
+	dev_info(hba->dev, "%s: cnt = %d, state = %08X, reg = %08X\n",
+			__func__, retry, state, reg);
+	WARN_ONCE(ret, "ret = %d\n", ret);
+
+	return ret;
+}
+
 static void exynos_ufs_set_features(struct ufs_hba *hba)
 {
 	struct device_node *np = hba->dev->of_node;
@@ -868,6 +899,14 @@ static void exynos_ufs_hibern8_notify(struct ufs_hba *hba,
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 
+	if (notify == PRE_CHANGE && ufshcd_is_auto_hibern8_supported(hba) &&
+	    ufs->ah8_ahit) {
+		ufshcd_auto_hibern8_update(hba, 0);
+		ret = exynos_ufs_check_ah8_fsm_state(hba, HCI_AH8_IDLE_STATE);
+		if (ret)
+			return;
+	}
+
 	if (cmd == UIC_CMD_DME_HIBER_ENTER) {
 		if (!IS_C_STATE_ON(ufs) ||
 		    (ufs->h_state != H_LINK_UP &&
@@ -915,9 +954,10 @@ static int __exynos_ufs_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 				enum ufs_notify_change_status status)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	int ret = 0;
 
 	if (status == PRE_CHANGE)
-		return 0;
+		return ret;
 
 	if (!IS_C_STATE_ON(ufs) ||
 	    ufs->h_state != H_HIBERN8)
@@ -926,13 +966,18 @@ static int __exynos_ufs_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 #if defined(CONFIG_EXYNOS_PM_QOS) || defined(CONFIG_EXYNOS_PM_QOS_MODULE)
 	exynos_pm_qos_update_request(&ufs->pm_qos_int, 0);
 #endif
+	if (ufshcd_is_auto_hibern8_supported(hba) && ufs->ah8_ahit) {
+		ret = exynos_ufs_check_ah8_fsm_state(hba, HCI_AH8_IDLE_STATE);
+		if (ret)
+			return ret;
+	}
 
 	hci_writel(&ufs->handle, 0 << 0, HCI_GPIO_OUT);
 
 	exynos_ufs_ctrl_phy_pwr(ufs, false);
 
 	ufs->h_state = H_SUSPEND;
-	return 0;
+	return ret;
 }
 
 static int __exynos_ufs_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
