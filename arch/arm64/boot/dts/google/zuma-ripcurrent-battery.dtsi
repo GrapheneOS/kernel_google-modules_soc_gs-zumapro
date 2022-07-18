@@ -17,17 +17,19 @@
 				status = "okay";
 				compatible = "google,battery";
 				google,fg-psy-name = "maxfg";
+				/* simulate 1.2C charge: 4087 x 1.2 ~ 4905 (R4) */
+				google,chg-battery-capacity = <4087>;
 
 				/* charge table */
 				google,chg-temp-limits = <0 100 200 420 460 480 550>;
-				google,chg-cv-limits = <4200000 4300000 4450000>;
+				google,chg-cv-limits = <4200000 4300000 4350000 4450000>;
 				google,chg-cc-limits = <
-					 30  10   0
-					 50  30  30
-					100  70  50
-					 80  50  50
-					 50  50   0
-					 30   0   0
+					 50   30    0   0
+					 70   30   30  30
+					120  120  120  50
+					100  100  100  50
+					 50   50    0   0
+					 30    0    0   0
 				>;
 
 				google,ttf-temp-idx= <2>;
@@ -67,9 +69,9 @@
 
 			google_bms {
 				nvmem = <&pack_bee>;
-				nvmem-names = "6-00500";
+				nvmem-names = "4-00500";
 				/* pack eeprom is available only with P20+ batteries */
-				google,bee-name = "6-00500";
+				google,bee-name = "4-00500";
 			};
 
 		};
@@ -163,13 +165,12 @@
 		maxim,irq-gpio = <&gpa7 7 GPIO_ACTIVE_LOW>;
 
 		maxim,gauge-type = <2>;
-		maxim,force-batt-id = <170>;
 		maxim,rsense-default = <500>;
 		maxim,batt-id-range-pct = <0>;
 
 		maxim,psy-type-unknown;
 		maxim,fg-data {
-			#include "gs101-fake-battery-data.dtsi"
+			#include "gs101-raven-battery-data.dtsi"
 		};
 	};
 
