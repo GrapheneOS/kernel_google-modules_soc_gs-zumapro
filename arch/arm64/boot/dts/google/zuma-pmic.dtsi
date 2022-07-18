@@ -86,7 +86,7 @@
 
 		/* RTC: wtsr/smpl */
 		wtsr_en = <1>;
-		coldrst_en = "enabled";
+		coldrst_en = "disabled";
 		smpl_en = "disabled";
 		wtsr_timer_val = <RTC_WTSRT_2_000_SEC>;
 		coldrst_timer_val = <RTC_WTSR_COLDTIMER_256_MSEC>;
