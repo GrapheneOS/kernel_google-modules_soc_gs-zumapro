@@ -129,7 +129,7 @@
 				regulator-min-microvolt = <450000>;
 				regulator-max-microvolt = <1300000>;
 				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
 			};
 
 			m_buck3_reg: BUCK3M {
@@ -137,7 +137,7 @@
 				regulator-min-microvolt = <450000>;
 				regulator-max-microvolt = <1300000>;
 				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
 			};
 
 			m_buck4_reg: BUCK4M {
@@ -145,7 +145,7 @@
 				regulator-min-microvolt = <450000>;
 				regulator-max-microvolt = <1300000>;
 				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
 			};
 
 			m_buck5_reg: BUCK5M {
@@ -185,7 +185,7 @@
 				regulator-min-microvolt = <450000>;
 				regulator-max-microvolt = <1300000>;
 				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
 			};
 
 			m_ldo1_reg: LDO1M {
@@ -273,7 +273,7 @@
 				regulator-min-microvolt = <700000>;
 				regulator-max-microvolt = <1300000>;
 				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
 			};
 
 			m_ldo12_reg: LDO12M {
@@ -321,7 +321,7 @@
 				regulator-min-microvolt = <700000>;
 				regulator-max-microvolt = <1300000>;
 				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
 			};
 
 			m_ldo18_reg: LDO18M {
