@@ -82,6 +82,7 @@ panel-samsung-sofef01.ko
 pca9468.ko
 pcie-exynos-gs.ko
 pcie-exynos-zuma-rc-cal.ko
+pkvm-s2mpu.ko
 phy-exynos-mipi-dsim.ko
 phy-exynos-mipi.ko
 phy-exynos-usbdrd-super.ko
