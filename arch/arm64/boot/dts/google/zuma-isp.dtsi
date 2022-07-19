@@ -849,6 +849,23 @@
 		iommus =
 			<&sysmmu_gdc>;
 		samsung,iommu-group = <&iommu_group_isp>;
+		/*
+		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
+		 * writing the packet data to the target's C2SERV registers. Such data is
+		 * issued by initiator's (could be the producer or consumer depending on the
+		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
+		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
+		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
+		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
+		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
+		*/
+		samsung,iommu-identity-map =
+			<0x0 0x1C46D000 0x3000>,  /* RGBP */
+			<0x0 0x1C86D000 0x3000>,  /* YUVP */
+			<0x0 0x1CC5D000 0x3000>,  /* GTNR Merge */
+			<0x0 0x1D05D000 0x3000>,  /* MCSC */
+			<0x0 0x1D48D000 0x3000>,  /* GDC1 */
+			<0x0 0x1D85D000 0x3000>;  /* GSE */
 	};
 
 	lwis_gdc1: lwis_gdc@1D470000 {
@@ -892,6 +909,23 @@
 		iommus =
 			<&sysmmu_gdc>;
 		samsung,iommu-group = <&iommu_group_isp>;
+		/*
+		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
+		 * writing the packet data to the target's C2SERV registers. Such data is
+		 * issued by initiator's (could be the producer or consumer depending on the
+		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
+		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
+		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
+		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
+		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
+		*/
+		samsung,iommu-identity-map =
+			<0x0 0x1C46D000 0x3000>,  /* RGBP */
+			<0x0 0x1C86D000 0x3000>,  /* YUVP */
+			<0x0 0x1CC5D000 0x3000>,  /* GTNR Merge */
+			<0x0 0x1D05D000 0x3000>,  /* MCSC */
+			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
+			<0x0 0x1D85D000 0x3000>;  /* GSE */
 	};
 
 	lwis_mcsc: lwis_mcsc@1D040000 {
@@ -943,6 +977,23 @@
 		iommus =
 			<&sysmmu_mcsc>;
 		samsung,iommu-group = <&iommu_group_isp>;
+		/*
+		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
+		 * writing the packet data to the target's C2SERV registers. Such data is
+		 * issued by initiator's (could be the producer or consumer depending on the
+		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
+		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
+		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
+		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
+		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
+		*/
+		samsung,iommu-identity-map =
+			<0x0 0x1C46D000 0x3000>,  /* RGBP */
+			<0x0 0x1C86D000 0x3000>,  /* YUVP */
+			<0x0 0x1CC5D000 0x3000>,  /* GTNR Merge */
+			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
+			<0x0 0x1D48D000 0x3000>,  /* GDC1 */
+			<0x0 0x1D85D000 0x3000>;  /* GSE */
 	};
 
 	lwis_gse: lwis_gse@0x1D840000 {
@@ -1002,6 +1053,23 @@
 		iommus =
 			<&sysmmu_gse>;
 		samsung,iommu-group = <&iommu_group_isp>;
+		/*
+		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
+		 * writing the packet data to the target's C2SERV registers. Such data is
+		 * issued by initiator's (could be the producer or consumer depending on the
+		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
+		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
+		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
+		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
+		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
+		*/
+		samsung,iommu-identity-map =
+			<0x0 0x1C46D000 0x3000>,  /* RGBP */
+			<0x0 0x1C86D000 0x3000>,  /* YUVP */
+			<0x0 0x1CC5D000 0x3000>,  /* GTNR Merge */
+			<0x0 0x1D05D000 0x3000>,  /* MCSC */
+			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
+			<0x0 0x1D48D000 0x3000>;  /* GDC1 */
 	};
 
 	lwis_be_core: lwis_be_core@1C440000 {
@@ -1073,6 +1141,22 @@
 			<&sysmmu_rgbp_s0>,
 			<&sysmmu_rgbp_s1>;
 		samsung,iommu-group = <&iommu_group_isp>;
+		/*
+		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
+		 * writing the packet data to the target's C2SERV registers. Such data is
+		 * issued by initiator's (could be the producer or consumer depending on the
+		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
+		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
+		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
+		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
+		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
+		*/
+		samsung,iommu-identity-map =
+			<0x0 0x1CC5D000 0x3000>,  /* GTNR Merge */
+			<0x0 0x1D05D000 0x3000>,  /* MCSC */
+			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
+			<0x0 0x1D48D000 0x3000>,  /* GDC1 */
+			<0x0 0x1D85D000 0x3000>;  /* GSE */
 	};
 
 	lwis_gtnr_merge: lwis_gtnr_merge@1CC40000 {
@@ -1127,6 +1211,23 @@
 			<&sysmmu_tnr_s0>,
 			<&sysmmu_tnr_s1>;
 		samsung,iommu-group = <&iommu_group_isp>;
+		/*
+		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
+		 * writing the packet data to the target's C2SERV registers. Such data is
+		 * issued by initiator's (could be the producer or consumer depending on the
+		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
+		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
+		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
+		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
+		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
+		*/
+		samsung,iommu-identity-map =
+			<0x0 0x1C46D000 0x3000>,  /* RGBP */
+			<0x0 0x1C86D000 0x3000>,  /* YUVP */
+			<0x0 0x1D05D000 0x3000>,  /* MCSC */
+			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
+			<0x0 0x1D48D000 0x3000>,  /* GDC1 */
+			<0x0 0x1D85D000 0x3000>;  /* GSE */
 	};
 
 	lwis_gtnr_align: lwis_gtnr_align@1CC60000 {
