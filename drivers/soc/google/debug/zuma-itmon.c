@@ -368,7 +368,7 @@ static struct itmon_clientinfo clientinfo[] = {
 	{"MFC0",	0x0,	/*XXXXXX*/	"MFC (M0)",	0x0},
 	{"MFC1",	0x0,	/*XXXXX0*/	"MFC (M1)",	0x1},
 	{"MFC1",	0x1,	/*XXXXX1*/	"SYSMMU_S0_MFC",	0x1},
-	{"RGBP0",	0x1,	/*XXXXX1*/	"RGBP (M2)",	0x1}, /* TODO Fix RGBP(M2),(M4) is same */
+	{"RGBP0",	0x0,	/*XXXXX0*/	"RGBP (M2)",	0x1},
 	{"RGBP0",	0x1,	/*XXXXX1*/	"RGBP (M4)",	0x1},
 	{"RGBP1",	0x1,	/*XXXXX1*/	"SYSMMU_S0_RGBP",	0x1},
 	{"RGBP1",	0x0,	/*XXX000*/	"RGBP (M1)",	0x7},
