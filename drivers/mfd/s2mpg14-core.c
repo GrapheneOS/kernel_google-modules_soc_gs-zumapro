@@ -161,10 +161,10 @@ static int of_s2mpg14_dt(struct device *dev,
 	if (!pdata->wtsr_smpl)
 		return -ENOMEM;
 
-	status = of_get_property(np, "wtsr_en", NULL);
-	if (!status)
+	ret = of_property_read_u32(np, "wtsr_en", &val);
+	if (ret)
 		return -EINVAL;
-	pdata->wtsr_smpl->wtsr_en = !strcmp(status, "enabled") || !strcmp(status, "okay");
+	pdata->wtsr_smpl->wtsr_en = !!val;
 
 	status = of_get_property(np, "smpl_en", NULL);
 	if (!status)
