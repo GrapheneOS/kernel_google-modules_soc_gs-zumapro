@@ -28,6 +28,7 @@
 #include <soc/google/debug-test.h>
 #include <soc/google/exynos-debug.h>
 
+#include "system-regs.h"
 #include "debug-snapshot-local.h"
 
 typedef void (*force_error_func)(char *arg);
@@ -87,6 +88,7 @@ static const char * const test_vector[] = {
 	"arraydump",
 	"halt",
 	"scandump",
+	"ecc",
 };
 
 /* timeout for dog bark/bite */
@@ -607,6 +609,43 @@ static void simulate_SCANDUMP(char *arg)
 	dbg_snapshot_do_dpm_policy(GO_SCANDUMP_ID, "TEST");
 }
 
+static void simulate_ECC_INJECTION(void *info)
+{
+	unsigned long lev = *((unsigned long *)info);
+	u64 count = 0x1000;
+	u64 ctrl = 0x80000002;
+
+	dev_info(exynos_debug_desc.dev,
+		 "CPU%d: Level%d: ECC error injection!\n",
+		 raw_smp_processor_id(), lev);
+
+	write_ERRSELR_EL1(lev);
+	asm volatile("msr S3_0_c5_c4_6, %0\n"
+			"isb\n" :: "r"(count));
+	asm volatile("msr S3_0_c5_c4_5, %0\n"
+			"isb\n" :: "r"(ctrl));
+}
+
+static void simulate_ECC(char *arg)
+{
+	int cpu, temp;
+	unsigned long lev;
+
+	dev_dbg(exynos_debug_desc.dev, "%s()\n", __func__);
+
+	if (kstrtoint(arg, 16, &temp)) {
+		dev_err(exynos_debug_desc.dev, "check input parameter\n");
+		return;
+	}
+	cpu = (temp >> 4) & 0xf;
+	lev = temp & 0xf;
+
+	if (cpu == raw_smp_processor_id())
+		simulate_ECC_INJECTION((void *)&lev);
+	else
+		smp_call_function_single(cpu, simulate_ECC_INJECTION, &lev, 1);
+}
+
 static struct force_error_item force_error_vector[] = {
 	{"KP",		&simulate_KP},
 	{"DP",		&simulate_DP},
@@ -638,6 +677,7 @@ static struct force_error_item force_error_vector[] = {
 	{"arraydump",	&simulate_ARRAYDUMP},
 	{"halt",	&simulate_HALT},
 	{"scandump",	&simulate_SCANDUMP},
+	{"ecc",         &simulate_ECC},
 };
 
 static int debug_force_error(const char *val)
