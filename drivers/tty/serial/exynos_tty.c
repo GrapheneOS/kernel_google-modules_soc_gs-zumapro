@@ -1668,7 +1668,7 @@ static unsigned int exynos_serial_getclk(struct exynos_uart_port *ourport,
 	unsigned long rate;
 	unsigned int cnt, baud, quot, clk_sel, best_quot = 0;
 	int calc_deviation, deviation = (1 << 30) - 1;
-//	int ret;
+	int ret;
 
 	clk_sel = (ourport->cfg->clk_sel) ? ourport->cfg->clk_sel :
 			ourport->info->def_clk_sel;
@@ -1678,7 +1678,6 @@ static unsigned int exynos_serial_getclk(struct exynos_uart_port *ourport,
 
 		rate = clk_get_rate(ourport->clk);
 
-#if 0
 		if (rate == 0 && ourport->src_clk_rate) {
 			ret = clk_set_rate(ourport->clk, ourport->src_clk_rate);
 			if (ret < 0)
@@ -1686,7 +1685,6 @@ static unsigned int exynos_serial_getclk(struct exynos_uart_port *ourport,
 
 			rate = clk_get_rate(ourport->clk);
 		}
-#endif
 
 		dev_info(&ourport->pdev->dev, " Clock rate : %ld\n", rate);
 
@@ -1888,12 +1886,10 @@ static void exynos_serial_set_termios(struct uart_port *port,
 		ulcon, quot, udivslot);
 
 	wr_regl(port, S3C2410_ULCON, ulcon);
-#if 0
 	wr_regl(port, S3C2410_UBRDIV, quot);
 
 	if (ourport->info->has_divslot)
 		wr_regl(port, S3C2443_DIVSLOT, udivslot);
-#endif
 	port->status &= ~UPSTAT_AUTOCTS;
 
 	umcon = rd_regl(port, S3C2410_UMCON);
