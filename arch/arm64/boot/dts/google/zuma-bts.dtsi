@@ -87,6 +87,98 @@
 			bts-type = <SMC_BTS>;
 		};
 
+		/* TREX_VC_NUM */
+		bts_vc_num_0 {
+			reg = <0x0 0x26052000 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "cpu3, cpu2, cpu1, cpu0";
+		};
+		bts_vc_num_1 {
+			reg = <0x0 0x26442000 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "g3dmmu, bw, aur1, aur0";
+		};
+		bts_vc_num_2 {
+			reg = <0x0 0x26442004 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "g3d3, g3d2, g3d1, g3d0";
+		};
+		bts_vc_num_3 {
+			reg = <0x0 0x26442008 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "na, na, tpu1, tpu0";
+		};
+		bts_vc_num_4 {
+			reg = <0x0 0x26842000 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "gsa, cssys, aoc, alive";
+		};
+		bts_vc_num_5 {
+			reg = <0x0 0x26842004 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "na, na, hsi1, hsi0";
+		};
+		bts_vc_num_6 {
+			reg = <0x0 0x26C42000 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "ispfe0, hsi2, dpuf1, dpuf0";
+		};
+		bts_vc_num_7 {
+			reg = <0x0 0x26C42004 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "mfc0, ispfe3, ispfe2, ispfe1";
+		};
+		bts_vc_num_8 {
+			reg = <0x0 0x26C42008 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "rgbp2, rgbp1, rgbp0, mfc1";
+		};
+		bts_vc_num_9 {
+			reg = <0x0 0x26C4200C 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "rgbp6, rgbp5, rgbp4, rgbp3";
+		};
+		bts_vc_num_10 {
+			reg = <0x0 0x27042000 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "gse, gdc2, gdc1, gdc0";
+		};
+		bts_vc_num_11 {
+			reg = <0x0 0x27042004 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "mcsc0, g2d2, g2d1, g2d0";
+		};
+		bts_vc_num_12 {
+			reg = <0x0 0x27042008 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "tnr1, tnr0, misc, mcsc1";
+		};
+		bts_vc_num_13 {
+			reg = <0x0 0x2704200C 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "tnr5, tnr4, tnr3, tnr2";
+		};
+		bts_vc_num_14 {
+			reg = <0x0 0x27042010 0x4>;
+			status = "okay";
+			bts-type = <INTERNAL_BTS>;
+			vc-string = "na, na, na, yuvp";
+		};
+
 		/* TREX_D_NOCL1A */
 		bts_nocl1a_0 {
 			reg = <0x0 0x2644B000 0x10>;
