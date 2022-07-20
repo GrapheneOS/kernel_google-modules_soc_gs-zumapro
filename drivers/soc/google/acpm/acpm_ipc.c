@@ -672,6 +672,7 @@ int __acpm_ipc_send_data(unsigned int channel_id, struct ipc_config *cfg, bool w
 	spin_unlock_irqrestore(&channel->tx_lock, flags);
 
 	if (channel->polling && cfg->response) {
+		unsigned int saved_debug_log_level = acpm_debug->debug_log_level;
 retry:
 		timeout = sched_clock() + IPC_TIMEOUT;
 		timeout_flag = false;
@@ -708,11 +709,7 @@ retry:
 
 					goto retry;
 				} else {
-					unsigned int saved_debug_log_level = acpm_debug->debug_log_level;
 					++retry_cnt;
-					acpm_debug->debug_log_level = 2;
-					acpm_log_print();
-					acpm_debug->debug_log_level = saved_debug_log_level;
 					continue;
 				}
 				cnt_10us = 0;
@@ -732,6 +729,10 @@ retry:
 			pr_err("%s Timeout error! now = %llu timeout = %llu ch:%u s:%u bitmap:%lx\n",
 			       __func__, now, timeout, channel->id, seq_num,
 			       channel->bitmap_seqnum[0]);
+
+			acpm_debug->debug_log_level = 2;
+			acpm_log_print();
+			acpm_debug->debug_log_level = saved_debug_log_level;
 
 			acpm_ramdump();
 			dump_stack();
