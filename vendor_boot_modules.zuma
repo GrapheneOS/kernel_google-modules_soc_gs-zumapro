@@ -4,6 +4,7 @@
 9p.ko
 9pnet.ko
 9pnet_virtio.ko
+at24.ko
 bc_max77759.ko
 bigwave.ko
 bts.ko
