@@ -963,6 +963,7 @@
 			samsung,pin-pud = <0>;
 			samsung,pin-con-pdn = <3>;
 			samsung,pin-pud-pdn = <0>;
+			samsung,pin-drv = <GS101_PIN_DRV_7_5_MA>;
 			};
 	};
 
