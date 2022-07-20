@@ -29,7 +29,7 @@ LZ4_RAMDISK=1
 BOOT_IMAGE_HEADER_VERSION=4
 VENDOR_DLKM_MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_dlkm_modules.zuma
 VENDOR_DLKM_PROPS=${DEVICE_MODULES_DIR}/vendor_dlkm.props.zuma
-VENDOR_RAMDISK_BINARY=${VENDOR_RAMDISK_BINARY:-${ROOT_DIR}/prebuilts/boot-artifacts/ramdisks/vendor_ramdisk-zebu.img}
+VENDOR_RAMDISK_BINARY=${VENDOR_RAMDISK_BINARY:-${ROOT_DIR}/prebuilts/boot-artifacts/ramdisks/vendor_ramdisk-ripcurrent.img}
 KERNEL_VENDOR_CMDLINE="earlycon=exynos4210,0x10870000 console=ttySAC0,115200 androidboot.console=ttySAC0"
 KERNEL_VENDOR_CMDLINE+=" printk.devkmsg=on"
 KERNEL_VENDOR_CMDLINE+=" at24.write_timeout=100 buildvariant=userdebug"
