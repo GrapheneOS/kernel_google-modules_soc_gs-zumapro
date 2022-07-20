@@ -91,6 +91,7 @@ pixel-boot-metrics.ko
 pixel-debug-test.ko
 pmic_class.ko
 power_stats.ko
+rio.ko
 rtc-s2mpg14.ko
 s2mpg14-key.ko
 s2mpg14-mfd.ko

@@ -39,6 +39,7 @@ private/google-modules/aoc/alsa
 private/google-modules/amplifiers/cs35l41
 private/google-modules/bms
 private/google-modules/display
+private/google-modules/edgetpu/rio/drivers/edgetpu
 private/google-modules/gpu/mali_kbase
 private/google-modules/gpu/mali_pixel
 private/google-modules/lwis
