@@ -100,6 +100,7 @@ pinctrl-exynos-gs.ko
 pixel-boot-metrics.ko
 pixel-debug-test.ko
 pkvm-s2mpu.ko
+pl330.ko
 pmic_class.ko
 power_stats.ko
 rio.ko
@@ -113,6 +114,7 @@ s2mpg15-mfd.ko
 s2mpg15-powermeter.ko
 s2mpg15-regulator.ko
 s3c2410_wdt.ko
+samsung-dma.ko
 samsung-iommu-group.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
