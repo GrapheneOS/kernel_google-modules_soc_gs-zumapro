@@ -84,7 +84,7 @@
 	use-msi = "true";
 	use-sicd = "true";
 	use-ia = "false";
-	use-l1ss = "true";
+	use-l1ss = "false";
 	phy-power-off = "false";
 	use-pcieon-sleep = "true";
 	use-sysmmu = "disabled";
@@ -101,7 +101,7 @@
 	num-lanes = <1>;
 	use-sicd = "true";
 	use-ia = "false";
-	use-l1ss = "true";
+	use-l1ss = "false";
 	use-msi = "true";
 	use-sysmmu = "disabled";
 	max-link-speed = <LINK_SPEED_GEN2>;

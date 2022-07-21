@@ -1287,12 +1287,6 @@ static void exynos_pcie_rc_set_iocc(struct pcie_port *pp, int enable)
 		return;
 	}
 
-	if (exynos_pcie->ip_ver != EXYNOS_IP_VER_OF_WHI) {
-		dev_info(pci->dev, "IOCC: not supported SoC(ip_ver=0x%x)\n", exynos_pcie->ip_ver);
-
-		return;
-	}
-
 	/* set SYSREG SHAABILITY sfr offset of HSI1(GEN4A_0) or HSI2(GEN4A_1) */
 	if (exynos_pcie->ch_num == 0)		/* HSI1 */
 		sysreg_sharability = PCIE_SYSREG_HSI1_SHARABILITY_CTRL;
