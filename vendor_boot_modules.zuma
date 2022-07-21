@@ -7,6 +7,7 @@
 at24.ko
 bc_max77759.ko
 bigwave.ko
+bts.ko
 cachefiles.ko
 clk_exynos_gs.ko
 cmupmucal.ko
