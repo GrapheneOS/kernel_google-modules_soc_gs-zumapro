@@ -32,8 +32,23 @@
 			no-map;
 		};
 
+		gxp_fw_reserved: gxp_fw@91000000 {
+			reg = <0x0 0x91000000 0x00300000>;
+			no-map;
+		};
+
+		gxp_scratchpad_reserved: gxp_scratchpad@91300000 {
+			reg = <0x0 0x91300000 0x00100000>;
+			no-map;
+		};
+
+		gxp_mcu_fw_reserved: gxp_mcu_fw@0x92000000 {
+			reg = <0x0 0x92000000 0x00400000>;
+			no-map;
+		};
+
 		tpu_fw_reserved: tpu_fw@0x93000000 {
-			reg = <0x0 0x93000000 0x1000000>;
+			reg = <0x0 0x93000000 0x01000000>;
 			no-map;
 		};
 
@@ -42,23 +57,8 @@
 			no-map;
 		};
 
-		gxp_fw_reserved: gxp_fw@98000000 {
-			reg = <0x0 0x98000000 0x04000000>;
-			no-map;
-		};
-
-		gxp_debug_dump_reserved: gxp_debug_dump@9C000000 {
-			reg = <0x0 0x9C000000 0x00400000>;
-			no-map;
-		};
-
-		gxp_scratchpad_reserved: gxp_scratchpad@9C400000 {
-			reg = <0x0 0x9C400000 0x00100000>;
-			no-map;
-		};
-
-		tpu_fw_ctx_reserved: tpu_ctx@0x9c500000 {
-			reg = <0x0 0x9c500000 0x3600000>;
+		tpu_fw_ctx_reserved: tpu_ctx@0x98000000 {
+			reg = <0x0 0x98000000 0x03600000>;
 			no-map;
 		};
 

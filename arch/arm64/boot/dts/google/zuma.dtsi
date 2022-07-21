@@ -30,6 +30,7 @@
 #include "zuma-mfc.dtsi"
 #include "zuma-tpu.dtsi"
 #include "zuma-pcie.dtsi"
+#include "zuma-gxp.dtsi"
 
 / {
 	compatible = "google,zuma";
