@@ -1540,7 +1540,7 @@ MODULE_DEVICE_TABLE(spi, bcm_spi_id);
 
 #ifdef CONFIG_OF
 static const struct of_device_id match_table[] = {
-	{ .compatible = "ssp,bcm4775",},
+	{ .compatible = "ssp-spi,bcm4775",},
 	{},
 };
 #endif
