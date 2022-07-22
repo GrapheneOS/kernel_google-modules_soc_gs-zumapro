@@ -1227,16 +1227,16 @@ static int samsung_pinctrl_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	if (ctrl->eint_gpio_init)
+		ctrl->eint_gpio_init(drvdata);
+	if (ctrl->eint_wkup_init)
+		ctrl->eint_wkup_init(drvdata);
+
 	ret = samsung_gpiolib_register(pdev, drvdata);
 	if (ret) {
 		samsung_pinctrl_unregister(pdev, drvdata);
 		return ret;
 	}
-
-	if (ctrl->eint_gpio_init)
-		ctrl->eint_gpio_init(drvdata);
-	if (ctrl->eint_wkup_init)
-		ctrl->eint_wkup_init(drvdata);
 
 	platform_set_drvdata(pdev, drvdata);
 
