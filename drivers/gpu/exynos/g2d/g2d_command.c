@@ -911,8 +911,10 @@ static struct command_checker target_command_checker[G2DSFR_DST_FIELD_COUNT] = {
 #define TARGET_OFFSET		0x120
 #if defined(CONFIG_SOC_GS101) || defined(CONFIG_SOC_GS201)
 #define LAYER_OFFSET(idx)	((2 + (idx)) << 8)
+#define LAYER_UPDATE_INDEX	1
 #elif defined(CONFIG_SOC_ZUMA)
 #define LAYER_OFFSET(idx)       ((3 + (idx)) << 8)
+#define LAYER_UPDATE_INDEX	2
 #endif
 
 static int g2d_copy_commands(struct g2d_device *g2d_dev, int index,
@@ -1606,7 +1608,7 @@ bool g2d_prepare_source(struct g2d_task *task,
 {
 	struct g2d_reg *reg = (struct g2d_reg *)page_address(task->cmd_page);
 
-	reg[TASK_REG_LAYER_UPDATE].value |= 1 << index;
+	reg[TASK_REG_LAYER_UPDATE].value |= LAYER_UPDATE_INDEX << index;
 
 	if ((layer->flags & G2D_LAYERFLAG_COLORFILL) != 0)
 		return true;
