@@ -140,9 +140,6 @@ static inline u32 __sysmmu_get_intr_status(struct sysmmu_drvdata *data, bool is_
 	u32 val = 0x0;
 
 	for (i = 0; i < data->max_vm; i++) {
-		if (!(data->vmid_mask & (1 << i)))
-			continue;
-
 		if (is_secure)
 			val = read_sec_info(MMU_VM_ADDR(data->secure_base +
 					    REG_MMU_FAULT_STATUS_VM, i));
