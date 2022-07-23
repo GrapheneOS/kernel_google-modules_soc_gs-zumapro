@@ -160,7 +160,6 @@
 		clock-names = "fin_pll", "mct";
 		div = <1>;
 		use-clockevent-only;
-		status = "disabled";
 
 		mct_v3_map: mct-v3-map {
 			#interrupt-cells = <1>;
