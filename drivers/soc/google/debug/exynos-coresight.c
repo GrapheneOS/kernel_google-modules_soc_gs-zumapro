@@ -157,8 +157,13 @@ static int exynos_cs_get_pc(int cpu, int iter)
 	case ARM_CPU_PART_CORTEX_A75:
 	case ARM_CPU_PART_CORTEX_A76:
 	case ARM_CPU_PART_CORTEX_A77:
-	case ARM_CPU_PART_HERCULES:
-	case ARM_CPU_PART_HERA:
+	case ARM_CPU_PART_CORTEX_A78:
+	case ARM_CPU_PART_CORTEX_A510:
+	case ARM_CPU_PART_CORTEX_A710:
+	case ARM_CPU_PART_CORTEX_X1:
+	case ARM_CPU_PART_CORTEX_X2:
+	case ARM_CPU_PART_MAKALU:
+	case ARM_CPU_PART_MAKALU_ELP:
 		DBG_UNLOCK(dbg_base);
 		dbg_os_unlock(dbg_base);
 		DBG_UNLOCK(pmu_base);

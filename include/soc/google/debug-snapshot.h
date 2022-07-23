@@ -14,6 +14,7 @@
 #define DEBUG_SNAPSHOT_H
 
 #include <dt-bindings/soc/google/debug-snapshot-def.h>
+#include <asm/cputype.h>
 #include <asm/barrier.h>
 #if IS_ENABLED(CONFIG_DEBUG_SNAPSHOT)
 #include <linux/sched/clock.h>
@@ -346,6 +347,15 @@ struct dbg_snapshot_helper_ops {
 	int (*run_scandump_mode)(void);
 };
 
+/**
+ * remain comment to check CPU nick name
+ *
+#define ARM_CPU_PART_HERCULES		ARM_CPU_PART_CORTEX_A78
+#define ARM_CPU_PART_HERA		ARM_CPU_PART_CORTEX_X1
+#define ARM_CPU_PART_KLEIN		ARM_CPU_PART_CORTEX_A510
+#define ARM_CPU_PART_MATTERHORN		ARM_CPU_PART_CORTEX_A710
+#define ARM_CPU_PART_MATTERHORN_ELP	ARM_CPU_PART_CORTEX_X2
+*/
 #define ARM_CPU_PART_MAKALU		0xD4D
 #define ARM_CPU_PART_MAKALU_ELP		0xD4E
 

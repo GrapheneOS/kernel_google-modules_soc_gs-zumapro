@@ -197,9 +197,6 @@
 #define CTIAPPSETCH0	(0x1)
 #define CTICONTROLEN	(0x1)
 
-#define ARM_CPU_PART_HERCULES		0xD41
-#define ARM_CPU_PART_HERA		0xD44
-
 #if IS_ENABLED(CONFIG_EXYNOS_CORESIGHT_ETM)
 extern void exynos_etm_trace_stop(void);
 #else
