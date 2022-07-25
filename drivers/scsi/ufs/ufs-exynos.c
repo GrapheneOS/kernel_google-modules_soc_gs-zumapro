@@ -898,6 +898,7 @@ static void exynos_ufs_hibern8_notify(struct ufs_hba *hba,
 				      enum ufs_notify_change_status notify)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	int ret;
 
 	if (notify == PRE_CHANGE && ufshcd_is_auto_hibern8_supported(hba) &&
 	    ufs->ah8_ahit) {
