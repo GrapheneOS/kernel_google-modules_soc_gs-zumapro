@@ -28,6 +28,8 @@
 #include "zuma-ripcurrent-cp-s5300-sit.dtsi"
 #include "zuma-ripcurrent-audio.dtsi"
 #include "zuma-ripcurrent-gps.dtsi"
+#include "zuma-ripcurrent-nfc.dtsi"
+#include "zuma-ripcurrent-ese.dtsi"
 
 #include <dt-bindings/pci/pci.h>
 
