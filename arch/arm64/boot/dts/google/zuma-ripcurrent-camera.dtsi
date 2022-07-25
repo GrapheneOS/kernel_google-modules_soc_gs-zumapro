@@ -1321,6 +1321,65 @@
 					<&gpp8 2 GPIO_ACTIVE_HIGH
 					 &gpp24 0 GPIO_ACTIVE_LOW>;
 			};
+
+			tof0: tof@0 {
+				compatible = "google,lwis-i2c-device";
+
+				/* Device node name */
+				node-name = "tof-vl53l8";
+
+				/* I2C */
+				i2c-bus = <&hsi2c_1>;
+				i2c-addr = <0x29>;
+
+				/* Registers */
+				reg-addr-bitwidth = <16>;
+				reg-value-bitwidth = <8>;
+
+				/* Power supplies */
+				s2mpg15_ldo12-supply = <&s_ldo12_reg>;
+				ldo1-supply = <&slg51002_ldo1>;
+
+				/* XAPC_USI4_CTSN_CSN: GPP8[3] */
+				enable-gpios = <&gpp8 3 GPIO_ACTIVE_HIGH>;
+
+				/* XAPC_MCLK8: GPP15[0] */
+				reset-gpios = <&gpp15 0 GPIO_ACTIVE_HIGH>;
+
+				/* Power up sequence */
+				power-up-seqs =
+					"s2mpg15_ldo12",
+					"ldo1",
+					"enable",
+					"reset";
+				power-up-seq-types =
+					"regulator",
+					"regulator",
+					"gpio",
+					"gpio";
+				power-up-seq-delays-us =
+					<1000
+					 1000
+					 1000
+					 2000>;
+
+				/* Power down sequence */
+				power-down-seqs =
+					"reset",
+					"enable",
+					"ldo1",
+					"s2mpg15_ldo12";
+				power-down-seq-types =
+					"gpio",
+					"gpio",
+					"regulator",
+					"regulator";
+				power-down-seq-delays-us =
+					<1000
+					 1000
+					 1000
+					 1000>;
+			};
 		};
 	};
 };
