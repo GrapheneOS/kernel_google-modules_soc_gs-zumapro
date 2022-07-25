@@ -97,9 +97,6 @@
 
                 force-vnom = <0>;
 
-/*
-                TODO: Add reference when available
                 gsa-device = <&gsa>;
- */
         };
 };

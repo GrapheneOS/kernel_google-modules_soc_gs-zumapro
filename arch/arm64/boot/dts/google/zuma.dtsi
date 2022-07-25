@@ -19,6 +19,7 @@
 #include "zuma-bts.dtsi"
 #include "zuma-drm-dpu.dtsi"
 #include "zuma-dma-heap.dtsi"
+#include "zuma-gsa.dtsi"
 #include "zuma-isp.dtsi"
 #include "zuma-pinctrl.dtsi"
 #include "zuma-usi.dtsi"
