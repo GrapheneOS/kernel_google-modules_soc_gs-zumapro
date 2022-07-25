@@ -551,7 +551,7 @@ static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int in
 {
 	const char *port_name = NULL;
 	phys_addr_t pgtable;
-	u32 info0;
+	u32 info0, info1;
 
 	pgtable = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM,
 					    vmid));
@@ -560,11 +560,13 @@ static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int in
 	of_property_read_string(drvdata->dev->of_node, "port-name", &port_name);
 
 	info0 = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_FAULT_INFO0_VM, vmid));
+	info1 = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_FAULT_INFO1_VM, vmid));
 
-	pr_crit("From [%s], SysMMU %s %s at %#011lx (pgtable @ %pa\n",
+	pr_crit("From [%s], SysMMU %s %s for VID %d at %#011lx (pgtable @ %pa, AxID: %#x)\n",
 		port_name ? port_name : dev_name(drvdata->dev),
 		IS_READ_FAULT(info0) ? "READ" : "WRITE",
-		sysmmu_fault_name[intr_type], fault_addr, &pgtable);
+		sysmmu_fault_name[intr_type], vmid, fault_addr, &pgtable,
+		MMU_FAULT_INFO1_AXID(info1));
 }
 
 static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata, int intr_type,
