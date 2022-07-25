@@ -1071,7 +1071,7 @@ int s3c2410wdt_set_emergency_stop(int index)
 }
 EXPORT_SYMBOL(s3c2410wdt_set_emergency_stop);
 
-int s3c2410wdt_keepalive_emergency(bool reset, int index, unsigned int sec)
+int s3c2410wdt_keepalive_emergency(bool reset, int index, int sec)
 {
 	struct s3c2410_wdt *wdt = s3c_wdt[index];
 
@@ -1793,10 +1793,9 @@ static int s3c2410wdt_probe(struct platform_device *pdev)
 		wdt_block.nb_panic_block.priority = 256;
 		wdt_block.wdt = wdt;
 		atomic_notifier_chain_register(&panic_notifier_list, &wdt_block.nb_panic_block);
-		dbg_snapshot_register_wdt_ops(
-				(void *)s3c2410wdt_keepalive_emergency,
-				(void *)s3c2410wdt_set_emergency_reset,
-				(void *)s3c2410wdt_set_emergency_stop);
+		dbg_snapshot_register_wdt_ops(s3c2410wdt_keepalive_emergency,
+					      s3c2410wdt_set_emergency_reset,
+					      s3c2410wdt_set_emergency_stop);
 		register_pm_notifier(&s3c2410wdt_pm_nb);
 	}
 	dev_info(dev, "watchdog cluster %d, %sactive, reset %sabled, irq %sabled\n", cluster_index,

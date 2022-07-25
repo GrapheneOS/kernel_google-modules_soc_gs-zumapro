@@ -327,7 +327,6 @@ int exynos_cs_stop_cpus(void)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(exynos_cs_stop_cpus);
 
 static int exynos_cs_suspend_cpu(unsigned int cpu)
 {

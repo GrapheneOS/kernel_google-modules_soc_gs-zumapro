@@ -59,8 +59,10 @@ extern int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick);
 extern int dbg_snapshot_kick_watchdog(void);
 extern unsigned int dbg_snapshot_get_val_offset(unsigned int offset);
 extern void dbg_snapshot_set_val_offset(unsigned int val, unsigned int offset);
-extern void dbg_snapshot_register_wdt_ops(void *start, void *expire, void *stop);
-extern void dbg_snapshot_register_debug_ops(void *halt, void *arraydump, void *scandump);
+extern void dbg_snapshot_register_wdt_ops(int (*start)(bool, int, int),
+					  int (*expire)(unsigned int, int), int (*stop)(int));
+extern void dbg_snapshot_register_debug_ops(int (*halt)(void), int (*arraydump)(void),
+					    int (*scandump)(void));
 extern void dbg_snapshot_save_context(struct pt_regs *regs, bool stack_dump);
 extern void cache_flush_all(void);
 extern int dbg_snapshot_stop_all_cpus(void);

@@ -48,12 +48,12 @@ struct plugin_s2d_info {
 
 static struct plugin_s2d_info plugin_s2d;
 
-void adv_tracer_s2d_scandump(void)
+int adv_tracer_s2d_scandump(void)
 {
 	if (!plugin_s2d.burnin_ctrl || plugin_s2d.sel_scanmode < 0 ||
 			plugin_s2d.dbgsel_sw < 0) {
 		dev_err(plugin_s2d.dev, "pmu offset no data\n");
-		return;
+		return -1;
 	}
 	exynos_pmu_update(plugin_s2d.burnin_ctrl,
 			BIT(plugin_s2d.sel_scanmode),
@@ -61,6 +61,7 @@ void adv_tracer_s2d_scandump(void)
 	dev_info(plugin_s2d.dev, "enter scandump mode!\n");
 	exynos_pmu_update(plugin_s2d.burnin_ctrl,
 			BIT(plugin_s2d.dbgsel_sw), BIT(plugin_s2d.dbgsel_sw));
+	return 0;
 }
 
 int adv_tracer_s2d_arraydump(void)
@@ -536,8 +537,8 @@ static int adv_tracer_s2d_probe(struct platform_device *pdev)
 	}
 
 	dbg_snapshot_register_debug_ops(NULL,
-			(void *)adv_tracer_s2d_arraydump,
-			(void *)adv_tracer_s2d_scandump);
+					adv_tracer_s2d_arraydump,
+					adv_tracer_s2d_scandump);
 
 	dev_info(&pdev->dev, "%s successful.\n", __func__);
 	return 0;

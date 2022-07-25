@@ -713,7 +713,9 @@ static struct notifier_block nb_die_block = {
 	.priority = INT_MAX,
 };
 
-void dbg_snapshot_register_wdt_ops(void *start, void *expire, void *stop)
+void dbg_snapshot_register_wdt_ops(int (*start)(bool, int, int),
+				   int (*expire)(unsigned int, int),
+				   int (*stop)(int))
 {
 	if (start)
 		dss_soc_ops.start_watchdog = start;
@@ -730,8 +732,9 @@ void dbg_snapshot_register_wdt_ops(void *start, void *expire, void *stop)
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_register_wdt_ops);
 
-void dbg_snapshot_register_debug_ops(void *halt, void *arraydump,
-				    void *scandump)
+void dbg_snapshot_register_debug_ops(int (*halt)(void),
+				     int (*arraydump)(void),
+				     int (*scandump)(void))
 {
 	if (halt)
 		dss_soc_ops.stop_all_cpus = halt;
