@@ -118,6 +118,8 @@ smfc.ko
 spi-s3c64xx.ko
 spidev.ko
 sscoredump.ko
+st21nfc.ko
+st54spi.ko
 systrace.ko
 tcpci_max77759.ko
 touch_bus_negotiator.ko
