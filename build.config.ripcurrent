@@ -42,6 +42,7 @@ private/google-modules/display
 private/google-modules/edgetpu/rio/drivers/edgetpu
 private/google-modules/gpu/mali_kbase
 private/google-modules/gpu/mali_pixel
+private/google-modules/gxp/zuma
 private/google-modules/lwis
 private/google-modules/nfc
 private/google-modules/touch/common
