@@ -38,6 +38,10 @@ def _define_zuma_gki():
             "//aosp-bringup:kernel_aarch64_sources",
         ],
         outs = aarch64_outs,
+        module_outs = [
+            "drivers/block/zram/zram.ko",
+            "mm/zsmalloc.ko",
+        ],
         build_config = "build.config.zuma.gki",
     )
 
@@ -94,6 +98,7 @@ def define_zuma():
             "drivers/soc/google/debug/dss.ko",
             "drivers/soc/google/debug/exynos-coresight.ko",
             "drivers/soc/google/debug/exynos-ecc-handler.ko",
+            "drivers/soc/google/debug/itmon.ko",
             "drivers/soc/google/exynos-pd_el3.ko",
             "drivers/soc/google/gs-chipid.ko",
             "drivers/soc/google/vh/kernel/systrace.ko",
