@@ -37,6 +37,10 @@ static struct mfd_cell s2mpg15_devs[] = {
 	{
 		.name = "s2mpg15_gpio",
 	},
+	{
+		.name = "s2mpg15-spmic-thermal",
+		.of_compatible = "google,s2mpg15-spmic-thermal"
+	}
 };
 
 int s2mpg15_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest)
