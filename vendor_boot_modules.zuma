@@ -119,6 +119,12 @@ systrace.ko
 tcpci_max77759.ko
 touch_bus_negotiator.ko
 touch_offload.ko
+trusty-core.ko
+trusty-ipc.ko
+trusty-irq.ko
+trusty-log.ko
+trusty-test.ko
+trusty-virtio.ko
 ufs-exynos-gs.ko
 usb_f_dm.ko
 usb_f_dm1.ko
