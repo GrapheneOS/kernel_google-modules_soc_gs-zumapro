@@ -97,7 +97,7 @@ static inline int exynos_mct_comp_wait(int index, int comp_enable)
 	unsigned int comp_stat;
 	unsigned long timeout;
 
-	timeout = jiffies + msecs_to_jiffies(1);
+	timeout = jiffies + msecs_to_jiffies(10);
 	do {
 		comp_stat = readl_relaxed(reg_base + EXYNOS_MCT_COMP_ENABLE(index));
 		if (comp_stat == comp_enable)
