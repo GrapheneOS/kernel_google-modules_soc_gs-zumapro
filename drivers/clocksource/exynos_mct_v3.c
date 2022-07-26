@@ -373,6 +373,7 @@ module_platform_driver(exynos_mct_v3_driver);
 TIMER_OF_DECLARE(exynos_mct_v3, "samsung,exynos-mct-v3", mct_init_dt);
 #endif
 
+MODULE_SOFTDEP("pre: clk_exynos_gs");
 MODULE_DESCRIPTION("Exynos Multi Core Timer v3 driver");
 MODULE_AUTHOR("Donghoon Yu <hoony.yu@samsung.com>");
 MODULE_AUTHOR("Youngmin Nam <youngmin.nam@samsung.com>");
