@@ -523,6 +523,9 @@ static void exynos_ufs_set_features(struct ufs_hba *hba)
 	hba->caps = UFSHCD_CAP_CLK_GATING;
 	if (ufs->ah8_ahit == 0)
 		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
+	else
+	/* deliver ah8 timer and counter values */
+		hba->ahit = ufs->ah8_ahit;
 
 	/* quirks of common driver */
 	hba->quirks = UFSHCD_QUIRK_PRDT_BYTE_GRAN |
@@ -566,12 +569,6 @@ static int exynos_ufs_init(struct ufs_hba *hba)
 
 	/* set features, such as caps or quirks */
 	exynos_ufs_set_features(hba);
-
-	/* deliver ah8 timer and counter values */
-	if (ufshcd_is_auto_hibern8_supported(hba))
-		hba->ahit = ufs->ah8_ahit;
-	else
-		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
 
 	ret = pixel_ufs_crypto_init(hba);
 	if (ret)
