@@ -854,6 +854,41 @@
 					 0>;
 			};
 
+			/* EEPROM SMAUG for OKSOKO */
+			eeprom4: eeprom@4 {
+				compatible = "google,lwis-i2c-device";
+
+				/* Device node name */
+				node-name = "eeprom-smaug-oksoko";
+
+				/* I2C */
+				i2c-bus = <&hsi2c_3>;
+				i2c-addr = <0x50>;
+
+				/* Registers */
+				reg-addr-bitwidth = <16>;
+				reg-value-bitwidth = <8>;
+
+				/* Power supplies */
+				s2mpg15_ldo12-supply = <&s_ldo12_reg>;
+
+				/* Power up sequence */
+				power-up-seqs =
+					"s2mpg15_ldo12";
+				power-up-seq-types =
+					"regulator";
+				power-up-seq-delays-us =
+					<1000>;
+
+				/* Power down sequence */
+				power-down-seqs =
+					"s2mpg15_ldo12";
+				power-down-seq-types =
+					"regulator";
+				power-down-seq-delays-us =
+					<1000>;
+			};
+
 			/* Actuator SLENDERMAN for NAGUAL*/
 			actuator0: actuator@0 {
 				compatible = "google,lwis-i2c-device";
