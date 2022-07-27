@@ -69,6 +69,7 @@ def define_slider():
         "//private/google-modules/aoc/alsa:alsa.slider",
         "//private/google-modules/bluetooth/broadcom:broadcom.slider",
         "//private/google-modules/bms:bms.slider",
+        "//private/google-modules/bms/misc:bms-misc.slider",
         "//private/google-modules/display:samsung.slider",
         "//private/google-modules/edgetpu/abrolhos/drivers/edgetpu:edgetpu.slider",
         "//private/google-modules/gpu/mali_kbase:mali_kbase.slider",
@@ -153,7 +154,9 @@ def define_slider():
                 "**/*.bzl",
                 "build.config.*",
             ],
-        ),
+        ) + [
+            "//private/google-modules/bms/misc:headers",
+        ],
         outs = [
             "drivers/bts/exynos-bts.ko",
             "drivers/bts/exynos-btsopsgs101.ko",
@@ -189,8 +192,6 @@ def define_slider():
             "drivers/misc/bbdpl/bbd.ko",
             "drivers/misc/bbdpl/bcm47765.ko",
             "drivers/misc/gsc-spi.ko",
-            "drivers/misc/gvotable.ko",
-            "drivers/misc/logbuffer.ko",
             "drivers/misc/sbb-mux/sbb-mux.ko",
             "drivers/misc/sscoredump/sscoredump.ko",
             "drivers/pci/controller/dwc/pcie-exynos-gs.ko",
@@ -293,6 +294,9 @@ def define_slider():
             "drivers/watchdog/s3c2410_wdt.ko",
         ],
         kernel_build = "//private/google-modules/soc/gs:slider",
+        kernel_module_deps = [
+            "//private/google-modules/bms/misc:bms-misc.slider",
+        ],
         visibility = [
             # keep sorted
             "//private/google-modules:__subpackages__",

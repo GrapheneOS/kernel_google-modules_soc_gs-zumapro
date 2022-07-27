@@ -133,6 +133,7 @@ def define_zuma():
         zuma_external_modules = [
             # keep sorted
             ":zuma_soc_{}".format(mode),
+            "//private/google-modules/bms/misc:bms-misc.zuma_{}".format(mode),
             "//private/google-modules/display:samsung.zuma_{}".format(mode),
             "//private/google-modules/gpu/mali_kbase:mali_kbase.zuma_{}".format(mode),
             "//private/google-modules/gpu/mali_pixel:mali_pixel.zuma_{}".format(mode),
@@ -181,9 +182,14 @@ def define_zuma():
                     "**/*.bzl",
                     "build.config.*",
                 ],
-            ),
+            ) + [
+                "//private/google-modules/bms/misc:headers",
+            ],
             outs = zuma_soc_modules[mode],
             kernel_build = "//private/google-modules/soc/gs:zuma_{}".format(mode),
+            kernel_module_deps = [
+                "//private/google-modules/bms/misc:bms-misc.zuma_{}".format(mode),
+            ],
             visibility = [
                 # keep sorted
                 "//private/google-modules:__subpackages__",

@@ -44,6 +44,7 @@ function modify_vendor_ramdisk() {
 # Hence use rel_path2 so it evaluates to a simpler path ../
 KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
 EXT_MODULES+="
+private/google-modules/bms/misc
 private/google-modules/soc/gs
 private/google-modules/display
 private/google-modules/wlan/bcmdhd4389

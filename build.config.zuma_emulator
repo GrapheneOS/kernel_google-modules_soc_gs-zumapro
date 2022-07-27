@@ -35,6 +35,7 @@ google/zuma-emulator.dtbo
 MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.zuma
 
 EXT_MODULES+="
+private/google-modules/bms/misc
 private/google-modules/soc/gs
 private/google-modules/display
 private/google-modules/gpu/mali_kbase
