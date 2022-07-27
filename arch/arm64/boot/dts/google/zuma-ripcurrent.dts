@@ -27,6 +27,7 @@
 #include "zuma-ripcurrent-wlan.dtsi"
 #include "zuma-ripcurrent-cp-s5300-sit.dtsi"
 #include "zuma-ripcurrent-audio.dtsi"
+#include "zuma-ripcurrent-gps.dtsi"
 
 #include <dt-bindings/pci/pci.h>
 
