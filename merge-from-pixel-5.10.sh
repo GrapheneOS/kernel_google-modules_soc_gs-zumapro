@@ -25,16 +25,18 @@ repo_sync_rebase_prune() {
 
 repo_sync_rebase_prune || exit
 
-[ "USAGE: do_merge <directory> <branch>
+[ "USAGE: do_merge <directory> <repo> <branch>
 
 Perform a merge over a repo, using BRANCH as the holder." ]
 
-BRANCH="merge.`date +%s`"
+BRANCH="merge.`date +%F`"
 AUTHOR_NAME="`git config user.name`"
 AUTHOR_EMAIL="`git config user.email`"
 
 do_merge() {
   dir=${1}
+  shift
+  from_repo=${1}
   shift
   from_branch=${1}
   shift
@@ -43,7 +45,7 @@ do_merge() {
     branch=`git branch -r 2>&1 | sed -n 's/ *m\/.* -> //p'`
     [ -n "${branch}" ] || branch=partner/android-gs-pixel-mainline
     repo start ${BRANCH} . || exit 1
-    commits="`git cherry -v ${branch} ${from_branch} |
+    commits="`git cherry -v ${branch} ${from_repo}/${from_branch} |
                 sed -n 's/^[+] //p'`"
     titles="`echo \"${commits}\" |
                sed 's/[0-9a-fA-F]* /  /'`"
@@ -57,7 +59,8 @@ do_merge() {
             sort -u |
             grep -v '^$' |
             sed 's/.*/Bug: &/'`"
-    git merge --no-ff --commit --signoff --log=100 ${from_branch} --m "Merge ${from_branch} into ${branch}
+    git fetch ${from_repo} ${from_branch} && \
+    git merge --no-ff --commit --signoff --log=100 ${from_repo}/${from_branch} --m "Merge ${from_repo}/${from_branch} into ${branch}
 ${@}
 "
   ) ||
@@ -73,13 +76,13 @@ find private/google-modules -name .git |
       */aoc) ;&
       */edgetpu/abrolhos) ;&
       */gpu)
-        do_merge ${dir} partner/android13-gs-pixel-5.10-gs101
+        do_merge ${dir} partner android13-gs-pixel-5.10-gs101-tm-qpr1
         ;;
       */soc/gs)
         # Note: this project doesn't have an android13 upstream branch
         ;;
       *)
-        do_merge ${dir} partner/android13-gs-pixel-5.10
+        do_merge ${dir} partner android13-gs-pixel-5.10-tm-qpr1
         ;;
     esac ||
       echo ERROR: merge ${dir} failed
