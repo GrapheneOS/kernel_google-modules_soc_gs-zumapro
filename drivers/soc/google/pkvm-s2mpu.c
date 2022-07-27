@@ -25,30 +25,6 @@
 
 #define S2MPU_NR_WAYS	4
 
-#ifndef L1ENTRY_ATTR_GRAN_MASK
-#define L1ENTRY_ATTR_GRAN_MASK		GENMASK(5, 4)
-#endif
-
-#ifndef L1ENTRY_ATTR_PROT_MASK
-#define L1ENTRY_ATTR_PROT_MASK		GENMASK(2, 1)
-#endif
-
-#ifndef READ_MPTC
-#define READ_MPTC(set, way)		(READ_MPTC_SET(set) | READ_MPTC_WAY(way))
-#define READ_MPTC_WAY_MASK		GENMASK(18, 16)
-#define READ_MPTC_SET_MASK		GENMASK(15, 0)
-#define READ_MPTC_WAY(way)		FIELD_PREP(READ_MPTC_WAY_MASK, (way))
-#define READ_MPTC_SET(set)		FIELD_PREP(READ_MPTC_SET_MASK, (set))
-#define READ_MPTC_TAG_OTHERS_VID_MASK	GENMASK(10, 8)
-#define READ_MPTC_TAG_OTHERS_VALID_BIT	BIT(0)
-#define INFO_NUM_SET_MASK		GENMASK(15, 0)
-#define REG_NS_INFO			0x64
-#define REG_NS_READ_MPTC		0x3000
-#define REG_NS_READ_MPTC_TAG_PPN	0x3004
-#define REG_NS_READ_MPTC_TAG_OTHERS	0x3008
-#define REG_NS_READ_MPTC_DATA		0x3010
-#endif
-
 struct s2mpu_data {
 	struct device *dev;
 	void __iomem *base;
