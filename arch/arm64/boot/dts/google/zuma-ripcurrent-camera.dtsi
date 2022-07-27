@@ -1135,6 +1135,67 @@
 				periodic-io-thread-priority = <99>;
 			};
 
+			/* Ois HUMBABA for P23 tele */
+			ois2: ois@2 {
+				compatible = "google,lwis-i2c-device";
+
+				/* Device node name */
+				node-name = "ois-humbaba";
+
+				/* I2C */
+				i2c-bus = <&hsi2c_4>;
+				i2c-addr = <0x61>;
+
+				/* Registers */
+				reg-addr-bitwidth = <16>;
+				reg-value-bitwidth = <8>;
+
+				/* GPIOs */
+				reset-gpios = <&gpp24 2 GPIO_ACTIVE_HIGH>;
+
+				/* Power supplies */
+				s2mpg15_ldo12-supply = <&s_ldo12_reg>;
+				ldo5-supply = <&slg51002_ldo5>;
+				gpio1-supply = <&slg51002_gpio1>;
+
+				/* Power up sequence */
+				power-up-seqs =
+					"s2mpg15_ldo12",
+					"gpio1",
+					"ldo5",
+					"reset";
+				power-up-seq-types =
+					"regulator",
+					"regulator",
+					"regulator",
+					"gpio";
+				power-up-seq-delays-us =
+					<1000
+					 0
+					 0
+					 0>;
+
+				/* Power down sequence */
+				power-down-seqs =
+					"reset",
+					"ldo5",
+					"gpio1",
+					"s2mpg15_ldo12";
+				power-down-seq-types =
+					"gpio",
+					"regulator",
+					"regulator",
+					"regulator";
+				power-down-seq-delays-us =
+					<0
+					 0
+					 0
+					 0>;
+
+				/* Thread priority */
+				periodic-io-thread-priority = <99>;
+			};
+
 			flash0: flash@0 {
 				compatible = "google,lwis-i2c-device";
 
