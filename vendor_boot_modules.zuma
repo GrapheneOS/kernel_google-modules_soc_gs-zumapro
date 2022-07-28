@@ -25,6 +25,7 @@ ehld.ko
 exynos-adv-tracer-s2d.ko
 exynos-adv-tracer.ko
 exynos-coresight.ko
+exynos-cpuhp.ko
 exynos-cpupm.ko
 exynos-debug-test.ko
 exynos-dm.ko
