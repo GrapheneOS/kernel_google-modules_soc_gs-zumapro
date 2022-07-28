@@ -135,6 +135,98 @@ u8 s2mpg14_get_rev_id(void)
 }
 EXPORT_SYMBOL_GPL(s2mpg14_get_rev_id);
 
+struct i2c_client *s2mpg14_get_i2c_client(struct s2mpg14_dev *dev,
+					  unsigned int reg)
+{
+	struct i2c_client *client = NULL;
+
+	if (reg >> 8 == I2C_ADDR_TOP)
+		client = dev->i2c;
+	else if (reg >> 8 == I2C_ADDR_PMIC)
+		client = dev->pmic;
+	else if (reg >> 8 == I2C_ADDR_RTC)
+		client = dev->rtc;
+	else if (reg >> 8 == I2C_ADDR_METER)
+		client = dev->meter;
+	else if (reg >> 8 == I2C_ADDR_WLWP)
+		client = dev->wlwp;
+	else if (reg >> 8 == I2C_ADDR_GPIO)
+		client = dev->gpio;
+
+	return client;
+}
+
+int s2mpg14_regmap_read_reg(void *context, unsigned int reg,
+			    unsigned int *dest)
+{
+	u8 ureg = reg;
+	u8 *udest = (u8 *)dest;
+	struct s2mpg14_dev *dev = context;
+	struct i2c_client *client = s2mpg14_get_i2c_client(dev, reg);
+
+	if (!client)
+		return -EFAULT;
+
+	*dest = 0;
+	return s2mpg14_read_reg(client, ureg, udest);
+}
+
+int s2mpg14_regmap_write_reg(void *context, unsigned int reg,
+			     unsigned int value)
+{
+	u8 ureg = reg;
+	u8 uvalue = value;
+	struct s2mpg14_dev *dev = context;
+	struct i2c_client *client = s2mpg14_get_i2c_client(dev, reg);
+
+	if (!client)
+		return -EFAULT;
+
+	return s2mpg14_write_reg(client, ureg, uvalue);
+}
+
+static const struct regmap_range s2mpg14_valid_regs[] = {
+	regmap_reg_range(0x000, 0x029), /* Common Block */
+	regmap_reg_range(0x100, 0x1E4), /* Power Management Block */
+	regmap_reg_range(0x200, 0x230), /* RTC (real-time clock) */
+	regmap_reg_range(0xA00, 0xA5A), /* Power Meter config */
+	regmap_reg_range(0xA63, 0xAE5), /* Power Meter data */
+	regmap_reg_range(0xB00, 0xB10), /* WLWP */
+	regmap_reg_range(0xC04, 0xC10), /* GPIO */
+};
+
+static const struct regmap_range s2mpg14_read_only_regs[] = {
+	regmap_reg_range(0x000, 0x029), /* Common Block */
+	regmap_reg_range(0x100, 0x104), /* Power Management INT1~5 */
+	regmap_reg_range(0x10A, 0x10E), /* Power Management STATUS */
+	regmap_reg_range(0xA63, 0xAE5), /* Power Meter data */
+	regmap_reg_range(0xC04, 0xC04), /* GPIO */
+};
+
+const struct regmap_access_table s2mpg14_read_register_set = {
+	.yes_ranges = s2mpg14_valid_regs,
+	.n_yes_ranges = ARRAY_SIZE(s2mpg14_valid_regs),
+};
+
+const struct regmap_access_table s2mpg14_write_register_set = {
+	.yes_ranges = s2mpg14_valid_regs,
+	.n_yes_ranges = ARRAY_SIZE(s2mpg14_valid_regs),
+	.no_ranges = s2mpg14_read_only_regs,
+	.n_no_ranges = ARRAY_SIZE(s2mpg14_read_only_regs),
+};
+
+static struct regmap_config s2mpg14_regmap_config = {
+	.name = "s2mpg14",
+	.reg_bits = 12,
+	.val_bits = 8,
+	.reg_stride = 1,
+	.max_register = 0xC10,
+	.reg_read = s2mpg14_regmap_read_reg,
+	.reg_write = s2mpg14_regmap_write_reg,
+	.rd_table = &s2mpg14_read_register_set,
+	.wr_table = &s2mpg14_write_register_set,
+};
+
 #if IS_ENABLED(CONFIG_OF)
 static int of_s2mpg14_dt(struct device *dev,
 			 struct s2mpg14_platform_data *pdata,
@@ -350,6 +442,14 @@ static int s2mpg14_i2c_probe(struct i2c_client *i2c,
 	s2mpg14_pmic_rev = s2mpg14->pmic_rev;
 
 	dev_info(s2mpg14->dev, "device found: rev.0x%02x\n", s2mpg14->pmic_rev);
+
+	s2mpg14->regmap = devm_regmap_init(s2mpg14->dev, NULL, s2mpg14,
+					   &s2mpg14_regmap_config);
+	if (IS_ERR(s2mpg14->regmap)) {
+		dev_err(s2mpg14->dev, "regmap_init failed!\n");
+		ret = PTR_ERR(s2mpg14->regmap);
+		goto err_w_lock;
+	}
 
 	ret = s2mpg14_irq_init(s2mpg14);
 	if (ret < 0)
