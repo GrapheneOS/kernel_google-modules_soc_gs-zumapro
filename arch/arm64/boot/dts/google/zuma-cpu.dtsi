@@ -170,6 +170,11 @@
 		status = "okay";
 	};
 
+        exynos-cpuphp {
+                compatible = "samsung,exynos-cpuhp";
+                status = "okay";
+        };
+
 	cpupm {
 		#define POWERMODE_TYPE_CLUSTER  0
 		#define POWERMODE_TYPE_SYSTEM   1
