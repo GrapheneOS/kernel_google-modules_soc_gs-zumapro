@@ -24,6 +24,9 @@ ect_parser.ko
 ehld.ko
 exynos-adv-tracer-s2d.ko
 exynos-adv-tracer.ko
+exynos-bcm_dbg-dump.ko
+exynos-bcm_dbg-ppmu.ko
+exynos-bcm_dbg.ko
 exynos-coresight.ko
 exynos-cpuhp.ko
 exynos-cpupm.ko
