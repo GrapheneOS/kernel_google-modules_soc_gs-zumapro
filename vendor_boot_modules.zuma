@@ -10,8 +10,8 @@ bc_max77759.ko
 bcm47765.ko
 bigwave.ko
 bts.ko
-cfg80211.ko
 cachefiles.ko
+cfg80211.ko
 clk_exynos_gs.ko
 cmupmucal.ko
 cpif.ko
@@ -85,13 +85,13 @@ panel-samsung-sofef01.ko
 pca9468.ko
 pcie-exynos-gs.ko
 pcie-exynos-zuma-rc-cal.ko
-pkvm-s2mpu.ko
 phy-exynos-mipi-dsim.ko
 phy-exynos-mipi.ko
 phy-exynos-usbdrd-super.ko
 pinctrl-exynos-gs.ko
 pixel-boot-metrics.ko
 pixel-debug-test.ko
+pkvm-s2mpu.ko
 pmic_class.ko
 power_stats.ko
 rio.ko
