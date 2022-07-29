@@ -468,8 +468,7 @@ static inline void dump_sysmmu_status(struct sysmmu_drvdata *drvdata, phys_addr_
 
 	info = MMU_VERSION_RAW(readl_relaxed(sfrbase + REG_MMU_VERSION));
 
-	pr_crit("ADDR: (VA: %p), MMU_CTRL: %#010x, PT_BASE: %#010x, VID: %d\n",
-		sfrbase,
+	pr_crit("MMU_CTRL: %#010x, PT_BASE: %#010x, VID: %d\n",
 		readl_relaxed(sfrbase + REG_MMU_CTRL),
 		readl_relaxed(MMU_VM_ADDR(sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM, vmid)),
 			      vmid);
@@ -639,13 +638,16 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata, int in
 		pgtable[vmid] = 0;
 	} else {
 		sysmmu_pte_t *ent;
+		phys_addr_t phys;
 
 		ent = section_entry(phys_to_virt(pgtable[vmid]), fault_addr);
-		pr_crit("Lv1 entry: %#010x\n", *ent);
+		phys = virt_to_phys(ent);
+		pr_crit("Lv1 entry: %#010x @ %pap\n", *ent, &phys);
 
 		if (lv1ent_page(ent)) {
 			ent = page_entry(ent, fault_addr);
-			pr_crit("Lv2 entry: %#010x\n", *ent);
+			phys = virt_to_phys(ent);
+			pr_crit("Lv2 entry: %#010x @ %pap\n", *ent, &phys);
 		}
 	}
 
