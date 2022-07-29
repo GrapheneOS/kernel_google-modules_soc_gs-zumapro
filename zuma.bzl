@@ -209,7 +209,7 @@ def define_zuma():
             # No MODULES_LIST
             # No MODULES_BLOCKLIST
             vendor_dlkm_modules_list = "vendor_dlkm_modules.zuma",
-            # No VENDOR_DLKM_MODULES_BLOCKLIST
+            vendor_dlkm_modules_blocklist = "vendor_dlkm.blocklist.zuma",
             vendor_dlkm_props = "vendor_dlkm.props.zuma",
             # VENDOR_RAMDISK_BINARY
             vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-ripcurrent.img"],
