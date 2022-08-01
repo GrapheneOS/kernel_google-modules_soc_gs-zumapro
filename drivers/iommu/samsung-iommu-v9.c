@@ -560,7 +560,7 @@ static int samsung_sysmmu_attach_dev(struct iommu_domain *dom, struct device *de
 	if (ret)
 		goto err_drvdata_add;
 
-	dev_info(dev, "attached with pgtable %pa\n", &domain->page_table);
+	dev_info(dev, "attached with pgtable %pap\n", &page_table);
 
 	return 0;
 
