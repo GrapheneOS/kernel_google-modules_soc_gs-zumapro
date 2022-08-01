@@ -71,6 +71,9 @@
 		/* Auto hibern8 */
 		samsung,support-ah8;
 
+		/* GSA (KDN) device  */
+		gsa-device = <&gsa>;
+
 		/* ----------------------- */
 		/* 4. ADDITIONAL NODES     */
 		/* ----------------------- */
