@@ -8,7 +8,7 @@
 
 / {
 	gxp: callisto@0x20C00000 {
-		compatible = "google,gxp-gs301";
+		compatible = "google,gxp-zuma";
 		status = "ok";
 		#dma-address-cells = <1>;
 		#dma-size-cells = <1>;
@@ -39,6 +39,9 @@
 		gxp-scratchpad-region = <&gxp_scratchpad_reserved>;
 		gxp-mcu-fw-region = <&gxp_mcu_fw_reserved>;
 		gxp-memory-per-core = <0 512>;
+	};
+	gxp_cooling: gxp-cooling {
+		#cooling-cells = <2>;
 	};
 };
 
