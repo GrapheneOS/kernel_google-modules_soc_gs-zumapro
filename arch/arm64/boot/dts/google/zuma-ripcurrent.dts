@@ -110,7 +110,7 @@
 	use-l1ss = "false";
 	use-msi = "true";
 	use-sysmmu = "disabled";
-	max-link-speed = <LINK_SPEED_GEN2>;
+	max-link-speed = <LINK_SPEED_GEN3>;
 	ep-device-type = <EP_BCM_WIFI>;
 	pcie,wlan-gpio = <&gph3 4 0x1 /* WLAN_EN */ >;  /* WLAN_REG_ON */
 };
