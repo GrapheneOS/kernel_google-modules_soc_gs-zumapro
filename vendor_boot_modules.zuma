@@ -16,6 +16,7 @@ clk_exynos_gs.ko
 cmupmucal.ko
 cpif.ko
 cpif_page.ko
+debug-reboot.ko
 debug-snapshot-debug-kinfo.ko
 deferred-free-helper.ko
 dss.ko
