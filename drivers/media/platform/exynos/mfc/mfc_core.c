@@ -319,7 +319,7 @@ static int __mfc_core_register_resource(struct platform_device *pdev,
 		dev_err(&pdev->dev, "failed to get memory region\n");
 		return -ENOENT;
 	}
-	core->regs_base = ioremap(core->mfc_mem->start, resource_size(core->mfc_mem));
+	core->regs_base = ioremap_np(core->mfc_mem->start, resource_size(core->mfc_mem));
 	if (core->regs_base == NULL) {
 		dev_err(&pdev->dev, "failed to ioremap address region\n");
 		goto err_ioremap;
