@@ -6,7 +6,7 @@
 
 / {
 	edgetpu: rio@1A000000 {
-		compatible = "google,edgetpu-gs301";
+		compatible = "google,edgetpu-zuma";
 		#dma-address-cells = <1>;
 		#dma-size-cells = <1>;
 		/* TPU uses regions under 0x18000000 for special purpose */
