@@ -57,6 +57,8 @@ gs_acpm.ko
 gsa.ko
 gsa_gsc.ko
 gvotable.ko
+hardlockup-debug.ko
+hardlockup-watchdog.ko
 i2c-acpm.ko
 i2c-dev.ko
 i2c-exynos5.ko
