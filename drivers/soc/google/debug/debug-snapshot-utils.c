@@ -65,7 +65,7 @@ EXPORT_SYMBOL_GPL(cache_flush_all);
 static void dbg_snapshot_dump_panic(char *str, size_t len)
 {
 	/*  This function is only one which runs in panic function */
-	if (str && len && len < DSS_PANIC_LOG_SIZE)
+	if (str && len && len < DSS_PANIC_STRING_SZ)
 		memcpy(dbg_snapshot_get_header_vaddr() + DSS_OFFSET_PANIC_STRING,
 				str, len);
 }
@@ -160,7 +160,7 @@ EXPORT_SYMBOL_GPL(dbg_snapshot_start_watchdog);
 int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 {
 	void *addr;
-	char reboot_msg[DSS_PANIC_LOG_SIZE] = "Emergency Reboot";
+	char reboot_msg[DSS_PANIC_STRING_SZ] = "Emergency Reboot";
 
 	if (!dss_soc_ops.expire_watchdog) {
 		dev_emerg(dss_desc.dev, "There is no wdt functions!\n");
@@ -574,7 +574,7 @@ static struct die_args *tombstone;
 static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 				   unsigned long l, void *buf)
 {
-	char kernel_panic_msg[DSS_PANIC_LOG_SIZE] = "Kernel Panic";
+	char kernel_panic_msg[DSS_PANIC_STRING_SZ] = "Kernel Panic";
 	unsigned long cpu;
 
 	if (!dbg_snapshot_get_enable())
@@ -793,11 +793,11 @@ void dbg_snapshot_init_utils(void)
 	dss_core_reg = alloc_percpu(struct pt_regs *);
 	for_each_possible_cpu(i) {
 		*per_cpu_ptr(dss_mmu_reg, i) = (struct dbg_snapshot_mmu_reg *)
-					  (vaddr + DSS_HEADER_SZ +
-					   i * DSS_MMU_REG_OFFSET);
+					  (vaddr + DSS_HDR_INFO_BLOCK_SZ +
+					   i * DSS_SYSREG_PER_CORE_SZ);
 		*per_cpu_ptr(dss_core_reg, i) = (struct pt_regs *)
-					   (vaddr + DSS_HEADER_SZ + DSS_MMU_REG_SZ +
-					    i * DSS_CORE_REG_OFFSET);
+					   (vaddr + DSS_HDR_INFO_BLOCK_SZ + DSS_HDR_SYSREG_SZ +
+					    i * DSS_COREREG_PER_CORE_SZ);
 	}
 	/* write default reboot reason as unknown reboot */
 	dbg_snapshot_report_reason(DSS_SIGN_UNKNOWN_REBOOT);

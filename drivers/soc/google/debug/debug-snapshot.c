@@ -380,8 +380,8 @@ static void dbg_snapshot_fixmap(void)
 
 		if (i == DSS_ITEM_HEADER_ID) {
 			/*  initialize kernel event to 0 except only header */
-			memset((void *)(vaddr + DSS_KEEP_HEADER_SZ), 0,
-					size - DSS_KEEP_HEADER_SZ);
+			memset((void *)(vaddr + DSS_HDR_INFO_BLOCK_KEEP_SZ), 0,
+					size - DSS_HDR_INFO_BLOCK_KEEP_SZ);
 		} else {
 			/*  initialized log to 0 if persist == false */
 			if (!dss_items[i].persist)
