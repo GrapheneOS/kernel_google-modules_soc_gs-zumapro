@@ -182,6 +182,7 @@ struct itmon_nodeinfo;
 struct itmon_traceinfo {
 	u32 m_id;
 	u32 s_id;
+	unsigned int user;
 	char *client;
 	char *src;
 	char *dest;
@@ -1187,15 +1188,14 @@ static void itmon_report_traceinfo(struct itmon_dev *itmon,
 	if (!info->dirty)
 		return;
 
-	/* TODO: Add user bit information */
 	pr_err("\n----------------------------------------------------------------------------------\n"
 	       "\tTransaction Information\n\n"
-	       "\t> Client         : %s %s\n"
+	       "\t> Client (User)  : %s %s (0x%X)\n"
 	       "\t> Target         : %s\n"
 	       "\t> Target Address : 0x%llX %s\n"
 	       "\t> Type           : %s\n"
 	       "\t> Error code     : %s\n",
-	       info->src, info->client ? info->client : "",
+	       info->src, info->client ? info->client : "", info->user,
 	       info->dest ? info->dest : NO_NAME,
 	       info->target_addr,
 	       info->baaw_prot ? "(BAAW Remapped address)" : "",
@@ -1286,7 +1286,6 @@ static void itmon_parse_traceinfo(struct itmon_dev *itmon,
 	struct itmon_platdata *pdata = itmon->pdata;
 	struct itmon_nodegroup *group = data->group;
 	struct itmon_traceinfo *new_info = NULL;
-	unsigned int axuser;
 	int i;
 
 	if (!data->m_node || !data->det_node)
@@ -1299,17 +1298,17 @@ static void itmon_parse_traceinfo(struct itmon_dev *itmon,
 		return;
 	}
 
-	axuser = data->info_5;
+	new_info->user = data->info_5;
 	new_info->m_id = data->m_id;
 	new_info->s_id = data->det_id;
 	new_info->m_node = data->m_node;
 	new_info->s_node = data->det_node;
 	new_info->src = data->m_node->name;
 	new_info->dest = data->det_node->name;
-	new_info->client = itmon_get_clientinfo(itmon, new_info->m_node->name, axuser);
+	new_info->client = itmon_get_clientinfo(itmon, new_info->m_node->name, new_info->user);
 
 	if (group->path_type == CONFIG)
-		itmon_parse_cpuinfo(itmon, data, new_info, axuser);
+		itmon_parse_cpuinfo(itmon, data, new_info, new_info->user);
 
 	/* Common Information */
 	new_info->path_type = group->path_type;
