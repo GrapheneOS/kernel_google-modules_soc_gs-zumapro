@@ -817,7 +817,7 @@
 		/* Register space */
 		reg =
 			<0x0 0x1D440000 0x10000>,	/* GDC0 */
-			<0x0 0x1D500000 0x10000>;	/* GDC0 SSMT */
+			<0x0 0x1D504000 0xE00>;		/* GDC0 SSMT */
 		reg-names =
 			"gdc",
 			"gdc_ssmt";
@@ -877,7 +877,7 @@
 		/* Register space */
 		reg =
 			<0x0 0x1D470000 0x10000>,  /* GDC1 */
-			<0x0 0x1D540000 0x10000>;  /* GDC1 SSMT */
+			<0x0 0x1D544000 0xE00>;    /* GDC1 SSMT */
 		reg-names =
 			"gdc",
 			"gdc_ssmt";
@@ -937,13 +937,13 @@
 		/* Register space */
 		reg =
 			<0x0 0x1D040000 0x10000>,  /* MCSC */
-			<0x0 0x1D100000 0x10000>,  /* SSMT D0 MCSC */
-			<0x0 0x1D110000 0x10000>,  /* SSMT D1 MCSC */
-			<0x0 0x1D120000 0x10000>,  /* SSMT D2 MCSC */
-			<0x0 0x1D130000 0x10000>,  /* SSMT D3 MCSC */
-			<0x0 0x1D140000 0x10000>,  /* SSMT D4 MCSC */
-			<0x0 0x1D150000 0x10000>,  /* SSMT D5 MCSC */
-			<0x0 0x1D160000 0x10000>;  /* SSMT D6 MCSC */
+			<0x0 0x1D104000 0xE00>,    /* SSMT D0 MCSC */
+			<0x0 0x1D114000 0xE00>,    /* SSMT D1 MCSC */
+			<0x0 0x1D124000 0xE00>,    /* SSMT D2 MCSC */
+			<0x0 0x1D134000 0xE00>,    /* SSMT D3 MCSC */
+			<0x0 0x1D144000 0xE00>,    /* SSMT D4 MCSC */
+			<0x0 0x1D154000 0xE00>,    /* SSMT D5 MCSC */
+			<0x0 0x1D164000 0xE00>;    /* SSMT D6 MCSC */
 		reg-names =
 			"mcsc",
 			"ssmt_d0_mcsc",
@@ -1007,9 +1007,9 @@
 			<0x0 0x1D840000 0x10000>,  /* GSE */
 			<0x0 0x1D844000 0x00800>,  /* GSE PDMA */
 			<0x0 0x1D844800 0x00200>,  /* GSE PDMA WARP */
-			<0x0 0x1D930000 0x10000>,  /* SSMT D0 GSE */
-			<0x0 0x1D940000 0x10000>,  /* SSMT D1 GSE */
-			<0x0 0x1D950000 0x10000>;  /* SSMT D2 GSE */
+			<0x0 0x1D934000 0xE00>,    /* SSMT D0 GSE */
+			<0x0 0x1D944000 0xE00>,    /* SSMT D1 GSE */
+			<0x0 0x1D954000 0xE00>;    /* SSMT D2 GSE */
 		reg-names =
 			"gse",
 			"gse_pdma",
@@ -1083,8 +1083,8 @@
 			<0x0 0x1C440000 0x10000>,  /* RGBP */
 			<0x0 0x1C470000 0x10000>,  /* MCFP */
 			<0x0 0x1C840000 0x10000>,  /* YUVP */
-			<0x0 0x1C5D4400 0x10>,     /* SSMT D0 RGBP */
-			<0x0 0x1C914400 0x20>,     /* SSMT D1 YUVP */
+			<0x0 0x1C5D4000 0xE00>,    /* SSMT D0 RGBP */
+			<0x0 0x1C914000 0xE00>,    /* SSMT D1 YUVP */
 			<0x0 0x1C420404 0x4>;      /* SYSREG RGBP */
 		reg-names =
 			"rgbp",
@@ -1179,14 +1179,18 @@
 		/* Register space */
 		reg =
 			<0x0 0x1CC40000 0x10000>,  /* GTNR Merge */
-			<0x0 0x1CF30000 0xA00>,    /* GTNR Merge SSMT D0 */
-			<0x0 0x1CF40000 0xA00>,    /* GTNR Merge SSMT D1 */
-			<0x0 0x1CF50000 0xA00>,    /* GTNR Merge SSMT D2 */
-			<0x0 0x1CF60000 0xA00>,    /* GTNR Merge SSMT D3 */
-			<0x0 0x1CF70000 0xA00>,    /* GTNR Merge SSMT D4 */
-			<0x0 0x1CF80000 0xA00>,    /* GTNR Merge SSMT D5 */
-			<0x0 0x1CF90000 0xA00>,    /* GTNR Merge SSMT D6 */
-			<0x0 0x1CFA0000 0xA00>;    /* GTNR Merge SSMT D7 */
+			<0x0 0x1CF34000 0xE00>,    /* GTNR Merge SSMT D0 */
+			<0x0 0x1CF44000 0xE00>,    /* GTNR Merge SSMT D1 */
+			<0x0 0x1CF54000 0xE00>,    /* GTNR Merge SSMT D2 */
+			<0x0 0x1CF64000 0xE00>,    /* GTNR Merge SSMT D3 */
+			<0x0 0x1CF74000 0xE00>,    /* GTNR Merge SSMT D4 */
+			<0x0 0x1CF84000 0xE00>,    /* GTNR Merge SSMT D5 */
+			<0x0 0x1CF94000 0xE00>,    /* GTNR Merge SSMT D6 */
+			<0x0 0x1CFA4000 0xE00>,    /* GTNR Merge SSMT D7 */
+			<0x0 0x1CFB4000 0xE00>,    /* GTNR Merge SSMT D8 */
+			<0x0 0x1CFC4000 0xE00>,    /* GTNR Merge SSMT D9 */
+			<0x0 0x1CFD4000 0xE00>,    /* GTNR Merge SSMT D10 */
+			<0x0 0x1CFE4000 0xE00>;    /* GTNR Merge SSMT D11 */
 		reg-names =
 			"gtnr_merge",
 			"gtnr_merge_ssmt_d0",
@@ -1196,7 +1200,11 @@
 			"gtnr_merge_ssmt_d4",
 			"gtnr_merge_ssmt_d5",
 			"gtnr_merge_ssmt_d6",
-			"gtnr_merge_ssmt_d7";
+			"gtnr_merge_ssmt_d7",
+			"gtnr_merge_ssmt_d8",
+			"gtnr_merge_ssmt_d9",
+			"gtnr_merge_ssmt_d10",
+			"gtnr_merge_ssmt_d11";
 
 		interrupts =
 			<GIC_SPI IRQ_TNR_0_TNR IRQ_TYPE_LEVEL_HIGH>,
