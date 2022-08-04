@@ -2482,7 +2482,7 @@ static struct v4l2_queryctrl controls[] = {
 	{
 		.id = V4L2_CID_MPEG_VIDEO_CHROMA_QP_OFFSET_CB,
 		.type = V4L2_CTRL_TYPE_INTEGER,
-		.name = "Chroma QP index for Cb component",
+		.name = "Chroma QP index for Cb",
 		.minimum = -12,
 		.maximum = 12,
 		.step = 1,
@@ -2491,7 +2491,7 @@ static struct v4l2_queryctrl controls[] = {
 	{
 		.id = V4L2_CID_MPEG_VIDEO_CHROMA_QP_OFFSET_CR,
 		.type = V4L2_CTRL_TYPE_INTEGER,
-		.name = "Chroma QP index for Cr component",
+		.name = "Chroma QP index for Cr",
 		.minimum = -12,
 		.maximum = 12,
 		.step = 1,
