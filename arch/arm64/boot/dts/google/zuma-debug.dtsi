@@ -322,7 +322,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		cs_base = <0x2b000000>;
-		status = "disabled";
+		status = "ok";
 
 		dbgc {
 			/* IPC */
