@@ -441,7 +441,7 @@
 		debug-log-level = <0>;
 		logging-period = <500>;
 		dump-base = <0x15705000>;	/* Non-secure world base addr */
-		dump-size = <0x55000>;		/* Non-secure SRAM size: 320KB */
+		dump-size = <0x53000>;		/* Non-secure SRAM size: 332KB(352-20) */
 		acpm-ipc-channel = <12>;
 		fvmap_addr = <0x31000>;
 		panic-action = <GO_WATCHDOG_ID>;
