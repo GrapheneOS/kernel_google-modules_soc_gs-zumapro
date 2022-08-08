@@ -114,7 +114,7 @@ static int chk_epmem_access(struct exynos_pcie *exynos_pcie)
 	u32 val;
 	int test_result = 0;
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct exynos_pcie_ops *pcie_ops = &exynos_pcie->exynos_pcie_ops;
 
 	struct pci_bus *ep_pci_bus;
@@ -158,7 +158,7 @@ static int chk_epconf_access(struct exynos_pcie *exynos_pcie)
 	u32 val;
 	int test_result = 0;
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct pci_bus *ep_pci_bus;
 	struct exynos_pcie_ops *pcie_ops = &exynos_pcie->exynos_pcie_ops;
 
@@ -198,7 +198,7 @@ static int chk_dbi_access(struct exynos_pcie *exynos_pcie)
 	u32 val;
 	int test_result = 0;
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct exynos_pcie_ops *pcie_ops = &exynos_pcie->exynos_pcie_ops;
 
 	if (!pcie_ops->rd_own_conf) {

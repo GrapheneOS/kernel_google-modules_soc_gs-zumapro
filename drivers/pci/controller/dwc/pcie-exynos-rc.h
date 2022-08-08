@@ -334,7 +334,7 @@ struct pcie_eom_result {
 	unsigned long err_cnt;
 };
 
-void exynos_pcie_rc_phy_init(struct pcie_port *pp);
+void exynos_pcie_rc_phy_init(struct dw_pcie_rp *pp);
 
 #if IS_ENABLED(CONFIG_EXYNOS_PCIE_IOMMU)
 void pcie_sysmmu_enable(int ch_num);
