@@ -69,7 +69,7 @@ int pcie_is_linkup;	/* checkpatch: do not initialise globals to 0 */
 static struct separated_msi_vector sep_msi_vec[MAX_RC_NUM][PCIE_MAX_SEPA_IRQ_NUM];
 static bool is_vhook_registered;
 
-static struct pci_dev *exynos_pcie_get_pci_dev(struct pcie_port *pp);
+static struct pci_dev *exynos_pcie_get_pci_dev(struct dw_pcie_rp *pp);
 
 #if IS_ENABLED(CONFIG_PM_DEVFREQ)
 struct exynos_pm_qos_request exynos_pcie_int_qos[MAX_RC_NUM];
@@ -1077,7 +1077,7 @@ static inline void remove_pcie_sys_file(struct device *dev)
 	sysfs_remove_group(&pdev->dev.kobj, &link_stats_group);
 }
 
-static int exynos_pcie_rc_clock_enable(struct pcie_port *pp, int enable)
+static int exynos_pcie_rc_clock_enable(struct dw_pcie_rp *pp, int enable)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -1096,7 +1096,7 @@ static int exynos_pcie_rc_clock_enable(struct pcie_port *pp, int enable)
 	return ret;
 }
 
-static int exynos_pcie_rc_phy_clock_enable(struct pcie_port *pp, int enable)
+static int exynos_pcie_rc_phy_clock_enable(struct dw_pcie_rp *pp, int enable)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -1115,7 +1115,7 @@ static int exynos_pcie_rc_phy_clock_enable(struct pcie_port *pp, int enable)
 	return ret;
 }
 
-void exynos_pcie_rc_print_link_history(struct pcie_port *pp)
+void exynos_pcie_rc_print_link_history(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct device *dev = pci->dev;
@@ -1134,7 +1134,7 @@ void exynos_pcie_rc_print_link_history(struct pcie_port *pp)
 	}
 }
 
-static int exynos_pcie_rc_rd_own_conf(struct pcie_port *pp, int where, int size, u32 *val)
+static int exynos_pcie_rc_rd_own_conf(struct dw_pcie_rp *pp, int where, int size, u32 *val)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -1179,7 +1179,7 @@ static int exynos_pcie_rc_rd_own_conf(struct pcie_port *pp, int where, int size,
 	return ret;
 }
 
-static int exynos_pcie_rc_wr_own_conf(struct pcie_port *pp, int where, int size, u32 val)
+static int exynos_pcie_rc_wr_own_conf(struct dw_pcie_rp *pp, int where, int size, u32 val)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -1222,7 +1222,7 @@ static int exynos_pcie_rc_wr_own_conf(struct pcie_port *pp, int where, int size,
 	return ret;
 }
 
-static void exynos_pcie_rc_prog_viewport_cfg0(struct pcie_port *pp, u32 busdev)
+static void exynos_pcie_rc_prog_viewport_cfg0(struct dw_pcie_rp *pp, u32 busdev)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -1239,7 +1239,7 @@ static void exynos_pcie_rc_prog_viewport_cfg0(struct pcie_port *pp, u32 busdev)
 	exynos_pcie->atu_ok = 1;
 }
 
-static void exynos_pcie_rc_prog_viewport_mem_outbound(struct pcie_port *pp)
+static void exynos_pcie_rc_prog_viewport_mem_outbound(struct dw_pcie_rp *pp)
 {
 	struct resource_entry *entry =
 		resource_list_first_type(&pp->bridge->windows, IORESOURCE_MEM);
@@ -1265,7 +1265,7 @@ int exynos_pcie_rc_set_bar(int ch_num, u32 bar_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct pci_dev *ep_pci_dev;
 	u32 val, ret;
 
@@ -1300,7 +1300,7 @@ int exynos_pcie_rc_set_outbound_atu(int ch_num, u32 target_addr, u32 offset, u32
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct resource_entry *entry =
 		resource_list_first_type(&pp->bridge->windows, IORESOURCE_MEM);
 	u32 val;
@@ -1353,7 +1353,7 @@ int exynos_pcie_rc_set_outbound_atu(int ch_num, u32 target_addr, u32 offset, u32
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_rc_set_outbound_atu);
 
-static int exynos_pcie_rc_rd_other_conf(struct pcie_port *pp, struct pci_bus *bus, u32 devfn,
+static int exynos_pcie_rc_rd_other_conf(struct dw_pcie_rp *pp, struct pci_bus *bus, u32 devfn,
 					int where, int size, u32 *val)
 {
 	u32 busdev, cfg_size;
@@ -1372,7 +1372,7 @@ static int exynos_pcie_rc_rd_other_conf(struct pcie_port *pp, struct pci_bus *bu
 	return dw_pcie_read(va_cfg_base + where, size, val);
 }
 
-static int exynos_pcie_rc_wr_other_conf(struct pcie_port *pp, struct pci_bus *bus, u32 devfn,
+static int exynos_pcie_rc_wr_other_conf(struct dw_pcie_rp *pp, struct pci_bus *bus, u32 devfn,
 					int where, int size, u32 val)
 {
 	u32 busdev, cfg_size;
@@ -1395,7 +1395,7 @@ static int exynos_pcie_rc_rd_other_conf_new(struct pci_bus *bus,
 					    unsigned int devfn,
 					    int where, int size, u32 *val)
 {
-	struct pcie_port *pp = bus->sysdata;
+	struct dw_pcie_rp *pp = bus->sysdata;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	int ret = 0;
@@ -1409,7 +1409,7 @@ static int exynos_pcie_rc_wr_other_conf_new(struct pci_bus *bus,
 					    unsigned int devfn,
 					    int where, int size, u32 val)
 {
-	struct pcie_port *pp = bus->sysdata;
+	struct dw_pcie_rp *pp = bus->sysdata;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	int ret = 0;
@@ -1423,7 +1423,7 @@ static int exynos_pcie_rc_rd_own_conf_new(struct pci_bus *bus,
 					  unsigned int devfn,
 					  int where, int size, u32 *val)
 {
-	struct pcie_port *pp = bus->sysdata;
+	struct dw_pcie_rp *pp = bus->sysdata;
 
 	if (PCI_SLOT(devfn) > 0) {
 		*val = ~0;
@@ -1437,7 +1437,7 @@ static int exynos_pcie_rc_wr_own_conf_new(struct pci_bus *bus,
 					  unsigned int devfn,
 					  int where, int size, u32 val)
 {
-	struct pcie_port *pp = bus->sysdata;
+	struct dw_pcie_rp *pp = bus->sysdata;
 
 	if (PCI_SLOT(devfn) > 0)
 		return PCIBIOS_DEVICE_NOT_FOUND;
@@ -1457,7 +1457,7 @@ static struct pci_ops exynos_pcie_rc_root_ops = {
 
 u32 exynos_pcie_rc_read_dbi(struct dw_pcie *pci, void __iomem *base, u32 reg, size_t size)
 {
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	u32 val;
 
 	exynos_pcie_rc_rd_own_conf(pp, reg, size, &val);
@@ -1468,7 +1468,7 @@ u32 exynos_pcie_rc_read_dbi(struct dw_pcie *pci, void __iomem *base, u32 reg, si
 void exynos_pcie_rc_write_dbi(struct dw_pcie *pci, void __iomem *base, u32 reg, size_t size,
 			      u32 val)
 {
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 
 	exynos_pcie_rc_wr_own_conf(pp, reg, size, val);
 }
@@ -1494,7 +1494,7 @@ static const struct dw_pcie_ops dw_pcie_ops = {
 	.link_up = exynos_pcie_rc_link_up,
 };
 
-static void exynos_pcie_rc_set_iocc(struct pcie_port *pp, int enable)
+static void exynos_pcie_rc_set_iocc(struct dw_pcie_rp *pp, int enable)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -1565,7 +1565,7 @@ static int exynos_pcie_rc_parse_dt(struct device *dev, struct exynos_pcie *exyno
 	const char *use_pcieon_sleep;
 	const char *use_phy_isol_con;
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 
 	if (of_property_read_u32(np, "ip-ver", &exynos_pcie->ip_ver)) {
 		dev_err(dev, "Failed to parse the number of ip-ver\n");
@@ -1673,7 +1673,7 @@ static int exynos_pcie_rc_parse_dt(struct device *dev, struct exynos_pcie *exyno
 	 * EP driver.
 	 */
 
-	pp->msi_irq = -ENODEV;
+	pp->msi_irq[0] = -ENODEV;
 
 	if (!of_property_read_string(np, "use-sicd", &use_sicd)) {
 		if (!strcmp(use_sicd, "true")) {
@@ -1880,7 +1880,7 @@ static int exynos_pcie_rc_get_pin_state(struct platform_device *pdev,
 	return 0;
 }
 
-static int exynos_pcie_rc_clock_get(struct pcie_port *pp)
+static int exynos_pcie_rc_clock_get(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct device *dev = pci->dev;
@@ -2015,7 +2015,7 @@ static int exynos_pcie_rc_get_resource(struct platform_device *pdev,
 	return 0;
 }
 
-static void exynos_pcie_rc_enable_interrupts(struct pcie_port *pp, int enable)
+static void exynos_pcie_rc_enable_interrupts(struct dw_pcie_rp *pp, int enable)
 {
 	u32 val_irq0, val_irq1, val_irq2;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
@@ -2051,7 +2051,7 @@ static void exynos_pcie_rc_enable_interrupts(struct pcie_port *pp, int enable)
 	}
 }
 
-static void __maybe_unused exynos_pcie_notify_callback(struct pcie_port *pp, int event)
+static void __maybe_unused exynos_pcie_notify_callback(struct dw_pcie_rp *pp, int event)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -2111,7 +2111,7 @@ void exynos_pcie_rc_register_dump(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	u32 i, val_0, val_4, val_8, val_c;
 
 	pr_err("%s: +++\n", __func__);
@@ -2233,7 +2233,7 @@ void exynos_pcie_rc_dislink_work(struct work_struct *work)
 {
 	struct exynos_pcie *exynos_pcie = container_of(work, struct exynos_pcie, dislink_work.work);
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct device *dev = pci->dev;
 	unsigned long flags;
 
@@ -2261,7 +2261,7 @@ void exynos_pcie_rc_cpl_timeout_work(struct work_struct *work)
 	struct exynos_pcie *exynos_pcie =
 		container_of(work, struct exynos_pcie, cpl_timeout_work.work);
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct device *dev = pci->dev;
 	unsigned long flags;
 
@@ -2409,7 +2409,7 @@ static void exynos_pcie_rc_use_ia(struct exynos_pcie *exynos_pcie)
 	exynos_ia_write(exynos_pcie, 0x00000001, 0x000);
 }
 
-void exynos_pcie_rc_assert_phy_reset(struct pcie_port *pp)
+void exynos_pcie_rc_assert_phy_reset(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -2463,7 +2463,7 @@ static void exynos_pcie_ch2_phy_disable(struct exynos_pcie *exynos_pcie)
 			   PCIE_PHY_CONTROL_MASK, PCIE_PHY_ISOLATION);
 }
 
-void exynos_pcie_rc_resumed_phydown(struct pcie_port *pp)
+void exynos_pcie_rc_resumed_phydown(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct device *dev = pci->dev;
@@ -2490,7 +2490,7 @@ void exynos_pcie_rc_resumed_phydown(struct pcie_port *pp)
 	exynos_pcie_rc_clock_enable(pp, PCIE_DISABLE_CLOCK);
 }
 
-static void exynos_pcie_setup_rc(struct pcie_port *pp)
+static void exynos_pcie_setup_rc(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -2562,7 +2562,7 @@ static void exynos_pcie_setup_rc(struct pcie_port *pp)
 	exynos_pcie_rc_wr_own_conf(pp, pcie_cap_off + PCI_EXP_DEVCTL2, 4, val);
 }
 
-static int exynos_pcie_rc_init(struct pcie_port *pp)
+static int exynos_pcie_rc_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -2601,7 +2601,7 @@ void exynos_pcie_msi_post_process(struct pcie_port *pp)
 
 static irqreturn_t exynos_pcie_rc_irq_handler(int irq, void *arg)
 {
-	struct pcie_port *pp = arg;
+	struct dw_pcie_rp *pp = arg;
 	u32 val_irq0, val_irq1, val_irq2;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -2674,7 +2674,7 @@ static irqreturn_t exynos_pcie_rc_irq_handler(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-static int exynos_pcie_rc_msi_init(struct pcie_port *pp)
+static int exynos_pcie_rc_msi_init(struct dw_pcie_rp *pp)
 {
 	u32 val, mask_val, i;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
@@ -2843,7 +2843,7 @@ static void exynos_pcie_rc_send_pme_turn_off(struct exynos_pcie *exynos_pcie)
 		dev_err(dev, "cannot receive L23_READY DLLP packet(0x%x)\n", val);
 }
 
-static int exynos_pcie_rc_establish_link(struct pcie_port *pp)
+static int exynos_pcie_rc_establish_link(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -3031,7 +3031,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci;
-	struct pcie_port *pp;
+	struct dw_pcie_rp *pp;
 	struct device *dev;
 	u32 val, vendor_id, device_id;
 	int ret;
@@ -3204,7 +3204,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci;
-	struct pcie_port *pp;
+	struct dw_pcie_rp *pp;
 	struct device *dev;
 	unsigned long flags, flags1;
 	u32 val;
@@ -3337,7 +3337,7 @@ int exynos_pcie_pm_resume(int ch_num)
 EXPORT_SYMBOL_GPL(exynos_pcie_pm_resume);
 
 /* get EP pci_dev structure of BUS */
-static struct pci_dev *exynos_pcie_get_pci_dev(struct pcie_port *pp)
+static struct pci_dev *exynos_pcie_get_pci_dev(struct dw_pcie_rp *pp)
 {
 	int domain_num;
 	struct pci_bus *ep_pci_bus;
@@ -3414,7 +3414,7 @@ int exynos_pcie_l1_exit(int ch_num)
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_l1_exit);
 
-static int exynos_pcie_rc_set_l1ss(int enable, struct pcie_port *pp, int id)
+static int exynos_pcie_rc_set_l1ss(int enable, struct dw_pcie_rp *pp, int id)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -3733,7 +3733,7 @@ int exynos_pcie_rc_l1ss_ctrl(int enable, int id, int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 
 	if (!exynos_pcie->use_l1ss) {
 		pr_err("%s: 'use_l1ss' is false in DT(not support L1.2)\n", __func__);
@@ -3811,7 +3811,7 @@ int exynos_pcie_rc_check_link_speed(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	u32 current_speed = 0;
 
 	if (exynos_pcie->state != STATE_LINK_UP) {
@@ -3832,7 +3832,7 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct pci_bus *ep_pci_bus;
 	int i;
 	u32 val, current_speed, new_speed;
@@ -3917,7 +3917,7 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 int exynos_pcie_register_event(struct exynos_pcie_register_event *reg)
 {
 	int ret = 0;
-	struct pcie_port *pp;
+	struct dw_pcie_rp *pp;
 	struct exynos_pcie *exynos_pcie;
 	struct dw_pcie *pci;
 
@@ -3951,7 +3951,7 @@ EXPORT_SYMBOL_GPL(exynos_pcie_register_event);
 int exynos_pcie_deregister_event(struct exynos_pcie_register_event *reg)
 {
 	int ret = 0;
-	struct pcie_port *pp;
+	struct dw_pcie_rp *pp;
 	struct exynos_pcie *exynos_pcie;
 	struct dw_pcie *pci;
 
@@ -3986,7 +3986,7 @@ int exynos_pcie_rc_set_affinity(int ch_num, int affinity)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci;
-	struct pcie_port *pp;
+	struct dw_pcie_rp *pp;
 
 	if (!exynos_pcie) {
 		pr_err("%s: ch#%d PCIe device is not loaded\n", __func__, ch_num);
@@ -4022,7 +4022,7 @@ int exynos_pcie_rc_set_enable_wake(struct irq_data *data, unsigned int enable)
 }
 
 #if IS_ENABLED(CONFIG_CPU_IDLE)
-static void __maybe_unused exynos_pcie_rc_set_tpoweron(struct pcie_port *pp, int max)
+static void __maybe_unused exynos_pcie_rc_set_tpoweron(struct dw_pcie_rp *pp, int max)
 {
 	void __iomem *ep_dbi_base = pp->va_cfg0_base;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
@@ -4059,7 +4059,6 @@ static void __maybe_unused exynos_pcie_rc_set_tpoweron(struct pcie_port *pp, int
 	val |= WIFI_ALL_PM_ENABEL;
 	writel(val, ep_dbi_base + WIFI_L1SS_CONTROL);
 }
-#endif
 
 static int exynos_pcie_msi_set_affinity(struct irq_data *irq_data, const struct cpumask *mask,
 					bool force)
@@ -4334,7 +4333,7 @@ int register_separated_msi_vector(int ch_num, irq_handler_t handler, void *conte
 }
 EXPORT_SYMBOL_GPL(register_separated_msi_vector);
 
-static int exynos_pcie_rc_add_port(struct platform_device *pdev, struct pcie_port *pp, int ch_num)
+static int exynos_pcie_rc_add_port(struct platform_device *pdev, struct dw_pcie_rp *pp, int ch_num)
 {
 	struct irq_domain *msi_domain;
 	struct msi_domain_info *msi_domain_info;
@@ -4415,7 +4414,7 @@ skip_sep_request_irq:
 	return 0;
 }
 
-static void exynos_pcie_rc_pcie_ops_init(struct pcie_port *pp)
+static void exynos_pcie_rc_pcie_ops_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -4588,7 +4587,7 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 {
 	struct exynos_pcie *exynos_pcie;
 	struct dw_pcie *pci;
-	struct pcie_port *pp;
+	struct dw_pcie_rp *pp;
 	struct device_node *np = pdev->dev.of_node;
 	int ret = 0;
 	int ch_num;
