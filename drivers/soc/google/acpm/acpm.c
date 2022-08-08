@@ -294,6 +294,17 @@ void exynos_acpm_reboot(void)
 }
 EXPORT_SYMBOL_GPL(exynos_acpm_reboot);
 
+static void acpm_shutdown(struct platform_device *pdev)
+{
+	pr_info("%s...\n", __func__);
+
+	acpm_framework_debug_cmd_setting(exynos_acpm, ACPM_FRAMEWORK_COMMAND_DEBUG_NOTIFY_SHUTDOWN);
+
+	acpm_ipc_set_waiting_mode(BUSY_WAIT);
+
+	acpm_stop_log_and_dumpram();
+}
+
 static int acpm_probe(struct platform_device *pdev)
 {
 	struct acpm_info *acpm;
@@ -353,6 +364,7 @@ MODULE_DEVICE_TABLE(of, acpm_match);
 static struct platform_driver samsung_acpm_driver = {
 	.probe	= acpm_probe,
 	.remove	= acpm_remove,
+	.shutdown = acpm_shutdown,
 	.driver	= {
 		.name = "gs-acpm",
 		.owner	= THIS_MODULE,
