@@ -75,6 +75,12 @@
 #define AXQOD(x)			(((x) & (0xF << 20)) >> 20)
 #define AXLEN(x)			(((x) & (0xF << 16)) >> 16)
 
+#define PARSE_USER(x)			(((x) & (0x3F << 19)) >> 19)
+#define PARSE_CPU_ID_CONFIG(x)		(((x) & (0x0F << 3)) >> 3)
+#define PARSE_CPU_ID_DATA(x)		(((x) & (0x0F << 20)) >> 20)
+#define PARSE_CPU_SRCATTR_TYPE(x)	(((x) & (0x3 << 27)) >> 27)
+#define PARSE_CPU_SRCATTR_ACCS(x)	(((x) & (0x1 << 29)) >> 29)
+
 #define AXID(x)				(((x) & (0xFFFFFFFF)))
 #define AXUSER(x, y)			((u64)((x) & (0xFFFFFFFF)) | (((y) & (0xFFFFFFFF)) << 32ULL))
 #define ADDRESS(x, y)			((u64)((x) & (0xFFFFFFFF)) | (((y) & (0xFFFF)) << 32ULL))
@@ -665,7 +671,18 @@ static const char *itmon_cpu_node_string[5] = {
 	"M_CPU",
 	"SCI_IRPM",
 	"SCI_CCM",
-	"CCI",
+	"BOOKER",
+};
+
+static const char *itmon_cpu_attr_type[3] = {
+	"Inst",	/* Instruction */
+	"Data",	/* Data */
+	"PTW",	/* Page table walk */
+};
+
+static const char *itmon_cpu_attr_accs[2] = {
+	"Demand",
+	"Prefetch",
 };
 
 static const unsigned int itmon_invalid_addr[2] = {
@@ -1243,40 +1260,37 @@ static void itmon_report_pathinfo(struct itmon_dev *itmon,
 		det_node->name, itmon_node_string[det_node->type], det_node->err_id);
 }
 
-static int itmon_parse_cpuinfo(struct itmon_dev *itmon,
-			       struct itmon_tracedata *data,
-			       struct itmon_traceinfo *info,
-			       unsigned int userbit)
+static void itmon_parse_cpuinfo(struct itmon_dev *itmon,
+				struct itmon_tracedata *data,
+				struct itmon_traceinfo *info,
+				unsigned int userbit)
 {
 	struct itmon_platdata *pdata = itmon->pdata;
 	struct itmon_nodeinfo *m_node = data->m_node;
-	int core_num = 0, el2 = 0, strong = 0, i;
+	int core_num = 0, cpu_attr_type = 0, cpu_attr_accs = 0, i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(itmon_cpu_node_string); i++) {
 		if (!strncmp(m_node->name, itmon_cpu_node_string[i], strlen(itmon_cpu_node_string[i]))) {
-			if (userbit & BIT(0))
-				el2 = 1;
-			if (DSS_NR_CPUS > 8) {
-				if (!(userbit & BIT(1)))
-					strong = 1;
-				core_num = ((userbit & (0xF << 2)) >> 2);
-			} else {
-				core_num = ((userbit & (0x7 << 1)) >> 1);
-				strong = 0;
+			if (!pdata->cpu_parsing) {
+				scnprintf(info->buf, sizeof(info->buf), "CPU");
+				info->client = info->buf;
+			} else if (info->path_type == CONFIG) {
+				core_num = PARSE_CPU_ID_CONFIG(userbit);
+				scnprintf(info->buf, sizeof(info->buf), "CPU%d ", core_num);
+				info->client = info->buf;
+			} else if (info->path_type == DATA && (userbit & BIT(25))) {
+				core_num = PARSE_CPU_ID_DATA(userbit);
+				cpu_attr_type = PARSE_CPU_SRCATTR_TYPE(userbit);
+				cpu_attr_accs = PARSE_CPU_SRCATTR_ACCS(userbit);
+				scnprintf(info->buf, sizeof(info->buf),
+					  "CPU%d, ATTR:[%s][%s]", core_num,
+					  itmon_cpu_attr_type[cpu_attr_type],
+					  itmon_cpu_attr_accs[cpu_attr_accs]);
+				info->client = info->buf;
 			}
-			if (pdata->cpu_parsing) {
-				snprintf(info->buf, sizeof(info->buf) - 1,
-					 "CPU%d %s %s", core_num, el2 == 1 ? "EL2" : "",
-					 strong == 1 ? "Strong" : "");
-			} else {
-				snprintf(info->buf, sizeof(info->buf) - 1, "CPU");
-			}
-			info->client = info->buf;
-			return 1;
+			return;
 		}
-	};
-
-	return 0;
+	}
 }
 
 static void itmon_parse_traceinfo(struct itmon_dev *itmon,
@@ -1298,7 +1312,7 @@ static void itmon_parse_traceinfo(struct itmon_dev *itmon,
 		return;
 	}
 
-	new_info->user = data->info_5;
+	new_info->user = PARSE_USER(data->info_5);
 	new_info->m_id = data->m_id;
 	new_info->s_id = data->det_id;
 	new_info->m_node = data->m_node;
@@ -1307,11 +1321,11 @@ static void itmon_parse_traceinfo(struct itmon_dev *itmon,
 	new_info->dest = data->det_node->name;
 	new_info->client = itmon_get_clientinfo(itmon, new_info->m_node->name, new_info->user);
 
-	if (group->path_type == CONFIG)
-		itmon_parse_cpuinfo(itmon, data, new_info, new_info->user);
-
 	/* Common Information */
 	new_info->path_type = group->path_type;
+
+	itmon_parse_cpuinfo(itmon, data, new_info, data->info_5);
+
 	new_info->target_addr = (((u64)data->info_3 & GENMASK(15, 0)) << 32ULL);
 	new_info->target_addr |= data->info_2;
 	new_info->err_code = data->err_code;
