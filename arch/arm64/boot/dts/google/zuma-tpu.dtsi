@@ -11,7 +11,9 @@
 		#dma-size-cells = <1>;
 		/* TPU uses regions under 0x18000000 for special purpose */
 		dma-window = <0x18000000 0xE7FFF000>;
-		reg = <0x0 0x1A000000 0x300000>;
+		reg = <0x0 0x1A000000 0x300000
+		       0x0 0x1A3F0000 0x10000>;
+		reg-names = "tpu", "ssmt";
 		interrupts = <0x00 IRQ_MAILBOX_TPU2AP_NS_TPU_0_TPU IRQ_TYPE_LEVEL_HIGH>,
 			<0x00 IRQ_MAILBOX_TPU2AP_NS_TPU_1_TPU IRQ_TYPE_LEVEL_HIGH>,
 			<0x00 IRQ_MAILBOX_TPU2AP_NS_TPU_2_TPU IRQ_TYPE_LEVEL_HIGH>,
