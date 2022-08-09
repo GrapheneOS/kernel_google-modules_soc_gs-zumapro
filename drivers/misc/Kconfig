@@ -26,4 +26,3 @@ config ACCESS_RAMOOPS
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/sscoredump/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/sbb-mux/Kconfig"
-source "$(KCONFIG_EXT_PREFIX)drivers/misc/bbdpl/Kconfig"
