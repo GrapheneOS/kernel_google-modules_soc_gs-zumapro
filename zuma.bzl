@@ -43,6 +43,13 @@ def _define_zuma_gki():
             "mm/zsmalloc.ko",
         ],
         build_config = "build.config.zuma.gki",
+        # For building system_dlkm (b/241855743)
+        # Device fragments need to add: '# CONFIG_MODULE_SIG_ALL is not set'
+        implicit_outs = [
+            "scripts/sign-file",
+            "certs/signing_key.pem",
+            "certs/signing_key.x509",
+        ],
     )
 
     kernel_modules_install(
