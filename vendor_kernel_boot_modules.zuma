@@ -5,7 +5,6 @@
 9pnet.ko
 9pnet_virtio.ko
 at24.ko
-bbd.ko
 bc_max77759.ko
 bcm47765.ko
 bigwave.ko
