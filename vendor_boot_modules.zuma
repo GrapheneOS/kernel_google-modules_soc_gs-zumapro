@@ -79,6 +79,7 @@ max77759_helper.ko
 net_failover.ko
 netfs.ko
 nitrous.ko
+open-dice.ko
 p9221.ko
 page_pool.ko
 panel-samsung-drv.ko
