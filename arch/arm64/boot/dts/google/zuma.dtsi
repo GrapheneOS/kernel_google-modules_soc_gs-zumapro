@@ -611,6 +611,10 @@
 		compatible = "google,acpm-flexpmu-dbg";
 	};
 
+	acpm_mbox_test: mbox {
+		compatible = "google,acpm-mbox-test";
+	};
+
 	exynos_dm: exynos-dm@17000000 {
 		compatible = "samsung,exynos-dvfs-manager";
 		reg = <0x0 0x17000000 0x0>;

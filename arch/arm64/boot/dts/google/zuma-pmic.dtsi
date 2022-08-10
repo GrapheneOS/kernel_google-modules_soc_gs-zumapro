@@ -819,3 +819,9 @@
 		};
 	};
 };
+
+&acpm_mbox_test {
+	main-pmic = <&s2mpg14mfd>;
+	sub-pmic = <&s2mpg15mfd>;
+	acpm-ipc-channel = <2>;
+};
