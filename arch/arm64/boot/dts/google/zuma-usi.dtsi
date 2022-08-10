@@ -556,7 +556,7 @@
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 //		dma-mode;
-//		dmas = <&pdma0 28 &pdma0 29>;
+//		dmas = <&pdma0 24 &pdma0 25>;
 		dma-names = "tx", "rx";
 //		clocks = <&clock VDOUT_CLK_PERIC0_USI14_USI>, <&clock GATE_PERIC0_TOP1_USI14_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
@@ -594,7 +594,7 @@
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 //		dma-mode;
-//		dmas = <&pdma0 18 &pdma0 19>;
+//		dmas = <&pdma0 14 &pdma0 15>;
 		dma-names = "tx", "rx";
 		clocks = <&clock VDOUT_CLK_PERIC1_USI9_USI>, <&clock GATE_PERIC1_TOP0_USI9_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
@@ -613,7 +613,7 @@
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 //		dma-mode;
-//		dmas = <&pdma0 20 &pdma0 21>;
+//		dmas = <&pdma0 16 &pdma0 17>;
 		dma-names = "tx", "rx";
 		clocks = <&clock VDOUT_CLK_PERIC1_USI10_USI>, <&clock GATE_PERIC1_TOP0_USI10_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
@@ -632,7 +632,7 @@
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 //		dma-mode;
-//		dmas = <&pdma0 22 &pdma0 23>;
+//		dmas = <&pdma0 18 &pdma0 19>;
 		dma-names = "tx", "rx";
 		clocks = <&clock VDOUT_CLK_PERIC1_USI11_USI>, <&clock GATE_PERIC1_TOP0_USI11_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
@@ -651,7 +651,7 @@
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 //		dma-mode;
-//		dmas = <&pdma0 24 &pdma0 25>;
+//		dmas = <&pdma0 20 &pdma0 21>;
 		dma-names = "tx", "rx";
 		clocks = <&clock VDOUT_CLK_PERIC1_USI12_USI>, <&clock GATE_PERIC1_TOP0_USI12_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
@@ -670,7 +670,7 @@
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 //		dma-mode;
-//		dmas = <&pdma1 0 &pdma1 1>;
+//		dmas = <&pdma0 22 &pdma0 23>;
 		dma-names = "tx", "rx";
 		clocks = <&clock VDOUT_CLK_PERIC1_USI13_USI>, <&clock GATE_PERIC1_TOP0_USI13_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
@@ -689,7 +689,7 @@
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 //		dma-mode;
-//		dmas = <&pdma1 2 &pdma1 3>;
+//		dmas = <&pdma0 26 &pdma0 27>;
 		dma-names = "tx", "rx";
 		clocks = <&clock VDOUT_CLK_PERIC1_USI15_USI>, <&clock GATE_PERIC1_TOP0_USI15_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
@@ -1195,7 +1195,7 @@
 		samsung,spi-fifosize = <64>;
 		swap-mode;
 //		dma-mode;
-//		dmas = <&pdma  &pdma >;
+//		dmas = <&pdma1 22  &pdma1 23 >;
 		dma-names = "tx", "rx";
 		clocks = <&clock VDOUT_CLK_HSI0_USI4_USI>, <&clock GATE_HSI0_USI4_USI>;
 		clock-names = "ipclk_spi", "gate_spi_clk";
