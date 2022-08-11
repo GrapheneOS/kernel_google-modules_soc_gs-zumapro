@@ -18,6 +18,11 @@ config PHY_SAMSUNG_USB_CAL
 	  for Samsung USB PHY controller.
 	  This driver provides PHY interface.
 
+config PHY_EXYNOS_EUSB_REPEATER
+	tristate "eUSB Repeater driver"
+	help
+	  Enable eUSB Repeater support.
+
 config PHY_SAMSUNG_USB_GEN2
 	tristate "Exynos SoC series USB DRD for GEN2"
 	default n

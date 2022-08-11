@@ -19,6 +19,9 @@ phy-exynos-usbdrd-super-y		+= phy-exynos-usbdrd-eusb.o
 phy-exynos-usbdrd-super-y		+= phy-exynos-eusb.o
 phy-exynos-usbdrd-super-y		+= exynos-usb-blkcon.o
 phy-exynos-usbdrd-super-y		+= phy-exynos-snps-usbdp.o
+ifneq ($(CONFIG_PHY_EXYNOS_EUSB_REPEATER),)
+obj-$(CONFIG_PHY_EXYNOS_EUSB_REPEATER)	+= eusb_repeater.o
+endif
 else
 ifneq ($(CONFIG_PHY_EXYNOS_USBDRD),)
 obj-$(CONFIG_PHY_EXYNOS_USBDRD)         += phy-exynos-usbdrd-super.o
