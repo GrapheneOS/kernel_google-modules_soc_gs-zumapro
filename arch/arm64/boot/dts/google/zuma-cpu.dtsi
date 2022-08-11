@@ -258,7 +258,7 @@
 			dm-type = <DM_CPU_CL0>;
 
 			min-freq = <324000>;
-			max-freq = <1950000>;
+			max-freq = <975000>;
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <2>;
@@ -273,7 +273,7 @@
 			dm-type = <DM_CPU_CL1>;
 
 			min-freq = <402000>;
-			max-freq = <2352000>;
+			max-freq = <910000>;
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <1>;
@@ -288,7 +288,7 @@
 			dm-type = <DM_CPU_CL2>;
 
 			min-freq = <500000>;
-			max-freq = <3015000>;
+			max-freq = <893000>;
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <0>;
