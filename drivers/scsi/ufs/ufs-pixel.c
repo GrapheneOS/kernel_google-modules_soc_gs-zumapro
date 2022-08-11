@@ -325,6 +325,7 @@ static inline void __update_io_stats(struct ufs_hba *hba,
 static void pixel_ufs_update_io_stats(struct ufs_hba *hba,
 		struct ufshcd_lrb *lrbp, bool is_start)
 {
+	struct request *rq;
 	u32 affected_bytes;
 	bool is_write;
 	enum req_type_stats cmd_type;
@@ -335,10 +336,12 @@ static void pixel_ufs_update_io_stats(struct ufs_hba *hba,
 	if (cmd_type != REQ_TYPE_READ && cmd_type != REQ_TYPE_WRITE)
 		return;
 
-	affected_bytes = blk_rq_bytes(scsi_cmd_to_rq(lrbp->cmd));
+	rq = scsi_cmd_to_rq(lrbp->cmd);
+
+	affected_bytes = blk_rq_bytes(rq);
 
 	/* Upload I/O amount on statistic */
-	is_write = op_is_write(bio_op(lrbp->cmd->request->bio));
+	is_write = op_is_write(req_op(rq));
 	__update_io_stats(hba, is_write, affected_bytes, is_start);
 
 	record_ufs_stats(hba);
