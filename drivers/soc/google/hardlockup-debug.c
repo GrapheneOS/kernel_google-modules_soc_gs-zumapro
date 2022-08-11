@@ -295,7 +295,7 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 
 			pr_emerg("pm_suspend_task '%s' %d hung (state=%ld)",
 					pm_suspend_task->comm, pm_suspend_task->pid,
-					pm_suspend_task->state);
+					pm_suspend_task->__state);
 			sched_show_task(pm_suspend_task);
 
 			if (!interval_tree_iter_first(&pm_dev_rbroot, 0, -1UL))
