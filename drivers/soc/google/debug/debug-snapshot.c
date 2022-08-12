@@ -546,8 +546,7 @@ static void dbg_snapshot_set_slcdump_status(void)
 		if (dss_items[i].entry.enabled &&
 				dss_items[i].entry.paddr &&
 				dss_items[i].entry.size) {
-			if (strnstr(dss_items[i].name, "log_slcdump",
-					strlen("log_slcdump"))) {
+			if (!strcmp(dss_items[i].name, "log_slcdump")) {
 				__raw_writel(DSS_SLCDUMP_MAGIC,
 						dbg_snapshot_get_header_vaddr() +
 						DSS_OFFSET_SLCDUMP_MAGIC);
@@ -555,8 +554,7 @@ static void dbg_snapshot_set_slcdump_status(void)
 						dbg_snapshot_get_header_vaddr() +
 						DSS_OFFSET_SLCDUMP_BASE_REG);
 			}
-			if (strnstr(dss_items[i].name, "log_preslcdump",
-					strlen("log_preslcdump"))) {
+			if (!strcmp(dss_items[i].name, "log_preslcdump")) {
 				__raw_writel(dss_items[i].entry.paddr,
 						dbg_snapshot_get_header_vaddr() +
 						DSS_OFFSET_PRE_SLCDUMP_BASE_REG);
