@@ -501,7 +501,7 @@ static void simulate_OVERFLOW(char *arg)
 static char *buffer[NR_CPUS];
 static void simulate_CPU_CONTEXT_CACHE_FLUSH_handler(void *info)
 {
-	int cpu = raw_smp_processor_id();
+	u64 cpu = raw_smp_processor_id();
 	u64 i = 0;
 	u64 addr = virt_to_phys((void *)(buffer[cpu]));
 	local_irq_disable();
@@ -509,12 +509,12 @@ static void simulate_CPU_CONTEXT_CACHE_FLUSH_handler(void *info)
 	memset(buffer[cpu], 0x5A, PAGE_SIZE * 2);
 	dbg_snapshot_set_debug_test_buffer_addr(addr, cpu);
 
-	i = cpu << 16;
-	/* populate registers with known values and infinite loop */
+	i = (0xcafeface0000 | cpu) << 16;
+	/* populate registers with known values and go to infinite loop afterwards */
 	asm volatile("mov x0, %0\n\t"
-			"add x1, x0, #1\n\t"
-			"add x2, x0, #2\n\t"
-			"add x3, x0, #3\n\t"
+			"mov x1, #1\n\t"
+			"mov x2, #0x200000000\n\t"
+			"mov x2, #0x300000003\n\t"
 			"add x4, x0, #4\n\t"
 			"add x5, x0, #5\n\t"
 			"add x6, x0, #6\n\t"
@@ -542,6 +542,7 @@ static void simulate_CPU_CONTEXT_CACHE_FLUSH_handler(void *info)
 			"add x28, x0, #28\n\t"
 			"add x29, x0, #29\n\t"
 			"add x30, x0, #30\n\t"
+			"mov x0, #0\n\t"
 			"b .\n\t"
 			: : "r" (i));
 
