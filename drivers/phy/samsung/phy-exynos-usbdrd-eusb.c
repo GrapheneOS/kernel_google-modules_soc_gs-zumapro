@@ -1394,6 +1394,9 @@ static void exynos_usbdrd_utmi_exit(struct exynos_usbdrd_phy *phy_drd)
 	exynos_usbdrd_pipe3_phy_isol(&phy_drd->phys[1], 1,
 				     phy_drd->phys[1].pmu_mask);
 
+#if IS_ENABLED(CONFIG_PHY_EXYNOS_EUSB_REPEATER)
+	eusb_repeater_power_off();
+#endif
 }
 
 static int exynos_usbdrd_phy_exit(struct phy *phy)
@@ -1450,6 +1453,10 @@ static void exynos_usbdrd_utmi_init(struct exynos_usbdrd_phy *phy_drd)
 	u8 otp_type;
 	u8 otp_index;
 	u8 i;
+#endif
+
+#if IS_ENABLED(CONFIG_PHY_EXYNOS_EUSB_REPEATER)
+	eusb_repeater_power_on();
 #endif
 
 	//phy power on
