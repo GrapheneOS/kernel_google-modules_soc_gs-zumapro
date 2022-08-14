@@ -15,6 +15,9 @@
 		reg = <0x0 0x11020000 0x10000>;
 	};
 
+	eusb_repeater_tune:hs_tune {
+		status = "disabled";
+	};
 
 	usb_ss_tune:ss_tune {
 		status = "disabled";
