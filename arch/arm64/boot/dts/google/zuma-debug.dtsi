@@ -305,14 +305,16 @@
 		pmu-burnin-ctrl = <0x3cd0>;
 		sel-scanmode-bit = <25>;
 		dbgsel-sw-bit = <4>;
-		blk-list = "AOC", "AUR", "BW", "CMU", "CPUCL0", "DPUB",
-			   "DPUF0", "DPUF1", "EH", "G2D", "G3D", "GDC",
-			   "GSA", "GSE", "HSI0", "HSI1", "HSI2", "ISPFE",
-			   "MCSC", "MFC", "MIF0", "MIF1", "MIF2", "MIF3",
-			   "MISC", "NOCL0", "NOCL1A", "NOCL1B", "NOCL2AA", "NOCL2AB",
-			   "PERIC0", "PERIC1", "RGBP", "TNR", "TPU", "YUVP",
-			   "CLUSTER0", "GPU", "AOCCORE", "AURCORE", "BWCORE","TPUCORE",
-			   "ISPFECORE", "SLC0", "SLC1", "SLC2", "SLC3";
+		blk-list = "AOC", "AOCCORE", "AUR", "AURCORE", "BW",
+			   "BWCORE","CMU", "CPUCL0", "CLUSTER0", "DPUB",
+			   "DPUF0", "DPUF1", "EH", "G2D", "G3D",
+			   "GPU", "GDC", "GSA", "GSE", "HSI0",
+			   "HSI1", "HSI2", "ISPFE", "ISPFECORE", "MCSC",
+			   "MFC", "MIF1", "MIF2", "MIF3", "MISC",
+			   "NOCL0", "NOCL1A", "NOCL1B", "NOCL2AA", "NOCL2AB",
+			   "PERIC0", "PERIC1", "RGBP", "TNR", "TPU",
+			   "TPUCORE", "YUVP", "SLC0", "SLC1", "SLC2",
+			   "SLC3";
 
 		status = "okay";
 	};
