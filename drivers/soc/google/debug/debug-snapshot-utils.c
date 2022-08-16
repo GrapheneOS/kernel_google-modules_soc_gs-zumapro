@@ -32,8 +32,16 @@
 
 #include <trace/hooks/debug.h>
 
-static char *ecc_sel_str[] = {
+static char *ecc_sel_str_dsu_l1_l2[] = {
 	"DSU", "L1", "L2", NULL,
+};
+
+static char *ecc_sel_str_core_dsu[] = {
+	"CORE", "DSU", NULL,
+};
+
+static char *ecc_sel_str_dsu_core[] = {
+	"DSU", "CORE", NULL,
 };
 
 struct dbg_snapshot_mmu_reg {
@@ -364,7 +372,7 @@ const char *get_correct_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
 	return cr_err;
 }
 
-static void _dbg_snapshot_ecc_dump(bool call_panic)
+static void _dbg_snapshot_ecc_dump(bool call_panic, char *ecc_sel_str[])
 {
 	ERRSELR_EL1_t errselr_el1;
 	ERRIDR_EL1_t erridr_el1;
@@ -390,7 +398,7 @@ static void _dbg_snapshot_ecc_dump(bool call_panic)
 		msg = erxstatus_el1.field.VALID ? "Error" : "NO Error";
 
 		n = scnprintf(errbuf + n, sizeof(errbuf) - n,
-			      "%3s: %8s: [NUM:%d][ERXSTATUS_EL1:%#016llx]\n",
+			      "%4s: %8s: [NUM:%d][ERXSTATUS_EL1:%#016llx]\n",
 			      ecc_sel_str[i] ? ecc_sel_str[i] : "", msg, i, erxstatus_el1.reg);
 
 		if (!erxstatus_el1.field.VALID)
@@ -452,15 +460,16 @@ void dbg_snapshot_ecc_dump(bool call_panic)
 	switch (cpuid_part) {
 	case ARM_CPU_PART_CORTEX_A55:
 	case ARM_CPU_PART_CORTEX_A76:
-	case ARM_CPU_PART_CORTEX_A77:
 	case ARM_CPU_PART_CORTEX_A78:
 	case ARM_CPU_PART_CORTEX_X1:
+		_dbg_snapshot_ecc_dump(call_panic, ecc_sel_str_core_dsu);
+		break;
 	case ARM_CPU_PART_CORTEX_A510:
-	case ARM_CPU_PART_CORTEX_A710:
-	case ARM_CPU_PART_CORTEX_X2:
+		_dbg_snapshot_ecc_dump(call_panic, ecc_sel_str_dsu_l1_l2);
+		break;
 	case ARM_CPU_PART_MAKALU:
 	case ARM_CPU_PART_MAKALU_ELP:
-		_dbg_snapshot_ecc_dump(call_panic);
+		_dbg_snapshot_ecc_dump(call_panic, ecc_sel_str_dsu_core);
 		break;
 	default:
 		pr_emerg("Unknown cpuid part number - 0x%x\n", cpuid_part);
