@@ -15,7 +15,9 @@
 #define DEVFREQ_TNR			5
 #define DEVFREQ_MFC			6
 #define DEVFREQ_BW			7
-#define DEVFREQ_TYPE_END		8
+#define DEVFREQ_DSU			8
+#define DEVFREQ_BCI			9
+#define DEVFREQ_TYPE_END		10
 
 /* ESS FLAG LIST */
 #define ESS_FLAG_INT	3
@@ -27,6 +29,9 @@
 #define ESS_FLAG_TNR	9
 #define ESS_FLAG_MFC	10
 #define ESS_FLAG_BW	11
+#define ESS_FLAG_DSU	12
+#define ESS_FLAG_BCI	13
+
 
 /* DEVFREQ GOV TYPE */
 #define SIMPLE_INTERACTIVE 0

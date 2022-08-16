@@ -21,6 +21,8 @@
 #define DM_DISP		9
 #define DM_MFC		10
 #define DM_BW		11
+#define DM_DSU		12
+#define DM_BCI		13
 
 /* CONSTRAINT TYPE */
 #define CONSTRAINT_MIN	0
