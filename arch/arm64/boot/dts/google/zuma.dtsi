@@ -18,7 +18,6 @@
 #include "zuma-bigw.dtsi"
 #include "zuma-bts.dtsi"
 #include "zuma-drm-dpu.dtsi"
-#include "zuma-dma-heap.dtsi"
 #include "zuma-gsa.dtsi"
 #include "zuma-isp.dtsi"
 #include "zuma-pinctrl.dtsi"
@@ -34,6 +33,8 @@
 #include "zuma-gxp.dtsi"
 #include "zuma-audio.dtsi"
 #include "zuma-s2mpu.dtsi"
+#include "gs101-dma-heap.dtsi"
+#include "gs101-faceauth-dma-heap.dtsi"
 
 / {
 	compatible = "google,zuma";
