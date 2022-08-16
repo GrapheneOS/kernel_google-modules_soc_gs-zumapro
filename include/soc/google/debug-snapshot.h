@@ -346,4 +346,7 @@ struct dbg_snapshot_helper_ops {
 	int (*run_scandump_mode)(void);
 };
 
+#define ARM_CPU_PART_MAKALU		0xD4D
+#define ARM_CPU_PART_MAKALU_ELP		0xD4E
+
 #endif

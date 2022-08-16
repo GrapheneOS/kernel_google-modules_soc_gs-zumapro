@@ -447,7 +447,9 @@ output_cont:
 
 void dbg_snapshot_ecc_dump(bool call_panic)
 {
-	switch (read_cpuid_part_number()) {
+	unsigned int cpuid_part = read_cpuid_part_number();
+
+	switch (cpuid_part) {
 	case ARM_CPU_PART_CORTEX_A55:
 	case ARM_CPU_PART_CORTEX_A76:
 	case ARM_CPU_PART_CORTEX_A77:
@@ -456,9 +458,12 @@ void dbg_snapshot_ecc_dump(bool call_panic)
 	case ARM_CPU_PART_CORTEX_A510:
 	case ARM_CPU_PART_CORTEX_A710:
 	case ARM_CPU_PART_CORTEX_X2:
+	case ARM_CPU_PART_MAKALU:
+	case ARM_CPU_PART_MAKALU_ELP:
 		_dbg_snapshot_ecc_dump(call_panic);
 		break;
 	default:
+		pr_emerg("Unknown cpuid part number - 0x%x\n", cpuid_part);
 		break;
 	}
 }
