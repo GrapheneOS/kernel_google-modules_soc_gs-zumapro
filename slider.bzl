@@ -237,6 +237,7 @@ def define_slider():
             "drivers/soc/google/acpm/gs_acpm.ko",
             "drivers/soc/google/acpm/power_stats.ko",
             "drivers/soc/google/bcm_dbg.ko",
+            "drivers/soc/google/boot_control/boot_control_sysfs.ko",
             "drivers/soc/google/cal-if/cmupmucal.ko",
             "drivers/soc/google/cpif/boot_device_spi.ko",
             "drivers/soc/google/cpif/cp_thermal_zone.ko",
