@@ -32,7 +32,7 @@ google/zuma-a0.dtb
 google/zuma-emulator.dtbo
 "
 
-MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.zuma
+MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.zuma_zebu
 
 EXT_MODULES+="
 private/google-modules/bms/misc
