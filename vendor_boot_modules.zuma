@@ -116,6 +116,7 @@ s2mpg15-regulator.ko
 s3c2410_wdt.ko
 samsung-dma.ko
 samsung-iommu-group.ko
+samsung-secure-iova.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
 shm_ipc.ko
