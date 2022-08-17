@@ -521,19 +521,19 @@
 
 		/* BTS */
 		ppc = <2>;		/* pixel per clock */
-		ppc_rotator = <4>;	/* rotator ppc : 4(9830), 8(9840) */
-		ppc_scaler = <2>;	/* scaler ppc : 2(9830), 4(9840) */
+		ppc_rotator = <4>;	/* rotator ppc */
+		ppc_scaler = <4>;	/* scaler ppc */
 		delay_comp = <4>;	/* line delay for afbc or sbwc : DMA */
 		delay_scaler = <3>;	/* line delay for scaler : DPP */
 
 		/* bus info */
-		bus_width = <16>;	/* 16-Byte : 128-bit bus */
+		bus_width = <32>;	/* 32-Byte : 256-bit bus */
 		bus_util = <65>;	/* 65% */
 		rot_util = <60>;	/* UTIL gets worse at rotation */
 
 		/* dpu dvfs */
 		dfs_lv_cnt = <7>;
-		dfs_lv = <664000 533000 465000 400000 310000 267000 134000>;
+		dfs_lv = <664000 533000 465000 400000 332000 267000 166000>;
 
 		/* Urgent */
 		rd_en = <1>;
@@ -591,13 +591,25 @@
 		interrupt-names = "frame_start", "frame_done", "extra", "cgc-dma";
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
+		samsung,tzmp;
 
 		max_win = <14>;
 
 		/* BTS */
-		ppc = <2>;
-		line_mem_cnt = <4>;
-		cycle_per_line = <8>;   /* 4ppc */
+		ppc = <2>;		/* pixel per clock */
+		ppc_rotator = <4>;	/* rotator ppc */
+		ppc_scaler = <4>;	/* scaler ppc */
+		delay_comp = <4>;	/* line delay for afbc or sbwc : DMA */
+		delay_scaler = <3>;	/* line delay for scaler : DPP */
+
+		/* bus info */
+		bus_width = <32>;	/* 32-Byte : 256-bit bus */
+		bus_util = <65>;	/* 65% */
+		rot_util = <60>;	/* UTIL gets worse at rotation */
+
+		/* dpu dvfs */
+		dfs_lv_cnt = <7>;
+		dfs_lv = <664000 533000 465000 400000 332000 267000 166000>;
 
 		/* Urgent */
 		rd_en = <1>;
@@ -656,19 +668,19 @@
 
 		/* BTS */
 		ppc = <2>;		/* pixel per clock */
-		ppc_rotator = <4>;	/* rotator ppc : 4(9830), 8(9840) */
-		ppc_scaler = <2>;	/* scaler ppc : 2(9830), 4(9840) */
+		ppc_rotator = <4>;	/* rotator ppc */
+		ppc_scaler = <4>;	/* scaler ppc */
 		delay_comp = <4>;	/* line delay for afbc or sbwc : DMA */
 		delay_scaler = <3>;	/* line delay for scaler : DPP */
 
 		/* bus info */
-		bus_width = <16>;	/* 16-Byte : 128-bit bus */
+		bus_width = <32>;	/* 32-Byte : 256-bit bus */
 		bus_util = <65>;	/* 65% */
 		rot_util = <60>;	/* UTIL gets worse at rotation */
 
 		/* dpu dvfs */
 		dfs_lv_cnt = <7>;
-		dfs_lv = <664000 533000 465000 400000 310000 267000 134000>;
+		dfs_lv = <664000 533000 465000 400000 332000 267000 166000>;
 
 		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5
 			&drmdpp6 &drmdpp7 &drmdpp8 &drmdpp9 &drmdpp10 &drmdpp11
