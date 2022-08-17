@@ -935,6 +935,11 @@
 		node-name = "mcsc";
 
 		/* Register space */
+		/*
+		 * Add a CMU MCSC register space temporarily to support Lyric to configure
+		 * MCSC CMU (b/242366764). After ACPM fix is merged, we can remove CMU MCSC
+		 * register space.
+		*/
 		reg =
 			<0x0 0x1D040000 0x10000>,  /* MCSC */
 			<0x0 0x1D104000 0xE00>,    /* SSMT D0 MCSC */
@@ -943,7 +948,8 @@
 			<0x0 0x1D134000 0xE00>,    /* SSMT D3 MCSC */
 			<0x0 0x1D144000 0xE00>,    /* SSMT D4 MCSC */
 			<0x0 0x1D154000 0xE00>,    /* SSMT D5 MCSC */
-			<0x0 0x1D164000 0xE00>;    /* SSMT D6 MCSC */
+			<0x0 0x1D164000 0xE00>,    /* SSMT D6 MCSC */
+			<0x0 0x1D000000 0x10000>;  /* CMU MCSC */
 		reg-names =
 			"mcsc",
 			"ssmt_d0_mcsc",
@@ -952,7 +958,8 @@
 			"ssmt_d3_mcsc",
 			"ssmt_d4_mcsc",
 			"ssmt_d5_mcsc",
-			"ssmt_d6_mcsc";
+			"ssmt_d6_mcsc",
+			"cmu_mcsc";
 
 		interrupts =
 			<GIC_SPI IRQ_MCSC_0_MCSC IRQ_TYPE_LEVEL_HIGH>,
