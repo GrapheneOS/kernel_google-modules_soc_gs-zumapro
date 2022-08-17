@@ -1460,6 +1460,20 @@ UFS_S_EOM_RO(phase);
 UFS_S_EOM_RO(vref);
 UFS_S_EOM_RO(err);
 
+static ssize_t hibern8_status_show(struct exynos_ufs *ufs, char *buf,
+				   enum exynos_ufs_param_id id)
+{
+	struct ufs_vs_handle *handle = &ufs->handle;
+	u32 reg = hci_readl(handle, HCI_AH8_STATE);
+
+	return sprintf(buf, "%#x\n", reg);
+}
+
+static const struct exynos_ufs_sysfs_attr hibern8_status_attr = {
+	.attr = { .name = "hibern8_status", .mode = 0444 },
+	.show = hibern8_status_show,
+};
+
 const static struct attribute *ufs_s_sysfs_attrs[] = {
 	&ufs_s_eom_version.attr,
 	&ufs_s_eom_size.attr,
@@ -1471,6 +1485,7 @@ const static struct attribute *ufs_s_sysfs_attrs[] = {
 	&ufs_s_lane.attr,
 	&ufs_s_h8_delay_ms.attr,
 	&ufs_s_monitor.attr,
+	&hibern8_status_attr.attr,
 	NULL,
 };
 
