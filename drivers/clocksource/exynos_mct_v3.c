@@ -95,15 +95,14 @@ static int exynos_clocksource_init(void)
 static inline int exynos_mct_comp_wait(int index, int comp_enable)
 {
 	unsigned int comp_stat;
-	unsigned long timeout;
+	int i;
 
-	timeout = jiffies + msecs_to_jiffies(10);
-	do {
+	for (i = 0; i < loops_per_jiffy / 1000 * HZ; i++) {
 		comp_stat = readl_relaxed(reg_base + EXYNOS_MCT_COMP_ENABLE(index));
 		if (comp_stat == comp_enable)
 			return 1;
 		cpu_relax();
-	} while (time_is_after_jiffies(timeout));
+	}
 
 	return 0;
 }
