@@ -650,7 +650,8 @@ static inline void enable_cs(struct s3c64xx_spi_driver_data *sdd,
 			udelay(cs->cs_delay);
 	}
 
-	if (cs->cs_mode == AUTO_CS_MODE) {
+	if (cs->cs_mode == AUTO_CS_MODE ||
+	    cs->cs_mode == AUTO_CS_MODE_FORCE_QUIESCE) {
 		/* Set auto chip selection */
 		writel(readl(sdd->regs + S3C64XX_SPI_SLAVE_SEL) |
 				S3C64XX_SPI_SLAVE_AUTO |
@@ -1046,7 +1047,8 @@ try_transfer:
 		sdd->state &= ~RXBUSY;
 		sdd->state &= ~TXBUSY;
 
-		if (cs->cs_mode == AUTO_CS_MODE) {
+		if (cs->cs_mode == AUTO_CS_MODE ||
+		    cs->cs_mode == AUTO_CS_MODE_FORCE_QUIESCE) {
 			/* Slave Select */
 			enable_cs(sdd, spi);
 
@@ -1204,8 +1206,10 @@ static struct s3c64xx_spi_csinfo *s3c64xx_get_slave_ctrldata
 
 	if (!of_property_read_u32(data_np,
 				  "samsung,spi-chip-select-mode", &cs_mode)) {
-		if (cs_mode)
+		if (cs_mode == 1)
 			cs->cs_mode = AUTO_CS_MODE;
+		else if (cs_mode == 2)
+			cs->cs_mode = AUTO_CS_MODE_FORCE_QUIESCE;
 		else
 			cs->cs_mode = MANUAL_CS_MODE;
 	}

@@ -37,6 +37,7 @@ enum {
 enum {
 	MANUAL_CS_MODE = 0,
 	AUTO_CS_MODE = 1,
+	AUTO_CS_MODE_FORCE_QUIESCE = 2,
 };
 
 /*
