@@ -166,4 +166,5 @@ virtio_net.ko
 virtio_pci.ko
 virtio_pci_modern_dev.ko
 wlc98_driver.ko
+wc68_driver.ko
 xhci-exynos.ko
