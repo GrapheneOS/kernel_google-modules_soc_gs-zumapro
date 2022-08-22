@@ -36,8 +36,4 @@
 		memory-region = <&tpu_fw_reserved>, <&tpu_fw_ctx_reserved>;
 		edgetpu,shareability = <0x1A320000>; /* SYSREG_TPU */
 	};
-        tpu_cooling: tpu-cooling {
-                #cooling-cells = <2>;
-        };
-
 };
