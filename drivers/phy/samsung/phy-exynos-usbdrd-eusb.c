@@ -2083,6 +2083,7 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 	struct resource pmu_res;
 	u32 pmu_offset, pmu_offset_dp, pmu_offset_tcxo;
 	u32 pmu_mask, pmu_mask_tcxo, pmu_mask_pll;
+	u32 phy_ref_clock;
 	int i, ret;
 
 	phy_drd = devm_kzalloc(dev, sizeof(*phy_drd), GFP_KERNEL);
@@ -2185,7 +2186,15 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	clk_set_rate(phy_drd->ref_clk, 19200000);
+	ret = of_property_read_u32(dev->of_node, "phy_ref_clock", &phy_ref_clock);
+	if (ret < 0) {
+		dev_err(dev, "%s: Couldn't read phy_ref_clock %s node, error = %d\n",
+			__func__, dev->of_node->name, ret);
+		phy_ref_clock = 0;
+	} else {
+		clk_set_rate(phy_drd->ref_clk, phy_ref_clock);
+	}
+
 	ret = exynos_rate_to_clk(phy_drd);
 	if (ret) {
 		dev_err(phy_drd->dev, "%s: Not supported ref clock\n",
