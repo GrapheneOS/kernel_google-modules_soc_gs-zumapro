@@ -23,6 +23,7 @@ dss.ko
 dwc3-exynos-usb.ko
 ect_parser.ko
 ehld.ko
+eusb_repeater.ko
 exynos-acme.ko
 exynos-adv-tracer-s2d.ko
 exynos-adv-tracer.ko
