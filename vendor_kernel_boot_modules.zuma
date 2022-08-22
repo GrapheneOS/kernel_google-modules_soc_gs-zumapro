@@ -9,6 +9,7 @@ at24.ko
 bc_max77759.ko
 bcm47765.ko
 bigwave.ko
+bookerci.ko
 bts.ko
 cachefiles.ko
 cfg80211.ko
