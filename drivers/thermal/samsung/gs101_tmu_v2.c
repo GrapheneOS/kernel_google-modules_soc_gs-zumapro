@@ -2,7 +2,7 @@
 /*
  * gs101_tmu_v2.c - Samsung GS101 TMU (Thermal Management Unit)
  *
- *  Copyright (C) 2019-2022 Samsung Electronics
+ *  Copyright (C) 2019 Samsung Electronics
  *  Hyeonseong Gil <hs.gil@samsung.com>
  *
  */
@@ -52,30 +52,23 @@
 #define INVALID_TRIP -1
 
 enum tmu_type_t {
-	TMU_TYPE_CPU,
-	TMU_TYPE_GPU,
-	TMU_TYPE_ISP,
-	TMU_TYPE_TPU,
-#if IS_ENABLED(CONFIG_SOC_ZUMA)
-	TMU_TYPE_AUR,
-#endif
-	TMU_TYPE_END,
+	TMU_TYPE_CPU = 0,
+	TMU_TYPE_GPU = 1,
+	TMU_TYPE_ISP = 2,
+	TMU_TYPE_TPU = 3,
+	TMU_TYPE_END = 4,
 };
 
 enum tmu_grp_idx_t {
-	TZ_BIG,
-	TZ_MID,
-	TZ_LIT,
-	TZ_GPU,
-	TZ_ISP,
-	TZ_TPU,
-#if IS_ENABLED(CONFIG_SOC_ZUMA)
-	TZ_AUR,
-#endif
-	TZ_END,
+	TZ_BIG = 0,
+	TZ_MID = 1,
+	TZ_LIT = 2,
+	TZ_GPU = 3,
+	TZ_ISP = 4,
+	TZ_TPU = 5,
+	TZ_END = 6,
 };
 
-#if IS_ENABLED(CONFIG_SOC_GS101)
 #define TZ_BIG_SENSOR_MASK (TMU_P0_SENSOR_MASK | \
 			    TMU_P6_SENSOR_MASK | \
 			    TMU_P7_SENSOR_MASK | \
@@ -97,27 +90,6 @@ enum tmu_grp_idx_t {
 			    TMU_P9_SENSOR_MASK | \
 			    TMU_P10_SENSOR_MASK | \
 			    TMU_P11_SENSOR_MASK)
-
-#elif IS_ENABLED(CONFIG_SOC_ZUMA)
-#define TZ_BIG_SENSOR_MASK (TMU_P1_SENSOR_MASK | \
-			    TMU_P2_SENSOR_MASK)
-#define TZ_MID_SENSOR_MASK (TMU_P4_SENSOR_MASK | \
-			    TMU_P5_SENSOR_MASK | \
-			    TMU_P6_SENSOR_MASK | \
-			    TMU_P7_SENSOR_MASK)
-#define TZ_LIT_SENSOR_MASK (TMU_P8_SENSOR_MASK | \
-			    TMU_P9_SENSOR_MASK)
-#define TZ_GPU_SENSOR_MASK (TMU_P10_SENSOR_MASK | \
-			    TMU_P11_SENSOR_MASK | \
-			    TMU_P12_SENSOR_MASK)
-#define TZ_ISP_SENSOR_MASK (TMU_P14_SENSOR_MASK)
-#define TZ_TPU_SENSOR_MASK (TMU_P2_SENSOR_MASK | \
-			    TMU_P3_SENSOR_MASK | \
-			    TMU_P4_SENSOR_MASK)
-#define TZ_AUR_SENSOR_MASK (TMU_P6_SENSOR_MASK | \
-			    TMU_P7_SENSOR_MASK | \
-			    TMU_P8_SENSOR_MASK)
-#endif
 
 static struct thermal_zone_data tz_config[] = {
 	[TZ_BIG] = {
@@ -144,12 +116,6 @@ static struct thermal_zone_data tz_config[] = {
 		.tmu_zone_id = TMU_SUB,
 		.sensors_mask = TZ_TPU_SENSOR_MASK,
 	},
-#if IS_ENABLED(CONFIG_SOC_ZUMA)
-	[TZ_AUR] = {
-		.tmu_zone_id = TMU_SUB,
-		.sensors_mask = TZ_AUR_SENSOR_MASK,
-	},
-#endif
 };
 
 /**
