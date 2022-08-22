@@ -55,6 +55,7 @@ google-bms.ko
 google-charger.ko
 google-cpm.ko
 gs-chipid.ko
+gs101_thermal.ko
 gs_acpm.ko
 gsa.ko
 gsa_gsc.ko
