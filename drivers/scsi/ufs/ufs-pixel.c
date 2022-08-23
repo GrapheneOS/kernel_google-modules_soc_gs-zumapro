@@ -611,7 +611,8 @@ static void pixel_ufs_trace_upiu_cmd(struct ufs_hba *hba,
 }
 
 static void pixel_ufs_send_uic_command(void *data, struct ufs_hba *hba,
-				struct uic_command *ucmd, int str_t)
+				       const struct uic_command *ucmd,
+				       int str_t)
 {
 	u8 event = 0;
 	u8 opcode = (ucmd) ? ucmd->command : 0xFF;
