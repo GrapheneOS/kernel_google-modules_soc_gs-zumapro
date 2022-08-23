@@ -140,7 +140,6 @@ struct gf_dev {
 };
 
 int gf_parse_dts(struct gf_dev *gf_dev);
-void gf_cleanup(struct gf_dev *gf_dev);
 
 int gf_power_on(struct gf_dev *gf_dev);
 int gf_power_off(struct gf_dev *gf_dev);
