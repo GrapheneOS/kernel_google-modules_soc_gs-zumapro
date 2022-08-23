@@ -10,8 +10,5 @@ obj-$(CONFIG_TYPEC_MAX77759)            += max77759_contaminant.o
 obj-$(CONFIG_POGO_TRANSPORT)		+= pogo_transport.o
 obj-$(CONFIG_TYPEC_COOLING_DEV)         += usbc_cooling_dev.o
 
-# This gives the drivers access to the tcpci.h header
-ccflags-y := -I$(srctree)/drivers/usb/typec
-
 # This gives the drivers access to the logbuffer.h and gvotable.h header
 subdir-ccflags-y += -I$(KERNEL_SRC)/../private/google-modules/bms

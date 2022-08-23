@@ -18,14 +18,13 @@
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/role.h>
+#include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec_mux.h>
 #include <misc/gvotable.h>
 #include <misc/logbuffer.h>
 
 #include "tcpci_otg_helper.h"
-/* This header comes from the GKI kernel tree */
-#include <tcpm/tcpci.h>
 #include "usb_icl_voter.h"
 #include "usb_psy.h"
 
