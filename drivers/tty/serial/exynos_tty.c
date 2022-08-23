@@ -2238,7 +2238,7 @@ static void exynos_serial_resetport(struct uart_port *port,
 	ucon &= ucon_mask;
 	if (ourport->dbg_mode & UART_LOOPBACK_MODE) {
 		dev_err(port->dev, "Change Loopback mode!\n");
-		ucon |= S3C2443_UCON_LOOPBACK;
+		ucon |= S3C2410_UCON_LOOPBACK;
 	}
 
 	/* Disable RTS when RX FIFO contains 63 bytes */
