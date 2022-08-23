@@ -3,7 +3,11 @@
 #include "pmucal_rae.h"
 
 #define A_FEW_USECS 10		/* see Documentation/timers/timers-howto.rst */
-
+#if defined(CONFIG_SOC_ZUMA)
+#define PMU_ALIVE_BASE_ADDR	0x15460000
+#else
+#define PMU_ALIVE_BASE_ADDR	0x17460000
+#endif
 /**
  * A global index for pmucal_rae_handle_seq.
  * it should be helpful in ramdump.
@@ -139,7 +143,7 @@ static inline void pmucal_rae_read(struct pmucal_seq *seq)
 
 static void pmucal_write_reg(phys_addr_t base_pa, void __iomem *base_va, u32 offset, u32 val)
 {
-	if ((base_pa >> 16) == 0x1746)
+	if ((base_pa >> 16) == (PMU_ALIVE_BASE_ADDR >> 16))
 		set_priv_reg(base_pa + offset, val);
 	else
 		writel(val, base_va + offset);
