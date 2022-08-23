@@ -241,7 +241,7 @@ struct shrinker pool_shrinker = {
 
 int dmabuf_page_pool_init_shrinker(void)
 {
-	return register_shrinker(&pool_shrinker);
+	return register_shrinker(&pool_shrinker, "dmabuf-page-pool");
 }
 module_init(dmabuf_page_pool_init_shrinker);
 MODULE_LICENSE("GPL v2");
