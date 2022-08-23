@@ -490,7 +490,6 @@ static int sbb_mux_initialize_gpio_tracker(struct sbb_gpio_tracker *tracker,
 	if (!tracker->gd) {
 		pr_err("sbb-mux: GPIO descriptor for %d not available!\n",
 		       gpio_system_id);
-		devm_gpio_free(&platform_dev->dev, gpio_system_id);
 		return -EINVAL;
 	}
 
@@ -501,7 +500,6 @@ static int sbb_mux_initialize_gpio_tracker(struct sbb_gpio_tracker *tracker,
 	if (!tracker->sysfs_folder) {
 		pr_err("sbb-mux: Failed to create sysfs folder for GPIO %s!",
 		       tracker->name);
-		devm_gpio_free(&platform_dev->dev, gpio_system_id);
 		return -EINVAL;
 	}
 
@@ -555,7 +553,6 @@ static int sbb_mux_initialize_gpio_tracker(struct sbb_gpio_tracker *tracker,
 static void sbb_mux_cleanup_gpio_tracker(struct sbb_gpio_tracker *tracker)
 {
 	if (tracker->system_id != -1) {
-		devm_gpio_free(&platform_dev->dev, tracker->system_id);
 		tracker->system_id = -1;
 	}
 
