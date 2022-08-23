@@ -36,7 +36,7 @@ int gf_parse_dts(struct gf_dev *gf_dev)
 	rc = devm_gpio_request(dev, gf_dev->reset_gpio, "goodix_reset");
 	if (rc) {
 		pr_err("failed to request reset gpio, rc = %d\n", rc);
-		goto err_reset;
+		return rc;
 	}
 	gpio_direction_output(gf_dev->reset_gpio, 1);
 
@@ -49,26 +49,11 @@ int gf_parse_dts(struct gf_dev *gf_dev)
 	rc = devm_gpio_request(dev, gf_dev->irq_gpio, "goodix_irq");
 	if (rc) {
 		pr_err("failed to request irq gpio, rc = %d\n", rc);
-		goto err_irq;
+		return rc;
 	}
 	gpio_direction_input(gf_dev->irq_gpio);
 
-err_irq:
-	devm_gpio_free(dev, gf_dev->reset_gpio);
-err_reset:
 	return rc;
-}
-
-void gf_cleanup(struct gf_dev *gf_dev)
-{
-	if (gpio_is_valid(gf_dev->irq_gpio)) {
-		gpio_free(gf_dev->irq_gpio);
-		pr_info("remove irq_gpio success\n");
-	}
-	if (gpio_is_valid(gf_dev->reset_gpio)) {
-		gpio_free(gf_dev->reset_gpio);
-		pr_info("remove reset_gpio success\n");
-	}
 }
 
 int gf_power_on(struct gf_dev *gf_dev)
