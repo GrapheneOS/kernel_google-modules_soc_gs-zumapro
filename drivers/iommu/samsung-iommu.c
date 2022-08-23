@@ -1119,11 +1119,6 @@ static bool samsung_sysmmu_dev_has_feat(struct device *dev, enum iommu_dev_featu
 	return !!drvdata->has_vcr;
 }
 
-static bool samsung_sysmmu_dev_feat_enabled(struct device *dev, enum iommu_dev_features f)
-{
-	return samsung_sysmmu_dev_has_feat(dev, f);
-}
-
 static int samsung_sysmmu_dev_enable_feat(struct device *dev, enum iommu_dev_features f)
 {
 	if (!samsung_sysmmu_dev_has_feat(dev, f))
@@ -1197,9 +1192,6 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.device_group		= samsung_sysmmu_device_group,
 	.of_xlate		= samsung_sysmmu_of_xlate,
 	.get_resv_regions	= samsung_sysmmu_get_resv_regions,
-	.put_resv_regions	= generic_iommu_put_resv_regions,
-	.dev_has_feat		= samsung_sysmmu_dev_has_feat,
-	.dev_feat_enabled	= samsung_sysmmu_dev_feat_enabled,
 	.dev_enable_feat	= samsung_sysmmu_dev_enable_feat,
 	.dev_disable_feat	= samsung_sysmmu_dev_disable_feat,
 	.pgsize_bitmap		= SECT_SIZE | LPAGE_SIZE | SPAGE_SIZE,
