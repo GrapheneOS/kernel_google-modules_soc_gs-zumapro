@@ -411,6 +411,7 @@ static int trusty_virtio_find_vqs(struct virtio_device *vdev, unsigned int nvqs,
 				  struct virtqueue *vqs[],
 				  vq_callback_t *callbacks[],
 				  const char * const names[],
+				  u32 sizes[],
 				  const bool *ctxs,
 				  struct irq_affinity *desc)
 {
