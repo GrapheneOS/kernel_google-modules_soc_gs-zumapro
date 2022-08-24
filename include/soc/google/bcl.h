@@ -146,11 +146,15 @@ extern int google_init_tpu_ratio(struct bcl_device *data);
 struct bcl_device;
 struct bcl_ifpmic_ops;
 
-static unsigned int google_get_mpmm(struct bcl_device *data)
+static inline void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index,
+					     unsigned int lvl)
+{
+}
+static inline unsigned int google_get_mpmm(struct bcl_device *data)
 {
 	return 0;
 }
-static unsigned int google_get_ppm(struct bcl_device *data)
+static inline unsigned int google_get_ppm(struct bcl_device *data)
 {
 	return 0;
 }
@@ -162,7 +166,7 @@ static inline int google_set_mpmm(struct bcl_device *data, unsigned int value)
 {
 	return 0;
 }
-static struct bcl_device *google_retrieve_bcl_handle(void)
+static inline struct bcl_device *google_retrieve_bcl_handle(void)
 {
 	return NULL;
 }
@@ -171,6 +175,14 @@ static inline void google_bcl_irq_changed(struct bcl_device *bcl_dev, int index)
 }
 static inline int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,
 				      const struct bcl_ifpmic_ops *pmic_ops)
+{
+	return 0;
+}
+static inline int google_init_gpu_ratio(struct bcl_device *data)
+{
+	return 0;
+}
+static inline int google_init_tpu_ratio(struct bcl_device *data)
 {
 	return 0;
 }
