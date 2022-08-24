@@ -151,6 +151,9 @@ static LIST_HEAD(drvdata_list);
 #define USI_SW_CONF_MASK	(0x7 << 0)
 #define USI_SPI_SW_CONF		BIT(1)
 
+/* Make sure the busy wait won't take too long time. */
+#define MAX_CS_CLOCK_DELAY_US 10
+
 /**
  * struct s3c64xx_spi_port_config - SPI Controller hardware info
  * @fifo_lvl_mask: Bit-mask for {TX|RX}_FIFO_LVL bits in SPI_STATUS register.
@@ -542,6 +545,7 @@ static void enable_datapath(struct s3c64xx_spi_driver_data *sdd,
 {
 	void __iomem *regs = sdd->regs;
 	u32 modecfg, chcfg, dma_burst_len, packet_cnt_en;
+	struct s3c64xx_spi_csinfo *cs = spi->controller_data;
 
 	chcfg = readl(regs + S3C64XX_SPI_CH_CFG);
 	chcfg &= ~S3C64XX_SPI_CH_TXCH_ON;
@@ -581,6 +585,12 @@ static void enable_datapath(struct s3c64xx_spi_driver_data *sdd,
 	if (xfer->tx_buf) {
 		sdd->state |= TXBUSY;
 		chcfg |= S3C64XX_SPI_CH_TXCH_ON;
+
+		if (cs->cs_mode == MANUAL_CS_MODE && cs->cs_delay && !spi->cs_gpiod) {
+			writel(chcfg, regs + S3C64XX_SPI_CH_CFG);
+			udelay(cs->cs_delay);
+		}
+
 		if (dma_mode) {
 			modecfg |= S3C64XX_SPI_MODE_TXDMA_ON;
 			prepare_dma(&sdd->tx_dma, xfer->len, xfer->tx_dma);
@@ -1048,7 +1058,8 @@ try_transfer:
 		sdd->state &= ~TXBUSY;
 
 		if (cs->cs_mode == AUTO_CS_MODE ||
-		    cs->cs_mode == AUTO_CS_MODE_FORCE_QUIESCE) {
+		    cs->cs_mode == AUTO_CS_MODE_FORCE_QUIESCE ||
+		    (cs->cs_mode == MANUAL_CS_MODE && cs->cs_delay && !spi->cs_gpiod)) {
 			/* Slave Select */
 			enable_cs(sdd, spi);
 
@@ -1197,7 +1208,7 @@ static struct s3c64xx_spi_csinfo *s3c64xx_get_slave_ctrldata
 	}
 
 	if (!of_property_read_u32(data_np, "cs-clock-delay", &cs_delay))
-		cs->cs_delay = cs_delay;
+		cs->cs_delay = min(cs_delay, (u32) MAX_CS_CLOCK_DELAY_US);
 
 	of_property_read_u32(data_np, "cs-init-state", &cs->cs_init_state);
 
