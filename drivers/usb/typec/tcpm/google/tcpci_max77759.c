@@ -1691,6 +1691,23 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 	return 0;
 }
 
+static void max77759_store_partner_src_caps(void *unused, struct tcpm_port *port,
+					    unsigned int *nr_source_caps,
+					    u32 (*source_caps)[PDO_MAX_OBJECTS])
+{
+	int i;
+
+	spin_lock(&g_caps_lock);
+
+	nr_partner_src_caps = *nr_source_caps > PDO_MAX_OBJECTS ?
+			      PDO_MAX_OBJECTS : *nr_source_caps;
+
+	for (i = 0; i < nr_partner_src_caps; i++)
+		partner_src_caps[i] = *(source_caps[i]);
+
+	spin_unlock(&g_caps_lock);
+}
+
 /*
  * Don't call this function in interrupt context. Caller needs to free the
  * memory by calling tcpm_put_partner_src_caps.
@@ -1990,6 +2007,15 @@ static int max77759_register_vendor_hooks(struct i2c_client *client)
 	if (ret) {
 		dev_err(&client->dev,
 			"register_trace_android_rvh_typec_tcpci_get_vbus failed ret:%d\n", ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_store_partner_src_caps(
+			max77759_store_partner_src_caps, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
+			ret);
 		return ret;
 	}
 
