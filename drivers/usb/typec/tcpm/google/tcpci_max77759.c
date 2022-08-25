@@ -1986,6 +1986,14 @@ static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *t
 	*override_toggling = 1;
 }
 
+static void max77759_tcpm_log(void *unused, const char *log, bool *bypass)
+{
+	if (tcpm_log)
+		logbuffer_log(tcpm_log, "%s", log);
+
+	*bypass = true;
+}
+
 static int max77759_register_vendor_hooks(struct i2c_client *client)
 {
 	int ret;
@@ -2016,6 +2024,13 @@ static int max77759_register_vendor_hooks(struct i2c_client *client)
 		dev_err(&client->dev,
 			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
 			ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_tcpm_log(max77759_tcpm_log, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_log failed ret:%d\n", ret);
 		return ret;
 	}
 
