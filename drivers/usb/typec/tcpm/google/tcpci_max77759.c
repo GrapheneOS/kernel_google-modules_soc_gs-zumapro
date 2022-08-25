@@ -1611,6 +1611,24 @@ static int max77759_set_vbus_voltage_max_mv(struct i2c_client *tcpc_client,
 	return 0;
 }
 
+static void max77759_get_vbus(void *unused, struct tcpci *tcpci, struct tcpci_data *data, int *vbus,
+			      int *bypass)
+{
+	struct max77759_plat *chip = tdata_to_max77759(data);
+	u8 pwr_status;
+	int ret;
+
+	ret = max77759_read8(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status);
+	if (!ret && !chip->vbus_present && (pwr_status & TCPC_POWER_STATUS_VBUS_PRES)) {
+		logbuffer_log(chip->log, "[%s]: syncing vbus_present", __func__);
+		chip->vbus_present = 1;
+	}
+
+	logbuffer_log(chip->log, "[%s]: vbus_present %d", __func__, chip->vbus_present);
+	*vbus = chip->vbus_present;
+	*bypass = 1;
+}
+
 static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 {
 	struct max77759_plat *chip = usb_role_switch_get_drvdata(sw);
@@ -1961,12 +1979,21 @@ static int max77759_register_vendor_hooks(struct i2c_client *client)
 	ret = register_trace_android_vh_typec_tcpci_override_toggling(
 			max77759_typec_tcpci_override_toggling, NULL);
 
-	if (ret)
+	if (ret) {
 		dev_err(&client->dev,
 			"register_trace_android_vh_typec_tcpci_override_toggling failed ret:%d",
 			ret);
-	else
-		hooks_installed = true;
+		return ret;
+	}
+
+	ret = register_trace_android_rvh_typec_tcpci_get_vbus(max77759_get_vbus, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_rvh_typec_tcpci_get_vbus failed ret:%d\n", ret);
+		return ret;
+	}
+
+	hooks_installed = true;
 
 	return ret;
 }
