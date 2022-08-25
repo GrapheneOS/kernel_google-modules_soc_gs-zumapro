@@ -123,6 +123,7 @@ samsung-iommu-group.ko
 samsung-secure-iova.ko
 samsung_dma_heap.ko
 samsung_iommu_v9.ko
+sbb-mux.ko
 shm_ipc.ko
 slc_acpm.ko
 slc_dummy.ko
