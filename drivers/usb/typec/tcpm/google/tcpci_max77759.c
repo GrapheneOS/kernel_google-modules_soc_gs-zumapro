@@ -1986,6 +1986,27 @@ static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *t
 	*override_toggling = 1;
 }
 
+static void max77759_get_timer_value(void *unused, const char *state, enum typec_timer timer,
+				     unsigned int *val)
+{
+	switch (timer) {
+	case SINK_DISCOVERY_BC12:
+		*val = 500;
+		break;
+	case SINK_WAIT_CAP:
+		*val = 450;
+		break;
+	case SOURCE_OFF:
+		*val = 870;
+		break;
+	case CC_DEBOUNCE:
+		*val = 170;
+		break;
+	default:
+		break;
+	}
+}
+
 static void max77759_tcpm_log(void *unused, const char *log, bool *bypass)
 {
 	if (tcpm_log)
@@ -2024,6 +2045,13 @@ static int max77759_register_vendor_hooks(struct i2c_client *client)
 		dev_err(&client->dev,
 			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
 			ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_tcpm_get_timer(max77759_get_timer_value, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_get_timer failed ret:%d\n", ret);
 		return ret;
 	}
 
