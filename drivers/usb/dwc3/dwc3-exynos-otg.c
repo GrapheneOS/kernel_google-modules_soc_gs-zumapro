@@ -467,6 +467,7 @@ err1:
 	return ret;
 }
 
+/*
 static void dwc3_otg_retry_configuration(struct timer_list *t)
 {
 	struct dwc3_exynos *exynos = from_timer(exynos, t, usb_connect_timer);
@@ -501,6 +502,7 @@ static void dwc3_otg_retry_configuration(struct timer_list *t)
 
 	dev_dbg(exynos->dev, "retry done\n");
 }
+*/
 
 static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 {
@@ -545,13 +547,15 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 
 		dwc3_otg_set_peripheral_mode(dotg);
 
+		/*
 		dev_dbg(dev, "%s: start check usb configuration timer\n", __func__);
 		timer_setup(&exynos->usb_connect_timer, dwc3_otg_retry_configuration, 0);
 		mod_timer(&exynos->usb_connect_timer,
 				jiffies + CHG_CONNECTED_DELAY_TIME);
+		*/
 	} else {
 		exynos->vbus_state = false;
-		del_timer_sync(&exynos->usb_connect_timer);
+		/* del_timer_sync(&exynos->usb_connect_timer); */
 
 		if (exynos->config.is_not_vbus_pad && exynos_usbdrd_get_ldo_status() &&
 				!dotg->in_shutdown)
