@@ -286,6 +286,7 @@
 			tz-cooling-name = "MID";
 			skip-boot-pmqos;
 			use-em-coeff;
+			need-awake;
 		};
 
 		cpufreq_domain2: domain@2 {
@@ -302,6 +303,7 @@
 			tz-cooling-name = "BIG";
 			skip-boot-pmqos;
 			use-em-coeff;
+			need-awake;
 		};
 	};
 };
