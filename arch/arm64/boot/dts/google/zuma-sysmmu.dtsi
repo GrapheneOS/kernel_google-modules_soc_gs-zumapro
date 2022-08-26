@@ -92,8 +92,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A650000>;
-		power-domains = <&pd_bw>;
-
+/*		power-domains = <&pd_bw>;
+ */
 		port-name = "BW";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) >;
@@ -169,8 +169,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A880000>;
-		power-domains = <&pd_g2d>;
-
+/*		power-domains = <&pd_g2d>;
+ */
 		port-name = "G2D";
 		#iommu-cells = <0>;
 
@@ -294,8 +294,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x19850000>;
-		power-domains = <&pd_dpuf0>;
-
+/*              power-domains = <&pd_dpu>;
+ */
 		port-name = "DPU F0";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x06, 0x00), S2_EN, BL16, PREF_PRED, STLB_PREF, PTLB_NONE)>;
@@ -388,8 +388,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x19C50000>;
-		power-domains = <&pd_dpuf1>;
-
+/*              power-domains = <&pd_dpu>;
+ */
 		port-name = "DPU F1";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x06, 0x00), S2_EN, BL16, PREF_PRED, STLB_PREF, PTLB_NONE)>;
@@ -481,8 +481,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C120000>;
-		power-domains = <&pd_ispfe>;
-
+/*		power-domains = <&pd_ispfe>;
+ */
 		port-name = "ISPFE S0";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x06, 0x03), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_NONE)>;
@@ -517,8 +517,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C160000>;
-		power-domains = <&pd_ispfe>;
-
+/*		power-domains = <&pd_ispfe>;
+ */
 		port-name = "ISPFE S1";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_NONE)>;
@@ -536,8 +536,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C1A0000>;
-		power-domains = <&pd_ispfe>;
-
+/*		power-domains = <&pd_ispfe>;
+ */
 		port-name = "ISPFE S2";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_NONE)>;
@@ -561,8 +561,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1D880000>;
-		power-domains = <&pd_gse>;
-
+/*		power-domains = <&pd_gse>;
+ */
 		port-name = "GSE";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x09, 0x00), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_PREF)>;
@@ -613,8 +613,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A350000>;
-		power-domains = <&pd_tpu>;
-
+/*		power-domains = <&pd_tpu>;
+ */
 		port-name = "TPU";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_PREF)>;
@@ -667,8 +667,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C880000>;
-		power-domains = <&pd_yuvp>;
-
+/*		power-domains = <&pd_yuvp>;
+ */
 		port-name = "YUVP";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x05), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_NONE) >;
@@ -700,8 +700,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1CC90000>;
-		power-domains = <&pd_tnr>;
-
+/*		power-domains = <&pd_tnr>;
+ */
 		port-name = "TNR S0";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x04), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF)>;
@@ -758,8 +758,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1CCD0000>;
-		power-domains = <&pd_tnr>;
-
+/*		power-domains = <&pd_tnr>;
+ */
 		port-name = "TNR S1";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_NONE)>;
@@ -821,8 +821,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1CD10000>;
-		power-domains = <&pd_tnr>;
-
+/*		power-domains = <&pd_tnr>;
+ */
 		port-name = "TNR S2";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x01), S2_EN, BL8, PREF_PRED, STLB_PREF, PTLB_NONE)>;
@@ -862,8 +862,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C4B0000>;
-		power-domains = <&pd_rgbp>;
-
+/*		power-domains = <&pd_rgbp>;
+ */
 		port-name = "RGBP S0";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF)>;
@@ -903,8 +903,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C4F0000>;
-		power-domains = <&pd_rgbp>;
-
+/*		power-domains = <&pd_rgbp>;
+ */
 		port-name = "RGBP S1";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL32, PREF_PRED, STLB_PREF, PTLB_NONE)>;
@@ -968,7 +968,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x101D000>;
-
+/*		power-domains = <&pd_misc>;
+ */
 		port-name = "MISC";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL8, PREF_PRED, STLB_NONE, PTLB_NONE)>;
@@ -993,8 +994,8 @@
 		sysmmu,async-fault;
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A480000>;
-		power-domains = <&pd_mfc>;
-
+/*		power-domains = <&pd_mfc>;
+ */
 		port-name = "MFC";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL8, PREF_PRED, STLB_NONE, PTLB_NONE)>;
@@ -1012,8 +1013,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1D0B0000>;
-		power-domains = <&pd_mcsc>;
-
+/*		power-domains = <&pd_mcsc>;
+ */
 		port-name = "MCSC";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF)>;
@@ -1092,7 +1093,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x131D0000>;
-
+/*		power-domains = <&pd_hsi2>;
+ */
 		port-name = "HSI2";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE)>;
@@ -1115,7 +1117,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x12070000>;
-
+/*		power-domains = <&pd_hsi1>;
+ */
 		port-name = "HSI1";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE)>;
@@ -1132,8 +1135,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x11050000>;
-		power-domains = <&pd_hsi0>;
-
+/*		power-domains = <&pd_hsi0>;
+ */
 		port-name = "HSI0";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE)>;
@@ -1150,9 +1153,10 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x16450000>;
-
+/*		power-domains = <&pd_gsa>;
+ */
 		port-name = "GSA";
-		#iommu-cells = <0>;
+		#iommu-cells = <0>; //CHEKC mask
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF)>;
 		pmmu0,stream_property =
 			<1 STR_CFG(STR_SPTLB(0x01, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_RW STR_ID(0x10) STR_MASK(0x6F)>,
@@ -1182,8 +1186,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1D4D0000>;
-		power-domains = <&pd_gdc>;
-
+/*		power-domains = <&pd_gdc>;
+ */
 		port-name = "GDC";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL32, PREF_PRED, STLB_PREF, PTLB_NONE)>;
@@ -1259,8 +1263,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x16C50000>;
-		power-domains = <&pd_eh>;
-
+/*		power-domains = <&pd_eh>;
+ */
 		port-name = "EH";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF)>;
@@ -1282,8 +1286,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x20A60000>;
-		power-domains = <&pd_aur>;
-
+/*		power-domains = <&pd_aur>;
+ */
 		port-name = "AUR";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL2, PREF_PRED, STLB_PREF, PTLB_PREF)>;
@@ -1322,7 +1326,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x190A0000>;
-
+/*		power-domains = <&pd_aoc>;
+ */
 		port-name = "AOC";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF)>;
@@ -1357,4 +1362,5 @@
 			<28 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_RW STR_ID(0x37) STR_MASK(0x3F)>,
 			<29 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_RW STR_ID(0x38) STR_MASK(0x3F)>;
 	};
+
 };
