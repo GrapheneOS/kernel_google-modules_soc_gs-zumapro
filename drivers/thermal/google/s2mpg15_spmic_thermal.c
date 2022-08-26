@@ -171,32 +171,16 @@ static int s2mpg15_spmic_set_ntc_channels(
 	int ret = 0;
 	struct device *dev = s2mpg15_spmic_thermal->dev;
 	struct i2c_client *meter_i2c = s2mpg15_spmic_thermal->meter_i2c;
-	struct i2c_client *mt_trim_i2c = s2mpg15_spmic_thermal->mt_trim_i2c;
 
 	dev_info(dev, "Applying NTC... disabling odpm [s2mpg15]\n");
 
-	/* workaround suggested in b/200582715 for NTC channel update */
-	ret = s2mpg15_write_reg(mt_trim_i2c, S2MPG15_MT_TRIM_COMMON2, 0x00);
-	if (ret)
-		goto err;
-
-	usleep_range(NTC_UPDATE_MIN_DELAY_US, NTC_UPDATE_MAX_DELAY_US);
-	ret = s2mpg15_write_reg(mt_trim_i2c, S2MPG15_MT_TRIM_COMMON2, 0x80);
-	if (ret)
-		goto err;
-
-	usleep_range(NTC_UPDATE_MIN_DELAY_US, NTC_UPDATE_MAX_DELAY_US);
+	/* workaround suggested in b/238678825 for NTC channel update */
 	ret = s2mpg15_write_reg(meter_i2c, S2MPG15_METER_CTRL3, 0x00);
 	if (ret)
 		goto err;
 
 	usleep_range(NTC_UPDATE_MIN_DELAY_US, NTC_UPDATE_MAX_DELAY_US);
-	ret = s2mpg15_write_reg(mt_trim_i2c, S2MPG15_MT_TRIM_COMMON2, 0x00);
-	if (ret)
-		goto err;
-
-	usleep_range(NTC_UPDATE_MIN_DELAY_US, NTC_UPDATE_MAX_DELAY_US);
-	ret = s2mpg15_write_reg(mt_trim_i2c, S2MPG15_MT_TRIM_COMMON2, 0x80);
+	ret = s2mpg15_write_reg(meter_i2c, S2MPG15_METER_CTRL5, 0x4F);
 	if (ret)
 		goto err;
 
