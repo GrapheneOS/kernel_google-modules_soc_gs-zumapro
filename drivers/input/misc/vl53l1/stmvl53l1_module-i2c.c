@@ -369,6 +369,7 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 
 	i2c_data->vio = NULL;
 	i2c_data->vio_gpio = -1;
+	i2c_data->pwren_supply = NULL;
 
 	/* vio power: vio-type is either gpio or regulator */
 	rc = of_property_read_string(dev->of_node, "vio-type", &vio_type);
@@ -417,6 +418,13 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 	} else {
 		i2c_data->pwren_gpio = -1;
 		dev_warn(dev, "Unable to find pwren-gpio %d\n", pwren_gpio);
+		/* try to find pwren-supply */
+		i2c_data->pwren_supply = regulator_get_optional(dev, "pwren");
+		if (IS_ERR(i2c_data->pwren_supply)) {
+			i2c_data->pwren_supply = NULL;
+			dev_err(dev, "neither pwren-gpio nor pwren_supply\n");
+			return -EPERM;
+		}
 	}
 
 	/* reset pin */
@@ -453,9 +461,13 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 	rc = get_xsdn(dev, i2c_data);
 	if (rc)
 		goto no_xsdn;
-	rc = get_pwren(dev, i2c_data);
-	if (rc)
-		goto no_pwren;
+
+	if (!i2c_data->pwren_supply) {
+		rc = get_pwren(dev, i2c_data);
+		if (rc)
+			goto no_pwren;
+	}
+
 	rc = get_intr(dev, i2c_data);
 	if (rc)
 		goto no_intr;
@@ -471,7 +483,13 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 	return rc;
 
 no_intr:
-	put_pwren(i2c_data);
+	if (i2c_data->pwren_gpio != -1) {
+		put_pwren(i2c_data);
+	}
+	if (i2c_data->pwren_supply) {
+		regulator_put(i2c_data->pwren_supply);
+		i2c_data->pwren_supply = NULL;
+	}
 no_pwren:
 	put_xsdn(i2c_data);
 no_xsdn:
@@ -486,7 +504,13 @@ no_vio:
 static void stmvl53l1_release_gpios(struct i2c_data *i2c_data)
 {
 	put_xsdn(i2c_data);
-	put_pwren(i2c_data);
+	if (i2c_data->pwren_gpio != -1) {
+		put_pwren(i2c_data);
+	}
+	if (i2c_data->pwren_supply) {
+		regulator_put(i2c_data->pwren_supply);
+		i2c_data->pwren_supply = NULL;
+	}
 	put_intr(i2c_data);
 	if (i2c_data->vio_gpio != -1) {
 		put_vio(i2c_data);
@@ -682,6 +706,16 @@ int stmvl53l1_power_up_i2c(void *object)
 	} else
 		dev_warn(dev, "no power control\n");
 
+
+	if (data->pwren_supply != NULL) {
+		rc = regulator_enable(data->pwren_supply);
+		if (rc) {
+			dev_err(dev, "fail to turn on pwren_supply rc %d\n", rc);
+			return rc;
+		}
+	}
+
+
 	/* Enable shared I2C */
 	rc = shared_i2c_set_state(dev, shared_i2c_data->pinctrl, "on_i2c");
 	if (rc) {
@@ -715,6 +749,12 @@ int stmvl53l1_power_down_i2c(void *i2c_object)
 	/* turn off power */
 	if (data->pwren_gpio != -1)
 		gpio_set_value(data->pwren_gpio, 0);
+
+	if (data->pwren_supply != NULL) {
+		rc = regulator_disable(data->pwren_supply);
+		if (rc)
+			dev_err(dev, "fail to turn off pwren_supply rc %d\n", rc);
+	}
 
 	if (data->vio_gpio != -1 && data->io_flag.vio_owned) {
 		rc = gpiod_direction_output(gpio_to_desc(data->vio_gpio), 0);

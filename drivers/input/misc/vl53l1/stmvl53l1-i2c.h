@@ -75,6 +75,9 @@ struct i2c_data {
 	struct msgtctrl_t {
 		unsigned unhandled_irq_vec:1;
 	} msg_flag;
+
+	/* pwren regulator */
+	struct regulator *pwren_supply;
 };
 
 struct shared_i2c_data {
