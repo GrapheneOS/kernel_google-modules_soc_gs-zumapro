@@ -3291,9 +3291,9 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct pcie_port *pp, int id)
 				 */
 
 				/* 1. to enable PCIPM RC */
-				/* [RC:set value] TPowerOn(130 usec) */
+				/* [RC:set value] TPowerOn(200 usec) */
 				exynos_pcie_rc_wr_own_conf(pp, PCIE_LINK_L1SS_CONTROL2, 4,
-							   PORT_LINK_TPOWERON_130US);
+							   PORT_LINK_TPOWERON_200US);
 
 				/* [RC:set value] TPowerOff(3 us), T_L1.2(10 us), T_PCLKACK(2 us) */
 				exynos_pcie_rc_wr_own_conf(pp, PCIE_L1_SUBSTATES_OFF, 4,
@@ -3317,9 +3317,9 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct pcie_port *pp, int id)
 				dev_dbg(dev, "WIFIen:1RC:L1SS_CTRL(0x19C)=0x%x\n", val);
 
 				/* 2. to enable PCIPM EP */
-				/* [EP:set value] TPowerOn(130 usec) */
+				/* [EP:set value] TPowerOn(200 usec) */
 				exynos_pcie_rc_wr_other_conf(pp, ep_pci_bus, 0, WIFI_L1SS_CONTROL2,
-							     4, PORT_LINK_TPOWERON_130US);
+							     4, PORT_LINK_TPOWERON_200US);
 
 				/* [EP:set value] LTR Latency(max snoop(3 ms)/no-snoop(3 ms))
 				 * Reported_LTR value in LTR message
