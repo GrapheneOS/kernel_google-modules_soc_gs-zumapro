@@ -85,7 +85,8 @@ int exynos_pmu_update(unsigned int offset, unsigned int mask, unsigned int val)
 EXPORT_SYMBOL(exynos_pmu_update);
 
 #define PMU_CPU_CONFIG_BASE			0x1000
-#define PMU_CPU_STATUS_BASE			0x1004
+#define PMU_CPU_IN_BASE				0x1024
+#define PMU_CPU_IN_MASK				0xFFFE
 #define CPU_LOCAL_PWR_CFG			0x1
 
 static int pmu_cpu_offset(unsigned int cpu)
@@ -112,10 +113,13 @@ static int pmu_cpu_offset(unsigned int cpu)
 		offset = 0x380;
 		break;
 	case 6:
-		offset = 0x500;
+		offset = 0x400;
 		break;
 	case 7:
-		offset = 0x580;
+		offset = 0x480;
+		break;
+	case 8:
+		offset = 0x600;
 		break;
 	default:
 		pr_err("CPU index out-of-bound\n");
@@ -138,11 +142,12 @@ static void pmu_cpu_ctrl(unsigned int cpu, int enable)
 static int pmu_cpu_state(unsigned int cpu)
 {
 	unsigned int offset, val = 0;
-
 	offset = pmu_cpu_offset(cpu);
-	regmap_read(pmureg, PMU_CPU_STATUS_BASE + offset, &val);
 
-	return ((val & CPU_LOCAL_PWR_CFG) == CPU_LOCAL_PWR_CFG);
+	/*cpu power check with CLUSTER_CPU_IN - PPUHWSTAT & mask(0xFFFE)*/
+	regmap_read(pmureg, PMU_CPU_IN_BASE + offset, &val);
+
+	return (!!(val & PMU_CPU_IN_MASK));
 }
 
 #define CLUSTER_ADDR_OFFSET			0x8
