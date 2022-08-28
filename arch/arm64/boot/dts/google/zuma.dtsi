@@ -1039,4 +1039,6 @@
 		dma-coherent;
 	};
 
+	thermal_zones: thermal-zones {
+	};
 };
