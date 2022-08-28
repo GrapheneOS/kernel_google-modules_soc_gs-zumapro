@@ -116,6 +116,7 @@ s2mpg1415-gpio.ko
 s2mpg15-mfd.ko
 s2mpg15-powermeter.ko
 s2mpg15-regulator.ko
+s2mpg15-spmic-thermal.ko
 s3c2410_wdt.ko
 samsung-dma.ko
 samsung-iommu-group.ko
