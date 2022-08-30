@@ -25,54 +25,63 @@ struct pmucal_seq core00_on[] = {
 struct pmucal_seq core00_off[] = {
 };
 struct pmucal_seq core00_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1004, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq core01_on[] = {
 };
 struct pmucal_seq core01_off[] = {
 };
 struct pmucal_seq core01_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1084, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq core02_on[] = {
 };
 struct pmucal_seq core02_off[] = {
 };
 struct pmucal_seq core02_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1104, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq core03_on[] = {
 };
 struct pmucal_seq core03_off[] = {
 };
 struct pmucal_seq core03_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1184, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq core10_on[] = {
 };
 struct pmucal_seq core10_off[] = {
 };
 struct pmucal_seq core10_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1304, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq core11_on[] = {
 };
 struct pmucal_seq core11_off[] = {
 };
 struct pmucal_seq core11_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1384, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq core12_on[] = {
 };
 struct pmucal_seq core12_off[] = {
 };
 struct pmucal_seq core12_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1404, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq core13_on[] = {
 };
 struct pmucal_seq core13_off[] = {
 };
 struct pmucal_seq core13_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1484, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq core20_on[] = {
 };
 struct pmucal_seq core20_off[] = {
 };
 struct pmucal_seq core20_status[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_CPU0_STATUS", 0x15460000, 0x1604, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
 struct pmucal_seq cluster0_status[] = {
 };
