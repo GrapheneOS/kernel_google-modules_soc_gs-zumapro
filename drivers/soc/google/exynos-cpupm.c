@@ -1262,13 +1262,13 @@ static int exynos_cpupm_mode_init(struct platform_device *pdev)
 
 		of_property_read_u32(dn, "cal-id", &mode->cal_id);
 
-		atomic_set(&mode->disable, 0);
-
-		/*
-		 * The users' request is set to enable since initialization
-		 * state of power mode is enabled.
-		 */
-		mode->user_request = true;
+		if (of_property_read_bool(dn, "disable-on-boot")) {
+			atomic_set(&mode->disable, 1);
+			mode->user_request = false;
+		} else {
+			atomic_set(&mode->disable, 0);
+			mode->user_request = true;
+		}
 
 		/*
 		 * Initialize attribute for sysfs.

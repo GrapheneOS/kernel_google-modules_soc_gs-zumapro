@@ -213,6 +213,7 @@
 			target-residency = <10000>;
 			type = <POWERMODE_TYPE_SYSTEM>;
 			siblings = CPU_ALL;
+			disable-on-boot;
 		};
 
 		wakeup-mask {
