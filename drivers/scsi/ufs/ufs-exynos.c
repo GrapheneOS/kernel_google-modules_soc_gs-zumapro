@@ -1649,7 +1649,7 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 	dev_info(dev, "===============================\n");
 
 	/* idle ip nofification for SICD, disable by default */
-#if defined(CONFIG_EXYNOS_CPUPM)
+#if IS_ENABLED(CONFIG_EXYNOS_CPUPM)
 	ufs->idle_ip_index = exynos_get_idle_ip_index(dev_name(ufs->dev));
 #endif
 	__sicd_ctrl(ufs, true);
