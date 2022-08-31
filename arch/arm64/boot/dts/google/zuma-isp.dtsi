@@ -1280,11 +1280,9 @@
 			<GIC_SPI IRQ_TNR_A_TNR IRQ_TYPE_LEVEL_HIGH>,
 			<GIC_SPI IRQ_TNR_A_TNR IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names =
-			"gtnr-align-int",
-			"gtnr-align-mute";
+			"gtnr-align-int";
 		interrupt-event-infos =
-			<&gtnr_align_int>,
-			<&gtnr_align_secu_int_mute>;
+			<&gtnr_align_int>;
 
 		clocks =
 			<&clock UMUX_CLKCMU_TNR_ALIGN>;
