@@ -83,11 +83,11 @@
 				ap_capability_1 = <0x0>;
 
 				/*
-				* Control messages containing two elements
-				* <MAILBOX_SR [shared register number]>
-				* <DRAM_V1   [offset from ipc base]>
-				* <DRAM_V2   [offset from cmsg offset]>
-				*/
+				 * Control messages containing two elements
+				 * <MAILBOX_SR [shared register number]>
+				 * <DRAM_V1   [offset from ipc base]>
+				 * <DRAM_V2   [offset from cmsg offset]>
+				 */
 				ap2cp_msg = <DRAM_V1 2048>;
 				cp2ap_msg = <DRAM_V1 2052>;
 				ap2cp_united_status = <DRAM_V1 2056>;
@@ -96,8 +96,8 @@
 				ap2cp_handover_block_info = <DRAM_V1 2092>;
 
 				/* Status bit info
-				* for mbx_ap2cp_united_status
-				*/
+				 * for mbx_ap2cp_united_status
+				 */
 				sbi_lcd_status_mask = <0x1>;
 				sbi_lcd_status_pos = <27>;
 				sbi_crash_type_mask = <0xf>;
@@ -112,8 +112,8 @@
 				sbi_ap_status_pos = <1>;
 
 				/* Status bit info
-				* for mbx_cp2ap_united_status
-				*/
+				 * for mbx_cp2ap_united_status
+				 */
 				sbi_cp_rat_mode_mask = <0x3f>;
 				sbi_cp_rat_mode_pos = <26>;
 				sbi_cp2ap_wakelock_mask = <0x1>;
@@ -143,19 +143,19 @@
 				pktproc_dl_buff_rgn_offset = <0x00100000>;
 				pktproc_dl_buff_rgn_size = <0x01B00000>;
 				/* Size of data region is defined
-				* by reserved mem size
-				*/
+				 * by reserved mem size
+				 */
 
-				pktproc_dl_info_rgn_cached = <0>;
-				pktproc_dl_desc_rgn_cached = <0>;
-				pktproc_dl_buff_rgn_cached = <0>;
+				pktproc_dl_info_rgn_cached = <1>;
+				pktproc_dl_desc_rgn_cached = <1>;
+				pktproc_dl_buff_rgn_cached = <1>;
 
 				/* 0:ringbuf mode, 1:sktbuf mode */
 				pktproc_dl_desc_mode = <1>;
 				pktproc_dl_num_queue = <4>;
 				pktproc_dl_use_exclusive_irq = <1>;
 				/* H/W IO cache coherency */
-				pktproc_dl_use_hw_iocc = <0>;
+				pktproc_dl_use_hw_iocc = <1>;
 				pktproc_dl_max_packet_size = <1584>;
 				pktproc_dl_use_dedicated_baaw = <0>;
 
@@ -171,10 +171,10 @@
 				pktproc_ul_num_queue = <2>;
 				pktproc_ul_max_packet_size = <2048>;
 				pktproc_ul_hiprio_ack_only = <1>;
-				pktproc_ul_info_rgn_cached = <0>;
-				pktproc_ul_desc_rgn_cached = <0>;
-				pktproc_ul_buff_rgn_cached = <0>;
-				pktproc_ul_use_hw_iocc = <0>; /* H/W IO cache coherency */
+				pktproc_ul_info_rgn_cached = <1>;
+				pktproc_ul_desc_rgn_cached = <1>;
+				pktproc_ul_buff_rgn_cached = <1>;
+				pktproc_ul_use_hw_iocc = <1>; /* H/W IO cache coherency */
 
 				/* TPMON: CP throughput monitor */
 				cpif_tpmon {
@@ -464,7 +464,7 @@
 						region,rmem = <0>;
 						region,offset = <0x00000000>;
 						region,size = <0x00800000>;
-						region,cached = <0>;
+						region,cached = <1>;
 					};
 					msi {
 						region,name = "MSI";
