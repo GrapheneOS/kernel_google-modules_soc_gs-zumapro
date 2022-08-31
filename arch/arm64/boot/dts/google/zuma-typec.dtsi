@@ -6,7 +6,7 @@
  */
 #include <dt-bindings/usb/pd.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pinctrl/gs101.h>
+#include <dt-bindings/pinctrl/zuma.h>
 #include <dt-bindings/pinctrl/samsung.h>
 
 &hsi2c_11{
@@ -119,7 +119,7 @@
 		samsung,pins = "gpa8-3";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_UP>;
-		samsung,pin-drv = <GS101_PIN_DRV_2_5_MA>;
+		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
 	};
 };
 

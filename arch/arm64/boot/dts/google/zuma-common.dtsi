@@ -6,7 +6,7 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/pinctrl/gs101.h>
+#include <dt-bindings/pinctrl/zuma.h>
 #include <dt-bindings/pinctrl/samsung.h>
 
 #include "zuma-pmic.dtsi"
@@ -21,14 +21,14 @@
 		samsung,pins = "gpa4-1";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-		samsung,pin-drv = <GS101_PIN_DRV_2_5_MA>;
+		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
 	};
 
 	key_volup: key-volup {
 		samsung,pins = "gpa6-2";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-		samsung,pin-drv = <GS101_PIN_DRV_2_5_MA>;
+		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
 	};
 };
 
