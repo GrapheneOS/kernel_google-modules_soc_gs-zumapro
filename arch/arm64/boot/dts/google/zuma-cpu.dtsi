@@ -217,6 +217,7 @@
 			type = <POWERMODE_TYPE_SYSTEM>;
 			siblings = CPU_ALL;
 			disable-on-boot;
+			entry-allowed = CPU_ALL;
 		};
 
 		wakeup-mask {
