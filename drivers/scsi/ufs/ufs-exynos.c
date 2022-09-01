@@ -131,7 +131,7 @@ static inline void __pm_qos_ctrl(struct exynos_ufs *ufs, bool hold)
 
 static inline void __sicd_ctrl(struct exynos_ufs *ufs, bool hold)
 {
-#if defined(CONFIG_EXYNOS_CPUPM)
+#if IS_ENABLED(CONFIG_EXYNOS_CPUPM)
 	/*
 	 * 0 : block to enter system idle state
 	 * 1 : allow to use system idle state
