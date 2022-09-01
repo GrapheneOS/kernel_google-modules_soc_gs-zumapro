@@ -153,6 +153,7 @@ usb_f_dm1.ko
 usb_f_rndis.ko
 usb_psy.ko
 usbc_cooling_dev.ko
+vh_sched.ko
 virtio_balloon.ko
 virtio_blk.ko
 virtio_crypto.ko
