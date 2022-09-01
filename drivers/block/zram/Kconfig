@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
-config ZRAM
+config ZRAM_GS
 	tristate "Compressed RAM block device support"
 	depends on BLOCK && SYSFS && ZSMALLOC && CRYPTO
 	depends on CRYPTO_LZO || CRYPTO_ZSTD || CRYPTO_LZ4 || CRYPTO_LZ4HC || CRYPTO_842
@@ -16,7 +16,7 @@ config ZRAM
 
 config ZCOMP_CPU
 	tristate "CPU compression"
-	depends on ZRAM
+	depends on ZRAM_GS
 	default y
 	help
 	  Support CPU compressor. User should configuire it via echo
@@ -24,15 +24,16 @@ config ZCOMP_CPU
 
 config ZCOMP_EH
 	tristate "Support Emerald Hill HW compressor"
-	depends on ZRAM
+	depends on ZRAM_GS
 	select GOOGLE_EH
+	default y
 	help
 	  Support Emerald Hill HW compressor. User should configure it via
 	  echo "lz77eh" > /sys/block/zramX/comp_algorithm
 
 config ZRAM_WRITEBACK
        bool "Write back incompressible or idle page to backing device"
-       depends on ZRAM
+       depends on ZRAM_GS
        help
 	 With incompressible page, there is no memory saving to keep it
 	 in memory. Instead, write it out to backing device.
@@ -46,7 +47,7 @@ config ZRAM_WRITEBACK
 
 config ZRAM_MEMORY_TRACKING
 	bool "Track zRam block status"
-	depends on ZRAM && DEBUG_FS
+	depends on ZRAM_GS && DEBUG_FS
 	help
 	  With this feature, admin can track the state of allocated blocks
 	  of zRAM. Admin could see the information via

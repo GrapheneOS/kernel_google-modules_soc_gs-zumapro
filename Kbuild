@@ -62,3 +62,5 @@ obj-y += drivers/devfreq/google/
 obj-y += drivers/iio/
 
 obj-y += drivers/bts/
+
+obj-y += drivers/block/zram/
