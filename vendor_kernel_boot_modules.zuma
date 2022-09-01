@@ -169,3 +169,7 @@ virtio_pci_modern_dev.ko
 wlc98_driver.ko
 wc68_driver.ko
 xhci-exynos.ko
+zsmalloc.ko
+zcomp_cpu.ko
+zcomp_eh.ko
+zram_gs.ko
