@@ -494,11 +494,10 @@ int cal_if_init(void *np)
 	ret = pmucal_local_init();
 	if (ret < 0)
 		return ret;
-#if !IS_ENABLED(CONFIG_SOC_ZUMA)
+
 	ret = pmucal_cpu_init();
 	if (ret < 0)
 		return ret;
-#endif
 
 	ret = pmucal_cpuinform_init();
 	if (ret < 0)
