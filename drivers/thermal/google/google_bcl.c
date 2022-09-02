@@ -2,7 +2,7 @@
 /*
  * google_bcl.c Google bcl driver
  *
- * Copyright (c) 2020, Google LLC. All rights reserved.
+ * Copyright (c) 2022, Google LLC. All rights reserved.
  *
  */
 
@@ -3027,6 +3027,12 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 		dev_err(bcl_dev->device, "Failed to read PMIC chipid.\n");
 		return -ENODEV;
 	}
+	S2MPG1415_READ(SUB, bcl_dev, ret, S2MPG15_PM_OFFSRC1, &val);
+	dev_info(bcl_dev->device, "SUB OFFSRC1 : %#x\n", val);
+	S2MPG1415_READ(SUB, bcl_dev, ret, S2MPG15_PM_OFFSRC2, &val);
+	dev_info(bcl_dev->device, "SUB OFFSRC2 : %#x\n", val);
+	S2MPG1415_WRITE(SUB, bcl_dev, ret, S2MPG15_PM_OFFSRC1, 0);
+	S2MPG1415_WRITE(SUB, bcl_dev, ret, S2MPG15_PM_OFFSRC2, 0);
 
 	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_GPU, TS_OCP_WARN_GPU,
 				      sub_dev->dev, "GPU_OCP_IRQ", IRQF_TRIGGER_RISING);
