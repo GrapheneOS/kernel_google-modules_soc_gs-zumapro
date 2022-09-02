@@ -939,7 +939,7 @@ static int eh_hw_init(struct eh_device *eh_dev, unsigned short fifo_size,
 	 * couldn't support if the number of CPUs is greater than the number
 	 * of decompression command register.
 	 */
-	if (eh_dev->decompr_cmd_count > num_possible_cpus()) {
+	if (eh_dev->decompr_cmd_count < num_possible_cpus()) {
 		pr_err("Too many cpus to support EH decompresion: cpus %d decopmrcmd %d\n",
 		       num_possible_cpus(), eh_dev->decompr_cmd_count);
 		ret = -EINVAL;
