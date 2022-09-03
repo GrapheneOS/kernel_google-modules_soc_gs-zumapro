@@ -24,6 +24,14 @@ static struct kernel_info *aosp_info;
 static struct vendor_kernel_all_info *all_info;
 static struct vendor_kernel_info *info;
 
+#define UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS		10
+
+static struct delayed_work vendor_kernel_info_work;
+static struct kernel_all_info *aosp_all_info;
+static struct kernel_info *aosp_info;
+static struct vendor_kernel_all_info *all_info;
+static struct vendor_kernel_info *info;
+
 struct vendor_kernel_info {
 	/* For linux banner */
 	__u8 uts_release[__NEW_UTS_LEN];
