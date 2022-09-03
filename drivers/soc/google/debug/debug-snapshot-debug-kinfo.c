@@ -11,13 +11,25 @@
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_reserved_mem.h>
+#include <linux/workqueue.h>
 #include <generated/utsrelease.h>
 #include <soc/google/debug-snapshot.h>
 #include "../../../../drivers/staging/android/debug_kinfo.h"
 
+#define UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS		10
+
+static struct workqueue_struct *update_vendor_kernel_info_wq;
+static struct delayed_work vendor_kernel_info_work;
+static struct kernel_all_info *aosp_all_info;
+static struct kernel_info *aosp_info;
+static struct vendor_kernel_all_info *all_info;
+static struct vendor_kernel_info *info;
+
 struct vendor_kernel_info {
 	/* For linux banner */
 	__u8 uts_release[__NEW_UTS_LEN];
+	/* For checksum */
+	__u32 names_total_len;
 } __packed;
 
 struct vendor_kernel_all_info {
@@ -26,7 +38,19 @@ struct vendor_kernel_all_info {
 	struct vendor_kernel_info info;
 } __packed;
 
-static void update_vendor_kernel_all_info(struct vendor_kernel_all_info *all_info)
+static size_t kallsyms_aosp_names_total_len(void)
+{
+	size_t off = 0;
+	uint32_t num;
+	const u8 *kallsyms_names = phys_to_virt(aosp_info->_names_pa);
+
+	for (num = 0; num < aosp_info->num_syms; num++)
+		off += kallsyms_names[off] + 1;
+
+	return off;
+}
+
+static void update_vendor_kernel_all_info(void)
 {
 	int index;
 	struct vendor_kernel_info *info;
@@ -36,9 +60,25 @@ static void update_vendor_kernel_all_info(struct vendor_kernel_all_info *all_inf
 	all_info->combined_checksum = 0;
 
 	info = &all_info->info;
+	strscpy(info->uts_release, UTS_RELEASE, sizeof(info->uts_release));
+
+	info->names_total_len = kallsyms_aosp_names_total_len();
+
 	vendor_checksum_info = (u32 *)info;
 	for (index = 0; index < sizeof(*info) / sizeof(u32); index++)
 		all_info->combined_checksum ^= vendor_checksum_info[index];
+}
+
+static void vendor_kernel_info_work_fn(struct work_struct *work)
+{
+	if (!aosp_all_info->combined_checksum || aosp_all_info->magic_number != DEBUG_KINFO_MAGIC) {
+		queue_delayed_work(update_vendor_kernel_info_wq, &vendor_kernel_info_work,
+				   msecs_to_jiffies(UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS));
+		return;
+	}
+
+	update_vendor_kernel_all_info();
+	cancel_delayed_work_sync(&vendor_kernel_info_work);
 }
 
 static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)
@@ -52,8 +92,6 @@ static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)
 	pgprot_t prot = __pgprot(PROT_NORMAL_NC);
 	struct page **pages;
 	void *vaddr;
-	struct vendor_kernel_all_info *all_info;
-	struct vendor_kernel_info *info;
 
 	/* Introduce DPM to disable the feature for production */
 	if (!dbg_snapshot_get_dpm_status())
@@ -106,12 +144,23 @@ static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)
 	/* Prepare for AOSP kernel info. backup */
 	rmem->priv = vaddr;
 
+	/* Backup aosp kernel info. */
+	aosp_all_info = vaddr;
+	aosp_info = &(aosp_all_info->info);
+
 	/* Backup vendor kernel info. */
 	all_info = (struct vendor_kernel_all_info *)(vaddr + offset);
 	memset(all_info, 0, sizeof(*all_info));
 	info = &all_info->info;
-	strscpy(info->uts_release, UTS_RELEASE, sizeof(info->uts_release));
-	update_vendor_kernel_all_info(all_info);
+
+	/* Wait for AOSP kernel info. backup */
+	update_vendor_kernel_info_wq = create_workqueue("vendor_kernel_info");
+	if (!update_vendor_kernel_info_wq) {
+		dev_err(&pdev->dev, "failed to create workqueue\n");
+	}
+	INIT_DELAYED_WORK(&vendor_kernel_info_work, vendor_kernel_info_work_fn);
+	queue_delayed_work(update_vendor_kernel_info_wq, &vendor_kernel_info_work,
+			   msecs_to_jiffies(UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS));
 
 	return 0;
 }
