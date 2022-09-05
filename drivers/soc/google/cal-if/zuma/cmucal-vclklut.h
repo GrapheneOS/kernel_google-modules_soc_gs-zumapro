@@ -121,6 +121,7 @@ extern unsigned int div_clk_pericx_usix_usi_nm_lut_params[];
 extern unsigned int div_clk_pericx_usix_usi_200mhz_lut_params[];
 extern unsigned int div_clk_pericx_usix_usi_100mhz_lut_params[];
 extern unsigned int div_clk_pericx_usix_usi_50mhz_lut_params[];
+extern unsigned int div_clk_pericx_usix_usi_40mhz_lut_params[];
 extern unsigned int div_clk_pericx_usix_usi_24mhz_lut_params[];
 extern unsigned int div_clk_pericx_usix_usi_12mhz_lut_params[];
 extern unsigned int div_clk_pericx_usix_usi_8mhz_lut_params[];

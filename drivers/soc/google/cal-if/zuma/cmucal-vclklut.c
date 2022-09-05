@@ -354,6 +354,9 @@ unsigned int div_clk_pericx_usix_usi_100mhz_lut_params[] = {
 unsigned int div_clk_pericx_usix_usi_50mhz_lut_params[] = {
 	7, 1,
 };
+unsigned int div_clk_pericx_usix_usi_40mhz_lut_params[] = {
+	9, 1,
+};
 unsigned int div_clk_pericx_usix_usi_24mhz_lut_params[] = {
 	0, 0,
 };

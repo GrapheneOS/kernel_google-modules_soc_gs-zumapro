@@ -5325,6 +5325,7 @@ struct vclk_lut cmucal_vclk_div_clk_pericx_usix_usi_lut[] = {
 	{200000, div_clk_pericx_usix_usi_200mhz_lut_params},
 	{100000, div_clk_pericx_usix_usi_100mhz_lut_params},
 	{50000, div_clk_pericx_usix_usi_50mhz_lut_params},
+	{40000, div_clk_pericx_usix_usi_40mhz_lut_params},
 	{24000, div_clk_pericx_usix_usi_24mhz_lut_params},
 	{12000, div_clk_pericx_usix_usi_12mhz_lut_params},
 	{8000, div_clk_pericx_usix_usi_8mhz_lut_params},
