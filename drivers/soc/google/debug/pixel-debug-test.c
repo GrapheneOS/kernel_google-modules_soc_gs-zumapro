@@ -51,7 +51,7 @@
 #include <linux/string.h>
 #include <linux/fs.h>
 #include <linux/suspend.h>
-
+#include <linux/soc/samsung/exynos-smc.h>
 #include <soc/google/debug-test.h>
 
 /*
@@ -566,6 +566,17 @@ static void simulate_suspend_hang(char *arg)
 	suspend_set_ops(&suspend_ops);
 }
 
+#if !IS_ENABLED(CONFIG_SOC_GS101)
+static void simulate_el3_assert(char *arg)
+{
+	exynos_smc(SIP_SVC_DEBUG_TRACE_EL3, false, 0, 0);
+}
+
+static void simulate_el3_panic(char *arg)
+{
+	exynos_smc(SIP_SVC_DEBUG_TRACE_EL3, true, 0, 0);
+}
+#endif
 /*
  * Error trigger definitions
  */
@@ -607,6 +618,10 @@ static const struct force_error_item force_error_vector[] = {
 	{ "arraydump",		&simulate_arraydump },
 	{ "scandump",		&simulate_scandump },
 	{ "suspend_hang",	&simulate_suspend_hang },
+#if !IS_ENABLED(CONFIG_SOC_GS101)
+	{ "el3_assert",	&simulate_el3_assert },
+	{ "el3_panic",	&simulate_el3_panic },
+#endif
 };
 
 static void parse_and_trigger(const char *buf)

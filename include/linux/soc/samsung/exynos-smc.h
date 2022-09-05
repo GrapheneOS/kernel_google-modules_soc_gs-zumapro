@@ -112,6 +112,9 @@
 /* For Secure log information */
 #define SMC_CMD_SEC_LOG_INFO		(0x82000610)
 
+/* For EL3 debug trace */
+#define SIP_SVC_DEBUG_TRACE_EL3		(0x82000612)
+
 /* For PPMPU fail information */
 #define SMC_CMD_GET_PPMPU_FAIL_INFO	(0x8200211A)
 #define SMC_CMD_CHECK_PPMPU_CH_NUM	(0x8200211B)
