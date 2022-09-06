@@ -5,6 +5,8 @@
 9pnet.ko
 9pnet_virtio.ko
 acpm_flexpmu_dbg.ko
+aoc_core.ko
+aoc_usb_driver.ko
 arm-memlat-mon.ko
 at24.ko
 bc_max77759.ko
