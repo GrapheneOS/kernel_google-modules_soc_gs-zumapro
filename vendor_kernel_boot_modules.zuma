@@ -55,6 +55,7 @@ google-bms.ko
 google-charger.ko
 google-cpm.ko
 google_bcl.ko
+gpu_cooling.ko
 gs-chipid.ko
 gs101_thermal.ko
 gs_acpm.ko
