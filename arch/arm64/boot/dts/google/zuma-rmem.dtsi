@@ -6,7 +6,9 @@
  */
 
 #include <dt-bindings/soc/google/debug-snapshot-def.h>
-#include <dt-bindings/soc/google/exynos-seclog.h>
+
+#define SECLOG_LOG_BUF_BASE       0xC3000000
+#define SECLOG_LOG_BUF_TOTAL_SIZE 0x90000
 
 / {
 
