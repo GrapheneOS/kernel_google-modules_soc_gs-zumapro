@@ -23,6 +23,8 @@
 #include <linux/soc/samsung/exynos-smc.h>
 #include "debug-snapshot-local.h"
 
+#define DSS_VERSION	0x80000000
+
 struct dbg_snapshot_interface {
 	struct dbg_snapshot_log *info_event;
 };
@@ -487,6 +489,7 @@ static int dbg_snapshot_rmem_setup(struct device *dev)
 			dss_base = (struct dbg_snapshot_base *)dbg_snapshot_get_header_vaddr();
 			dss_base->vaddr = (size_t)vaddr;
 			dss_base->paddr = rmem->base;
+			dss_base->version = DSS_VERSION;
 			ess_base = dss_base;
 			rmem->priv = vaddr;
 		}

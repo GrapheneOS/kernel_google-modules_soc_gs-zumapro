@@ -29,6 +29,7 @@ struct dbg_snapshot_base {
 	size_t vaddr;
 	size_t paddr;
 	unsigned int enabled;
+	unsigned int version;
 	struct dbg_snapshot_param *param;
 };
 
