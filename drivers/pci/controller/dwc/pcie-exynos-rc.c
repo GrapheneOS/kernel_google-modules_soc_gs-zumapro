@@ -1382,6 +1382,11 @@ static int exynos_pcie_rc_parse_dt(struct device *dev, struct exynos_pcie *exyno
 		exynos_pcie->max_link_speed = LINK_SPEED_GEN1;
 	}
 
+	if (of_property_read_u32(np, "perst-delay-us", &exynos_pcie->perst_delay_us)) {
+		dev_err(dev, "PERST delay is NOT defined...default to 20ms\n");
+		exynos_pcie->perst_delay_us = 20000;
+	}
+
 	if (of_property_read_u32(np, "chip-ver", &exynos_pcie->chip_ver)) {
 		dev_err(dev, "Failed to parse the number of chip-ver, default '0'\n");
 		exynos_pcie->chip_ver = 0;
@@ -2597,11 +2602,9 @@ retry:
 
 	dev_info(dev, "%s: Set PERST to HIGH, gpio val = %d\n",
 		__func__, gpio_get_value(exynos_pcie->perst_gpio));
-	if (exynos_pcie->ep_device_type == EP_BCM_WIFI) {
-		usleep_range(20000, 22000);
-	} else {
-		usleep_range(18000, 20000);
-	}
+
+	usleep_range(exynos_pcie->perst_delay_us,
+		     exynos_pcie->perst_delay_us + 2000);
 
 	val = exynos_elbi_read(exynos_pcie, PCIE_APP_REQ_EXIT_L1_MODE);
 	val |= APP_REQ_EXIT_L1_MODE;
