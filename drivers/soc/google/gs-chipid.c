@@ -24,11 +24,13 @@ struct gs_chipid_variant {
 	int sub_rev_bit;
 };
 
-#define RAW_HEX_STR_SIZE 116
+#define RAW_HEX_STR_SIZE 132
 #define AP_HW_TUNE_HEX_STR_SIZE 64
 #define AP_HW_TUNE_HEX_ARRAY_SIZE 32
 #define ASV_TBL_HEX_STR_SIZE 128
 #define HPM_ASV_HEX_STR_SIZE 128
+#define GS101_HPM_ASV_END_ADDR 0xA024
+#define HPM_ASV_END_ADDR 0xA02C
 
 static void gs_chipid_get_asv_tbl_str(void __iomem *reg);
 static void gs_chipid_get_hpm_asv_str(void __iomem *reg);
@@ -330,6 +332,7 @@ static void gs_chipid_get_chipid_info(void __iomem *reg)
 static void gs_chipid_get_raw_str(void __iomem *reg)
 {
 	u32 addr;
+	u32 addr_end;
 	u8 val;
 	int str_pos = 0;
 	size_t str_buf_size = sizeof(gs_soc_info.raw_str);
@@ -340,7 +343,12 @@ static void gs_chipid_get_raw_str(void __iomem *reg)
 				     str_buf_size - str_pos,
 				     "%02x", val);
 	}
-	for (addr = 0xA000; addr < 0xA024; addr++) {
+	if (gs_soc_info.product_id == GS101_SOC_ID) {
+		addr_end = GS101_HPM_ASV_END_ADDR;
+	} else {
+		addr_end = HPM_ASV_END_ADDR;
+	}
+	for (addr = 0xA000; addr < addr_end; addr++) {
 		val = readb_relaxed(reg + addr);
 		str_pos += scnprintf(gs_soc_info.raw_str + str_pos,
 				     str_buf_size - str_pos,
