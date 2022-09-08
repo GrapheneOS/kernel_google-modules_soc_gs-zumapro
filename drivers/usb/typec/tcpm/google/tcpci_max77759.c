@@ -223,6 +223,9 @@ static ssize_t contaminant_detection_show(struct device *dev, struct device_attr
 static void update_contaminant_detection_locked(struct max77759_plat *chip, int val)
 {
 
+	/* TODO: Revert while enabling contaminant detection */
+	return;
+
 	chip->contaminant_detection = val;
 
 	if (chip->contaminant_detection)
@@ -2223,7 +2226,8 @@ static int max77759_probe(struct i2c_client *client,
 
 	logbuffer_log(chip->log, "TCPC DEVICE id:%d", device_id);
 	/* Default enable on A1 or higher */
-	chip->contaminant_detection = device_id >= MAX77759_DEVICE_ID_A1;
+	/* TODO: Revert while enabling contaminant detection */
+	chip->contaminant_detection = CONTAMINANT_DETECT_DISABLE;
 	chip->contaminant_detection_userspace = chip->contaminant_detection;
 	chip->contaminant = max77759_contaminant_init(chip, chip->contaminant_detection);
 
