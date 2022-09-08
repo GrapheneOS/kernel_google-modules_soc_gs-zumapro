@@ -1286,8 +1286,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x20A60000>;
-/*		power-domains = <&pd_aur>;
- */
+		power-domains = <&pd_aur>;
 		port-name = "AUR";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL2, PREF_PRED, STLB_PREF, PTLB_PREF)>;
