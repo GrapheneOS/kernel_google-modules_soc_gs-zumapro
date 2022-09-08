@@ -22,6 +22,15 @@
 #include <linux/platform_device.h>
 #include "exynos_mct_v3.h"
 
+#ifdef CONFIG_ARM
+/* Use value higher than ARM arch timer. See 6282edb72bed. */
+#define MCT_CLKEVENTS_RATING		500
+#else
+#define MCT_CLKEVENTS_RATING		350
+#endif
+
+#define MCT_CLKSOURCE_RATING		350
+
 static void __iomem *reg_base;
 static unsigned long osc_clk_rate;
 static int mct_irqs[MCT_NR_COMPS];
@@ -78,7 +87,7 @@ static u64 exynos_frc_read(struct clocksource *cs)
 
 static struct clocksource mct_frc = {
 	.name		= "mct-frc",
-	.rating		= 350,	/* use value lower than ARM arch timer */
+	.rating		= MCT_CLKSOURCE_RATING,
 	.read		= exynos_frc_read,
 	.mask		= CLOCKSOURCE_MASK(32),
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
@@ -209,8 +218,9 @@ static int exynos_mct_starting_cpu(unsigned int cpu)
 	evt->set_state_oneshot = mct_set_state_shutdown;
 	evt->set_state_oneshot_stopped = mct_set_state_shutdown;
 	evt->tick_resume = mct_set_state_shutdown;
-	evt->features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT;
-	evt->rating = 500;	/* use value higher than ARM arch timer */
+	evt->features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT |
+			CLOCK_EVT_FEAT_PERCPU;
+	evt->rating = MCT_CLKEVENTS_RATING;
 
 	if (evt->irq == -1)
 		return -EIO;
