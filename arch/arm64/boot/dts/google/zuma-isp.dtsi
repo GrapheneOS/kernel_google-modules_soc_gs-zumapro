@@ -1142,6 +1142,9 @@
 			"UMUX_CLKCMU_GDC_GDC0";
 		clock-rates = <0>;
 		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
+		bts-block-names =
+			"rgbp",
+			"yuvp";
 
 		iommus =
 			<&sysmmu_yuvp>,
