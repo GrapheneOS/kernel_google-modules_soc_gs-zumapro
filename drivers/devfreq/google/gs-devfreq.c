@@ -1345,6 +1345,9 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	if (of_property_read_u32(np, "pm_qos_class_max",
 				 &data->pm_qos_class_max))
 		return -ENODEV;
+	/* Optionally read softmax if provided */
+	of_property_read_u32(np, "pm_qos_class_softmax",
+				 &data->pm_qos_class_softmax);
 	if (of_property_read_u32(np, "ess_flag", &data->ess_flag))
 		return -ENODEV;
 
@@ -1387,6 +1390,29 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	data->max_freq = freq_array[4];
 	data->reboot_freq = freq_array[5];
 
+	if (!data->pm_qos_class_softmax)
+		data->pm_qos_class_softmax = data->max_freq;
+	else
+		data->pm_qos_class_softmax = min(data->pm_qos_class_softmax,
+			data->max_freq);
+
+	if (data->devfreq_profile.initial_freq)
+		data->devfreq_profile.initial_freq = min_t(
+			u32,
+			data->devfreq_profile.initial_freq,
+			data->pm_qos_class_softmax);
+	else
+		data->devfreq_profile.initial_freq = (u32)
+			(data->pm_qos_class_softmax);
+
+	if (data->default_qos)
+		data->default_qos = min_t(
+			u32,
+			data->default_qos,
+			data->pm_qos_class_softmax);
+	else
+		data->default_qos = (u32)(data->pm_qos_class_softmax);
+
 	if (!of_property_read_u32(np, "max-volt", &val) &&
 	    !of_property_read_u32(np, "dfs_id", &data->dfs_id)) {
 		volt_table = kzalloc(sizeof(unsigned int) * data->max_state,
@@ -1411,6 +1437,7 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 		data->boot_qos_timeout = boot_array[0];
 		data->boot_freq = boot_array[1];
 	}
+	data->boot_freq = min(data->boot_freq, data->pm_qos_class_softmax);
 
 	if (of_property_read_u32(np, "governor", &data->gov_type))
 		return -ENODEV;
@@ -2330,7 +2357,7 @@ static int exynos_devfreq_probe(struct platform_device *pdev)
 	exynos_pm_qos_add_request(&data->debug_pm_qos_min, (int)data->pm_qos_class,
 				  data->min_freq);
 	exynos_pm_qos_add_request(&data->debug_pm_qos_max, (int)data->pm_qos_class_max,
-				  data->max_freq);
+				  data->pm_qos_class_softmax);
 	exynos_pm_qos_add_request(&data->thermal_pm_qos_max, (int)data->pm_qos_class_max,
 				  data->max_freq);
 	if (data->pm_qos_class_max)

@@ -171,6 +171,7 @@ struct exynos_devfreq_data {
 
 	u32					pm_qos_class;
 	u32					pm_qos_class_max;
+	u32					pm_qos_class_softmax;
 	struct exynos_pm_qos_request		sys_pm_qos_min;
 	struct exynos_pm_qos_request		debug_pm_qos_min;
 	struct exynos_pm_qos_request		debug_pm_qos_max;
