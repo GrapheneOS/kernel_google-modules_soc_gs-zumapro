@@ -101,5 +101,6 @@
 #define SBU2SW_MAP				GENMASK(5, 3)
 #define FLADC_SELECT_SBU2			(4 << 3)
 #define SBUSW_SERIAL_UART			0x12
+#define SBUSW_PATH_1				0x9
 
 #endif /* __TCPCI_MAX77759_VENDOR_REG_H */
