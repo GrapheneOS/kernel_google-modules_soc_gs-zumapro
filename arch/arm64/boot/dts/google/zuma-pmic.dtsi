@@ -314,9 +314,10 @@
 
 			m_ldo7_reg: LDO7M {
 				regulator-name = "S2MPG14_LDO7";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <3350000>;
-				regulator-initial-mode = <SEC_OPMODE_OFF>;
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x27>;
 				schematic-name = "L7M_DPAUX";
 				subsys-name = "Display";
