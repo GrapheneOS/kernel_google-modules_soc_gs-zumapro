@@ -65,6 +65,47 @@
 	};
 }; /* end of dpm */
 
+&itmon {
+	/* S2D default at ENG Binary */
+	err_tmout       = <GO_S2D_ID>;
+	err_prtchker    = <GO_S2D_ID>;
+	err_decerr      = <GO_S2D_ID>;
+	err_slverr      = <GO_S2D_ID>;
+	err_fatal       = <GO_DEFAULT_ID>;
+
+	customize {
+		/*
+		 * Default Priority     = 0,
+		 * CPU Priority         = 1,
+		 * Others IP Priority   = > 2
+		 */
+		node0 {
+			node                    = "BOOKER";	/* CPU */
+			prio                    = <1>;		/* 0 MIN ~ 7 MAX */
+			decerr_job              = <GO_DEFAULT_ID>;
+			slverr_job              = <GO_S2D_ID>;
+			tmout_job               = <GO_S2D_ID>;
+		};
+		/*
+		 * Below nodes are example for other blocks
+		 * node1 {
+		 *	node                    = "HSI0_P";
+		 *		prio                    = <2>;
+		 *		decerr_job              = <GO_S2D_ID>;
+		 *		slverr_job              = <GO_S2D_ID>;
+		 *		tmout_job               = <GO_S2D_ID>;
+		 *	};
+		 *	node2 {
+		 *		node                    = "G3D_P";
+		 *		prio                    = <2>;
+		 *		decerr_job              = <GO_S2D_ID>;
+		 *		slverr_job              = <GO_S2D_ID>;
+		 *		tmout_job               = <GO_S2D_ID>;
+		 *	};
+		 */
+	};
+};
+
 &log_arrdumppanic {
 	status = "disabled";
 };

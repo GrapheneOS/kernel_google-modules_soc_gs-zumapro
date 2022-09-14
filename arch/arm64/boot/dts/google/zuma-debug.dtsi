@@ -6,7 +6,6 @@
  */
 
 #include <dt-bindings/interrupt-controller/zuma.h>
-#include "zuma-dpm.dtsi"
 #include "zuma-ppmu.dtsi"
 / {
 	dss: dss {

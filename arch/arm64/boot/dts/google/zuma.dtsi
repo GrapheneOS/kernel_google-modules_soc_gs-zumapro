@@ -24,6 +24,7 @@
 #include "zuma-pinctrl.dtsi"
 #include "zuma-usi.dtsi"
 #include "zuma-debug.dtsi"
+#include "zuma-dpm.dtsi"
 #include "zuma-aoc.dtsi"
 #include "zuma-ufs.dtsi"
 #include "zuma-usb.dtsi"
