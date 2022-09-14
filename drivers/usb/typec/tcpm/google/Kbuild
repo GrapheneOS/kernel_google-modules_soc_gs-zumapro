@@ -12,3 +12,6 @@ obj-$(CONFIG_TYPEC_COOLING_DEV)         += usbc_cooling_dev.o
 
 # This gives the drivers access to the tcpci.h header
 ccflags-y := -I$(srctree)/drivers/usb/typec
+
+# This gives the drivers access to the logbuffer.h and gvotable.h header
+subdir-ccflags-y += -I$(KERNEL_SRC)/../private/google-modules/bms

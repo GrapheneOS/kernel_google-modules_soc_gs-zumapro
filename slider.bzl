@@ -98,6 +98,7 @@ def define_slider():
             "include/dtc/**",
         ]) + [
             "//common:kernel_aarch64_sources",
+            "//private/google-modules/bms/misc:bms-misc.kconfig",
             "//private/google-modules/power/reset:reset.kconfig",
             "//private/google-modules/touch/common:common.kconfig",
             "//private/google-modules/touch/fts/ftm5:ftm5.kconfig",
