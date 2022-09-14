@@ -342,7 +342,7 @@ def define_slider():
 
     kernel_images(
         name = "slider_images",
-        build_boot = True,
+        build_boot = False,
         build_dtbo = True,
         build_initramfs = True,
         build_vendor_boot = True,
