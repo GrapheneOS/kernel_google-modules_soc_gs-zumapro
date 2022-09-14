@@ -772,6 +772,19 @@
 			hold_sample_time = <60>;
 			hispeed_load = <100>;
 			hispeed_freq = <1352000>;
+
+			/* MIF to INT mapping table used in ALT DVFS */
+			mif_int_map = <
+				/*
+				 * mif_clk  int_clk
+				 *-----------------
+				 */
+				   3744000  1066000
+				   3172000   664000
+				   1716000   356000
+				   1539000   200000
+				   1352000   178000
+			>;
 		};
 
 		devfreq_1: devfreq_int@17000020 {
