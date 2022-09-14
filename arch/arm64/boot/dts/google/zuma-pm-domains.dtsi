@@ -81,7 +81,7 @@
 		cal_id = <0xB1380006>;
 		need_smc = <0x1D410204>;
 		cmu_id = <0x1D400000>;
-		status = "disabled";
+		status = "okay";
 		#power-domain-cells = <0>;
 	};
 
@@ -121,7 +121,7 @@
 		cal_id = <0xB138000A>;
 		need_smc = <0x1C410204>;
 		cmu_id = <0x1C400000>;
-		status = "disabled";
+		status = "okay";
 		#power-domain-cells = <0>;
 	};
 
@@ -141,7 +141,7 @@
 		cal_id = <0xB138000C>;
 		need_smc = <0x1C810204>;
 		cmu_id = <0x1C800000>;
-		status = "disabled";
+		status = "okay";
 		#power-domain-cells = <0>;
 	};
 
