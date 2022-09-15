@@ -81,7 +81,7 @@
 		cal_id = <0xB1380006>;
 		need_smc = <0x1D410204>;
 		cmu_id = <0x1D400000>;
-		status = "okay";
+		status = "disabled";
 		#power-domain-cells = <0>;
 	};
 
@@ -91,7 +91,7 @@
 		cal_id = <0xB1380007>;
 		need_smc = <0x1D810204>;
 		cmu_id = <0x1D800000>;
-		status = "okay";
+		status = "disabled";
 		#power-domain-cells = <0>;
 	};
 
@@ -101,7 +101,7 @@
 		cal_id = <0xB1380008>;
 		need_smc = <0x1D010204>;
 		cmu_id = <0x1D000000>;
-		status = "okay";
+		status = "disabled";
 		#power-domain-cells = <0>;
 	};
 
@@ -121,7 +121,7 @@
 		cal_id = <0xB138000A>;
 		need_smc = <0x1C410204>;
 		cmu_id = <0x1C400000>;
-		status = "okay";
+		status = "disabled";
 		#power-domain-cells = <0>;
 	};
 
@@ -131,7 +131,7 @@
 		cal_id = <0xB138000B>;
 		need_smc = <0x1CC10204>;
 		cmu_id = <0x1CC00000>;
-		status = "okay";
+		status = "disabled";
 		#power-domain-cells = <0>;
 	};
 
@@ -141,7 +141,7 @@
 		cal_id = <0xB138000C>;
 		need_smc = <0x1C810204>;
 		cmu_id = <0x1C800000>;
-		status = "okay";
+		status = "disabled";
 		#power-domain-cells = <0>;
 	};
 
@@ -192,7 +192,7 @@
 		cal_id = <0xB1380011>;
 		need_smc = <0x1C010204>;
 		cmu_id = <0x1C000000>;
-		status = "okay";
+		status = "disabled";
 		#power-domain-cells = <0>;
 	};
 
