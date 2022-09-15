@@ -456,6 +456,12 @@
 		reg = <0x0 0x15460000 0x10000>;
 	};
 
+	dsu-pmu-0 {
+		compatible = "arm,dsu-pmu";
+		interrupts = <GIC_SPI IRQ_CPUCL0_CLUSTERPMUIRQ_CPUCL0 IRQ_TYPE_LEVEL_HIGH>;
+		cpus = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>, <&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>, <&cpu8>;
+	};
+
 	gpio_keys: gpio_keys {
 		compatible = "gpio-keys";
 	};
