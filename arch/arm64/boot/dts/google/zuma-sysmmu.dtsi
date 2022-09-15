@@ -613,7 +613,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A350000>;
-		power-domains = <&pd_tpu>;
+		/* power-domains = <&pd_tpu>; */
 
 		port-name = "TPU";
 		#iommu-cells = <0>;
