@@ -715,7 +715,8 @@ static u64 __sched_period(unsigned long nr_running)
 		return sysctl_sched_latency;
 }
 
-static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost)
+int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost,
+		cpumask_t *valid_mask)
 {
 	struct root_domain *rd;
 	struct perf_domain *pd;
@@ -762,7 +763,7 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
 		pd_most_unimportant_cpu = -1;
 		pd_best_packing_cpu = -1;
 
-		for_each_cpu_and(i, perf_domain_span(pd), p->cpus_ptr) {
+		for_each_cpu_and(i, perf_domain_span(pd), valid_mask ? valid_mask : p->cpus_ptr) {
 			if (i >= CPU_NUM)
 				break;
 
@@ -1419,7 +1420,7 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 	}
 
 	if (sd_flag & SD_BALANCE_WAKE) {
-		*target_cpu = find_energy_efficient_cpu(p, prev_cpu, sync_boost);
+		*target_cpu = find_energy_efficient_cpu(p, prev_cpu, sync_boost, NULL);
 	}
 
 out:

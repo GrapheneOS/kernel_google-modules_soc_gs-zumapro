@@ -9,12 +9,16 @@
 #include <kernel/sched/sched.h>
 
 #include "sched_priv.h"
+#include "sched_events.h"
 
 struct vendor_group_list vendor_group_list[VG_MAX];
 
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 extern void update_uclamp_stats(int cpu, u64 time);
 #endif
+
+extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost,
+		cpumask_t *valid_mask);
 
 /*****************************************************************************/
 /*                       Upstream Code Section                               */
@@ -109,4 +113,28 @@ void rvh_dequeue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p
 		vp->queued_to_list = false;
 	}
 	raw_spin_unlock(&vp->lock);
+}
+
+void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
+	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu)
+{
+	cpumask_t valid_mask;
+	int best_energy_cpu = -1;
+
+	cpumask_and(&valid_mask, cpu_valid_mask, new_mask);
+
+	/* find a cpu again for the running/runnable/waking tasks
+	 * if their current cpu are not allowed
+	 */
+	if ((p->on_cpu || p->__state == TASK_WAKING || task_on_rq_queued(p)) &&
+		!cpumask_test_cpu(task_cpu(p), new_mask)) {
+		best_energy_cpu = find_energy_efficient_cpu(p, task_cpu(p), false, &valid_mask);
+
+		if (best_energy_cpu != -1)
+			*dest_cpu = best_energy_cpu;
+	}
+
+	trace_set_cpus_allowed_by_task(p, &valid_mask, *dest_cpu);
+
+	return;
 }
