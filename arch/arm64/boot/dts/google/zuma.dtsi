@@ -737,10 +737,8 @@
 			use_delay_time = "false";
 
 			/* FIXME: limit a max_freq to L1(3172MHz) */
-			/* Locked freq to 1352000 to solve USB flash crash
-			   and power issue. */
-			freq_info = <1352000 1352000 1352000 1352000
-					1352000 1352000>;
+			freq_info = <421000 421000 421000 421000
+					3172000 1014000>;
 			/* initial_freq, default_qos, suspend_freq,
 			min_freq, max_freq, reboot_freq */
 
@@ -800,10 +798,8 @@
 			/* Delay time */
 			use_delay_time = "false";
 
-			/* Locked freq to 664000 to solve USB flash crash and
-			   power issue. */
-			freq_info = <664000 664000 664000 664000
-					664000 664000>;
+			freq_info = <178000 178000 178000 178000
+					1066000 664000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
 
