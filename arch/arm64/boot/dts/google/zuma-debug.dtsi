@@ -124,7 +124,6 @@
 			<GIC_SPI IRQ_TREX_P_NOCL0_debugInterrupt_NOCL0
 							IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-affinity = <0xff>;
-		support-irq-oring;
 		status = "ok";
 	};
 
