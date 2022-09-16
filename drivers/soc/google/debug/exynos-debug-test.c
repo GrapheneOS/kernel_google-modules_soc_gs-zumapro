@@ -514,7 +514,7 @@ static void simulate_CPU_CONTEXT_CACHE_FLUSH_handler(void *info)
 	asm volatile("mov x0, %0\n\t"
 			"mov x1, #1\n\t"
 			"mov x2, #0x200000000\n\t"
-			"mov x2, #0x300000003\n\t"
+			"mov x3, #0x300000003\n\t"
 			"add x4, x0, #4\n\t"
 			"add x5, x0, #5\n\t"
 			"add x6, x0, #6\n\t"
