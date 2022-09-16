@@ -355,6 +355,9 @@ static void change_uart_gpio(int value, struct exynos_uart_port *ourport)
 	struct uart_port *port = &ourport->port;
 	unsigned long flags;
 
+	if (IS_ERR(ourport->pinctrl))
+		return;
+
 	spin_lock_irqsave(&port->lock, flags);
 
 	if (value) {
