@@ -44,6 +44,8 @@
 #define PRTCHK_S_CTL(x)			(0x1D00 + ((x) * 4))
 #define TMOUT_CTL(x)			(0x1900 + ((x) * 4))
 
+#define OFFSET_TMOUT_REG		(0x1A00)
+
 #define TMOUT_POINT_ADDR		(0x40)
 #define TMOUT_RW_OFFSET			(0x20)
 #define TMOUT_ID			(0x44)
@@ -88,6 +90,24 @@
 #define AXBURST(x)			(((x) & (0x3 << 2)) >> 2)
 #define AXPROT(x)			((x) & (0x3))
 
+#define TMOUT_BIT_ERR_CODE(x)		(((x) & (0xF << 28)) >> 28)
+#define TMOUT_BIT_ERR_OCCURRED(x)	(((x) & (0x1 << 27)) >> 27)
+#define TMOUT_BIT_ERR_VALID(x)		(((x) & (0x1 << 26)) >> 26)
+#define TMOUT_BIT_AXID(x)		(((x) & (0xFFFF)))
+#define TMOUT_BIT_AXUSER(x)		(((x) & (0xFFFFFFFF)))
+#define TMOUT_BIT_AXUSER_PERI(x)	(((x) & (0xFFFF << 16)) >> 16)
+#define TMOUT_BIT_AXBURST(x)		(((x) & (0x3)))
+#define TMOUT_BIT_AXPROT(x)		(((x) & (0x3 << 2)) >> 2)
+#define TMOUT_BIT_AXLEN(x)		(((x) & (0xF << 16)) >> 16)
+#define TMOUT_BIT_AXSIZE(x)		(((x) & (0x7 << 28)) >> 28)
+
+#define TMOUT_PAYLOAD_0			(0x48)
+#define TMOUT_PAYLOAD_1			(0x4C)
+#define TMOUT_PAYLOAD_2			(0x50)
+#define TMOUT_PAYLOAD_3			(0x54)
+#define TMOUT_PAYLOAD_4			(0x58)
+#define TMOUT_PAYLOAD_5			(0x5C)
+
 #define ERR_SLVERR			(0)
 #define ERR_DECERR			(1)
 #define ERR_UNSUPPORTED			(2)
@@ -131,6 +151,7 @@
 #define OFFSET_DSS_CUSTOM		(0xF000)
 #define CUSTOM_MAX_PRIO			(7)
 
+#define CPU_NAME_LENGTH			(16)
 #define	NOT_SUPPORT			(0xFF)
 
 #define log_dev_err(dev, fmt, ...)	\
@@ -312,6 +333,7 @@ struct itmon_nodegroup {
 	bool pd_status;
 	char pd_name[16];
 	u32 src_in;
+	bool frz_support;
 } __packed;
 
 struct itmon_keepdata {
@@ -364,6 +386,208 @@ struct itmon_dev {
 struct itmon_panic_block {
 	struct notifier_block nb_panic_block;
 	struct itmon_dev *pdev;
+};
+
+static struct itmon_rpathinfo rpathinfo[] = {
+	/* NOCL0_IO0-1 */
+	{0,	"AUR0",		"NOCL0_IO0",	0x3F},
+	{1,	"AUR1",		"NOCL0_IO0",	0x3F},
+	{2,	"BW",		"NOCL0_IO0",	0x3F},
+	{3,	"TPU0",		"NOCL0_IO0",	0x3F},
+	{4,	"TPU1",		"NOCL0_IO0",	0x3F},
+	{5,	"G3DMMU",	"NOCL0_IO0",	0x3F},
+	{6,	"G3D0",		"NOCL0_IO0",	0x3F},
+	{6,	"G3D1",		"NOCL0_IO1",	0x3F},
+	{7,	"DPUF0",	"NOCL0_IO0",	0x3F},
+	{8,	"DPUF1",	"NOCL0_IO0",	0x3F},
+	{9,	"ISPFE0",	"NOCL0_IO0",	0x3F},
+	{10,	"ISPFE1",	"NOCL0_IO0",	0x3F},
+	{11,	"ISPFE2",	"NOCL0_IO0",	0x3F},
+	{12,	"ISPFE3",	"NOCL0_IO0",	0x3F},
+	{13,	"RGBP2",	"NOCL0_IO0",	0x3F},
+	{14,	"HSI2",		"NOCL0_IO0",	0x3F},
+	{15,	"MFC0",		"NOCL0_IO0",	0x3F},
+	{16,	"MFC1",		"NOCL0_IO0",	0x3F},
+	{17,	"RGBP0",	"NOCL0_IO0",	0x3F},
+	{18,	"RGBP1",	"NOCL0_IO0",	0x3F},
+	{19,	"RGBP3",	"NOCL0_IO0",	0x3F},
+	{20,	"RGBP4",	"NOCL0_IO0",	0x3F},
+	{21,	"RGBP5",	"NOCL0_IO0",	0x3F},
+	{22,	"RGBP6",	"NOCL0_IO0",	0x3F},
+	{23,	"GDC0",		"NOCL0_IO0",	0x3F},
+	{24,	"GDC1",		"NOCL0_IO0",	0x3F},
+	{25,	"GDC2",		"NOCL0_IO0",	0x3F},
+	{26,	"G2D0",		"NOCL0_IO0",	0x3F},
+	{27,	"G2D1",		"NOCL0_IO0",	0x3F},
+	{28,	"G2D2",		"NOCL0_IO0",	0x3F},
+	{29,	"GSE",		"NOCL0_IO0",	0x3F},
+	{30,	"MCSC0",	"NOCL0_IO0",	0x3F},
+	{31,	"MCSC1",	"NOCL0_IO0",	0x3F},
+	{32,	"MISC",		"NOCL0_IO0",	0x3F},
+	{33,	"YUVP",		"NOCL0_IO0",	0x3F},
+	{34,	"TNR0",		"NOCL0_IO0",	0x3F},
+	{35,	"TNR1",		"NOCL0_IO0",	0x3F},
+	{36,	"TNR2",		"NOCL0_IO0",	0x3F},
+	{37,	"TNR3",		"NOCL0_IO0",	0x3F},
+	{38,	"TNR4",		"NOCL0_IO0",	0x3F},
+	{39,	"TNR5",		"NOCL0_IO0",	0x3F},
+	{40,	"AUR0",		"NOCL0_IO1",	0x3F},
+	{41,	"AUR1",		"NOCL0_IO1",	0x3F},
+	{42,	"BW",		"NOCL0_IO1",	0x3F},
+	{43,	"TPU0",		"NOCL0_IO1",	0x3F},
+	{44,	"TPU1",		"NOCL0_IO1",	0x3F},
+	{45,	"G3DMMU",	"NOCL0_IO1",	0x3F},
+	{46,	"G3D2",		"NOCL0_IO0",	0x3F},
+	{46,	"G3D3",		"NOCL0_IO1",	0x3F},
+	{47,	"DPUF0",	"NOCL0_IO1",	0x3F},
+	{48,	"DPUF1",	"NOCL0_IO1",	0x3F},
+	{49,	"ISPFE0",	"NOCL0_IO1",	0x3F},
+	{50,	"ISPFE1",	"NOCL0_IO1",	0x3F},
+	{51,	"ISPFE2",	"NOCL0_IO1",	0x3F},
+	{52,	"ISPFE3",	"NOCL0_IO1",	0x3F},
+	{53,	"RGBP2",	"NOCL0_IO1",	0x3F},
+	{54,	"HSI2",		"NOCL0_IO1",	0x3F},
+	{55,	"MFC0",		"NOCL0_IO1",	0x3F},
+	{56,	"MFC1",		"NOCL0_IO1",	0x3F},
+	{57,	"RGBP0",	"NOCL0_IO1",	0x3F},
+	{58,	"RGBP1",	"NOCL0_IO1",	0x3F},
+	{59,	"RGBP3",	"NOCL0_IO1",	0x3F},
+	{60,	"RGBP4",	"NOCL0_IO1",	0x3F},
+	{61,	"RGBP5",	"NOCL0_IO1",	0x3F},
+	{62,	"RGBP6",	"NOCL0_IO1",	0x3F},
+	{63,	"GDC0",		"NOCL0_IO1",	0x3F},
+	{64,	"GDC1",		"NOCL0_IO1",	0x3F},
+	{65,	"GDC2",		"NOCL0_IO1",	0x3F},
+	{66,	"G2D0",		"NOCL0_IO1",	0x3F},
+	{67,	"G2D1",		"NOCL0_IO1",	0x3F},
+	{68,	"G2D2",		"NOCL0_IO1",	0x3F},
+	{69,	"GSE",		"NOCL0_IO1",	0x3F},
+	{70,	"MCSC0",	"NOCL0_IO1",	0x3F},
+	{71,	"MCSC1",	"NOCL0_IO1",	0x3F},
+	{72,	"MISC",		"NOCL0_IO1",	0x3F},
+	{73,	"YUVP",		"NOCL0_IO1",	0x3F},
+	{74,	"TNR0",		"NOCL0_IO1",	0x3F},
+	{75,	"TNR1",		"NOCL0_IO1",	0x3F},
+	{76,	"TNR2",		"NOCL0_IO1",	0x3F},
+	{77,	"TNR3",		"NOCL0_IO1",	0x3F},
+	{78,	"TNR4",		"NOCL0_IO1",	0x3F},
+	{79,	"TNR5",		"NOCL0_IO1",	0x3F},
+	{80,	"ALIVE",	"NOCL0_IO",	0x3F},
+	{81,	"AOC",		"NOCL0_IO",	0x3F},
+	{82,	"CSSYS",	"NOCL0_IO",	0x3F},
+	{83,	"GSA",		"NOCL0_IO",	0x3F},
+	{84,	"HSI0",		"NOCL0_IO",	0x3F},
+	{85,	"HIS1",		"NOCL0_IO",	0x3F},
+
+	/* NOCL0_M0 / M1 / M2 / M3 CPU specific */
+	{0,	"CPU0",		"NOCL0_M0",	0x3F},
+	{0,	"CPU1",		"NOCL0_M1",	0x3F},
+	{0,	"CPU2",		"NOCL0_M2",	0x3F},
+	{0,	"CPU3",		"NOCL0_M3",	0x3F},
+
+	/* NOCL0_M0 / M1 / M2 / M3 Common */
+	{1,	"AUR0",		"NOCL0_M",	0x3F},
+	{2,	"AUR1",		"NOCL0_M",	0x3F},
+	{3,	"BW",		"NOCL0_M",	0x3F},
+	{4,	"TPU0",		"NOCL0_M",	0x3F},
+	{5,	"TPU1",		"NOCL0_M",	0x3F},
+	{6,	"G3DMMU",	"NOCL0_M",	0x3F},
+	{7,	"G3D0",		"NOCL0_M0",	0x3F},
+	{7,	"G3D1",		"NOCL0_M1",	0x3F},
+	{7,	"G3D2",		"NOCL0_M2",	0x3F},
+	{7,	"G3D3",		"NOCL0_M3",	0x3F},
+	{8,	"DPUF0",	"NOCL0_M",	0x3F},
+	{9,	"DPUF1",	"NOCL0_M",	0x3F},
+	{10,	"ISPFE0",	"NOCL0_M",	0x3F},
+	{11,	"ISPFE1",	"NOCL0_M",	0x3F},
+	{12,	"ISPFE2",	"NOCL0_M",	0x3F},
+	{13,	"ISPFE3",	"NOCL0_M",	0x3F},
+	{14,	"RGBP2",	"NOCL0_M",	0x3F},
+	{15,	"HSI2",		"NOCL0_M",	0x3F},
+	{16,	"MFC0",		"NOCL0_M",	0x3F},
+	{17,	"MFC1",		"NOCL0_M",	0x3F},
+	{18,	"RGBP0",	"NOCL0_M",	0x3F},
+	{19,	"RGBP1",	"NOCL0_M",	0x3F},
+	{20,	"RGBP3",	"NOCL0_M",	0x3F},
+	{21,	"RGBP4",	"NOCL0_M",	0x3F},
+	{22,	"RGBP5",	"NOCL0_M",	0x3F},
+	{23,	"RGBP6",	"NOCL0_M",	0x3F},
+	{24,	"GDC0",		"NOCL0_M",	0x3F},
+	{25,	"GDC1",		"NOCL0_M",	0x3F},
+	{26,	"GDC2",		"NOCL0_M",	0x3F},
+	{27,	"G2D0",		"NOCL0_M",	0x3F},
+	{28,	"G2D1",		"NOCL0_M",	0x3F},
+	{29,	"G2D2",		"NOCL0_M",	0x3F},
+	{30,	"GSE",		"NOCL0_M",	0x3F},
+	{31,	"MCSC0",	"NOCL0_M",	0x3F},
+	{32,	"MCSC1",	"NOCL0_M",	0x3F},
+	{33,	"MISC",		"NOCL0_M",	0x3F},
+	{34,	"YUVP",		"NOCL0_M",	0x3F},
+	{35,	"TNR0",		"NOCL0_M",	0x3F},
+	{36,	"TNR1",		"NOCL0_M",	0x3F},
+	{37,	"TNR2",		"NOCL0_M",	0x3F},
+	{38,	"TNR3",		"NOCL0_M",	0x3F},
+	{39,	"TNR4",		"NOCL0_M",	0x3F},
+	{40,	"TNR5",		"NOCL0_M",	0x3F},
+	{41,	"ALIVE",	"NOCL0_M",	0x3F},
+	{42,	"AOC",		"NOCL0_M",	0x3F},
+	{43,	"CSSYS",	"NOCL0_M",	0x3F},
+	{44,	"GSA",		"NOCL0_M",	0x3F},
+	{45,	"HSI0",		"NOCL0_M",	0x3F},
+	{46,	"HIS1",		"NOCL0_M",	0x3F},
+
+	/* 0x0000_0000 - 0x7fff_ffff */
+	{0,	"AUR0",		"NOCL0_DP",	0x3F},
+	{1,	"AUR1",		"NOCL0_DP",	0x3F},
+	{2,	"BW",		"NOCL0_DP",	0x3F},
+	{3,	"TPU0",		"NOCL0_DP",	0x3F},
+	{4,	"TPU1",		"NOCL0_DP",	0x3F},
+	{5,	"G3DMMU",	"NOCL0_DP",	0x3F},
+	{6,	"G3D0",		"NOCL0_DP",	0x3F},
+	{7,	"DPUF0",	"NOCL0_DP",	0x3F},
+	{8,	"DPUF1",	"NOCL0_DP",	0x3F},
+	{9,	"ISPFE0",	"NOCL0_DP",	0x3F},
+	{10,	"ISPFE1",	"NOCL0_DP",	0x3F},
+	{11,	"ISPFE2",	"NOCL0_DP",	0x3F},
+	{12,	"ISPFE3",	"NOCL0_DP",	0x3F},
+	{13,	"RGBP2",	"NOCL0_DP",	0x3F},
+	{14,	"HSI2",		"NOCL0_DP",	0x3F},
+	{15,	"MFC0",		"NOCL0_DP",	0x3F},
+	{16,	"MFC1",		"NOCL0_DP",	0x3F},
+	{17,	"RGBP0",	"NOCL0_DP",	0x3F},
+	{18,	"RGBP1",	"NOCL0_DP",	0x3F},
+	{19,	"RGBP3",	"NOCL0_DP",	0x3F},
+	{20,	"RGBP4",	"NOCL0_DP",	0x3F},
+	{21,	"RGBP5",	"NOCL0_DP",	0x3F},
+	{22,	"RGBP6",	"NOCL0_DP",	0x3F},
+	{23,	"GDC0",		"NOCL0_DP",	0x3F},
+	{24,	"GDC1",		"NOCL0_DP",	0x3F},
+	{25,	"GDC2",		"NOCL0_DP",	0x3F},
+	{26,	"G2D0",		"NOCL0_DP",	0x3F},
+	{27,	"G2D1",		"NOCL0_DP",	0x3F},
+	{28,	"G2D2",		"NOCL0_DP",	0x3F},
+	{29,	"GSE",		"NOCL0_DP",	0x3F},
+	{30,	"MCSC0",	"NOCL0_DP",	0x3F},
+	{31,	"MCSC1",	"NOCL0_DP",	0x3F},
+	{32,	"MISC",		"NOCL0_DP",	0x3F},
+	{33,	"YUVP",		"NOCL0_DP",	0x3F},
+	{34,	"TNR0",		"NOCL0_DP",	0x3F},
+	{35,	"TNR1",		"NOCL0_DP",	0x3F},
+	{36,	"TNR2",		"NOCL0_DP",	0x3F},
+	{37,	"TNR3",		"NOCL0_DP",	0x3F},
+	{38,	"TNR4",		"NOCL0_DP",	0x3F},
+	{39,	"TNR5",		"NOCL0_DP",	0x3F},
+	{40,	"ALIVE",	"NOCL0_DP",	0x3F},
+	{41,	"AOC",		"NOCL0_DP",	0x3F},
+	{42,	"CSSYS",	"NOCL0_DP",	0x3F},
+	{43,	"GSA",		"NOCL0_DP",	0x3F},
+	{44,	"HSI0",		"NOCL0_DP",	0x3F},
+	{45,	"HIS1",		"NOCL0_DP",	0x3F},
+
+	/* Configuration Interconnect */
+	{0,	"BOOKER",	"CONFIGURATION",	0x3},
+	{1,	"CSSYS",	"CONFIGURATION",	0x3},
+	{2,	"NOCL0_DP",	"CONFIGURATION",	0x3},
 };
 
 static struct itmon_clientinfo clientinfo[] = {
@@ -829,6 +1053,63 @@ struct itmon_nodeinfo *itmon_get_nodeinfo_by_eid(struct itmon_dev *itmon,
 	return NULL;
 }
 
+struct itmon_nodeinfo *itmon_get_nodeinfo_group_by_tmout_offset(struct itmon_dev *itmon,
+								struct itmon_nodegroup *group,
+								u32 tmout_offset)
+{
+	struct itmon_nodeinfo *node = group->nodeinfo;
+	int i;
+
+	for (i = 0; i < group->nodesize; i++) {
+		if (node[i].tmout_offset == tmout_offset)
+			return &node[i];
+	}
+
+	return NULL;
+}
+
+struct itmon_nodeinfo *itmon_get_nodeinfo_by_tmout_offset(struct itmon_dev *itmon,
+							  struct itmon_nodegroup *group,
+							  u32 tmout_offset)
+{
+	struct itmon_platdata *pdata = itmon->pdata;
+	struct itmon_nodeinfo *node = NULL;
+	int i;
+
+	if (group)
+		return itmon_get_nodeinfo_group_by_tmout_offset(itmon, group, tmout_offset);
+
+	for (i = 0; i < pdata->num_nodegroup; i++) {
+		group = &pdata->nodegroup[i];
+		node = itmon_get_nodeinfo_group_by_tmout_offset(itmon, group, tmout_offset);
+		if (node)
+			return node;
+	}
+
+	return NULL;
+}
+
+static struct itmon_rpathinfo *itmon_get_rpathinfo(struct itmon_dev *itmon,
+						   unsigned int id,
+						   char *dest_name)
+{
+	struct itmon_platdata *pdata = itmon->pdata;
+	int i;
+
+	if (!dest_name)
+		return NULL;
+
+	for (i = 0; i < pdata->num_rpathinfo; i++) {
+		if (pdata->rpathinfo[i].id == (id & pdata->rpathinfo[i].bits)) {
+			if (!strncmp(pdata->rpathinfo[i].dest_name, dest_name,
+				     strlen(pdata->rpathinfo[i].dest_name)))
+				return &pdata->rpathinfo[i];
+		}
+	}
+
+	return NULL;
+}
+
 static char *itmon_get_clientinfo(struct itmon_dev *itmon,
 				  char *port_name,
 				  u32 user)
@@ -847,6 +1128,161 @@ static char *itmon_get_clientinfo(struct itmon_dev *itmon,
 	}
 
 	return NULL;
+}
+
+static int itmon_parse_cpuinfo_by_name(struct itmon_dev *itmon,
+				       const char *name,
+				       unsigned int userbit,
+				       char *cpu_name)
+{
+	struct itmon_platdata *pdata = itmon->pdata;
+	int core_num = 0, el2 = 0, strong = 0, i;
+
+	if (!cpu_name)
+		return 0;
+
+	for (i = 0; i < (int)ARRAY_SIZE(itmon_cpu_node_string); i++) {
+		if (!strncmp(name, itmon_cpu_node_string[i],
+			     strlen(itmon_cpu_node_string[i]))) {
+			if (userbit & BIT(0))
+				el2 = 1;
+			if (DSS_NR_CPUS > 8) {
+				if (!(userbit & BIT(1)))
+					strong = 1;
+				core_num = ((userbit & (0xF << 2)) >> 2);
+			} else {
+				core_num = ((userbit & (0x7 << 1)) >> 1);
+				strong = 0;
+			}
+			if (pdata->cpu_parsing) {
+				scnprintf(cpu_name, CPU_NAME_LENGTH - 1,
+					  "CPU%d%s%s", core_num, el2 == 1 ? "EL2" : "",
+					  strong == 1 ? "Strng" : "");
+			} else {
+				scnprintf(cpu_name, CPU_NAME_LENGTH - 1, "CPU");
+			}
+			return 1;
+		}
+	};
+
+	return 0;
+}
+
+static void _itmon_report_timeout(struct itmon_dev *itmon,
+				  struct itmon_nodegroup *group,
+				  struct itmon_nodeinfo *node,
+				  unsigned int trans_type,
+				  unsigned int bit,
+				  int num,
+				  int rw_offset)
+{
+	unsigned int id, payload0, payload1, payload2, payload3, payload4, payload5;
+	unsigned int axid, valid, timeout;
+	unsigned long addr, user;
+	u32 axburst, axprot, axlen, axsize, domain;
+	struct itmon_rpathinfo *port = NULL;
+	char *client_name = NULL;
+	char cpu_name[CPU_NAME_LENGTH] = {0, };
+
+	/*
+	 * PAYLOAD0 -> PAYLOAD_FROM_BUFFER
+	 * PAYLOAD1 -> PAYLOAD_FROM_SRAM_1
+	 * PAYLOAD2 -> PAYLOAD_FROM_SRAM_2
+	 * PAYLOAD3 -> PAYLOAD_FROM_SRAM_3
+	 * PAYLOAD4 -> USER_FROM_BUFFER_0
+	 * PAYLOAD5 -> USER_FROM_BUFFER_1
+	 */
+
+	writel(num | (bit << 16), group->regs + OFFSET_TMOUT_REG + TMOUT_POINT_ADDR + rw_offset);
+	id = readl(group->regs + OFFSET_TMOUT_REG + TMOUT_ID + rw_offset);
+	payload0 = readl(group->regs + OFFSET_TMOUT_REG +
+			 TMOUT_PAYLOAD_0 + rw_offset);
+	payload1 = readl(group->regs + OFFSET_TMOUT_REG +
+			 TMOUT_PAYLOAD_1 + rw_offset);
+	payload2 = readl(group->regs + OFFSET_TMOUT_REG +
+			 TMOUT_PAYLOAD_2 + rw_offset);
+	payload3 = readl(group->regs + OFFSET_TMOUT_REG +
+			 TMOUT_PAYLOAD_3 + rw_offset);
+	payload4 = readl(group->regs + OFFSET_TMOUT_REG +
+			 TMOUT_PAYLOAD_4 + rw_offset);
+	payload5 = readl(group->regs + OFFSET_TMOUT_REG +
+			 TMOUT_PAYLOAD_5 + rw_offset);
+
+	timeout = (payload0 & (unsigned int)(GENMASK(7, 4))) >> 4;
+	user = ((unsigned long)payload4 << 32ULL) | payload5;
+	addr = (((unsigned long)payload1 & GENMASK(15, 0)) << 32ULL) | payload2;
+	axid = id & GENMASK(5, 0); /* ID[5:0] 6bit : R-PATH */
+	valid = payload0 & BIT(0); /* PAYLOAD[0] : Valid or Not valid */
+	axburst = TMOUT_BIT_AXBURST(payload3);
+	axprot = TMOUT_BIT_AXPROT(payload3);
+	axlen = (payload3 & (unsigned int)GENMASK(7, 4)) >> 4;
+	axsize = (payload3 & (unsigned int)GENMASK(18, 16)) >> 16;
+	domain = (payload3 & BIT(19));
+
+	if (group->path_type == CONFIG) {
+		port = itmon_get_rpathinfo(itmon, axid, "CONFIGURATION");
+		if (port)
+			itmon_parse_cpuinfo_by_name(itmon, port->port_name, user, cpu_name);
+		client_name = cpu_name;
+	} else {
+		port = itmon_get_rpathinfo(itmon, axid, node->name);
+		if (port)
+			client_name = itmon_get_clientinfo(itmon, port->port_name, user);
+	}
+
+	if (valid)
+		log_dev_err(itmon->dev, "> %03d|%05s|%16s|%16s|%5u|%5x|%06x|%6s|%4u|%4s|%016zx|%08x|%08x|%08x|%08x|%08x|%08x\n",
+			    num, (trans_type == TRANS_TYPE_READ) ? "READ" : "WRITE",
+			    port ? port->port_name : NO_NAME,
+			    client_name ? client_name : NO_NAME,
+			    valid, timeout, id, domain ? "SHARE" : "NSHARE",
+			    int_pow(2, axsize * (axlen + 1)),
+			    axprot & BIT(1) ? "NSEC" : "SEC",
+			    addr, payload0, payload1, payload2, payload3, payload4, payload5);
+}
+
+static void itmon_report_timeout(struct itmon_dev *itmon,
+				 struct itmon_nodegroup *group)
+{
+	int i, num = SZ_128;
+	int rw_offset = 0;
+	unsigned int trans_type;
+	unsigned long tmout_frz_stat;
+	unsigned int tmout_offset;
+	struct itmon_nodeinfo *node;
+	unsigned int bit = 0;
+
+	if (group)
+		dev_info(itmon->dev, "group %s frz_support %s\n",
+			 group->name, group->frz_support ? "YES" : "NO");
+
+	if (!group->frz_support)
+		return;
+
+	tmout_frz_stat = readl(group->regs + OFFSET_TMOUT_REG);
+
+	if (tmout_frz_stat == 0x0)
+		return;
+
+	log_dev_err(itmon->dev, "TIMEOUT_FREEZE_STATUS 0x%08x", tmout_frz_stat);
+
+	for_each_set_bit(bit, &tmout_frz_stat, group->nodesize) {
+		tmout_offset = (1 << bit) >> 1;
+		node = itmon_get_nodeinfo_group_by_tmout_offset(itmon, group, tmout_offset);
+
+		log_dev_err(itmon->dev, "\nITMON Report Timeout Error Occurred : Client --> %s\n\n",
+			    node->name);
+		log_dev_err(itmon->dev, "> NUM| TYPE|    CLIENT BLOCK|          CLIENT|VALID|TMOUT|    ID|DOMAIN|SIZE|PROT|         ADDRESS|PAYLOAD0|PAYLOAD1|PAYLOAD2|PAYLOAD3|PAYLOAD4|PAYLOAD5");
+
+		for (trans_type = TRANS_TYPE_WRITE; trans_type < TRANS_TYPE_NUM; trans_type++) {
+			num = (trans_type == TRANS_TYPE_READ ? SZ_128 : SZ_64);
+			rw_offset = (trans_type == TRANS_TYPE_READ ? 0 : TMOUT_RW_OFFSET);
+
+			for (i = 0; i < num; i++)
+				_itmon_report_timeout(itmon, group, node,
+						      trans_type, bit, i, rw_offset);
+		}
+	}
 }
 
 /* need to reconfiguable to the address */
@@ -1005,7 +1441,7 @@ static void itmon_en_timeout(struct itmon_dev *itmon,
 		val |= (node->tmout_frz_en << 1);
 		val |= (node->time_val << 4);
 
-		writel(en, reg + offset);
+		writel(val, reg + offset);
 		name = node->name;
 	} else {
 		node = group->nodeinfo;
@@ -1164,7 +1600,7 @@ static void itmon_init(struct itmon_dev *itmon, bool en)
 		if (group->pd_support && !group->pd_status)
 			continue;
 		itmon_en_global(itmon, group, en, en, en, en, en);
-		if (!pdata->def_en)
+		if (pdata->def_en)
 			itmon_init_by_group(itmon, group, en);
 	}
 
@@ -1718,7 +2154,6 @@ static void *itmon_collect_errlog(struct itmon_dev *itmon,
 	return (void *)new_data;
 }
 
-/* TODO : implement protocol checker and timeout freeze */
 static int itmon_pop_errlog(struct itmon_dev *itmon,
 			    struct itmon_nodegroup *group,
 			    bool clear)
@@ -1735,15 +2170,6 @@ static int itmon_pop_errlog(struct itmon_dev *itmon,
 		writel(1, reg + ERR_LOG_POP);
 		num_log = readl(group->regs + ERR_LOG_STAT);
 		ret++;
-
-		switch (data->err_code) {
-		case ERR_TMOUT:
-		/* Timeout */
-		break;
-		case ERR_PRTCHK_ARID_RID ... ERR_PRTCHK_AWLEN_WLAST_NL:
-		/* Protocol Checker */
-		break;
-		}
 		max_log--;
 
 		if (max_log == 0)
@@ -1768,6 +2194,7 @@ static int itmon_search_errlog(struct itmon_dev *itmon,
 
 	if (group) {
 		ret = itmon_pop_errlog(itmon, group, clear);
+		itmon_report_timeout(itmon, group);
 	} else {
 		/* Processing all group & nodes */
 		for (i = 0; i < pdata->num_nodegroup; i++) {
@@ -1775,6 +2202,7 @@ static int itmon_search_errlog(struct itmon_dev *itmon,
 			if (group->pd_support && !group->pd_status)
 				continue;
 			ret += itmon_pop_errlog(itmon, group, clear);
+			itmon_report_timeout(itmon, group);
 		}
 	}
 	if (ret)
@@ -2069,6 +2497,9 @@ static int itmon_probe(struct platform_device *pdev)
 
 	pdata->nodegroup = nodegroup;
 	pdata->num_nodegroup = ARRAY_SIZE(nodegroup);
+
+	pdata->rpathinfo = rpathinfo;
+	pdata->num_rpathinfo = ARRAY_SIZE(rpathinfo);
 
 	itmon->pdata->policy = err_policy;
 
