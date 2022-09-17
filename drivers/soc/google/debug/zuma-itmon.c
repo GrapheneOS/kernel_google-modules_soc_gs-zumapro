@@ -168,6 +168,24 @@ struct itmon_policy {
 	bool error;
 };
 
+static struct itmon_policy err_policy[] = {
+	[TMOUT]         = {"err_tmout",         0, 0, 0, false},
+	[PRTCHKER]      = {"err_prtchker",      0, 0, 0, false},
+	[DECERR]        = {"err_decerr",        0, 0, 0, false},
+	[SLVERR]        = {"err_slverr",        0, 0, 0, false},
+	[FATAL]         = {"err_fatal",         0, 0, 0, false},
+};
+
+static const char * const itmon_dpm_action[] = {
+	GO_DEFAULT,
+	GO_PANIC,
+	GO_WATCHDOG,
+	GO_S2D,
+	GO_ARRAYDUMP,
+	GO_SCANDUMP,
+	GO_HALT,
+};
+
 struct itmon_rpathinfo {
 	unsigned short id;
 	char port_name[16];
@@ -231,6 +249,37 @@ struct itmon_tracedata {
 	struct list_head list;
 };
 
+struct itmon_nodepolicy {
+	union {
+		u64 en;
+		struct {
+			u64 chk_set : 1;
+			u64 prio : 3;
+			u64 chk_errrpt : 1;
+			u64 en_errrpt : 1;
+			u64 chk_tmout : 1;
+			u64 en_tmout : 1;
+			u64 chk_prtchk : 1;
+			u64 en_prtchk : 1;
+			u64 chk_tmout_val : 1;
+			u64 en_tmout_val : 28;
+			u64 chk_freeze : 1;
+			u64 en_freeze : 1;
+			u64 chk_irq_mask : 1;
+			u64 en_irq_mask : 1;
+			u64 chk_job : 1;
+			u64 chk_decerr_job : 1;
+			u64 en_decerr_job : 3;
+			u64 chk_slverr_job : 1;
+			u64 en_slverr_job : 3;
+			u64 chk_tmout_job : 1;
+			u64 en_tmout_job : 3;
+			u64 chk_prtchk_job : 1;
+			u64 en_prtchk_job : 3;
+		};
+	};
+} __packed;
+
 struct itmon_nodeinfo {
 	char name[16];
 	u32 type : 3;
@@ -246,6 +295,7 @@ struct itmon_nodeinfo {
 	u32 tmout_offset : 8;
 	u32 prtchk_offset : 8;
 	struct itmon_nodegroup *group;
+	struct itmon_nodepolicy policy;
 } __packed;
 
 struct itmon_nodegroup {
@@ -976,6 +1026,58 @@ static void itmon_en_timeout(struct itmon_dev *itmon,
 	log_dev_dbg(itmon->dev, "ITMON - %s timeout %sabled\n", name, en ? "en" : "dis");
 }
 
+static void itmon_enable_nodepolicy(struct itmon_dev *itmon,
+				    struct itmon_nodeinfo *node)
+{
+	struct itmon_nodepolicy *policy = &node->policy;
+	struct itmon_nodegroup *group = node->group;
+
+	if (!policy->chk_set)
+		return;
+
+	if (group->pd_support && !group->pd_status) {
+		dev_err(g_itmon->dev, "%s group - %s node NOT pd on\n",
+			group, node);
+	}
+
+	if (policy->chk_errrpt)
+		itmon_en_err_report(itmon, group, node, policy->en_errrpt);
+	if (policy->chk_tmout || policy->chk_tmout_val)
+		itmon_en_timeout(itmon, group, node, policy->en_tmout);
+	if (policy->chk_prtchk)
+		itmon_en_prt_chk(itmon, group, node, policy->en_prtchk);
+}
+
+static void itmon_set_nodepolicy(struct itmon_dev *itmon,
+				 struct itmon_nodeinfo *node,
+				 struct itmon_nodepolicy policy,
+				 bool now)
+{
+	node->policy.en = policy.en;
+
+	if (policy.chk_errrpt)
+		node->err_en = policy.en_errrpt;
+	if (policy.chk_tmout)
+		node->tmout_en = policy.en_tmout;
+	if (policy.chk_prtchk)
+		node->prt_chk_en = policy.en_prtchk;
+	if (policy.chk_tmout_val)
+		node->time_val = policy.en_tmout_val;
+	if (policy.chk_freeze)
+		node->tmout_frz_en = policy.en_freeze;
+
+	if (policy.chk_errrpt || policy.chk_tmout ||
+	    policy.chk_prtchk || policy.chk_tmout_val ||
+	    policy.chk_errrpt || policy.chk_prtchk_job ||
+	    policy.chk_tmout || policy.chk_freeze ||
+	    policy.chk_decerr_job || policy.chk_slverr_job ||
+	    policy.chk_tmout_job)
+		node->policy.chk_set = 1;
+
+	if (now)
+		itmon_enable_nodepolicy(itmon, node);
+}
+
 int itmon_en_by_name(const char *name, bool en)
 {
 	struct itmon_nodeinfo *node;
@@ -1105,6 +1207,95 @@ void itmon_en(bool en)
 }
 EXPORT_SYMBOL(itmon_en);
 
+int itmon_get_dpm_policy(struct itmon_dev *itmon)
+{
+	struct itmon_platdata *pdata = itmon->pdata;
+	int i, policy = -1;
+
+	for (i = 0; i < TYPE_MAX; i++) {
+		if (pdata->policy[i].error && pdata->policy[i].policy > policy)
+			policy = pdata->policy[i].policy;
+	}
+
+	return policy;
+}
+
+static void itmon_dump_dpm_policy(struct itmon_dev *itmon)
+{
+	struct itmon_platdata *pdata = itmon->pdata;
+	int i;
+
+	log_dev_info(itmon->dev, "\t\tError Policy Information\n\n\t\t> NAME           |Error    |Policy-def |Policy-now\n");
+	for (i = 0; i < TYPE_MAX; i++) {
+		log_dev_info(itmon->dev, "\t\t> %15s%10s%10s%10s\n",
+			     pdata->policy[i].name,
+			     pdata->policy[i].error ? "TRUE" : "FALSE",
+			     itmon_dpm_action[pdata->policy[i].policy_def],
+			     itmon_dpm_action[pdata->policy[i].policy]);
+	}
+	log_dev_info(itmon->dev, "\n");
+}
+
+static void itmon_do_dpm_policy(struct itmon_dev *itmon, bool clear)
+{
+	struct itmon_platdata *pdata = itmon->pdata;
+	int i, sel, policy = -1;
+
+	for (i = 0; i < TYPE_MAX; i++) {
+		if (pdata->policy[i].error && pdata->policy[i].policy > policy) {
+			policy = pdata->policy[i].policy;
+			sel = i;
+		}
+		if (clear) {
+			pdata->policy[i].policy = pdata->policy[i].policy_def;
+			pdata->policy[i].prio = 0;
+		}
+	}
+
+	if (policy >= GO_DEFAULT_ID) {
+		log_dev_err(itmon->dev, "%s: %s: policy:%s\n", __func__,
+			    pdata->policy[sel].name, itmon_dpm_action[policy]);
+		dbg_snapshot_do_dpm_policy(policy, "ITMON");
+	}
+}
+
+static void itmon_reflect_policy_by_notifier(struct itmon_dev *itmon,
+					     struct itmon_traceinfo *info,
+					     int ret)
+{
+	struct itmon_platdata *pdata = itmon->pdata;
+	struct itmon_policy *pl_policy;
+	int sig, num;
+
+	if ((ret & ITMON_NOTIFY_MASK) != ITMON_NOTIFY_MASK)
+		return;
+
+	sig = ret & ~ITMON_NOTIFY_MASK;
+
+	switch (info->err_code) {
+	case ERR_DECERR:
+		num = DECERR;
+		break;
+	case ERR_SLVERR:
+		num = SLVERR;
+		break;
+	case ERR_TMOUT:
+		num = TMOUT;
+		break;
+	default:
+		log_dev_err(itmon->dev, "%s: Invalid error code(%u)\n",
+			    __func__, info->err_code);
+		return;
+	}
+	pl_policy = &pdata->policy[num];
+
+	log_dev_info(itmon->dev, "\nPolicy Changes: %d -> %d in %s by notifier-call\n\n",
+		     pl_policy->policy, sig, itmon_errcode[info->err_code]);
+
+	pl_policy->policy = sig;
+	pl_policy->prio = CUSTOM_MAX_PRIO;
+}
+
 static int itmon_notifier_handler(struct itmon_dev *itmon,
 				  struct itmon_traceinfo *info,
 				  unsigned int trans_type)
@@ -1124,14 +1315,108 @@ static int itmon_notifier_handler(struct itmon_dev *itmon,
 	itmon->notifier_info.errcode = info->err_code;
 	itmon->notifier_info.onoff = info->onoff;
 
-	pr_err("----------------------------------------------------------------------------------\n\t\t+ITMON Notifier Call Information\n");
+	log_dev_err(itmon->dev, "----------------------------------------------------------------------------------\n\t\t+ITMON Notifier Call Information\n");
 
 	/* call notifier_call_chain of itmon */
 	ret = atomic_notifier_call_chain(&itmon_notifier_list, 0, &itmon->notifier_info);
 
-	pr_err("\t\t-ITMON Notifier Call Information\n----------------------------------------------------------------------------------\n");
+	log_dev_err(itmon->dev, "\t\t-ITMON Notifier Call Information\n----------------------------------------------------------------------------------\n");
 
 	return ret;
+}
+
+static void itmon_reflect_policy(struct itmon_dev *itmon,
+				 struct itmon_traceinfo *info)
+{
+	struct itmon_platdata *pdata = itmon->pdata;
+	struct itmon_policy *pl_policy = NULL;
+	struct itmon_nodepolicy nd_policy1 = {0,}, nd_policy2 = {0,}, nd_policy = {0,};
+	u64 chk_job1 = 0, chk_job2 = 0, en_job1 = 0, en_job2 = 0, en_job = 0;
+
+	if (info->s_node) {
+		nd_policy1.en = info->s_node->policy.en;
+		if (nd_policy1.en_irq_mask) {
+			if (info->err_code == ERR_TMOUT)
+				itmon_en_timeout(itmon, info->s_node->group,
+						 info->s_node, false);
+			if (info->err_code == ERR_DECERR ||
+			    info->err_code == ERR_SLVERR)
+				itmon_en_err_report(itmon, info->s_node->group,
+						    info->s_node, false);
+		}
+	}
+	if (info->m_node) {
+		nd_policy2.en = info->m_node->policy.en;
+		if (nd_policy2.en_irq_mask) {
+			if (info->err_code == ERR_DECERR ||
+			    info->err_code == ERR_SLVERR)
+				itmon_en_err_report(itmon, info->m_node->group,
+						    info->m_node, false);
+		}
+	}
+
+	switch (info->err_code) {
+	case ERR_DECERR:
+		pl_policy = &pdata->policy[DECERR];
+		pl_policy->error = true;
+		if (nd_policy1.chk_set) {
+			chk_job1 = nd_policy1.chk_decerr_job;
+			en_job1 = nd_policy1.en_decerr_job;
+		}
+		if (nd_policy2.chk_set) {
+			chk_job2 = nd_policy2.chk_decerr_job;
+			en_job2 = nd_policy2.en_decerr_job;
+		}
+		break;
+	case ERR_SLVERR:
+		pl_policy = &pdata->policy[SLVERR];
+		pl_policy->error = true;
+		if (nd_policy1.chk_set) {
+			chk_job1 = nd_policy1.chk_slverr_job;
+			en_job1 = nd_policy1.en_slverr_job;
+		}
+		if (nd_policy2.chk_set) {
+			chk_job2 = nd_policy2.chk_slverr_job;
+			en_job2 = nd_policy2.en_slverr_job;
+		}
+		break;
+	case ERR_TMOUT:
+		pl_policy = &pdata->policy[TMOUT];
+		pl_policy->error = true;
+		if (nd_policy1.chk_set) {
+			chk_job1 = nd_policy1.chk_tmout_job;
+			en_job1 = nd_policy1.en_tmout_job;
+		}
+		if (nd_policy2.chk_set) {
+			chk_job2 = nd_policy2.chk_tmout_job;
+			en_job2 = nd_policy2.en_tmout_job;
+		}
+		break;
+	default:
+		dev_warn(itmon->dev, "%s: Invalid error code(%u)\n",
+			 __func__, info->err_code);
+		return;
+	}
+
+	if (chk_job1 && chk_job2) {
+		if (nd_policy1.prio >= nd_policy2.prio) {
+			nd_policy.en = nd_policy1.en;
+			en_job = en_job1;
+		} else {
+			nd_policy.en = nd_policy2.en;
+			en_job = en_job2;
+		}
+	} else if (chk_job1) {
+		nd_policy = nd_policy1;
+		en_job = en_job1;
+	} else if (chk_job2) {
+		nd_policy = nd_policy2;
+		en_job = en_job2;
+	} /* nd_policy = NULL */
+	if (nd_policy.chk_set && pl_policy->prio <= nd_policy.prio) {
+		pl_policy->policy = en_job;
+		pl_policy->prio = nd_policy.prio;
+	}
 }
 
 static void itmon_post_handler(struct itmon_dev *itmon, bool err)
@@ -1146,6 +1431,9 @@ static void itmon_post_handler(struct itmon_dev *itmon, bool err)
 
 	log_dev_err(itmon->dev, "Before ITMON: [%5lu.%06lu], delta: %lu, last_errcnt: %d\n",
 		    (unsigned long)ts, rem_nsec / 1000, delta, pdata->last_errcnt);
+
+	if (err)
+		itmon_do_dpm_policy(itmon, true);
 
 	/* delta < 1s */
 	if (delta > 0 && delta < 1000000000UL) {
@@ -1171,16 +1459,17 @@ static void itmon_report_rawdata(struct itmon_dev *itmon,
 	struct itmon_nodegroup *group = data->group;
 
 	/* Output Raw register information */
-	pr_err("\tRaw Register Information ---------------------------------------------------\n\n");
+	log_dev_err(itmon->dev, "\tRaw Register Information ---------------------------------------------------\n\n");
 
 	if (m_node && det_node) {
-		pr_err("\t> M_NODE     : %s(%s, id: %03u)\n"
-		       "\t> DETECT_NODE: %s(%s, id: %03u)\n",
-		       m_node->name, itmon_node_string[m_node->type], m_node->err_id,
-		       det_node->name, itmon_node_string[det_node->type], det_node->err_id);
+		log_dev_err(itmon->dev,
+			    "\t> M_NODE     : %s(%s, id: %03u)\n"
+			    "\t> DETECT_NODE: %s(%s, id: %03u)\n",
+			    m_node->name, itmon_node_string[m_node->type], m_node->err_id,
+			    det_node->name, itmon_node_string[det_node->type], det_node->err_id);
 	}
 
-	pr_err("\t> BASE       : %s(0x%08llx)\n"
+	log_dev_err(itmon->dev, "\t> BASE       : %s(0x%08llx)\n"
 	       "\t> INFO_0     : 0x%08X\n"
 	       "\t> INFO_1     : 0x%08X\n"
 	       "\t> INFO_2     : 0x%08X\n"
@@ -1205,7 +1494,7 @@ static void itmon_report_traceinfo(struct itmon_dev *itmon,
 	if (!info->dirty)
 		return;
 
-	pr_err("\n----------------------------------------------------------------------------------\n"
+	log_dev_err(itmon->dev, "\n----------------------------------------------------------------------------------\n"
 	       "\tTransaction Information\n\n"
 	       "\t> Client (User)  : %s %s (0x%X)\n"
 	       "\t> Target         : %s\n"
@@ -1219,7 +1508,7 @@ static void itmon_report_traceinfo(struct itmon_dev *itmon,
 	       trans_type == TRANS_TYPE_READ ? "READ" : "WRITE",
 	       itmon_errcode[info->err_code]);
 
-	pr_err("\n----------------------------------------------------------------------------------\n"
+	log_dev_err(itmon->dev, "\n----------------------------------------------------------------------------------\n"
 	       "\t> Size           : %u bytes x %u burst => %u bytes\n"
 	       "\t> Burst Type     : %u (0:FIXED, 1:INCR, 2:WRAP)\n"
 	       "\t> Level          : %s\n"
@@ -1254,10 +1543,10 @@ static void itmon_report_pathinfo(struct itmon_dev *itmon,
 		info->path_dirty = true;
 	}
 
-	pr_info("\t> M_NODE     : %14s, %8s(id: %u)\n",
-		m_node->name, itmon_node_string[m_node->type], m_node->err_id);
-	pr_info("\t> DETECT_NODE: %14s, %8s(id: %u)\n",
-		det_node->name, itmon_node_string[det_node->type], det_node->err_id);
+	log_dev_err(itmon->dev, "\t> M_NODE     : %14s, %8s(id: %u)\n",
+		    m_node->name, itmon_node_string[m_node->type], m_node->err_id);
+	log_dev_err(itmon->dev, "\t> DETECT_NODE: %14s, %8s(id: %u)\n",
+		    det_node->name, itmon_node_string[det_node->type], det_node->err_id);
 }
 
 static void itmon_parse_cpuinfo(struct itmon_dev *itmon,
@@ -1352,6 +1641,7 @@ static void itmon_analyze_errlog(struct itmon_dev *itmon)
 	struct itmon_traceinfo *info, *next_info;
 	struct itmon_tracedata *data, *next_data;
 	unsigned int trans_type;
+	int ret;
 
 	/* Parse */
 	for (trans_type = 0; trans_type < TRANS_TYPE_NUM; trans_type++) {
@@ -1363,7 +1653,9 @@ static void itmon_analyze_errlog(struct itmon_dev *itmon)
 	for (trans_type = 0; trans_type < TRANS_TYPE_NUM; trans_type++) {
 		list_for_each_entry_safe(info, next_info, &pdata->infolist[trans_type], list) {
 			info->path_dirty = false;
-			itmon_notifier_handler(itmon, info, trans_type);
+			itmon_reflect_policy(itmon, info);
+			ret = itmon_notifier_handler(itmon, info, trans_type);
+			itmon_reflect_policy_by_notifier(itmon, info, ret);
 			list_for_each_entry_safe(data, next_data, &pdata->datalist[trans_type], list) {
 				if (data->ref_info == info)
 					itmon_report_pathinfo(itmon, data, info, trans_type);
@@ -1374,6 +1666,7 @@ static void itmon_analyze_errlog(struct itmon_dev *itmon)
 		}
 	}
 
+	itmon_dump_dpm_policy(itmon);
 	/* Report Raw all tracedata and Clean-up tracedata and node */
 	for (trans_type = 0; trans_type < TRANS_TYPE_NUM; trans_type++) {
 		list_for_each_entry_safe(data, next_data,
@@ -1425,6 +1718,7 @@ static void *itmon_collect_errlog(struct itmon_dev *itmon,
 	return (void *)new_data;
 }
 
+/* TODO : implement protocol checker and timeout freeze */
 static int itmon_pop_errlog(struct itmon_dev *itmon,
 			    struct itmon_nodegroup *group,
 			    bool clear)
@@ -1502,11 +1796,11 @@ static irqreturn_t itmon_irq_handler(int irq, void *data)
 	for (i = 0; i < (int)pdata->num_nodegroup; i++) {
 		group = &pdata->nodegroup[i];
 		if (!group->pd_support) {
-			log_dev_err(itmon->dev, "%d irq, %s group, pd %s, %x errors",
+			log_dev_err(itmon->dev, "%d irq, %s group, pd %s, %x errors\n",
 				    irq, group->name, "on",
 				    readl(group->regs + ERR_LOG_STAT));
 		} else {
-			log_dev_err(itmon->dev, "%d irq, %s group, pd %s, %x errors",
+			log_dev_err(itmon->dev, "%d irq, %s group, pd %s, %x errors\n",
 				    irq, group->name,
 				    group->pd_status ? "on" : "off",
 				    group->pd_status ? readl(group->regs + ERR_LOG_STAT) : 0);
@@ -1540,12 +1834,143 @@ static int itmon_logging_panic_handler(struct notifier_block *nb,
 	if (!IS_ERR_OR_NULL(itmon)) {
 		/* Check error has been logged */
 		ret = itmon_search_errlog(itmon, NULL, true);
-		if (!ret)
+		if (!ret) {
 			log_dev_info(itmon->dev, "No errors found %s\n", __func__);
-		else
+		} else {
 			log_dev_err(itmon->dev, "Error detected %s, %d\n", __func__, ret);
+			itmon_do_dpm_policy(itmon, true);
+		}
 	}
 	return 0;
+}
+
+#define MAX_CUSTOMIZE          64
+
+static void itmon_parse_dt_customize(struct itmon_dev *itmon,
+				     struct device_node *np)
+{
+	struct device_node *node_np;
+	struct itmon_platdata *pdata = itmon->pdata;
+	struct itmon_policy *plat_policy;
+	struct itmon_nodepolicy nd_policy;
+	struct itmon_nodeinfo *node;
+	char snode_name[16];
+	const char *node_name;
+	unsigned int val;
+	int i;
+
+	for (i = 0; i < MAX_CUSTOMIZE; i++) {
+		nd_policy.en = 0;
+		snprintf(snode_name, sizeof(snode_name), "node%d", i);
+		node_np = of_get_child_by_name(np, (const char *)snode_name);
+
+		if (!node_np) {
+			dev_info(itmon->dev, "%s device node is not found\n",
+				 snode_name);
+			break;
+		}
+
+		if (of_property_read_string(node_np, "node", &node_name))
+			continue;
+
+		node = itmon_get_nodeinfo(itmon, NULL, node_name);
+		if (!node) {
+			dev_err(itmon->dev, "%s node is not found\n", node_name);
+			continue;
+		} else {
+			dev_info(itmon->dev, "%s node found\n", node->name);
+		}
+
+		if (!of_property_read_u32(node_np, "irq_mask", &val)) {
+			nd_policy.chk_irq_mask = 1;
+			nd_policy.en_irq_mask = val;
+			dev_info(itmon->dev, "%s node: irq mask -> [%d]\n",
+				 node->name, val);
+		}
+
+		if (!of_property_read_u32(node_np, "prio", &val)) {
+			nd_policy.prio = val;
+			dev_info(itmon->dev, "%s node: prio -> [%d]\n",
+				 node->name, val);
+		}
+
+		if (!of_property_read_u32(node_np, "errrpt", &val)) {
+			nd_policy.chk_errrpt = 1;
+			nd_policy.en_errrpt = val;
+			dev_info(itmon->dev, "%s node: errrtp [%d] -> [%d]\n",
+				 node->name, node->err_en, val);
+		}
+
+		if (!of_property_read_u32(node_np, "prtchker", &val)) {
+			nd_policy.chk_prtchk = 1;
+			nd_policy.en_prtchk = val;
+			dev_info(itmon->dev, "%s node: prtchker [%d] -> [%d]\n",
+				 node->name, node->prt_chk_en, val);
+		}
+
+		if (!of_property_read_u32(node_np, "tmout", &val)) {
+			nd_policy.chk_tmout = 1;
+			nd_policy.en_tmout = val;
+			dev_info(itmon->dev, "%s node: tmout [%d] -> [%d]\n",
+				 node->name, node->tmout_en, val);
+		}
+
+		if (!of_property_read_u32(node_np, "tmout_val", &val)) {
+			nd_policy.chk_tmout_val = 1;
+			nd_policy.en_tmout_val = val;
+			dev_info(itmon->dev, "%s node: tmout_val [%x] -> [%x]\n",
+				 node->name, node->time_val, val);
+		}
+
+		if (!of_property_read_u32(node_np, "freeze", &val)) {
+			nd_policy.chk_freeze = 1;
+			nd_policy.en_freeze = val;
+			dev_info(itmon->dev, "%s node: freeze [%x] -> [%x]\n",
+				 node->name, node->tmout_frz_en, val);
+		}
+
+		if (!of_property_read_u32(node_np, "decerr_job", &val)) {
+			plat_policy = &pdata->policy[DECERR];
+			nd_policy.chk_decerr_job = 1;
+			nd_policy.en_decerr_job = val;
+			dev_info(itmon->dev, "%s node: decerr_job [%s] -> [%d/%s]\n",
+				 node->name, itmon_dpm_action[plat_policy->policy_def],
+				 nd_policy.chk_decerr_job,
+				 itmon_dpm_action[nd_policy.en_decerr_job]);
+		}
+
+		if (!of_property_read_u32(node_np, "slverr_job", &val)) {
+			plat_policy = &pdata->policy[SLVERR];
+			nd_policy.chk_slverr_job = 1;
+			nd_policy.en_slverr_job = val;
+			dev_info(itmon->dev, "%s node: slverr_job [%s] -> [%d/%s]\n",
+				 node->name, itmon_dpm_action[plat_policy->policy_def],
+				 nd_policy.chk_slverr_job,
+				 itmon_dpm_action[nd_policy.en_slverr_job]);
+		}
+
+		if (!of_property_read_u32(node_np, "tmout_job", &val)) {
+			plat_policy = &pdata->policy[TMOUT];
+			nd_policy.chk_tmout_job = 1;
+			nd_policy.en_tmout_job = val;
+			dev_info(itmon->dev, "%s node: tmout_job [%s] -> [%d/%s]\n",
+				 node->name, itmon_dpm_action[plat_policy->policy_def],
+				 nd_policy.chk_tmout_job,
+				 itmon_dpm_action[nd_policy.en_tmout_job]);
+		}
+
+		if (!of_property_read_u32(node_np, "prtchker_job", &val)) {
+			plat_policy = &pdata->policy[PRTCHKER];
+			nd_policy.chk_prtchk_job = 1;
+			nd_policy.en_prtchk_job = val;
+			dev_info(itmon->dev, "%s node: prtchker_job [%s] -> [%d/%s]\n",
+				 node->name, itmon_dpm_action[plat_policy->policy_def],
+				 nd_policy.chk_prtchk_job,
+				 itmon_dpm_action[nd_policy.en_prtchk_job]);
+		}
+		itmon_set_nodepolicy(itmon, node, nd_policy, false);
+	}
+	itmon_dump_dpm_policy(itmon);
 }
 
 static void itmon_parse_dt(struct itmon_dev *itmon)
@@ -1553,6 +1978,8 @@ static void itmon_parse_dt(struct itmon_dev *itmon)
 	struct device_node *np = itmon->dev->of_node;
 	struct device_node *child_np;
 	struct itmon_platdata *pdata = itmon->pdata;
+	unsigned int val;
+	int i;
 
 	if (of_property_read_bool(np, "no-def-en")) {
 		log_dev_info(itmon->dev, "No default enable support\n");
@@ -1567,6 +1994,21 @@ static void itmon_parse_dt(struct itmon_dev *itmon)
 	} else {
 		pdata->cpu_parsing = true;
 	}
+
+	for (i = 0; i < TYPE_MAX; i++) {
+		if (!of_property_read_u32(np, pdata->policy[i].name, &val)) {
+			pdata->policy[i].policy_def = val;
+			pdata->policy[i].policy = val;
+		}
+	}
+
+	child_np = of_get_child_by_name(np, "customize");
+	if (!child_np) {
+		dev_info(itmon->dev, "customize is not found\n");
+		return;
+	}
+
+	itmon_parse_dt_customize(itmon, child_np);
 
 	child_np = of_get_child_by_name(np, "dbgc");
 	if (!child_np) {
@@ -1627,6 +2069,8 @@ static int itmon_probe(struct platform_device *pdev)
 
 	pdata->nodegroup = nodegroup;
 	pdata->num_nodegroup = ARRAY_SIZE(nodegroup);
+
+	itmon->pdata->policy = err_policy;
 
 	itmon_parse_dt(itmon);
 
