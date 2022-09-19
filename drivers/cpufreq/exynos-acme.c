@@ -1234,6 +1234,8 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	if (of_property_read_bool(dn, "need-awake"))
 		domain->need_awake = true;
 
+	if (domain->need_awake)
+		disable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
 	domain->boot_freq = cal_dfs_get_boot_freq(domain->cal_id);
 	domain->resume_freq = resume_freq ? resume_freq :
 					    cal_dfs_get_resume_freq(domain->cal_id);
@@ -1243,6 +1245,8 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 		     domain->old, domain->id);
 		domain->old = domain->boot_freq;
 	}
+	if (domain->need_awake)
+		enable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
 
 	mutex_init(&domain->lock);
 
