@@ -110,11 +110,17 @@ EXPORT_SYMBOL_GPL(cal_dfs_cached_get_rate);
 
 unsigned long cal_dfs_get_rate(unsigned int id)
 {
-	unsigned long ret;
+	struct vclk *vclk = cmucal_get_node(id);
 
-	ret = vclk_recalc_rate(id);
+	if (IS_ACPM_VCLK(id) && !irqs_disabled()) {
+		if (vclk && vclk->vrate)
+			return vclk->vrate;
+		else
+			return exynos_acpm_get_rate(GET_IDX(id), 0);
+	}
+	else
+		return vclk_recalc_rate(id);
 
-	return ret;
 }
 EXPORT_SYMBOL_GPL(cal_dfs_get_rate);
 
