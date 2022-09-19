@@ -962,9 +962,6 @@ static unsigned int *get_tokenized_data(const char *buf, int *num_tokens)
 	while ((cp = strpbrk(cp + 1, " :")))
 		ntokens++;
 
-	if (!(ntokens & 0x1))
-		goto err;
-
 	tokenized_data = kmalloc_array(ntokens, sizeof(unsigned int), GFP_KERNEL);
 	if (!tokenized_data) {
 		err = -ENOMEM;
@@ -1076,8 +1073,14 @@ static ssize_t store_delay_time(struct device *dev,
 	int *new_delay_time = NULL;
 
 	new_delay_time = get_tokenized_data(buf, &ntokens);
+
+	if (!(ntokens & 0x1)) {
+		dev_err(data->dev,
+			"Only odd number of tokens allowed\n");
+		return -EINVAL;
+	}
 	if (IS_ERR(new_delay_time))
-		return PTR_ERR_OR_ZERO(new_delay_time);
+		return PTR_ERR(new_delay_time);
 
 	mutex_lock(&data->devfreq->lock);
 	kfree(data->simple_interactive_data.delay_time);
@@ -1125,8 +1128,13 @@ static ssize_t store_target_load(struct device *dev,
 	int *new_target_load = NULL;
 
 	new_target_load = get_tokenized_data(buf, &ntokens);
+	if (ntokens != data->simple_interactive_data.alt_data.num_target_load) {
+		dev_err(data->dev, "Invalid counts of target_load\n");
+		return -EINVAL;
+	}
+
 	if (IS_ERR(new_target_load))
-		return PTR_ERR_OR_ZERO(new_target_load);
+		return PTR_ERR(new_target_load);
 
 	mutex_lock(&data->devfreq->lock);
 	kfree(data->simple_interactive_data.alt_data.target_load);
@@ -1513,6 +1521,14 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 			} else {
 				data->simple_interactive_data.delay_time =
 					get_tokenized_data(buf, &ntokens);
+				if (!(ntokens & 0x1)) {
+					dev_err(data->dev,
+						"Only odd number of tokens allowed\n");
+					return -EINVAL;
+				}
+				if (IS_ERR(data->simple_interactive_data.delay_time))
+					return PTR_ERR(
+						data->simple_interactive_data.delay_time);
 				data->simple_interactive_data.ndelay_time =
 					ntokens;
 			}
