@@ -10,13 +10,15 @@
 	bigwave: bigwave@1A700000 {
 		compatible = "google,bigwave";
 		status = "ok";
-		reg = <0x0 0x1A700000 0x860>;
-		reg-names = "bw";
+		reg = <0x0 0x1A700000 0x860
+			0x0 0x1A6A4000 0xa00>;
+		reg-names = "bw", "ssmt_bw_pid";
 		interrupts = <GIC_SPI IRQ_BW_XINT_BW IRQ_TYPE_LEVEL_HIGH>;
 		bigw-opp-table = <&bigw_opp_table>;
 		bigw-bw-table = <&bigw_bw_table>;
 		iommus = <&sysmmu_bw>;
 		samsung,iommu-group = <&iommu_group_bw>;
+		pt_id = "bigwave";
 	};
 
 	bigw_opp_table: bigw_opp_table {
