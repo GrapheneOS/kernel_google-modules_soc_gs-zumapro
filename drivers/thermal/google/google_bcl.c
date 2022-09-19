@@ -263,13 +263,6 @@ static int triggered_read_level(void *data, int *val, int id)
 	int gpio_level = (id >= UVLO1 && id <= BATOILO) ? gpio_get_value(gpio_pin) :
 			gpio_get_value(bcl_dev->bcl_pin[id]);
 
-	// TODO: b/244348786
-	// Thermal and certain IRQ has issues.  Return value for now.
-	if (true) {
-        	*val = 0;
-        	return 0;
-        }
-
 	if ((id >= UVLO2 && id <= BATOILO) && (bcl_dev->bcl_tz_cnt[id] == 0)) {
 		if (bcl_cb_vdroop_ok(bcl_dev, &state) < 0) {
 			*val = 0;
@@ -301,19 +294,20 @@ static int triggered_read_level(void *data, int *val, int id)
 		return 0;
 	}
 
-	/* If IRQ not asserted, check ODPM */
-	if ((id == OCP_WARN_GPU) || (id == SOFT_OCP_WARN_GPU)) {
-		mutex_lock(&bcl_dev->sub_odpm->lock);
-		// TODO: Port ODPM for BCL (b/243707032)
-		//odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-		mutex_unlock(&bcl_dev->sub_odpm->lock);
-	} else {
-		mutex_lock(&bcl_dev->main_odpm->lock);
-		// TODO: Port ODPM for BCL (b/243707032)
-		//odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-		mutex_unlock(&bcl_dev->main_odpm->lock);
+	// TODO: Port ODPM for BCL (b/243707032)
+	if (false) {
+		/* If IRQ not asserted, check ODPM */
+		if ((id == OCP_WARN_GPU) || (id == SOFT_OCP_WARN_GPU)) {
+			mutex_lock(&bcl_dev->sub_odpm->lock);
+			//odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+			odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
+			mutex_unlock(&bcl_dev->sub_odpm->lock);
+		} else {
+			mutex_lock(&bcl_dev->main_odpm->lock);
+			//odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+			odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
+			mutex_unlock(&bcl_dev->main_odpm->lock);
+		}
 	}
 
 	*val = 0;
