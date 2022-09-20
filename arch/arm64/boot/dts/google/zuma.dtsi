@@ -1617,4 +1617,58 @@
 		interrupts = <GIC_SPI INTREQ__SECURE_LOG IRQ_TYPE_LEVEL_HIGH>;
 		memory-region = <&seclog_mem>;
 	};
+
+	exynos-pm {
+		compatible = "samsung,exynos-pm";
+		reg = <0x0 0x154D0000 0x1000>,
+			<0x0 0x154E0000 0x1000>,
+			<0x0 0x10400204 0x100>,
+			<0x0 0x15200000 0x100>;  /* GS_MAILBOX_AP_AOCA3_HOST */
+		reg-names = "gpio_alive_base",
+			"gpio_far_alive_base",
+			"gicd_ispendrn_base",
+			"mailbox_ap_aoc_host";
+		num-eint = <64>;	/* EINT_0 ~ 44 */
+		num-eint-far = <32>;	/* EINT_45 ~ 66 */
+		gpa-use = <8>, <7>, <5>, <4>, <4>, <7>, <8>, <2>, <8>, <4>, <8>, <2>;
+		num-gic = <30>;
+		suspend_mode_idx = <8>;
+
+		pcieon_suspend_available = <1>;
+		pcieon_suspend_mode_idx = <13>;
+
+					/* WAKEUP_STAT,		WAKEUP2_STAT */
+		wakeup_stat_offset =	<0x3950>,		<0x3970>;
+		wakeup_int_en_offset =	<0x3944>,		<0x3964>;
+		wakeup_int_en =		<0x1f0bf>,		<0x01f0>;
+
+		eint_wakeup_mask_offset = <0x3a80>, <0x3a84>, <0x3a88>;
+		wakeup-stat-eint = <0x30>;
+		wakeup-stat-rtc = <0>;
+
+		wake_lock = <0>;		/* 1: held wake_lock */
+
+		wakeup_stats {
+			wakeup_stat {
+				ws-name =
+					"RTC_ALARM",			/* [ 0] */
+					"RTC_TICK",			/* [ 1] */
+					"TRTC_ALARM",			/* [ 2] */
+					"TRTC_TICK",			/* [ 3] */
+					"EINT",				/* [ 4] */
+					"EINT_FAR",			/* [ 5] */
+					"RESERVED",			/* [ 6] */
+					"RESERVED",			/* [ 7] */
+					"L1SUB_PCIE_GEN3_2L",		/* [ 8] */
+					"L1SUB_PCIE_GEN3_1L0",		/* [ 9] */
+					"L1SUB_PCIE_GEN3_1L1",		/* [10] */
+					"RESERVED",			/* [11] */
+					"EXT_PCIE_GEN3_2L",		/* [12] */
+					"EXT_PCIE_GEN3_1L0",		/* [13] */
+					"EXT_PCIE_GEN3_1L1",		/* [14] */
+					"RESERVED",			/* [15] */
+					"RESERVED";			/* [31] */
+			};
+		};
+	};
 };
