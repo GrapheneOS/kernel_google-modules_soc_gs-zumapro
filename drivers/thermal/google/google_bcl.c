@@ -31,6 +31,7 @@
 #include <linux/regulator/pmic_class.h>
 #include <soc/google/bcl.h>
 #include <soc/google/odpm.h>
+#include <soc/google/exynos-cpupm.h>
 #include <soc/google/exynos-pm.h>
 #include <soc/google/exynos-pmu-if.h>
 #if IS_ENABLED(CONFIG_DEBUG_FS)
@@ -207,6 +208,10 @@ enum SUBSYSTEM_SOURCE {
 	SUBSYSTEM_SOURCE_MAX,
 };
 
+#define CPU0_CLUSTER_MIN 0
+#define CPU1_CLUSTER_MIN 4
+#define CPU2_CLUSTER_MIN 8
+
 static const unsigned int subsystem_pmu[] = {
 	PMU_ALIVE_CPU0_OUT,
 	PMU_ALIVE_CPU1_OUT,
@@ -250,6 +255,20 @@ static int bcl_odpm_map(int id)
 	default:
 		return BUCK2;
 	}
+}
+
+static void disable_power(void)
+{
+	int i;
+	for (i = CPU1_CLUSTER_MIN; i <= CPU2_CLUSTER_MIN; i++)
+		disable_power_mode(i, POWERMODE_TYPE_CLUSTER);
+}
+
+static void enable_power(void)
+{
+	int i;
+	for (i = CPU1_CLUSTER_MIN; i <= CPU2_CLUSTER_MIN; i++)
+		enable_power_mode(i, POWERMODE_TYPE_CLUSTER);
 }
 
 static int triggered_read_level(void *data, int *val, int id)
@@ -1259,7 +1278,9 @@ static ssize_t clk_div_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
 	if (addr == NULL)
 		return sysfs_emit(buf, "off\n");
+	disable_power();
 	reg = __raw_readl(addr);
+	enable_power();
 
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
@@ -1277,7 +1298,9 @@ static ssize_t clk_stats_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
 	if (addr == NULL)
 		return sysfs_emit(buf, "off\n");
+	disable_power();
 	reg = __raw_readl(bcl_dev->base_mem[idx] + clk_stats_offset[idx]);
+	enable_power();
 
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
@@ -1326,7 +1349,9 @@ static ssize_t clk_div_store(struct bcl_device *bcl_dev, int idx,
 			return -EIO;
 		}
 		mutex_lock(&bcl_dev->ratio_lock);
+		disable_power();
 		__raw_writel(value, addr);
+		enable_power();
 		mutex_unlock(&bcl_dev->ratio_lock);
 	}
 
@@ -1455,7 +1480,9 @@ static ssize_t vdroop_flt_show(struct bcl_device *bcl_dev, int idx, char *buf)
 		addr = bcl_dev->base_mem[idx] + VDROOP_FLT;
 	else
 		return sysfs_emit(buf, "off\n");
+	disable_power();
 	reg = __raw_readl(addr);
+	enable_power();
 
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
@@ -1476,7 +1503,9 @@ static ssize_t vdroop_flt_store(struct bcl_device *bcl_dev, int idx,
 	else if (idx >= CPU1 && idx <= CPU2) {
 		addr = bcl_dev->base_mem[idx] + VDROOP_FLT;
 		mutex_lock(&bcl_dev->ratio_lock);
+		disable_power();
 		__raw_writel(value, addr);
+		enable_power();
 		mutex_unlock(&bcl_dev->ratio_lock);
 	} else
 		return -EINVAL;
@@ -1679,7 +1708,9 @@ static ssize_t clk_ratio_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	if (addr == NULL)
 		return sysfs_emit(buf, "off\n");
 
+	disable_power();
 	reg = __raw_readl(addr);
+	enable_power();
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
 
@@ -1709,7 +1740,9 @@ static ssize_t clk_ratio_store(struct bcl_device *bcl_dev, int idx,
 			return -EIO;
 		}
 		mutex_lock(&bcl_dev->ratio_lock);
+		disable_power();
 		__raw_writel(value, addr);
+		enable_power();
 		mutex_unlock(&bcl_dev->ratio_lock);
 	}
 
@@ -2510,8 +2543,10 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 		for (i = 0; i < TPU; i++) {
 			addr = bcl_dev->base_mem[i] + CLKDIVSTEP;
 			mutex_lock(&bcl_dev->ratio_lock);
+			disable_power();
 			reg = __raw_readl(addr);
 			__raw_writel(reg | 0x1, addr);
+			enable_power();
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 	} else {
@@ -2520,8 +2555,10 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 		for (i = 0; i < TPU; i++) {
 			addr = bcl_dev->base_mem[i] + CLKDIVSTEP;
 			mutex_lock(&bcl_dev->ratio_lock);
+			disable_power();
 			reg = __raw_readl(addr);
 			__raw_writel(reg & ~(1 << 0), addr);
+			enable_power();
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 	}
@@ -2581,6 +2618,7 @@ int google_init_tpu_ratio(struct bcl_device *data)
 		return -EIO;
 
 	mutex_lock(&data->ratio_lock);
+	disable_power();
 	addr = data->base_mem[TPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
 	__raw_writel(data->tpu_con_heavy, addr);
 	addr = data->base_mem[TPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
@@ -2592,6 +2630,7 @@ int google_init_tpu_ratio(struct bcl_device *data)
 	addr = data->base_mem[TPU] + CLKOUT;
 	__raw_writel(data->tpu_clk_out, addr);
 	data->tpu_clk_stats = __raw_readl(data->base_mem[TPU] + clk_stats_offset[TPU]);
+	enable_power();
 	mutex_unlock(&data->ratio_lock);
 
 	return 0;
@@ -2612,6 +2651,7 @@ int google_init_gpu_ratio(struct bcl_device *data)
 		return -EIO;
 
 	mutex_lock(&data->ratio_lock);
+	disable_power();
 	addr = data->base_mem[GPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
 	__raw_writel(data->gpu_con_heavy, addr);
 	addr = data->base_mem[GPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
@@ -2623,6 +2663,7 @@ int google_init_gpu_ratio(struct bcl_device *data)
 	addr = data->base_mem[GPU] + CLKOUT;
 	__raw_writel(data->gpu_clk_out, addr);
 	data->gpu_clk_stats = __raw_readl(data->base_mem[GPU] + clk_stats_offset[GPU]);
+	enable_power();
 	mutex_unlock(&data->ratio_lock);
 
 	return 0;
@@ -2835,8 +2876,10 @@ static int get_cpu0clk(void *data, u64 *val)
 	void __iomem *addr;
 	unsigned int value;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU0] + CLKOUT;
 	*val = __raw_readl(addr);
+	enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
 	return 0;
 }
@@ -2846,8 +2889,10 @@ static int set_cpu0clk(void *data, u64 val)
 	struct bcl_device *bcl_dev = data;
 	void __iomem *addr;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU0] + CLKOUT;
 	__raw_writel(val, addr);
+	enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x3001 : 0);
 	return 0;
 }
@@ -2858,8 +2903,10 @@ static int get_cpu1clk(void *data, u64 *val)
 	void __iomem *addr;
 	unsigned int value;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU1] + CLKOUT;
 	*val = __raw_readl(addr);
+	enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
 	return 0;
 }
@@ -2869,8 +2916,10 @@ static int set_cpu1clk(void *data, u64 val)
 	struct bcl_device *bcl_dev = data;
 	void __iomem *addr;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU1] + CLKOUT;
 	__raw_writel(val, addr);
+	enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1101 : 0);
 	return 0;
 }
@@ -2881,8 +2930,10 @@ static int get_cpu2clk(void *data, u64 *val)
 	void __iomem *addr;
 	unsigned int value;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU2] + CLKOUT;
 	*val = __raw_readl(addr);
+	enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
 	return 0;
 }
@@ -2892,8 +2943,10 @@ static int set_cpu2clk(void *data, u64 val)
 	struct bcl_device *bcl_dev = data;
 	void __iomem *addr;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU2] + CLKOUT;
 	__raw_writel(val, addr);
+	enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1201 : 0);
 	return 0;
 }
@@ -3480,12 +3533,14 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->odpm_ratio = (ret || !val) ? 2 : val;
 	bcl_dev->vdroop1_pin = of_get_gpio(np, 0);
 	bcl_dev->vdroop2_pin = of_get_gpio(np, 1);
+	disable_power();
 	if (google_bcl_init_clk_div(bcl_dev, CPU2, bcl_dev->cpu2_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU2 Address is NULL\n");
 	if (google_bcl_init_clk_div(bcl_dev, CPU1, bcl_dev->cpu1_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU1 Address is NULL\n");
 	if (google_bcl_init_clk_div(bcl_dev, CPU0, bcl_dev->cpu0_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU0 Address is NULL\n");
+	enable_power();
 }
 
 static int google_bcl_probe(struct platform_device *pdev)
