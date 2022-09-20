@@ -1356,6 +1356,26 @@
 			"gdc0-c2serv",
 			"gdc1-c2serv",
 			"gse-c2serv";
+
+		iommus =
+			<&sysmmu_yuvp>,
+			<&sysmmu_rgbp_s0>,
+			<&sysmmu_rgbp_s1>,
+			<&sysmmu_tnr_s0>,
+			<&sysmmu_tnr_s1>,
+			<&sysmmu_tnr_s2>,
+			<&sysmmu_gdc>,
+			<&sysmmu_gse>,
+			<&sysmmu_mcsc>;
+		samsung,iommu-group = <&iommu_group_isp>;
+
+		power-domains =
+			<&pd_yuvp>,
+			<&pd_rgbp>,
+			<&pd_tnr>,
+			<&pd_gdc>,
+			<&pd_gse>,
+			<&pd_mcsc>;
 	};
 
 	lwis_slc: lwis_slc@0 {
