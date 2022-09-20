@@ -9,6 +9,7 @@
 #include <kernel/sched/sched.h>
 #include <linux/cpufreq.h>
 #include <linux/module.h>
+#include <trace/hooks/cgroup.h>
 #include <trace/hooks/sched.h>
 #include <trace/hooks/topology.h>
 #include <trace/hooks/cpufreq.h>
