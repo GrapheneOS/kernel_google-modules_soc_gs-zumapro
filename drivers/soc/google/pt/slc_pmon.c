@@ -52,8 +52,20 @@ static struct attribute_group slc_pmon_pmu_events_attr_group = {
 	.attrs = NULL,
 };
 
+static struct attribute *slc_pmon_pmu_cpumask_attrs[] = {
+	SLC_PMON_CPUMASK_ATTR("cpumask", "0"),
+	NULL,
+};
+
+static const struct attribute_group slc_pmon_pmu_cpumask_attr_group = {
+	.attrs = slc_pmon_pmu_cpumask_attrs,
+};
+
 static const struct attribute_group *slc_pmon_attr_groups[] = {
-	&slc_pmon_pmu_format_attr_group, &slc_pmon_pmu_events_attr_group, NULL
+	&slc_pmon_pmu_format_attr_group,
+	&slc_pmon_pmu_events_attr_group,
+	&slc_pmon_pmu_cpumask_attr_group,
+	NULL
 };
 
 static ssize_t slc_pmon_pmu_sysfs_format_show(struct device *dev,
@@ -62,7 +74,7 @@ static ssize_t slc_pmon_pmu_sysfs_format_show(struct device *dev,
 {
 	struct dev_ext_attribute *eattr =
 		container_of(attr, struct dev_ext_attribute, attr);
-	return snprintf(buf, PAGE_SIZE, "%s\n", (char *)eattr->var);
+	return sysfs_emit(buf, "%s\n", (const char *)eattr->var);
 }
 
 static ssize_t slc_pmon_pmu_sysfs_event_show(struct device *dev,
@@ -71,8 +83,16 @@ static ssize_t slc_pmon_pmu_sysfs_event_show(struct device *dev,
 {
 	struct dev_ext_attribute *eattr =
 		container_of(attr, struct dev_ext_attribute, attr);
-	return snprintf(buf, PAGE_SIZE, "event=0x%lx\n",
-			(unsigned long)eattr->var);
+	return sysfs_emit(buf, "event=0x%lx\n", (unsigned long)eattr->var);
+}
+
+static ssize_t slc_pmon_pmu_sysfs_cpumask_show(struct device *dev,
+					       struct device_attribute *attr,
+					       char *buf)
+{
+	struct dev_ext_attribute *eattr =
+		container_of(attr, struct dev_ext_attribute, attr);
+	return sysfs_emit(buf, "%s\n", (const char *)eattr->var);
 }
 
 static struct pmu slc_pmon_pmu = {

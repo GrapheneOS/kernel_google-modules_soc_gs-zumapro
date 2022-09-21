@@ -156,6 +156,13 @@ static ssize_t slc_pmon_pmu_sysfs_format_show(struct device *dev,
 					      char *buf);
 
 /*
+ * Callback for reads performed on the cpumask sysfs file.
+ */
+static ssize_t slc_pmon_pmu_sysfs_cpumask_show(struct device *dev,
+					       struct device_attribute *attr,
+					       char *buf);
+
+/*
  * Callback for reads performed on event sysfs files.
  */
 static ssize_t slc_pmon_pmu_sysfs_event_show(struct device *dev,
@@ -254,6 +261,10 @@ static void slc_pmon_event_cleanup(void);
 
 #define SLC_PMON_FORMAT_ATTR(_name, _config)                                   \
 	SLC_PMON_EXT_ATTR(_name, slc_pmon_pmu_sysfs_format_show,               \
+			  (char *)_config)
+
+#define SLC_PMON_CPUMASK_ATTR(_name, _config)                                  \
+	SLC_PMON_EXT_ATTR(_name, slc_pmon_pmu_sysfs_cpumask_show,              \
 			  (char *)_config)
 
 #define SLC_PMON_EVENT_ATTR(_name, _config)                                    \
