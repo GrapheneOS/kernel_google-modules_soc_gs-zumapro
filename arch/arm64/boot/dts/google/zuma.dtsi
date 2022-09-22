@@ -738,9 +738,10 @@
 
 			/* FIXME: limit a max_freq to L1(3172MHz) */
 			freq_info = <421000 421000 421000 421000
-					3172000 1014000>;
+					3744000 1014000>;
 			/* initial_freq, default_qos, suspend_freq,
 			min_freq, max_freq, reboot_freq */
+			soft_max_freq = <2288000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -952,6 +953,7 @@
 					711000 711000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
+			soft_max_freq = <310000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -973,9 +975,10 @@
 			use_delay_time = "false";
 
 			freq_info = <324000 324000 324000 324000
-					1704000 324000>;
+					2253000 324000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
+			soft_max_freq = <1475000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -998,9 +1001,10 @@
 			use_delay_time = "false";
 
 			freq_info = <324000 324000 324000 324000
-					1008000 324000>;
+					1942000 324000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
+			soft_max_freq = <951000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
