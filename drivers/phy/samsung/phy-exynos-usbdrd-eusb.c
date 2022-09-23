@@ -1301,6 +1301,20 @@ static int exynos_usbdrd_get_iptype(struct exynos_usbdrd_phy *phy_drd)
 	return 0;
 }
 
+static void exynos_usbdrd_update_phy_value(struct exynos_usbdrd_phy *phy_drd)
+{
+	struct exynos_usb_tune_param *hs_tune_param = phy_drd->usbphy_info.tune_param;
+	int i;
+
+	for (i = 0; hs_tune_param[i].value != EXYNOS_USB_TUNE_LAST; i++) {
+		if (i == EXYNOS_DRD_MAX_TUNEPARAM_NUM)
+			break;
+		hs_tune_param[i].value = phy_drd->hs_tune_param_value[i][USBPHY_MODE_DEV];
+	}
+
+	return;
+}
+
 static int exynos_usbdrd_usb_update(struct notifier_block *nb,
 				    unsigned long action, void *dev)
 {
@@ -1469,6 +1483,8 @@ static void exynos_usbdrd_utmi_init(struct exynos_usbdrd_phy *phy_drd)
 	}
 
 	exynos_usbcon_init_link(&phy_drd->usbphy_blkcon_info);
+
+	exynos_usbdrd_update_phy_value(phy_drd);
 
 	phy_exynos_eusb_initiate(&phy_drd->usbphy_info);
 
