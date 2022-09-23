@@ -398,6 +398,7 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 	struct device	*dev = dotg->dwc->dev;
 	int ret = 0;
 	int wait_counter = 0;
+	u32 evt_count, evt_buf_cnt;
 
 	if (!otg->gadget) {
 		dev_err(dev, "%s does not have any gadget\n", __func__);
@@ -448,7 +449,27 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		*/
 	} else {
 		exynos->vbus_state = false;
-		/* del_timer_sync(&exynos->usb_connect_timer); */
+
+		evt_buf_cnt = dwc->ev_buf->count;
+
+		/* Wait until gadget stop */
+		wait_counter = 0;
+		evt_count = dwc3_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
+		evt_count &= DWC3_GEVNTCOUNT_MASK;
+		while (evt_count || evt_buf_cnt) {
+			wait_counter++;
+			mdelay(20);
+
+			if (wait_counter > 20) {
+				dev_err(dev, "Can't wait event buffer empty!\n");
+				break;
+			}
+			evt_count = dwc3_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
+			evt_count &= DWC3_GEVNTCOUNT_MASK;
+			evt_buf_cnt = dwc->ev_buf->count;
+		}
+		dev_dbg(dev, "%s, evt compl wait cnt = %d\n",
+			 __func__, wait_counter);
 
 		ret = usb_gadget_deactivate(dwc->gadget);
 		if (ret < 0)
