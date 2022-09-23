@@ -236,132 +236,19 @@ void dwc3_otg_pm_ctrl(struct dwc3 *dwc, int onoff)
 	}
 }
 
-/*
- * owner 0 - USB
- * owner 1 - DP
- */
-static void usb3_phy_control(struct dwc3_otg	*dotg,
-		int owner, int on)
-{
-	struct dwc3	*dwc = dotg->dwc;
-	struct device	*dev = dwc->dev;
-
-	dev_dbg(dev, "USB3.0 PHY %s\n", on ? "on" : "off");
-
-	if (on) {
-		dwc3_core_susphy_set(dwc, 0);
-		exynos_usbdrd_pipe3_enable(dwc->usb3_generic_phy);
-		dwc3_core_susphy_set(dwc, 1);
-	} else {
-		dwc3_core_susphy_set(dwc, 0);
-		exynos_usbdrd_pipe3_disable(dwc->usb3_generic_phy);
-		dwc3_core_susphy_set(dwc, 1);
-	}
-}
-
-int dwc3_otg_phy_enable(struct otg_fsm *fsm, int owner, bool on)
+void dwc3_otg_phy_tune(struct otg_fsm *fsm)
 {
 	struct usb_otg	*otg = fsm->otg;
 	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
 	struct dwc3	*dwc = dotg->dwc;
-	struct dwc3_exynos *exynos = dotg->exynos;
-	struct device	*dev = dotg->dwc->dev;
-	int ret = 0;
-	u8 owner_bit = 0;
-	int wait_counter = 0;
 
-	mutex_lock(&dotg->lock);
-
-	dev_dbg(dev, "combo phy=%d usb2 phy=%d owner=%d (usb:0 dp:1) on=%d\n",
-		      dotg->combo_phy_control, dotg->usb2_phy_control,
-		      owner, on);
-
-	if (owner > 1)
-		goto out;
-
-	owner_bit = (1 << owner);
-
-	/* To initialize dwc3_core, it always set DEVICE role */
-	exynos->dwc->current_dr_role = DWC3_GCTL_PRTCAP_DEVICE;
-
-	if (on) {
-		if (dotg->combo_phy_control && dotg->usb2_phy_control) {
-			dotg->combo_phy_control |= owner_bit;
-			dotg->usb2_phy_control |= owner_bit;
-			goto out;
-		} else if (dotg->usb2_phy_control == 0) {
-			/*
-			 * dwc3_otg_phy_enable function enables
-			 * both combo phy and usb2 phy
-			 */
-			ret = pm_runtime_get_sync(dev);
-			if (ret < 0) {
-				dev_err(dev, "failed to resume exynos device\n");
-				goto err;
-			}
-
-			exynos_usbdrd_phy_tune(dwc->usb2_generic_phy,
-							dotg->otg.state);
-			exynos_usbdrd_phy_tune(dwc->usb3_generic_phy,
-							dotg->otg.state);
-
-			ret = dwc3_exynos_core_init(dwc, exynos);
-			if (ret) {
-				dev_err(dev, "failed to reinitialize exynos core\n");
-				goto err;
-			}
-
-			dotg->combo_phy_control |= owner_bit;
-			dotg->usb2_phy_control |= owner_bit;
-		} else { /* dotg->combo_phy_control == 0 */
-			usb3_phy_control(dotg, owner, on);
-			dotg->combo_phy_control |= owner_bit;
-		}
-	} else {
-		dotg->combo_phy_control &= ~(owner_bit);
-		dotg->usb2_phy_control &= ~(owner_bit);
-
-		if (dotg->usb2_phy_control == 0
-				&& dotg->combo_phy_control == 0) {
-
-			/*
-			 * Need to check why phy init_count has mismatch.
-			 * Phy_init is called from usb_phy_roothub_init() in
-			 * usb_add_hcd function(usb/core/hcd.c)
-			 */
-			dwc->usb2_generic_phy->init_count = 1;
-			dwc->usb3_generic_phy->init_count = 1;
-			dwc->usb2_generic_phy->power_count = 1;
-			dwc->usb3_generic_phy->power_count = 1;
-
-err:
-			/* We must disable gadget here. (Ignore other job) */
-			atomic_set(&dev->power.usage_count, 1);
-			pm_runtime_put_sync_suspend(dev);
-
-			msleep(500);
-
-			/* Wait for end of runtime suspend */
-			wait_counter = 0;
-			while (exynos->dwc->current_dr_role !=
-					DWC3_EXYNOS_IGNORE_CORE_OPS) {
-				wait_counter++;
-				msleep(20);
-
-				if (wait_counter > 10) {
-					dev_err(dev, "Can't wait runtime suspend!!!!\n");
-					dev_err(dev, "RPM Usage Count : %d",
-							atomic_read(&dev->power.usage_count));
-					break;
-				}
-			}
-		}
-	}
-out:
-	mutex_unlock(&dotg->lock);
-	return ret;
+	exynos_usbdrd_phy_tune(dwc->usb2_generic_phy,
+						dotg->otg.state);
+#ifdef CONFIG_EXYNOS_USBDRD_PHY30
+	exynos_usbdrd_phy_tune(dwc->usb3_generic_phy,
+						dotg->otg.state);
+#endif
 }
-EXPORT_SYMBOL_GPL(dwc3_otg_phy_enable);
 
 static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 {
@@ -383,7 +270,6 @@ static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 			dev_err(dev, "too long to wait for dwc3 suspended\n");
 
 		dotg->otg_connection = 1;
-		exynos->need_dr_role = 1;
 		while (dwc->gadget_driver == NULL) {
 			wait_counter++;
 			msleep(20);
@@ -397,7 +283,6 @@ static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 		if (!dwc->xhci) {
 			ret = dwc3_exynos_host_init(exynos);
 			if (ret) {
-				exynos->need_dr_role = 0;
 				dev_err(dev, "%s: failed to init dwc3 host\n", __func__);
 				goto err1;
 			}
@@ -407,23 +292,31 @@ static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 		temp_gadget_driver = dwc->gadget_driver;
 		dwc->gadget_driver = NULL;
 
-		ret = dwc3_otg_phy_enable(fsm, 0, on);
-		exynos->need_dr_role = 0;
-		if (ret) {
-			dev_err(dwc->dev, "%s: failed to reinitialize core\n",
-					__func__);
+		mutex_lock(&dotg->lock);
+		exynos->need_dr_role = 1;
+
+		ret = pm_runtime_get_sync(dev);
+		if (ret < 0) {
+			dev_err(dev, "failed to resume exynos device\n");
+			pm_runtime_set_suspended(dev);
+			mutex_unlock(&dotg->lock);
 			goto err1;
 		}
+		exynos->need_dr_role = 0;
 
 		/* To ignore gadget suspend/resume on host l2 suspend */
 		exynos->dwc->current_dr_role = DWC3_EXYNOS_IGNORE_CORE_OPS;
+		mutex_unlock(&dotg->lock);
 
+		dwc3_otg_phy_tune(fsm);
+
+		dwc3_exynos_core_init(dwc, exynos);
 		dwc3_otg_set_host_mode(dotg);
 
 		ret = platform_device_add(dwc->xhci);
 		if (ret) {
 			dev_err(dev, "%s: cannot add xhci\n", __func__);
-			goto err2;
+			goto err1;
 		}
 
 	} else {
@@ -449,11 +342,12 @@ static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 
 		dwc3_exynos_host_exit(exynos);
 		dwc->xhci = NULL;
-
-err2:
-		ret = dwc3_otg_phy_enable(fsm, 0, on);
-	}
 err1:
+		mutex_lock(&dotg->lock);
+		exynos->dwc->current_dr_role = DWC3_GCTL_PRTCAP_DEVICE;
+		pm_runtime_put_sync_suspend(dev);
+		mutex_unlock(&dotg->lock);
+	}
 	__pm_relax(dotg->wakelock);
 	return ret;
 }
@@ -526,20 +420,24 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 			}
 		}
 
+		mutex_lock(&dotg->lock);
 		exynos->need_dr_role = 1;
 		dwc->connected = true;
-		ret = dwc3_otg_phy_enable(fsm, 0, on);
-		exynos->need_dr_role = 0;
-		if (ret) {
-			dev_err(dev, "%s: failed to reinitialize core\n",
-					__func__);
-			goto err1;
+
+		ret = pm_runtime_get_sync(dev);
+		if (ret < 0) {
+			dev_err(dev, "failed to resume exynos device\n");
+			pm_runtime_set_suspended(dev);
 		}
+		exynos->need_dr_role = 0;
+		mutex_unlock(&dotg->lock);
 
 		ret = usb_gadget_activate(dwc->gadget);
 		if (ret < 0)
 			dev_err(dev, "USB gadget activate failed with %d\n", ret);
 
+		dwc3_otg_phy_tune(fsm);
+		dwc3_exynos_core_init(dwc, exynos);
 		dwc3_otg_set_peripheral_mode(dotg);
 
 		/*
@@ -563,8 +461,10 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		if (exynos->extra_delay)
 			msleep(100);
 
-		ret = dwc3_otg_phy_enable(fsm, 0, on);
-err1:
+		mutex_lock(&dotg->lock);
+		pm_runtime_put_sync_suspend(dev);
+		mutex_unlock(&dotg->lock);
+
 		__pm_relax(dotg->wakelock);
 	}
 
@@ -932,9 +832,6 @@ static void dwc3_otg_recovery_reconnection(struct work_struct *w)
 	/* Lock to avoid real cable insert/remove operation. */
 	mutex_lock(&fsm->lock);
 
-	/* To ignore PHY disable */
-	dwc3_otg_phy_enable(fsm, DWC3_PHY_OWNER_EMEG, 1);
-
 	if (dotg->otg_connection == 1) {
 		pr_err("Recovery Host Reconnection\n");
 		ret = dwc3_otg_start_host(fsm, 0);
@@ -958,8 +855,6 @@ static void dwc3_otg_recovery_reconnection(struct work_struct *w)
 		dwc3_otg_start_gadget(fsm, 1);
 
 emeg_out:
-	dwc3_otg_phy_enable(fsm, DWC3_PHY_OWNER_EMEG, 0);
-
 	mutex_unlock(&fsm->lock);
 	__pm_relax(dotg->reconn_wakelock);
 }

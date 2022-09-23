@@ -135,6 +135,7 @@ void dwc3_exynos_rsw_exit(struct device *dev);
 int dwc3_exynos_rsw_start(struct device *dev);
 int dwc3_exynos_id_event(struct device *dev, int state);
 int dwc3_exynos_vbus_event(struct device *dev, bool vbus_active);
+int dwc3_exynos_phy_enable(int owner, bool on);
 extern int dwc3_exynos_set_bus_clock(struct device *dev, int clk_level);
 void dwc3_otg_run_sm(struct otg_fsm *fsm);
 

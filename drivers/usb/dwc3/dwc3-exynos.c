@@ -622,6 +622,99 @@ int dwc3_exynos_vbus_event(struct device *dev, bool vbus_active)
 	return 0;
 }
 
+bool dwc3_exynos_check_usb_suspend(struct dwc3_otg *dotg)
+{
+	int wait_counter = 0;
+
+	do {
+		if (!dotg->dwc3_suspended)
+			break;
+
+		wait_counter++;
+		msleep(20);
+	} while (wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT);
+
+	return wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT;
+}
+
+/*
+ * dwc3_exynos_phy_enable - received combo phy control.
+ */
+int dwc3_exynos_phy_enable(int owner, bool on)
+{
+	struct dwc3_exynos	*exynos;
+	struct dwc3_exynos_rsw	*rsw;
+	struct otg_fsm		*fsm;
+	struct device_node *np = NULL;
+	struct platform_device *pdev = NULL;
+	struct dwc3		*dwc;
+	struct device		*dev;
+	struct dwc3_otg		*dotg;
+	int ret = 0;
+
+	pr_info("%s owner=%d on=%d +\n", __func__, owner, on);
+
+	np = of_find_compatible_node(NULL, NULL, "samsung,exynos9-dwusb");
+	if (np) {
+		pdev = of_find_device_by_node(np);
+		if (!pdev) {
+			pr_err("%s we can't get platform device\n", __func__);
+			ret = -ENODEV;
+			goto err;
+		}
+		of_node_put(np);
+	} else {
+		pr_err("%s we can't get np\n", __func__);
+		ret = -ENODEV;
+		goto err;
+	}
+
+	exynos = platform_get_drvdata(pdev);
+	if (!exynos) {
+		pr_err("%s we can't get drvdata\n", __func__);
+		ret = -ENOENT;
+		goto err;
+	}
+
+	rsw = &exynos->rsw;
+
+	fsm = rsw->fsm;
+	if (!fsm) {
+		pr_err("%s we can't get fsm\n", __func__);
+		ret = -ENOENT;
+		goto err;
+	}
+
+	dwc = exynos->dwc;
+	dev = dwc->dev;
+	dotg = exynos->dotg;
+	if (on) {
+		if (!dwc3_exynos_check_usb_suspend(dotg))
+			dev_err(dev, "too long to wait for dwc3 suspended\n");
+
+		mutex_lock(&dotg->lock);
+		exynos->need_dr_role = 1;
+		ret = pm_runtime_get_sync(dev);
+		if (ret < 0) {
+			dev_err(dwc->dev, "%s: failed to initialize core: %d\n",
+					__func__, ret);
+			pm_runtime_set_suspended(dev);
+		}
+		exynos->need_dr_role = 0;
+		mutex_unlock(&dotg->lock);
+	} else {
+		mutex_lock(&dotg->lock);
+		if (!dotg->otg_connection)
+			exynos->dwc->current_dr_role = DWC3_GCTL_PRTCAP_DEVICE;
+		pm_runtime_put_sync_suspend(dev);
+		mutex_unlock(&dotg->lock);
+	}
+
+err:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(dwc3_exynos_phy_enable);
+
 static int dwc3_exynos_register_phys(struct dwc3_exynos *exynos)
 {
 	struct platform_device	*pdev;
