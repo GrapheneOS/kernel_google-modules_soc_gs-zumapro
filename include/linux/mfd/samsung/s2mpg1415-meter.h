@@ -64,14 +64,39 @@ const u32 s2mpg1415_ext_sample_rate_uhz[S2MPG1415_EXT_FREQ_COUNT] = {
 	[EXT_125HZ] = 125000000,
 };
 
-#define ACQUISITION_TIME_US (40 * S2MPG1415_METER_CHANNEL_MAX)
+static const u32 s2mpg1415_int_acquisition_time_us[S2MPG1415_INT_FREQ_COUNT] = {
+	[INT_7P_8125HZ] = 128000, [INT_15P_625HZ] = 64000,
+	[INT_31P_25HZ] = 32000, [INT_62P_5HZ] = 16000,
+	[INT_125HZ] = 8000, [INT_250HZ] = 4000,
+	[INT_1000HZ] = 1000,
+};
+
+static inline int s2mpg1415_meter_get_acquisition_time_us(s2mpg1415_int_samp_rate samp_rate)
+{
+	/* The internal data and sample count are not updated at the same timing
+	 * on Pro due to the duty cycling function, and the ASYNC_RD will depend
+	 * on internal sampling rate.
+	 * So at least waiting for internal rail to complete a sampling will be
+	 * necessary to prevent the mismatch of irregular timing. (b/209886118)
+	 */
+	return s2mpg1415_int_acquisition_time_us[samp_rate];
+}
+
+#define ACQUISITION_TIME_DIVISOR 16
 static inline int s2mpg1415_meter_set_async_blocking(enum s2mpg1415_id id,
 						     struct i2c_client *i2c,
-						     u64 *timestamp_capture)
+						     u64 *timestamp_capture,
+						     s2mpg1415_int_samp_rate samp_rate)
 {
 	u8 val = 0xFF;
 	int ret;
 	u8 reg = ADDRESS_AT[ADDRESS_CTRL2][id];
+
+	const u32 acquisition_time_us =
+		s2mpg1415_meter_get_acquisition_time_us(samp_rate);
+	const u32 min_acquisition_time_us = acquisition_time_us /
+		ACQUISITION_TIME_DIVISOR;
+	int acquisition_delay_count = 0;
 
 	/* When 1 is written into ASYNC_RD bit, */
 	/* transfer the accumulator data to readable registers->self-cleared */
@@ -84,10 +109,8 @@ static inline int s2mpg1415_meter_set_async_blocking(enum s2mpg1415_id id,
 	if (timestamp_capture)
 		*timestamp_capture = ktime_get_boottime_ns();
 
-	/* Based on the s2mpg1415 datasheets, (40 us * channel count) is the
-	 * maximum time required for acquisition of all samples across all
-	 * channels. However, typically, we do not write 1 to ASYNC during
-	 * acquisition, so return immediately to reduce refresh time.
+	/* Verify if acquisition is already complete before a polled delay.
+	 * Return immediately to reduce refresh time if so.
 	 */
 	ret = s2mpg1415_read_reg(id, i2c, reg, &val);
 
@@ -97,11 +120,16 @@ static inline int s2mpg1415_meter_set_async_blocking(enum s2mpg1415_id id,
 	/* Reading has failed OR we sampled during acquisition, so wait the
 	 * acquisition time and return based on the values read.
 	 */
-	usleep_range(ACQUISITION_TIME_US, ACQUISITION_TIME_US + 100);
+	do {
+		usleep_range(min_acquisition_time_us,
+			     min_acquisition_time_us + 100);
+		ret = s2mpg1415_read_reg(id, i2c, reg, &val);
+		if (ret != 0 || (val & ASYNC_RD_MASK) == 0x00)
+			return ret;
+		acquisition_delay_count++;
+	} while (acquisition_delay_count < ACQUISITION_TIME_DIVISOR);
 
-	ret = s2mpg1415_read_reg(id, i2c, reg, &val);
-	if (ret != 0 || (val & ASYNC_RD_MASK) == 0x00)
-		return ret;
+	pr_err("odpm: acquisition_time_us: %d not enough\n", acquisition_time_us);
 
 	return -1; /* ASYNC value has not changed */
 }
@@ -286,13 +314,16 @@ static inline int s2mpg1415_meter_measure_acc(enum s2mpg1415_id id,
 					      s2mpg1415_meter_mode mode,
 					      u64 *data,
 					      u32 *count,
-					      u64 *timestamp_capture)
+					      u64 *timestamp_capture,
+					      s2mpg1415_int_samp_rate samp_rate)
 {
 	mutex_lock(meter_lock);
 
 	s2mpg1415_meter_set_acc_mode(id, i2c, mode);
 
-	s2mpg1415_meter_set_async_blocking(id, i2c, timestamp_capture);
+	s2mpg1415_meter_set_async_blocking(id, i2c,
+					   timestamp_capture,
+					   samp_rate);
 
 	if (data)
 		s2mpg1415_meter_read_acc_data_reg(id, i2c, data);
@@ -305,4 +336,16 @@ static inline int s2mpg1415_meter_measure_acc(enum s2mpg1415_id id,
 	return 0;
 }
 
+static inline int s2mpg1415_meter_sw_reset(enum s2mpg1415_id id,
+					   struct i2c_client *i2c)
+{
+	int ret;
+
+	ret = s2mpg1415_update_reg(id, i2c, ADDRESS_AT[ADDRESS_CTRL1][id], 0x01,
+				   METER_EN_MASK);
+	if (ret != 0)
+		pr_err("odpm: s2mpg1%d-odpm: failed to update meter_ctrl1 bit_0 to 1\n", id + 4);
+
+	return ret;
+}
 #endif /* __LINUX_MFD_S2MPG1415_METER_H */
