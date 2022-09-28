@@ -63,6 +63,10 @@ struct bts_bw_stats {
  *
  */
 struct bts_bw {
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	struct list_head node;
+	unsigned int bus_width;
+#endif
 	char *name;
 	bool is_rt;
 	unsigned int peak;
