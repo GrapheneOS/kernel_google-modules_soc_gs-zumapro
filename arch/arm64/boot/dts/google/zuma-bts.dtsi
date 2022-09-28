@@ -35,7 +35,7 @@
 		>;
 
 		rt-names = "DECON0",
-			   "g3aa";
+			   "isp-fe";
 
 		list-scen = "default",
 			    "mfc_uhd",
@@ -45,6 +45,60 @@
 			    "dp_default",
 			    "camera_default",
 			    "mfc_uhd_enc60";
+
+		nocl-names = "nocl2aa",
+			     "nocl2ab",
+			     "nocl1a";
+		nocl2aa {
+			nocl_node;
+			DECON0 {
+				bus-width = <32>;
+			};
+			isp-fe {
+				bus-width = <32>;
+			};
+			mfc {
+				bus-width = <16>;
+			};
+		};
+		/* Temporarily put be-core, lme in nocl2ab */
+		nocl2ab {
+			nocl_node;
+			g2d {
+				bus-width = <16>;
+			};
+			gdc0 {
+				bus-width = <16>;
+			};
+			gdc1 {
+				bus-width = <16>;
+			};
+			mcsc {
+				bus-width = <16>;
+			};
+			gse {
+				bus-width = <16>;
+			};
+			be-core {
+				bus-width = <16>;
+			};
+			gtnr-merge {
+				bus-width = <16>;
+			};
+			gtnr-align {
+				bus-width = <16>;
+			};
+			lme {
+				bus-width = <16>;
+			};
+		};
+		/* Need to update the name from bo to bw */
+		nocl1a {
+			nocl_node;
+			bo {
+				bus-width = <32>;
+			};
+		};
 
 		/* TREX_D_NOCL0 */
 
