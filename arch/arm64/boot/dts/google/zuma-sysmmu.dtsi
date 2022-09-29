@@ -993,7 +993,7 @@
 		sysmmu,async-fault;
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A480000>;
-		power-domains = <&pd_mfc>;
+		/* power-domains = <&pd_mfc>; */
 
 		port-name = "MFC";
 		#iommu-cells = <0>;
