@@ -737,6 +737,55 @@ static ssize_t store_debug_scaling_devfreq_max(struct device *dev,
 	return count;
 }
 
+static ssize_t show_soft_max_freq(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
+{
+	struct device *parent = dev->parent;
+	struct platform_device *pdev =
+		container_of(parent, struct platform_device, dev);
+	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
+	ssize_t count = 0;
+	int val;
+
+	if (data->pm_qos_class_max) {
+		val = exynos_pm_qos_read_req_value(data->pm_qos_class_max,
+						   &data->pm_qos_soft_max_freq);
+		if (val < 0) {
+			dev_err(dev, "failed to read requested value\n");
+			return count;
+		}
+		count += snprintf(buf, PAGE_SIZE, "%d\n", val);
+	}
+
+	return count;
+}
+
+static ssize_t store_soft_max_freq(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	struct device *parent = dev->parent;
+	struct platform_device *pdev =
+		container_of(parent, struct platform_device, dev);
+	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
+	int ret;
+	u32 qos_value;
+
+	ret = sscanf(buf, "%u", &qos_value);
+	if (ret != 1)
+		return -EINVAL;
+
+	if (data->pm_qos_class_max) {
+		if (exynos_pm_qos_request_active(&data->pm_qos_soft_max_freq))
+			exynos_pm_qos_update_request(&data->pm_qos_soft_max_freq,
+						     qos_value);
+	}
+
+	return count;
+}
+
+
 static ssize_t show_debug_scaling_devfreq_min(struct device *dev,
 					      struct device_attribute *attr,
 					      char *buf)
@@ -859,6 +908,9 @@ static DEVICE_ATTR(debug_scaling_devfreq_min, 0640,
 static DEVICE_ATTR(debug_scaling_devfreq_max, 0640,
 		   show_debug_scaling_devfreq_max,
 		   store_debug_scaling_devfreq_max);
+static DEVICE_ATTR(soft_max_freq, 0640,
+		   show_soft_max_freq,
+		   store_soft_max_freq);
 static DEVICE_ATTR_WO(cancel_boot_freq);
 
 static ssize_t time_in_state_show(struct device *dev,
@@ -893,6 +945,7 @@ static struct attribute *exynos_devfreq_sysfs_entries[] = {
 	&dev_attr_exynos_devfreq_cmu_dump.attr,
 	&dev_attr_debug_scaling_devfreq_min.attr,
 	&dev_attr_debug_scaling_devfreq_max.attr,
+	&dev_attr_soft_max_freq.attr,
 	&dev_attr_alt_dvfs_info.attr,
 	&dev_attr_cancel_boot_freq.attr,
 	NULL,
@@ -1346,8 +1399,8 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 				 &data->pm_qos_class_max))
 		return -ENODEV;
 	/* Optionally read softmax if provided */
-	of_property_read_u32(np, "pm_qos_class_softmax",
-				 &data->pm_qos_class_softmax);
+	of_property_read_u32(np, "soft_max_freq",
+				 &data->soft_max_freq);
 	if (of_property_read_u32(np, "ess_flag", &data->ess_flag))
 		return -ENODEV;
 
@@ -1390,28 +1443,28 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	data->max_freq = freq_array[4];
 	data->reboot_freq = freq_array[5];
 
-	if (!data->pm_qos_class_softmax)
-		data->pm_qos_class_softmax = data->max_freq;
+	if (!data->soft_max_freq)
+		data->soft_max_freq = data->max_freq;
 	else
-		data->pm_qos_class_softmax = min(data->pm_qos_class_softmax,
+		data->soft_max_freq = min(data->soft_max_freq,
 			data->max_freq);
 
 	if (data->devfreq_profile.initial_freq)
 		data->devfreq_profile.initial_freq = min_t(
 			u32,
 			data->devfreq_profile.initial_freq,
-			data->pm_qos_class_softmax);
+			data->soft_max_freq);
 	else
 		data->devfreq_profile.initial_freq = (u32)
-			(data->pm_qos_class_softmax);
+			(data->soft_max_freq);
 
 	if (data->default_qos)
 		data->default_qos = min_t(
 			u32,
 			data->default_qos,
-			data->pm_qos_class_softmax);
+			data->soft_max_freq);
 	else
-		data->default_qos = (u32)(data->pm_qos_class_softmax);
+		data->default_qos = (u32)(data->soft_max_freq);
 
 	if (!of_property_read_u32(np, "max-volt", &val) &&
 	    !of_property_read_u32(np, "dfs_id", &data->dfs_id)) {
@@ -1437,7 +1490,7 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 		data->boot_qos_timeout = boot_array[0];
 		data->boot_freq = boot_array[1];
 	}
-	data->boot_freq = min(data->boot_freq, data->pm_qos_class_softmax);
+	data->boot_freq = min(data->boot_freq, data->soft_max_freq);
 
 	if (of_property_read_u32(np, "governor", &data->gov_type))
 		return -ENODEV;
@@ -2357,7 +2410,9 @@ static int exynos_devfreq_probe(struct platform_device *pdev)
 	exynos_pm_qos_add_request(&data->debug_pm_qos_min, (int)data->pm_qos_class,
 				  data->min_freq);
 	exynos_pm_qos_add_request(&data->debug_pm_qos_max, (int)data->pm_qos_class_max,
-				  data->pm_qos_class_softmax);
+				  data->max_freq);
+	exynos_pm_qos_add_request(&data->pm_qos_soft_max_freq, (int)data->pm_qos_class_max,
+				  data->soft_max_freq);
 	exynos_pm_qos_add_request(&data->thermal_pm_qos_max, (int)data->pm_qos_class_max,
 				  data->max_freq);
 	if (data->pm_qos_class_max)

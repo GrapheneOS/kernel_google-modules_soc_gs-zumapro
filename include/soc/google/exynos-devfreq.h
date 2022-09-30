@@ -160,6 +160,7 @@ struct exynos_devfreq_data {
 	u32					old_freq;
 	u32					new_freq;
 	u32					min_freq;
+	u32					soft_max_freq;
 	u32					max_freq;
 	u32					reboot_freq;
 	u32					boot_freq;
@@ -171,10 +172,10 @@ struct exynos_devfreq_data {
 
 	u32					pm_qos_class;
 	u32					pm_qos_class_max;
-	u32					pm_qos_class_softmax;
 	struct exynos_pm_qos_request		sys_pm_qos_min;
 	struct exynos_pm_qos_request		debug_pm_qos_min;
 	struct exynos_pm_qos_request		debug_pm_qos_max;
+	struct exynos_pm_qos_request		pm_qos_soft_max_freq;
 	struct exynos_pm_qos_request		default_pm_qos_min;
 	struct exynos_pm_qos_request		default_pm_qos_max;
 	struct exynos_pm_qos_request		thermal_pm_qos_max;
