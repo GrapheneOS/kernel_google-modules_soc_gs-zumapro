@@ -40,8 +40,7 @@
 #define MMU_VERSION_RAW(reg)			(((reg) >> 16) & 0xFFFF)
 #define MMU_VM_ADDR(reg, idx)			((reg) + ((idx) * SYSMMU_VM_OFFSET))
 
-#define MMU_CTRL_ENABLE			0x5
-#define MMU_CTRL_DISABLE		0x0
+#define MMU_CTRL_ENABLE				BIT(0)
 
 #define MMU_STREAM_CFG_STLB_ID(val)		(((val) >> 24) & 0xFF)
 #define MMU_STREAM_CFG_PTLB_ID(val)		(((val) >> 16) & 0xFF)
