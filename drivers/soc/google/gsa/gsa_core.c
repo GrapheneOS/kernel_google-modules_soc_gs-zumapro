@@ -5,6 +5,7 @@
  * Copyright (C) 2020 Google LLC
  */
 #include <linux/dma-mapping.h>
+#include <linux/kobject.h>
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
 #include <linux/of.h>
@@ -18,6 +19,7 @@
 #include <linux/gsa/gsa_kdn.h>
 #include <linux/gsa/gsa_sjtag.h>
 #include <linux/gsa/gsa_tpu.h>
+#include "gsa_log.h"
 #include "gsa_mbox.h"
 #include "gsa_priv.h"
 #include "gsa_tz.h"
@@ -33,6 +35,7 @@ struct gsa_dev_state {
 	struct gsa_tz_chan_ctx aoc_srv;
 	struct gsa_tz_chan_ctx tpu_srv;
 	struct gsa_tz_chan_ctx dsp_srv;
+	struct gsa_log *log;
 };
 
 /*
@@ -599,6 +602,26 @@ EXPORT_SYMBOL_GPL(gsa_sjtag_end_session);
 
 /********************************************************************/
 
+static ssize_t gsa_log_show(struct device *gsa, struct device_attribute *attr, char *buf);
+
+static DEVICE_ATTR(log_main, 0440, gsa_log_show, NULL);
+static DEVICE_ATTR(log_intermediate, 0440, gsa_log_show, NULL);
+
+static ssize_t gsa_log_show(struct device *gsa, struct device_attribute *attr, char *buf) {
+	struct platform_device *pdev = to_platform_device(gsa);
+	struct gsa_dev_state *s = platform_get_drvdata(pdev);
+
+	bool is_intermediate = (attr == &dev_attr_log_intermediate);
+	return gsa_log_read(s->log, is_intermediate, buf);
+}
+
+static struct attribute *gsa_attrs[] = {
+	&dev_attr_log_main.attr,
+	&dev_attr_log_intermediate.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(gsa);
+
 static int gsa_probe(struct platform_device *pdev)
 {
 	int err;
@@ -645,6 +668,11 @@ static int gsa_probe(struct platform_device *pdev)
 	gsa_tz_chan_ctx_init(&s->tpu_srv, HWMGR_TPU_PORT, dev);
 	gsa_tz_chan_ctx_init(&s->dsp_srv, HWMGR_DSP_PORT, dev);
 
+	/* Initialize log if configured */
+	s->log = gsa_log_init(pdev);
+	if (IS_ERR(s->log))
+		return PTR_ERR(s->log);
+
 	dev_info(dev, "Initialized\n");
 
 	return 0;
@@ -674,6 +702,7 @@ static struct platform_driver gsa_driver = {
 	.driver	= {
 		.name = "gsa",
 		.of_match_table = gsa_of_match,
+		.dev_groups = gsa_groups,
 	},
 };
 
