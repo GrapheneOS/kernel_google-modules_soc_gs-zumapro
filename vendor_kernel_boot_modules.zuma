@@ -4,6 +4,7 @@
 9p.ko
 9pnet.ko
 9pnet_virtio.ko
+acpm_flexpmu_dbg.ko
 arm-memlat-mon.ko
 at24.ko
 bc_max77759.ko
@@ -42,6 +43,7 @@ exynos-ecc-handler.ko
 exynos-pd-dbg.ko
 exynos-pd.ko
 exynos-pd_el3.ko
+exynos-pm.ko
 exynos-pmu-if.ko
 exynos-reboot.ko
 exynos_devfreq.ko
