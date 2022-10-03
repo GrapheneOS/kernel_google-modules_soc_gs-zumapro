@@ -36,6 +36,8 @@ obj-y += drivers/scsi/ufs/
 
 obj-y += drivers/spi/
 
+obj-y += drivers/spmi/
+
 obj-y += drivers/usb/
 
 obj-y += drivers/input/
