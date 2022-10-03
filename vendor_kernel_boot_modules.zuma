@@ -118,6 +118,7 @@ pkvm-s2mpu.ko
 pl330.ko
 pmic_class.ko
 power_stats.ko
+regmap-spmi.ko
 rio.ko
 rtc-s2mpg14.ko
 s2mpg14-key.ko
@@ -130,6 +131,7 @@ s2mpg15-powermeter.ko
 s2mpg15-regulator.ko
 s2mpg15-spmic-thermal.ko
 s3c2410_wdt.ko
+s5910.ko
 samsung-dma.ko
 samsung-iommu-group.ko
 samsung-secure-iova.ko
@@ -148,6 +150,7 @@ slg51002-regulator.ko
 smfc.ko
 spi-s3c64xx.ko
 spidev.ko
+spmi_bit_bang.ko
 sscoredump.ko
 st21nfc.ko
 st54spi.ko
