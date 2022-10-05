@@ -32,9 +32,11 @@
 #undef EHLD_TASK_SUPPORT
 
 #ifdef DEBUG
+#define ehld_debug(f, str...) pr_debug(str)
 #define ehld_info(f, str...) pr_info(str)
 #define ehld_err(f, str...) pr_err(str)
 #else
+#define ehld_debug(f, str...) do { if (f == 1) pr_debug(str); } while (0)
 #define ehld_info(f, str...) do { if (f == 1) pr_info(str); } while (0)
 #define ehld_err(f, str...)  do { if (f == 1) pr_err(str); } while (0)
 #endif
@@ -319,14 +321,14 @@ static int exynos_ehld_start_cpu(unsigned int cpu)
 			return PTR_ERR(event);
 		}
 
-		ehld_info(1, "@%s: cpu%u event make success\n", __func__, cpu);
+		ehld_debug(1, "@%s: cpu%u event make success\n", __func__, cpu);
 		ctrl->event = event;
 		perf_event_enable(event);
 	}
 
 	ctrl->ehld_running = 1;
 	ctrl->ehld_cpupm = 0;
-	ehld_info(1, "@%s: cpu%u ehld running\n", __func__, cpu);
+	ehld_debug(1, "@%s: cpu%u ehld running\n", __func__, cpu);
 
 	if (!ehld_main.dbgc.support)
 		return 0;
@@ -334,7 +336,7 @@ static int exynos_ehld_start_cpu(unsigned int cpu)
 	if (!ehld_main.dbgc.use_tick_timer) {
 		u64 interval = ehld_main.dbgc.interval * 1000 * 1000;
 
-		ehld_info(1, "@%s: cpu%u ehld running with hrtimer\n", __func__, cpu);
+		ehld_debug(1, "@%s: cpu%u ehld running with hrtimer\n", __func__, cpu);
 		hrtimer_init(hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		hrtimer->function = ehld_value_raw_hrtimer_fn;
 		if (ehld_main.suspending && cpu == 0)
@@ -342,7 +344,7 @@ static int exynos_ehld_start_cpu(unsigned int cpu)
 		else
 			hrtimer_start(hrtimer, ns_to_ktime(interval), HRTIMER_MODE_REL_PINNED);
 	} else {
-		ehld_info(1, "@%s: cpu%u ehld running with tick-timer\n", __func__, cpu);
+		ehld_debug(1, "@%s: cpu%u ehld running with tick-timer\n", __func__, cpu);
 	}
 
 	return 0;
@@ -361,7 +363,7 @@ static int exynos_ehld_stop_cpu(unsigned int cpu)
 	ctrl->ehld_running = 0;
 	ctrl->ehld_cpupm = 1;
 
-	ehld_info(1, "@%s: cpu%u ehld stopping\n", __func__, cpu);
+	ehld_debug(1, "@%s: cpu%u ehld stopping\n", __func__, cpu);
 
 	event = ctrl->event;
 	if (event) {
@@ -371,7 +373,7 @@ static int exynos_ehld_stop_cpu(unsigned int cpu)
 	}
 
 	if (ehld_main.dbgc.support && !ehld_main.dbgc.use_tick_timer) {
-		ehld_info(1, "@%s: cpu%u hrtimer cancel\n",
+		ehld_debug(1, "@%s: cpu%u hrtimer cancel\n",
 						__func__, cpu);
 		hrtimer_cancel(hrtimer);
 	}

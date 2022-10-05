@@ -220,7 +220,7 @@ static void hardlockup_watchdog_enable(unsigned int cpu)
 	/* Initialize timestamp */
 	__touch_hardlockup_watchdog();
 
-	pr_info("%s: cpu%x: enabled - interval: %llu sec\n", __func__, cpu,
+	pr_debug("%s: cpu%x: enabled - interval: %llu sec\n", __func__, cpu,
 			hardlockup_watchdog.sample_period / NSEC_PER_SEC);
 }
 
@@ -237,7 +237,7 @@ static void hardlockup_watchdog_disable(unsigned int cpu)
 
 	WARN_ON_ONCE(cpu != smp_processor_id());
 
-	pr_info("%s: cpu%x: disabled\n", __func__, cpu);
+	pr_debug("%s: cpu%x: disabled\n", __func__, cpu);
 
 	cpumask_clear_cpu(cpu, &hardlockup_watchdog.allowed_mask);
 	hrtimer_cancel(hrtimer);
