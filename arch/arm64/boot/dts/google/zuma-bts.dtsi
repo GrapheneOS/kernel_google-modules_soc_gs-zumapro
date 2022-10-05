@@ -60,6 +60,10 @@
 			mfc {
 				bus-width = <16>;
 			};
+			rgbp {
+				bus-width = <16>;
+			};
+
 		};
 		/* Temporarily put be-core, lme in nocl2ab */
 		nocl2ab {
@@ -79,7 +83,7 @@
 			gse {
 				bus-width = <16>;
 			};
-			be-core {
+			yuvp {
 				bus-width = <16>;
 			};
 			gtnr-merge {
