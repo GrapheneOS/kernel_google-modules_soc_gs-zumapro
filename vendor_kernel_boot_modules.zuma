@@ -59,6 +59,7 @@ google-bms.ko
 google-charger.ko
 google-cpm.ko
 google_bcl.ko
+governor_memlat.ko
 gpu_cooling.ko
 gs-chipid.ko
 gs_thermal.ko
@@ -84,6 +85,7 @@ max77729-pmic.ko
 max77759_charger.ko
 max77759_contaminant.ko
 max77759_helper.ko
+memlat-devfreq.ko
 net_failover.ko
 netfs.ko
 nitrous.ko
