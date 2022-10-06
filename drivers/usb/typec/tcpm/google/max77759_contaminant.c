@@ -538,6 +538,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 				return ret;
 		}
 		*cc_update_handled = false;
+		return 0;
 	}
 
 	if (contaminant->state == NOT_DETECTED || contaminant->state == SINK ||
@@ -563,6 +564,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 				if (ret == -EIO)
 					return ret;
 				*cc_update_handled = true;
+				return 0;
 			}
 
 			/* Sink or Not detected */
@@ -571,6 +573,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 			if (ret == -EIO)
 				return ret;
 			*cc_update_handled = true;
+			return 0;
 		} else {
 			/* Need to check again after tCCDebounce */
 			if (((cc_status & TCPC_CC_STATUS_TOGGLING) == 0)  &&
@@ -622,6 +625,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 						if (ret == -EIO)
 							return ret;
 						*cc_update_handled = true;
+						return 0;
 					}
 					/* Sink or Not detected */
 					ret = enable_contaminant_detection(contaminant->chip,
@@ -640,6 +644,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 				return ret;
 		}
 		*cc_update_handled = false;
+		return 0;
 	} else if (contaminant->state == DETECTED) {
 		if (status_check(cc_status, TCPC_CC_STATUS_TOGGLING, 0)) {
 			logbuffer_log(chip->log, "Contaminant: Check if dry");
@@ -653,6 +658,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 				if (ret == -EIO)
 					return ret;
 				*cc_update_handled = true;
+				return 0;
 			}
 
 			/*
@@ -665,9 +671,11 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 			if (ret == -EIO)
 				return ret;
 			*cc_update_handled = true;
+			return 0;
 		}
 		/* TCPM does not manage ports in dry detection phase. */
 		*cc_update_handled = true;
+		return 0;
 	}
 
 	*cc_update_handled = false;
