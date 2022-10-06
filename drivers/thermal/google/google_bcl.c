@@ -313,20 +313,17 @@ static int triggered_read_level(void *data, int *val, int id)
 		return 0;
 	}
 
-	// TODO: Port ODPM for BCL (b/243707032)
-	if (false) {
-		/* If IRQ not asserted, check ODPM */
-		if ((id == OCP_WARN_GPU) || (id == SOFT_OCP_WARN_GPU)) {
-			mutex_lock(&bcl_dev->sub_odpm->lock);
-			//odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-			odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-			mutex_unlock(&bcl_dev->sub_odpm->lock);
-		} else {
-			mutex_lock(&bcl_dev->main_odpm->lock);
-			//odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-			odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-			mutex_unlock(&bcl_dev->main_odpm->lock);
-		}
+	/* If IRQ not asserted, check ODPM */
+	if ((id == OCP_WARN_GPU) || (id == SOFT_OCP_WARN_GPU)) {
+		mutex_lock(&bcl_dev->sub_odpm->lock);
+		odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
+		mutex_unlock(&bcl_dev->sub_odpm->lock);
+	} else {
+		mutex_lock(&bcl_dev->main_odpm->lock);
+		odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
+		mutex_unlock(&bcl_dev->main_odpm->lock);
 	}
 
 	*val = 0;
