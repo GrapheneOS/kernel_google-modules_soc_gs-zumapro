@@ -367,14 +367,14 @@ static void google_smpl_warn_work(struct work_struct *work)
 	google_warn_work(work, SMPL_WARN);
 }
 
-static int smpl_warn_read_voltage(void *data, int *val)
+static int smpl_warn_read_voltage(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SMPL_WARN);
+	return triggered_read_level(tz->devdata, val, SMPL_WARN);
 }
 
-static int ocp_cpu1_read_current(void *data, int *val)
+static int ocp_cpu1_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, OCP_WARN_CPUCL1);
+	return triggered_read_level(tz->devdata, val, OCP_WARN_CPUCL1);
 }
 
 static void google_cpu1_warn_work(struct work_struct *work)
@@ -382,9 +382,9 @@ static void google_cpu1_warn_work(struct work_struct *work)
 	google_warn_work(work, OCP_WARN_CPUCL1);
 }
 
-static int ocp_cpu2_read_current(void *data, int *val)
+static int ocp_cpu2_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, OCP_WARN_CPUCL2);
+	return triggered_read_level(tz->devdata, val, OCP_WARN_CPUCL2);
 }
 
 static void google_cpu2_warn_work(struct work_struct *work)
@@ -392,9 +392,9 @@ static void google_cpu2_warn_work(struct work_struct *work)
 	google_warn_work(work, OCP_WARN_CPUCL2);
 }
 
-static int soft_ocp_cpu1_read_current(void *data, int *val)
+static int soft_ocp_cpu1_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SOFT_OCP_WARN_CPUCL1);
+	return triggered_read_level(tz->devdata, val, SOFT_OCP_WARN_CPUCL1);
 }
 
 static void google_soft_cpu1_warn_work(struct work_struct *work)
@@ -402,9 +402,9 @@ static void google_soft_cpu1_warn_work(struct work_struct *work)
 	google_warn_work(work, SOFT_OCP_WARN_CPUCL1);
 }
 
-static int soft_ocp_cpu2_read_current(void *data, int *val)
+static int soft_ocp_cpu2_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SOFT_OCP_WARN_CPUCL2);
+	return triggered_read_level(tz->devdata, val, SOFT_OCP_WARN_CPUCL2);
 }
 
 static void google_soft_cpu2_warn_work(struct work_struct *work)
@@ -412,9 +412,9 @@ static void google_soft_cpu2_warn_work(struct work_struct *work)
 	google_warn_work(work, SOFT_OCP_WARN_CPUCL2);
 }
 
-static int ocp_tpu_read_current(void *data, int *val)
+static int ocp_tpu_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, OCP_WARN_TPU);
+	return triggered_read_level(tz->devdata, val, OCP_WARN_TPU);
 }
 
 static void google_tpu_warn_work(struct work_struct *work)
@@ -422,9 +422,9 @@ static void google_tpu_warn_work(struct work_struct *work)
 	google_warn_work(work, OCP_WARN_TPU);
 }
 
-static int soft_ocp_tpu_read_current(void *data, int *val)
+static int soft_ocp_tpu_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SOFT_OCP_WARN_TPU);
+	return triggered_read_level(tz->devdata, val, SOFT_OCP_WARN_TPU);
 }
 
 static void google_soft_tpu_warn_work(struct work_struct *work)
@@ -432,9 +432,9 @@ static void google_soft_tpu_warn_work(struct work_struct *work)
 	google_warn_work(work, SOFT_OCP_WARN_TPU);
 }
 
-static int ocp_gpu_read_current(void *data, int *val)
+static int ocp_gpu_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, OCP_WARN_GPU);
+	return triggered_read_level(tz->devdata, val, OCP_WARN_GPU);
 }
 
 static void google_gpu_warn_work(struct work_struct *work)
@@ -442,9 +442,9 @@ static void google_gpu_warn_work(struct work_struct *work)
 	google_warn_work(work, OCP_WARN_GPU);
 }
 
-static int soft_ocp_gpu_read_current(void *data, int *val)
+static int soft_ocp_gpu_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SOFT_OCP_WARN_GPU);
+	return triggered_read_level(tz->devdata, val, SOFT_OCP_WARN_GPU);
 }
 
 static void google_soft_gpu_warn_work(struct work_struct *work)
@@ -457,9 +457,9 @@ static void google_pmic_120c_work(struct work_struct *work)
 	google_warn_work(work, PMIC_120C);
 }
 
-static int pmic_120c_read_temp(void *data, int *val)
+static int pmic_120c_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, PMIC_120C);
+	return triggered_read_level(tz->devdata, val, PMIC_120C);
 }
 
 static void google_pmic_140c_work(struct work_struct *work)
@@ -467,9 +467,9 @@ static void google_pmic_140c_work(struct work_struct *work)
 	google_warn_work(work, PMIC_140C);
 }
 
-static int pmic_140c_read_temp(void *data, int *val)
+static int pmic_140c_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, PMIC_140C);
+	return triggered_read_level(tz->devdata, val, PMIC_140C);
 }
 
 static void google_pmic_overheat_work(struct work_struct *work)
@@ -477,29 +477,29 @@ static void google_pmic_overheat_work(struct work_struct *work)
 	google_warn_work(work, PMIC_OVERHEAT);
 }
 
-static int tsd_overheat_read_temp(void *data, int *val)
+static int tsd_overheat_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, PMIC_OVERHEAT);
+	return triggered_read_level(tz->devdata, val, PMIC_OVERHEAT);
 }
 
-static int google_bcl_uvlo1_read_temp(void *data, int *val)
+static int google_bcl_uvlo1_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, UVLO1);
+	return triggered_read_level(tz->devdata, val, UVLO1);
 }
 
-static int google_bcl_uvlo2_read_temp(void *data, int *val)
+static int google_bcl_uvlo2_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, UVLO2);
+	return triggered_read_level(tz->devdata, val, UVLO2);
 }
 
-static int google_bcl_batoilo_read_temp(void *data, int *val)
+static int google_bcl_batoilo_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, BATOILO);
+	return triggered_read_level(tz->devdata, val, BATOILO);
 }
 
-static int google_bcl_set_soc(void *data, int low, int high)
+static int google_bcl_set_soc(struct thermal_zone_device *tz, int low, int high)
 {
-	struct bcl_device *bcl_dev = data;
+	struct bcl_device *bcl_dev = tz->devdata;
 
 	if (high == bcl_dev->trip_high_temp)
 		return 0;
@@ -513,13 +513,15 @@ static int google_bcl_set_soc(void *data, int low, int high)
 	return 0;
 }
 
-static int google_bcl_read_soc(void *data, int *val)
+static int google_bcl_get_battery_cap(struct bcl_device *bcl_dev, int *val)
 {
-	struct bcl_device *bcl_dev = data;
 	union power_supply_propval ret = {
 		0,
 	};
 	int err = 0;
+
+	if (!bcl_dev)
+		return -EINVAL;
 
 	*val = 100;
 	if (!bcl_dev->batt_psy)
@@ -539,13 +541,18 @@ static int google_bcl_read_soc(void *data, int *val)
 	return err;
 }
 
+static int google_bcl_read_soc(struct thermal_zone_device *tz, int *val)
+{
+	return google_bcl_get_battery_cap(tz->devdata, val);
+}
+
 static void google_bcl_evaluate_soc(struct work_struct *work)
 {
 	int battery_percentage_reverse;
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
 						  bcl_irq_work[PMIC_SOC].work);
 
-	if (google_bcl_read_soc(bcl_dev, &battery_percentage_reverse))
+	if (google_bcl_get_battery_cap(bcl_dev, &battery_percentage_reverse))
 		return;
 
 	mutex_lock(&bcl_dev->state_trans_lock);
@@ -555,11 +562,13 @@ static void google_bcl_evaluate_soc(struct work_struct *work)
 
 	bcl_dev->trip_val = battery_percentage_reverse;
 	mutex_unlock(&bcl_dev->state_trans_lock);
+
 	if (!bcl_dev->bcl_tz[PMIC_SOC]) {
 		bcl_dev->bcl_tz[PMIC_SOC] =
-				thermal_zone_of_sensor_register(bcl_dev->device,
-								PMIC_SOC, bcl_dev,
-								&bcl_dev->bcl_ops[PMIC_SOC]);
+				devm_thermal_of_zone_register(bcl_dev->device,
+							      PMIC_SOC,
+							      bcl_dev,
+							      &bcl_dev->bcl_ops[PMIC_SOC]);
 		if (IS_ERR(bcl_dev->bcl_tz[PMIC_SOC])) {
 			dev_err(bcl_dev->device, "soc TZ register failed. err:%ld\n",
 				PTR_ERR(bcl_dev->bcl_tz[PMIC_SOC]));
@@ -604,8 +613,6 @@ static int google_bcl_remove_thermal(struct bcl_device *bcl_dev)
 	for (i = 0; i < TRIGGERED_SOURCE_MAX; i++) {
 		if (i > SOFT_OCP_WARN_TPU)
 			dev = bcl_dev->sub_dev;
-		if (bcl_dev->bcl_tz[i])
-			thermal_zone_of_sensor_unregister(dev, bcl_dev->bcl_tz[i]);
 	}
 
 	return 0;
@@ -615,6 +622,10 @@ static ssize_t batoilo_count_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[BATOILO]));
 }
@@ -625,6 +636,10 @@ static ssize_t vdroop2_count_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[UVLO2]));
 }
@@ -635,6 +650,10 @@ static ssize_t vdroop1_count_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[UVLO1]));
 }
@@ -645,6 +664,10 @@ static ssize_t smpl_warn_count_show(struct device *dev, struct device_attribute 
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SMPL_WARN]));
 }
@@ -655,6 +678,10 @@ static ssize_t ocp_cpu1_count_show(struct device *dev, struct device_attribute *
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[OCP_WARN_CPUCL1]));
 }
@@ -665,6 +692,10 @@ static ssize_t ocp_cpu2_count_show(struct device *dev, struct device_attribute *
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[OCP_WARN_CPUCL2]));
 }
@@ -675,6 +706,10 @@ static ssize_t ocp_tpu_count_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[OCP_WARN_TPU]));
 }
@@ -685,6 +720,10 @@ static ssize_t ocp_gpu_count_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[OCP_WARN_GPU]));
 }
@@ -696,6 +735,10 @@ static ssize_t soft_ocp_cpu1_count_show(struct device *dev, struct device_attrib
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SOFT_OCP_WARN_CPUCL1]));
 }
@@ -707,6 +750,10 @@ static ssize_t soft_ocp_cpu2_count_show(struct device *dev, struct device_attrib
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SOFT_OCP_WARN_CPUCL2]));
 }
@@ -718,6 +765,10 @@ static ssize_t soft_ocp_tpu_count_show(struct device *dev, struct device_attribu
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SOFT_OCP_WARN_TPU]));
 }
@@ -729,6 +780,10 @@ static ssize_t soft_ocp_gpu_count_show(struct device *dev,
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SOFT_OCP_WARN_GPU]));
 }
@@ -755,6 +810,10 @@ static ssize_t batoilo_cap_show(struct device *dev, struct device_attribute *att
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[BATOILO].capacity);
 }
@@ -765,6 +824,10 @@ static ssize_t vdroop2_cap_show(struct device *dev, struct device_attribute *att
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[UVLO2].capacity);
 }
@@ -775,6 +838,10 @@ static ssize_t vdroop1_cap_show(struct device *dev, struct device_attribute *att
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[UVLO1].capacity);
 }
@@ -785,6 +852,10 @@ static ssize_t smpl_warn_cap_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SMPL_WARN].capacity);
 }
@@ -795,6 +866,10 @@ static ssize_t ocp_cpu1_cap_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL1].capacity);
 }
@@ -805,6 +880,10 @@ static ssize_t ocp_cpu2_cap_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL2].capacity);
 }
@@ -815,6 +894,10 @@ static ssize_t ocp_tpu_cap_show(struct device *dev, struct device_attribute *att
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_TPU].capacity);
 }
@@ -825,6 +908,10 @@ static ssize_t ocp_gpu_cap_show(struct device *dev, struct device_attribute *att
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_GPU].capacity);
 }
@@ -836,6 +923,10 @@ static ssize_t soft_ocp_cpu1_cap_show(struct device *dev, struct device_attribut
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL1].capacity);
 }
@@ -847,6 +938,10 @@ static ssize_t soft_ocp_cpu2_cap_show(struct device *dev, struct device_attribut
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL2].capacity);
 }
@@ -858,6 +953,10 @@ static ssize_t soft_ocp_tpu_cap_show(struct device *dev, struct device_attribute
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_TPU].capacity);
 }
@@ -868,6 +967,10 @@ static ssize_t soft_ocp_gpu_cap_show(struct device *dev, struct device_attribute
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_GPU].capacity);
 }
@@ -894,6 +997,10 @@ static ssize_t batoilo_volt_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[BATOILO].voltage);
 }
@@ -904,6 +1011,10 @@ static ssize_t vdroop2_volt_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[UVLO2].voltage);
 }
@@ -914,6 +1025,10 @@ static ssize_t vdroop1_volt_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[UVLO1].voltage);
 }
@@ -924,6 +1039,10 @@ static ssize_t smpl_warn_volt_show(struct device *dev, struct device_attribute *
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SMPL_WARN].voltage);
 }
@@ -934,6 +1053,10 @@ static ssize_t ocp_cpu1_volt_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL1].voltage);
 }
@@ -944,6 +1067,10 @@ static ssize_t ocp_cpu2_volt_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL2].voltage);
 }
@@ -954,6 +1081,10 @@ static ssize_t ocp_tpu_volt_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_TPU].voltage);
 }
@@ -964,6 +1095,10 @@ static ssize_t ocp_gpu_volt_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_GPU].voltage);
 }
@@ -975,6 +1110,10 @@ static ssize_t soft_ocp_cpu1_volt_show(struct device *dev, struct device_attribu
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL1].voltage);
 }
@@ -986,6 +1125,10 @@ static ssize_t soft_ocp_cpu2_volt_show(struct device *dev, struct device_attribu
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL2].voltage);
 }
@@ -997,6 +1140,10 @@ static ssize_t soft_ocp_tpu_volt_show(struct device *dev, struct device_attribut
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_TPU].voltage);
 }
@@ -1007,6 +1154,10 @@ static ssize_t soft_ocp_gpu_volt_show(struct device *dev, struct device_attribut
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_GPU].voltage);
 }
@@ -1033,6 +1184,10 @@ static ssize_t batoilo_time_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[BATOILO]._time);
 }
@@ -1043,6 +1198,10 @@ static ssize_t vdroop2_time_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[UVLO2]._time);
 }
@@ -1053,6 +1212,10 @@ static ssize_t vdroop1_time_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[UVLO1]._time);
 }
@@ -1063,6 +1226,10 @@ static ssize_t smpl_warn_time_show(struct device *dev, struct device_attribute *
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SMPL_WARN]._time);
 }
@@ -1073,6 +1240,10 @@ static ssize_t ocp_cpu1_time_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL1]._time);
 }
@@ -1083,6 +1254,10 @@ static ssize_t ocp_cpu2_time_show(struct device *dev, struct device_attribute *a
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL2]._time);
 }
@@ -1093,6 +1268,10 @@ static ssize_t ocp_tpu_time_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[OCP_WARN_TPU]._time);
 }
@@ -1103,6 +1282,10 @@ static ssize_t ocp_gpu_time_show(struct device *dev, struct device_attribute *at
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[OCP_WARN_GPU]._time);
 }
@@ -1114,6 +1297,10 @@ static ssize_t soft_ocp_cpu1_time_show(struct device *dev, struct device_attribu
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL1]._time);
 }
@@ -1125,6 +1312,10 @@ static ssize_t soft_ocp_cpu2_time_show(struct device *dev, struct device_attribu
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL2]._time);
 }
@@ -1136,6 +1327,10 @@ static ssize_t soft_ocp_tpu_time_show(struct device *dev, struct device_attribut
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_TPU]._time);
 }
@@ -1146,6 +1341,10 @@ static ssize_t soft_ocp_gpu_time_show(struct device *dev, struct device_attribut
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_GPU]._time);
 }
@@ -1207,6 +1406,10 @@ static ssize_t clk_div_show(struct bcl_device *bcl_dev, int idx, char *buf)
 {
 	unsigned int reg;
 	void __iomem *addr;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (idx == TPU)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_clkdivstep);
@@ -1225,6 +1428,10 @@ static ssize_t clk_stats_show(struct bcl_device *bcl_dev, int idx, char *buf)
 {
 	unsigned int reg;
 	void __iomem *addr;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (idx == TPU)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_clk_stats);
@@ -1260,6 +1467,10 @@ static ssize_t clk_div_store(struct bcl_device *bcl_dev, int idx,
 	void __iomem *addr;
 	unsigned int value;
 	int ret;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	ret = sscanf(buf, "0x%x", &value);
 	if (ret != 1)
@@ -1403,6 +1614,10 @@ static ssize_t vdroop_flt_show(struct bcl_device *bcl_dev, int idx, char *buf)
 {
 	unsigned int reg;
 	void __iomem *addr;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (idx == TPU)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_vdroop_flt);
@@ -1422,6 +1637,10 @@ static ssize_t vdroop_flt_store(struct bcl_device *bcl_dev, int idx,
 {
 	void __iomem *addr;
 	unsigned int value;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (sscanf(buf, "0x%x", &value) != 1)
 		return -EINVAL;
@@ -1445,6 +1664,10 @@ static ssize_t cpu1_vdroop_flt_show(struct device *dev, struct device_attribute 
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return vdroop_flt_show(bcl_dev, CPU1, buf);
 }
@@ -1454,6 +1677,10 @@ static ssize_t cpu1_vdroop_flt_store(struct device *dev, struct device_attribute
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return vdroop_flt_store(bcl_dev, CPU1, buf, size);
 }
@@ -1464,6 +1691,10 @@ static ssize_t cpu2_vdroop_flt_show(struct device *dev, struct device_attribute 
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return vdroop_flt_show(bcl_dev, CPU2, buf);
 }
@@ -1473,6 +1704,10 @@ static ssize_t cpu2_vdroop_flt_store(struct device *dev, struct device_attribute
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return vdroop_flt_store(bcl_dev, CPU2, buf, size);
 }
@@ -1483,6 +1718,10 @@ static ssize_t tpu_vdroop_flt_show(struct device *dev, struct device_attribute *
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return vdroop_flt_show(bcl_dev, TPU, buf);
 }
@@ -1492,6 +1731,10 @@ static ssize_t tpu_vdroop_flt_store(struct device *dev, struct device_attribute 
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return vdroop_flt_store(bcl_dev, TPU, buf, size);
 }
@@ -1502,6 +1745,10 @@ static ssize_t gpu_vdroop_flt_show(struct device *dev, struct device_attribute *
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return vdroop_flt_show(bcl_dev, GPU, buf);
 }
@@ -1511,6 +1758,10 @@ static ssize_t gpu_vdroop_flt_store(struct device *dev, struct device_attribute 
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	return vdroop_flt_store(bcl_dev, GPU, buf, size);
 }
@@ -1622,6 +1873,10 @@ static ssize_t clk_ratio_show(struct bcl_device *bcl_dev, int idx, char *buf)
 {
 	unsigned int reg;
 	void __iomem *addr;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (idx == TPU_HEAVY)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_con_heavy);
@@ -1646,6 +1901,10 @@ static ssize_t clk_ratio_store(struct bcl_device *bcl_dev, int idx,
 	void __iomem *addr;
 	unsigned int value;
 	int ret;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	ret = sscanf(buf, "0x%x", &value);
 	if (ret != 1)
@@ -1875,6 +2134,10 @@ static ssize_t uvlo1_lvl_show(struct device *dev, struct device_attribute *attr,
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int uvlo1_lvl;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
@@ -1891,6 +2154,10 @@ static ssize_t uvlo1_lvl_store(struct device *dev,
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int value;
 	int ret;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	ret = kstrtou32(buf, 10, &value);
 	if (ret)
@@ -1906,12 +2173,13 @@ static ssize_t uvlo1_lvl_store(struct device *dev,
 	if (bcl_cb_uvlo1_write(bcl_dev, value) < 0)
 		return -EIO;
 	bcl_dev->bcl_lvl[UVLO1] = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[UVLO1]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO1], 0,
-							 VD_BATTERY_VOLTAGE - value);
-	if (bcl_dev->bcl_tz[UVLO1])
+	if (bcl_dev->bcl_tz[UVLO1]) {
+		ret = bcl_dev->bcl_tz[UVLO1]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO1], 0,
+								 VD_BATTERY_VOLTAGE - value);
+		if (ret)
+			dev_err(bcl_dev->device, "Fail to set sys_uvlo1 trip temp\n");
 		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO1], THERMAL_EVENT_UNSPECIFIED);
-	if (ret)
-		dev_err(bcl_dev->device, "Fail to set sys_uvlo1 trip temp\n");
+	}
 	return size;
 
 }
@@ -1923,6 +2191,10 @@ static ssize_t uvlo2_lvl_show(struct device *dev, struct device_attribute *attr,
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int uvlo2_lvl;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
@@ -1939,6 +2211,10 @@ static ssize_t uvlo2_lvl_store(struct device *dev,
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int value;
 	int ret;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	ret = kstrtou32(buf, 10, &value);
 	if (ret)
@@ -1954,12 +2230,13 @@ static ssize_t uvlo2_lvl_store(struct device *dev,
 	if (bcl_cb_uvlo2_write(bcl_dev, value) < 0)
 		return -EIO;
 	bcl_dev->bcl_lvl[UVLO2] = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[UVLO2]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO2], 0,
-							 VD_BATTERY_VOLTAGE - value);
-	if (bcl_dev->bcl_tz[UVLO2])
+	if (bcl_dev->bcl_tz[UVLO2]) {
+		ret = bcl_dev->bcl_tz[UVLO2]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO2], 0,
+								 VD_BATTERY_VOLTAGE - value);
+		if (ret)
+			dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
 		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO2], THERMAL_EVENT_UNSPECIFIED);
-	if (ret)
-		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
+	}
 	return size;
 }
 
@@ -1970,6 +2247,10 @@ static ssize_t batoilo_lvl_show(struct device *dev, struct device_attribute *att
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int batoilo_lvl;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
@@ -1986,6 +2267,10 @@ static ssize_t batoilo_lvl_store(struct device *dev,
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int value;
 	int ret;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	ret = kstrtou32(buf, 10, &value);
 	if (ret)
@@ -1999,11 +2284,12 @@ static ssize_t batoilo_lvl_store(struct device *dev,
 	if (bcl_cb_batoilo_write(bcl_dev, value) < 0)
 		return -EIO;
 	bcl_dev->bcl_lvl[BATOILO] = value - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[BATOILO]->ops->set_trip_temp(bcl_dev->bcl_tz[BATOILO], 0, value);
-	if (bcl_dev->bcl_tz[BATOILO])
+	if (bcl_dev->bcl_tz[BATOILO]) {
+		ret = bcl_dev->bcl_tz[BATOILO]->ops->set_trip_temp(bcl_dev->bcl_tz[BATOILO], 0, value);
+		if (ret)
+			dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
 		thermal_zone_device_update(bcl_dev->bcl_tz[BATOILO], THERMAL_EVENT_UNSPECIFIED);
-	if (ret)
-		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
+	}
 	return size;
 }
 
@@ -2016,6 +2302,10 @@ static ssize_t smpl_lvl_show(struct device *dev, struct device_attribute *attr, 
 	u8 value = 0;
 	int ret;
 	unsigned int smpl_warn_lvl;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	if (!bcl_dev->main_pmic_i2c) {
 		return -EBUSY;
@@ -2037,6 +2327,10 @@ static ssize_t smpl_lvl_store(struct device *dev,
 	unsigned int val;
 	u8 value;
 	int ret;
+	if (!bcl_dev) {
+		pr_err("%s: BCL device is misconfigured!\n", __func__);
+		return -EINVAL;
+	}
 
 	ret = kstrtou32(buf, 10, &val);
 	if (ret)
@@ -2065,15 +2359,15 @@ static ssize_t smpl_lvl_store(struct device *dev,
 		return ret;
 	}
 	bcl_dev->bcl_lvl[SMPL_WARN] = SMPL_BATTERY_VOLTAGE - val - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[SMPL_WARN]->ops->set_trip_temp(bcl_dev->bcl_tz[SMPL_WARN], 0,
-							     SMPL_BATTERY_VOLTAGE - val);
-	if (ret)
-		dev_err(bcl_dev->device, "Fail to set smpl_warn trip temp\n");
-	if (bcl_dev->bcl_tz[SMPL_WARN])
+	if (bcl_dev->bcl_tz[SMPL_WARN]) {
+		ret = bcl_dev->bcl_tz[SMPL_WARN]->ops->set_trip_temp(bcl_dev->bcl_tz[SMPL_WARN], 0,
+								     SMPL_BATTERY_VOLTAGE - val);
+		if (ret)
+			dev_err(bcl_dev->device, "Fail to set smpl_warn trip temp\n");
 		thermal_zone_device_update(bcl_dev->bcl_tz[SMPL_WARN], THERMAL_EVENT_UNSPECIFIED);
+	}
 
 	return size;
-
 }
 
 static DEVICE_ATTR_RW(smpl_lvl);
@@ -2117,7 +2411,7 @@ static int set_ocp_lvl(struct bcl_device *bcl_dev, u64 val, u8 addr, u8 pmic, u8
 	value &= ~(OCP_WARN_MASK) << OCP_WARN_LVL_SHIFT;
 	value |= ((ulimit - val) / step) << OCP_WARN_LVL_SHIFT;
 	S2MPG1X_WRITE(pmic, bcl_dev, ret, addr, value);
-	if (!ret) {
+	if (!ret && bcl_dev->bcl_tz[id]) {
 		bcl_dev->bcl_lvl[id] = val - THERMAL_HYST_LEVEL;
 		ret = bcl_dev->bcl_tz[id]->ops->set_trip_temp(bcl_dev->bcl_tz[id], 0, val);
 		if (ret)
@@ -2770,8 +3064,9 @@ static int google_bcl_register_irq(struct bcl_device *bcl_dev, int id, int tz_id
 		return ret;
 	}
 
-	bcl_dev->bcl_tz[id] = thermal_zone_of_sensor_register(dev, tz_id, bcl_dev,
-							      &bcl_dev->bcl_ops[id]);
+	bcl_dev->bcl_tz[id] = devm_thermal_of_zone_register(dev, tz_id,
+							    bcl_dev,
+							    &bcl_dev->bcl_ops[id]);
 	if (IS_ERR(bcl_dev->bcl_tz[id])) {
 		dev_err(bcl_dev->device, "TZ register failed. %d, err:%ld\n", tz_id,
 			PTR_ERR(bcl_dev->bcl_tz[id]));
@@ -2924,63 +3219,81 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 	if (bcl_cb_batoilo_read(bcl_dev, &batoilo_lvl) < 0)
 		goto retry_init_work;
 
-	bcl_dev->batt_psy = google_get_power_supply(bcl_dev);
-	bcl_dev->bcl_tz[PMIC_SOC] = thermal_zone_of_sensor_register(bcl_dev->device,
-								    TS_PMIC_SOC, bcl_dev,
-								    &bcl_dev->bcl_ops[PMIC_SOC]);
-	bcl_dev->bcl_ops[PMIC_SOC].get_temp = google_bcl_read_soc;
-	bcl_dev->bcl_ops[PMIC_SOC].set_trips = google_bcl_set_soc;
-	if (IS_ERR(bcl_dev->bcl_tz[PMIC_SOC])) {
-		dev_err(bcl_dev->device, "soc TZ register failed. err:%ld\n",
-			PTR_ERR(bcl_dev->bcl_tz[PMIC_SOC]));
-		ret = PTR_ERR(bcl_dev->bcl_tz[PMIC_SOC]);
-		bcl_dev->bcl_tz[PMIC_SOC]= NULL;
-	} else {
-		bcl_dev->psy_nb.notifier_call = battery_supply_callback;
-		ret = power_supply_reg_notifier(&bcl_dev->psy_nb);
-		if (ret < 0)
-			dev_err(bcl_dev->device,
-				"soc notifier registration error. defer. err:%d\n", ret);
-		thermal_zone_device_update(bcl_dev->bcl_tz[PMIC_SOC], THERMAL_DEVICE_UP);
+	if (!bcl_dev->bcl_tz[PMIC_SOC]) {
+		bcl_dev->bcl_ops[PMIC_SOC].get_temp = google_bcl_read_soc;
+		bcl_dev->bcl_ops[PMIC_SOC].set_trips = google_bcl_set_soc;
+		bcl_dev->batt_psy = google_get_power_supply(bcl_dev);
+		bcl_dev->bcl_tz[PMIC_SOC] = devm_thermal_of_zone_register(bcl_dev->device,
+									  TS_PMIC_SOC, bcl_dev,
+									  &bcl_dev->bcl_ops[PMIC_SOC]);
+		if (IS_ERR(bcl_dev->bcl_tz[PMIC_SOC])) {
+			dev_err(bcl_dev->device, "soc TZ register failed. err:%ld\n",
+				PTR_ERR(bcl_dev->bcl_tz[PMIC_SOC]));
+			bcl_dev->bcl_tz[PMIC_SOC]= NULL;
+		} else {
+			bcl_dev->psy_nb.notifier_call = battery_supply_callback;
+			ret = power_supply_reg_notifier(&bcl_dev->psy_nb);
+			if (ret < 0) {
+				/* TODO(b/251537418): what now? should we redo the whole
+				 * thermal zone registration? */
+				dev_err(bcl_dev->device,
+					"soc notifier registration error. defer. err:%d\n", ret);
+			}
+			thermal_zone_device_update(bcl_dev->bcl_tz[PMIC_SOC], THERMAL_DEVICE_UP);
+		}
+		bcl_dev->batt_psy_initialized = false;
 	}
-	bcl_dev->batt_psy_initialized = false;
 
-	bcl_dev->bcl_lvl[UVLO1] = VD_BATTERY_VOLTAGE - uvlo1_lvl - THERMAL_HYST_LEVEL;
-	bcl_dev->bcl_lvl[UVLO2] = VD_BATTERY_VOLTAGE - uvlo2_lvl - THERMAL_HYST_LEVEL;
-	bcl_dev->bcl_lvl[BATOILO] = batoilo_lvl - THERMAL_HYST_LEVEL;
-	bcl_dev->bcl_ops[UVLO1].get_temp = google_bcl_uvlo1_read_temp;
-	bcl_dev->bcl_ops[UVLO2].get_temp = google_bcl_uvlo2_read_temp;
-	bcl_dev->bcl_ops[BATOILO].get_temp = google_bcl_batoilo_read_temp;
+	if (!bcl_dev->bcl_tz[UVLO1]) {
+		bcl_dev->bcl_lvl[UVLO1] = VD_BATTERY_VOLTAGE - uvlo1_lvl - THERMAL_HYST_LEVEL;
+		bcl_dev->bcl_ops[UVLO1].get_temp = google_bcl_uvlo1_read_temp;
 
-	bcl_dev->bcl_tz[UVLO1] = thermal_zone_of_sensor_register(bcl_dev->device, TS_UVLO1,
-								 bcl_dev,
-								 &bcl_dev->bcl_ops[UVLO1]);
-	if (IS_ERR(bcl_dev->bcl_tz[UVLO1])) {
-		dev_err(bcl_dev->device, "TZ register vdroop%d failed, err:%ld\n", UVLO1,
-			PTR_ERR(bcl_dev->bcl_tz[UVLO1]));
-	} else {
-		thermal_zone_device_enable(bcl_dev->bcl_tz[UVLO1]);
-		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO1], THERMAL_DEVICE_UP);
+		bcl_dev->bcl_tz[UVLO1] = devm_thermal_of_zone_register(bcl_dev->device,
+								       TS_UVLO1,
+								       bcl_dev,
+								       &bcl_dev->bcl_ops[UVLO1]);
+		if (IS_ERR(bcl_dev->bcl_tz[UVLO1])) {
+			dev_err(bcl_dev->device, "TZ register vdroop%d failed, err:%ld\n", UVLO1,
+				PTR_ERR(bcl_dev->bcl_tz[UVLO1]));
+			bcl_dev->bcl_tz[UVLO1] = NULL;
+		} else {
+			thermal_zone_device_enable(bcl_dev->bcl_tz[UVLO1]);
+			thermal_zone_device_update(bcl_dev->bcl_tz[UVLO1], THERMAL_DEVICE_UP);
+		}
 	}
-	bcl_dev->bcl_tz[UVLO2] = thermal_zone_of_sensor_register(bcl_dev->device, TS_UVLO2,
-								 bcl_dev,
-								 &bcl_dev->bcl_ops[UVLO2]);
-	if (IS_ERR(bcl_dev->bcl_tz[UVLO2])) {
-		dev_err(bcl_dev->device, "TZ register vdroop%d failed, err:%ld\n", UVLO2,
-			PTR_ERR(bcl_dev->bcl_tz[UVLO2]));
-	} else {
-		thermal_zone_device_enable(bcl_dev->bcl_tz[UVLO2]);
-		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO2], THERMAL_DEVICE_UP);
+
+	if (!bcl_dev->bcl_tz[UVLO2]) {
+		bcl_dev->bcl_lvl[UVLO2] = VD_BATTERY_VOLTAGE - uvlo2_lvl - THERMAL_HYST_LEVEL;
+		bcl_dev->bcl_ops[UVLO2].get_temp = google_bcl_uvlo2_read_temp;
+		bcl_dev->bcl_tz[UVLO2] = devm_thermal_of_zone_register(bcl_dev->device,
+								       TS_UVLO2,
+								       bcl_dev,
+								       &bcl_dev->bcl_ops[UVLO2]);
+		if (IS_ERR(bcl_dev->bcl_tz[UVLO2])) {
+			dev_err(bcl_dev->device, "TZ register vdroop%d failed, err:%ld\n", UVLO2,
+				PTR_ERR(bcl_dev->bcl_tz[UVLO2]));
+			bcl_dev->bcl_tz[UVLO2] = NULL;
+		} else {
+			thermal_zone_device_enable(bcl_dev->bcl_tz[UVLO2]);
+			thermal_zone_device_update(bcl_dev->bcl_tz[UVLO2], THERMAL_DEVICE_UP);
+		}
 	}
-	bcl_dev->bcl_tz[BATOILO] = thermal_zone_of_sensor_register(bcl_dev->device, TS_BATOILO,
-								   bcl_dev,
-								   &bcl_dev->bcl_ops[BATOILO]);
-	if (IS_ERR(bcl_dev->bcl_tz[BATOILO])) {
-		dev_err(bcl_dev->device, "TZ register vdroop%d failed, err:%ld\n", BATOILO,
-			PTR_ERR(bcl_dev->bcl_tz[BATOILO]));
-	} else {
-		thermal_zone_device_enable(bcl_dev->bcl_tz[BATOILO]);
-		thermal_zone_device_update(bcl_dev->bcl_tz[BATOILO], THERMAL_DEVICE_UP);
+
+	if (!bcl_dev->bcl_tz[BATOILO]) {
+		bcl_dev->bcl_lvl[BATOILO] = batoilo_lvl - THERMAL_HYST_LEVEL;
+		bcl_dev->bcl_ops[BATOILO].get_temp = google_bcl_batoilo_read_temp;
+		bcl_dev->bcl_tz[BATOILO] = devm_thermal_of_zone_register(bcl_dev->device,
+									 TS_BATOILO,
+									 bcl_dev,
+									 &bcl_dev->bcl_ops[BATOILO]);
+		if (IS_ERR(bcl_dev->bcl_tz[BATOILO])) {
+			dev_err(bcl_dev->device, "TZ register vdroop%d failed, err:%ld\n", BATOILO,
+				PTR_ERR(bcl_dev->bcl_tz[BATOILO]));
+			bcl_dev->bcl_tz[BATOILO] = NULL;
+		} else {
+			thermal_zone_device_enable(bcl_dev->bcl_tz[BATOILO]);
+			thermal_zone_device_update(bcl_dev->bcl_tz[BATOILO], THERMAL_DEVICE_UP);
+		}
 	}
 
 	return;
@@ -3280,7 +3593,7 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 	return 0;
 }
 
-static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
+static int google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 {
 	int ret;
 	struct device_node *np = bcl_dev->device->of_node;
@@ -3288,8 +3601,9 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 
 	if (!bcl_dev) {
 		dev_err(bcl_dev->device, "Cannot parse device tree\n");
-		return;
+		return -EINVAL;
 	}
+
 	ret = of_property_read_u32(np, "tpu_con_heavy", &val);
 	bcl_dev->tpu_con_heavy = ret ? 0 : val;
 	ret = of_property_read_u32(np, "tpu_con_light", &val);
@@ -3316,6 +3630,8 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 		dev_err(bcl_dev->device, "CPU1 Address is NULL\n");
 	if (google_bcl_init_clk_div(bcl_dev, CPU0, bcl_dev->cpu0_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU0 Address is NULL\n");
+
+	return 0;
 }
 
 static int google_bcl_probe(struct platform_device *pdev)
@@ -3336,14 +3652,27 @@ static int google_bcl_probe(struct platform_device *pdev)
 		goto bcl_soc_probe_exit;
 
 	google_set_throttling(bcl_dev);
-	google_set_main_pmic(bcl_dev);
-	google_set_sub_pmic(bcl_dev);
-	google_set_intf_pmic(bcl_dev);
-	google_bcl_parse_dtree(bcl_dev);
+
+	ret = google_set_main_pmic(bcl_dev);
+	if (ret < 0)
+		goto bcl_soc_probe_exit;
+
+	ret = google_set_sub_pmic(bcl_dev);
+	if (ret < 0)
+		goto bcl_soc_probe_exit;
+
+	ret = google_set_intf_pmic(bcl_dev);
+	if (ret < 0)
+		goto bcl_soc_probe_exit;
+
+	ret = google_bcl_parse_dtree(bcl_dev);
+	if (ret < 0)
+		goto bcl_soc_probe_exit;
 
 	ret = google_init_fs(bcl_dev);
 	if (ret < 0)
 		goto bcl_soc_probe_exit;
+
 	schedule_delayed_work(&bcl_dev->init_work, msecs_to_jiffies(THERMAL_DELAY_INIT_MS));
 	bcl_dev->enabled = true;
 
