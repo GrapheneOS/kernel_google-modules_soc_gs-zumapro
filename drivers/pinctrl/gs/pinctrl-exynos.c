@@ -606,7 +606,6 @@ static void exynos_irq_demux_eint16_31(struct irq_desc *desc)
 }
 
 
-static int eint_num;
 /*
  * exynos_eint_wkup_init() - setup handling of external wakeup interrupts.
  * @d: driver data of samsung pinctrl driver.
@@ -662,9 +661,6 @@ __init int exynos_eint_wkup_init(struct samsung_pinctrl_drv_data *d)
 			of_node_put(wkup_np);
 			return -ENXIO;
 		}
-
-		bank->eint_num = eint_num;
-		eint_num = eint_num + bank->nr_pins;
 
 		if (!of_find_property(bank->of_node, "interrupts", NULL)) {
 			bank->eint_type = EINT_TYPE_WKUP_MUX;
