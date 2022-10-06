@@ -156,9 +156,10 @@ static int gs101_spmic_thermal_read_raw(struct gs101_spmic_thermal_sensor *s, in
 /*
  * Get temperature for given tz.
  */
-static int gs101_spmic_thermal_get_temp(void *data, int *temp)
+static int gs101_spmic_thermal_get_temp(struct thermal_zone_device *tz,
+					int *temp)
 {
-	struct gs101_spmic_thermal_sensor *s = data;
+	struct gs101_spmic_thermal_sensor *s = tz->devdata;
 	struct gs101_spmic_thermal_chip *gs101_spmic_thermal = s->chip;
 	int emul_temp;
 	int raw, ret = 0;
@@ -185,10 +186,10 @@ static int gs101_spmic_thermal_get_temp(void *data, int *temp)
 /*
  * Set monitor window for given tz.
  */
-static int gs101_spmic_thermal_set_trips(void *data, int low_temp,
-					 int high_temp)
+static int gs101_spmic_thermal_set_trips(struct thermal_zone_device *tz,
+					 int low_temp, int high_temp)
 {
-	struct gs101_spmic_thermal_sensor *s = data;
+	struct gs101_spmic_thermal_sensor *s = tz->devdata;
 	struct gs101_spmic_thermal_chip *gs101_spmic_thermal = s->chip;
 	struct device *dev = gs101_spmic_thermal->dev;
 	int emul_temp, low_volt, ret = 0;
@@ -238,9 +239,10 @@ static int gs101_spmic_thermal_set_hot_trip(struct gs101_spmic_thermal_sensor *s
  * Set temperature threshold for given tz, only critical threshold will be
  * programmed as shutdown threshold.
  */
-static int gs101_spmic_thermal_set_trip_temp(void *data, int trip, int temp)
+static int gs101_spmic_thermal_set_trip_temp(struct thermal_zone_device *tz,
+					     int trip, int temp)
 {
-	struct gs101_spmic_thermal_sensor *s = data;
+	struct gs101_spmic_thermal_sensor *s = tz->devdata;
 	const struct thermal_trip *trip_points;
 	int ret = 0;
 
@@ -260,9 +262,10 @@ static int gs101_spmic_thermal_set_trip_temp(void *data, int trip, int temp)
 /*
  * Set emulation temperture for given tz.
  */
-static int gs101_spmic_thermal_set_emul_temp(void *data, int temp)
+static int gs101_spmic_thermal_set_emul_temp(struct thermal_zone_device *tz,
+					     int temp)
 {
-	struct gs101_spmic_thermal_sensor *sensor = data;
+	struct gs101_spmic_thermal_sensor *sensor = tz->devdata;
 	int ret;
 	u8 value, mask = 0x1;
 
@@ -295,7 +298,7 @@ gs101_spmic_thermal_init(struct gs101_spmic_thermal_chip *gs101_spmic_thermal)
 	}
 }
 
-static struct thermal_zone_of_device_ops gs101_spmic_thermal_ops = {
+static struct thermal_zone_device_ops gs101_spmic_thermal_ops = {
 	.get_temp = gs101_spmic_thermal_get_temp,
 	.set_trips = gs101_spmic_thermal_set_trips,
 	.set_trip_temp = gs101_spmic_thermal_set_trip_temp,
@@ -382,9 +385,10 @@ static int gs101_spmic_thermal_register_tzd(struct gs101_spmic_thermal_chip *gs1
 
 	for (i = 0; i < GTHERM_CHAN_NUM; i++, mask <<= 1) {
 		dev_info(dev, "Registering channel %u\n", i);
-		tzd = devm_thermal_zone_of_sensor_register(gs101_spmic_thermal->dev, i,
-							   &gs101_spmic_thermal->sensor[i],
-							   &gs101_spmic_thermal_ops);
+		tzd = devm_thermal_of_zone_register(gs101_spmic_thermal->dev,
+						    i,
+						    &gs101_spmic_thermal->sensor[i],
+						    &gs101_spmic_thermal_ops);
 
 		if (IS_ERR(tzd)) {
 			dev_err(dev,
@@ -445,8 +449,6 @@ gs101_spmic_thermal_unregister_tzd(struct gs101_spmic_thermal_chip *chip)
 		dev_info(dev, "Unregistering %d sensor\n", i);
 		sysfs_remove_file(chip->kobjs[i], &channel_temp_attr.attr);
 		kobject_put(chip->kobjs[i]);
-		devm_thermal_zone_of_sensor_unregister(chip->dev,
-						       chip->sensor[i].tzd);
 	}
 }
 
