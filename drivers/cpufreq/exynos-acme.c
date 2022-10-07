@@ -204,22 +204,6 @@ static int exynos_cpufreq_init(struct cpufreq_policy *policy)
 	return 0;
 }
 
-/* TODO: do we need this???
-static unsigned int exynos_cpufreq_resolve_freq(struct cpufreq_policy *policy,
-						unsigned int target_freq)
-{
-	unsigned int index;
-
-	index = cpufreq_frequency_table_target(policy, target_freq, CPUFREQ_RELATION_L);
-	if (index < 0) {
-		pr_err("target frequency(%d) out of range\n", target_freq);
-		return 0;
-	}
-
-	return policy->freq_table[index].frequency;
-}
-*/
-
 static int exynos_cpufreq_online(struct cpufreq_policy *policy)
 {
 	struct exynos_cpufreq_domain *domain;
@@ -349,6 +333,7 @@ static int exynos_cpufreq_target(struct cpufreq_policy *policy,
 {
 	struct exynos_cpufreq_domain *domain = find_domain(policy->cpu);
 	unsigned long freq;
+	unsigned int target_index;
 	int ret = 0;
 
 	ATRACE_BEGIN(__func__);
@@ -357,8 +342,13 @@ static int exynos_cpufreq_target(struct cpufreq_policy *policy,
 		goto out;
 	}
 
+
+	target_index = cpufreq_frequency_table_target(policy, target_freq, relation);
+
+	target_freq = policy->freq_table[target_index].frequency;
+
 	mutex_lock(&domain->lock);
-	freq = cpufreq_driver_resolve_freq(policy, target_freq);
+	freq = target_freq;
 	// Always go to DM_CALL even with `domain->old == freq` to update dm->governor_freq
 	if (!freq) {
 		mutex_unlock(&domain->lock);
@@ -473,7 +463,6 @@ static struct cpufreq_driver exynos_driver = {
 	.verify		= exynos_cpufreq_verify,
 	.target		= exynos_cpufreq_target,
 	.get		= exynos_cpufreq_get,
-	//.resolve_freq	= exynos_cpufreq_resolve_freq,
 	.online		= exynos_cpufreq_online,
 	.offline	= exynos_cpufreq_offline,
 	.suspend	= exynos_cpufreq_suspend,
@@ -740,7 +729,7 @@ static int dm_scaler(int dm_type, void *devdata, unsigned int target_freq,
 	struct exynos_cpufreq_domain *domain = devdata;
 	struct cpufreq_policy *policy;
 	struct cpumask mask;
-	int ret;
+	int ret, target_index;
 
 	/* Skip scaling if all cpus of domain are hotplugged out */
 	cpumask_and(&mask, &domain->cpus, cpu_online_mask);
@@ -753,6 +742,9 @@ static int dm_scaler(int dm_type, void *devdata, unsigned int target_freq,
 		return -ENODEV;
 	}
 
+
+	target_index = cpufreq_frequency_table_target(policy, target_freq, relation);
+	target_freq = policy->freq_table[target_index].frequency;
 	ret = __exynos_cpufreq_target(policy, target_freq, relation);
 
 	cpufreq_cpu_put(policy);
