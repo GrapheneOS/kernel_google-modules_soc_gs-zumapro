@@ -134,6 +134,7 @@ samsung_iommu_v9.ko
 sbb-mux.ko
 sched_tp.ko
 shm_ipc.ko
+sjtag-driver.ko
 slc_acpm.ko
 slc_dummy.ko
 slc_pmon.ko
