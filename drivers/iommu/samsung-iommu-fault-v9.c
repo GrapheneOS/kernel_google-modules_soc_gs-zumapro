@@ -147,7 +147,7 @@ static inline u32 __sysmmu_get_intr_status(struct sysmmu_drvdata *data, bool is_
 			val = readl_relaxed(MMU_VM_ADDR(data->sfrbase +
 					    REG_MMU_FAULT_STATUS_VM, i));
 
-		if (val & 0xF) {
+		if (val & GENMASK(SYSMMU_FAULTS_NUM - 1, 0)) {
 			*vmid = i;
 			break;
 		}
@@ -665,13 +665,27 @@ static void sysmmu_get_interrupt_info(struct sysmmu_drvdata *data,
 				      int *intr_type, sysmmu_iova_t *addr,
 				      int *vmid, bool is_secure)
 {
-	*intr_type = __ffs(__sysmmu_get_intr_status(data, is_secure, vmid));
+	u32 intr_status = __sysmmu_get_intr_status(data, is_secure, vmid);
+
+	if (!intr_status) {
+		dev_err_ratelimited(data->dev, "Spurious interrupt\n");
+		*intr_type = SYSMMU_FAULT_UNKNOWN;
+		*addr = 0;
+		return;
+	}
+
+	*intr_type = __ffs(intr_status);
 	*addr = __sysmmu_get_fault_address(data, is_secure, *vmid);
 }
 
 static void sysmmu_clear_interrupt(struct sysmmu_drvdata *data, int *vmid)
 {
 	u32 val = __sysmmu_get_intr_status(data, false, vmid);
+
+	if (!val) {
+		dev_err_ratelimited(data->dev, "Cannot clear spurious interrupt\n");
+		return;
+	}
 
 	writel(val, MMU_VM_ADDR(data->sfrbase + REG_MMU_FAULT_CLEAR_VM, *vmid));
 }
