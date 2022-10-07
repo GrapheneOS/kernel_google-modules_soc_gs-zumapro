@@ -25,6 +25,10 @@ static int pixel_stat_mm_init(void)
 {
 	int ret;
 
+	ret = pixel_mm_sysfs();
+	if (ret)
+		return ret;
+
 	/* TODO: these were removed. Do you need them still?
 	ret = register_trace_android_vh_rmqueue(vh_rmqueue_mod, NULL);
 	if (ret)
@@ -62,10 +66,6 @@ static int pixel_stat_mm_init(void)
 	if (ret)
 		return ret;
 	*/
-
-	ret = pixel_mm_sysfs();
-	if (ret)
-		return ret;
 
 	return 0;
 }
