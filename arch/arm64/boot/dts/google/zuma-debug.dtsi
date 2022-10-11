@@ -128,6 +128,87 @@
 		status = "ok";
 	};
 
+	booker {
+		compatible = "google,booker-ci";
+		status = "ok";
+		reg_base = <0x30000000>;
+		node0 {
+			device_type = "booker-mtsx";
+			offset = <0x210000>;
+			id = <4>;
+		};
+		node1 {
+			device_type = "booker-mtsx";
+			offset = <0x250000>;
+			id = <5>;
+		};
+		node2 {
+			device_type = "booker-mtsx";
+			offset = <0x1210000>;
+			id = <36>;
+		};
+		node3 {
+			device_type = "booker-mtsx";
+			offset = <0x1250000>;
+			id = <37>;
+		};
+		node4 {
+			device_type = "booker-hnf";
+			offset = <0x390000>;
+			id = <6>;
+		};
+		node5 {
+			device_type = "booker-hnf";
+			offset = <0x3d0000>;
+			id = <7>;
+		};
+		node6 {
+			device_type = "booker-hnf";
+			offset = <0x1390000>;
+			id = <38>;
+		};
+		node7 {
+			device_type = "booker-hnf";
+			offset = <0x13D0000>;
+			id = <39>;
+		};
+		node8 {
+			device_type = "booker-rnf";
+			offset = <0xA0000>;
+			id = <0>;
+		};
+		node9 {
+			device_type = "booker-rnf";
+			offset = <0x10A0000>;
+			id = <32>;
+		};
+		node10 {
+			device_type = "booker-rnf";
+			offset = <0x20A0000>;
+			id = <64>;
+		};
+		node11 {
+			device_type = "booker-rnd";
+			offset = <0x280000>;
+			id = <2>;
+		};
+		node12 {
+			device_type = "booker-rnd";
+			offset = <0x1280000>;
+			id = <34>;
+		};
+		node13 {
+			device_type = "booker-hni";
+			offset = <0x2180000>;
+			id = <66>;
+		};
+		node14 {
+			device_type = "booker-hnd";
+			offset = <0x2150000>;
+			id = <68>;
+		};
+	};
+
 	coresight@2B000000 {
 		compatible = "google,exynos-coresight";
 		dbg_base = <0x2B110000>, <0x2B220000>, <0x2B310000>, <0x2B410000>,
