@@ -88,11 +88,6 @@ enum gbms_charger_modes {
 #define REGMAP_REG_MAX_ADDR			0x95
 #define REGMAP_REG_COUNT			(REGMAP_REG_MAX_ADDR + 1)
 
-#define tcpc_presenting_rd(reg, cc) \
-	(!(TCPC_ROLE_CTRL_DRP & (reg)) && \
-	 (((reg) & (TCPC_ROLE_CTRL_## cc ##_MASK << TCPC_ROLE_CTRL_## cc ##_SHIFT)) == \
-	  (TCPC_ROLE_CTRL_CC_RD << TCPC_ROLE_CTRL_## cc ##_SHIFT)))
-
 #define cc_open_or_toggling(cc1, cc2) \
 	(((cc1) == TYPEC_CC_OPEN) && ((cc2) == TYPEC_CC_OPEN))
 
@@ -1031,23 +1026,6 @@ static void reset_ovp_work(struct kthread_work *work)
 	gpio_set_value_cansleep(chip->in_switch_gpio, chip->in_switch_gpio_active_high);
 
 	logbuffer_log(chip->log, "ovp reset done");
-}
-
-static enum typec_cc_status tcpci_to_typec_cc(unsigned int cc, bool sink)
-{
-	switch (cc) {
-	case 0x1:
-		return sink ? TYPEC_CC_RP_DEF : TYPEC_CC_RA;
-	case 0x2:
-		return sink ? TYPEC_CC_RP_1_5 : TYPEC_CC_RD;
-	case 0x3:
-		if (sink)
-			return TYPEC_CC_RP_3_0;
-		fallthrough;
-	case 0x0:
-	default:
-		return TYPEC_CC_OPEN;
-	}
 }
 
 static void max77759_cache_cc(struct max77759_plat *chip)
