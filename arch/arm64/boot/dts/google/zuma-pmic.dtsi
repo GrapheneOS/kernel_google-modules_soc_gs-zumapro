@@ -1192,7 +1192,8 @@
 				regulator-name = "S2MPG15_LDO26";
 				regulator-min-microvolt = <2500000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-initial-mode = <SEC_OPMODE_OFF>;
+				regulator-always-on;
+				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x3A>;
 				schematic-name = "L26S_TS2_AVDD";
 				subsys-name = "TS";
