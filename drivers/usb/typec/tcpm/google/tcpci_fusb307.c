@@ -819,7 +819,7 @@ unreg_log:
 	return ret;
 }
 
-static int fusb307b_remove(struct i2c_client *client)
+static void fusb307b_remove(struct i2c_client *client)
 {
 	struct fusb307b_plat *chip = i2c_get_clientdata(client);
 
@@ -830,8 +830,6 @@ static int fusb307b_remove(struct i2c_client *client)
 	kthread_destroy_worker(chip->wq);
 	power_supply_unreg_notifier(&chip->psy_notifier);
 	fusb307b_teardown_data_notifier(chip);
-
-	return 0;
 }
 
 static const struct i2c_device_id fusb307b_id[] = {

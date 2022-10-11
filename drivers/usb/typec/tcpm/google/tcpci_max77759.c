@@ -2355,7 +2355,7 @@ logbuffer_unreg:
 	return ret;
 }
 
-static int max77759_remove(struct i2c_client *client)
+static void max77759_remove(struct i2c_client *client)
 {
 	struct max77759_plat *chip = i2c_get_clientdata(client);
 	int i;
@@ -2379,8 +2379,6 @@ static int max77759_remove(struct i2c_client *client)
 		kthread_destroy_worker(chip->wq);
 	power_supply_unreg_notifier(&chip->psy_notifier);
 	max77759_teardown_data_notifier(chip);
-
-	return 0;
 }
 
 static void max77759_shutdown(struct i2c_client *client)
