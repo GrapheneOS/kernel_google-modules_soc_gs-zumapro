@@ -3998,7 +3998,7 @@ struct link_device *create_link_device(struct platform_device *pdev, u32 link_ty
 	ld->handover_block_info = update_handover_block_info;
 
 	init_dummy_netdev(&mld->dummy_net);
-	netif_napi_add(&mld->dummy_net, &mld->mld_napi, mld_rx_int_poll, NAPI_POLL_WEIGHT);
+	netif_napi_add(&mld->dummy_net, &mld->mld_napi, mld_rx_int_poll);
 	napi_enable(&mld->mld_napi);
 	atomic_set(&mld->stop_napi_poll, 0);
 
