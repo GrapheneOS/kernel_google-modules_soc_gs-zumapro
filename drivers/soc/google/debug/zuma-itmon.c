@@ -348,7 +348,7 @@ struct itmon_keepdata {
 } __packed;
 
 struct itmon_platdata {
-	struct itmon_rpathinfo *rpathinfo;
+	const struct itmon_rpathinfo *rpathinfo;
 	struct itmon_clientinfo *clientinfo;
 	struct itmon_nodegroup *nodegroup;
 
@@ -388,7 +388,7 @@ struct itmon_panic_block {
 	struct itmon_dev *pdev;
 };
 
-static struct itmon_rpathinfo rpathinfo[] = {
+static const struct itmon_rpathinfo rpathinfo[] = {
 	/* NOCL0_IO0-1 */
 	{0,	"AUR0",		"NOCL0_IO0",	0x3F},
 	{1,	"AUR1",		"NOCL0_IO0",	0x3F},
@@ -1089,7 +1089,7 @@ struct itmon_nodeinfo *itmon_get_nodeinfo_by_tmout_offset(struct itmon_dev *itmo
 	return NULL;
 }
 
-static struct itmon_rpathinfo *itmon_get_rpathinfo(struct itmon_dev *itmon,
+static const struct itmon_rpathinfo *itmon_get_rpathinfo(struct itmon_dev *itmon,
 						   unsigned int id,
 						   char *dest_name)
 {
@@ -1111,7 +1111,7 @@ static struct itmon_rpathinfo *itmon_get_rpathinfo(struct itmon_dev *itmon,
 }
 
 static char *itmon_get_clientinfo(struct itmon_dev *itmon,
-				  char *port_name,
+				  const char *port_name,
 				  u32 user)
 {
 	struct itmon_platdata *pdata = itmon->pdata;
@@ -1180,7 +1180,7 @@ static void _itmon_report_timeout(struct itmon_dev *itmon,
 	unsigned int axid, valid, timeout;
 	unsigned long addr, user;
 	u32 axburst, axprot, axlen, axsize, domain;
-	struct itmon_rpathinfo *port = NULL;
+	const struct itmon_rpathinfo *port = NULL;
 	char *client_name = NULL;
 	char cpu_name[CPU_NAME_LENGTH] = {0, };
 
