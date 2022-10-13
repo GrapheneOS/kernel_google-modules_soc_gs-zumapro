@@ -272,7 +272,7 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 	unsigned char idx = 0;
 	unsigned long state, pc = 0;
 
-	if ((!tsk) || !try_get_task_stack(tsk) || (tsk->flags & PF_FROZEN) ||
+	if ((!tsk) || !try_get_task_stack(tsk) || (tsk->__state & TASK_FROZEN) ||
 			!(tsk->__state == TASK_RUNNING ||
 				tsk->__state == TASK_UNINTERRUPTIBLE ||
 				tsk->__state == TASK_KILLABLE))
