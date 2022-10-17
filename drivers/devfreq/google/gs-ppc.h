@@ -3,7 +3,7 @@
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com/
  *
- * GS101 - PPC header
+ * ZUMA - PPC header
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,8 +11,8 @@
  *
  */
 
-#ifndef __DEVFREQ_GS101_PPC_H
-#define __DEVFREQ_GS101_PPC_H __FILE__
+#ifndef __DEVFREQ_ZUMA_PPC_H
+#define __DEVFREQ_ZUMA_PPC_H __FILE__
 
 #include <linux/ktime.h>
 #include <linux/devfreq.h>
@@ -34,4 +34,4 @@ void register_get_dev_status(struct exynos_devfreq_data *data);
 	} while (0)
 #endif
 
-#endif /* __DEVFREQ_GS101_PPC_H */
+#endif /* __DEVFREQ_ZUMA_PPC_H */

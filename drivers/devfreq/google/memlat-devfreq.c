@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright 2020 Google, Inc.
+ * Copyright 2022 Google, Inc.
  *
- * Google GS101 SoC devfreq driver
+ * Google ZUMA SoC devfreq driver
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published
@@ -20,7 +20,7 @@
 #include "governor.h"
 
 
-#define MEMLAT_DEVFREQ_MODULE_NAME	"gs101-memlat-devfreq"
+#define MEMLAT_DEVFREQ_MODULE_NAME	"zuma-memlat-devfreq"
 #define HZ_PER_KHZ	1000
 
 static int gs_memlat_devfreq_target(struct device *parent,

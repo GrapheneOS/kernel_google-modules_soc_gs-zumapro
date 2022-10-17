@@ -3,7 +3,7 @@
  * Copyright (c) 2015 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  *
- * Google GS101 SoC devfreq driver
+ * Google Zuma SoC devfreq driver
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published
