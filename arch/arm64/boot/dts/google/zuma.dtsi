@@ -752,7 +752,6 @@
 					3744000 1014000>;
 			/* initial_freq, default_qos, suspend_freq,
 			min_freq, max_freq, reboot_freq */
-			soft_max_freq = <2288000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -964,7 +963,6 @@
 					711000 711000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
-			soft_max_freq = <310000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -989,7 +987,6 @@
 					2253000 324000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
-			soft_max_freq = <1475000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -1015,7 +1012,6 @@
 					1942000 324000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
-			soft_max_freq = <951000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
