@@ -238,6 +238,7 @@ static void exynos_wakeup_sys_powerdown(enum sys_powerdown mode, bool early_wake
 		cal_pm_exit(mode);
 }
 
+u64 get_frc_time(void);
 static int exynos_pm_syscore_suspend(void)
 {
 #ifdef CONFIG_CP_PMUCAL
@@ -274,8 +275,8 @@ static int exynos_pm_syscore_suspend(void)
 
 	pm_dbg->mifdn_early_wakeup_prev = acpm_get_early_wakeup_count();
 
-	pr_info("%s: prev mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
-		EXYNOS_PM_PREFIX, pm_dbg->mifdn_cnt_prev,
+	pr_info("%s: frc:%llu prev mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
+		EXYNOS_PM_PREFIX, get_frc_time(), pm_dbg->mifdn_cnt_prev,
 		pm_info->apdn_cnt_prev, pm_dbg->mifdn_early_wakeup_prev);
 
 	return 0;
