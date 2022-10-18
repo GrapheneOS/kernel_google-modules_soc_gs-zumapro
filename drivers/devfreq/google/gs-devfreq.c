@@ -1413,9 +1413,6 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	if (of_property_read_u32(np, "pm_qos_class_max",
 				 &data->pm_qos_class_max))
 		return -ENODEV;
-	/* Optionally read softmax if provided */
-	of_property_read_u32(np, "soft_max_freq",
-				 &data->soft_max_freq);
 	if (of_property_read_u32(np, "ess_flag", &data->ess_flag))
 		return -ENODEV;
 
@@ -1457,6 +1454,16 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	data->min_freq = freq_array[3];
 	data->max_freq = freq_array[4];
 	data->reboot_freq = freq_array[5];
+
+	if (of_property_read_u32(np, "dfs_id", &data->dfs_id) &&
+	    of_property_match_string(np, "clock-names", buf))
+		return -ENODEV;
+
+	data->soft_max_freq = (u32)cal_dfs_get_max_freq(data->dfs_id);
+
+	/* Optionally read softmax (as potential ECT override) */
+	of_property_read_u32(np, "soft_max_freq",
+				 &data->soft_max_freq);
 
 	if (!data->soft_max_freq)
 		data->soft_max_freq = data->max_freq;
@@ -1552,10 +1559,6 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 		dev_info(data->dev, "This does not update fvp\n");
 		data->update_fvp = false;
 	}
-
-	if (of_property_read_u32(np, "dfs_id", &data->dfs_id) &&
-	    of_property_match_string(np, "clock-names", buf))
-		return -ENODEV;
 
 	if (!of_property_read_string(np, "use_get_dev", &use_get_dev)) {
 		if (!strcmp(use_get_dev, "true")) {
