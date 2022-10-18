@@ -37,6 +37,7 @@
 		status = "okay";
 		memory-region = <&tpu_fw_reserved>, <&tpu_fw_ctx_reserved>;
 		edgetpu,shareability = <0x1A320000>; /* SYSREG_TPU */
+		pmu-status-base = <0x15462504>; /* PMU TPU_STATUS */
 	};
         tpu_cooling: tpu-cooling {
                 #cooling-cells = <2>;
