@@ -472,12 +472,41 @@ static int exynos_devfreq_set_freq(struct device *dev, u32 new_freq,
 	return 0;
 }
 
+static u32 exynos_devfreq_nudge_freq(struct device *dev, u32 freq, bool find_higher)
+{
+	unsigned long tmp_freq = freq;
+	u32 flags = 0;
+	struct dev_pm_opp *target_opp;
+
+	if (!find_higher)
+		flags |= DEVFREQ_FLAG_LEAST_UPPER_BOUND;
+
+	target_opp = devfreq_recommended_opp(dev,
+					     &tmp_freq,
+					     flags);
+	if (IS_ERR(target_opp)) {
+		dev_err(dev, "No valid OPP to nudge freq %lu to!\n", freq);
+		return 0;
+	}
+
+	tmp_freq = (u32)dev_pm_opp_get_freq(target_opp);
+	dev_pm_opp_put(target_opp);
+
+	if (freq != tmp_freq) {
+		dev_info(dev,
+			 "Nudged %lu KHz to the %s %lu KHz freq.\n",
+			 freq,
+			 freq > tmp_freq ? "higher" : "lower",
+			 tmp_freq);
+	}
+
+	return tmp_freq;
+}
+
 int exynos_devfreq_init_freq_table(struct exynos_devfreq_data *data)
 {
 	u32 max_freq, min_freq;
-	unsigned long tmp_max, tmp_min;
-	struct dev_pm_opp *target_opp;
-	u32 flags = 0;
+	u32 nudged_freq;
 	int i, ret;
 
 	max_freq = (u32)cal_dfs_get_max_freq(data->dfs_id);
@@ -489,20 +518,13 @@ int exynos_devfreq_init_freq_table(struct exynos_devfreq_data *data)
 	dev_info(data->dev, "max_freq: %uKhz, get_max_freq: %uKhz\n",
 		 data->max_freq, max_freq);
 
-	if (max_freq < data->max_freq) {
-		flags |= DEVFREQ_FLAG_LEAST_UPPER_BOUND;
-		tmp_max = (unsigned long)max_freq;
-		target_opp =
-			devfreq_recommended_opp(data->dev, &tmp_max, flags);
-		if (IS_ERR(target_opp)) {
-			dev_err(data->dev,
-				"not found valid OPP for max_freq\n");
-			return PTR_ERR(target_opp);
-		}
+	if (max_freq < data->max_freq)
+		dev_warn(data->dev, "DT max freq is higher than ECT max freq!\n");
 
-		data->max_freq = (u32)dev_pm_opp_get_freq(target_opp);
-		dev_pm_opp_put(target_opp);
-	}
+	nudged_freq = exynos_devfreq_nudge_freq(data->dev, data->max_freq, /*find_higher*/ 0);
+	if (!nudged_freq)
+		return -EINVAL;
+	data->max_freq = nudged_freq;
 
 	/* min ferquency must be equal or under max frequency */
 	if (data->min_freq > data->max_freq)
@@ -517,20 +539,13 @@ int exynos_devfreq_init_freq_table(struct exynos_devfreq_data *data)
 	dev_info(data->dev, "min_freq: %uKhz, get_min_freq: %uKhz\n",
 		 data->min_freq, min_freq);
 
-	if (min_freq > data->min_freq) {
-		flags &= ~DEVFREQ_FLAG_LEAST_UPPER_BOUND;
-		tmp_min = (unsigned long)min_freq;
-		target_opp =
-			devfreq_recommended_opp(data->dev, &tmp_min, flags);
-		if (IS_ERR(target_opp)) {
-			dev_err(data->dev,
-				"not found valid OPP for min_freq\n");
-			return PTR_ERR(target_opp);
-		}
+	if (min_freq > data->min_freq)
+		dev_warn(data->dev, "DT min freq is lower than ECT min freq!\n");
 
-		data->min_freq = (u32)dev_pm_opp_get_freq(target_opp);
-		dev_pm_opp_put(target_opp);
-	}
+	nudged_freq = exynos_devfreq_nudge_freq(data->dev, data->min_freq, /*find_higher*/ 1);
+	if (!nudged_freq)
+		return -EINVAL;
+	data->min_freq = nudged_freq;
 
 	dev_info(data->dev, "min_freq: %uKhz, max_freq: %uKhz\n",
 		 data->min_freq, data->max_freq);
