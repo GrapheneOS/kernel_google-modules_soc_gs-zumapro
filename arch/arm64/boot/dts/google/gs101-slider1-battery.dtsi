@@ -6,6 +6,8 @@
  *
  */
 
+#include "gs101-pinctrl.h"
+
 / {
 	fragment@gcpm {
 		target-path = "/";
@@ -34,7 +36,7 @@
 		samsung,pins = "gpp23-7";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-		samsung,pin-drv = <EXYNOS4_PIN_DRV_LV1>;
+		samsung,pin-drv = <GS101_PIN_DRV_2_5_MA>;
 	};
 };
 

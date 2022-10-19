@@ -18,8 +18,8 @@
  *     Indicator is LED DS1114
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
-#include <dt-bindings/pinctrl/gs101.h>
+#include <arm64/exynos/exynos-pinctrl.h>
+#include "gs101-pinctrl.h"
 
 &pinctrl_0 {
 	fts_irq: fts-irq {

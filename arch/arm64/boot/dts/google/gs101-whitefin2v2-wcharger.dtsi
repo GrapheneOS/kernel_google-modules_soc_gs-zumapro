@@ -5,7 +5,7 @@
  * Copyright 2020 Google Inc.
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 
 
