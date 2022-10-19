@@ -5,13 +5,13 @@
 
 #define pr_fmt(fmt) "sysmmu: " fmt
 
-#include <linux/dma-iommu.h>
 #include <linux/kmemleak.h>
 #include <linux/module.h>
 #include <linux/of_iommu.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/dma-mapping.h>
 #include <linux/slab.h>
 
 #include "samsung-iommu.h"
@@ -243,7 +243,7 @@ static inline void pgtable_flush(void *vastart, void *vaend)
 				   (size_t)(vaend - vastart), DMA_TO_DEVICE);
 }
 
-static bool samsung_sysmmu_capable(enum iommu_cap cap)
+static bool samsung_sysmmu_capable(struct device *dev, enum iommu_cap cap)
 {
 	return cap == IOMMU_CAP_CACHE_COHERENCY;
 }
@@ -1463,8 +1463,6 @@ static int samsung_sysmmu_init_global(void)
 		ret = -ENOMEM;
 		goto err_init_slpt_fail;
 	}
-
-	bus_set_iommu(&platform_bus_type, &samsung_sysmmu_ops);
 
 	device_initialize(&sync_dev);
 	sysmmu_global_init_done = true;
