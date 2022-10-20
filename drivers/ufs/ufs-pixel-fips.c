@@ -8,6 +8,8 @@
  * Version: 2.0.0
  */
 
+#include <linux/delay.h>
+#include <linux/dma-mapping.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/module.h>

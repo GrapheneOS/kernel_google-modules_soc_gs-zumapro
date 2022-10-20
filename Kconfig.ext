@@ -14,7 +14,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/char/hw_random/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/tty/serial/Kconfig"
 
-source "$(KCONFIG_EXT_PREFIX)drivers/scsi/ufs/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/ufs/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/i2c/busses/Kconfig"
 

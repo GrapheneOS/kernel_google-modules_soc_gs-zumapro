@@ -32,7 +32,7 @@ obj-y += drivers/mfd/
 
 obj-y += drivers/dma-buf/heaps/
 
-obj-y += drivers/scsi/ufs/
+obj-y += drivers/ufs/
 
 obj-y += drivers/spi/
 

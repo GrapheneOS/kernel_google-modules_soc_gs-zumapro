@@ -10,7 +10,7 @@
 #ifndef _UFS_PIXEL_FIPS_H_
 #define _UFS_PIXEL_FIPS_H_
 
-#include "ufshcd.h"
+#include <ufs/ufshcd.h>
 
 /*
  * ufs_pixel_fips_verify - Performs FIPS compliant self test

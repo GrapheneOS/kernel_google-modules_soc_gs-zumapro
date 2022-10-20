@@ -7,7 +7,7 @@ ufs-exynos-gs-$(CONFIG_SOC_GS101) += gs101/ufs-cal-if.o
 ufs-exynos-gs-$(CONFIG_SOC_ZUMA) += zuma/ufs-cal-if.o
 ufs-exynos-gs-$(CONFIG_SCSI_UFS_CRYPTO) += ufs-pixel-crypto.o
 
-ccflags-y += -I $(srctree)/drivers/scsi/ufs
+ccflags-y += -I $(srctree)/drivers/ufs
 
 obj-$(CONFIG_SCSI_UFS_PIXEL_FIPS140) += ufs-pixel-fips140.o
 ufs-pixel-fips140-y += ufs-pixel-fips.o ufs-pixel-fips_sha256.o \

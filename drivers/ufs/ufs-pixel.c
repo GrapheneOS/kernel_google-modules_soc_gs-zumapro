@@ -7,6 +7,7 @@
  * Authors: Jaegeuk Kim <jaegeuk@google.com>
  */
 
+#include <core/ufshcd-priv.h>
 #include "ufs-exynos-gs.h"
 
 #define CREATE_TRACE_POINTS
@@ -633,7 +634,7 @@ static void pixel_ufs_trace_upiu_cmd(struct ufs_hba *hba,
 }
 
 static void pixel_ufs_send_uic_command(void *data, struct ufs_hba *hba,
-				struct uic_command *ucmd, int str_t)
+				const struct uic_command *ucmd, int str_t)
 {
 	u8 event = 0;
 	u8 opcode = (ucmd) ? ucmd->command : 0xFF;
@@ -835,7 +836,7 @@ static ssize_t vendor_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%.8s\n", hba->sdev_ufs_device->vendor);
+	return snprintf(buf, PAGE_SIZE, "%.8s\n", hba->ufs_device_wlun->vendor);
 }
 
 static ssize_t model_show(struct device *dev,
@@ -843,7 +844,7 @@ static ssize_t model_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%.16s\n", hba->sdev_ufs_device->model);
+	return snprintf(buf, PAGE_SIZE, "%.16s\n", hba->ufs_device_wlun->model);
 }
 
 static ssize_t rev_show(struct device *dev,
@@ -851,7 +852,7 @@ static ssize_t rev_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%.4s\n", hba->sdev_ufs_device->rev);
+	return snprintf(buf, PAGE_SIZE, "%.4s\n", hba->ufs_device_wlun->rev);
 }
 
 static ssize_t platform_version_show(struct device *dev,

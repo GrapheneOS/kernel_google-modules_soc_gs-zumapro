@@ -19,8 +19,9 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/sched/clock.h>
+#include <ufs/ufshcd.h>
+#include <scsi/scsi_cmnd.h>
 
-#include "ufshcd.h"
 #include "ufs-vs-mmio.h"
 #include "ufs-vs-regs.h"
 #include "ufs-exynos-dbg.h"
