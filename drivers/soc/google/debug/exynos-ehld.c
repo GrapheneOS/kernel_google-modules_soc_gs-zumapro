@@ -22,8 +22,8 @@
 #include <linux/io.h>
 #include <linux/time64.h>
 #include <linux/irqchip/arm-gic-v3.h>
-
 #include <soc/google/acpm_ipc_ctrl.h>
+#include <soc/google/exynos-cpupm.h>
 #include <soc/google/exynos-ehld.h>
 #include <soc/google/exynos-coresight.h>
 #include <soc/google/debug-snapshot.h>
@@ -954,6 +954,38 @@ static int exynos_ehld_sysfs_init(void)
 	return subsys_system_register(&ehld_subsys, ehld_sysfs_groups);
 }
 
+static int exynos_ehld_cpupm_notifier(struct notifier_block *self, unsigned long cmd, void *v)
+{
+	unsigned int cpu = raw_smp_processor_id();
+
+	if (!ehld_main.dbgc.support)
+		return NOTIFY_DONE;
+
+	/* disable ehld during SICD to stop dbgc from accessing DRAM */
+	switch (cmd) {
+	case SICD_ENTER:
+		exynos_ehld_cpu_pm_enter(cpu);
+		adv_tracer_ehld_set_enable(false);
+		ehld_main.dbgc.enabled = false;
+		break;
+
+	case SICD_EXIT:
+		/* exynos_ehld_cpu_pm_exit is not needed, covered by cpupm */
+		adv_tracer_ehld_set_enable(true);
+		ehld_main.dbgc.enabled = true;
+		break;
+
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block exynos_ehld_cpupm_notifier_block = {
+	.notifier_call = exynos_ehld_cpupm_notifier,
+};
+
 static int exynos_ehld_setup(void)
 {
 	int ret;
@@ -965,6 +997,8 @@ static int exynos_ehld_setup(void)
 
 	register_reboot_notifier(&exynos_ehld_reboot_block);
 	atomic_notifier_chain_register(&panic_notifier_list, &exynos_ehld_panic_block);
+
+	exynos_cpupm_notifier_register(&exynos_ehld_cpupm_notifier_block);
 
 	/* register cpu pm notifier for C2 */
 	cpu_pm_register_notifier(&exynos_ehld_c2_pm_enter_nb);

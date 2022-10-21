@@ -71,7 +71,7 @@ int adv_tracer_ehld_set_enable(int en)
 		return ret;
 	}
 	plugin_ehld.enable = en;
-	pr_info("set EHLD to %sabled\n", plugin_ehld.enable ? "en" : "dis");
+
 	return 0;
 }
 
