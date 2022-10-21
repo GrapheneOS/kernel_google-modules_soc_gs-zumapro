@@ -142,6 +142,26 @@ TRACE_EVENT(thermal_exynos_power_allocator,
 		  __entry->cdev_state, __entry->is_hardlimited)
 );
 
+TRACE_EVENT(thermal_exynos_acpm_bulk,
+	TP_PROTO(int tz_id, int current_temp, unsigned long cdev_state, u64 timestamp),
+	TP_ARGS(tz_id, current_temp, cdev_state, timestamp),
+	TP_STRUCT__entry(
+		__field(int, tz_id)
+		__field(int, current_temp)
+		__field(unsigned long, cdev_state)
+		__field(u64, timestamp)
+	),
+	TP_fast_assign(
+		__entry->tz_id = tz_id;
+		__entry->current_temp = current_temp;
+		__entry->cdev_state = cdev_state;
+		__entry->timestamp = timestamp;
+	),
+
+	TP_printk("thermal_zone_id=%d current_temperature=%d cdev_state=%lu timestamp=%llu",
+		  __entry->tz_id, __entry->current_temp, __entry->cdev_state, __entry->timestamp)
+);
+
 TRACE_EVENT(thermal_exynos_power_allocator_pid,
 	TP_PROTO(struct thermal_zone_device *tz, s32 err, s32 err_integral,
 		 s64 p, s64 i, s32 output),
