@@ -1436,6 +1436,9 @@
 
 	acpm_tmu {
 		acpm-ipc-channel = <9>;
+		async {
+			acpm-ipc-channel = <15>;
+		};
 	};
 
 	tmuctrl_0: BIG@100A0000 {
@@ -1467,6 +1470,10 @@
 
 		tmu_work_affinity = "0-8";
 		hotplug_work_affinity = "0-3";
+
+		use-acpm-gov;
+		irq_stepwise_gain = <2>;
+		timer_stepwise_gain = <1>;
 	};
 
 	tmuctrl_1: MID@100A0000 {
@@ -1498,6 +1505,10 @@
 
 		tmu_work_affinity = "0-8";
 		hotplug_work_affinity = "0-3";
+
+		use-acpm-gov;
+		irq_stepwise_gain = <2>;
+		timer_stepwise_gain = <1>;
 	};
 
 	tmuctrl_2: LITTLE@100A0000 {
@@ -1520,6 +1531,10 @@
 		sustainable_power = <200>;
 
 		tmu_work_affinity = "0-8";
+
+		use-acpm-gov;
+		irq_stepwise_gain = <2>;
+		timer_stepwise_gain = <1>;
 	};
 
 	tmuctrl_3: G3D@100B0000 {
@@ -1546,6 +1561,10 @@
 		sustainable_power = <200>;
 
 		tmu_work_affinity = "0-8";
+
+		use-acpm-gov;
+		irq_stepwise_gain = <2>;
+		timer_stepwise_gain = <1>;
 	};
 
 	tmuctrl_4: ISP@100B0000 {
