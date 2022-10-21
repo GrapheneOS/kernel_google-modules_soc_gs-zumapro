@@ -9,8 +9,6 @@
 #ifndef _XHCI_EXYNOS_H
 #define _XHCI_EXYNOS_H
 
-#include <host/xhci.h> /* $(srctree)/drivers/usb/host/xhci.h */ /* for hcd_to_xhci() */
-
 #define PORTSC_OFFSET		0x430
 #define DIS_RX_DETECT		BIT(9)
 #define USB_CLASS_BILLBOARD	0x11
@@ -51,6 +49,17 @@ struct xhci_exynos_priv {
 	int (*suspend_quirk)(struct usb_hcd *);
 	int (*resume_quirk)(struct usb_hcd *);
 	struct xhci_hcd_exynos *xhci_exynos;
+};
+
+/**
+ * @offload_init: called for offload init process
+ * @offload_cleanup: called for offload cleanup process
+ * @offload_setup: called for offload setup process
+ */
+struct xhci_exynos_ops {
+	int (*offload_init)(struct xhci_hcd *xhci);
+	void (*offload_cleanup)(struct xhci_hcd *xhci);
+	int (*offload_setup)(struct xhci_hcd *xhci);
 };
 
 #define hcd_to_xhci_exynos_priv(h) ((struct xhci_exynos_priv *)hcd_to_xhci(h)->priv)

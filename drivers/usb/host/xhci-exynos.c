@@ -420,6 +420,51 @@ static void xhci_exynos_pm_runtime_init(struct device *dev)
 	init_waitqueue_head(&dev->power.wait_queue);
 }
 
+static struct xhci_exynos_ops *xhci_vendor_ops;
+
+int xhci_exynos_register_offload_ops(struct xhci_exynos_ops *offload_ops)
+{
+	if (offload_ops == NULL)
+		return -EINVAL;
+
+	xhci_vendor_ops = offload_ops;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(xhci_exynos_register_offload_ops);
+
+static int xhci_vendor_offload_init(struct device *dev, struct xhci_hcd *xhci)
+{
+	struct xhci_exynos_ops *ops = xhci_vendor_ops;
+
+	if (ops && ops->offload_init)
+		return ops->offload_init(xhci);
+
+	dev_err(dev, "Offload hooks or init function is null!\n");
+	return -EINVAL;
+}
+
+static void xhci_vendor_offload_cleanup(struct device *dev, struct xhci_hcd *xhci)
+{
+	struct xhci_exynos_ops *ops = xhci_vendor_ops;
+
+	if (ops && ops->offload_cleanup)
+		ops->offload_cleanup(xhci);
+	else
+		dev_err(dev, "Offload hooks or cleanup function is null!\n");
+}
+
+static int xhci_vendor_offload_setup(struct device *dev, struct xhci_hcd *xhci)
+{
+	struct xhci_exynos_ops *ops = xhci_vendor_ops;
+
+	if (ops && ops->offload_setup)
+		return ops->offload_setup(xhci);
+
+	dev_err(dev, "Offload hooks or setup function is null!\n");
+	return -EINVAL;
+}
+
 static int xhci_exynos_probe(struct platform_device *pdev)
 {
 	struct device		*parent = pdev->dev.parent;
@@ -601,6 +646,10 @@ static int xhci_exynos_probe(struct platform_device *pdev)
 		}
 	}
 
+	ret = xhci_vendor_offload_init(&pdev->dev, xhci);
+	if (ret)
+		goto disable_usb_phy;
+
 	xhci_exynos->main_wakelock = main_wakelock;
 	xhci_exynos->shared_wakelock = shared_wakelock;
 
@@ -616,6 +665,10 @@ static int xhci_exynos_probe(struct platform_device *pdev)
 	ret = usb_add_hcd(xhci->shared_hcd, irq, IRQF_SHARED);
 	if (ret)
 		goto dealloc_usb2_hcd;
+
+	ret = xhci_vendor_offload_setup(&pdev->dev, xhci);
+	if (ret)
+		goto disable_usb_phy;
 
 	device_enable_async_suspend(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
@@ -693,6 +746,8 @@ remove_hcd:
 	xhci->shared_hcd = NULL;
 	usb_phy_shutdown(hcd->usb_phy);
 	usb_remove_hcd(hcd);
+
+	xhci_vendor_offload_cleanup(&dev->dev, xhci);
 
 	devm_iounmap(&dev->dev, hcd->regs);
 	usb_put_hcd(shared_hcd);
