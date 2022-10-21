@@ -66,7 +66,7 @@ static unsigned int get_random_for_type(int type)
 	unsigned int random;
 	int ret;
 
-	random = get_random_int();
+	random = get_random_u32();
 
 	switch (type) {
 	case DELAY_MS:
@@ -87,7 +87,7 @@ static unsigned int get_random_for_type(int type)
 		break;
 	case DVFS_DOMAIN_ID:
 		do {
-			ret = get_random_int() % NUM_OF_DVFS_DOMAINS;
+			ret = get_random_u32() % NUM_OF_DVFS_DOMAINS;
 		} while (ret == DVFS_G3D || ret == DVFS_G3DL2 || ret == DVFS_TPU);
 		break;
 	case GRANVILLE_M_REG:
@@ -1148,7 +1148,7 @@ static unsigned int get_random_rate(unsigned int dm_id)
 {
 	unsigned int random, index, upper, lower;
 
-	random = get_random_int();
+	random = get_random_u32();
 
 	if (mbox->dvfs->is_given_range) {
 		upper = mbox->dvfs->upper_bound;
