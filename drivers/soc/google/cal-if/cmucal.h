@@ -203,7 +203,6 @@ enum clk_pll_type {
 							== GATE_VCLK_TYPE)
 #define IS_ACPM_VCLK(_id)	((_id & (MASK_OF_TYPE | MASK_OF_SUBTYPE))\
 							== ACPM_VCLK_TYPE)
-
 #define GET_TYPE(_id)		(_id & MASK_OF_TYPE)
 #define GET_IDX(_id)		(_id & MASK_OF_ID)
 /*

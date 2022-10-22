@@ -182,6 +182,7 @@
 		qos_weight_gpb = <50>;
 		qos_weight_num_of_tile = <75>;
 		qos_weight_super64_bframe = <60>;
+		qos_weight_mbaff = <60>;
 
 		/* core balance(%) for resource managing */
 		core_balance = <100>;
@@ -191,6 +192,9 @@
 
 		/* need control for mfc idle clock */
 		idle_clk_ctrl = <0>;
+
+		/* Encoder RGB CSC formula by VUI from F/W */
+		enc_rgb_csc_by_fw = <1>;
 
 		/* Sub nodes for MFC core */
 		#address-cells = <2>;

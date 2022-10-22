@@ -434,6 +434,7 @@ static int mfc_open(struct file *file)
 	spin_lock_init(&ctx->meminfo_queue_lock);
 	spin_lock_init(&ctx->corelock.lock);
 	mutex_init(&ctx->intlock.core_mutex);
+	mutex_init(&ctx->drc_wait_mutex);
 	init_waitqueue_head(&ctx->migrate_wq);
 	init_waitqueue_head(&ctx->corelock.wq);
 	init_waitqueue_head(&ctx->corelock.migrate_wq);
@@ -520,7 +521,8 @@ err_drm_start:
 	call_cop(ctx, cleanup_ctx_ctrls, ctx);
 
 err_ctx_ctrls:
-	vfree(dev->regression_val);
+	if ((dev->num_inst == 1) && dev->regression_val)
+		vfree(dev->regression_val);
 
 err_ctx_init:
 	dev->ctx[ctx->num] = 0;
@@ -597,9 +599,8 @@ static int mfc_release(struct file *file)
 	if (ctx->type == MFCINST_ENCODER)
 		mfc_meminfo_cleanup_outbuf_q(ctx);
 
-	if (dev->num_inst == 0)
-		if (dev->regression_val)
-			vfree(dev->regression_val);
+	if ((dev->num_inst == 0) && dev->regression_val)
+		vfree(dev->regression_val);
 
 	if (ctx->type == MFCINST_DECODER)
 		__mfc_deinit_dec_ctx(ctx);
@@ -924,6 +925,8 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 			&pdata->qos_weight.weight_num_of_tile);
 	of_property_read_u32(np, "qos_weight_super64_bframe",
 			&pdata->qos_weight.weight_super64_bframe);
+	of_property_read_u32(np, "qos_weight_mbaff",
+			&pdata->qos_weight.weight_mbaff);
 
 	/* Bitrate control for QoS */
 	of_property_read_u32(np, "num_mfc_freq", &pdata->num_mfc_freq);
@@ -942,6 +945,9 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 
 	/* MFC IOVA threshold */
 	of_property_read_u32(np, "idle_clk_ctrl", &pdata->idle_clk_ctrl);
+
+	/* Encoder RGB CSC formula by VUI from F/W */
+	of_property_read_u32(np, "enc_rgb_csc_by_fw", &pdata->enc_rgb_csc_by_fw);
 
 	return 0;
 }

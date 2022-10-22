@@ -1,1 +1,3 @@
 blocklist bcmdhd4398
+blocklist ftm5
+blocklist goodix_brl_touch

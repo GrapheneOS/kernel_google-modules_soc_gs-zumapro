@@ -331,9 +331,9 @@ enum mfc_regression_option {
 enum mfc_debug_cause {
 	/* panic cause */
 	MFC_CAUSE_0WRITE_PAGE_FAULT		= 0,
-	MFC_CAUSE_0READ_PAGE_FAULT		= 1,
+	MFC_CAUSE_0PAGE_FAULT			= 1,
 	MFC_CAUSE_1WRITE_PAGE_FAULT		= 2,
-	MFC_CAUSE_1READ_PAGE_FAULT		= 3,
+	MFC_CAUSE_1PAGE_FAULT			= 3,
 	MFC_CAUSE_NO_INTERRUPT			= 4,
 	MFC_CAUSE_NO_SCHEDULING			= 5,
 	MFC_CAUSE_FAIL_STOP_NAL_Q		= 6,
@@ -345,7 +345,6 @@ enum mfc_debug_cause {
 	MFC_CAUSE_FAIL_DPB_FLUSH		= 12,
 	MFC_CAUSE_FAIL_CACHE_FLUSH		= 13,
 	MFC_CAUSE_FAIL_MOVE_INST		= 14,
-	MFC_CAUSE_FAIL_DRC_WAIT			= 15,
 	/* last information */
 	MFC_LAST_INFO_BLACK_BAR                 = 26,
 	MFC_LAST_INFO_NAL_QUEUE                 = 27,
@@ -781,6 +780,7 @@ struct mfc_qos_weight {
 	unsigned int weight_gpb;
 	unsigned int weight_num_of_tile;
 	unsigned int weight_super64_bframe;
+	unsigned int weight_mbaff;
 };
 
 struct mfc_feature {
@@ -860,6 +860,8 @@ struct mfc_platdata {
 	unsigned int core_balance;
 	unsigned int iova_threshold;
 	unsigned int idle_clk_ctrl;
+
+	unsigned int enc_rgb_csc_by_fw;
 };
 
 struct mfc_core_platdata {
@@ -870,6 +872,10 @@ struct mfc_core_platdata {
 	unsigned int axid_mask;
 	unsigned int mfc_fault_num;
 	unsigned int trans_info_offset;
+	unsigned int fault_status_offset;
+	unsigned int fault_pmmuid_offset;
+	unsigned int fault_pmmuid_shift;
+
 	/* vOTF */
 	unsigned int mfc_votf_base;
 	unsigned int gdc_votf_base;
@@ -894,9 +900,11 @@ struct mfc_core_platdata {
 
 /* slot 4 * max instance 32 = 128 */
 #define NAL_Q_QUEUE_SIZE		128
+#define NAL_Q_DECODER_MARKER		0xAAAAAAAA
+#define NAL_Q_ENCODER_MARKER		0xBBBBBBBB
 
 typedef struct __DecoderInputStr {
-	int StartCode; /* = 0xAAAAAAAA; Decoder input structure marker */
+	int StartCode; /* NAL_Q_DECODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int PictureTag;
@@ -919,7 +927,7 @@ typedef struct __DecoderInputStr {
 } DecoderInputStr; /* 28*4 = 112 bytes */
 
 typedef struct __EncoderInputStr {
-	int StartCode; /* 0xBBBBBBBB; Encoder input structure marker */
+	int StartCode; /* NAL_Q_ENCODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int PictureTag;
@@ -969,7 +977,7 @@ typedef struct __EncoderInputStr {
 } EncoderInputStr; /* 88*4 = 352 bytes */
 
 typedef struct __DecoderOutputStr {
-	int StartCode; /* 0xAAAAAAAA; Decoder output structure marker */
+	int StartCode; /* NAL_Q_DECODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int ErrorCode;
@@ -1040,7 +1048,7 @@ typedef struct __DecoderOutputStr {
 } DecoderOutputStr; /* 147*4 = 588 bytes */
 
 typedef struct __EncoderOutputStr {
-	int StartCode; /* 0xBBBBBBBB; Encoder output structure marker */
+	int StartCode; /* NAL_Q_ENCODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int ErrorCode;
@@ -2002,6 +2010,7 @@ struct mfc_dec {
 	int mv_count;
 	int idr_decoding;
 	int is_interlaced;
+	int is_mbaff;
 	int is_dts_mode;
 	int stored_tag;
 	int inter_res_change;
@@ -2033,6 +2042,7 @@ struct mfc_dec {
 	unsigned long dynamic_set;
 	unsigned long dynamic_used;
 
+	int is_multiframe;
 	int has_multiframe;
 	int is_multiple_show;
 
@@ -2214,6 +2224,7 @@ struct mfc_ctx {
 
 	int is_dpb_realloc;
 	enum mfc_dec_wait_state wait_state;
+	struct mutex drc_wait_mutex;
 	int clear_work_bit;
 
 	int mv_buffer_allocated;
@@ -2316,7 +2327,6 @@ struct mfc_core_ctx {
 
 	/* wait queue */
 	wait_queue_head_t cmd_wq;
-	wait_queue_head_t drc_wq;
 	struct mfc_listable_wq hwlock_wq;
 };
 

@@ -355,6 +355,7 @@ static int exynos_cpufreq_target(struct cpufreq_policy *policy,
 {
 	struct exynos_cpufreq_domain *domain = find_domain(policy->cpu);
 	unsigned long freq;
+	unsigned int target_index;
 	int ret = 0;
 
 	ATRACE_BEGIN(__func__);
@@ -363,8 +364,13 @@ static int exynos_cpufreq_target(struct cpufreq_policy *policy,
 		goto out;
 	}
 
+
+	target_index = cpufreq_frequency_table_target(policy, target_freq, relation);
+
+	target_freq = policy->freq_table[target_index].frequency;
+
 	mutex_lock(&domain->lock);
-	freq = cpufreq_driver_resolve_freq(policy, target_freq);
+	freq = target_freq;
 	// Always go to DM_CALL even with `domain->old == freq` to update dm->governor_freq
 	if (!freq) {
 		mutex_unlock(&domain->lock);
@@ -792,7 +798,7 @@ static int dm_scaler(int dm_type, void *devdata, unsigned int target_freq,
 	struct exynos_cpufreq_domain *domain = devdata;
 	struct cpufreq_policy *policy;
 	struct cpumask mask;
-	int ret;
+	int ret, target_index;
 
 	/* Skip scaling if all cpus of domain are hotplugged out */
 	cpumask_and(&mask, &domain->cpus, cpu_online_mask);
@@ -805,6 +811,9 @@ static int dm_scaler(int dm_type, void *devdata, unsigned int target_freq,
 		return -ENODEV;
 	}
 
+
+	target_index = cpufreq_frequency_table_target(policy, target_freq, relation);
+	target_freq = policy->freq_table[target_index].frequency;
 	ret = __exynos_cpufreq_target(policy, target_freq, relation);
 
 	cpufreq_cpu_put(policy);
@@ -1234,6 +1243,8 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	if (of_property_read_bool(dn, "need-awake"))
 		domain->need_awake = true;
 
+	if (domain->need_awake)
+		disable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
 	domain->boot_freq = cal_dfs_get_boot_freq(domain->cal_id);
 	domain->resume_freq = resume_freq ? resume_freq :
 					    cal_dfs_get_resume_freq(domain->cal_id);
@@ -1243,6 +1254,8 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 		     domain->old, domain->id);
 		domain->old = domain->boot_freq;
 	}
+	if (domain->need_awake)
+		enable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
 
 	mutex_init(&domain->lock);
 

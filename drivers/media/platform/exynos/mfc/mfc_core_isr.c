@@ -81,14 +81,15 @@ static void __mfc_handle_black_bar_info(struct mfc_core *core,
 static unsigned int __mfc_handle_frame_field(struct mfc_core *core,
 		struct mfc_ctx *ctx)
 {
-	unsigned int interlace_type = 0, is_interlace = 0, is_mbaff = 0;
+	struct mfc_dec *dec = ctx->dec_priv;
+	unsigned int interlace_type = 0, is_interlace = 0;
 	unsigned int field;
 
 	if (CODEC_INTERLACED(ctx))
 		is_interlace = mfc_core_is_interlace_picture();
 
 	if (CODEC_MBAFF(ctx))
-		is_mbaff = mfc_core_is_mbaff_picture();
+		dec->is_mbaff = mfc_core_is_mbaff_picture();
 
 	if (is_interlace) {
 		interlace_type = mfc_core_get_interlace_type();
@@ -96,14 +97,14 @@ static unsigned int __mfc_handle_frame_field(struct mfc_core *core,
 			field = V4L2_FIELD_INTERLACED_TB;
 		else
 			field = V4L2_FIELD_INTERLACED_BT;
-	} else if (is_mbaff) {
+	} else if (dec->is_mbaff) {
 		field = V4L2_FIELD_INTERLACED_TB;
 	} else {
 		field = V4L2_FIELD_NONE;
 	}
 
 	mfc_debug(2, "[INTERLACE] is_interlace: %d (type : %d), is_mbaff: %d, field: 0x%#x\n",
-			is_interlace, interlace_type, is_mbaff, field);
+			is_interlace, interlace_type, dec->is_mbaff, field);
 
 	return field;
 }
@@ -310,7 +311,7 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 	unsigned int is_content_light = 0, is_display_colour = 0;
 	unsigned int is_hdr10_plus_sei = 0, is_av1_film_grain_sei = 0;
 	unsigned int is_uncomp = 0;
-	unsigned int i, index, idr_flag;
+	unsigned int i, index, idr_flag, is_last_display;
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->color_aspect_dec)) {
 		is_video_signal_type = mfc_core_get_video_signal_type();
@@ -343,6 +344,8 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 		frame_type = mfc_core_get_disp_frame_type();
 		idr_flag = mfc_core_get_disp_idr_flag();
 	}
+
+	is_last_display = mfc_core_get_last_display();
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->sbwc_uncomp) && ctx->is_sbwc)
 		is_uncomp = mfc_core_get_uncomp();
@@ -398,10 +401,12 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 		if ((IS_VP9_DEC(ctx) && mfc_core_get_disp_res_change()) ||
 			(IS_AV1_DEC(ctx) && mfc_core_get_disp_res_change_av1())) {
 			mfc_ctx_info("[FRAME] display resolution changed\n");
+			mutex_lock(&ctx->drc_wait_mutex);
 			ctx->wait_state = WAIT_G_FMT;
 			mfc_core_get_img_size(core, ctx, MFC_GET_RESOL_SIZE);
 			dec->disp_res_change = 1;
 			mfc_set_mb_flag(dst_mb, MFC_FLAG_DISP_RES_CHANGE);
+			mutex_unlock(&ctx->drc_wait_mutex);
 		}
 
 		if (dec->black_bar_updated) {
@@ -447,6 +452,11 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 			mfc_set_mb_flag(dst_mb, MFC_FLAG_FRAMERATE_CH);
 			ctx->update_framerate = false;
 			mfc_debug(2, "[QoS] framerate changed\n");
+		}
+
+		if (is_last_display) {
+			mfc_set_mb_flag(dst_mb, MFC_FLAG_LAST_FRAME);
+			mfc_debug(2, "[FRAME] Last display frame\n");
 		}
 
 		if ((IS_VP9_DEC(ctx) || IS_AV1_DEC(ctx)) && dec->has_multiframe) {
@@ -964,17 +974,21 @@ static void __mfc_handle_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 
 	if (res_change) {
 		mfc_debug(2, "[DRC] Resolution change set to %d\n", res_change);
+		mutex_lock(&ctx->drc_wait_mutex);
 		mfc_change_state(core_ctx, MFCINST_RES_CHANGE_INIT);
 		ctx->wait_state = WAIT_G_FMT | WAIT_STOP;
 		mfc_debug(2, "[DRC] Decoding waiting! : %d\n", ctx->wait_state);
+		mutex_unlock(&ctx->drc_wait_mutex);
 		return;
 	}
 
 	if (need_dpb_change || need_scratch_change) {
 		mfc_ctx_info("[DRC] Interframe resolution changed\n");
+		mutex_lock(&ctx->drc_wait_mutex);
 		ctx->wait_state = WAIT_G_FMT | WAIT_STOP;
 		mfc_core_get_img_size(core, ctx, MFC_GET_RESOL_DPB_SIZE);
 		dec->inter_res_change = 1;
+		mutex_unlock(&ctx->drc_wait_mutex);
 		__mfc_handle_frame_all_extracted(core, ctx);
 		return;
 	}
@@ -989,10 +1003,12 @@ static void __mfc_handle_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 		dst_frame_status == MFC_REG_DEC_STATUS_DECODING_ONLY) {
 		mfc_debug(2, "Frame packing SEI exists for a frame\n");
 		mfc_debug(2, "Reallocate DPBs and issue init_buffer\n");
+		mutex_lock(&ctx->drc_wait_mutex);
 		ctx->is_dpb_realloc = 1;
 		mfc_change_state(core_ctx, MFCINST_HEAD_PARSED);
 		ctx->capture_state = QUEUE_FREE;
 		ctx->wait_state = WAIT_STOP;
+		mutex_unlock(&ctx->drc_wait_mutex);
 		__mfc_handle_frame_all_extracted(core, ctx);
 		goto leave_handle_frame;
 	}
@@ -1005,7 +1021,6 @@ static void __mfc_handle_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 			mfc_debug(2, "[DRC] Last frame received after resolution change\n");
 			__mfc_handle_frame_all_extracted(core, ctx);
 			mfc_change_state(core_ctx, MFCINST_RES_CHANGE_END);
-			mfc_wake_up_drc_ctx(core_ctx);
 
 			if (IS_MULTI_CORE_DEVICE(dev))
 				mfc_rm_load_balancing(ctx, MFC_RM_LOAD_DELETE);
@@ -1348,6 +1363,7 @@ static int __mfc_handle_stream(struct mfc_core *core, struct mfc_ctx *ctx, unsig
 	int slice_type, consumed_only = 0;
 	unsigned int strm_size;
 	unsigned int pic_count;
+	unsigned int sbwc_err;
 
 	slice_type = mfc_core_get_enc_slice_type();
 	strm_size = mfc_core_get_enc_strm_size();
@@ -1381,6 +1397,17 @@ static int __mfc_handle_stream(struct mfc_core *core, struct mfc_ctx *ctx, unsig
 	if (strm_size == 0 && !(enc->empty_data && reason == MFC_REG_R2H_CMD_COMPLETE_SEQ_RET)) {
 		mfc_debug(2, "[FRAME] dst buffer is not returned\n");
 		consumed_only = 1;
+	}
+
+	sbwc_err = mfc_core_get_enc_comp_err();
+	if (sbwc_err) {
+		mfc_ctx_err("[SBWC] Compressor error detected (Source: %d, DPB: %d)\n",
+				(sbwc_err >> 1) & 0x1, sbwc_err & 0x1);
+		mfc_ctx_err("[SBWC] sbwc: %d, lossy: %d(%d), option: %d, FORMAT: %#x, OPTIONS: %#x\n",
+				ctx->is_sbwc, ctx->is_sbwc_lossy,
+				ctx->sbwcl_ratio, enc->sbwc_option,
+				MFC_CORE_READL(MFC_REG_PIXEL_FORMAT),
+				MFC_CORE_READL(MFC_REG_E_ENC_OPTIONS));
 	}
 
 	/* handle source buffer */
@@ -1454,7 +1481,7 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 	struct mfc_core_ctx *core_ctx = core->core_ctx[ctx->num];
 	struct mfc_dec *dec = ctx->dec_priv;
 	struct mfc_buf *src_mb;
-	int i, is_interlace, is_mbaff, is_hdr10_sbwc_off = 0;
+	int i, is_interlace, is_hdr10_sbwc_off = 0;
 	unsigned int bytesused;
 
 	if (ctx->src_fmt->fourcc != V4L2_PIX_FMT_FIMV1) {
@@ -1505,11 +1532,11 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				ctx->img_width, ctx->img_height);
 	} else {
 		is_interlace = mfc_core_is_interlace_picture();
-		is_mbaff = mfc_core_is_mbaff_picture();
-		if (is_interlace || is_mbaff)
+		dec->is_mbaff = mfc_core_is_mbaff_picture();
+		if (is_interlace || dec->is_mbaff)
 			dec->is_interlaced = 1;
 		mfc_debug(2, "[INTERLACE] interlace: %d, mbaff: %d\n",
-				is_interlace, is_mbaff);
+				is_interlace, dec->is_mbaff);
 
 		if (dev->pdata->support_sbwc) {
 			ctx->is_sbwc = mfc_core_is_sbwc_avail();

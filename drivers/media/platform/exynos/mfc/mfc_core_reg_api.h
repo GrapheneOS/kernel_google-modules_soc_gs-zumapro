@@ -81,6 +81,9 @@
 #define mfc_core_get_uncomp()	((MFC_CORE_READL(MFC_REG_D_DISPLAY_STATUS)		\
 						>> MFC_REG_DISP_STATUS_UNCOMP_SHIFT)	\
 						& MFC_REG_DISP_STATUS_UNCOMP_MASK)
+#define mfc_core_get_last_display()	((MFC_CORE_READL(MFC_REG_D_DISPLAY_STATUS)		\
+						>> MFC_REG_DISP_STATUS_LAST_DISPLAY_FRAME_SHIFT) \
+						& MFC_REG_DISP_STATUS_LAST_DISPLAY_FRAME_MASK)
 
 #define mfc_core_get_disp_frame_type()	(MFC_CORE_READL(MFC_REG_D_DISPLAY_FRAME_TYPE)	\
 						& MFC_REG_DISPLAY_FRAME_MASK)
@@ -217,6 +220,10 @@
 	((MFC_CORE_READL(MFC_REG_E_NAL_DONE_INFO)		\
 	>> MFC_REG_E_NAL_DONE_INFO_IDR_SHIFT)			\
 	& MFC_REG_E_NAL_DONE_INFO_IDR_MASK)
+#define mfc_core_get_enc_comp_err()					\
+	((MFC_CORE_READL(MFC_REG_E_NAL_DONE_INFO)		\
+	>> MFC_REG_E_NAL_DONE_INFO_COMP_ERR_SHIFT)			\
+	& MFC_REG_E_NAL_DONE_INFO_COMP_ERR_MASK)
 #define mfc_core_get_chroma_format()		(MFC_CORE_READL(MFC_REG_D_CHROMA_FORMAT)		\
 						& MFC_REG_D_CHROMA_FORMAT_MASK)
 #define mfc_core_get_color_range()		((MFC_CORE_READL(MFC_REG_D_CHROMA_FORMAT)	\

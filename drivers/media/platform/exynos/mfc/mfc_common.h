@@ -26,7 +26,7 @@
 #include "mfc_debug.h"
 #include "mfc_media.h"
 
-#define MFC_DRIVER_INFO		200429
+#define MFC_DRIVER_INFO		220715
 
 #define MFC_MAX_REF_BUFS	2
 #define MFC_FRAME_PLANES	2
@@ -65,6 +65,8 @@
  * releated with MFC_REG_TIMEOUT_VALUE
  */
 #define MFC_TIMEOUT_VALUE	200000000
+/* 250ms is the mfc firmware timeout value */
+#define MFC_TIMEOUT_VALUE_IN_MSEC	250
 
 #define NUM_MPEG4_LF_BUF	2
 
@@ -250,6 +252,8 @@
 	(p == MFC_PRIMARIES_BT2020) &&								\
 	((m == MFC_MATRIX_COEFF_BT2020) || (m == MFC_MATRIX_COEFF_BT2020_CONSTANT)) &&		\
 	((t == MFC_TRANSFER_SMPTE_170M) || (t == MFC_TRANSFER_ST2084) || (t == MFC_TRANSFER_HLG)))
+
+#define IS_NO_INFOLOG(ctx)		((ctx)->dec_priv && (ctx)->dec_priv->is_multiframe)
 
 /* Extra information for Decoder */
 #define	DEC_SET_DUAL_DPB		(1 << 0)

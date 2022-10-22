@@ -185,7 +185,7 @@
 		compatible = "google,s2mpu";
 		reg = <0x0 0x1a370000 0x10000>;
 		interrupts = <GIC_SPI IRQ_SYSMMU_S2_NS_TPU_TPU IRQ_TYPE_LEVEL_HIGH>;
-		always-on;
+		power-domains = <&pd_tpu>;
 	};
 
 	s2mpu_s0_yuvp: s2mpu_s0_yuvp@1c8a0000 {

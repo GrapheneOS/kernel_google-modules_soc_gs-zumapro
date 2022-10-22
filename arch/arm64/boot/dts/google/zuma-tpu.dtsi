@@ -12,9 +12,10 @@
 		/* TPU uses regions under 0x18000000 for special purpose */
 		dma-window = <0x18000000 0xE7FFF000>;
 		reg = <0x0 0x1A000000 0x300000
+		       0x0 0x1A300000 0x10000
 		       0x0 0x1A3E0000 0x10000
 		       0x0 0x1A3F0000 0x10000>;
-		reg-names = "tpu", "ssmt_d0", "ssmt_d1";
+		reg-names = "tpu", "cmu", "ssmt_d0", "ssmt_d1";
 		interrupts = <0x00 IRQ_MAILBOX_TPU2AP_NS_TPU_0_TPU IRQ_TYPE_LEVEL_HIGH>,
 			<0x00 IRQ_MAILBOX_TPU2AP_NS_TPU_1_TPU IRQ_TYPE_LEVEL_HIGH>,
 			<0x00 IRQ_MAILBOX_TPU2AP_NS_TPU_2_TPU IRQ_TYPE_LEVEL_HIGH>,
@@ -36,6 +37,7 @@
 		status = "okay";
 		memory-region = <&tpu_fw_reserved>, <&tpu_fw_ctx_reserved>;
 		edgetpu,shareability = <0x1A320000>; /* SYSREG_TPU */
+		pmu-status-base = <0x15462504>; /* PMU TPU_STATUS */
 	};
         tpu_cooling: tpu-cooling {
                 #cooling-cells = <2>;

@@ -29,6 +29,14 @@
 #include <linux/regulator/pmic_class.h>
 #include <linux/mfd/core.h>
 
+#if IS_ENABLED(CONFIG_ODPM)
+static struct mfd_cell s2mpg15_meter_devs[] = {
+	{
+		.name="s2mpg15-odpm",
+	},
+};
+#endif
+
 u32 s2mpg15_muxsel_to_current_resolution(s2mpg1415_meter_muxsel m)
 {
 	switch (m) {
@@ -227,7 +235,7 @@ int s2mpg15_meter_onoff(struct s2mpg15_meter *s2mpg15, bool onoff)
 	dev_dbg(s2mpg15->dev, "s2mpg15 meter %s\n", onoff ? "on" : "off");
 
 	return s2mpg15_update_reg(s2mpg15->i2c, S2MPG15_METER_CTRL1,
-				  onoff ? 0 : METER_EN_MASK, METER_EN_MASK);
+				  onoff ? METER_EN_MASK : 0, METER_EN_MASK);
 }
 EXPORT_SYMBOL_GPL(s2mpg15_meter_onoff);
 
@@ -237,7 +245,7 @@ int s2mpg15_ext_meter_onoff(struct s2mpg15_meter *s2mpg15, bool onoff)
 		onoff ? "on" : "off");
 
 	return s2mpg15_update_reg(s2mpg15->i2c, S2MPG15_METER_CTRL1,
-				  onoff ? 0 : EXT_METER_EN_MASK,
+				  onoff ? EXT_METER_EN_MASK : 0,
 				  EXT_METER_EN_MASK);
 }
 EXPORT_SYMBOL_GPL(s2mpg15_ext_meter_onoff);
@@ -312,6 +320,11 @@ static ssize_t s2mpg15_channel_muxsel_store(struct device *dev,
 	struct s2mpg15_meter *s2mpg15 = dev_get_drvdata(dev);
 	int channel, muxsel;
 	int ret;
+
+	if (!buf) {
+		dev_err(s2mpg15->dev, "empty buffer\n");
+		return -EINVAL;
+	}
 
 	ret = sscanf(buf, "%d %x", &channel, &muxsel);
 	if (ret != 2) {
@@ -423,7 +436,7 @@ static ssize_t s2mpg15_acc_current_show(struct device *dev,
 	s2mpg1415_meter_measure_acc(ID_S2MPG15, s2mpg15->i2c,
 				    &s2mpg15->meter_lock,
 				    S2MPG1415_METER_CURRENT, acc_data,
-				    &acc_count, NULL);
+				    &acc_count, NULL, INT_125HZ);
 
 	for (i = 0; i < S2MPG1415_METER_CHANNEL_MAX; i++) {
 		s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
@@ -451,7 +464,7 @@ static ssize_t s2mpg15_acc_power_show(struct device *dev,
 	s2mpg1415_meter_measure_acc(ID_S2MPG15, s2mpg15->i2c,
 				    &s2mpg15->meter_lock,
 				    S2MPG1415_METER_POWER, acc_data,
-				    &acc_count, NULL);
+				    &acc_count, NULL, INT_125HZ);
 
 	for (i = 0; i < S2MPG1415_METER_CHANNEL_MAX; i++) {
 		s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
@@ -553,6 +566,7 @@ static int s2mpg15_meter_probe(struct platform_device *pdev)
 	mutex_init(&s2mpg15->meter_lock);
 	platform_set_drvdata(pdev, s2mpg15);
 
+#if !IS_ENABLED(CONFIG_ODPM)
 	/* initial setting */
 	/* set BUCK1S ~ BUCK8S muxsel from CH0 to CH7 */
 	/* any necessary settings can be added */
@@ -573,6 +587,15 @@ static int s2mpg15_meter_probe(struct platform_device *pdev)
 
 	s2mpg15_meter_onoff(s2mpg15, true);
 	s2mpg15_ext_meter_onoff(s2mpg15, false);
+
+#else
+	ret = mfd_add_devices(s2mpg15->dev, -1, s2mpg15_meter_devs,
+        ARRAY_SIZE(s2mpg15_meter_devs), NULL, 0, NULL);
+	if (ret < 0) {
+		mfd_remove_devices(s2mpg15->dev);
+                return ret;
+	}
+#endif
 
 #if IS_ENABLED(CONFIG_DRV_SAMSUNG_PMIC)
 	/* create sysfs */

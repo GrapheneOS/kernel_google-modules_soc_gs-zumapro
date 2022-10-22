@@ -57,6 +57,9 @@
 #include <linux/timer.h>
 #include <linux/wait.h>
 #include <linux/freezer.h>
+#ifdef CONFIG_SOC_ZUMA
+#include <soc/google/exynos-cpupm.h>
+#endif
 
 /* These are the possible values for the status field from the specification */
 enum eh_cdesc_status {
@@ -356,8 +359,13 @@ static void eh_compr_fifo_init(struct eh_device *eh_dev)
 	data = (unsigned long)virt_to_phys(eh_dev->fifo) | __ffs(eh_dev->fifo_size);
 	eh_write_register(eh_dev, EH_REG_CDESC_LOC, data);
 
+	data = 0;
+
+	/* Program max incompressible size limt to 3K */
+	data |= (0x30 << EH_CDESC_CTRL_COMPRESS_SIZE_LIMIT);
+
 	/* enable compression */
-	data = 1UL << EH_CDESC_CTRL_COMPRESS_ENABLE_SHIFT;
+	data |= 1UL << EH_CDESC_CTRL_COMPRESS_ENABLE_SHIFT;
 	eh_write_register(eh_dev, EH_REG_CDESC_CTRL, data);
 }
 
@@ -446,6 +454,9 @@ static int request_to_hw_fifo(struct eh_device *eh_dev, struct page *page,
 		return -EBUSY;
 	}
 
+#ifdef CONFIG_SOC_ZUMA
+	exynos_update_ip_idle_status(eh_dev->ip_index, 0);
+#endif
 	write_idx = fifo_write_index(eh_dev);
 
 	eh_setup_descriptor(eh_dev, page, write_idx);
@@ -687,7 +698,22 @@ static int eh_comp_thread(void *data)
 		if (atomic_read(&eh_dev->nr_request) == 0 &&
 		    sw_fifo_empty(&eh_dev->sw_fifo)) {
 			eh_dev->nr_compressed += nr_processed;
+#ifdef CONFIG_SOC_ZUMA
+			/*
+			 * On the worst case with race with request_to_hw_fifo,
+			 * this call could update IP as idle state but that
+			 * should be okay because the eh_comp_thread will never
+			 * sleep due to wake_up in the request_to_hw_fifo and
+			 * nr_request positive number check and PM let never
+			 * allowing entering SICD mode as long as system has a
+			 * runnable process.
+			 */
+			exynos_update_ip_idle_status(eh_dev->ip_index, 1);
+#endif
 			schedule();
+#ifdef CONFIG_SOC_ZUMA
+			exynos_update_ip_idle_status(eh_dev->ip_index, 0);
+#endif
 			nr_processed = 0;
 			/*
 			 * The condition check above is racy so the schedule
@@ -731,6 +757,9 @@ static int eh_comp_thread(void *data)
 		nr_processed += ret;
 	}
 
+#ifdef CONFIG_SOC_ZUMA
+	exynos_update_ip_idle_status(eh_dev->ip_index, 1);
+#endif
 	return 0;
 }
 
@@ -938,7 +967,7 @@ static int eh_hw_init(struct eh_device *eh_dev, unsigned short fifo_size,
 	 * couldn't support if the number of CPUs is greater than the number
 	 * of decompression command register.
 	 */
-	if (eh_dev->decompr_cmd_count > num_possible_cpus()) {
+	if (eh_dev->decompr_cmd_count < num_possible_cpus()) {
 		pr_err("Too many cpus to support EH decompresion: cpus %d decopmrcmd %d\n",
 		       num_possible_cpus(), eh_dev->decompr_cmd_count);
 		ret = -EINVAL;
@@ -1290,7 +1319,14 @@ static int eh_of_probe(struct platform_device *pdev)
 		      mem->start, error_irq, quirks);
 	if (ret)
 		goto free_ehdev;
-
+#ifdef CONFIG_SOC_ZUMA
+	ret = exynos_get_idle_ip_index(dev_name(&pdev->dev));
+	if (ret < 0) {
+		pr_err("fail to get idle ip index\n");
+		goto free_ehdev;
+	}
+	eh_dev->ip_index = ret;
+#endif
 	eh_dev->clk = clk;
 	platform_set_drvdata(pdev, eh_dev);
 

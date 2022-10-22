@@ -31,6 +31,7 @@
 #include <linux/regulator/pmic_class.h>
 #include <soc/google/bcl.h>
 #include <soc/google/odpm.h>
+#include <soc/google/exynos-cpupm.h>
 #include <soc/google/exynos-pm.h>
 #include <soc/google/exynos-pmu-if.h>
 #if IS_ENABLED(CONFIG_DEBUG_FS)
@@ -207,6 +208,10 @@ enum SUBSYSTEM_SOURCE {
 	SUBSYSTEM_SOURCE_MAX,
 };
 
+#define CPU0_CLUSTER_MIN 0
+#define CPU1_CLUSTER_MIN 4
+#define CPU2_CLUSTER_MIN 8
+
 static const unsigned int subsystem_pmu[] = {
 	PMU_ALIVE_CPU0_OUT,
 	PMU_ALIVE_CPU1_OUT,
@@ -252,6 +257,20 @@ static int bcl_odpm_map(int id)
 	}
 }
 
+static void disable_power(void)
+{
+	int i;
+	for (i = CPU1_CLUSTER_MIN; i <= CPU2_CLUSTER_MIN; i++)
+		disable_power_mode(i, POWERMODE_TYPE_CLUSTER);
+}
+
+static void enable_power(void)
+{
+	int i;
+	for (i = CPU1_CLUSTER_MIN; i <= CPU2_CLUSTER_MIN; i++)
+		enable_power_mode(i, POWERMODE_TYPE_CLUSTER);
+}
+
 static int triggered_read_level(void *data, int *val, int id)
 {
 	struct bcl_device *bcl_dev = data;
@@ -294,20 +313,17 @@ static int triggered_read_level(void *data, int *val, int id)
 		return 0;
 	}
 
-	// TODO: Port ODPM for BCL (b/243707032)
-	if (false) {
-		/* If IRQ not asserted, check ODPM */
-		if ((id == OCP_WARN_GPU) || (id == SOFT_OCP_WARN_GPU)) {
-			mutex_lock(&bcl_dev->sub_odpm->lock);
-			//odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-			odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-			mutex_unlock(&bcl_dev->sub_odpm->lock);
-		} else {
-			mutex_lock(&bcl_dev->main_odpm->lock);
-			//odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-			odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-			mutex_unlock(&bcl_dev->main_odpm->lock);
-		}
+	/* If IRQ not asserted, check ODPM */
+	if ((id == OCP_WARN_GPU) || (id == SOFT_OCP_WARN_GPU)) {
+		mutex_lock(&bcl_dev->sub_odpm->lock);
+		odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
+		mutex_unlock(&bcl_dev->sub_odpm->lock);
+	} else {
+		mutex_lock(&bcl_dev->main_odpm->lock);
+		odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
+		mutex_unlock(&bcl_dev->main_odpm->lock);
 	}
 
 	*val = 0;
@@ -1251,6 +1267,8 @@ static ssize_t clk_div_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	unsigned int reg;
 	void __iomem *addr;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (idx == TPU)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_clkdivstep);
 	else if (idx == GPU)
@@ -1259,7 +1277,9 @@ static ssize_t clk_div_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
 	if (addr == NULL)
 		return sysfs_emit(buf, "off\n");
+	disable_power();
 	reg = __raw_readl(addr);
+	enable_power();
 
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
@@ -1269,6 +1289,8 @@ static ssize_t clk_stats_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	unsigned int reg;
 	void __iomem *addr;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (idx == TPU)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_clk_stats);
 	else if (idx == GPU)
@@ -1277,7 +1299,9 @@ static ssize_t clk_stats_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
 	if (addr == NULL)
 		return sysfs_emit(buf, "off\n");
+	disable_power();
 	reg = __raw_readl(bcl_dev->base_mem[idx] + clk_stats_offset[idx]);
+	enable_power();
 
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
@@ -1286,6 +1310,8 @@ static int google_bcl_init_clk_div(struct bcl_device *bcl_dev, int idx, unsigned
 {
 	void __iomem *addr;
 
+	if (!bcl_dev)
+		return -EIO;
 	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
 	if (addr == NULL)
 		return -EINVAL;
@@ -1308,6 +1334,8 @@ static ssize_t clk_div_store(struct bcl_device *bcl_dev, int idx,
 	if (ret != 1)
 		return -EINVAL;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (idx == TPU)
 		bcl_dev->tpu_clkdivstep = value;
 	else if (idx == GPU)
@@ -1326,7 +1354,9 @@ static ssize_t clk_div_store(struct bcl_device *bcl_dev, int idx,
 			return -EIO;
 		}
 		mutex_lock(&bcl_dev->ratio_lock);
+		disable_power();
 		__raw_writel(value, addr);
+		enable_power();
 		mutex_unlock(&bcl_dev->ratio_lock);
 	}
 
@@ -1447,6 +1477,8 @@ static ssize_t vdroop_flt_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	unsigned int reg;
 	void __iomem *addr;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (idx == TPU)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_vdroop_flt);
 	else if (idx == GPU)
@@ -1455,7 +1487,9 @@ static ssize_t vdroop_flt_show(struct bcl_device *bcl_dev, int idx, char *buf)
 		addr = bcl_dev->base_mem[idx] + VDROOP_FLT;
 	else
 		return sysfs_emit(buf, "off\n");
+	disable_power();
 	reg = __raw_readl(addr);
+	enable_power();
 
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
@@ -1469,6 +1503,8 @@ static ssize_t vdroop_flt_store(struct bcl_device *bcl_dev, int idx,
 	if (sscanf(buf, "0x%x", &value) != 1)
 		return -EINVAL;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (idx == TPU)
 		bcl_dev->tpu_vdroop_flt = value;
 	else if (idx == GPU)
@@ -1476,7 +1512,9 @@ static ssize_t vdroop_flt_store(struct bcl_device *bcl_dev, int idx,
 	else if (idx >= CPU1 && idx <= CPU2) {
 		addr = bcl_dev->base_mem[idx] + VDROOP_FLT;
 		mutex_lock(&bcl_dev->ratio_lock);
+		disable_power();
 		__raw_writel(value, addr);
+		enable_power();
 		mutex_unlock(&bcl_dev->ratio_lock);
 	} else
 		return -EINVAL;
@@ -1666,6 +1704,8 @@ static ssize_t clk_ratio_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	unsigned int reg;
 	void __iomem *addr;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (idx == TPU_HEAVY)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_con_heavy);
 	else if (idx == TPU_LIGHT)
@@ -1679,7 +1719,9 @@ static ssize_t clk_ratio_show(struct bcl_device *bcl_dev, int idx, char *buf)
 	if (addr == NULL)
 		return sysfs_emit(buf, "off\n");
 
+	disable_power();
 	reg = __raw_readl(addr);
+	enable_power();
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
 
@@ -1694,6 +1736,8 @@ static ssize_t clk_ratio_store(struct bcl_device *bcl_dev, int idx,
 	if (ret != 1)
 		return -EINVAL;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (idx == TPU_HEAVY)
 		bcl_dev->tpu_con_heavy = value;
 	else if (idx == GPU_HEAVY)
@@ -1709,7 +1753,9 @@ static ssize_t clk_ratio_store(struct bcl_device *bcl_dev, int idx,
 			return -EIO;
 		}
 		mutex_lock(&bcl_dev->ratio_lock);
+		disable_power();
 		__raw_writel(value, addr);
+		enable_power();
 		mutex_unlock(&bcl_dev->ratio_lock);
 	}
 
@@ -1919,6 +1965,8 @@ static ssize_t uvlo1_lvl_show(struct device *dev, struct device_attribute *attr,
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int uvlo1_lvl;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
 	if (bcl_cb_uvlo1_read(bcl_dev, &uvlo1_lvl) < 0)
@@ -1939,6 +1987,8 @@ static ssize_t uvlo1_lvl_store(struct device *dev,
 	if (ret)
 		return ret;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (value < VD_LOWER_LIMIT || value > VD_UPPER_LIMIT) {
 		dev_err(bcl_dev->device, "UVLO1 %d outside of range %d - %d mV.", value,
 			VD_LOWER_LIMIT, VD_UPPER_LIMIT);
@@ -1967,6 +2017,8 @@ static ssize_t uvlo2_lvl_show(struct device *dev, struct device_attribute *attr,
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int uvlo2_lvl;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
 	if (bcl_cb_uvlo2_read(bcl_dev, &uvlo2_lvl) < 0)
@@ -1987,6 +2039,8 @@ static ssize_t uvlo2_lvl_store(struct device *dev,
 	if (ret)
 		return ret;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (value < VD_LOWER_LIMIT || value > VD_UPPER_LIMIT) {
 		dev_err(bcl_dev->device, "UVLO2 %d outside of range %d - %d mV.", value,
 			VD_LOWER_LIMIT, VD_UPPER_LIMIT);
@@ -2014,6 +2068,8 @@ static ssize_t batoilo_lvl_show(struct device *dev, struct device_attribute *att
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	unsigned int batoilo_lvl;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
 	if (bcl_cb_batoilo_read(bcl_dev, &batoilo_lvl) < 0)
@@ -2034,6 +2090,8 @@ static ssize_t batoilo_lvl_store(struct device *dev,
 	if (ret)
 		return ret;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (value < BO_LOWER_LIMIT || value > BO_UPPER_LIMIT) {
 		dev_err(bcl_dev->device, "BATOILO %d outside of range %d - %d mA.", value,
 			BO_LOWER_LIMIT, BO_UPPER_LIMIT);
@@ -2060,6 +2118,8 @@ static ssize_t smpl_lvl_show(struct device *dev, struct device_attribute *attr, 
 	int ret;
 	unsigned int smpl_warn_lvl;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (!bcl_dev->main_pmic_i2c) {
 		return -EBUSY;
 	}
@@ -2085,6 +2145,8 @@ static ssize_t smpl_lvl_store(struct device *dev,
 	if (ret)
 		return ret;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (val < SMPL_LOWER_LIMIT || val > SMPL_UPPER_LIMIT) {
 		dev_err(bcl_dev->device, "SMPL_WARN LEVEL %d outside of range %d - %d mV.", val,
 			SMPL_LOWER_LIMIT, SMPL_UPPER_LIMIT);
@@ -2128,6 +2190,8 @@ static int get_ocp_lvl(struct bcl_device *bcl_dev, u64 *val, u8 addr, u8 pmic, u
 	int ret;
 	unsigned int ocp_warn_lvl;
 
+	if (!bcl_dev)
+		return -EIO;
 	S2MPG1415_READ(pmic, bcl_dev, ret, addr, &value);
 	if (ret) {
 		dev_err(bcl_dev->device, "S2MPG1415 read 0x%x failed.", addr);
@@ -2145,6 +2209,8 @@ static int set_ocp_lvl(struct bcl_device *bcl_dev, u64 val, u8 addr, u8 pmic, u8
 	u8 value;
 	int ret;
 
+	if (!bcl_dev)
+		return -EIO;
 	if (val < llimit || val > ulimit) {
 		dev_err(bcl_dev->device, "OCP_WARN LEVEL %llu outside of range %d - %d mA.", val,
 		       llimit, ulimit);
@@ -2478,6 +2544,15 @@ static ssize_t pwronsrc_show(struct device *dev, struct device_attribute *attr, 
 
 static DEVICE_ATTR_RO(pwronsrc);
 
+static ssize_t ready_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return sysfs_emit(buf, "%d\n", bcl_dev->ready);
+}
+static DEVICE_ATTR_RO(ready);
+
 static ssize_t enable_mitigation_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
@@ -2510,8 +2585,10 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 		for (i = 0; i < TPU; i++) {
 			addr = bcl_dev->base_mem[i] + CLKDIVSTEP;
 			mutex_lock(&bcl_dev->ratio_lock);
+			disable_power();
 			reg = __raw_readl(addr);
 			__raw_writel(reg | 0x1, addr);
+			enable_power();
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 	} else {
@@ -2520,8 +2597,10 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 		for (i = 0; i < TPU; i++) {
 			addr = bcl_dev->base_mem[i] + CLKDIVSTEP;
 			mutex_lock(&bcl_dev->ratio_lock);
+			disable_power();
 			reg = __raw_readl(addr);
 			__raw_writel(reg & ~(1 << 0), addr);
+			enable_power();
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 	}
@@ -2581,6 +2660,7 @@ int google_init_tpu_ratio(struct bcl_device *data)
 		return -EIO;
 
 	mutex_lock(&data->ratio_lock);
+	disable_power();
 	addr = data->base_mem[TPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
 	__raw_writel(data->tpu_con_heavy, addr);
 	addr = data->base_mem[TPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
@@ -2592,6 +2672,7 @@ int google_init_tpu_ratio(struct bcl_device *data)
 	addr = data->base_mem[TPU] + CLKOUT;
 	__raw_writel(data->tpu_clk_out, addr);
 	data->tpu_clk_stats = __raw_readl(data->base_mem[TPU] + clk_stats_offset[TPU]);
+	enable_power();
 	mutex_unlock(&data->ratio_lock);
 
 	return 0;
@@ -2612,6 +2693,7 @@ int google_init_gpu_ratio(struct bcl_device *data)
 		return -EIO;
 
 	mutex_lock(&data->ratio_lock);
+	disable_power();
 	addr = data->base_mem[GPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
 	__raw_writel(data->gpu_con_heavy, addr);
 	addr = data->base_mem[GPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
@@ -2623,6 +2705,7 @@ int google_init_gpu_ratio(struct bcl_device *data)
 	addr = data->base_mem[GPU] + CLKOUT;
 	__raw_writel(data->gpu_clk_out, addr);
 	data->gpu_clk_stats = __raw_readl(data->base_mem[GPU] + clk_stats_offset[GPU]);
+	enable_power();
 	mutex_unlock(&data->ratio_lock);
 
 	return 0;
@@ -2797,6 +2880,7 @@ static struct attribute *instr_attrs[] = {
 	&dev_attr_enable_mitigation.attr,
 	&dev_attr_offsrc.attr,
 	&dev_attr_pwronsrc.attr,
+	&dev_attr_ready.attr,
 	NULL,
 };
 
@@ -2805,22 +2889,23 @@ static const struct attribute_group instr_group = {
 	.name = "instruction",
 };
 
-static int google_bcl_register_irq(struct bcl_device *bcl_dev, int id, int tz_id,
-				   struct device *dev, const char *devname, u32 intr_flag)
+static int google_bcl_register_irq(struct bcl_device *bcl_dev, int id, const char *devname,
+				   u32 intr_flag)
 {
 	int ret = 0;
 
-	ret = devm_request_threaded_irq(dev, bcl_dev->bcl_irq[id], NULL, irq_handler,
+	ret = devm_request_threaded_irq(bcl_dev->device, bcl_dev->bcl_irq[id], NULL, irq_handler,
 					intr_flag | IRQF_ONESHOT, devname, bcl_dev);
 	if (ret < 0) {
-		dev_err(dev, "Failed to request IRQ: %d: %d\n", bcl_dev->bcl_irq[id], ret);
+		dev_err(bcl_dev->device, "Failed to request IRQ: %d: %d\n", bcl_dev->bcl_irq[id],
+			ret);
 		return ret;
 	}
 
-	bcl_dev->bcl_tz[id] = thermal_zone_of_sensor_register(dev, tz_id, bcl_dev,
+	bcl_dev->bcl_tz[id] = thermal_zone_of_sensor_register(bcl_dev->device, id, bcl_dev,
 							      &bcl_dev->bcl_ops[id]);
 	if (IS_ERR(bcl_dev->bcl_tz[id])) {
-		dev_err(bcl_dev->device, "TZ register failed. %d, err:%ld\n", tz_id,
+		dev_err(bcl_dev->device, "TZ register failed. %d, err:%ld\n", id,
 			PTR_ERR(bcl_dev->bcl_tz[id]));
 	} else {
 		thermal_zone_device_enable(bcl_dev->bcl_tz[id]);
@@ -2835,8 +2920,10 @@ static int get_cpu0clk(void *data, u64 *val)
 	void __iomem *addr;
 	unsigned int value;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU0] + CLKOUT;
 	*val = __raw_readl(addr);
+	enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
 	return 0;
 }
@@ -2846,8 +2933,10 @@ static int set_cpu0clk(void *data, u64 val)
 	struct bcl_device *bcl_dev = data;
 	void __iomem *addr;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU0] + CLKOUT;
 	__raw_writel(val, addr);
+	enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x3001 : 0);
 	return 0;
 }
@@ -2858,8 +2947,10 @@ static int get_cpu1clk(void *data, u64 *val)
 	void __iomem *addr;
 	unsigned int value;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU1] + CLKOUT;
 	*val = __raw_readl(addr);
+	enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
 	return 0;
 }
@@ -2869,8 +2960,10 @@ static int set_cpu1clk(void *data, u64 val)
 	struct bcl_device *bcl_dev = data;
 	void __iomem *addr;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU1] + CLKOUT;
 	__raw_writel(val, addr);
+	enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1101 : 0);
 	return 0;
 }
@@ -2881,8 +2974,10 @@ static int get_cpu2clk(void *data, u64 *val)
 	void __iomem *addr;
 	unsigned int value;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU2] + CLKOUT;
 	*val = __raw_readl(addr);
+	enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
 	return 0;
 }
@@ -2892,8 +2987,10 @@ static int set_cpu2clk(void *data, u64 val)
 	struct bcl_device *bcl_dev = data;
 	void __iomem *addr;
 
+	disable_power();
 	addr = bcl_dev->base_mem[CPU2] + CLKOUT;
 	__raw_writel(val, addr);
+	enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1201 : 0);
 	return 0;
 }
@@ -3028,14 +3125,13 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	S2MPG1415_WRITE(SUB, bcl_dev, ret, S2MPG15_PM_OFFSRC1, 0);
 	S2MPG1415_WRITE(SUB, bcl_dev, ret, S2MPG15_PM_OFFSRC2, 0);
 
-	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_GPU, TS_OCP_WARN_GPU,
-				      sub_dev->dev, "GPU_OCP_IRQ", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_GPU, "GPU_OCP_IRQ", IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: GPU\n");
 		return -ENODEV;
 	}
-	ret = google_bcl_register_irq(bcl_dev, SOFT_OCP_WARN_GPU, TS_SOFT_OCP_WARN_GPU,
-				      sub_dev->dev, "SOFT_GPU_OCP_IRQ", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, SOFT_OCP_WARN_GPU, "SOFT_GPU_OCP_IRQ",
+				      IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: SOFT_GPU\n");
 		return -ENODEV;
@@ -3091,7 +3187,7 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 
 	bcl_dev->batt_psy = google_get_power_supply(bcl_dev);
 	bcl_dev->bcl_tz[PMIC_SOC] = thermal_zone_of_sensor_register(bcl_dev->device,
-								    TS_PMIC_SOC, bcl_dev,
+								    PMIC_SOC, bcl_dev,
 								    &bcl_dev->bcl_ops[PMIC_SOC]);
 	bcl_dev->bcl_ops[PMIC_SOC].get_temp = google_bcl_read_soc;
 	bcl_dev->bcl_ops[PMIC_SOC].set_trips = google_bcl_set_soc;
@@ -3117,7 +3213,7 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 	bcl_dev->bcl_ops[UVLO2].get_temp = google_bcl_uvlo2_read_temp;
 	bcl_dev->bcl_ops[BATOILO].get_temp = google_bcl_batoilo_read_temp;
 
-	bcl_dev->bcl_tz[UVLO1] = thermal_zone_of_sensor_register(bcl_dev->device, TS_UVLO1,
+	bcl_dev->bcl_tz[UVLO1] = thermal_zone_of_sensor_register(bcl_dev->device, UVLO1,
 								 bcl_dev,
 								 &bcl_dev->bcl_ops[UVLO1]);
 	if (IS_ERR(bcl_dev->bcl_tz[UVLO1])) {
@@ -3127,7 +3223,7 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 		thermal_zone_device_enable(bcl_dev->bcl_tz[UVLO1]);
 		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO1], THERMAL_DEVICE_UP);
 	}
-	bcl_dev->bcl_tz[UVLO2] = thermal_zone_of_sensor_register(bcl_dev->device, TS_UVLO2,
+	bcl_dev->bcl_tz[UVLO2] = thermal_zone_of_sensor_register(bcl_dev->device, UVLO2,
 								 bcl_dev,
 								 &bcl_dev->bcl_ops[UVLO2]);
 	if (IS_ERR(bcl_dev->bcl_tz[UVLO2])) {
@@ -3137,7 +3233,7 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 		thermal_zone_device_enable(bcl_dev->bcl_tz[UVLO2]);
 		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO2], THERMAL_DEVICE_UP);
 	}
-	bcl_dev->bcl_tz[BATOILO] = thermal_zone_of_sensor_register(bcl_dev->device, TS_BATOILO,
+	bcl_dev->bcl_tz[BATOILO] = thermal_zone_of_sensor_register(bcl_dev->device, BATOILO,
 								   bcl_dev,
 								   &bcl_dev->bcl_ops[BATOILO]);
 	if (IS_ERR(bcl_dev->bcl_tz[BATOILO])) {
@@ -3148,6 +3244,7 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 		thermal_zone_device_update(bcl_dev->bcl_tz[BATOILO], THERMAL_DEVICE_UP);
 	}
 
+	bcl_dev->ready = true;
 	return;
 
 retry_init_work:
@@ -3200,20 +3297,18 @@ static int google_set_intf_pmic(struct bcl_device *bcl_dev)
 	bcl_dev->bcl_lvl[PMIC_140C] = PMIC_140C_UPPER_LIMIT - THERMAL_HYST_LEVEL;
 	bcl_dev->bcl_lvl[PMIC_OVERHEAT] = PMIC_OVERHEAT_UPPER_LIMIT - THERMAL_HYST_LEVEL;
 
-	ret = google_bcl_register_irq(bcl_dev, PMIC_120C, TS_PMIC_120C, bcl_dev->main_dev,
-				      "PMIC_120C", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, PMIC_120C, "PMIC_120C", IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: PMIC_120C\n");
 		return -ENODEV;
 	}
-	ret = google_bcl_register_irq(bcl_dev, PMIC_140C, TS_PMIC_140C, bcl_dev->main_dev,
-				      "PMIC_140C", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, PMIC_140C, "PMIC_140C", IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: PMIC_140C\n");
 		return -ENODEV;
 	}
-	ret = google_bcl_register_irq(bcl_dev, PMIC_OVERHEAT, TS_PMIC_OVERHEAT, bcl_dev->main_dev,
-				      "PMIC_OVERHEAT", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, PMIC_OVERHEAT, "PMIC_OVERHEAT",
+				      IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: PMIC_OVERHEAT\n");
 		return -ENODEV;
@@ -3323,45 +3418,44 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	bcl_dev->bcl_ops[OCP_WARN_TPU].get_temp = ocp_tpu_read_current;
 	bcl_dev->bcl_ops[SOFT_OCP_WARN_TPU].get_temp = soft_ocp_tpu_read_current;
 	if (!bypass_smpl_warn) {
-		ret = google_bcl_register_irq(bcl_dev, SMPL_WARN, TS_SMPL_WARN, main_dev->dev,
-					      "SMPL_WARN_IRQ", IRQF_TRIGGER_FALLING);
+		ret = google_bcl_register_irq(bcl_dev, SMPL_WARN, "SMPL_WARN_IRQ",
+					      IRQF_TRIGGER_FALLING);
 		if (ret < 0) {
 			dev_err(bcl_dev->device, "bcl_register fail: SMPL_WARN\n");
 			return -ENODEV;
 		}
 	}
-	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_CPUCL1, TS_OCP_WARN_CPUCL1, main_dev->dev,
-				      "CPU1_OCP_IRQ", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_CPUCL1, "CPU1_OCP_IRQ",
+				      IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: CPUCL1\n");
 		return -ENODEV;
 	}
-	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_CPUCL2, TS_OCP_WARN_CPUCL2, main_dev->dev,
-				      "CPU2_OCP_IRQ", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_CPUCL2, "CPU2_OCP_IRQ",
+				      IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: CPUCL2\n");
 		return -ENODEV;
 	}
-	ret = google_bcl_register_irq(bcl_dev, SOFT_OCP_WARN_CPUCL1, TS_SOFT_OCP_WARN_CPUCL1,
-				      main_dev->dev, "SOFT_CPU1_OCP_IRQ", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, SOFT_OCP_WARN_CPUCL1, "SOFT_CPU1_OCP_IRQ",
+				      IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: SOFT_CPUCL1\n");
 		return -ENODEV;
 	}
-	ret = google_bcl_register_irq(bcl_dev, SOFT_OCP_WARN_CPUCL2, TS_SOFT_OCP_WARN_CPUCL2,
-				      main_dev->dev, "SOFT_CPU2_OCP_IRQ", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, SOFT_OCP_WARN_CPUCL2, "SOFT_CPU2_OCP_IRQ",
+				      IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: SOFT_CPUCL2\n");
 		return -ENODEV;
 	}
-	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_TPU, TS_OCP_WARN_TPU, main_dev->dev,
-				      "TPU_OCP_IRQ", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, OCP_WARN_TPU, "TPU_OCP_IRQ", IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: TPU\n");
 		return -ENODEV;
 	}
-	ret = google_bcl_register_irq(bcl_dev, SOFT_OCP_WARN_TPU, TS_SOFT_OCP_WARN_TPU,
-				      main_dev->dev, "SOFT_TPU_OCP_IRQ", IRQF_TRIGGER_RISING);
+	ret = google_bcl_register_irq(bcl_dev, SOFT_OCP_WARN_TPU, "SOFT_TPU_OCP_IRQ",
+				      IRQF_TRIGGER_RISING);
 	if (ret < 0) {
 		dev_err(bcl_dev->device, "bcl_register fail: SOFT_TPU\n");
 		return -ENODEV;
@@ -3480,12 +3574,14 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->odpm_ratio = (ret || !val) ? 2 : val;
 	bcl_dev->vdroop1_pin = of_get_gpio(np, 0);
 	bcl_dev->vdroop2_pin = of_get_gpio(np, 1);
+	disable_power();
 	if (google_bcl_init_clk_div(bcl_dev, CPU2, bcl_dev->cpu2_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU2 Address is NULL\n");
 	if (google_bcl_init_clk_div(bcl_dev, CPU1, bcl_dev->cpu1_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU1 Address is NULL\n");
 	if (google_bcl_init_clk_div(bcl_dev, CPU0, bcl_dev->cpu0_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU0 Address is NULL\n");
+	enable_power();
 }
 
 static int google_bcl_probe(struct platform_device *pdev)
@@ -3501,6 +3597,7 @@ static int google_bcl_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&bcl_dev->init_work, google_set_intf_pmic_work);
 	platform_set_drvdata(pdev, bcl_dev);
 
+	bcl_dev->ready = false;
 	ret = google_bcl_init_instruction(bcl_dev);
 	if (ret < 0)
 		goto bcl_soc_probe_exit;

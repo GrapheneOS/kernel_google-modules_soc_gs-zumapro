@@ -3,7 +3,7 @@
  * Copyright (c) 2015 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  *
- * Google GS101 SoC devfreq driver
+ * Google Zuma SoC devfreq driver
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published
@@ -472,12 +472,41 @@ static int exynos_devfreq_set_freq(struct device *dev, u32 new_freq,
 	return 0;
 }
 
+static u32 exynos_devfreq_nudge_freq(struct device *dev, u32 freq, bool find_higher)
+{
+	unsigned long tmp_freq = freq;
+	u32 flags = 0;
+	struct dev_pm_opp *target_opp;
+
+	if (!find_higher)
+		flags |= DEVFREQ_FLAG_LEAST_UPPER_BOUND;
+
+	target_opp = devfreq_recommended_opp(dev,
+					     &tmp_freq,
+					     flags);
+	if (IS_ERR(target_opp)) {
+		dev_err(dev, "No valid OPP to nudge freq %lu to!\n", freq);
+		return 0;
+	}
+
+	tmp_freq = (u32)dev_pm_opp_get_freq(target_opp);
+	dev_pm_opp_put(target_opp);
+
+	if (freq != tmp_freq) {
+		dev_info(dev,
+			 "Nudged %lu KHz to the %s %lu KHz freq.\n",
+			 freq,
+			 freq > tmp_freq ? "higher" : "lower",
+			 tmp_freq);
+	}
+
+	return tmp_freq;
+}
+
 int exynos_devfreq_init_freq_table(struct exynos_devfreq_data *data)
 {
 	u32 max_freq, min_freq;
-	unsigned long tmp_max, tmp_min;
-	struct dev_pm_opp *target_opp;
-	u32 flags = 0;
+	u32 nudged_freq;
 	int i, ret;
 
 	max_freq = (u32)cal_dfs_get_max_freq(data->dfs_id);
@@ -489,20 +518,13 @@ int exynos_devfreq_init_freq_table(struct exynos_devfreq_data *data)
 	dev_info(data->dev, "max_freq: %uKhz, get_max_freq: %uKhz\n",
 		 data->max_freq, max_freq);
 
-	if (max_freq < data->max_freq) {
-		flags |= DEVFREQ_FLAG_LEAST_UPPER_BOUND;
-		tmp_max = (unsigned long)max_freq;
-		target_opp =
-			devfreq_recommended_opp(data->dev, &tmp_max, flags);
-		if (IS_ERR(target_opp)) {
-			dev_err(data->dev,
-				"not found valid OPP for max_freq\n");
-			return PTR_ERR(target_opp);
-		}
+	if (max_freq < data->max_freq)
+		dev_warn(data->dev, "DT max freq is higher than ECT max freq!\n");
 
-		data->max_freq = (u32)dev_pm_opp_get_freq(target_opp);
-		dev_pm_opp_put(target_opp);
-	}
+	nudged_freq = exynos_devfreq_nudge_freq(data->dev, data->max_freq, /*find_higher*/ 0);
+	if (!nudged_freq)
+		return -EINVAL;
+	data->max_freq = nudged_freq;
 
 	/* min ferquency must be equal or under max frequency */
 	if (data->min_freq > data->max_freq)
@@ -517,20 +539,13 @@ int exynos_devfreq_init_freq_table(struct exynos_devfreq_data *data)
 	dev_info(data->dev, "min_freq: %uKhz, get_min_freq: %uKhz\n",
 		 data->min_freq, min_freq);
 
-	if (min_freq > data->min_freq) {
-		flags &= ~DEVFREQ_FLAG_LEAST_UPPER_BOUND;
-		tmp_min = (unsigned long)min_freq;
-		target_opp =
-			devfreq_recommended_opp(data->dev, &tmp_min, flags);
-		if (IS_ERR(target_opp)) {
-			dev_err(data->dev,
-				"not found valid OPP for min_freq\n");
-			return PTR_ERR(target_opp);
-		}
+	if (min_freq > data->min_freq)
+		dev_warn(data->dev, "DT min freq is lower than ECT min freq!\n");
 
-		data->min_freq = (u32)dev_pm_opp_get_freq(target_opp);
-		dev_pm_opp_put(target_opp);
-	}
+	nudged_freq = exynos_devfreq_nudge_freq(data->dev, data->min_freq, /*find_higher*/ 1);
+	if (!nudged_freq)
+		return -EINVAL;
+	data->min_freq = nudged_freq;
 
 	dev_info(data->dev, "min_freq: %uKhz, max_freq: %uKhz\n",
 		 data->min_freq, data->max_freq);
@@ -737,6 +752,55 @@ static ssize_t store_debug_scaling_devfreq_max(struct device *dev,
 	return count;
 }
 
+static ssize_t show_soft_max_freq(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
+{
+	struct device *parent = dev->parent;
+	struct platform_device *pdev =
+		container_of(parent, struct platform_device, dev);
+	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
+	ssize_t count = 0;
+	int val;
+
+	if (data->pm_qos_class_max) {
+		val = exynos_pm_qos_read_req_value(data->pm_qos_class_max,
+						   &data->pm_qos_soft_max_freq);
+		if (val < 0) {
+			dev_err(dev, "failed to read requested value\n");
+			return count;
+		}
+		count += snprintf(buf, PAGE_SIZE, "%d\n", val);
+	}
+
+	return count;
+}
+
+static ssize_t store_soft_max_freq(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	struct device *parent = dev->parent;
+	struct platform_device *pdev =
+		container_of(parent, struct platform_device, dev);
+	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
+	int ret;
+	u32 qos_value;
+
+	ret = sscanf(buf, "%u", &qos_value);
+	if (ret != 1)
+		return -EINVAL;
+
+	if (data->pm_qos_class_max) {
+		if (exynos_pm_qos_request_active(&data->pm_qos_soft_max_freq))
+			exynos_pm_qos_update_request(&data->pm_qos_soft_max_freq,
+						     qos_value);
+	}
+
+	return count;
+}
+
+
 static ssize_t show_debug_scaling_devfreq_min(struct device *dev,
 					      struct device_attribute *attr,
 					      char *buf)
@@ -859,6 +923,9 @@ static DEVICE_ATTR(debug_scaling_devfreq_min, 0640,
 static DEVICE_ATTR(debug_scaling_devfreq_max, 0640,
 		   show_debug_scaling_devfreq_max,
 		   store_debug_scaling_devfreq_max);
+static DEVICE_ATTR(soft_max_freq, 0640,
+		   show_soft_max_freq,
+		   store_soft_max_freq);
 static DEVICE_ATTR_WO(cancel_boot_freq);
 
 static ssize_t time_in_state_show(struct device *dev,
@@ -893,6 +960,7 @@ static struct attribute *exynos_devfreq_sysfs_entries[] = {
 	&dev_attr_exynos_devfreq_cmu_dump.attr,
 	&dev_attr_debug_scaling_devfreq_min.attr,
 	&dev_attr_debug_scaling_devfreq_max.attr,
+	&dev_attr_soft_max_freq.attr,
 	&dev_attr_alt_dvfs_info.attr,
 	&dev_attr_cancel_boot_freq.attr,
 	NULL,
@@ -1387,6 +1455,39 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	data->max_freq = freq_array[4];
 	data->reboot_freq = freq_array[5];
 
+	if (of_property_read_u32(np, "dfs_id", &data->dfs_id) &&
+	    of_property_match_string(np, "clock-names", buf))
+		return -ENODEV;
+
+	data->soft_max_freq = (u32)cal_dfs_get_max_freq(data->dfs_id);
+
+	/* Optionally read softmax (as potential ECT override) */
+	of_property_read_u32(np, "soft_max_freq",
+				 &data->soft_max_freq);
+
+	if (!data->soft_max_freq)
+		data->soft_max_freq = data->max_freq;
+	else
+		data->soft_max_freq = min(data->soft_max_freq,
+			data->max_freq);
+
+	if (data->devfreq_profile.initial_freq)
+		data->devfreq_profile.initial_freq = min_t(
+			u32,
+			data->devfreq_profile.initial_freq,
+			data->soft_max_freq);
+	else
+		data->devfreq_profile.initial_freq = (u32)
+			(data->soft_max_freq);
+
+	if (data->default_qos)
+		data->default_qos = min_t(
+			u32,
+			data->default_qos,
+			data->soft_max_freq);
+	else
+		data->default_qos = (u32)(data->soft_max_freq);
+
 	if (!of_property_read_u32(np, "max-volt", &val) &&
 	    !of_property_read_u32(np, "dfs_id", &data->dfs_id)) {
 		volt_table = kzalloc(sizeof(unsigned int) * data->max_state,
@@ -1411,6 +1512,7 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 		data->boot_qos_timeout = boot_array[0];
 		data->boot_freq = boot_array[1];
 	}
+	data->boot_freq = min(data->boot_freq, data->soft_max_freq);
 
 	if (of_property_read_u32(np, "governor", &data->gov_type))
 		return -ENODEV;
@@ -1457,10 +1559,6 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 		dev_info(data->dev, "This does not update fvp\n");
 		data->update_fvp = false;
 	}
-
-	if (of_property_read_u32(np, "dfs_id", &data->dfs_id) &&
-	    of_property_match_string(np, "clock-names", buf))
-		return -ENODEV;
 
 	if (!of_property_read_string(np, "use_get_dev", &use_get_dev)) {
 		if (!strcmp(use_get_dev, "true")) {
@@ -2331,6 +2429,8 @@ static int exynos_devfreq_probe(struct platform_device *pdev)
 				  data->min_freq);
 	exynos_pm_qos_add_request(&data->debug_pm_qos_max, (int)data->pm_qos_class_max,
 				  data->max_freq);
+	exynos_pm_qos_add_request(&data->pm_qos_soft_max_freq, (int)data->pm_qos_class_max,
+				  data->soft_max_freq);
 	exynos_pm_qos_add_request(&data->thermal_pm_qos_max, (int)data->pm_qos_class_max,
 				  data->max_freq);
 	if (data->pm_qos_class_max)

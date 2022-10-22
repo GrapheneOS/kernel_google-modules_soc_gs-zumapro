@@ -24,6 +24,7 @@
 #include "zuma-pinctrl.dtsi"
 #include "zuma-usi.dtsi"
 #include "zuma-debug.dtsi"
+#include "zuma-dpm.dtsi"
 #include "zuma-aoc.dtsi"
 #include "zuma-ufs.dtsi"
 #include "zuma-usb.dtsi"
@@ -622,6 +623,16 @@
 		compatible = "google,acpm-mbox-test";
 	};
 
+	eh: eh@16D00000 {
+		compatible = "google,eh";
+		reg = <0x0 0x16D00000 0x1000>;
+		interrupts = <GIC_SPI IRQ_EH_0_EH IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clock DOUT_CLK_EH_NOCP>;
+		clock-names = "eh-clock";
+		power-domains = <&pd_eh>;
+		google,eh,ignore-gctrl-reset;
+	};
+
 	exynos_dm: exynos-dm@17000000 {
 		compatible = "samsung,exynos-dvfs-manager";
 		reg = <0x0 0x17000000 0x0>;
@@ -738,9 +749,10 @@
 
 			/* FIXME: limit a max_freq to L1(3172MHz) */
 			freq_info = <421000 421000 421000 421000
-					3172000 1014000>;
+					3744000 1014000>;
 			/* initial_freq, default_qos, suspend_freq,
 			min_freq, max_freq, reboot_freq */
+			soft_max_freq = <2288000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -923,7 +935,7 @@
 			/* Delay time */
 			use_delay_time = "false";
 
-			freq_info = <134000 134000 134000 134000
+			freq_info = <100000 100000 100000 100000
 					711000 711000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
@@ -952,6 +964,7 @@
 					711000 711000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
+			soft_max_freq = <310000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -973,9 +986,10 @@
 			use_delay_time = "false";
 
 			freq_info = <324000 324000 324000 324000
-					1704000 324000>;
+					2253000 324000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
+			soft_max_freq = <1475000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
@@ -998,15 +1012,384 @@
 			use_delay_time = "false";
 
 			freq_info = <324000 324000 324000 324000
-					1008000 324000>;
+					1942000 324000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
+			soft_max_freq = <951000>;
 
 			/* governor data */
 			governor = <SIMPLE_INTERACTIVE>;
 
 			bts_update = "false";
 			dfs_id = <ACPM_DVFS_BCI>;
+		};
+	};
+
+	gs_memlat_devfreq {
+		compatible = "memlat-devfreq-root";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+
+		mif_cpu0_mem_lat: devfreq_mif_cpu0_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+
+		mif_cpu1_mem_lat: devfreq_mif_cpu1_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+
+		mif_cpu2_mem_lat: devfreq_mif_cpu2_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+
+		mif_cpu3_mem_lat: devfreq_mif_cpu3_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+
+		mif_cpu4_mem_lat: devfreq_mif_cpu4_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+
+		mif_cpu5_mem_lat: devfreq_mif_cpu5_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+
+		mif_cpu6_mem_lat: devfreq_mif_cpu6_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+
+		mif_cpu7_mem_lat: devfreq_mif_cpu7_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+
+		mif_cpu8_mem_lat: devfreq_mif_cpu8_memlat@17000010 {
+			compatible = "memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+	};
+
+	cpu0_memlat_cpugrp: cpu0-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu0>;
+
+		cpu0_cpu_mif_latmon: cpu0-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu0>;
+			target-dev = <&mif_cpu0_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  324000  421000 >,
+				<  615000  546000 >,
+				<  820000  676000 >,
+				<  975000  845000 >,
+				< 1098000 1014000 >,
+				< 1197000 1352000 >,
+				< 1328000 1539000 >,
+				< 1475000 1716000 >;
+		};
+	};
+
+	cpu1_memlat_cpugrp: cpu1-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu1>;
+
+		cpu1_cpu_mif_latmon: cpu1-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu1>;
+			target-dev = <&mif_cpu1_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  324000  421000 >,
+				<  615000  546000 >,
+				<  820000  676000 >,
+				<  975000  845000 >,
+				< 1098000 1014000 >,
+				< 1197000 1352000 >,
+				< 1328000 1539000 >,
+				< 1475000 1716000 >;
+		};
+	};
+
+	cpu2_memlat_cpugrp: cpu2-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu2>;
+
+		cpu2_cpu_mif_latmon: cpu2-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu2>;
+			target-dev = <&mif_cpu2_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  324000  421000 >,
+				<  615000  546000 >,
+				<  820000  676000 >,
+				<  975000  845000 >,
+				< 1098000 1014000 >,
+				< 1197000 1352000 >,
+				< 1328000 1539000 >,
+				< 1475000 1716000 >;
+		};
+	};
+
+	cpu3_memlat_cpugrp: cpu3-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu3>;
+
+		cpu3_cpu_mif_latmon: cpu3-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu3>;
+			target-dev = <&mif_cpu3_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  324000  421000 >,
+				<  615000  546000 >,
+				<  820000  676000 >,
+				<  975000  845000 >,
+				< 1098000 1014000 >,
+				< 1197000 1352000 >,
+				< 1328000 1539000 >,
+				< 1475000 1716000 >;
+		};
+	};
+
+	cpu4_memlat_cpugrp: cpu4-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu4>;
+
+		cpu4_cpu_mif_latmon: cpu4-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu4>;
+			target-dev = <&mif_cpu4_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  402000  421000 >,
+				<  578000  546000 >,
+				<  697000  676000 >,
+				<  721000  845000 >,
+				<  910000  845000 >,
+				< 1082000 1014000 >,
+				< 1221000 1352000 >,
+				< 1328000 1539000 >,
+				< 1418000 1716000 >,
+				< 1549000 1716000 >,
+				< 1622000 1716000 >,
+				< 1836000 2028000 >,
+				< 1999000 2288000 >,
+				< 2130000 2730000 >,
+				< 2245000 3172000 >,
+				< 2352000 3172000 >,
+				< 2450000 3172000 >;
+		};
+	};
+
+	cpu5_memlat_cpugrp: cpu5-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu5>;
+
+		cpu5_cpu_mif_latmon: cpu5-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu5>;
+			target-dev = <&mif_cpu5_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  402000  421000 >,
+				<  578000  546000 >,
+				<  697000  676000 >,
+				<  721000  845000 >,
+				<  910000  845000 >,
+				< 1082000 1014000 >,
+				< 1221000 1352000 >,
+				< 1328000 1539000 >,
+				< 1418000 1716000 >,
+				< 1549000 1716000 >,
+				< 1622000 1716000 >,
+				< 1836000 2028000 >,
+				< 1999000 2288000 >,
+				< 2130000 2730000 >,
+				< 2245000 3172000 >,
+				< 2352000 3172000 >,
+				< 2450000 3172000 >;
+		};
+	};
+
+	cpu6_memlat_cpugrp: cpu6-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu6>;
+
+		cpu6_cpu_mif_latmon: cpu6-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu6>;
+			target-dev = <&mif_cpu6_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  402000  421000 >,
+				<  578000  546000 >,
+				<  697000  676000 >,
+				<  721000  845000 >,
+				<  910000  845000 >,
+				< 1082000 1014000 >,
+				< 1221000 1352000 >,
+				< 1328000 1539000 >,
+				< 1418000 1716000 >,
+				< 1549000 1716000 >,
+				< 1622000 1716000 >,
+				< 1836000 2028000 >,
+				< 1999000 2288000 >,
+				< 2130000 2730000 >,
+				< 2245000 3172000 >,
+				< 2352000 3172000 >,
+				< 2450000 3172000 >;
+		};
+	};
+
+	cpu7_memlat_cpugrp: cpu7-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu7>;
+
+		cpu7_cpu_mif_latmon: cpu7-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu7>;
+			target-dev = <&mif_cpu7_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  402000  421000 >,
+				<  578000  546000 >,
+				<  697000  676000 >,
+				<  721000  845000 >,
+				<  910000  845000 >,
+				< 1082000 1014000 >,
+				< 1221000 1352000 >,
+				< 1328000 1539000 >,
+				< 1418000 1716000 >,
+				< 1549000 1716000 >,
+				< 1622000 1716000 >,
+				< 1836000 2028000 >,
+				< 1999000 2288000 >,
+				< 2130000 2730000 >,
+				< 2245000 3172000 >,
+				< 2352000 3172000 >,
+				< 2450000 3172000 >;
+		};
+	};
+
+	cpu8_memlat_cpugrp: cpu8-cpugrp {
+		compatible = "arm-memlat-cpugrp";
+		cpulist = <&cpu8>;
+
+		cpu8_cpu_mif_latmon: cpu8-cpu-mif-latmon {
+			compatible = "arm-memlat-mon";
+			cpulist = <&cpu8>;
+			target-dev = <&mif_cpu8_mem_lat>;
+			cachemiss-ev = <0x2A>;
+			core-dev-table =
+				<  500000  421000 >,
+				<  893000  845000 >,
+				< 1164000 1014000 >,
+				< 1328000 1539000 >,
+				< 1557000 1716000 >,
+				< 1745000 1716000 >,
+				< 1852000 1716000 >,
+				< 1901000 2028000 >,
+				< 2409000 3172000 >;
 		};
 	};
 
@@ -1060,7 +1443,7 @@
 	};
 
 	tmuctrl_0: BIG@100A0000 {
-		compatible = "samsung,gs101-tmu-v2";
+		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100A0000 0x800>;
 		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
 		tmu_name = "BIG";
@@ -1091,7 +1474,7 @@
 	};
 
 	tmuctrl_1: MID@100A0000 {
-		compatible = "samsung,gs101-tmu-v2";
+		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100A0000 0x800>;
 		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
 		tmu_name = "MID";
@@ -1122,7 +1505,7 @@
 	};
 
 	tmuctrl_2: LITTLE@100A0000 {
-		compatible = "samsung,gs101-tmu-v2";
+		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100A0000 0x800>;
 		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
 		tmu_name = "LITTLE";
@@ -1144,7 +1527,7 @@
 	};
 
 	tmuctrl_3: G3D@100B0000 {
-		compatible = "samsung,gs101-tmu-v2";
+		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100B0000 0x800>;
 		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
 		tmu_name = "G3D";
@@ -1170,7 +1553,7 @@
 	};
 
 	tmuctrl_4: ISP@100B0000 {
-		compatible = "samsung,gs101-tmu-v2";
+		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100B0000 0x800>;
 		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
 		tmu_name = "ISP";
@@ -1182,7 +1565,7 @@
 	};
 
 	tmuctrl_5: TPU@100B0000 {
-		compatible = "samsung,gs101-tmu-v2";
+		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100B0000 0x800>;
 		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
 		tmu_name = "TPU";
@@ -1208,7 +1591,7 @@
 	};
 
 	tmuctrl_6: AUR@100B0000 {
-		compatible = "samsung,gs101-tmu-v2";
+		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100B0000 0x800>;
 		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
 		tmu_name = "AUR";
@@ -1601,5 +1984,59 @@
 		compatible = "samsung,exynos-seclog";
 		interrupts = <GIC_SPI INTREQ__SECURE_LOG IRQ_TYPE_LEVEL_HIGH>;
 		memory-region = <&seclog_mem>;
+	};
+
+	exynos-pm {
+		compatible = "samsung,exynos-pm";
+		reg = <0x0 0x154D0000 0x1000>,
+			<0x0 0x154E0000 0x1000>,
+			<0x0 0x10400204 0x100>,
+			<0x0 0x15200000 0x100>;  /* GS_MAILBOX_AP_AOCA3_HOST */
+		reg-names = "gpio_alive_base",
+			"gpio_far_alive_base",
+			"gicd_ispendrn_base",
+			"mailbox_ap_aoc_host";
+		num-eint = <64>;	/* EINT_0 ~ 44 */
+		num-eint-far = <32>;	/* EINT_45 ~ 66 */
+		gpa-use = <8>, <7>, <5>, <4>, <4>, <7>, <8>, <2>, <8>, <4>, <8>, <2>;
+		num-gic = <30>;
+		suspend_mode_idx = <8>;
+
+		pcieon_suspend_available = <1>;
+		pcieon_suspend_mode_idx = <13>;
+
+					/* WAKEUP_STAT,		WAKEUP2_STAT */
+		wakeup_stat_offset =	<0x3950>,		<0x3970>;
+		wakeup_int_en_offset =	<0x3944>,		<0x3964>;
+		wakeup_int_en =		<0x1f0bf>,		<0x01f0>;
+
+		eint_wakeup_mask_offset = <0x3a80>, <0x3a84>, <0x3a88>;
+		wakeup-stat-eint = <0x30>;
+		wakeup-stat-rtc = <0>;
+
+		wake_lock = <0>;		/* 1: held wake_lock */
+
+		wakeup_stats {
+			wakeup_stat {
+				ws-name =
+					"RTC_ALARM",			/* [ 0] */
+					"RTC_TICK",			/* [ 1] */
+					"TRTC_ALARM",			/* [ 2] */
+					"TRTC_TICK",			/* [ 3] */
+					"EINT",				/* [ 4] */
+					"EINT_FAR",			/* [ 5] */
+					"RESERVED",			/* [ 6] */
+					"RESERVED",			/* [ 7] */
+					"L1SUB_PCIE_GEN3_2L",		/* [ 8] */
+					"L1SUB_PCIE_GEN3_1L0",		/* [ 9] */
+					"L1SUB_PCIE_GEN3_1L1",		/* [10] */
+					"RESERVED",			/* [11] */
+					"EXT_PCIE_GEN3_2L",		/* [12] */
+					"EXT_PCIE_GEN3_1L0",		/* [13] */
+					"EXT_PCIE_GEN3_1L1",		/* [14] */
+					"RESERVED",			/* [15] */
+					"RESERVED";			/* [31] */
+			};
+		};
 	};
 };

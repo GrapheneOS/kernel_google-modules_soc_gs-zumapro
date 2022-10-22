@@ -12,7 +12,7 @@
 		status = "ok";
 		#dma-address-cells = <1>;
 		#dma-size-cells = <1>;
-		dma-window = <0x80000000 0x60000000>;
+		dma-window = <0x30000000 0xC0000000>;
 		reg = <0x0 0x20C00000 0x01400000
 		       /* Mailboxes */
 		       0x0 0x15320000 0x1000

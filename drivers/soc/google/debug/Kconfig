@@ -177,3 +177,9 @@ config GS_SJTAG
 	help
 	  This driver implements the driver to the AP & GSA SJTAG HW blocks
 	  in the GS SoC.
+
+config BOOKERCI
+	tristate "Booker-CI driver"
+	default n
+	help
+	  This is BOOKER-CI driver.

@@ -128,8 +128,9 @@ static int __mfc_qos_get_bps_section_by_bps(struct mfc_dev *dev, int Kbps)
 /* Return the minimum interval between previous and next entry */
 static int __mfc_qos_get_interval(struct list_head *head, struct list_head *entry)
 {
-	int prev_interval = MFC_MAX_INTERVAL, next_interval = MFC_MAX_INTERVAL;
+	unsigned long prev_interval = MFC_MAX_INTERVAL, next_interval = MFC_MAX_INTERVAL;
 	struct mfc_timestamp *prev_ts, *next_ts, *curr_ts;
+	int ret = 0;
 
 	curr_ts = list_entry(entry, struct mfc_timestamp, list);
 
@@ -137,15 +138,20 @@ static int __mfc_qos_get_interval(struct list_head *head, struct list_head *entr
 		prev_ts = list_entry(entry->prev, struct mfc_timestamp, list);
 		prev_interval = __mfc_qos_timespec64_diff(&curr_ts->timestamp,
 							&prev_ts->timestamp);
+		if (prev_interval > MFC_MAX_INTERVAL)
+			prev_interval = MFC_MAX_INTERVAL;
 	}
 
 	if (entry->next != head) {
 		next_ts = list_entry(entry->next, struct mfc_timestamp, list);
 		next_interval = __mfc_qos_timespec64_diff(&next_ts->timestamp,
 							&curr_ts->timestamp);
+		if (next_interval > MFC_MAX_INTERVAL)
+			next_interval = MFC_MAX_INTERVAL;
 	}
 
-	return (prev_interval < next_interval ? prev_interval : next_interval);
+	ret = (prev_interval < next_interval) ? prev_interval : next_interval;
+	return ret;
 }
 
 static int __mfc_qos_add_timestamp(struct mfc_ctx *ctx,

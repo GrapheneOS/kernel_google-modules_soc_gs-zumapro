@@ -41,7 +41,7 @@ enum slc_users {
 	NUM_SLC_USERS, // NR_SLC_USERS in plugins/flexpmu/<arch>/sfr_map.h
 };
 
-// Defined in flexpmu_cal_cpu_gs101.h
+// Defined in flexpmu_cal_cpu_zuma.h
 enum cpu_corenum {
 	CORE00,
 	CORE01,
@@ -49,12 +49,13 @@ enum cpu_corenum {
 	CORE03,
 	CORE10,
 	CORE11,
+	CORE12,
+	CORE13,
 	CORE20,
-	CORE21,
 	NUM_CORES,
 };
 
-// Defined in flexpmu_cal_cpu_gs101.h
+// Defined in flexpmu_cal_cpu_zuma.h
 enum cpu_clusternum {
 	CLUSTER0,
 	CLUSTER1,

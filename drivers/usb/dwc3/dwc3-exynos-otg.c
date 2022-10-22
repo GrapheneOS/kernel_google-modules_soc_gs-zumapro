@@ -545,6 +545,10 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 			goto err1;
 		}
 
+		ret = usb_gadget_activate(dwc->gadget);
+		if (ret < 0)
+			dev_err(dev, "USB gadget activate failed with %d\n", ret);
+
 		dwc3_otg_set_peripheral_mode(dotg);
 
 		/*
@@ -556,6 +560,10 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 	} else {
 		exynos->vbus_state = false;
 		/* del_timer_sync(&exynos->usb_connect_timer); */
+
+		ret = usb_gadget_deactivate(dwc->gadget);
+		if (ret < 0)
+			dev_err(dev, "USB gadget deactivate failed with %d\n", ret);
 
 		if (exynos->config.is_not_vbus_pad && exynos_usbdrd_get_ldo_status() &&
 				!dotg->in_shutdown)

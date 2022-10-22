@@ -463,7 +463,6 @@ void mfc_core_nal_q_start(struct mfc_core *core, nal_queue_handle *nal_q_handle)
 	MFC_TRACE_CORE("** NAL Q state : %d\n", nal_q_handle->nal_q_state);
 	mfc_core_debug(2, "[NALQ] started, state = %d\n", nal_q_handle->nal_q_state);
 
-	MFC_CORE_WRITEL(MFC_TIMEOUT_VALUE, MFC_REG_TIMEOUT_VALUE);
 	mfc_core_cmd_host2risc(core, MFC_REG_H2R_CMD_NAL_QUEUE);
 
 	mfc_core_debug_leave();
@@ -529,7 +528,10 @@ void mfc_core_nal_q_stop_if_started(struct mfc_core *core)
 				MFC_REG_R2H_CMD_COMPLETE_QUEUE_RET)) {
 		mfc_core_err("[NALQ] Failed to stop qeueue during get hwlock\n");
 		core->logging_data->cause |= (1 << MFC_CAUSE_FAIL_STOP_NAL_Q_FOR_OTHER);
-		call_dop(core, dump_and_stop_always, core);
+		call_dop(core, dump_and_stop_debug_mode, core);
+		nal_q_handle->nal_q_state = NAL_Q_STATE_CREATED;
+		mfc_core_nal_q_cleanup_queue(core);
+		mfc_core_nal_q_cleanup_clock(core);
 	}
 
 	mfc_core_debug_leave();
@@ -970,6 +972,7 @@ static int __mfc_core_nal_q_run_in_buf_enc(struct mfc_core *core, struct mfc_cor
 	dma_addr_t addr_2bit[2] = {0, 0};
 	unsigned int index, i;
 	int is_uncomp = 0;
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug_enter();
 
@@ -1142,6 +1145,12 @@ static int __mfc_core_nal_q_run_in_buf_enc(struct mfc_core *core, struct mfc_cor
 	__mfc_core_nal_q_set_slice_mode(ctx, pInStr);
 	__mfc_core_nal_q_set_enc_config_qp(ctx, pInStr);
 
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "[NALQ] Last MFC Freq: %d, Timeout Value: %d\n",
+			core->last_mfc_freq, timeout_value);
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
+
 	mfc_debug_leave();
 
 	return 0;
@@ -1161,6 +1170,7 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	struct vb2_buffer *vb;
 	int src_index, dst_index;
 	int i;
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug_enter();
 
@@ -1259,6 +1269,12 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	MFC_TRACE_CTX("Set dst[%d] fd: %d, %#llx / used %#lx\n",
 			dst_index, dst_mb->vb.vb2_buf.planes[0].m.fd,
 			dst_mb->addr[0][0], dec->dynamic_used);
+
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "[NALQ] Last MFC Freq: %d, Timeout Value: %d\n",
+			core->last_mfc_freq, timeout_value);
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
 
 	mfc_debug_leave();
 
@@ -1497,6 +1513,7 @@ static void __mfc_core_nal_q_handle_stream(struct mfc_core *core, struct mfc_cor
 	int slice_type, consumed_only = 0;
 	unsigned int strm_size;
 	unsigned int pic_count;
+	unsigned int sbwc_err;
 
 	mfc_debug_enter();
 
@@ -1516,8 +1533,20 @@ static void __mfc_core_nal_q_handle_stream(struct mfc_core *core, struct mfc_cor
 	ctx->sequence++;
 
 	if (strm_size == 0) {
-		mfc_debug(2, "[FRAME] dst buffer is not returned\n");
+		mfc_debug(2, "[NALQ][STREAM] dst buffer is not returned\n");
 		consumed_only = 1;
+	}
+
+	sbwc_err = ((pOutStr->NalDoneInfo >> MFC_REG_E_NAL_DONE_INFO_COMP_ERR_SHIFT)
+			& MFC_REG_E_NAL_DONE_INFO_COMP_ERR_MASK);
+	if (sbwc_err) {
+		mfc_ctx_err("[NALQ][SBWC] Compressor error detected (Source: %d, DPB: %d)\n",
+				(sbwc_err >> 1) & 0x1, sbwc_err & 0x1);
+		mfc_ctx_err("[SBWC] sbwc: %d, lossy: %d(%d), option: %d, FORMAT: %#x, OPTIONS: %#x\n",
+				ctx->is_sbwc, ctx->is_sbwc_lossy,
+				ctx->sbwcl_ratio, enc->sbwc_option,
+				MFC_CORE_READL(MFC_REG_PIXEL_FORMAT),
+				MFC_CORE_READL(MFC_REG_E_ENC_OPTIONS));
 	}
 
 	/* handle input buffer */
@@ -1852,10 +1881,12 @@ static struct mfc_buf *__mfc_core_nal_q_handle_frame_output_del(struct mfc_core 
 
 		if (is_disp_res_change) {
 			mfc_ctx_info("[NALQ][FRAME] display resolution changed\n");
+			mutex_lock(&ctx->drc_wait_mutex);
 			ctx->wait_state = WAIT_G_FMT;
 			__mfc_core_nal_q_get_img_size(core, ctx, pOutStr, MFC_GET_RESOL_SIZE);
 			dec->disp_res_change = 1;
 			mfc_set_mb_flag(dst_mb, MFC_FLAG_DISP_RES_CHANGE);
+			mutex_unlock(&ctx->drc_wait_mutex);
 		}
 
 		if (is_hdr10_plus_sei) {
@@ -2281,11 +2312,13 @@ void __mfc_core_nal_q_handle_frame(struct mfc_core *core, struct mfc_core_ctx *c
 	}
 	if (res_change) {
 		mfc_debug(2, "[NALQ][DRC] Resolution change set to %d\n", res_change);
+		mutex_lock(&ctx->drc_wait_mutex);
 		mfc_change_state(core_ctx, MFCINST_RES_CHANGE_INIT);
 		ctx->wait_state = WAIT_G_FMT | WAIT_STOP;
 		core->nal_q_stop_cause |= (1 << NALQ_EXCEPTION_DRC);
 		core->nal_q_handle->nal_q_exception = 1;
 		mfc_ctx_info("[NALQ][DRC] nal_q_exception is set (res change)\n");
+		mutex_unlock(&ctx->drc_wait_mutex);
 		goto leave_handle_frame;
 	}
 	if (need_empty_dpb) {
@@ -2293,17 +2326,23 @@ void __mfc_core_nal_q_handle_frame(struct mfc_core *core, struct mfc_core_ctx *c
 		dec->has_multiframe = 1;
 		core->nal_q_stop_cause |= (1 << NALQ_EXCEPTION_NEED_DPB);
 		core->nal_q_handle->nal_q_exception = 1;
-		mfc_ctx_info("[NALQ][MULTIFRAME] nal_q_exception is set\n");
+		if (dec->is_multiframe)
+			mfc_debug(2, "[NALQ][MULTIFRAME] nal_q_exception is set\n");
+		else
+			mfc_ctx_info("[NALQ][MULTIFRAME] nal_q_exception is set\n");
+		dec->is_multiframe = 1;
 		goto leave_handle_frame;
 	}
 	if (need_dpb_change || need_scratch_change) {
 		mfc_ctx_info("[NALQ][DRC] Interframe resolution changed\n");
+		mutex_lock(&ctx->drc_wait_mutex);
 		ctx->wait_state = WAIT_G_FMT | WAIT_STOP;
 		__mfc_core_nal_q_get_img_size(core, ctx, pOutStr, MFC_GET_RESOL_DPB_SIZE);
 		dec->inter_res_change = 1;
 		mfc_ctx_info("[NALQ][DRC] nal_q_exception is set (interframe res change)\n");
 		core->nal_q_stop_cause |= (1 << NALQ_EXCEPTION_INTER_DRC);
 		core->nal_q_handle->nal_q_exception = 2;
+		mutex_unlock(&ctx->drc_wait_mutex);
 		goto leave_handle_frame;
 	}
 	if (is_interlaced && ctx->is_sbwc) {

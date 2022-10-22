@@ -35,9 +35,74 @@
 		>;
 
 		rt-names = "DECON0",
-			   "g3aa";
+			   "isp-fe";
 
-		list-scen = "default";
+		list-scen = "default",
+			    "mfc_uhd",
+			    "mfc_uhd_10bit",
+			    "mfc_8k_dec30",
+			    "g3d_performance",
+			    "dp_default",
+			    "camera_default",
+			    "mfc_uhd_enc60";
+
+		nocl-names = "nocl2aa",
+			     "nocl2ab",
+			     "nocl1a";
+		nocl2aa {
+			nocl_node;
+			DECON0 {
+				bus-width = <32>;
+			};
+			isp-fe {
+				bus-width = <32>;
+			};
+			mfc {
+				bus-width = <16>;
+			};
+			rgbp {
+				bus-width = <16>;
+			};
+
+		};
+		/* Temporarily put be-core, lme in nocl2ab */
+		nocl2ab {
+			nocl_node;
+			g2d {
+				bus-width = <16>;
+			};
+			gdc0 {
+				bus-width = <16>;
+			};
+			gdc1 {
+				bus-width = <16>;
+			};
+			mcsc {
+				bus-width = <16>;
+			};
+			gse {
+				bus-width = <16>;
+			};
+			yuvp {
+				bus-width = <16>;
+			};
+			gtnr-merge {
+				bus-width = <16>;
+			};
+			gtnr-align {
+				bus-width = <16>;
+			};
+			lme {
+				bus-width = <16>;
+			};
+		};
+		/* Need to update the name from bo to bw */
+		nocl1a {
+			nocl_node;
+			bo {
+				bus-width = <32>;
+			};
+		};
 
 		/* TREX_D_NOCL0 */
 
@@ -239,8 +304,99 @@
 				bypass = <0>;
 				arqos = <0x8>;
 				awqos = <0x8>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			mfc_uhd {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			mfc_uhd_10bit {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			mfc_8k_dec30 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			dp_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			camera_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x30>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			mfc_uhd_enc60 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x30>;
+				wmo = <0x20>;
 				qurgent_on = <1>;
 				qurgent_th_r = <0x20>;
 				qurgent_th_w = <0x20>;
@@ -257,8 +413,99 @@
 				bypass = <0>;
 				arqos = <0x8>;
 				awqos = <0x8>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			mfc_uhd {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			mfc_uhd_10bit {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			mfc_8k_dec30 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			dp_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			camera_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x30>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			mfc_uhd_enc60 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x30>;
+				wmo = <0x20>;
 				qurgent_on = <1>;
 				qurgent_th_r = <0x20>;
 				qurgent_th_w = <0x20>;
@@ -279,7 +526,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_ispfe0 {
@@ -291,8 +537,8 @@
 				bypass = <0>;
 				arqos = <0xc>;
 				awqos = <0xc>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x26>;
+				wmo = <0x40>;
 				qurgent_on = <1>;
 				qurgent_th_r = <0x20>;
 				qurgent_th_w = <0x20>;
@@ -310,7 +556,7 @@
 				arqos = <0xc>;
 				awqos = <0xc>;
 				rmo = <0xffff>;
-				wmo = <0xffff>;
+				wmo = <0x40>;
 				qurgent_on = <1>;
 				qurgent_th_r = <0x20>;
 				qurgent_th_w = <0x20>;
@@ -328,7 +574,7 @@
 				arqos = <0xc>;
 				awqos = <0xc>;
 				rmo = <0xffff>;
-				wmo = <0xffff>;
+				wmo = <0x40>;
 				qurgent_on = <1>;
 				qurgent_th_r = <0x20>;
 				qurgent_th_w = <0x20>;
@@ -346,7 +592,7 @@
 				arqos = <0xc>;
 				awqos = <0xc>;
 				rmo = <0xffff>;
-				wmo = <0xffff>;
+				wmo = <0x8>;
 				qurgent_on = <1>;
 				qurgent_th_r = <0x20>;
 				qurgent_th_w = <0x20>;
@@ -363,11 +609,80 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x10>;
+				wmo = <0x10>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			mfc_uhd {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x14>;
+				wmo = <0x14>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_10bit {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_8k_dec30 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x40>;
+				wmo = <0x40>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			dp_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			camera_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x10>;
+				wmo = <0x10>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_enc60 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x12>;
+				wmo = <0x12>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_mfc1 {
@@ -379,11 +694,80 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x10>;
+				wmo = <0x10>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			mfc_uhd {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x14>;
+				wmo = <0x14>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_10bit {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_8k_dec30 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x40>;
+				wmo = <0x40>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			dp_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			camera_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x10>;
+				wmo = <0x10>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_enc60 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x12>;
+				wmo = <0x12>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_rgbp0 {
@@ -396,10 +780,9 @@
 				arqos = <0x4>;
 				awqos = <0x4>;
 				rmo = <0xffff>;
-				wmo = <0xffff>;
+				wmo = <0x9>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_rgbp1 {
@@ -411,11 +794,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x2C>;
+				wmo = <0x9>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_rgbp2 {
@@ -427,11 +809,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
+				rmo = <0x40>;
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_rgbp3 {
@@ -443,11 +824,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
+				rmo = <0x20>;
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_rgbp4 {
@@ -459,11 +839,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
+				rmo = <0x20>;
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_rgbp5 {
@@ -475,11 +854,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x20>;
+				wmo = <0xA>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_rgbp6 {
@@ -491,11 +869,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x8>;
+				wmo = <0x9>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 
@@ -509,11 +886,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0xA>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_gdc1 {
@@ -525,11 +901,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0xA>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_gdc2 {
@@ -541,11 +916,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0xA>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_gse {
@@ -557,11 +931,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x9>;
+				wmo = <0x7>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_g2d0 {
@@ -573,11 +946,30 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x18>;
+				wmo = <0x14>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			camera_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x8>;
+				wmo = <0x8>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_enc60 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x8>;
+				wmo = <0x8>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_g2d1 {
@@ -589,11 +981,30 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x18>;
+				wmo = <0x14>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			camera_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x8>;
+				wmo = <0x8>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_enc60 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x8>;
+				wmo = <0x8>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_g2d2 {
@@ -605,11 +1016,30 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x18>;
+				wmo = <0x14>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			camera_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x8>;
+				wmo = <0x8>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_enc60 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x8>;
+				wmo = <0x8>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_mcsc0 {
@@ -621,11 +1051,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0xC>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_mcsc1 {
@@ -637,11 +1066,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0xC>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_misc {
@@ -653,11 +1081,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0xF>;
+				wmo = <0xF>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_tnr0 {
@@ -669,11 +1096,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x32>;
+				wmo = <0x9>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_tnr1 {
@@ -685,11 +1111,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x32>;
+				wmo = <0x9>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_tnr2 {
@@ -701,11 +1126,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x10>;
+				wmo = <0x1>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_tnr3 {
@@ -717,11 +1141,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x10>;
+				wmo = <0x2>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_tnr4 {
@@ -733,11 +1156,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x18>;
+				wmo = <0x7>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_tnr5 {
@@ -749,11 +1171,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x6>;
+				wmo = <0x6>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_yuvp {
@@ -765,11 +1186,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x8>;
+				wmo = <0x5>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 
@@ -787,7 +1207,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_aur1 {
@@ -803,7 +1222,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_bw {
@@ -815,11 +1233,80 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x10>;
+				wmo = <0x10>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			mfc_uhd {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x14>;
+				wmo = <0x14>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_10bit {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_8k_dec30 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x40>;
+				wmo = <0x40>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			dp_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			camera_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x10>;
+				wmo = <0x10>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			mfc_uhd_enc60 {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x12>;
+				wmo = <0x12>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_g3dmmu {
@@ -835,7 +1322,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_g3d0 {
@@ -847,11 +1333,20 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x14>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_g3d1 {
@@ -863,11 +1358,20 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x14>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_g3d2 {
@@ -879,11 +1383,20 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x14>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_g3d3 {
@@ -895,11 +1408,20 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x14>;
+				wmo = <0x8>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
+			};
+			g3d_performance {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
 			};
 		};
 		bts_tpu0 {
@@ -911,11 +1433,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x20>;
+				wmo = <0x10>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_tpu1 {
@@ -927,11 +1448,10 @@
 				bypass = <0>;
 				arqos = <0x4>;
 				awqos = <0x4>;
-				rmo = <0xffff>;
-				wmo = <0xffff>;
+				rmo = <0x20>;
+				wmo = <0x10>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 
@@ -949,7 +1469,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_aoc {
@@ -965,7 +1484,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_cssys {
@@ -981,7 +1499,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_gsa {
@@ -997,7 +1514,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_hsi0 {
@@ -1013,7 +1529,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 		bts_hsi1 {
@@ -1029,7 +1544,6 @@
 				wmo = <0xffff>;
 				qurgent_on = <0>;
 				blocking_on = <0>;
-				ex_qurgent_on = <0>;
 			};
 		};
 
