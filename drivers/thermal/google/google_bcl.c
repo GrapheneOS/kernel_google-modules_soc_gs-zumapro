@@ -3033,11 +3033,45 @@ static int set_tpuclk(void *data, u64 val)
 	return 0;
 }
 
+static int get_modem_gpio1(void *data, u64 *val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	*val = gpio_get_value(bcl_dev->modem_gpio1_pin);
+	return 0;
+}
+
+static int set_modem_gpio1(void *data, u64 val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	gpio_set_value(bcl_dev->modem_gpio1_pin, val);
+	return 0;
+}
+
+static int get_modem_gpio2(void *data, u64 *val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	*val = gpio_get_value(bcl_dev->modem_gpio2_pin);
+	return 0;
+}
+
+static int set_modem_gpio2(void *data, u64 val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	gpio_set_value(bcl_dev->modem_gpio2_pin, val);
+	return 0;
+}
+
 DEFINE_SIMPLE_ATTRIBUTE(cpu0_clkout_fops, get_cpu0clk, set_cpu0clk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(cpu1_clkout_fops, get_cpu1clk, set_cpu1clk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(cpu2_clkout_fops, get_cpu2clk, set_cpu2clk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(gpu_clkout_fops, get_gpuclk, set_gpuclk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(tpu_clkout_fops, get_tpuclk, set_tpuclk, "0x%llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(modem_gpio1_fops, get_modem_gpio1, set_modem_gpio1, "0x%llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(modem_gpio2_fops, get_modem_gpio2, set_modem_gpio2, "0x%llx\n");
 
 static void google_init_debugfs(struct bcl_device *bcl_dev)
 {
@@ -3047,6 +3081,8 @@ static void google_init_debugfs(struct bcl_device *bcl_dev)
 	debugfs_create_file("cpu2_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &cpu2_clkout_fops);
 	debugfs_create_file("gpu_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &gpu_clkout_fops);
 	debugfs_create_file("tpu_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &tpu_clkout_fops);
+	debugfs_create_file("modem_gpio1", 0644, bcl_dev->debug_entry, bcl_dev, &modem_gpio1_fops);
+	debugfs_create_file("modem_gpio2", 0644, bcl_dev->debug_entry, bcl_dev, &modem_gpio2_fops);
 }
 
 static void google_set_throttling(struct bcl_device *bcl_dev)
@@ -3574,6 +3610,8 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->odpm_ratio = (ret || !val) ? 2 : val;
 	bcl_dev->vdroop1_pin = of_get_gpio(np, 0);
 	bcl_dev->vdroop2_pin = of_get_gpio(np, 1);
+	bcl_dev->modem_gpio1_pin = of_get_gpio(np, 2);
+	bcl_dev->modem_gpio2_pin = of_get_gpio(np, 3);
 	disable_power();
 	if (google_bcl_init_clk_div(bcl_dev, CPU2, bcl_dev->cpu2_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU2 Address is NULL\n");

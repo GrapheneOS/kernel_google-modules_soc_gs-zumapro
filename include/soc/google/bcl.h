@@ -132,6 +132,8 @@ struct bcl_device {
 
 	unsigned int vdroop1_pin;
 	unsigned int vdroop2_pin;
+	unsigned int modem_gpio1_pin;
+	unsigned int modem_gpio2_pin;
 
 	/* debug */
 	struct dentry *debug_entry;
