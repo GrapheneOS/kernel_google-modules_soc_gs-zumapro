@@ -309,4 +309,11 @@ config RADIO_S5400
 	bool "Samsung S5400 Radio"
 	default n
 
+config KERNEL_TOP
+	tristate "Display processes statistic"
+	default n
+	help
+	  This module exposes kernel function for modules to debugging
+	  processes statistic.
+
 endmenu
