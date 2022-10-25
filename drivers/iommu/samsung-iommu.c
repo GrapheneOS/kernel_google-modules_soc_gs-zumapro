@@ -1273,7 +1273,9 @@ static void samsung_sysmmu_get_resv_regions(struct device *dev, struct list_head
 				continue;
 			}
 
-			region = iommu_alloc_resv_region(base, size, 0, resvtype[type]);
+			region = iommu_alloc_resv_region(base, size, 0,
+							 resvtype[type],
+							 GFP_KERNEL);
 			if (!region)
 				continue;
 
