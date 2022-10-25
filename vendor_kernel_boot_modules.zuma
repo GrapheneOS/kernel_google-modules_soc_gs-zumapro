@@ -173,6 +173,7 @@ usb_psy.ko
 usbc_cooling_dev.ko
 vh_cgroup.ko
 vh_sched.ko
+vh_thermal.ko
 virtio_balloon.ko
 virtio_blk.ko
 virtio_crypto.ko

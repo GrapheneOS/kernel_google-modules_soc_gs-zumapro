@@ -110,6 +110,7 @@ def define_zuma():
             "drivers/soc/google/gs-chipid.ko",
             "drivers/soc/google/vh/kernel/pixel_em/pixel_em.ko",
             "drivers/soc/google/vh/kernel/systrace.ko",
+            "drivers/soc/google/vh/kernel/thermal/vh_thermal.ko",
             "drivers/tty/serial/exynos_tty.ko",
         ],
         "hybrid": [
