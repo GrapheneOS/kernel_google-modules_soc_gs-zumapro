@@ -35,7 +35,7 @@ def _define_zuma_gki():
         srcs = native.glob([
             "arch/arm64/configs/zuma*.fragment",
         ]) + [
-            "//aosp-bringup:kernel_aarch64_sources",
+            "//aosp-staging:kernel_aarch64_sources",
         ],
         outs = aarch64_outs,
         module_outs = [
@@ -153,7 +153,7 @@ def define_zuma():
                 "include/dt-bindings/**",
                 "include/dtc/**",
             ]) + [
-                "//aosp-bringup:kernel_aarch64_sources",
+                "//aosp-staging:kernel_aarch64_sources",
                 "//private/google-modules/bms/misc:bms-misc.kconfig",
                 "//private/google-modules/power/reset:reset.kconfig",
                 "//private/google-modules/touch/common:common.kconfig",
@@ -165,7 +165,7 @@ def define_zuma():
                 "google/zuma-a0.dtb",
             ] + zuma_dtbos,
             # TODO(b/221278445): Use real GKI
-            # base_kernel = "//aosp-bringup:kernel_aarch64",
+            # base_kernel = "//aosp-staging:kernel_aarch64",
             base_kernel = ":zuma_gki",
             build_config = "build.config.zuma_{}".format(mode),
             dtstree = "//private/google-modules/soc/gs/arch/arm64/boot/dts:dt",
