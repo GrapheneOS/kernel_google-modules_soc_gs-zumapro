@@ -1291,7 +1291,7 @@
 		clock-names =
 			"UMUX_CLKCMU_TNR_ALIGN";
 		clock-rates = <0>;
-		clock-family = <CAMERA_CLOCK_FAMILY_CAM>;
+		clock-family = <CAMERA_CLOCK_FAMILY_TNR>;
 
 		iommus =
 			<&sysmmu_tnr_s2>;
