@@ -18,7 +18,6 @@
 
 #define UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS		10
 
-static struct workqueue_struct *update_vendor_kernel_info_wq;
 static struct delayed_work vendor_kernel_info_work;
 static struct kernel_all_info *aosp_all_info;
 static struct kernel_info *aosp_info;
@@ -96,8 +95,8 @@ static void update_vendor_kernel_all_info(void)
 static void vendor_kernel_info_work_fn(struct work_struct *work)
 {
 	if (!aosp_all_info->combined_checksum || aosp_all_info->magic_number != DEBUG_KINFO_MAGIC) {
-		queue_delayed_work(update_vendor_kernel_info_wq, &vendor_kernel_info_work,
-				   msecs_to_jiffies(UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS));
+		schedule_delayed_work(&vendor_kernel_info_work,
+				      msecs_to_jiffies(UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS));
 		return;
 	}
 
@@ -178,13 +177,9 @@ static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)
 	info = &all_info->info;
 
 	/* Wait for AOSP kernel info. backup */
-	update_vendor_kernel_info_wq = create_workqueue("vendor_kernel_info");
-	if (!update_vendor_kernel_info_wq) {
-		dev_err(&pdev->dev, "failed to create workqueue\n");
-	}
 	INIT_DELAYED_WORK(&vendor_kernel_info_work, vendor_kernel_info_work_fn);
-	queue_delayed_work(update_vendor_kernel_info_wq, &vendor_kernel_info_work,
-			   msecs_to_jiffies(UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS));
+	schedule_delayed_work(&vendor_kernel_info_work,
+			      msecs_to_jiffies(UPDATE_VENDOR_KERNEL_INFO_PERIOD_MS));
 
 	return 0;
 }

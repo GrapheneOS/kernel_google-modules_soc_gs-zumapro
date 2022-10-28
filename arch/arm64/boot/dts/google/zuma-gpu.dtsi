@@ -20,7 +20,7 @@
 		power-domains = <&pd_g3d>, <&pd_embedded_g3d>;
 		power-domain-names = "top", "cores";
 		g3d_genpd_name = "pd-embedded_g3d";
-		gpu_pmu_status_reg_offset = <0x2004>;
+		gpu_pmu_status_reg_offset = <0x1C84>;
 		gpu_pmu_status_local_pwr_mask = <0x1>; /*0x1 << 0*/
 		gpu_pm_autosuspend_delay = <500>;
 		power_policy = "adaptive";

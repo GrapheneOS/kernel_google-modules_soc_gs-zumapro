@@ -381,6 +381,8 @@ struct itmon_dev {
 	void __iomem *regs;
 	spinlock_t ctrl_lock;	/* spinlock for itmon irq handle */
 	struct itmon_notifier notifier_info;
+	char itmon_pattern[SZ_32];
+	atomic_t itmon_pattern_cnt;
 };
 
 struct itmon_panic_block {
@@ -968,6 +970,25 @@ static struct itmon_dev *g_itmon;
 
 /* declare notifier_list */
 static ATOMIC_NOTIFIER_HEAD(itmon_notifier_list);
+
+
+static void itmon_pattern_reset(struct itmon_dev *itmon)
+{
+	atomic_set(&itmon->itmon_pattern_cnt, 0);
+}
+
+static void itmon_pattern_set(struct itmon_dev *itmon, const char *fmt, ...)
+{
+	va_list args;
+
+	/* only take the first pattern even there could be multiple paths */
+	if (atomic_inc_return(&itmon->itmon_pattern_cnt) > 1)
+		return;
+
+	va_start(args, fmt);
+	vsnprintf(itmon->itmon_pattern, sizeof(itmon->itmon_pattern), fmt, args);
+	va_end(args);
+}
 
 static const struct of_device_id itmon_dt_match[] = {
 	{.compatible = "samsung,exynos-itmon-v2",
@@ -1676,6 +1697,7 @@ static void itmon_do_dpm_policy(struct itmon_dev *itmon, bool clear)
 {
 	struct itmon_platdata *pdata = itmon->pdata;
 	int i, sel, policy = -1;
+	char buf[SZ_64];
 
 	for (i = 0; i < TYPE_MAX; i++) {
 		if (pdata->policy[i].error && pdata->policy[i].policy > policy) {
@@ -1691,7 +1713,9 @@ static void itmon_do_dpm_policy(struct itmon_dev *itmon, bool clear)
 	if (policy >= GO_DEFAULT_ID) {
 		log_dev_err(itmon->dev, "%s: %s: policy:%s\n", __func__,
 			    pdata->policy[sel].name, itmon_dpm_action[policy]);
-		dbg_snapshot_do_dpm_policy(policy, "ITMON");
+		scnprintf(buf, sizeof(buf), "itmon triggering %s %s",
+			  pdata->policy[sel].name, itmon->itmon_pattern);
+		dbg_snapshot_do_dpm_policy(policy, buf);
 	}
 }
 
@@ -1943,6 +1967,10 @@ static void itmon_report_traceinfo(struct itmon_dev *itmon,
 	       info->baaw_prot ? "(BAAW Remapped address)" : "",
 	       trans_type == TRANS_TYPE_READ ? "READ" : "WRITE",
 	       itmon_errcode[info->err_code]);
+
+	itmon_pattern_set(itmon, "from %s %s to %s",
+			  info->src, info->client ? info->client : "",
+			  info->dest ? info->dest : NO_NAME);
 
 	log_dev_err(itmon->dev, "\n----------------------------------------------------------------------------------\n"
 	       "\t> Size           : %u bytes x %u burst => %u bytes\n"
@@ -2219,6 +2247,8 @@ static irqreturn_t itmon_irq_handler(int irq, void *data)
 	struct itmon_nodegroup *group = NULL;
 	bool ret;
 	int i;
+
+	itmon_pattern_reset(itmon);
 
 	/* Search itmon group */
 	for (i = 0; i < (int)pdata->num_nodegroup; i++) {
@@ -2565,7 +2595,7 @@ static int itmon_probe(struct platform_device *pdev)
 
 	pdata->last_time = 0;
 	pdata->last_errcnt = 0;
-
+	itmon_pattern_reset(itmon);
 	g_itmon = itmon;
 
 	for (i = 0; i < TRANS_TYPE_NUM; i++) {
