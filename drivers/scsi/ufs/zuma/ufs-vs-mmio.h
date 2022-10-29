@@ -79,7 +79,9 @@ static inline u32 pma_readl(struct ufs_vs_handle *handle, u32 ofs)
 	u32 val;
 
 	writel(clkstop_ctrl & ~MPHY_APBCLK_CAL, handle->hci + MISC_CAL);
+	DSB;
 	val = readl(handle->pma + ofs);
+	DSB;
 	writel(clkstop_ctrl | MPHY_APBCLK_CAL, handle->hci + MISC_CAL);
 	return val;
 }
