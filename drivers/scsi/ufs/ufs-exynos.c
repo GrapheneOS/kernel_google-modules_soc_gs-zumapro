@@ -201,7 +201,7 @@ static void exynos_ufs_get_caps_after_link(struct ufs_hba *hba)
 			p->max_gear, max_rx_hs_gear);
 
 	/* set for sysfs */
-	ufs->params[UFS_S_PARAM_EOM_SZ] =
+	ufs->params[UFS_SYSFS_EOM_SZ] =
 			EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX *
 			ufs_s_eom_repeat[ufs->cal_param.max_gear];
 }
@@ -938,7 +938,7 @@ static void exynos_ufs_hibern8_notify(struct ufs_hba *hba,
 			ufs_call_cal(ufs, 0, ufs_cal_pre_h8_exit);
 		} else {
 			int h8_delay_ms_ovly =
-				ufs->params[UFS_S_PARAM_H8_D_MS];
+				ufs->params[UFS_SYSFS_H8_D_MS];
 
 			/* override h8 enter delay */
 			if (h8_delay_ms_ovly)
@@ -1302,67 +1302,73 @@ static int exynos_ufs_ioremap(struct exynos_ufs *ufs, struct platform_device *pd
 
 /* sysfs to support utc, eom or whatever */
 struct exynos_ufs_sysfs_attr {
-	struct attribute attr;
-	ssize_t (*show)(struct exynos_ufs *ufs, char *buf, enum exynos_ufs_param_id id);
-	int (*store)(struct exynos_ufs *ufs, u32 value, enum exynos_ufs_param_id id);
+	struct device_attribute dev_attr;
 	int id;
 };
 
-static ssize_t exynos_ufs_sysfs_default_show(struct exynos_ufs *ufs, char *buf,
-					     enum exynos_ufs_param_id id)
-{
-	return snprintf(buf, PAGE_SIZE, "%u\n", ufs->params[id]);
+#define UFS_SYSFS_ATTR(_name, _mode, _show, _store, _id)	\
+static struct exynos_ufs_sysfs_attr ufs_attr_##_name = {	\
+	.dev_attr = {						\
+		.attr = { .name = #_name, .mode = _mode, },	\
+		.show = _show,					\
+		.store = _store,				\
+	},							\
+	.id = _id,						\
 }
 
-#define UFS_S_RO(_name, _id)						\
-	static struct exynos_ufs_sysfs_attr ufs_s_##_name = {		\
-		.attr = { .name = #_name, .mode = 0444 },		\
-		.id = _id,						\
-		.show = exynos_ufs_sysfs_default_show,			\
-	}
-
-#define UFS_S_RW(_name, _id)						\
-	static struct exynos_ufs_sysfs_attr ufs_s_##_name = {		\
-		.attr = { .name = #_name, .mode = 0666 },		\
-		.id = _id,						\
-		.show = exynos_ufs_sysfs_default_show,			\
-	}
-
-UFS_S_RO(eom_version, UFS_S_PARAM_EOM_VER);
-UFS_S_RO(eom_size, UFS_S_PARAM_EOM_SZ);
-
-static int exynos_ufs_sysfs_lane_store(struct exynos_ufs *ufs, u32 value,
-				       enum exynos_ufs_param_id id)
+static ssize_t __sysfs_show(struct device *dev,
+			    struct device_attribute *attr, char *buf)
 {
-	if (value >= ufs->num_lanes) {
-		dev_err(ufs->dev, "%s set lane to %u. Its max is %u\n",
-			ufs_s_str_token[UFS_S_TOKEN_FAIL], value, ufs->num_lanes);
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+	struct exynos_ufs *ufs = dev_get_platdata(&pdev->dev);
+	struct exynos_ufs_sysfs_attr *ufs_attr =
+		container_of(attr, struct exynos_ufs_sysfs_attr, dev_attr);
+
+	return sysfs_emit(buf, "%u\n", ufs->params[ufs_attr->id]);
+}
+
+static ssize_t __sysfs_store(struct device *dev,
+			     struct device_attribute *attr,
+			     const char *buf, size_t count)
+{
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+	struct exynos_ufs *ufs = dev_get_platdata(&pdev->dev);
+	struct exynos_ufs_sysfs_attr *ufs_attr =
+		container_of(attr, struct exynos_ufs_sysfs_attr, dev_attr);
+
+	u32 val;
+
+	if (kstrtou32(buf, 10, &val))
 		return -EINVAL;
-	}
 
-	ufs->params[id] = value;
+	ufs->params[ufs_attr->id] = val;
 
-	return 0;
+	return count;
 }
 
-static struct exynos_ufs_sysfs_attr ufs_s_lane = {
-	.attr = { .name = "lane", .mode = 0666 },
-	.id = UFS_S_PARAM_LANE,
-	.show = exynos_ufs_sysfs_default_show,
-	.store = exynos_ufs_sysfs_lane_store,
-};
-
-static int exynos_ufs_sysfs_mon_store(struct exynos_ufs *ufs, u32 value,
-				      enum exynos_ufs_param_id id)
+static ssize_t __sysfs_store_mon(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
 {
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+	struct exynos_ufs *ufs = dev_get_platdata(&pdev->dev);
+	struct exynos_ufs_sysfs_attr *ufs_attr =
+		container_of(attr, struct exynos_ufs_sysfs_attr, dev_attr);
 	struct ufs_vs_handle *handle = &ufs->handle;
+	u32 value;
+
+	if (kstrtou32(buf, 10, &value))
+		return -EINVAL;
 
 	if (value & UFS_S_MON_LV1) {
 		/* Trigger HCI error */
 		dev_info(ufs->dev, "Interface error test\n");
 		unipro_writel(handle, DBG_DL_RX_INFO_FORCE |
-			      DBG_DL_RX_INFO_TYPE | DBG_RX_BUFFER_OVERFLOW,
-			      UNIP_DBG_RX_INFO_CONTROL_DIRECT);
+				DBG_DL_RX_INFO_TYPE | DBG_RX_BUFFER_OVERFLOW,
+				UNIP_DBG_RX_INFO_CONTROL_DIRECT);
 	} else if (value & UFS_S_MON_LV2) {
 		/* Block all the interrupts */
 		dev_info(ufs->dev, "Device error test\n");
@@ -1372,171 +1378,124 @@ static int exynos_ufs_sysfs_mon_store(struct exynos_ufs *ufs, u32 value,
 		return -EINVAL;
 	}
 
-	ufs->params[id] = value;
-	return 0;
+	ufs->params[ufs_attr->id] = value;
+
+	return count;
 }
 
-static struct exynos_ufs_sysfs_attr ufs_s_monitor = {
-	.attr = { .name = "monitor", .mode = 0666 },
-	.id = UFS_S_PARAM_MON,
-	.show = exynos_ufs_sysfs_default_show,
-	.store = exynos_ufs_sysfs_mon_store,
-};
-
-static int exynos_ufs_sysfs_eom_offset_store(struct exynos_ufs *ufs, u32 offset,
-					     enum exynos_ufs_param_id id)
+static ssize_t __sysfs_show_h8_delay_ms(struct device *dev,
+					struct device_attribute *attr, char *buf)
 {
-	u32 num_per_lane = ufs->params[UFS_S_PARAM_EOM_SZ];
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+	struct exynos_ufs *ufs = dev_get_platdata(&pdev->dev);
 
-	if (offset >= num_per_lane) {
-		dev_err(ufs->dev,
-			"%s set ofs to %u. The available offset is up to %u\n",
-			ufs_s_str_token[UFS_S_TOKEN_FAIL],
-			offset, num_per_lane - 1);
+	return sysfs_emit(buf, "%lu\n", ufs->hba->clk_gating.delay_ms);
+}
+
+static ssize_t __sysfs_store_eom(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+	struct exynos_ufs *ufs = dev_get_platdata(&pdev->dev);
+
+	int ret;
+
+	ret = ufs_call_cal(ufs, 0, ufs_cal_eom);
+	if (ret) {
+		dev_err(ufs->dev, "%s store eom data\n",
+			ufs_s_str_token[UFS_S_TOKEN_FAIL]);
 		return -EINVAL;
 	}
 
-	ufs->params[id] = offset;
-
-	return 0;
+	return count;
 }
 
-static struct exynos_ufs_sysfs_attr ufs_s_eom_offset = {
-	.attr = { .name = "eom_offset", .mode = 0666 },
-	.id = UFS_S_PARAM_EOM_OFS,
-	.show = exynos_ufs_sysfs_default_show,
-	.store = exynos_ufs_sysfs_eom_offset_store,
-};
-
-static ssize_t exynos_ufs_sysfs_show_h8_delay(struct exynos_ufs *ufs,
-					      char *buf,
-					      enum exynos_ufs_param_id id)
+static ssize_t __sysfs_store_eom_res(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
 {
-	return snprintf(buf, PAGE_SIZE, "%lu\n", ufs->hba->clk_gating.delay_ms);
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+	struct exynos_ufs *ufs = dev_get_platdata(&pdev->dev);
+	int value, offset;
+	int ret;
+
+	ret = sscanf(buf, "%d %d", &value, &offset);
+	if (value >= ufs->num_lanes) {
+		dev_err(ufs->dev, "Fail set lane to %u. Its max is %u\n", value,
+				ufs->num_lanes);
+		return -EINVAL;
+	}
+
+	ufs->params[UFS_SYSFS_EOM_LANE] = value;
+	ufs->params[UFS_SYSFS_EOM_OFS] = offset * EOM_DEF_VREF_MAX;
+
+	return count;
 }
 
-static struct exynos_ufs_sysfs_attr ufs_s_h8_delay_ms = {
-	.attr = { .name = "h8_delay_ms", .mode = 0666 },
-	.id = UFS_S_PARAM_H8_D_MS,
-	.show = exynos_ufs_sysfs_show_h8_delay,
-};
-
-static int exynos_ufs_sysfs_eom_store(struct exynos_ufs *ufs, u32 value,
-				      enum exynos_ufs_param_id id)
+static ssize_t __sysfs_show_eom_res(struct device *dev,
+				    struct device_attribute *attr, char *buf)
 {
-	struct ufs_cal_param *p = &ufs->cal_param;
-	ssize_t ret;
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+	struct exynos_ufs *ufs = dev_get_platdata(&pdev->dev);
+	struct ufs_eom_result_s *p =
+		ufs->cal_param.eom[ufs->params[UFS_SYSFS_EOM_LANE]] +
+		ufs->params[UFS_SYSFS_EOM_OFS];
+	int len = 0;
+	int i;
 
-	ret = ufs_cal_eom(p);
-	if (ret)
-		dev_err(ufs->dev, "%s store eom data\n",
-			ufs_s_str_token[UFS_S_TOKEN_FAIL]);
+	for (i = 0; i < EOM_DEF_VREF_MAX; i++) {
+		len += snprintf(buf + len, PAGE_SIZE, "%u %u %u\n", p->v_phase,
+				p->v_vref, p->v_err);
+		p++;
+	}
 
-	return ret;
+	return len;
 }
 
-static struct exynos_ufs_sysfs_attr ufs_s_eom = {
-	.attr = { .name = "eom", .mode = 0222 },
-	.store = exynos_ufs_sysfs_eom_store,
-};
-
-#define UFS_S_EOM_RO(_name)							\
-static ssize_t exynos_ufs_sysfs_eom_##_name##_show(struct exynos_ufs *ufs,	\
-						   char *buf,			\
-						   enum exynos_ufs_param_id id)	\
-{										\
-	struct ufs_eom_result_s *p =						\
-			ufs->cal_param.eom[ufs->params[UFS_S_PARAM_LANE]] +	\
-			ufs->params[UFS_S_PARAM_EOM_OFS];			\
-	return snprintf(buf, PAGE_SIZE, "%u", p->v_##_name);			\
-};										\
-static struct exynos_ufs_sysfs_attr ufs_s_eom_##_name = {			\
-	.attr = { .name = "eom_"#_name, .mode = 0444 },				\
-	.id = -1,								\
-	.show = exynos_ufs_sysfs_eom_##_name##_show,				\
-}
-
-UFS_S_EOM_RO(phase);
-UFS_S_EOM_RO(vref);
-UFS_S_EOM_RO(err);
-
-static ssize_t hibern8_status_show(struct exynos_ufs *ufs, char *buf,
-				   enum exynos_ufs_param_id id)
+static ssize_t hibern8_status_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
 {
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+	struct exynos_ufs *ufs = dev_get_platdata(&pdev->dev);
 	struct ufs_vs_handle *handle = &ufs->handle;
+
 	u32 reg = hci_readl(handle, HCI_AH8_STATE);
 
 	return sprintf(buf, "%#x\n", reg);
 }
 
-static const struct exynos_ufs_sysfs_attr hibern8_status_attr = {
-	.attr = { .name = "hibern8_status", .mode = 0444 },
-	.show = hibern8_status_show,
-};
+UFS_SYSFS_ATTR(eom_version, 0444, __sysfs_show, NULL, UFS_SYSFS_EOM_VER);
+UFS_SYSFS_ATTR(eom_size, 0444, __sysfs_show, NULL, UFS_SYSFS_EOM_SZ);
+UFS_SYSFS_ATTR(h8_delay_ms, 0644, __sysfs_show_h8_delay_ms,
+	       __sysfs_store, UFS_SYSFS_H8_D_MS);
+UFS_SYSFS_ATTR(monitor, 0644, __sysfs_show, __sysfs_store_mon, UFS_SYSFS_MON);
 
-const static struct attribute *ufs_s_sysfs_attrs[] = {
-	&ufs_s_eom_version.attr,
-	&ufs_s_eom_size.attr,
-	&ufs_s_eom_offset.attr,
-	&ufs_s_eom.attr,
-	&ufs_s_eom_phase.attr,
-	&ufs_s_eom_vref.attr,
-	&ufs_s_eom_err.attr,
-	&ufs_s_lane.attr,
-	&ufs_s_h8_delay_ms.attr,
-	&ufs_s_monitor.attr,
-	&hibern8_status_attr.attr,
+UFS_SYSFS_ATTR(eom, 0200, NULL, __sysfs_store_eom, -1);
+UFS_SYSFS_ATTR(eom_res, 0666, __sysfs_show_eom_res, __sysfs_store_eom_res, -1);
+UFS_SYSFS_ATTR(hibern8_status, 0444, hibern8_status_show, NULL, -1);
+
+static struct attribute *exynos_ufs_sysfs_attrs[] = {
+	&ufs_attr_eom_version.dev_attr.attr,
+	&ufs_attr_eom_size.dev_attr.attr,
+	&ufs_attr_h8_delay_ms.dev_attr.attr,
+	&ufs_attr_monitor.dev_attr.attr,
+
+	/* not use a field named param below */
+	&ufs_attr_eom.dev_attr.attr,
+	&ufs_attr_eom_res.dev_attr.attr,
+	&ufs_attr_hibern8_status.dev_attr.attr,
 	NULL,
 };
 
-static ssize_t exynos_ufs_sysfs_show(struct kobject *kobj,
-				     struct attribute *attr, char *buf)
-{
-	struct exynos_ufs *ufs = container_of(kobj,
-			struct exynos_ufs, sysfs_kobj);
-	struct exynos_ufs_sysfs_attr *param = container_of(attr,
-			struct exynos_ufs_sysfs_attr, attr);
-
-	if (!param->show) {
-		dev_err(ufs->dev, "%s show thanks to no existence of show\n",
-			ufs_s_str_token[UFS_S_TOKEN_FAIL]);
-		return 0;
-	}
-
-	return param->show(ufs, buf, param->id);
-}
-
-static ssize_t exynos_ufs_sysfs_store(struct kobject *kobj,
-				      struct attribute *attr,
-				      const char *buf, size_t length)
-{
-	struct exynos_ufs *ufs = container_of(kobj,
-			struct exynos_ufs, sysfs_kobj);
-	struct exynos_ufs_sysfs_attr *param = container_of(attr,
-			struct exynos_ufs_sysfs_attr, attr);
-	u32 val;
-	int ret = 0;
-
-	if (kstrtou32(buf, 10, &val))
-		return -EINVAL;
-
-	if (!param->store) {
-		ufs->params[param->id] = val;
-		return length;
-	}
-
-	ret = param->store(ufs, val, param->id);
-	return (ret == 0) ? length : (ssize_t)ret;
-}
-
-static const struct sysfs_ops exynos_ufs_sysfs_ops = {
-	.show	= exynos_ufs_sysfs_show,
-	.store	= exynos_ufs_sysfs_store,
-};
-
-static struct kobj_type ufs_s_ktype = {
-	.sysfs_ops	= &exynos_ufs_sysfs_ops,
-	.release	= NULL,
+static const struct attribute_group exynos_ufs_group = {
+	.name = "exynos-ufs",
+	.attrs = exynos_ufs_sysfs_attrs,
 };
 
 static int exynos_ufs_sysfs_init(struct exynos_ufs *ufs)
@@ -1549,31 +1508,23 @@ static int exynos_ufs_sysfs_init(struct exynos_ufs *ufs)
 	for (i = 0; i < MAX_LANE; i++) {
 		ufs->cal_param.eom[i] =
 			devm_kcalloc(ufs->dev, EOM_MAX_SIZE,
-				     sizeof(struct ufs_eom_result_s), GFP_KERNEL);
+					sizeof(struct ufs_eom_result_s), GFP_KERNEL);
 		p = ufs->cal_param.eom[i];
 		if (!p) {
 			dev_err(ufs->dev, "%s allocate eom data\n",
-				ufs_s_str_token[UFS_S_TOKEN_FAIL]);
+					ufs_s_str_token[UFS_S_TOKEN_FAIL]);
 			goto fail_mem;
 		}
 	}
 
-	/* create a path of /sys/kernel/ufs_x */
-	kobject_init(&ufs->sysfs_kobj, &ufs_s_ktype);
-	error = kobject_add(&ufs->sysfs_kobj, kernel_kobj,
-			    "ufs_%c", (char)(ufs->id + '0'));
+	/*
+	 * create an attributes group with a path of /sys/devices/platform/..
+	 */
+	error = sysfs_create_group(&ufs->dev->kobj, &exynos_ufs_group);
 	if (error) {
-		dev_err(ufs->dev, "%s register sysfs directory: %d\n",
-			ufs_s_str_token[UFS_S_TOKEN_FAIL], error);
-		goto fail_kobj;
-	}
-
-	/* create attributes */
-	error = sysfs_create_files(&ufs->sysfs_kobj, ufs_s_sysfs_attrs);
-	if (error) {
-		dev_err(ufs->dev, "%s create sysfs files: %d\n",
-			ufs_s_str_token[UFS_S_TOKEN_FAIL], error);
-		goto fail_kobj;
+		dev_err(ufs->dev, "%s create sysfs group: %d\n",
+				ufs_s_str_token[UFS_S_TOKEN_FAIL], error);
+		goto fail_mem;
 	}
 
 	/*
@@ -1584,14 +1535,12 @@ static int exynos_ufs_sysfs_init(struct exynos_ufs *ufs)
 	 * from device tree when eom code is revised, even though I expect
 	 * it's not gonna to happen.
 	 */
-	ufs->params[UFS_S_PARAM_EOM_VER] = 0;
-	ufs->params[UFS_S_PARAM_MON] = 0;
-	ufs->params[UFS_S_PARAM_H8_D_MS] = 4;
+	ufs->params[UFS_SYSFS_EOM_VER] = 0;
+	ufs->params[UFS_SYSFS_MON] = 0;
+	ufs->params[UFS_SYSFS_H8_D_MS] = 4;
 
 	return 0;
 
-fail_kobj:
-	kobject_put(&ufs->sysfs_kobj);
 fail_mem:
 	for (i = 0; i < MAX_LANE; i++) {
 		if (ufs->cal_param.eom[i])
@@ -1599,11 +1548,6 @@ fail_mem:
 		ufs->cal_param.eom[i] = NULL;
 	}
 	return error;
-}
-
-static inline void exynos_ufs_sysfs_exit(struct exynos_ufs *ufs)
-{
-	kobject_put(&ufs->sysfs_kobj);
 }
 
 static u64 exynos_ufs_dma_mask = DMA_BIT_MASK(32);
@@ -1693,7 +1637,7 @@ static int exynos_ufs_remove(struct platform_device *pdev)
 
 	ufs_host_index--;
 
-	exynos_ufs_sysfs_exit(ufs);
+	sysfs_remove_group(&ufs->dev->kobj, &exynos_ufs_group);
 	pixel_exit(hba);
 
 	disable_irq(hba->irq);
