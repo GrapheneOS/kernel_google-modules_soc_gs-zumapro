@@ -336,7 +336,7 @@ static enum ufs_cal_errno __config_uic(struct ufs_vs_handle *handle, u8 lane,
 	case HCI_AH8_REFCLKGATINGTING:
 		if (p->ah8_brefclkgatingwaittime > REFCLK_WTV_MAX)
 			p->ah8_brefclkgatingwaittime = REFCLK_WTV_MAX;
-		hci_writel(handle, p->ah8_brefclkgatingwaittime, cfg->addr);
+		hci_writel(handle, p->ah8_brefclkgatingwaittime + 5, cfg->addr);
 		break;
 	case HCI_AH8_ACTIVE_LANE:
 		value = (p->connected_rx_lane << 16) | PHY_PMA_LANE_OFFSET;
