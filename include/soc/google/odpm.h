@@ -102,6 +102,8 @@ struct odpm_info {
 	struct alarm alarmtimer_refresh;
 	struct wakeup_source *ws;
 
+	struct platform_device *odpm_vbatt_en_pdev;
+
 	u64 last_poll_ktime_boot_ns;
 	bool sleeping;
 };
