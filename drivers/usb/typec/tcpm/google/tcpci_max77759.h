@@ -21,6 +21,7 @@
 struct gvotable_election;
 struct logbuffer;
 struct max77759_contaminant;
+struct max77759_compliance_warnings;
 struct tcpci_data;
 
 struct max77759_plat {
@@ -151,6 +152,10 @@ struct max77759_plat {
 	struct kthread_delayed_work max77759_io_error_work;
 	/* Hold before calling _max77759_irq */
 	struct mutex irq_status_lock;
+
+	/* non compliant reasons */
+	struct max77759_compliance_warnings *compliance_warnings;
+
 	/* EXT_BST_EN exposed as GPIO */
 #ifdef CONFIG_GPIOLIB
 	struct gpio_chip gpio;
@@ -208,4 +213,22 @@ enum tcpm_psy_online_states {
 void enable_data_path_locked(struct max77759_plat *chip);
 void data_alt_path_active(struct max77759_plat *chip, bool active);
 void register_data_active_callback(void (*callback)(void *data_active_payload), void *data);
+
+#define COMPLIANCE_WARNING_OTHER 0
+#define COMPLIANCE_WARNING_DEBUG_ACCESSORY 1
+#define COMPLIANCE_WARNING_BC12 2
+#define COMPLIANCE_WARNING_MISSING_RP 3
+
+struct max77759_compliance_warnings {
+	struct max77759_plat *chip;
+	bool other;
+	bool debug_accessory;
+	bool bc12;
+	bool missing_rp;
+};
+
+ssize_t compliance_warnings_to_buffer(struct max77759_compliance_warnings *compliance_warnings,
+				      char *buf);
+void update_compliance_warnings(struct max77759_plat *chip, int warning, bool value);
+
 #endif /* __TCPCI_MAX77759_H */
