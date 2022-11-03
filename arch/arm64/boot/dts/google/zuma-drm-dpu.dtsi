@@ -516,6 +516,7 @@
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
+		power-domains = <&pd_dpuf0>, <&pd_dpuf1>;
 
 		max_win = <14>;
 
@@ -592,6 +593,7 @@
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
+		power-domains = <&pd_dpuf0>, <&pd_dpuf1>;
 
 		max_win = <14>;
 
@@ -663,6 +665,7 @@
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
+		power-domains = <&pd_dpuf0>, <&pd_dpuf1>;
 
 		max_win = <14>;
 
