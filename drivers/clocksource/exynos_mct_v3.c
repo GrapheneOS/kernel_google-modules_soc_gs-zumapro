@@ -175,8 +175,32 @@ static int mct_set_state_shutdown(struct clock_event_device *evt)
 	return 0;
 }
 
-static int mct_set_state_periodic(struct clock_event_device *evt)
+static void mct_set_state_suspend(struct clock_event_device *evt)
 {
+	struct mct_clock_event_device *mevt;
+
+	mevt = container_of(evt, struct mct_clock_event_device, evt);
+
+	exynos_mct_comp_stop(mevt);
+
+	return;
+}
+
+static void mct_set_state_resume(struct clock_event_device *evt)
+{
+	unsigned long cycles_per_jiffy;
+	struct mct_clock_event_device *mevt;
+
+	mevt = container_of(evt, struct mct_clock_event_device, evt);
+
+	cycles_per_jiffy = (((unsigned long long)NSEC_PER_SEC / HZ * evt->mult) >> evt->shift);
+	exynos_mct_comp_start(mevt, false, cycles_per_jiffy);
+
+	return;
+}
+
+
+static int mct_set_state_periodic(struct clock_event_device *evt) {
 	unsigned long cycles_per_jiffy;
 	struct mct_clock_event_device *mevt;
 
@@ -221,6 +245,8 @@ static int exynos_mct_starting_cpu(unsigned int cpu)
 	evt->features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT |
 			CLOCK_EVT_FEAT_PERCPU;
 	evt->rating = MCT_CLKEVENTS_RATING;
+	evt->suspend = mct_set_state_suspend;
+	evt->resume = mct_set_state_resume;
 
 	if (evt->irq == -1)
 		return -EIO;
