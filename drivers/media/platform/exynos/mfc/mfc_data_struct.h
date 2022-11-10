@@ -2022,8 +2022,7 @@ struct mfc_dec {
 	int crc_luma1;
 	int crc_chroma1;
 
-	unsigned long consumed;
-	unsigned long remained_size;
+	unsigned int consumed;
 	dma_addr_t y_addr_for_pb;
 
 	int sei_parse;

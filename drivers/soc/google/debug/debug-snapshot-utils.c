@@ -176,7 +176,14 @@ EXPORT_SYMBOL_GPL(dbg_snapshot_start_watchdog);
 int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 {
 	void *addr;
-	char reboot_msg[DSS_PANIC_STRING_SZ] = "Emergency Reboot";
+	char *reboot_msg;
+
+	reboot_msg = kmalloc(DSS_PANIC_STRING_SZ, GFP_ATOMIC);
+	if (!reboot_msg) {
+		dev_emerg(dss_desc.dev,
+			  "Out of memory! Couldn't allocate reboot message\n");
+		return -ENOMEM;
+	}
 
 	if (!dss_soc_ops.expire_watchdog) {
 		dev_emerg(dss_desc.dev, "There is no wdt functions!\n");
@@ -192,7 +199,7 @@ int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 
 	dbg_snapshot_set_wdt_caller((unsigned long)addr);
 	if (str)
-		scnprintf(reboot_msg, sizeof(reboot_msg), str);
+		scnprintf(reboot_msg, DSS_PANIC_STRING_SZ, str);
 
 	dev_emerg(dss_desc.dev, "WDT Caller: %pS %s\n", addr, str ? str : "");
 
@@ -200,6 +207,7 @@ int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 	dump_stack();
 
 	dss_soc_ops.expire_watchdog(tick, 0);
+	kfree(reboot_msg);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_emergency_reboot_timeout);
@@ -596,11 +604,18 @@ static struct die_args *tombstone;
 static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 				   unsigned long l, void *buf)
 {
-	char kernel_panic_msg[DSS_PANIC_STRING_SZ] = "Kernel Panic";
+	char *kernel_panic_msg;
 	unsigned long cpu;
 
 	if (!dbg_snapshot_get_enable())
 		return 0;
+
+	kernel_panic_msg = kmalloc(DSS_PANIC_STRING_SZ, GFP_ATOMIC);
+	if (!kernel_panic_msg) {
+		dev_emerg(dss_desc.dev,
+			  "Out of memory! Couldn't allocate panic string\n");
+		return -ENOMEM;
+	}
 
 	dss_desc.in_panic = true;
 
@@ -615,11 +630,11 @@ static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 		sprint_symbol(pc_symn, tombstone->regs->pc);
 		sprint_symbol(lr_symn, tombstone->regs->regs[30]);
 #endif
-		scnprintf(kernel_panic_msg, sizeof(kernel_panic_msg),
+		scnprintf(kernel_panic_msg, DSS_PANIC_STRING_SZ,
 				"KP: %s: comm:%s PC:%s LR:%s", (char *)buf,
 				current->comm, pc_symn, lr_symn);
 	} else {
-		scnprintf(kernel_panic_msg, sizeof(kernel_panic_msg), "KP: %s",
+		scnprintf(kernel_panic_msg, DSS_PANIC_STRING_SZ, "KP: %s",
 				(char *)buf);
 	}
 
@@ -646,6 +661,7 @@ static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 	if (num_online_cpus() > 1)
 		dbg_snapshot_emergency_reboot(kernel_panic_msg);
 
+	kfree(kernel_panic_msg);
 	return 0;
 }
 

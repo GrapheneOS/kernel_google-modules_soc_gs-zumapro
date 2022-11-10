@@ -37,6 +37,7 @@ void exynos_pcie_rc_phy_check_rx_elecidle(void *phy_pcs_base_regs, int val, int 
 void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 {
 	void __iomem *phy_base_regs = exynos_pcie->phy_base;
+	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
 	u32 val;
 
 	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
@@ -95,6 +96,13 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0xAA, phy_base_regs + 0x0928);
 
 		writel(0x0A, phy_base_regs + 0x000C);
+
+		// For the process time of clock switching from SOC OSCCLK to OSCCLK
+		udelay(50);
+
+		// External PLL for PCIe PHY
+		val = readl(udbg_base_regs + 0xC700) | (0x1 << 1);
+		writel(val, udbg_base_regs + 0xC700);
 	}
 }
 

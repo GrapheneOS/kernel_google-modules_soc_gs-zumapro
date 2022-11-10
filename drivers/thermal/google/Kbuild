@@ -2,5 +2,8 @@
 ccflags-y += -I$(srctree)/drivers/thermal
 
 obj-$(CONFIG_GOOGLE_BCL)	+= google_bcl.o
+google_bcl-y			+= google_bcl_core.o
+google_bcl-y			+= google_bcl_sysfs.o
+google_bcl-y			+= google_bcl_util.o
 obj-$(CONFIG_GSOC_PMIC_THERMAL) += gs101_spmic_thermal.o
 obj-$(CONFIG_GSOC_PMIC_THERMAL_CAMBRIA)	+= s2mpg15_spmic_thermal.o

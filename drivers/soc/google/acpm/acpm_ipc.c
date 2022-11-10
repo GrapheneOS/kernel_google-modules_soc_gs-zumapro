@@ -22,6 +22,7 @@
 #include <linux/debugfs.h>
 #include <linux/bitmap.h>
 #include <trace/hooks/systrace.h>
+#include <linux/kernel_stat.h>
 #include <soc/google/exynos-debug.h>
 #include <soc/google/debug-snapshot.h>
 
@@ -42,6 +43,7 @@ static struct acpm_ipc_info *acpm_ipc;
 static struct workqueue_struct *update_log_wq;
 static struct acpm_debug_info *acpm_debug;
 static bool is_acpm_stop_log;
+static struct cpu_irq_info *irq_info;
 
 static struct acpm_framework *acpm_initdata;
 static void __iomem *acpm_srambase;
@@ -576,6 +578,65 @@ int acpm_ipc_send_data_sync(unsigned int channel_id, struct ipc_config *cfg)
 }
 EXPORT_SYMBOL_GPL(acpm_ipc_send_data_sync);
 
+#ifndef arch_irq_stat
+#define arch_irq_stat() 0
+#endif
+
+extern int nr_irqs;
+
+static void cpu_irq_info_dump(u32 retry)
+{
+	int i, cpu;
+	u64 sum = 0;
+
+	for_each_possible_cpu(cpu)
+		sum += kstat_cpu_irqs_sum(cpu);
+
+	sum += arch_irq_stat();
+
+	if (retry == 5)
+		pr_info("<Dump delta of irq counts>\n");
+
+	for_each_irq_nr(i) {
+		struct irq_data *data;
+		struct irq_desc *desc;
+		unsigned int irq_stat = 0, delta;
+		const char *name;
+
+		data = irq_get_irq_data(i);
+		if (!data)
+			continue;
+
+		desc = irq_data_to_desc(data);
+		if (!desc)
+			continue;
+
+		for_each_possible_cpu(cpu)
+			irq_stat += *per_cpu_ptr(desc->kstat_irqs, cpu);
+
+		if (!irq_stat)
+			continue;
+
+		if (desc->action && desc->action->name)
+			name = desc->action->name;
+		else
+			name = "???";
+
+		if (retry == 1) {
+			irq_info[i].irq_num = i;
+			irq_info[i].hwirq_num = desc->irq_data.hwirq;
+			irq_info[i].irq_stat = irq_stat;
+			irq_info[i].name = name;
+		} else if (retry == 5) {
+			delta = irq_stat - irq_info[i].irq_stat;
+			if (delta > 0) {
+				pr_info("irq-%-4d(hwirq-%-3d) delta of irqs: %8u %s\n",
+					i, (int)desc->irq_data.hwirq, delta, name);
+			}
+		}
+	}
+}
+
 int __acpm_ipc_send_data(unsigned int channel_id, struct ipc_config *cfg, bool w_mode)
 {
 	volatile unsigned int tx_front, tx_rear, rx_front;
@@ -705,6 +766,7 @@ retry:
 						__raw_readl(acpm_ipc->intr + INTMR1),
 						__raw_readl(acpm_ipc->intr + INTMSR1));
 
+					cpu_irq_info_dump(retry_cnt);
 					++retry_cnt;
 
 					goto retry;
@@ -1021,6 +1083,9 @@ int acpm_ipc_probe(struct platform_device *pdev)
 	}
 
 	ret = plugins_init(node);
+
+	irq_info = kcalloc(nr_irqs, sizeof(struct cpu_irq_info), GFP_KERNEL);
+
 	dev_info(&pdev->dev, "acpm_ipc probe done.\n");
 	return ret;
 }

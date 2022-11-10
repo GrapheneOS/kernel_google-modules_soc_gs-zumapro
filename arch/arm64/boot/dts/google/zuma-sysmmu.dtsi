@@ -92,7 +92,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A650000>;
-		/* power-domains = <&pd_bw>; */
+		power-domains = <&pd_bw>;
 
 		port-name = "BW";
 		#iommu-cells = <0>;
@@ -653,6 +653,8 @@
 			<15 STR_CFG(STR_SPTLB(0x00, 0x0F), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_PREF) DIR_RW STR_ID(0x3D) STR_MASK(0x3C)>,
 			<16 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_PREF) DIR_RW STR_ID(0x3E) STR_MASK(0x3C)>,
 			<17 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_PREF) DIR_RW STR_ID(0x3F) STR_MASK(0x3C)>;
+		sysmmu,async-fault;
+		sysmmu,hide-page-fault;
 	};
 
 	sysmmu_yuvp: sysmmu@1C870000 {

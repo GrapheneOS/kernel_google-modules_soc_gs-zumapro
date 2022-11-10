@@ -59,13 +59,13 @@ enum exynos_ufs_ext_blks {
 };
 
 enum exynos_ufs_param_id {
-	UFS_S_PARAM_EOM_VER = 0,
-	UFS_S_PARAM_EOM_SZ,
-	UFS_S_PARAM_EOM_OFS,
-	UFS_S_PARAM_LANE,
-	UFS_S_PARAM_H8_D_MS,
-	UFS_S_PARAM_MON,
-	UFS_S_PARAM_NUM,
+	UFS_SYSFS_EOM_VER = 0,
+	UFS_SYSFS_EOM_SZ,
+	UFS_SYSFS_EOM_OFS,
+	UFS_SYSFS_EOM_LANE,
+	UFS_SYSFS_H8_D_MS,
+	UFS_SYSFS_MON,
+	UFS_SYSFS_NUM,
 };
 
 struct exynos_ufs {
@@ -140,7 +140,7 @@ struct exynos_ufs {
 	 * for specific purposes, e.g. unit test cases, or report
 	 * some information to user land.
 	 */
-	u32 params[UFS_S_PARAM_NUM];
+	u32 params[UFS_SYSFS_NUM];
 
 	/* sysfs */
 	struct kobject sysfs_kobj;

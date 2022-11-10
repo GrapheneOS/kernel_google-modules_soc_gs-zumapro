@@ -25,7 +25,7 @@
 
 #define GS_POWER_STATS_PREFIX "power_stats: "
 
-static char const *const mif_user_names[NUM_MIF_USERS] = { "AOC", "GSA" };
+static char const *const mif_user_names[NUM_MIF_USERS] = { "AOC", "GSA", "TPU", "AUR"};
 
 static char const *const slc_user_names[NUM_SLC_USERS] = { "AOC" };
 
@@ -41,7 +41,7 @@ static char const *const core_names[NUM_CORES] = { "CORE00", "CORE01", "CORE02",
 						   "CORE12", "CORE13", "CORE21" };
 
 static char const *const domain_names[NUM_DOMAINS] = { "MIF", "TPU", "CL0",
-						       "CL1", "CL2" };
+						       "CL1", "CL2", "AUR"};
 
 struct pd_entry {
 	struct list_head entry;

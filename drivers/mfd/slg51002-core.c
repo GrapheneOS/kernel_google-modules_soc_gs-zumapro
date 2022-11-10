@@ -636,6 +636,8 @@ static int slg51002_i2c_probe(struct i2c_client *client,
 
 		slg51002->chip_bb_pin = gpio;
 		usleep_range(2000, 2020);
+	} else {
+		slg51002->chip_bb_pin = -1;
 	}
 
 	/* optional property */
@@ -653,6 +655,8 @@ static int slg51002_i2c_probe(struct i2c_client *client,
 
 		slg51002->chip_buck_pin = gpio;
 		usleep_range(2000, 2020);
+	} else {
+		slg51002->chip_buck_pin = -1;
 	}
 
 	/* mandatory property. It wakes the chip from low-power reset state */
@@ -736,6 +740,8 @@ static int slg51002_i2c_probe(struct i2c_client *client,
 
 		slg51002->chip_pu_pin = gpio;
 		usleep_range(1000, 1020);
+	} else {
+		slg51002->chip_pu_pin = -1;
 	}
 
 	slg51002_clear_fault_log(slg51002);

@@ -33,12 +33,14 @@ enum sys_powermode {
 enum mif_users {
 	MIF_USER_AOC,
 	MIF_USER_GSA,
-	NUM_MIF_USERS, // NR_MIF_USERS in plugins/flexpmu/<arch>/sfr_map.h
+	MIF_USER_TPU,
+	MIF_USER_AUR,
+	NUM_MIF_USERS, // NR_MIF_USERS (excluding AP) in plugins/flexpmu/<arch>/flexpmu_sfr_map.h
 };
 
 enum slc_users {
 	SLC_USER_AOC,
-	NUM_SLC_USERS, // NR_SLC_USERS in plugins/flexpmu/<arch>/sfr_map.h
+	NUM_SLC_USERS, // NR_SLC_USERS (excluding AP) in plugins/flexpmu/<arch>/flexpmu_sfr_map.h
 };
 
 // Defined in flexpmu_cal_cpu_zuma.h
@@ -69,6 +71,7 @@ enum fvp_domains {
 	DOMAIN_CPUCL0,
 	DOMAIN_CPUCL1,
 	DOMAIN_CPUCL2,
+	DOMAIN_AUR,
 	NUM_DOMAINS,
 };
 

@@ -101,7 +101,6 @@ static void vendor_kernel_info_work_fn(struct work_struct *work)
 	}
 
 	update_vendor_kernel_all_info();
-	cancel_delayed_work_sync(&vendor_kernel_info_work);
 }
 
 static int debug_snapshot_debug_kinfo_probe(struct platform_device *pdev)

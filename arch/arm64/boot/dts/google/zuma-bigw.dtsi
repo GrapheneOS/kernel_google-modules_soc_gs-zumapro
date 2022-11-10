@@ -19,6 +19,7 @@
 		iommus = <&sysmmu_bw>;
 		samsung,iommu-group = <&iommu_group_bw>;
 		pt_id = "bigwave";
+		power-domains = <&pd_bw>;
 	};
 
 	bigw_opp_table: bigw_opp_table {
