@@ -1301,6 +1301,17 @@ static int exynos_ufs_ioremap(struct exynos_ufs *ufs, struct platform_device *pd
 	return ret;
 }
 
+static void exynos_ufs_iounmap(struct exynos_ufs *ufs)
+{
+	void **p;
+	int i;
+
+	for (i = 0, p = &ufs->reg_hci; i < NUM_OF_UFS_MMIO_REGIONS; i++, p++) {
+		devm_iounmap(ufs->dev, *p);
+		*p = NULL;
+	}
+}
+
 /* sysfs to support utc, eom or whatever */
 struct exynos_ufs_sysfs_attr {
 	struct device_attribute dev_attr;
@@ -1551,6 +1562,17 @@ fail_mem:
 	return error;
 }
 
+static void exynos_ufs_sysfs_exit(struct exynos_ufs *ufs)
+{
+	int i;
+
+	sysfs_remove_group(&ufs->dev->kobj, &exynos_ufs_group);
+	for (i = 0; i < MAX_LANE; i++) {
+		devm_kfree(ufs->dev, ufs->cal_param.eom[i]);
+		ufs->cal_param.eom[i] = NULL;
+	}
+}
+
 static u64 exynos_ufs_dma_mask = DMA_BIT_MASK(32);
 
 static int exynos_ufs_probe(struct platform_device *pdev)
@@ -1575,7 +1597,7 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 	/* remap regions */
 	ret = exynos_ufs_ioremap(ufs, pdev);
 	if (ret)
-		goto out;
+		goto free_exynos_ufs;
 	ufs_map_vs_regions(ufs);
 
 	/* populate device tree nodes */
@@ -1583,14 +1605,14 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "%s get dt info.\n",
 			ufs_s_str_token[UFS_S_TOKEN_FAIL]);
-		return ret;
+		goto iounmap;
 	}
 
 	/* init cal */
 	ufs->cal_param.handle = &ufs->handle;
 	ret = ufs_call_cal(ufs, 1, ufs_cal_init);
 	if (ret)
-		return ret;
+		goto iounmap;
 	dev_info(dev, "===============================\n");
 
 	/* idle ip nofification for SICD, disable by default */
@@ -1608,7 +1630,7 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 	/* init dbg */
 	ret = exynos_ufs_init_dbg(&ufs->handle, dev);
 	if (ret)
-		return ret;
+		goto remove_qos_request;
 	spin_lock_init(&ufs->dbg_lock);
 
 	/* store ufs host symbols to analyse later */
@@ -1627,7 +1649,25 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 
 	/* go to core driver through the glue driver */
 	ret = ufshcd_pltfrm_init(pdev, &exynos_ufs_ops);
+	if (ret)
+		goto sysfs_exit;
+
 out:
+	return ret;
+
+sysfs_exit:
+	exynos_ufs_sysfs_exit(ufs);
+
+remove_qos_request:
+#if defined(CONFIG_EXYNOS_PM_QOS) || defined(CONFIG_EXYNOS_PM_QOS_MODULE)
+	exynos_pm_qos_remove_request(&ufs->pm_qos_int);
+#endif
+
+iounmap:
+	exynos_ufs_iounmap(ufs);
+
+free_exynos_ufs:
+	devm_kfree(dev, ufs);
 	return ret;
 }
 
