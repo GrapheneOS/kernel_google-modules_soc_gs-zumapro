@@ -356,6 +356,7 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 			trace_thermal_exynos_acpm_bulk(
 				(int)(gov_buffer.buffered_curr_state[start_idx].tzid),
 				(int)(gov_buffer.buffered_curr_state[start_idx].temperature),
+				(int)(gov_buffer.buffered_curr_state[start_idx].ctrl_temp),
 				(unsigned long)(gov_buffer.buffered_curr_state[start_idx]
 							.cdev_state),
 				acpm_to_kernel_ts(
@@ -367,37 +368,19 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 	case ACPM_GOV_DEBUG_MODE_HIGH_OVERHEAD: {
 		struct gs_tmu_data *data;
 
-		/* current version of curr_state is only supported in verion 0 */
-		if((acpm_gov_common.buffer_version & 0xff) != 0)
+		/* current version of curr_state is only supported in verion 1 */
+		if((acpm_gov_common.buffer_version & 0xff) != 1)
 			return;
 
 		list_for_each_entry (data, &dtm_dev_list, node) {
-			struct thermal_zone_device *tz = data->tzd;
-			u32 max_power = 0, power_range = 0;
 			struct curr_state curr_state;
-			int control_temp;
-			int ret = 0;
-
-			if (data->tzd && data->pi_param) {
-				ret = data->tzd->ops->get_trip_temp(
-					data->tzd, data->pi_param->trip_control_temp,
-					&control_temp);
-				if (ret) {
-					pr_warn("Failed to get control temperature: %d\n", ret);
-					control_temp = 0;
-				}
-			} else {
-				control_temp = 0;
-			}
 
 			if (get_curr_state_from_acpm(acpm_gov_common.sm_base, data->id,
 						     &curr_state)) {
-				tz->temperature = curr_state.temperature * 1000;
-				trace_thermal_exynos_power_allocator(tz, power_range, max_power,
-								     tz->temperature,
-								     control_temp - tz->temperature,
-								     curr_state.cdev_state,
-								     data->is_hardlimited);
+				trace_thermal_exynos_acpm_high_overhead((int)data->id,
+									(int)curr_state.temperature,
+									(int)curr_state.ctrl_temp,
+									(unsigned long)curr_state.cdev_state);
 			}
 		}
 	} break;

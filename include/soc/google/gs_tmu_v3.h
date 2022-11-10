@@ -363,6 +363,8 @@ struct gov_data {
 struct curr_state {
 	u8 cdev_state;
 	u8 temperature;
+	u8 ctrl_temp;
+	u8 reserved;
 };
 
 struct buffered_curr_state {
@@ -370,7 +372,8 @@ struct buffered_curr_state {
 	u8 tzid;
 	u8 cdev_state;
 	u8 temperature;
-	u8 reserved[5];
+	u8 ctrl_temp;
+	u8 reserved[4];
 };
 
 struct gov_trace_data_struct {
