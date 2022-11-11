@@ -1,4 +1,4 @@
-KCONFIG_EXT_PREFIX=${DEVICE_MODULES_DIR}
+KCONFIG_EXT_PREFIX=${SOC_DIR}
 # TODO(b/231473697): use realpath --relative-to
 # rel_path does not work with Kleaf --config=local builds because
 # rel_path is not simplified enough (e.g. the following evaluates to
@@ -10,12 +10,7 @@ KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.aarch64
 
 DEFCONFIG=zuma_gki_defconfig
-CORE_KERNEL_FRAGMENT_DEFCONFIG=${CORE_KERNEL_FRAGMENT_DEFCONFIG:-zuma_emulator_modified_gki.fragment}
-MERGE_CONFIG_EXTRA_ARGS=()
-if [ -n "${CORE_KERNEL_FRAGMENT_DEFCONFIG}" ]; then
-  MERGE_CONFIG_EXTRA_ARGS+=(${ROOT_DIR}/${DEVICE_MODULES_DIR}/arch/arm64/configs/${CORE_KERNEL_FRAGMENT_DEFCONFIG})
-fi
-PRE_DEFCONFIG_CMDS="mkdir -p \${OUT_DIR}/arch/arm64/configs/ && KCONFIG_CONFIG=\${OUT_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${MERGE_CONFIG_EXTRA_ARGS[@]} ${ROOT_DIR}/${DEVICE_MODULES_DIR}/arch/arm64/configs/${GKI_FRAGMENT_DEFCONFIG}"
+PRE_DEFCONFIG_CMDS="mkdir -p \${OUT_DIR}/arch/arm64/configs/ && KCONFIG_CONFIG=\${OUT_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${ROOT_DIR}/${GKI_FRAGMENT_DEFCONFIG}"
 POST_DEFCONFIG_CMDS=""
 
 MAKE_GOALS=
@@ -28,9 +23,9 @@ BUILD_VENDOR_KERNEL_BOOT=1
 LZ4_RAMDISK=1
 BOOT_IMAGE_HEADER_VERSION=4
 TRIM_UNUSED_MODULES=1
-VENDOR_DLKM_MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_dlkm_modules.zuma
-VENDOR_DLKM_MODULES_BLOCKLIST=${DEVICE_MODULES_DIR}/vendor_dlkm.blocklist.zuma
-VENDOR_DLKM_PROPS=${DEVICE_MODULES_DIR}/vendor_dlkm.props.zuma
+VENDOR_DLKM_MODULES_LIST=${SOC_DIR}/vendor_dlkm_modules.zuma
+VENDOR_DLKM_MODULES_BLOCKLIST=${SOC_DIR}/vendor_dlkm.blocklist.zuma
+VENDOR_DLKM_PROPS=${SOC_DIR}/vendor_dlkm.props.zuma
 
 AVB_SIGN_BOOT_IMG=1
 AVB_BOOT_PARTITION_SIZE=0x04000000

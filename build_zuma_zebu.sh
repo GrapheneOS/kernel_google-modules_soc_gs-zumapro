@@ -1,7 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 # SPDX-License-Identifier: GPL-2.0
 
 set -e
+
+export GKI_KERNEL_DIR=${GKI_KERNEL_DIR:-"aosp-staging"}
+export KLEAF_SUPPRESS_BUILD_SH_DEPRECATION_WARNING=1
 
 : ${OUT_DIR:="out/"}
 export OUT_DIR
@@ -10,11 +13,17 @@ export OUT_DIR
 
 echo "Using build config ${BUILD_CONFIG}"
 
+# TODO(b/239987494): Remove this when the core GKI fragment is removed.
+# Since we can't have two build config fragments, any alternative use
+# of GKI_BUILD_CONFIG_FRAGMENT must include CORE_GKI_FRAGMENT,
+# i.e. `source ${CORE_GKI_FRAGMENT}`.
+export CORE_GKI_FRAGMENT=private/google-modules/soc/gs/build.config.zuma.gki.fragment
+
 FAST_BUILD=1 \
-BUILD_CONFIG="${BUILD_CONFIG}" \
-GKI_BUILD_CONFIG=private/google-modules/soc/gs/build.config.zuma.gki \
-CORE_KERNEL_FRAGMENT_DEFCONFIG=zuma_emulator_modified_gki.fragment \
-build/build.sh "$@"
+  BUILD_CONFIG="${BUILD_CONFIG}" \
+  GKI_BUILD_CONFIG_FRAGMENT=${GKI_BUILD_CONFIG_FRAGMENT:-${CORE_GKI_FRAGMENT}} \
+  GKI_BUILD_CONFIG="${GKI_KERNEL_DIR}/build.config.gki.aarch64" \
+  build/build.sh "$@"
 
 BASE_OUT=${OUT_DIR}/
 DIST_DIR=${DIST_DIR:-${BASE_OUT}/dist/}
