@@ -24,6 +24,7 @@
 #include <soc/google/exynos-cpupm.h>
 #include <soc/google/cal-if.h>
 #include <soc/google/exynos-pmu-if.h>
+#include <soc/google/exynos-pm.h>
 #include <soc/google/debug-snapshot.h>
 #include <soc/google/acpm_ipc_ctrl.h>
 
@@ -807,7 +808,6 @@ static bool entry_allow(int cpu, struct power_mode *mode)
 	return true;
 }
 
-extern u32 exynos_eint_wake_mask_array[3];
 static void set_wakeup_mask(void)
 {
 	int i;

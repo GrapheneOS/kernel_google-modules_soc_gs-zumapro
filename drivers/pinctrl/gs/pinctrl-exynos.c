@@ -26,6 +26,7 @@
 #include <linux/regmap.h>
 #include <linux/err.h>
 #include <soc/google/exynos-pmu-if.h>
+#include <soc/google/exynos-pm.h>
 #include <linux/soc/samsung/exynos-regs-pmu.h>
 
 #include <dt-bindings/pinctrl/samsung.h>
@@ -415,8 +416,8 @@ err_domains:
 	return ret;
 }
 
-DECLARE_BITMAP(exynos_eint_wake_mask_bitmap, 96) = { [0 ... BITS_TO_LONGS(96) - 1] = ~0UL};
-u32 exynos_eint_wake_mask_array[3] = {~0U, ~0U, ~0U};
+DECLARE_BITMAP(exynos_eint_wake_mask_bitmap, BITMAP_SIZE) = { [0 ... BITS_TO_LONGS(BITMAP_SIZE) - 1] = ~0UL};
+u32 exynos_eint_wake_mask_array[EINTMASK_ARR_SIZE] = {~0U, ~0U, ~0U};
 EXPORT_SYMBOL(exynos_eint_wake_mask_array);
 
 static int exynos_wkup_irq_set_wake(struct irq_data *irqd, unsigned int on)
@@ -426,6 +427,12 @@ static int exynos_wkup_irq_set_wake(struct irq_data *irqd, unsigned int on)
 	u32 bit = 0;
 
 	bit = bank->eint_num + irqd->hwirq;
+	if (bit >= BITMAP_SIZE) {
+		dev_info(d->dev, "bitmap for set_wake is not supported (%s) hwirq = %d, eint_num = %u\n",
+			bank->name, irqd->hwirq, bank->eint_num);
+		return 0;
+	}
+
 	if (!on)
 		exynos_eint_wake_mask_bitmap[BIT_WORD(bit)] |= BIT_MASK(bit);
 	else
