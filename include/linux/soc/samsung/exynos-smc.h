@@ -82,6 +82,8 @@
 #define SMC_DRM_PPMP_UNPROT		(0x82002111)
 #define SMC_DRM_PPMP_MFCFW_PROT		(0x82002112)
 #define SMC_DRM_PPMP_MFCFW_UNPROT	(0x82002113)
+#define SMC_DRM_G3D_PPCFW_RESTORE	(0x8200211C)
+#define SMC_DRM_G3D_PPCFW_OFF		(0x8200211D)
 #define MC_FC_SET_CFW_PROT		(0x82002040)
 #define SMC_DRM_SEC_SMMU_INFO		(0x820020D0)
 #define MC_FC_DRM_SET_CFW_PROT		(0x10000000)
@@ -152,13 +154,30 @@
 #define PROT_MFC			(0)
 #define PROT_MSCL0			(1)
 #define PROT_MSCL1			(2)
+
 #define PROT_L0				(3)
 #define PROT_L1				(4)
 #define PROT_L2				(5)
+#ifdef CONFIG_SOC_ZUMA
+#define PROT_L3				(6)
+#define PROT_L4				(7)
+#define PROT_L5				(8)
+#define PROT_L6				(9)
+
+#define PROT_L8				(25)
+#define PROT_L9				(26)
+#define PROT_L10			(27)
+#define PROT_L11			(28)
+#define PROT_L12			(29)
+#define PROT_L13			(30)
+#define PROT_L14			(31)
+#else
 #define PROT_L4				(6)
 #define PROT_L3				(9)
 #define PROT_L5				(10)
 #define PROT_L12			(11)
+#endif
+
 #define PROT_G3D			(12)
 #define PROT_JPEG			(13)
 #define PROT_G2D			(14)
