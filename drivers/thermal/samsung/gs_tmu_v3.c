@@ -322,49 +322,52 @@ int next_greater_rotated_idx(struct gov_trace_data_struct *gov_buffer, int array
 	return (left + rotated_idx) % array_len;
 }
 
+static void capture_bulk_trace()
+{
+	struct gov_trace_data_struct gov_buffer;
+	int start_idx, end_idx;
+	int rotated_idx;
+	int i;
+	int len;
+
+	if (!get_bulk_mode_curr_state_buffer(acpm_gov_common.sm_base, &gov_buffer) == true)
+		return;
+	rotated_idx = find_rotated_idx(&gov_buffer, GOV_TRACE_DATA_LEN);
+	if (rotated_idx == 0)
+		end_idx = GOV_TRACE_DATA_LEN - 1;
+	else
+		end_idx = rotated_idx - 1;
+
+	start_idx = next_greater_rotated_idx(&gov_buffer, GOV_TRACE_DATA_LEN, rotated_idx,
+					     acpm_gov_common.last_ts);
+	if (start_idx == -1)
+		return;
+
+	acpm_gov_common.last_ts = get_gov_buffer_timestamp(&gov_buffer, end_idx);
+
+	if (start_idx < end_idx)
+		len = end_idx - start_idx + 1;
+	else
+		len = GOV_TRACE_DATA_LEN - (start_idx - end_idx) + 1;
+
+	for (i = 0; i < len; i++) {
+		trace_thermal_exynos_acpm_bulk(
+			(int)(gov_buffer.buffered_curr_state[start_idx].tzid),
+			(int)(gov_buffer.buffered_curr_state[start_idx].temperature),
+			(int)(gov_buffer.buffered_curr_state[start_idx].ctrl_temp),
+			(unsigned long)(gov_buffer.buffered_curr_state[start_idx].cdev_state),
+			acpm_to_kernel_ts(get_gov_buffer_timestamp(&gov_buffer, start_idx)));
+		if (++start_idx >= GOV_TRACE_DATA_LEN)
+			start_idx = 0;
+	}
+}
+
 static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 {
 	switch (acpm_gov_common.tracing_mode) {
-	case ACPM_GOV_DEBUG_MODE_BULK: {
-		struct gov_trace_data_struct gov_buffer;
-		int start_idx, end_idx;
-		int rotated_idx;
-		int i;
-		int len;
-
-		if (!get_bulk_mode_curr_state_buffer(acpm_gov_common.sm_base, &gov_buffer) == true)
-			return;
-		rotated_idx = find_rotated_idx(&gov_buffer, GOV_TRACE_DATA_LEN);
-		if (rotated_idx == 0)
-			end_idx = GOV_TRACE_DATA_LEN - 1;
-		else
-			end_idx = rotated_idx - 1;
-
-		start_idx = next_greater_rotated_idx(&gov_buffer, GOV_TRACE_DATA_LEN, rotated_idx,
-						     acpm_gov_common.last_ts);
-		if (start_idx == -1)
-			return;
-
-		acpm_gov_common.last_ts = get_gov_buffer_timestamp(&gov_buffer, end_idx);
-
-		if (start_idx < end_idx)
-			len = end_idx - start_idx + 1;
-		else
-			len = GOV_TRACE_DATA_LEN - (start_idx - end_idx) + 1;
-
-		for (i = 0; i < len; i++) {
-			trace_thermal_exynos_acpm_bulk(
-				(int)(gov_buffer.buffered_curr_state[start_idx].tzid),
-				(int)(gov_buffer.buffered_curr_state[start_idx].temperature),
-				(int)(gov_buffer.buffered_curr_state[start_idx].ctrl_temp),
-				(unsigned long)(gov_buffer.buffered_curr_state[start_idx]
-							.cdev_state),
-				acpm_to_kernel_ts(
-					get_gov_buffer_timestamp(&gov_buffer, start_idx)));
-			if (++start_idx >= GOV_TRACE_DATA_LEN)
-				start_idx = 0;
-		}
-	} break;
+	case ACPM_GOV_DEBUG_MODE_BULK:
+		capture_bulk_trace();
+		break;
 	case ACPM_GOV_DEBUG_MODE_HIGH_OVERHEAD: {
 		struct gs_tmu_data *data;
 
@@ -2087,17 +2090,20 @@ static int param_acpm_gov_tracing_mode_set(const char *val, const struct kernel_
 	if (acpm_gov_common.turn_on == false)
 		return -EINVAL;
 
-	acpm_gov_common.tracing_mode = tracing_mode_val;
-
-	if (acpm_gov_common.tracing_mode == ACPM_GOV_DEBUG_MODE_DISABLED) {
+	if (tracing_mode_val == ACPM_GOV_DEBUG_MODE_DISABLED) {
 		disable_irq(cb.ipc_ch);
+		if(acpm_gov_common.tracing_mode == ACPM_GOV_DEBUG_MODE_BULK) {
+			capture_bulk_trace();
+		}
+		acpm_gov_common.tracing_buffer_flush_pending = false;
 	} else {
-		if (acpm_gov_common.tracing_mode == ACPM_GOV_DEBUG_MODE_BULK) {
+		if (tracing_mode_val == ACPM_GOV_DEBUG_MODE_BULK) {
 			acpm_gov_common.tracing_buffer_flush_pending = true;
 		}
 		enable_irq(cb.ipc_ch);
 	}
 
+	acpm_gov_common.tracing_mode = tracing_mode_val;
 	exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(acpm_gov_common.tracing_mode);
 
 	return 0;
