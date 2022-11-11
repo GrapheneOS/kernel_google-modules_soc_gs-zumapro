@@ -22,6 +22,11 @@ config PIXEL_EM
 	help
 	  Support Pixel Energy Model.
 
+config PIXEL_METRICS
+        tristate "Enable PIXEL METRICS driver"
+        depends on VH_KERNEL
+        default m
+
 config VH_FS
 	tristate "Vendor hooks for filesystem"
 	depends on VH_KERNEL
