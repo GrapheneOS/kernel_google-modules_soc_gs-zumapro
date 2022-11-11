@@ -40,7 +40,15 @@ def _define_zuma_gki():
         outs = aarch64_outs,
         module_outs = [
             "drivers/block/zram/zram.ko",
+            "drivers/net/can/dev/can-dev.ko",
+            "drivers/net/can/slcan.ko",
+            "drivers/net/can/vcan.ko",
             "mm/zsmalloc.ko",
+            "net/can/can-bcm.ko",
+            "net/can/can-gw.ko",
+            "net/can/can-raw.ko",
+            "net/mac80211/mac80211.ko",
+            "net/wireless/cfg80211.ko",
         ],
         build_config = "build.config.zuma.gki",
         # For building system_dlkm (b/241855743)
