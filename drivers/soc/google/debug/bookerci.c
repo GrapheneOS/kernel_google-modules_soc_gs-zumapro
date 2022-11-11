@@ -206,6 +206,22 @@ static const struct reg_desc rnf_regs[] = {
 	{"rnsam_status", 0x1100}
 };
 
+static const struct reg_desc xp_regs[] = {
+	{"xp_node_info", 0x0},
+	{"xp_device_port_connect_info_p0", 0x8},
+	{"xp_device_port_connect_info_p1", 0x10},
+	{"xp_mesh_port_connect_info_east", 0x18},
+	{"xp_mesh_port_connect_info_north", 0x20},
+	{"xp_errfr", 0x3000},
+	{"xp_errctlr", 0x3008},
+	{"xp_errstatus", 0x3010},
+	{"xp_errmisc", 0x3028},
+	{"xp_errfr_ns", 0x3100},
+	{"xp_errctlr_ns", 0x3108},
+	{"xp_errstatus_ns", 0x3110},
+	{"xp_errmisc_ns", 0x3128}
+};
+
 static const struct bci_dt_node dt_nodes[] = {
 	{"booker-cfg", "CFG", cfg_regs, ARRAY_SIZE(cfg_regs)},
 	{"booker-mtsx", "MTSX", mtsx_regs, ARRAY_SIZE(mtsx_regs)},
@@ -213,7 +229,8 @@ static const struct bci_dt_node dt_nodes[] = {
 	{"booker-rnf", "RNF", rnf_regs, ARRAY_SIZE(rnf_regs)},
 	{"booker-rnd", "RND", rnf_regs, ARRAY_SIZE(rnf_regs)},
 	{"booker-hnd", "HND", hnd_regs, ARRAY_SIZE(hnd_regs)},
-	{"booker-hni", "HNI", hnd_regs, ARRAY_SIZE(hnd_regs)}
+	{"booker-hni", "HNI", hnd_regs, ARRAY_SIZE(hnd_regs)},
+	{"booker-xp", "XP", xp_regs, ARRAY_SIZE(xp_regs)}
 };
 
 static enum node_type errgsr_to_type_map[] = {
