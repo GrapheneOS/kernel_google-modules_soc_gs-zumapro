@@ -28,7 +28,7 @@
 #include <soc/google/exynos-cpupm.h>
 #include <dt-bindings/power/exynos-power.h>
 
-#define HSI0_CAL_PDID	0xB1380008
+#define HSI0_CAL_PDID	0xB1380018
 
 struct exynos_pm_domain;
 
