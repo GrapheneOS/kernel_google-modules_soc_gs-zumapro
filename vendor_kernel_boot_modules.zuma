@@ -66,8 +66,8 @@ google_bcl.ko
 governor_memlat.ko
 gpu_cooling.ko
 gs-chipid.ko
-gs_thermal.ko
 gs_acpm.ko
+gs_thermal.ko
 gsa.ko
 gsa_gsc.ko
 gvotable.ko
@@ -186,10 +186,10 @@ virtio_mmio.ko
 virtio_net.ko
 virtio_pci.ko
 virtio_pci_modern_dev.ko
-wlc98_driver.ko
 wc68.ko
+wlc98_driver.ko
 xhci-exynos.ko
-zsmalloc.ko
 zcomp_cpu.ko
 zcomp_eh.ko
 zram_gs.ko
+zsmalloc.ko
