@@ -6,6 +6,10 @@
  *
  */
 / {
+	mali_pma: protected-memory-allocator {
+		compatible = "arm,protected-memory-allocator";
+	};
+
 	mali: mali@1F000000 {
 		compatible = "arm,malit6xx";
 		reg = <0x0 0x1F000000 0x1000000>;
@@ -24,6 +28,9 @@
 		gpu_pmu_status_local_pwr_mask = <0x1>; /*0x1 << 0*/
 		gpu_pm_autosuspend_delay = <500>;
 		power_policy = "adaptive";
+
+		/* Protected memory allocator */
+		protected-memory-allocator = <&mali_pma>;
 
 		/* Clocks */
 		gpu0_cmu_cal_id = <ACPM_DVFS_G3DL2>;
