@@ -226,6 +226,21 @@
 			offset = <0x2150000>;
 			id = <68>;
 		};
+		node16 {
+			device_type = "booker-xp";
+			offset = <0x20000>;
+			id = <0>;
+		};
+		node17 {
+			device_type = "booker-xp";
+			offset = <0x1020000>;
+			id = <32>;
+		};
+		node18 {
+			device_type = "booker-xp";
+			offset = <0x2020000>;
+			id = <64>;
+		};
 	};
 
 	coresight@2B000000 {
