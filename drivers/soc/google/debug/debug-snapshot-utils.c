@@ -19,7 +19,6 @@
 #include <linux/kdebug.h>
 #include <linux/arm-smccc.h>
 #include <linux/panic_notifier.h>
-#include <linux/sysfs.h>
 
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
