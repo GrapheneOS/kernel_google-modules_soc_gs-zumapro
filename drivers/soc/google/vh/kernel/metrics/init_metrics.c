@@ -8,12 +8,14 @@
 #include <linux/module.h>
 #include <linux/kobject.h>
 
+extern int perf_metrics_init(struct kobject *metrics_kobj);
 
 struct kobject *metrics_kobj;
 
 static int __init metrics_init(void)
 {
 	metrics_kobj = kobject_create_and_add("metrics", kernel_kobj);
+	perf_metrics_init(metrics_kobj);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(metrics_kobj);
