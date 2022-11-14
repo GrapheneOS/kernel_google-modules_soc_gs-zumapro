@@ -4,6 +4,8 @@
  *
  */
 
+#include <linux/bitops.h>
+#include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -28,6 +30,13 @@
 #define ERRGSR_FAULT_OFFSET	0x80
 #define ERRCTRL_ENABLE_ALL	0x10F
 #define ERRSTATUS_CLEAR_ALL	0xED800000
+#define ERRSTATUS_VALID_BIT	30
+#define ERRADDR_VALID_BIT	31
+#define ERRMISC_VALID_BIT	26
+#define ERRFLAG_DE_BIT		23
+#define ERRFLAG_CE_BIT		24
+#define ERRFLAG_OF_BIT		27
+#define ERRFLAG_UE_BIT		29
 
 
 enum node_type {
@@ -233,6 +242,59 @@ static const struct bci_dt_node dt_nodes[] = {
 	{"booker-xp", "XP", xp_regs, ARRAY_SIZE(xp_regs)}
 };
 
+static const char * xp_transactions[] = { "REQ", "RSP", "SNP", "DAT" };
+static const char * hni_errors[] = {
+	"Coherent read",
+	"Coherent write",
+	"CleanUnique/MakeUnique",
+	"Atomic",
+	"Illegal configuration read",
+	"Illegal configuration write",
+	"Configuration write data partial byte enable error",
+	"Configuration write data parity error or poison error",
+	"BRESP error",
+	"Poison error",
+	"BRESP error and poison error"
+};
+static const char * hnf_errors[] = {
+	"Data single-bit ECC",
+	"Data double-bit ECC",
+	"Single-bit ECC overflow",
+	"Tag single-bit ECC",
+	"Tag double-bit ECC",
+	"SF tag single-bit ECC",
+	"SF tag double-bit ECC",
+	"Data parity error",
+	"Data parity and poison",
+	"NDE"
+};
+static const char * hnf_optypes[] = {
+	"Writes, CleanShared, Atomics and stash requests with invalid targets",
+	"WriteBack, Evict, and Stash requests with valid target",
+	"CMO",
+	"Other op types"
+};
+static const char * mtsx_errors[] = {
+	"Data single-bit ECC",
+	"Data double-bit ECC",
+	"Single-bit ECC overflow",
+	"Control single-bit ECC",
+	"Control double-bit ECC",
+	"AXI AR Slave Error",
+	"AXI AR Decode Error",
+	"AXI AR Poison Error",
+	"AXI AR Datachk Error",
+	"AXI W Slave Error",
+	"AXI W Decode Error",
+	"PA out of range Error"
+};
+static const char * mtsx_optypes[] = {
+	"Read Type (RD_NO_SNP, PrefetchTgt)",
+	"Write (WR_NO_SNP)",
+	"CMO, WR+CMO",
+	"Other"
+};
+
 static enum node_type errgsr_to_type_map[] = {
 	NODE_TYPE_XP, NODE_TYPE_HNI, NODE_TYPE_HNF, NODE_TYPE_SBSX, NODE_TYPE_MTSX
 };
@@ -281,10 +343,100 @@ static struct node_desc *find_node(struct bci_dev *bci, int errgsr_idx, int lid)
 	return NULL;
 }
 
-static void handle_node_error(struct node_desc *node, struct bci_irq_desc *irq) {
-	phys_addr_t pa = node->pa;
+static void parseErrorStatus(u64 val) {
+	pr_err("Error flags: DE %d, CE %d, UE %d, OF %d\n",
+		test_bit(ERRFLAG_DE_BIT, (unsigned long *)&val),
+		test_bit(ERRFLAG_CE_BIT, (unsigned long *)&val),
+		test_bit(ERRFLAG_UE_BIT, (unsigned long *)&val),
+		test_bit(ERRFLAG_OF_BIT, (unsigned long *)&val));
+}
 
-	pa += irq->is_secure ? ERR_RECORD_OFFSET : ERR_RECORD_NS_OFFSET;
+static void parseErrorXP(u64 misc) {
+	int port = FIELD_GET(GENMASK(2, 0), misc);
+	int trans_id = FIELD_GET(GENMASK(4, 3), misc);
+	int src_id = FIELD_GET(GENMASK(15, 5), misc);
+	int op_code = FIELD_GET(GENMASK(22, 16), misc);
+	int tgt_id = FIELD_GET(GENMASK(58, 48), misc);
+	int tlpmsg = FIELD_GET(GENMASK(63, 63), misc);
+
+	pr_err("transaction %s, port %d, opcode %#04lx\n", xp_transactions[trans_id], port, op_code);
+	pr_err("source %d, target %d, TLPMSG status %d\n", src_id, tgt_id, tlpmsg);
+}
+
+static void parseErrorHNI(u64 misc) {
+	int err = FIELD_GET(GENMASK(3, 0), misc);
+	int src_id = FIELD_GET(GENMASK(14, 4), misc);
+	int op_code = FIELD_GET(GENMASK(21, 16), misc);
+	int mem_attr = FIELD_GET(GENMASK(27, 24), misc);
+	int size = FIELD_GET(GENMASK(30, 28), misc);
+	int order = FIELD_GET(GENMASK(49, 48), misc);
+	int lpid = FIELD_GET(GENMASK(56, 52), misc);
+
+	if (err >= ARRAY_SIZE(hni_errors)) {
+		pr_err("unknown HNI error\n");
+		return;
+	}
+
+	pr_err("error %s, opcode %#04lx\n", hni_errors[err], op_code);
+	pr_err("source %d, mem_attr %d, size %d, order %d, lpid %d\n",
+		src_id, mem_attr, size, order, lpid);
+}
+
+static void parseErrorHNF(u64 misc) {
+	int err = FIELD_GET(GENMASK(3, 0), misc);
+	int src_id = FIELD_GET(GENMASK(14, 4), misc);
+	int op_type = FIELD_GET(GENMASK(17, 16), misc);
+	int cec = FIELD_GET(GENMASK(47, 32), misc);
+	int errset = FIELD_GET(GENMASK(60, 48), misc);
+	int set_match = FIELD_GET(GENMASK(62, 62), misc);
+	int coecof = FIELD_GET(GENMASK(63, 63), misc);
+
+	if (err >= ARRAY_SIZE(hnf_errors)) {
+		pr_err("unknown HNF error\n");
+		return;
+	}
+
+	pr_err("error %s, optype %s\n", hnf_errors[err], hnf_optypes[op_type]);
+	pr_err("source %d, cec %d, errset %d, set match %d, coecof %d\n",
+		src_id, cec, errset, set_match, coecof);
+}
+
+static void parseErrorSBSX(u64 misc) {
+	int src_id = FIELD_GET(GENMASK(14, 4), misc);
+	int op_type = FIELD_GET(GENMASK(16, 16), misc);
+	int mem_attr = FIELD_GET(GENMASK(27, 24), misc);
+	int size = FIELD_GET(GENMASK(30, 28), misc);
+
+	pr_err("source %d, mem_attr %d, size %d, operation %s\n",
+		src_id, mem_attr, size, op_type ? "WR_NO_SNP_PTL" : "WR_NO_SNP_FULL");
+}
+
+static void parseErrorMTSX(u64 misc) {
+	int err = FIELD_GET(GENMASK(3, 0), misc);
+	int op_type = FIELD_GET(GENMASK(17, 16), misc);
+	int cec = FIELD_GET(GENMASK(47, 32), misc);
+	int errset = FIELD_GET(GENMASK(60, 48), misc);
+	int set_match = FIELD_GET(GENMASK(62, 62), misc);
+	int coecof = FIELD_GET(GENMASK(63, 63), misc);
+
+	if (err >= ARRAY_SIZE(mtsx_errors)) {
+		pr_err("unknown MTSX error\n");
+		return;
+	}
+
+	pr_err("error %s, optype %s\n", mtsx_errors[err], mtsx_optypes[op_type]);
+	pr_err("cec %d, errset %d, set match %d, coecof %d\n",
+		cec, errset, set_match, coecof);
+}
+
+static void handle_node_error(struct node_desc *node, struct bci_irq_desc *irq) {
+	phys_addr_t pa = node->pa + (irq->is_secure ? ERR_RECORD_OFFSET : ERR_RECORD_NS_OFFSET);
+	u64 err_status = read_bci_reg(pa + 16);
+	u64 err_addr = node->type == NODE_TYPE_XP ? 0 : read_bci_reg(pa + 24);
+	u64 err_misc = node->type == NODE_TYPE_XP ? read_bci_reg(pa + 40) : read_bci_reg(pa + 32);
+	bool status_valid = test_bit(ERRSTATUS_VALID_BIT, (unsigned long *)&err_status);
+	bool addr_valid = test_bit(ERRADDR_VALID_BIT, (unsigned long *)&err_status);
+	bool misc_valid = test_bit(ERRMISC_VALID_BIT, (unsigned long *)&err_status);
 
 	pr_err("%s triggered %ssecure %s:\n",
 		node->file_name,
@@ -293,10 +445,40 @@ static void handle_node_error(struct node_desc *node, struct bci_irq_desc *irq) 
 
 	pr_err("ERR_FR     %#018llx\n", read_bci_reg(pa));
 	pr_err("ERR_CTRL   %#018llx\n", read_bci_reg(pa + 8));
-	pr_err("ERR_STATUS %#018llx\n", read_bci_reg(pa + 16));
-	pr_err("ERR_ADDR   %#018llx\n", read_bci_reg(pa + 24));
-	pr_err("ERR_MISC   %#018llx\n", read_bci_reg(pa + 32));
+	pr_err("ERR_STATUS %#018llx %svalid\n", err_status, status_valid ? "" : "in");
+	pr_err("ERR_ADDR   %#018llx %svalid\n", err_addr, addr_valid ? "" : "in");
+	pr_err("ERR_MISC   %#018llx %svalid\n", err_misc, misc_valid ? "" : "in");
 
+	if (!status_valid)
+		goto irq_clear;
+
+	parseErrorStatus(err_status);
+
+	if (!misc_valid)
+		goto irq_clear;
+
+	switch (node->type) {
+	case NODE_TYPE_XP:
+		parseErrorXP(err_misc);
+		break;
+	case NODE_TYPE_HNI:
+		parseErrorHNI(err_misc);
+		break;
+	case NODE_TYPE_HNF:
+		parseErrorHNF(err_misc);
+		break;
+	case NODE_TYPE_SBSX:
+		parseErrorSBSX(err_misc);
+		break;
+	case NODE_TYPE_MTSX:
+		parseErrorMTSX(err_misc);
+		break;
+	default:
+		pr_err("Node doesn't provide error details\n");
+		break;
+	}
+
+irq_clear:
 	/* clear interrupt */
 	write_bci_reg(pa + 16, ERRSTATUS_CLEAR_ALL);
 }
