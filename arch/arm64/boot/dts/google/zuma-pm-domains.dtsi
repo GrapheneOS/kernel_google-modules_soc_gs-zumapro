@@ -212,7 +212,7 @@
 		cal_id = <0xB1380018>;
 		need_smc = <0x11010204>;
 		cmu_id = <0x11000000>;
-		status = "disabled";
+		status = "okay";
 		#power-domain-cells = <0>;
 		power-down-ok = <PD_OK_USB>;
 		skip-idle-ip;
