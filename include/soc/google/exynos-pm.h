@@ -28,10 +28,10 @@ static inline u32 acpm_get_early_wakeup_count(void) { return 0; }
 
 #if IS_ENABLED(CONFIG_PINCTRL_EXYNOS_GS)
 u32 exynos_eint_to_pin_num(int eint);
-extern u32 exynos_eint_wake_mask_array[8];
+extern u32 exynos_eint_wake_mask_array[3];
 #else
 u32 exynos_eint_to_pin_num(int eint) { return 0; }
-u32 exynos_eint_wake_mask_array[8] = {~0U, ~0U, ~0U, ~0U, ~0U, ~0U, ~0U, ~0U};
+u32 exynos_eint_wake_mask_array[3] = {~0U, ~0U, ~0U};
 #endif
 
 int register_pcie_is_connect(u32 (*func)(void));

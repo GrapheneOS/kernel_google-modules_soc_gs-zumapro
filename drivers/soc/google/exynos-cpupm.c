@@ -807,7 +807,7 @@ static bool entry_allow(int cpu, struct power_mode *mode)
 	return true;
 }
 
-extern u32 exynos_eint_wake_mask_array[8];
+extern u32 exynos_eint_wake_mask_array[3];
 static void set_wakeup_mask(void)
 {
 	int i;
