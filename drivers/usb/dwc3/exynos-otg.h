@@ -13,8 +13,8 @@
 #include <linux/usb/otg-fsm.h>
 #include <linux/pm_qos.h>
 #include <soc/google/exynos_pm_qos.h>
+#include <linux/power_supply.h>
 #include "dwc3-exynos.h"
-
 
 struct dwc3_ext_otg_ops {
 	int	(*setup)(struct device *dev, struct otg_fsm *fsm);
@@ -52,17 +52,20 @@ struct dwc3_otg {
 	struct regulator	*vbus_reg;
 
 	struct exynos_pm_qos_request	pm_qos_int_req;
-	int				pm_qos_int_val;
+	int				pm_qos_int_usb2_val;
+	int				pm_qos_int_usb3_val;
 
 	struct dwc3_ext_otg_ops *ext_otg_ops;
 
 	struct work_struct	recov_work;
 
 	struct notifier_block	pm_nb;
+	struct notifier_block	psy_notifier;
 	struct completion	resume_cmpl;
 	int			dwc3_suspended;
 	int			fsm_reset;
 	int			in_shutdown;
+	bool			usb_charged;
 
 	struct mutex lock;
 	u16 combo_phy_control;
