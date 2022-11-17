@@ -1495,7 +1495,7 @@ UFS_SYSFS_ATTR(h8_delay_ms, 0644, __sysfs_show_h8_delay_ms,
 UFS_SYSFS_ATTR(monitor, 0644, __sysfs_show, __sysfs_store_mon, UFS_SYSFS_MON);
 
 UFS_SYSFS_ATTR(eom, 0200, NULL, __sysfs_store_eom, -1);
-UFS_SYSFS_ATTR(eom_res, 0666, __sysfs_show_eom_res, __sysfs_store_eom_res, -1);
+UFS_SYSFS_ATTR(eom_res, 0644, __sysfs_show_eom_res, __sysfs_store_eom_res, -1);
 UFS_SYSFS_ATTR(hibern8_status, 0444, hibern8_status_show, NULL, -1);
 
 static struct attribute *exynos_ufs_sysfs_attrs[] = {
