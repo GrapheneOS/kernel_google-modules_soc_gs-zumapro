@@ -144,9 +144,9 @@ static void __ufs_get_sfr(struct ufs_dbg_mgr *mgr,
 			sel_api = cfg->offset;
 			if (sel_api == LOG_PMA_SFR) {
 				/* Enable MPHY APB */
-				reg = hci_readl(handle, HCI_CLKSTOP_CTRL);
-				hci_writel(handle, reg & ~MPHY_APBCLK_STOP,
-					   HCI_CLKSTOP_CTRL);
+				reg = hci_readl(handle, HCI_FORCE_HCS);
+				reg &= ~(UNIPRO_MCLK_STOP_EN | MPHY_APBCLK_STOP_EN);
+				hci_writel(handle, reg, HCI_FORCE_HCS);
 			}
 			cfg++;
 			continue;
@@ -179,7 +179,9 @@ static void __ufs_get_sfr(struct ufs_dbg_mgr *mgr,
 	}
 
 	/* Disable MPHY APB */
-	hci_writel(handle, reg | MPHY_APBCLK_STOP, HCI_CLKSTOP_CTRL);
+	reg = hci_readl(handle, HCI_FORCE_HCS);
+	reg |= MPHY_APBCLK_STOP_EN;
+	hci_writel(handle, reg, HCI_FORCE_HCS);
 }
 
 static inline u32 __ufs_set_pcs_read(struct ufs_vs_handle *handle, u32 lane,

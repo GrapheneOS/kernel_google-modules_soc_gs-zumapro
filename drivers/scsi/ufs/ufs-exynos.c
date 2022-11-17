@@ -101,8 +101,10 @@ static int ufs_call_cal(struct exynos_ufs *ufs, int init, void *func)
 	cal_if_func fn;
 
 	/* Enable MPHY APB */
-	reg = hci_readl(handle, HCI_CLKSTOP_CTRL);
-	hci_writel(handle, reg & ~MPHY_APBCLK_STOP, HCI_CLKSTOP_CTRL);
+	reg = hci_readl(handle, HCI_FORCE_HCS);
+	reg &= ~(UNIPRO_MCLK_STOP_EN | MPHY_APBCLK_STOP_EN);
+	hci_writel(handle, reg, HCI_FORCE_HCS);
+
 	if (init) {
 		fn_init = (cal_if_func_init)func;
 		ret = fn_init(p, ufs_host_index);
@@ -114,8 +116,12 @@ static int ufs_call_cal(struct exynos_ufs *ufs, int init, void *func)
 		dev_err(ufs->dev, "%s: %d\n", __func__, ret);
 		ret = -EPERM;
 	}
+
 	/* Disable MPHY APB */
-	hci_writel(handle, reg | MPHY_APBCLK_STOP, HCI_CLKSTOP_CTRL);
+	reg = hci_readl(handle, HCI_FORCE_HCS);
+	reg |= MPHY_APBCLK_STOP_EN;
+	hci_writel(handle, reg, HCI_FORCE_HCS);
+
 	return ret;
 
 }
