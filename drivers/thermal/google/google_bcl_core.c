@@ -912,6 +912,8 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	struct i2c_client *i2c;
 	u8 val = 0;
 	int ret;
+	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_GPU], google_gpu_warn_work);
+	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_GPU], google_soft_gpu_warn_work);
 
 	p_np = of_parse_phandle(np, "google,sub-power", 0);
 	if (p_np) {
@@ -1156,9 +1158,7 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SMPL_WARN], google_smpl_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_TPU], google_tpu_warn_work);
-	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_GPU], google_gpu_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_TPU], google_soft_tpu_warn_work);
-	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_GPU], google_soft_gpu_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_CPUCL2], google_cpu2_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_CPUCL1], google_cpu1_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_CPUCL2], google_soft_cpu2_warn_work);
