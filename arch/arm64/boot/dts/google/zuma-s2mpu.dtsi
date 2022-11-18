@@ -187,4 +187,11 @@
 		interrupts = <GIC_SPI IRQ_SYSMMU_S0_YUVP_S2_NONSECURE_YUVP IRQ_TYPE_LEVEL_HIGH>;
 		always-on;
 	};
+
+	s2mpu_s0_gsa: s2mpu_s0_gsa@0x16470000 {
+		compatible = "google,s2mpu";
+		reg = <0x0 0x16470000 0x10000>;
+		interrupts = <GIC_SPI IRQ_SYSMMU_S0_GSA_S2_NS_GSA IRQ_TYPE_LEVEL_HIGH>;
+		always-on;
+	};
 };
