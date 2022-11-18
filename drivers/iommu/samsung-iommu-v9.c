@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 
 #include "samsung-iommu-v9.h"
+#include <soc/google/pkvm-s2mpu.h>
 
 #define REG_MMU_NUM_CONTEXT			0x0100
 #define MMU_NUM_CONTEXT(reg)			((reg) & 0x1F)
@@ -1535,6 +1536,17 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	int irq, ret, err = 0;
+
+	/*Link power domain of crossponding s2mpu to this iommu instance*/
+	if (IS_ENABLED(CONFIG_PKVM_S2MPU)) {
+		ret = pkvm_s2mpu_of_link(dev);
+		if (ret == -EAGAIN)
+			return -EPROBE_DEFER;
+		else if (ret) {
+			dev_err(dev, "can't link with s2mpu, error %d\n", ret);
+			return ret;
+		}
+	}
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
