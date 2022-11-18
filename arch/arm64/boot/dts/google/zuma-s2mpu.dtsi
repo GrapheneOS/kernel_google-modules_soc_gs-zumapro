@@ -6,13 +6,6 @@
  */
 
 / {
-	s2mpu_s0_alive: s2mpu_s0_alive@155b0000 {
-		compatible = "google,s2mpu";
-		reg = <0x0 0x155b0000 0x10000>;
-		interrupts = <GIC_SPI O_INTERRUPT_STAGE2_NONSEC__SYSMMU_S0_ALIVE_ALIVE IRQ_TYPE_LEVEL_HIGH>;
-		always-on;
-	};
-
 	s2mpu_s0_aur: s2mpu_s0_aur@20a80000 {
 		compatible = "google,s2mpu";
 		reg = <0x0 0x20a80000 0x10000>;
