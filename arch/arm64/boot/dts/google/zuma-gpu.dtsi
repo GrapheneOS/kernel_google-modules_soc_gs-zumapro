@@ -5,7 +5,13 @@
  * Copyright 2022 Google LLC
  *
  */
+
 / {
+	mali_mgm: physical-memory-group-manager {
+		compatible = "arm,physical-memory-group-manager";
+		pt_id = "GPU";
+	};
+
 	mali_pma: protected-memory-allocator {
 		compatible = "arm,protected-memory-allocator";
 	};
@@ -28,6 +34,9 @@
 		gpu_pmu_status_local_pwr_mask = <0x1>; /*0x1 << 0*/
 		gpu_pm_autosuspend_delay = <500>;
 		power_policy = "adaptive";
+
+		/* Memory */
+		physical-memory-group-manager = <&mali_mgm>;
 
 		/* Protected memory allocator */
 		protected-memory-allocator = <&mali_pma>;
