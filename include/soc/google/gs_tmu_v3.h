@@ -32,6 +32,46 @@ struct gs_pi_param {
 	bool switched_on;
 };
 
+#define STEPWISE_GAIN_MIN 0
+#define STEPWISE_GAIN_MAX 5
+#define ACPM_GOV_TIMER_INTERVAL_MS 50
+#define INTEGRAL_THRESH_MIN 0
+#define INTEGRAL_THRESH_MAX 255
+struct acpm_gov_params_st {
+	u8 ctrl_temp_idx;
+	u8 switch_on_temp_idx;
+	u8 irq_stepwise_gain;
+	u8 timer_stepwise_gain;
+	u8 integral_thresh;
+	u8 enable;
+	u8 reserved[2];
+};
+
+union acpm_gov_params_un {
+	struct acpm_gov_params_st fields;
+	u64 qword;
+};
+
+enum acpm_gov_debug_mode_enum {
+	ACPM_GOV_DEBUG_MODE_DISABLED,
+	ACPM_GOV_DEBUG_MODE_BULK,
+	ACPM_GOV_DEBUG_MODE_HIGH_OVERHEAD,
+	ACPM_GOV_DEBUG_MODE_INVALID,
+};
+
+struct acpm_gov_common {
+	u64 kernel_ts;
+	u64 acpm_ts;
+	u64 last_ts;
+	void __iomem *sm_base;
+	u32 sm_size;
+	enum acpm_gov_debug_mode_enum tracing_mode;
+	u8 timer_interval;
+	bool tracing_buffer_flush_pending;
+	bool turn_on;
+	u64 buffer_version;
+};
+
 #define TRIP_LEVEL_NUM 8
 
 /**
@@ -116,6 +156,8 @@ struct gs_tmu_data {
 	void *disable_stats;
 	void *hardlimit_stats;
 	atomic64_t trip_counter[TRIP_LEVEL_NUM];
+	union acpm_gov_params_un acpm_gov_params;
+	u32 fvp_get_target_freq;
 };
 
 enum throttling_stats_type {
@@ -307,5 +349,36 @@ enum thermal_pause_state {
 typedef int (*tpu_pause_cb)(enum thermal_pause_state action, void *data);
 
 void register_tpu_thermal_pause_cb(tpu_pause_cb tpu_cb, void *data);
+
+#define ACPM_SM_BUFFER_VERSION_UPPER_32b 0x5A554D41ULL
+#define GOV_TRACE_DATA_LEN 240
+#define ACPM_SYSTICK_NUMERATOR 20
+#define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
+struct gov_data {
+	u64 timestamp;
+	u32 freq_req;
+	u32 reserved;
+};
+
+struct curr_state {
+	u8 cdev_state;
+	u8 temperature;
+	u8 ctrl_temp;
+	u8 reserved;
+};
+
+struct buffered_curr_state {
+	u64 timestamp;
+	u8 tzid;
+	u8 cdev_state;
+	u8 temperature;
+	u8 ctrl_temp;
+	u8 reserved[4];
+};
+
+struct gov_trace_data_struct {
+	struct buffered_curr_state buffered_curr_state[GOV_TRACE_DATA_LEN];
+	struct curr_state curr_state[7];
+};
 
 #endif /* _GS_TMU_V3_H */

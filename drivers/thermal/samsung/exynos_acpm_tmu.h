@@ -40,6 +40,12 @@
 #define TMU_IPC_HYSTERESIS	0x16
 #define TMU_IPC_REG_READ	0xFE
 #define TMU_IPC_REG_WRITE	0xFF
+#define TMU_IPC_SET_GOV_CONFIG                  0x17
+#define TMU_IPC_GET_TARGET_FREQ                 0x18
+#define TMU_IPC_SET_GOV_DEBUG_TRACING_MODE      0x19
+#define TMU_IPC_SET_GOV_DEBUG_TIMER_INTERVAL    0x20
+#define TMU_IPC_GET_TRIP_CNT                    0x21
+#define TMU_IPC_RESET_TRIP_CNT                  0x22
 
 /* TMU register offset shift for IPC messages */
 #define TMU_REG_OFFSET_SHIFT_8	(8)
@@ -123,6 +129,7 @@ union tmu_ipc_message {
 	u32 data[4];
 	struct tmu_ipc_request req;
 	struct tmu_ipc_response resp;
+	u64 data_64b[2];
 };
 
 struct acpm_tmu_cap {
@@ -149,7 +156,19 @@ void exynos_acpm_tmu_clear_tz_irq(int tz);
 void exynos_acpm_tmu_set_emul_temp(int tz, unsigned char temp);
 void exynos_acpm_tmu_reg_read(u8 tmu_id, u16 offset, u32 *val);
 void exynos_acpm_tmu_reg_write(u8 tmu_id, u16 offset, u32 val);
+void exynos_acpm_tmu_ipc_get_target_freq(int tz, u32 *freq);
+void exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword);
+void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode);
+void exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(int timer_interval);
+void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter);
+void exynos_acpm_tmu_ipc_reset_trip_counter(int tz);
 
+struct acpm_irq_callback {
+	void *fn;
+	int ipc_ch;
+	int ipc_ch_size;
+};
 int exynos_acpm_tmu_init(void);
+int exynos_acpm_tmu_cb_init(struct acpm_irq_callback *cb);
 
 #endif /* __EXYNOS_ACPM_TMU_H__ */

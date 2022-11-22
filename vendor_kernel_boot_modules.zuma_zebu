@@ -65,6 +65,7 @@ i2c-exynos5.ko
 itmon.ko
 keycombo.ko
 keydebug.ko
+libarc4.ko
 logbuffer.ko
 mac80211.ko
 mali_kbase.ko
@@ -101,6 +102,7 @@ pixel-debug-test.ko
 pkvm-s2mpu.ko
 pmic_class.ko
 power_stats.ko
+rfkill.ko
 rio.ko
 rtc-s2mpg14.ko
 s2mpg14-key.ko

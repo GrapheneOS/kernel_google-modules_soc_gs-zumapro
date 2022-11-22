@@ -6,12 +6,34 @@
  *             http://www.samsung.com
  */
 
+#include <dt-bindings/pinctrl/zuma.h>
 #include "zuma-cp-s5300-sit.dtsi"
 
 / {
 	fragment@modemif {
 		target-path = "/";
 		__overlay__ {
+			spmi_bb: s5910_bb {
+				compatible = "google,bitbang-spmi-controller";
+				status = "okay";
+
+				clk-gpio = <&gpa3 0 GPIO_ACTIVE_HIGH>;
+				dat-gpio = <&gpa3 1 GPIO_ACTIVE_HIGH>;
+
+				delay_us = <10>;
+
+				s5910: s5910@05 {
+					reg = <0x05 0>;
+					compatible = "google,s5910-spmi";
+
+                                        /*         ms   reg  val */
+					s5910,seq =
+						<   0 0x215 0x0f>,
+						<1000 0x20e 0x04>,
+						<   0 0x240 0x10>;
+				};
+			};
+
 			cpif {
 				pinctrl-names = "default";
 				pinctrl-0 = <&s5100_ap2cp_cp_pwr_on>,
@@ -45,6 +67,9 @@
 				* CP2AP_ACTIVE is assigned to XEINT_17 for factor designs.
 				*/
 				mif,cp2ap_active_not_alive = <0>;
+
+				/* phandle used for shutdown calls to s5910 clk-buffer*/
+				google,clk-buffer = <&s5910>;
 			};
 		};
 	};

@@ -415,6 +415,84 @@ void exynos_acpm_tmu_reg_write(u8 tmu_id, u16 offset, u32 val)
 	}
 }
 
+void exynos_acpm_tmu_ipc_get_target_freq(int tz, u32 *freq)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TARGET_FREQ;
+	message.req.tzid = tz;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	*freq = (message.resp.rsvd3 << 24) | (message.resp.rsvd2 << 16) |
+		(message.resp.rsvd1 << 8) | (message.resp.rsvd0 << 0);
+}
+
+void exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_GOV_CONFIG;
+	message.req.tzid = tz;
+	message.data_64b[1] = qword;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_GOV_DEBUG_TRACING_MODE;
+	message.req.req_rsvd0 = (u8)(debug_mode & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+void exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(int timer_interval)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_GOV_DEBUG_TIMER_INTERVAL;
+	message.req.req_rsvd0 = (u8)(timer_interval & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TRIP_CNT;
+	message.req.tzid = tz;
+	message.req.req_rsvd0 = (u8)(trip_id & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*trip_counter = message.data_64b[1];
+}
+
+void exynos_acpm_tmu_ipc_reset_trip_counter(int tz)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_RESET_TRIP_CNT;
+	message.req.tzid = tz;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
 int exynos_acpm_tmu_init(void)
 {
 	struct device_node *np;
@@ -424,4 +502,32 @@ int exynos_acpm_tmu_init(void)
 		return -ENODEV;
 
 	return acpm_ipc_request_channel(np, NULL, &acpm_tmu_ch_num, &acpm_tmu_size);
+}
+
+int exynos_acpm_tmu_cb_init(struct acpm_irq_callback *cb)
+{
+	struct device_node *np;
+	struct device_node *sub_node;
+	if (cb == NULL)
+		return -EINVAL;
+
+	np = of_find_node_by_name(NULL, "acpm_tmu");
+	if (!np) {
+		pr_err("GOV: No acpm_tmu node available\n");
+		return -ENODEV;
+	}
+
+	sub_node = of_find_node_by_name(np, "async");
+	if (!sub_node) {
+		pr_err("GOV: No asynchronous CPM to AP node available\n");
+		return -ENODEV;
+	}
+
+	if (acpm_ipc_request_channel(sub_node, cb->fn, &cb->ipc_ch, &cb->ipc_ch_size)) {
+		pr_err("GOV: No asynchronous CPM to AP interrupt channel available\n");
+		return -ENODEV;
+	}
+	pr_info("GOV: Asynchronous notification enabled\n");
+
+	return 0;
 }
