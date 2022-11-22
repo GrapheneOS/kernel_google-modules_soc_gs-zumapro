@@ -855,6 +855,8 @@
 		*/
 		iommus =
 			<&sysmmu_gdc>;
+		bts-block-names =
+			"gdc";
 		samsung,iommu-group = <&iommu_group_isp>;
 		/*
 		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
@@ -915,6 +917,8 @@
 		*/
 		iommus =
 			<&sysmmu_gdc>;
+		bts-block-names =
+			"gdc";
 		samsung,iommu-group = <&iommu_group_isp>;
 		/*
 		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
@@ -1337,6 +1341,8 @@
 		*/
 		iommus =
 			<&sysmmu_gdc>;
+		bts-block-names =
+			"gdc";
 		samsung,iommu-group = <&iommu_group_isp>;
 	};
 
