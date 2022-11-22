@@ -3834,7 +3834,11 @@ int exynos_pcie_rc_itmon_notifier(struct notifier_block *nb, unsigned long actio
 
 			exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
 		}
-	} else if (exynos_pcie->ip_ver == 0x984500){
+	} else if ((exynos_pcie->ip_ver == 0x984500) ||
+		   (exynos_pcie->ip_ver == 0x986500)) {
+		    /* Note that gs101, gs201 sets ip-ver in the pcie dts node
+		     * to 0x984500, but zuma sets it to 0x986500
+		     */
 		if ((itmon_info->port && !strcmp(itmon_info->port, "HSI2")) ||
 		    (itmon_info->dest && !strcmp(itmon_info->dest, "HSI2"))) {
 			regmap_read(exynos_pcie->pmureg, exynos_pcie->pmu_offset, &val);
