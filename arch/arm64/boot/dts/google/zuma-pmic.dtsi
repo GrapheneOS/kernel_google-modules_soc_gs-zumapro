@@ -326,7 +326,6 @@
 				regulator-name = "S2MPG14_LDO8";
 				regulator-min-microvolt = <450000>;
 				regulator-max-microvolt = <950000>;
-				regulator-always-on;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x28>;
 				schematic-name = "L8M_EUSB";
@@ -337,7 +336,6 @@
 				regulator-name = "S2MPG14_LDO9";
 				regulator-min-microvolt = <725000>;
 				regulator-max-microvolt = <1300000>;
-				regulator-always-on;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x29>;
 				schematic-name = "L9M_EUSB";
@@ -445,7 +443,6 @@
 				regulator-name = "S2MPG14_LDO19";
 				regulator-min-microvolt = <2500000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x33>;
 				schematic-name = "L19M_EUSB";
