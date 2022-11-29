@@ -25,6 +25,8 @@ load(
 )
 load("@kernel_toolchain_info//:dict.bzl", "BRANCH", "CLANG_VERSION")
 
+SOC_REVS = ["a0", "b0"]
+
 # TODO(b/221278445): Use real GKI. Delete the zuma_gki targets.
 def _define_zuma_gki():
     # Note: zuma_gki and zuma_X all writes to zuma_gki_defconfig,
@@ -209,7 +211,8 @@ def define_zuma():
             ],
             outs = [
                 # Sync with build.config.zuma_emulator and build.config.zuma_hybrid
-                "google/zuma-a0.dtb",
+                "google/zuma-{}.dtb".format(soc_rev)
+                for soc_rev in SOC_REVS
             ] + zuma_dtbos,
             # TODO(b/221278445): Use real GKI
             # base_kernel = "//aosp-staging:kernel_aarch64",
@@ -280,26 +283,36 @@ def define_zuma():
             ],
         )
 
-        native.genrule(
-            name = "zuma_{mode}_ufdt_overlay".format(mode = mode),
-            srcs = [
-                ":zuma_{mode}/google/zuma-a0.dtb".format(mode = mode),
-                ":zuma_{mode}/google/zuma-{mode}.dtbo".format(mode = mode),
-                "//build/kernel:hermetic-tools/ufdt_apply_overlay",
-            ],
-            outs = [
-                # It is a limitation in Bazel that we can't name this
-                # zuma-out.dtb, because the one from zuma_emulator and
-                # zuma_hybrid conflicts.
-                "zuma_{mode}-out.dtb".format(mode = mode),
-            ],
-            cmd = """set -e
-                $(location //build/kernel:hermetic-tools/ufdt_apply_overlay) \\
-                    $(location :zuma_{mode}/google/zuma-a0.dtb)              \\
-                    $(location :zuma_{mode}/google/zuma-{mode}.dtbo)         \\
-                    $(location zuma_{mode}-out.dtb)
-            """.format(mode = mode),
-        )
+        for soc_rev in SOC_REVS:
+            native.genrule(
+                name = "zuma_{mode}_{soc_rev}_ufdt_overlay".format(
+                    mode = mode,
+                    soc_rev = soc_rev,
+                ),
+                srcs = [
+                    ":zuma_{mode}/google/zuma-{soc_rev}.dtb".format(
+                        mode = mode,
+                        soc_rev = soc_rev,
+                    ),
+                    ":zuma_{mode}/google/zuma-{mode}.dtbo".format(mode = mode),
+                    "//build/kernel:hermetic-tools/ufdt_apply_overlay",
+                ],
+                outs = [
+                    # It is a limitation in Bazel that we can't name this
+                    # zuma-out.dtb, because the one from zuma_emulator and
+                    # zuma_hybrid conflicts.
+                    "zuma_{mode}-out-{soc_rev}.dtb".format(
+                        mode = mode,
+                        soc_rev = soc_rev,
+                    ),
+                ],
+                cmd = """set -e
+                    $(location //build/kernel:hermetic-tools/ufdt_apply_overlay) \\
+                        $(location :zuma_{mode}/google/zuma-{soc_rev}.dtb)       \\
+                        $(location :zuma_{mode}/google/zuma-{mode}.dtbo)         \\
+                        $(location zuma_{mode}-out-{soc_rev}.dtb)
+                """.format(mode = mode, soc_rev = soc_rev),
+            )
 
         copy_to_dist_dir(
             name = "zuma_{}_dist".format(mode),
@@ -325,7 +338,12 @@ def define_zuma():
                 # instead.
                 ":zuma_{}_merged_uapi_headers".format(mode),
                 ":zuma_{}_images".format(mode),
-                ":zuma_{}_ufdt_overlay".format(mode),
+            ] + [
+                ":zuma_{mode}_{soc_rev}_ufdt_overlay".format(
+                    mode = mode,
+                    soc_rev = soc_rev,
+                )
+                for soc_rev in SOC_REVS
             ],
             dist_dir = "out/{branch}/dist".format(branch = BRANCH),
         )

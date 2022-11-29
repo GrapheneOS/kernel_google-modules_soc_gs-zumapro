@@ -290,12 +290,6 @@ int dwc3_otg_phy_enable(struct otg_fsm *fsm, int owner, bool on)
 			dotg->usb2_phy_control |= owner_bit;
 			goto out;
 		} else if (dotg->usb2_phy_control == 0) {
-			if (dotg->pm_qos_int_val) {
-				dev_dbg(dev, "pm_qos set value = %d\n", dotg->pm_qos_int_val);
-				exynos_pm_qos_update_request(&dotg->pm_qos_int_req,
-						dotg->pm_qos_int_val);
-			}
-
 			/*
 			 * dwc3_otg_phy_enable function enables
 			 * both combo phy and usb2 phy
@@ -344,9 +338,6 @@ err:
 			/* We must disable gadget here. (Ignore other job) */
 			atomic_set(&dev->power.usage_count, 1);
 			pm_runtime_put_sync_suspend(dev);
-
-			if (dotg->pm_qos_int_val)
-				exynos_pm_qos_update_request(&dotg->pm_qos_int_req, 0);
 
 			msleep(500);
 
@@ -1013,6 +1004,41 @@ static int dwc3_otg_pm_notifier(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
+{
+	struct dwc3_otg *dotg = container_of(nb, struct dwc3_otg, psy_notifier);
+	struct power_supply *psy = ptr;
+
+	if (!strstr(psy->desc->name, "usb") || evt != PSY_EVENT_PROP_CHANGED)
+		return NOTIFY_OK;
+
+	if (dotg->dwc->gadget->state == USB_STATE_CONFIGURED && !dotg->usb_charged) {
+		dotg->usb_charged = true;
+		if (dotg->dwc->speed >= DWC3_DSTS_SUPERSPEED) {
+			if (dotg->pm_qos_int_usb3_val) {
+				dev_info(dotg->dwc->dev, "pm_qos set value = %d\n",
+					dotg->pm_qos_int_usb3_val);
+				exynos_pm_qos_update_request(&dotg->pm_qos_int_req,
+							     dotg->pm_qos_int_usb3_val);
+			}
+		} else {
+			if (dotg->pm_qos_int_usb2_val) {
+				dev_info(dotg->dwc->dev, "pm_qos set value = %d\n",
+					dotg->pm_qos_int_usb2_val);
+				exynos_pm_qos_update_request(&dotg->pm_qos_int_req,
+							     dotg->pm_qos_int_usb2_val);
+			}
+		}
+	} else if (dotg->dwc->gadget->state != USB_STATE_CONFIGURED && dotg->usb_charged) {
+		dotg->usb_charged = false;
+		dev_info(dotg->dwc->dev, "clear pm_qos value\n");
+		if (dotg->pm_qos_int_usb2_val || dotg->pm_qos_int_usb3_val)
+			exynos_pm_qos_update_request(&dotg->pm_qos_int_req, 0);
+	}
+
+	return NOTIFY_OK;
+}
+
 int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 {
 	struct dwc3_otg *dotg = exynos->dotg;
@@ -1034,12 +1060,17 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 	dotg->dwc = dwc;
 	dotg->exynos = exynos;
 
-	ret = of_property_read_u32(exynos->dev->of_node, "usb-pm-qos-int",
-				   &dotg->pm_qos_int_val);
+	ret = of_property_read_u32(exynos->dev->of_node, "usb-pm-qos-usb2-int",
+				   &dotg->pm_qos_int_usb2_val);
+
+	ret = of_property_read_u32(exynos->dev->of_node, "usb-pm-qos-usb3-int",
+				   &dotg->pm_qos_int_usb3_val);
+
 	if (ret < 0) {
 		dev_err(dwc->dev, "couldn't read usb-pm-qos-int %s node, error = %d\n",
 			dwc->dev->of_node->name, ret);
-		dotg->pm_qos_int_val = 0;
+		dotg->pm_qos_int_usb2_val = 0;
+		dotg->pm_qos_int_usb3_val = 0;
 	} else {
 		exynos_pm_qos_add_request(&dotg->pm_qos_int_req,
 					  PM_QOS_DEVICE_THROUGHPUT, 0);
@@ -1084,6 +1115,11 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 	ret = register_reboot_notifier(&dwc3_otg_reboot_notifier);
 	if (ret)
 		dev_err(dwc->dev, "failed register reboot notifier\n");
+
+	dotg->psy_notifier.notifier_call = psy_changed;
+	ret = power_supply_reg_notifier(&dotg->psy_notifier);
+	if (ret)
+		dev_err(dwc->dev, "failed register power supply notifier\n");
 
 	dev_dbg(dwc->dev, "otg_init done\n");
 
