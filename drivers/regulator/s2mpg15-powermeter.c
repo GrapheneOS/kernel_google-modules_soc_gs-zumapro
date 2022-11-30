@@ -40,6 +40,7 @@ static struct mfd_cell s2mpg15_meter_devs[] = {
 u32 s2mpg15_muxsel_to_current_resolution(s2mpg1415_meter_muxsel m)
 {
 	switch (m) {
+	case MUXSEL_NONE:
 	case BUCK3:
 	case BUCK4:
 	case BUCK5:
@@ -107,6 +108,7 @@ EXPORT_SYMBOL_GPL(s2mpg15_muxsel_to_current_resolution);
 u32 s2mpg15_muxsel_to_power_resolution(s2mpg1415_meter_muxsel m)
 {
 	switch (m) {
+	case MUXSEL_NONE:
 	case BUCK3:
 	case BUCK4:
 	case BUCK5:
@@ -176,6 +178,7 @@ static const char *muxsel_to_str(s2mpg1415_meter_muxsel m)
 	char *ret;
 
 	switch (m) {
+		ENUM_STR(MUXSEL_NONE, "S", ret);
 		ENUM_STR(BUCK1, "S", ret);
 		ENUM_STR(BUCK2, "S", ret);
 		ENUM_STR(BUCK3, "S", ret);
