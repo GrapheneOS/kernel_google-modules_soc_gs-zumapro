@@ -67,9 +67,6 @@
 struct exynos_pcie g_pcie_rc[MAX_RC_NUM];
 int pcie_is_linkup;	/* checkpatch: do not initialise globals to 0 */
 static struct separated_msi_vector sep_msi_vec[MAX_RC_NUM][PCIE_MAX_SEPA_IRQ_NUM];
-/* currnet_cnt & current_cnt2 for EOM test */
-static int current_cnt;
-static int current_cnt2;
 static bool is_vhook_registered;
 
 static struct pci_dev *exynos_pcie_get_pci_dev(struct pcie_port *pp);
@@ -463,12 +460,13 @@ static ssize_t exynos_pcie_eom1_show(struct device *dev, struct device_attribute
 	struct device_node *np = dev->of_node;
 	int len = 0;
 	u32 test_cnt = 0;
+	static int current_cnt;
 	unsigned int lane_width = 1;
 	int i = 0, ret;
 
 	if (!eom_result) {
-		len += snprintf(buf + len, PAGE_SIZE, "eom_result structure is NULL !!!\n");
-
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				 "eom_result structure is NULL !!!\n");
 		goto exit;
 	}
 
@@ -477,11 +475,11 @@ static ssize_t exynos_pcie_eom1_show(struct device *dev, struct device_attribute
 		lane_width = 0;
 
 	while (current_cnt != EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX) {
-		len += snprintf(buf + len, PAGE_SIZE,
-				"%u %u %lu\n",
-				eom_result[i][current_cnt].phase,
-				eom_result[i][current_cnt].vref,
-				eom_result[i][current_cnt].err_cnt);
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				 "%u %u %lu\n",
+				 eom_result[i][current_cnt].phase,
+				 eom_result[i][current_cnt].vref,
+				 eom_result[i][current_cnt].err_cnt);
 		current_cnt++;
 		test_cnt++;
 		if (test_cnt == 100)
@@ -507,11 +505,6 @@ static ssize_t exynos_pcie_eom1_store(struct device *dev, struct device_attribut
 	case 0:
 		if (exynos_pcie->phy_ops.phy_eom)
 			exynos_pcie->phy_ops.phy_eom(dev, exynos_pcie->phy_base);
-
-		/* reset the counter before start eom_show() func. */
-		current_cnt = 0;
-		current_cnt2 = 0;
-
 		break;
 	}
 
@@ -538,43 +531,44 @@ static ssize_t exynos_pcie_eom2_show(struct device *dev, struct device_attribute
 	struct device_node *np = dev->of_node;
 	int len = 0;
 	u32 test_cnt = 0;
+	static int current_cnt;
 	unsigned int lane_width = 1;
 	int i = 1, ret;
 
 	if (!eom_result) {
-		len += snprintf(buf + len, PAGE_SIZE, "eom_result structure is NULL!!\n");
-
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				 "eom_result structure is NULL!!\n");
 		goto exit;
 	}
 
 	ret = of_property_read_u32(np, "num-lanes", &lane_width);
 	if (ret) {
 		lane_width = 0;
-		len += snprintf(buf + len, PAGE_SIZE,
-				"can't get num of lanes!!\n");
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				 "can't get num of lanes!!\n");
 		goto exit;
 	}
 
 	if (lane_width == 1) {
-		len += snprintf(buf + len, PAGE_SIZE,
-				"EOM2NULL\n");
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				 "EOM2NULL\n");
 		goto exit;
 	}
 
-	while (current_cnt2 != EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX) {
-		len += snprintf(buf + len, PAGE_SIZE,
-				"%u %u %lu\n",
-				eom_result[i][current_cnt2].phase,
-				eom_result[i][current_cnt2].vref,
-				eom_result[i][current_cnt2].err_cnt);
-		current_cnt2++;
+	while (current_cnt != EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX) {
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				 "%u %u %lu\n",
+				 eom_result[i][current_cnt].phase,
+				 eom_result[i][current_cnt].vref,
+				 eom_result[i][current_cnt].err_cnt);
+		current_cnt++;
 		test_cnt++;
 		if (test_cnt == 100)
 			break;
 	}
 
-	if (current_cnt2 == EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX)
-		current_cnt2 = 0;
+	if (current_cnt == EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX)
+		current_cnt = 0;
 
 exit:
 	return len;
