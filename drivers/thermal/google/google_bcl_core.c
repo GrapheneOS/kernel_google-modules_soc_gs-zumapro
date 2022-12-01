@@ -137,7 +137,7 @@ static int triggered_read_level(void *data, int *val, int id)
 
 	*val = 0;
 	bcl_dev->bcl_tz_cnt[id] = 0;
-	if (odpm_current > (bcl_dev->bcl_lvl[id] / bcl_dev->odpm_ratio))
+	if ((id != SMPL_WARN) && (odpm_current > (bcl_dev->bcl_lvl[id] / bcl_dev->odpm_ratio)))
 		*val = bcl_dev->bcl_lvl[id] + THERMAL_HYST_LEVEL;
 	if (bcl_dev->bcl_prev_lvl[id] != *val) {
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
