@@ -99,6 +99,12 @@
 		offset = <0x880>;
 	};
 
+	pmu@30000000 {
+		compatible = "arm,ci-700";
+		reg = <0x0 0x30000000 0x4000000>;
+		interrupts = <GIC_SPI IRQ_CPUCL0_INTREQPMU_NID68_CPUCL0 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
 	itmon: exynos-itmon {
 		compatible = "samsung,exynos-itmon-v2";
 		memory-region = <&log_itmon>;
