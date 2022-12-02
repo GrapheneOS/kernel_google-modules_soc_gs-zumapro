@@ -237,7 +237,7 @@ static bool get_bulk_mode_curr_state_buffer(void __iomem *base, struct gov_trace
 
 	if (base) {
 		memcpy_fromio(&gov_buffer->buffered_curr_state, base + offset,
-			      sizeof(struct gov_data) * GOV_TRACE_DATA_LEN);
+			      sizeof(*gov_buffer->buffered_curr_state) * GOV_TRACE_DATA_LEN);
 		return true;
 	} else {
 		return false;
