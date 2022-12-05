@@ -69,7 +69,7 @@
                 pinctrl-1 = <&spi12_bus &spi12_cs &ese1_spi_rst &ese1_spi_miso &ese1_spi_mosi_func>;
                 controller-data {
                         cs-gpio = <&gpp21 7 GPIO_ACTIVE_HIGH>;
-                        cs-clock-delay = <10>;
+                        cs-clock-delay = <18>;
                         samsung,spi-chip-select-mode = <0>;
                 };
         };
