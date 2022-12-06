@@ -1326,6 +1326,7 @@
 		sysmmu,secure_base = <0x190A0000>;
 
 		port-name = "AOC";
+		sysmmu,leave-enabled-on-suspend;
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF)>;
 		pmmu0,stream_property =
