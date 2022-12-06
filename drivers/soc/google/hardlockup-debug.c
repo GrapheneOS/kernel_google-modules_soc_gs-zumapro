@@ -293,7 +293,7 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 			struct interval_tree_node *node, *next;
 			int buf_off = 0;
 
-			pr_emerg("pm_suspend_task '%s' %d hung (state=%ld)",
+			pr_emerg("pm_suspend_task '%s' %d hung (state=%u)",
 					pm_suspend_task->comm, pm_suspend_task->pid,
 					pm_suspend_task->__state);
 			sched_show_task(pm_suspend_task);
