@@ -237,7 +237,7 @@ static bool get_bulk_mode_curr_state_buffer(void __iomem *base, struct gov_trace
 
 	if (base) {
 		memcpy_fromio(&gov_buffer->buffered_curr_state, base + offset,
-			      sizeof(struct gov_data) * GOV_TRACE_DATA_LEN);
+			      sizeof(*gov_buffer->buffered_curr_state) * GOV_TRACE_DATA_LEN);
 		return true;
 	} else {
 		return false;
@@ -2013,7 +2013,7 @@ static int param_acpm_gov_kernel_ts_get(char *buf, const struct kernel_param *kp
 
 static int param_acpm_gov_kernel_ts_set(const char *val, const struct kernel_param *kp)
 {
-	if (kstrtou64(val, 64, &acpm_gov_common.kernel_ts)) {
+	if (kstrtou64(val, 10, &acpm_gov_common.kernel_ts)) {
 		pr_err("%s: kernel_ts parse error", __func__);
 		return -1;
 	}
@@ -2034,7 +2034,7 @@ static int param_acpm_gov_acpm_ts_get(char *buf, const struct kernel_param *kp)
 
 static int param_acpm_gov_acpm_ts_set(const char *val, const struct kernel_param *kp)
 {
-	if (kstrtou64(val, 64, &acpm_gov_common.acpm_ts)) {
+	if (kstrtou64(val, 10, &acpm_gov_common.acpm_ts)) {
 		pr_err("%s: acpm_ts parse error", __func__);
 		return -1;
 	}
@@ -2055,7 +2055,7 @@ static int param_acpm_gov_last_ts_get(char *buf, const struct kernel_param *kp)
 
 static int param_acpm_gov_last_ts_set(const char *val, const struct kernel_param *kp)
 {
-	if (kstrtou64(val, 64, &acpm_gov_common.last_ts)) {
+	if (kstrtou64(val, 10, &acpm_gov_common.last_ts)) {
 		pr_err("%s: last_ts parse error", __func__);
 		return -1;
 	}
@@ -2078,7 +2078,7 @@ static int param_acpm_gov_tracing_mode_set(const char *val, const struct kernel_
 {
 	u8 tracing_mode_val;
 
-	if (kstrtou8(val, 8, &tracing_mode_val)) {
+	if (kstrtou8(val, 10, &tracing_mode_val)) {
 		pr_err("%s: tracing_mode parse error", __func__);
 		return -1;
 	}
@@ -2125,7 +2125,7 @@ static int param_acpm_gov_timer_interval_set(const char *val, const struct kerne
 {
 	u8 timer_interval_val;
 
-	if (kstrtou8(val, 8, &timer_interval_val)) {
+	if (kstrtou8(val, 10, &timer_interval_val)) {
 		pr_err("%s: timer_interval parse error", __func__);
 		return -1;
 	}
@@ -2158,7 +2158,7 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 	struct gs_tmu_data *gsdata;
 	u8 turn_on_val;
 
-	if (kstrtou8(val, 8, &turn_on_val)) {
+	if (kstrtou8(val, 10, &turn_on_val)) {
 		pr_err("%s: turn_on parse error", __func__);
 		return -1;
 	}

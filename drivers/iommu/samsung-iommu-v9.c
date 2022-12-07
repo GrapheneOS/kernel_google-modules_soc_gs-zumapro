@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 
 #include "samsung-iommu-v9.h"
+#include <soc/google/pkvm-s2mpu.h>
 
 #define REG_MMU_NUM_CONTEXT			0x0100
 #define MMU_NUM_CONTEXT(reg)			((reg) & 0x1F)
@@ -1480,6 +1481,8 @@ static int sysmmu_parse_dt(struct device *sysmmu, struct sysmmu_drvdata *data)
 	data->hide_page_fault = of_property_read_bool(sysmmu->of_node, "sysmmu,hide-page-fault");
 	/* use async fault mode */
 	data->async_fault_mode = of_property_read_bool(sysmmu->of_node, "sysmmu,async-fault");
+	data->leave_enabled_on_suspend = of_property_read_bool(sysmmu->of_node,
+							       "sysmmu,leave-enabled-on-suspend");
 
 	data->vmid_mask = SYSMMU_MASK_VMID;
 	ret = of_property_read_u32_index(sysmmu->of_node, "vmid_mask", 0, &mask);
@@ -1535,6 +1538,17 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	int irq, ret, err = 0;
+
+	/*Link power domain of crossponding s2mpu to this iommu instance*/
+	if (IS_ENABLED(CONFIG_PKVM_S2MPU)) {
+		ret = pkvm_s2mpu_of_link(dev);
+		if (ret == -EAGAIN)
+			return -EPROBE_DEFER;
+		else if (ret) {
+			dev_err(dev, "can't link with s2mpu, error %d\n", ret);
+			return ret;
+		}
+	}
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -1643,8 +1657,11 @@ static int __maybe_unused samsung_sysmmu_runtime_suspend(struct device *sysmmu)
 
 	spin_lock_irqsave(&drvdata->lock, flags);
 	drvdata->rpm_count--;
-	if (drvdata->attached_count > 0)
-		__sysmmu_disable(drvdata);
+	/* TODO(b/261529534): Proper design of "never disabled" IOMMU behavior */
+	if (!drvdata->leave_enabled_on_suspend) {
+		if (drvdata->attached_count > 0)
+			__sysmmu_disable(drvdata);
+	}
 	spin_unlock_irqrestore(&drvdata->lock, flags);
 
 	SYSMMU_EVENT_LOG_RANGE(drvdata, SYSMMU_EVENT_POWEROFF, 0,

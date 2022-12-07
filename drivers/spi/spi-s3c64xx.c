@@ -152,7 +152,7 @@ static LIST_HEAD(drvdata_list);
 #define USI_SPI_SW_CONF		BIT(1)
 
 /* Make sure the busy wait won't take too long time. */
-#define MAX_CS_CLOCK_DELAY_US 10
+#define MAX_CS_CLOCK_DELAY_US 20
 
 /**
  * struct s3c64xx_spi_port_config - SPI Controller hardware info

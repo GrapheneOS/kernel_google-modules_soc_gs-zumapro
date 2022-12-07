@@ -258,6 +258,8 @@
 			samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 			samsung,pin-pud = <EXYNOS_PIN_PULL_DOWN>;
 			samsung,pin-drv = <ZUMA_PIN_DRV_X2>;
+			samsung,pin-con-pdn = <EXYNOS_PIN_PDN_OUT0>;
+			samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_NONE>;
 		};
 
 		sensor_mclk8_fn: sensor-mclk8-fn {
