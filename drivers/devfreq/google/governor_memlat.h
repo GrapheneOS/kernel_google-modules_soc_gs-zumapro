@@ -27,6 +27,7 @@ enum common_ev_idx {
  * @mem_count:			Number of memory accesses made.
  * @freq:			Effective frequency of the device in the
  *				last interval.
+ * @mem_stall_count:		Number of memory stall counts.
  */
 struct dev_stats {
 	int id;
@@ -34,6 +35,7 @@ struct dev_stats {
 	unsigned long mem_count;
 	unsigned long freq;
 	unsigned long stall_pct;
+	unsigned long mem_stall_count;
 };
 
 struct core_dev_map {
