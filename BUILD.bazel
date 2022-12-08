@@ -23,6 +23,16 @@ label_flag(
     build_setting_default = ":gs_undefined",
 )
 
+label_flag(
+    name = "device_build_config",
+    build_setting_default = ":gs_undefined",
+)
+
+label_flag(
+    name = "gki_build_config",
+    build_setting_default = ":gs_undefined",
+)
+
 filegroup(
     name = "gs_soc.kconfig",
     srcs = glob([
@@ -92,6 +102,14 @@ exports_files([
     # keep sorted
     "Kconfig.ext",
     "Makefile",
+    "build.config.slider.blktest",
+    "build.config.slider.debug_api",
+    "build.config.slider.debug_kmemleak",
+    "build.config.slider.debug_locking",
+    "build.config.slider.debug_memory",
+    "build.config.slider.debug_memory_accounting",
+    "build.config.slider.kasan",
+    "build.config.slider.khwasan",
     "build.config.zuma",
     "vendor_dlkm.blocklist.zuma",
     "vendor_dlkm.props.zuma",
