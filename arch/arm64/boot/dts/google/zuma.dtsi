@@ -1171,7 +1171,7 @@
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu0>;
 			target-dev = <&mif_cpu0_mem_lat>;
-			cachemiss-ev = <0x2A>;
+			cachemiss-ev = <0xA2>;
 			core-dev-table =
 				<  324000  421000 >,
 				<  615000  546000 >,
@@ -1192,7 +1192,7 @@
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu1>;
 			target-dev = <&mif_cpu1_mem_lat>;
-			cachemiss-ev = <0x2A>;
+			cachemiss-ev = <0xA2>;
 			core-dev-table =
 				<  324000  421000 >,
 				<  615000  546000 >,
@@ -1213,7 +1213,7 @@
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu2>;
 			target-dev = <&mif_cpu2_mem_lat>;
-			cachemiss-ev = <0x2A>;
+			cachemiss-ev = <0xA2>;
 			core-dev-table =
 				<  324000  421000 >,
 				<  615000  546000 >,
@@ -1234,7 +1234,7 @@
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu3>;
 			target-dev = <&mif_cpu3_mem_lat>;
-			cachemiss-ev = <0x2A>;
+			cachemiss-ev = <0xA2>;
 			core-dev-table =
 				<  324000  421000 >,
 				<  615000  546000 >,
