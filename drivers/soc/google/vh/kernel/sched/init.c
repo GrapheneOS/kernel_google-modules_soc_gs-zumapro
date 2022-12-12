@@ -103,6 +103,8 @@ extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
 extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 					 struct cpumask *lowest_mask,
 					 int ret, int *cpu);
+extern void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p,
+			struct rq *rq, bool *need_update);
 
 extern struct cpufreq_governor sched_pixel_gov;
 
@@ -285,6 +287,11 @@ static int vh_sched_init(void)
 
 	ret = register_trace_android_rvh_sched_newidle_balance(
 		sched_newidle_balance_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_update_misfit_status(
+		rvh_update_misfit_status_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
