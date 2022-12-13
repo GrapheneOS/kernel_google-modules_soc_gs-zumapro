@@ -65,7 +65,11 @@ void g2d_hw_push_task(struct g2d_device *g2d_dev, struct g2d_task *task)
 
 		for (i = 0; i < task->num_source; i++)
 			if (task->source[i].flags & G2D_LAYERFLAG_SECURE)
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+				state |= 1 << (i + 1);
+#else
 				state |= 1 << i;
+#endif
 
 		if ((task->target.flags & G2D_LAYERFLAG_SECURE) || state)
 			state |= 1 << 24;

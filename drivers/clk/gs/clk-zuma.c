@@ -21,6 +21,53 @@
 #include "../../soc/google/cal-if/zuma/clkout_zuma.h"
 #include "composite.h"
 
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+#include <linux/debugfs.h>
+#include <linux/arm-smccc.h>
+
+#define PAD_CTRL_CLKOUT0 0x15463e80
+#define PAD_CTRL_CLKOUT1 0x15463e84
+
+static const phys_addr_t clkout_addresses[] = {
+	(0x15400000 + 0x0810),	/* "CLKOUT_CON_BLK_APM_CMU_APM_CLKOUT0" */
+	(0x26040000 + 0x0810),	/* "CLKOUT_CON_BLK_CMU_CMU_TOP_CLKOUT0" */
+	(0x29c00000 + 0x0810),	/* "CLKOUT_CON_BLK_CPUCL0_CMU_CPUCL0_CLKOUT0" */
+	(0x29c00000 + 0x0814),	/* "CLKOUT_CON_BLK_CPUCL0_EMBEDDED_CMU_CPUCL0_CLKOUT0" */
+	(0x27d00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x27e00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x27f00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x10010000 + 0x0810),	/* "CLKOUT_CON_BLK_MISC_CMU_MISC_CLKOUT0" */
+	(0x13000000 + 0x0810),	/* "CLKOUT_CON_BLK_HSI2_CMU_HSI2_CLKOUT0" */
+	(0x10800000 + 0x0810),	/* "CLKOUT_CON_BLK_PERIC0_CMU_PERIC0_CLKOUT0" */
+	(0x10c00000 + 0x0810),	/* "CLKOUT_CON_BLK_PERIC1_CMU_PERIC1_CLKOUT0" */
+	(0x15400000 + 0x0810),	/* "CLKOUT_CON_BLK_APM_CMU_APM_CLKOUT0" */
+	(0x26040000 + 0x0810),	/* "CLKOUT_CON_BLK_CMU_CMU_TOP_CLKOUT0" */
+	(0x29c00000 + 0x0810),	/* "CLKOUT_CON_BLK_CPUCL0_CMU_CPUCL0_CLKOUT0" */
+	(0x29c00000 + 0x0814),	/* "CLKOUT_CON_BLK_CPUCL0_EMBEDDED_CMU_CPUCL0_CLKOUT0" */
+	(0x27c00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x27d00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x27e00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x27f00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x10010000 + 0x0810),	/* "CLKOUT_CON_BLK_MISC_CMU_MISC_CLKOUT0" */
+	(0x13000000 + 0x0810),	/* "CLKOUT_CON_BLK_HSI2_CMU_HSI2_CLKOUT0" */
+	(0x10800000 + 0x0810),	/* "CLKOUT_CON_BLK_PERIC0_CMU_PERIC0_CLKOUT0" */
+	(0x10c00000 + 0x0810),	/* "CLKOUT_CON_BLK_PERIC1_CMU_PERIC1_CLKOUT0" */
+	(0x15400000 + 0x0810),	/* "CLKOUT_CON_BLK_APM_CMU_APM_CLKOUT0" */
+	(0x26040000 + 0x0810),	/* "CLKOUT_CON_BLK_CMU_CMU_TOP_CLKOUT0" */
+	(0x29c00000 + 0x0810),	/* "CLKOUT_CON_BLK_CPUCL0_CMU_CPUCL0_CLKOUT0" */
+	(0x29c00000 + 0x0814),	/* "CLKOUT_CON_BLK_CPUCL0_EMBEDDED_CMU_CPUCL0_CLKOUT0" */
+	(0x27c00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x27d00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x27e00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x27f00000 + 0x0810),	/* "CLKOUT_CON_BLK_MIF_CMU_MIF_CLKOUT0" */
+	(0x10010000 + 0x0810),	/* "CLKOUT_CON_BLK_MISC_CMU_MISC_CLKOUT0" */
+	(0x13000000 + 0x0810),	/* "CLKOUT_CON_BLK_HSI2_CMU_HSI2_CLKOUT0" */
+	(0x10800000 + 0x0810),	/* "CLKOUT_CON_BLK_PERIC0_CMU_PERIC0_CLKOUT0" */
+	(0x10c00000 + 0x0810),	/* "CLKOUT_CON_BLK_PERIC1_CMU_PERIC1_CLKOUT0" */
+};
+#endif
+
 static struct samsung_clk_provider *zuma_clk_provider;
 /*
  * list of controller registers to be saved and restored during a
@@ -1335,10 +1382,130 @@ static const struct of_device_id ext_clk_match[] = {
 	{},
 };
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+static int pad_clkout0_get(void *data, u64 *val)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG, PAD_CTRL_CLKOUT0,
+		      PRIV_REG_OPTION_READ, 0, 0, 0, 0, 0, &res);
+	*val =  (u64)(res.a0 & 0xFFFFFFFFUL);
+
+	return 0;
+}
+
+static int pad_clkout0_set(void *data, u64 val)
+{
+	int ret = 0;
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG, PAD_CTRL_CLKOUT0,
+		      PRIV_REG_OPTION_WRITE, val, 0, 0, 0, 0, &res);
+	if (res.a0 != 0) {
+		pr_err("error writing to pad_clkout0 err=%lu\n", res.a0);
+		ret = res.a0;
+	}
+
+	return ret;
+}
+
+static int pad_clkout1_get(void *data, u64 *val)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG, PAD_CTRL_CLKOUT1,
+		      PRIV_REG_OPTION_READ, 0, 0, 0, 0, 0, &res);
+	*val =  (u64)(res.a0 & 0xFFFFFFFFUL);
+
+	return 0;
+}
+
+static int pad_clkout1_set(void *data, u64 val)
+{
+	int ret = 0;
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG, PAD_CTRL_CLKOUT1,
+		      PRIV_REG_OPTION_WRITE, val, 0, 0, 0, 0, &res);
+	if (res.a0 != 0) {
+		pr_err("error writing to pad_clkout1 err=%lu\n", res.a0);
+		ret = res.a0;
+	}
+
+	return ret;
+}
+
+static int clkout_addr_get(void *data, u64 *val)
+{
+	struct samsung_clk_provider *scp = data;
+	*val = scp->clkout_addr;
+	return 0;
+}
+
+static int clkout_addr_set(void *data, u64 val)
+{
+	int i;
+	struct samsung_clk_provider *scp = data;
+
+	for (i = 0; i < ARRAY_SIZE(clkout_addresses); i++)
+		if (clkout_addresses[i] == val)
+			break;
+
+	if (i >= ARRAY_SIZE(clkout_addresses)) {
+		pr_err("error address not found\n");
+		return -ENODEV;
+	}
+
+	scp->clkout_addr = val;
+
+	return 0;
+}
+
+static int clkout_val_get(void *data, u64 *val)
+{
+	u32 __iomem *addr;
+	struct samsung_clk_provider *scp = data;
+
+	addr = ioremap(scp->clkout_addr, SZ_4);
+	*val = (u64)ioread32(addr);
+	iounmap(addr);
+
+	return 0;
+}
+
+static int clkout_val_set(void *data, u64 val)
+{
+	u32 __iomem *addr;
+	struct samsung_clk_provider *scp = data;
+
+	addr = ioremap(scp->clkout_addr, SZ_4);
+	iowrite32((u32)val, addr);
+	iounmap(addr);
+
+	return 0;
+}
+
+DEFINE_DEBUGFS_ATTRIBUTE(pad_clkout0_fops, pad_clkout0_get,
+			 pad_clkout0_set, "0x%08llx\n");
+
+DEFINE_DEBUGFS_ATTRIBUTE(pad_clkout1_fops, pad_clkout1_get,
+			 pad_clkout1_set, "0x%08llx\n");
+
+DEFINE_DEBUGFS_ATTRIBUTE(clkout_addr_fops, clkout_addr_get,
+			 clkout_addr_set, "0x%16llx\n");
+
+DEFINE_DEBUGFS_ATTRIBUTE(clkout_val_fops, clkout_val_get,
+			 clkout_val_set, "0x%08llx\n");
+
+#endif
+
 static int zuma_clock_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	void __iomem *reg_base;
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	struct dentry *root;
+#endif
 
 	if (np) {
 		reg_base = of_iomap(np, 0);
@@ -1530,6 +1697,19 @@ static int zuma_clock_probe(struct platform_device *pdev)
 				1);
 
 	samsung_clk_of_add_provider(np, zuma_clk_provider);
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	zuma_clk_provider->clkout_addr = clkout_addresses[0];
+	root = debugfs_create_dir("xclkout", NULL);
+	debugfs_create_file("pad_clkout0", 0644, root, zuma_clk_provider,
+			    &pad_clkout0_fops);
+	debugfs_create_file("pad_clkout1", 0644, root, zuma_clk_provider,
+			    &pad_clkout1_fops);
+	debugfs_create_file("clkout_addr", 0644, root, zuma_clk_provider,
+			    &clkout_addr_fops);
+	debugfs_create_file("clkout_val", 0644, root, zuma_clk_provider,
+			    &clkout_val_fops);
+#endif
 
 	pr_info("ZUMA: Clock setup completed\n");
 
