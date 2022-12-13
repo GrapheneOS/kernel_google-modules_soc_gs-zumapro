@@ -569,12 +569,12 @@ static void simulate_suspend_hang(char *arg)
 #if !IS_ENABLED(CONFIG_SOC_GS101)
 static void simulate_el3_assert(char *arg)
 {
-	exynos_smc(SIP_SVC_DEBUG_TRACE_EL3, false, 0, 0);
+	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_ASSERT, 0, 0);
 }
 
 static void simulate_el3_panic(char *arg)
 {
-	exynos_smc(SIP_SVC_DEBUG_TRACE_EL3, true, 0, 0);
+	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_PANIC, 0, 0);
 }
 #endif
 /*
