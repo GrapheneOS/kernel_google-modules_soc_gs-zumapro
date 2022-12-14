@@ -40,6 +40,10 @@ struct s2mpu_mptc_entry {
 	u32 data;
 };
 
+/* Number of s2mpu devices. */
+static int nr_devs_total;
+static atomic_t nr_devs_registered = ATOMIC_INIT(0);
+
 static struct platform_device *__of_get_phandle_pdev(struct device *parent,
 						     const char *prop, int index)
 {
@@ -356,7 +360,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct s2mpu_data *data;
 	bool off_at_boot, has_pd;
-	int ret;
+	int ret, nr_devs;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -401,8 +405,20 @@ static int s2mpu_probe(struct platform_device *pdev)
 	data->pkvm_registered = ret != -ENODEV;
 	if (!data->pkvm_registered)
 		dev_warn(dev, "pKVM disabled, control from kernel\n");
+	else {
+		nr_devs = atomic_inc_return(&nr_devs_registered);
+		dev_info(dev, "registered with hypervisor [%d/%d]\n", nr_devs, nr_devs_total);
+	}
 
 	platform_set_drvdata(pdev, data);
+
+	if (data->pkvm_registered && nr_devs == nr_devs_total) {
+		ret = pkvm_iommu_finalize();
+		if (!ret)
+			pr_info("List of devices successfully finalized for pkvm s2mpu\n");
+		else
+			pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
+	}
 
 	/*
 	 * Most S2MPUs are in an allow-all state at boot. Call the hypervisor
@@ -441,7 +457,12 @@ static struct platform_driver s2mpu_driver = {
 
 static int s2mpu_driver_register(struct platform_driver *driver)
 {
+	struct device_node *np;
 	int ret = 0;
+
+	for_each_matching_node(np, driver->driver.of_match_table)
+		if (of_device_is_available(np))
+			nr_devs_total++;
 
 	/* Only try to register the driver with pKVM if pKVM is enabled. */
 	if (is_protected_kvm_enabled()) {
