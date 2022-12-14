@@ -11,8 +11,9 @@
 #define __LINUX_MFD_S2MPG1415_REGISTER_H
 
 #include <linux/bits.h>
+#include <dt-bindings/power/s2mpg1x-power.h>
 
-#define S2MPG1415_METER_CHANNEL_MAX 12
+#define S2MPG1415_METER_CHANNEL_MAX METER_CHANNEL_MAX
 #define MASK(width, shift) GENMASK(shift + width - 1, shift)
 
 typedef enum {

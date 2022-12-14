@@ -15,10 +15,6 @@
 #include <linux/interrupt.h>
 #include <linux/mfd/samsung/s2mpg1415.h>
 
-#ifndef TEST_DBG
-#define TEST_DBG 0
-#endif
-
 static struct notifier_block sub_pmic_notifier;
 static struct s2mpg15_dev *s2mpg15_global;
 
@@ -299,18 +295,12 @@ static void s2mpg15_call_interrupt(struct s2mpg15_dev *s2mpg15,
 		    (pm_int4 & s2mpg15_get_irq_mask[reg]))
 			s2mpg15_buck_ocp_irq(s2mpg15, i);
 	}
-
-#if IS_ENABLED(TEST_DBG)
-	/* BUCK-BOOST OCP interrupt */
-	if (int4 & s2mpg15_get_irq_mask[S2MPG15_IRQ_OCP_BBS_INT4])
-		s2mpg15_bb_ocp_irq(s2mpg15);
-#endif
 }
 
 static void s2mpg15_irq_work_func(struct work_struct *work)
 {
-	pr_info("sub pmic interrupt(%#02x, %#02x, %#02x, %#02x, %#02x, %#02x, %#02x, %#02x)\n",
-		irq_reg_sub[S2MPG15_IRQS_PMIC_INT1], irq_reg_sub[S2MPG15_IRQS_PMIC_INT2],
+	pr_info("%s: sub pmic interrupt(%#02x, %#02x, %#02x, %#02x, %#02x, %#02x, %#02x, %#02x)\n",
+		__func__, irq_reg_sub[S2MPG15_IRQS_PMIC_INT1], irq_reg_sub[S2MPG15_IRQS_PMIC_INT2],
 		irq_reg_sub[S2MPG15_IRQS_PMIC_INT3], irq_reg_sub[S2MPG15_IRQS_PMIC_INT4],
 		irq_reg_sub[S2MPG15_IRQS_METER_INT1], irq_reg_sub[S2MPG15_IRQS_METER_INT2],
 		irq_reg_sub[S2MPG15_IRQS_METER_INT3], irq_reg_sub[S2MPG15_IRQS_METER_INT4]);
@@ -347,6 +337,8 @@ static int s2mpg15_notifier_handler(struct notifier_block *nb,
 
 		return NOTIFY_DONE;
 	}
+
+	queue_delayed_work(s2mpg15->irq_wqueue, &s2mpg15->irq_work, 0);
 
 	s2mpg15_call_interrupt(s2mpg15, irq_reg_sub[S2MPG15_IRQS_PMIC_INT1],
 			       irq_reg_sub[S2MPG15_IRQS_PMIC_INT2],

@@ -255,7 +255,8 @@ static irqreturn_t s2mpg14_irq_thread(int irq, void *data)
 	}
 
 	/* notify Main PMIC */
-	if (ibi_src[0] & S2MPG14_PMIC_M_MASK) {
+	if (ibi_src[0] & S2MPG14_PMIC_M_MASK ||
+	    ibi_src[1] & S2MPG14_METER_IRQ_MASK) {
 		/* Read PMIC INT1 ~ INT5 */
 		ret = s2mpg14_bulk_read(s2mpg14->pmic, S2MPG14_PM_INT1,
 					S2MPG14_NUM_IRQ_PMIC_REGS,
@@ -375,7 +376,7 @@ int s2mpg14_irq_init(struct s2mpg14_dev *s2mpg14)
 		return ret;
 	}
 
-	i2c_data &= ~(S2MPG14_IRQSRC_MASK); /* Unmask pmic interrupt */
+	i2c_data &= ~(S2MPG14_IRQSRC_MASK | S2MPG14_METER_IRQSRC_MASK); /* Unmask pmic interrupt */
 	s2mpg14_write_reg(s2mpg14->i2c, S2MPG14_COMMON_IBIM1, i2c_data);
 
 	dev_info(s2mpg14->dev, "%s S2MPG14_COMMON_IBIM1=0x%02x\n",

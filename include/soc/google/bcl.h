@@ -9,6 +9,7 @@
 #include <linux/power_supply.h>
 #include <linux/thermal.h>
 #include <linux/workqueue.h>
+#include <dt-bindings/power/s2mpg1x-power.h>
 
 #define VD_BATTERY_VOLTAGE 4200
 #define VD_UPPER_LIMIT 3350
@@ -94,6 +95,7 @@
 #define PMU_ALIVE_GPU_OUT (0x1E20)
 #define PMU_CLK_OUT (0x3E80)
 #define THRESHOLD_DELAY_MS 50
+#define PWRWARN_DELAY_MS 50
 
 enum TRIGGERED_SOURCE {
 	SMPL_WARN,
@@ -277,6 +279,16 @@ struct bcl_device {
 	struct dentry *debug_entry;
 	unsigned int gpu_clk_out;
 	unsigned int tpu_clk_out;
+
+	int main_irq_base, sub_irq_base;
+	u64 main_limit[METER_CHANNEL_MAX];
+	u64 sub_limit[METER_CHANNEL_MAX];
+	int main_pwr_warn_irq[METER_CHANNEL_MAX];
+	int sub_pwr_warn_irq[METER_CHANNEL_MAX];
+	bool main_pwr_warn_triggered[METER_CHANNEL_MAX];
+	bool sub_pwr_warn_triggered[METER_CHANNEL_MAX];
+	struct delayed_work main_pwr_irq_work;
+	struct delayed_work sub_pwr_irq_work;
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);

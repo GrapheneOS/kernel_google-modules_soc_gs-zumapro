@@ -903,6 +903,106 @@ static void google_set_throttling(struct bcl_device *bcl_dev)
 
 }
 
+static void main_pwrwarn_irq_work(struct work_struct *work)
+{
+	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
+						  main_pwr_irq_work.work);
+	bool revisit_needed = false;
+	int i;
+	u64 micro_unit[ODPM_CHANNEL_MAX];
+
+	mutex_lock(&bcl_dev->main_odpm->lock);
+
+	odpm_get_lpf_values(bcl_dev->main_odpm, METER_CHANNEL_MAX, micro_unit);
+	for (i = 0; i < METER_CHANNEL_MAX; i++) {
+		bcl_dev->main_pwr_warn_triggered[i] = (micro_unit[i] > bcl_dev->main_limit[i]);
+		if (!bcl_dev->main_pwr_warn_triggered[i])
+			dev_info(bcl_dev->device, "%s: CH%d_PWR_WARN, clear\n", __func__, i);
+		if (!revisit_needed)
+			revisit_needed = bcl_dev->main_pwr_warn_triggered[i];
+	}
+
+	mutex_unlock(&bcl_dev->main_odpm->lock);
+
+	if (revisit_needed)
+		mod_delayed_work(system_unbound_wq, &bcl_dev->main_pwr_irq_work,
+				 msecs_to_jiffies(PWRWARN_DELAY_MS));
+}
+
+static void sub_pwrwarn_irq_work(struct work_struct *work)
+{
+	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
+						  sub_pwr_irq_work.work);
+	bool revisit_needed = false;
+	int i;
+	u64 micro_unit[ODPM_CHANNEL_MAX];
+
+	mutex_lock(&bcl_dev->sub_odpm->lock);
+
+	odpm_get_lpf_values(bcl_dev->sub_odpm, METER_CHANNEL_MAX, micro_unit);
+	for (i = 0; i < METER_CHANNEL_MAX; i++) {
+		bcl_dev->sub_pwr_warn_triggered[i] = (micro_unit[i] > bcl_dev->sub_limit[i]);
+		if (!bcl_dev->sub_pwr_warn_triggered[i])
+			dev_info(bcl_dev->device, "%s: CH%d_PWR_WARN, clear\n", __func__, i);
+		if (!revisit_needed)
+			revisit_needed = bcl_dev->sub_pwr_warn_triggered[i];
+	}
+
+	mutex_unlock(&bcl_dev->sub_odpm->lock);
+
+	if (revisit_needed)
+		mod_delayed_work(system_unbound_wq, &bcl_dev->sub_pwr_irq_work,
+				 msecs_to_jiffies(PWRWARN_DELAY_MS));
+}
+
+static irqreturn_t sub_pwr_warn_irq_handler(int irq, void *data)
+{
+	struct bcl_device *bcl_dev = data;
+	int i;
+
+	mutex_lock(&bcl_dev->sub_odpm->lock);
+
+	for (i = 0; i < METER_CHANNEL_MAX; i++) {
+		if (bcl_dev->sub_pwr_warn_irq[i] == irq) {
+			bcl_dev->sub_pwr_warn_triggered[i] = 1;
+			/* Setup Timer to clear the triggered */
+			mod_delayed_work(system_unbound_wq, &bcl_dev->sub_pwr_irq_work,
+					 msecs_to_jiffies(PWRWARN_DELAY_MS));
+			dev_info(bcl_dev->device,
+				 "%s: CH%d_PWR_WARN, %d triggered\n", __func__, i, irq);
+			break;
+		}
+	}
+
+	mutex_unlock(&bcl_dev->sub_odpm->lock);
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t main_pwr_warn_irq_handler(int irq, void *data)
+{
+	struct bcl_device *bcl_dev = data;
+	int i;
+
+	mutex_lock(&bcl_dev->main_odpm->lock);
+
+	for (i = 0; i < METER_CHANNEL_MAX; i++) {
+		if (bcl_dev->main_pwr_warn_irq[i] == irq) {
+			bcl_dev->main_pwr_warn_triggered[i] = 1;
+			/* Setup Timer to clear the triggered */
+			mod_delayed_work(system_unbound_wq, &bcl_dev->main_pwr_irq_work,
+					 msecs_to_jiffies(PWRWARN_DELAY_MS));
+			dev_info(bcl_dev->device,
+				 "%s: CH%d_PWR_WARN, %d triggered\n", __func__, i, irq);
+			break;
+		}
+	}
+
+	mutex_unlock(&bcl_dev->main_odpm->lock);
+
+	return IRQ_HANDLED;
+}
+
 static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 {
 	struct s2mpg15_platform_data *pdata_sub;
@@ -911,9 +1011,11 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	struct device_node *np = bcl_dev->device->of_node;
 	struct i2c_client *i2c;
 	u8 val = 0;
-	int ret;
+	int ret, i;
+
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_GPU], google_gpu_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_GPU], google_soft_gpu_warn_work);
+	INIT_DELAYED_WORK(&bcl_dev->sub_pwr_irq_work, sub_pwrwarn_irq_work);
 
 	p_np = of_parse_phandle(np, "google,sub-power", 0);
 	if (p_np) {
@@ -931,6 +1033,7 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	}
 	pdata_sub = dev_get_platdata(sub_dev->dev);
 	bcl_dev->sub_odpm = pdata_sub->meter;
+	bcl_dev->sub_irq_base = pdata_sub->irq_base;
 	bcl_dev->sub_pmic_i2c = sub_dev->pmic;
 	bcl_dev->sub_dev = sub_dev->dev;
 	bcl_dev->bcl_lvl[OCP_WARN_GPU] = B2S_UPPER_LIMIT - THERMAL_HYST_LEVEL -
@@ -965,6 +1068,18 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 		dev_err(bcl_dev->device, "bcl_register fail: SOFT_GPU\n");
 		return -ENODEV;
 	}
+	for (i = 0; i < S2MPG1415_METER_CHANNEL_MAX; i++) {
+		bcl_dev->sub_pwr_warn_irq[i] =
+				bcl_dev->sub_irq_base + S2MPG15_IRQ_PWR_WARN_CH0_INT5 + i;
+		ret = devm_request_threaded_irq(bcl_dev->device, bcl_dev->sub_pwr_warn_irq[i],
+						NULL, sub_pwr_warn_irq_handler, 0, "PWR_WARN",
+						bcl_dev);
+		if (ret < 0) {
+			dev_err(bcl_dev->device, "Failed to request PWR_WARN_CH%d IRQ: %d: %d\n",
+				i, bcl_dev->sub_pwr_warn_irq[i], ret);
+		}
+	}
+
 	return 0;
 }
 
@@ -1163,6 +1278,7 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_CPUCL1], google_cpu1_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_CPUCL2], google_soft_cpu2_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_CPUCL1], google_soft_cpu1_warn_work);
+	INIT_DELAYED_WORK(&bcl_dev->main_pwr_irq_work, main_pwrwarn_irq_work);
 
 	for (i = 0; i < TRIGGERED_SOURCE_MAX; i++) {
 		bcl_dev->bcl_tz_cnt[i] = 0;
@@ -1186,6 +1302,7 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	}
 	pdata_main = dev_get_platdata(main_dev->dev);
 	bcl_dev->main_odpm = pdata_main->meter;
+	bcl_dev->main_irq_base = pdata_main->irq_base;
 	/* request smpl_warn interrupt */
 	if (!gpio_is_valid(pdata_main->smpl_warn_pin)) {
 		dev_err(bcl_dev->device, "smpl_warn GPIO NOT VALID\n");
@@ -1286,6 +1403,18 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 		dev_err(bcl_dev->device, "bcl_register fail: SOFT_TPU\n");
 		return -ENODEV;
 	}
+	for (i = 0; i < S2MPG1415_METER_CHANNEL_MAX; i++) {
+		bcl_dev->main_pwr_warn_irq[i] = bcl_dev->main_irq_base
+				+ S2MPG14_IRQ_PWR_WARN_CH0_INT6 + i;
+		ret = devm_request_threaded_irq(bcl_dev->device, bcl_dev->main_pwr_warn_irq[i],
+						NULL, main_pwr_warn_irq_handler, 0, "PWR_WARN",
+						bcl_dev);
+		if (ret < 0) {
+			dev_err(bcl_dev->device, "Failed to request PWR_WARN_CH%d IRQ: %d: %d\n",
+				i, bcl_dev->main_pwr_warn_irq[i], ret);
+		}
+	}
+
 
 	return 0;
 
@@ -1358,9 +1487,12 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 
 static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 {
-	int ret;
+	int ret, i = 0;
 	struct device_node *np = bcl_dev->device->of_node;
+	struct device_node *child;
+	struct device_node *p_np;
 	u32 val;
+	int read;
 
 	if (!bcl_dev) {
 		dev_err(bcl_dev->device, "Cannot parse device tree\n");
@@ -1390,6 +1522,32 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->vdroop2_pin = of_get_gpio(np, 1);
 	bcl_dev->modem_gpio1_pin = of_get_gpio(np, 2);
 	bcl_dev->modem_gpio2_pin = of_get_gpio(np, 3);
+
+	/* parse ODPM main limit */
+	p_np = of_get_child_by_name(np, "main_limit");
+	if (p_np) {
+		for_each_child_of_node(p_np, child) {
+			of_property_read_u32(child, "setting", &read);
+			if (i < METER_CHANNEL_MAX) {
+				bcl_dev->main_limit[i] = read;
+				i++;
+			}
+		}
+	}
+
+	/* parse ODPM sub limit */
+	p_np = of_get_child_by_name(np, "sub_limit");
+	i = 0;
+	if (p_np) {
+		for_each_child_of_node(p_np, child) {
+			of_property_read_u32(child, "setting", &read);
+			if (i < METER_CHANNEL_MAX) {
+				bcl_dev->sub_limit[i] = read;
+				i++;
+			}
+		}
+	}
+
 	bcl_disable_power();
 	if (google_bcl_init_clk_div(bcl_dev, CPU2, bcl_dev->cpu2_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU2 Address is NULL\n");
