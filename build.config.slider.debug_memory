@@ -45,8 +45,6 @@ function update_debug_config() {
     -e CONFIG_DEBUG_LIST \
     -e CONFIG_PANIC_ON_DATA_CORRUPTION \
     -e CONFIG_REGMAP_ALLOW_WRITE_DEBUGFS \
-    -e LTO_NONE \
-    -d LTO_CLANG \
     -d SHADOW_CALL_STACK
   (cd ${OUT_DIR} && \
    make O=${OUT_DIR} "${TOOL_ARGS[@]}" ${MAKE_ARGS} olddefconfig)

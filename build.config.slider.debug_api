@@ -16,8 +16,6 @@ function update_debug_config() {
     -e CONFIG_DEBUG_PLIST \
     -e CONFIG_DEBUG_NOTIFIERS \
     -e CONFIG_DEBUG_CREDENTIALS \
-    -e LTO_NONE \
-    -d LTO_CLANG \
     -d SHADOW_CALL_STACK
   (cd ${OUT_DIR} && \
    make O=${OUT_DIR} "${TOOL_ARGS[@]}" ${MAKE_ARGS} olddefconfig)
