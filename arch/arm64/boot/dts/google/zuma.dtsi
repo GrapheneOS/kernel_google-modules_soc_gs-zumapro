@@ -560,39 +560,39 @@
 			/* vptid 2, all sizes, priority 0 (highest), pbha 5 */
 			id_size_priority = <0x2 0xffffffff 0x0 0x5>;
 		};
-		CAMERA2WAY {
+		CAMERA1WAY {
 			/* vptid 3, size 512KB, priority 0 (highest), pbha 0 */
 			id_size_priority = <0x3 0x00002001 0x0 0x0>;
 		};
+		CAMERA2WAY0 {
+			/* vptid 3, size 1024KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x3 0x00010001 0x0 0x0>;
+		};
+		CAMERA2WAY1 {
+			/* vptid 3, size 1024KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x3 0x00010001 0x0 0x0>;
+		};
+		CAMERA2WAY2 {
+			/* vptid 3, size 1024KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x3 0x00010001 0x0 0x0>;
+		};
+		CAMERA3WAY0 {
+			/* vptid 3, size 1536KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x3 0x00020001 0x0 0x0>;
+		};
+		CAMERA3WAY1 {
+			/* vptid 3, size 1536KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x3 0x00020001 0x0 0x0>;
+		};
+		CAMERA3WAY2 {
+			/* vptid 3, size 1536KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x3 0x00020001 0x0 0x0>;
+		};
 		CAMERA4WAY0 {
-			/* vptid 3, size 1024KB, priority 0 (highest), pbha 0 */
-			id_size_priority = <0x3 0x00010001 0x0 0x0>;
-		};
-		CAMERA4WAY1 {
-			/* vptid 3, size 1024KB, priority 0 (highest), pbha 0 */
-			id_size_priority = <0x3 0x00010001 0x0 0x0>;
-		};
-		CAMERA4WAY2 {
-			/* vptid 3, size 1024KB, priority 0 (highest), pbha 0 */
-			id_size_priority = <0x3 0x00010001 0x0 0x0>;
-		};
-		CAMERA6WAY0 {
-			/* vptid 3, size 1536KB, priority 0 (highest), pbha 0 */
-			id_size_priority = <0x3 0x00020001 0x0 0x0>;
-		};
-		CAMERA6WAY1 {
-			/* vptid 3, size 1536KB, priority 0 (highest), pbha 0 */
-			id_size_priority = <0x3 0x00020001 0x0 0x0>;
-		};
-		CAMERA6WAY2 {
-			/* vptid 3, size 1536KB, priority 0 (highest), pbha 0 */
-			id_size_priority = <0x3 0x00020001 0x0 0x0>;
-		};
-		CAMERA8WAY0 {
 			/* vptid 4, size 2048KB, priority 0 (highest), pbha 0 */
 			id_size_priority = <0x4 0x00040001 0x0 0x0>;
 		};
-		CAMERA12WAY0 {
+		CAMERA6WAY0 {
 			/* vptid 4, size 3072KB, priority 0 (highest), pbha 0 */
 			id_size_priority = <0x4 0x00080001 0x0 0x0>;
 		};
