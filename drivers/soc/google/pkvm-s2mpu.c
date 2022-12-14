@@ -124,13 +124,11 @@ static const char *str_l1entry_gran(u32 l1attr)
 	if (!(l1attr & L1ENTRY_ATTR_L2TABLE_EN))
 		return "1G";
 
-	switch (FIELD_GET(L1ENTRY_ATTR_GRAN_MASK, l1attr)) {
+	switch (FIELD_GET(V9_L1ENTRY_ATTR_GRAN_MASK, l1attr)) {
 	case L1ENTRY_ATTR_GRAN_4K:
 		return "4K";
 	case L1ENTRY_ATTR_GRAN_64K:
 		return "64K";
-	case L1ENTRY_ATTR_GRAN_2M:
-		return "2M";
 	default:
 		return "invalid";
 	}
@@ -159,14 +157,14 @@ static struct s2mpu_mptc_entry read_mptc(void __iomem *base, u32 set, u32 way)
 {
 	struct s2mpu_mptc_entry entry;
 
-	writel_relaxed(READ_MPTC(set, way), base + REG_NS_READ_MPTC);
+	writel_relaxed(V9_READ_MPTC(set, way), base + REG_NS_V9_READ_MPTC);
 
-	entry.ppn = readl_relaxed(base + REG_NS_READ_MPTC_TAG_PPN),
-	entry.others = readl_relaxed(base + REG_NS_READ_MPTC_TAG_OTHERS),
-	entry.data = readl_relaxed(base + REG_NS_READ_MPTC_DATA),
+	entry.ppn = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_PPN),
+	entry.others = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_OTHERS),
+	entry.data = readl_relaxed(base + REG_NS_V9_READ_MPTC_DATA),
 
-	entry.valid = FIELD_GET(READ_MPTC_TAG_OTHERS_VALID_BIT, entry.others);
-	entry.vid = FIELD_GET(READ_MPTC_TAG_OTHERS_VID_MASK, entry.others);
+	entry.valid = FIELD_GET(V9_READ_MPTC_TAG_PPN_VALID_MASK, entry.ppn);
+	entry.vid = FIELD_GET(V9_READ_MPTC_TAG_OTHERS_VID_MASK, entry.others);
 	return entry;
 }
 
@@ -214,7 +212,8 @@ static irqreturn_t s2mpu_irq_handler(int irq, void *ptr)
 	}
 
 	dev_err(dev, "================== MPTC ENTRIES ==================\n");
-	nr_sets = FIELD_GET(INFO_NUM_SET_MASK, readl_relaxed(data->base + REG_NS_INFO));
+	nr_sets = FIELD_GET(V9_READ_MPTC_INFO_NUM_MPTC_SET,
+			    readl_relaxed(data->base + REG_NS_V9_MPTC_INFO));
 	for (invalid = 0, set = 0; set < nr_sets; set++) {
 		for (way = 0; way < S2MPU_NR_WAYS; way++) {
 			mptc = read_mptc(data->base, set, way);
