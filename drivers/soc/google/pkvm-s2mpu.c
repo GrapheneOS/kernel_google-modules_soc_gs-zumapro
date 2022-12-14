@@ -440,7 +440,23 @@ static struct platform_driver s2mpu_driver = {
 	},
 };
 
-module_platform_driver(s2mpu_driver);
+static int s2mpu_driver_register(struct platform_driver *driver)
+{
+	int ret = 0;
+
+	/* Only try to register the driver with pKVM if pKVM is enabled. */
+	if (is_protected_kvm_enabled()) {
+		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION_9);
+		if (ret) {
+			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
+			return ret;
+		}
+	}
+
+	return platform_driver_register(driver);
+}
+
+module_driver(s2mpu_driver, s2mpu_driver_register, platform_driver_unregister);
 
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("David Brazdil <dbrazdil@google.com>");
