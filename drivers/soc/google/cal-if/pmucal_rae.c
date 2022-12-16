@@ -120,7 +120,7 @@ static int pmucal_rae_wait(struct pmucal_seq *seq, unsigned int idx)
 			break;
 		timeout++;
 		udelay(1);
-		if (timeout > 2000) {
+		if (timeout > 5000) {
 			u32 reg;
 
 			reg = readl(seq->base_va + seq->offset);
@@ -203,7 +203,7 @@ static int pmucal_rae_write_retry(struct pmucal_seq *seq, bool inversion, unsign
 
 		timeout++;
 		udelay(1);
-		if (timeout > 1000) {
+		if (timeout > 2000) {
 			u32 reg;
 
 			reg = readl(seq->cond_base_va + seq->cond_offset);

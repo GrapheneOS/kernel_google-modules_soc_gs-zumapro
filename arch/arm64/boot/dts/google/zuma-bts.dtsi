@@ -65,16 +65,12 @@
 			};
 
 		};
-		/* Temporarily put be-core, lme in nocl2ab */
 		nocl2ab {
 			nocl_node;
 			g2d {
 				bus-width = <16>;
 			};
-			gdc0 {
-				bus-width = <16>;
-			};
-			gdc1 {
+			gdc {
 				bus-width = <16>;
 			};
 			mcsc {
@@ -90,9 +86,6 @@
 				bus-width = <16>;
 			};
 			gtnr-align {
-				bus-width = <16>;
-			};
-			lme {
 				bus-width = <16>;
 			};
 		};

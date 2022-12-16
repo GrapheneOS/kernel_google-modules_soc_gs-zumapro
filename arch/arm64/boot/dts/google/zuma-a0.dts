@@ -28,3 +28,15 @@
 &bts_smc3 {
 	reg = <0x0 0x27F4F534 0x4>;
 };
+
+&drmdecon0 {
+	afbc_clk_ppc_margin = <118>; /* additional 18% margin for afbc layer clock */
+};
+
+&drmdecon1 {
+	afbc_clk_ppc_margin = <118>; /* additional 18% margin for afbc layer clock */
+};
+
+&drmdecon2 {
+	afbc_clk_ppc_margin = <118>; /* additional 18% margin for afbc layer clock */
+};

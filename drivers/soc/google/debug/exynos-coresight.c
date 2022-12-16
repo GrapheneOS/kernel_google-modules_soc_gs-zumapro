@@ -465,15 +465,20 @@ static int exynos_cs_c2_notifier(struct notifier_block *self,
 
 	switch (cmd) {
 	case CPU_PM_ENTER:
+		exynos_cs_halt_disable(cpu);
 		exynos_cs_suspend_cpu(cpu);
 		break;
 	case CPU_PM_ENTER_FAILED:
 	case CPU_PM_EXIT:
 		exynos_cs_resume_cpu(cpu);
+		exynos_cs_halt_enable(cpu);
 		break;
 	case CPU_CLUSTER_PM_ENTER:
+		exynos_cs_halt_disable(cpu);
+		break;
 	case CPU_CLUSTER_PM_ENTER_FAILED:
 	case CPU_CLUSTER_PM_EXIT:
+		exynos_cs_halt_enable(cpu);
 		break;
 	}
 
