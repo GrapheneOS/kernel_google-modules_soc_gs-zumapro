@@ -1013,12 +1013,162 @@
 			<ISP_FE_LMP_DEBUG_HW_UNDEFINED>;
 	};
 	/* CSIS Core common controller interrupt event definitions */
+	isp_loch0_interrupt_group: isp_fe-interrupt-group@0 {
+		leaf-interrupt-names =
+			"isp_fe_loch0_csis_core_img_abort_done",
+			"isp_fe_loch0_csis_core_img_proc",
+			"isp_fe_loch0_csis_core_img_err",
+			"isp_fe_loch0_csis_core_img_mute";
+	};
+	isp_loch1_interrupt_group: isp_fe-interrupt-group@1 {
+		leaf-interrupt-names =
+			"isp_fe_loch1_csis_core_img_abort_done",
+			"isp_fe_loch1_csis_core_img_proc",
+			"isp_fe_loch1_csis_core_img_err",
+			"isp_fe_loch1_csis_core_img_mute";
+	};
+	isp_loch2_interrupt_group: isp_fe-interrupt-group@2 {
+		leaf-interrupt-names =
+			"isp_fe_loch2_csis_core_img_abort_done",
+			"isp_fe_loch2_csis_core_img_proc",
+			"isp_fe_loch2_csis_core_img_err",
+			"isp_fe_loch2_csis_core_img_mute";
+	};
+	isp_loch3_interrupt_group: isp_fe-interrupt-group@3 {
+		leaf-interrupt-names =
+			"isp_fe_loch3_csis_core_img_abort_done",
+			"isp_fe_loch3_csis_core_img_proc",
+			"isp_fe_loch3_csis_core_img_err",
+			"isp_fe_loch3_csis_core_img_mute";
+	};
+	isp_loch4_interrupt_group: isp_fe-interrupt-group@4 {
+		leaf-interrupt-names =
+			"isp_fe_loch4_csis_core_img_abort_done",
+			"isp_fe_loch4_csis_core_img_proc",
+			"isp_fe_loch4_csis_core_img_err",
+			"isp_fe_loch4_csis_core_img_mute";
+	};
+	isp_loch5_interrupt_group: isp_fe-interrupt-group@5 {
+		leaf-interrupt-names =
+			"isp_fe_loch5_csis_core_img_abort_done",
+			"isp_fe_loch5_csis_core_img_proc",
+			"isp_fe_loch5_csis_core_img_err",
+			"isp_fe_loch5_csis_core_img_mute";
+	};
+	isp_loch6_interrupt_group: isp_fe-interrupt-group@6 {
+		leaf-interrupt-names =
+			"isp_fe_loch6_csis_core_img_abort_done",
+			"isp_fe_loch6_csis_core_img_proc",
+			"isp_fe_loch6_csis_core_img_err",
+			"isp_fe_loch6_csis_core_img_mute";
+	};
+	isp_loch7_interrupt_group: isp_fe-interrupt-group@7 {
+		leaf-interrupt-names;
+	};
+	isp_loch8_interrupt_group: isp_fe-interrupt-group@8 {
+		leaf-interrupt-names;
+	};
+	isp_loch9_interrupt_group: isp_fe-interrupt-group@9 {
+		leaf-interrupt-names;
+	};
+	isp_loch10_interrupt_group: isp_fe-interrupt-group@10 {
+		leaf-interrupt-names;
+	};
+	isp_loch11_interrupt_group: isp_fe-interrupt-group@11 {
+		leaf-interrupt-names;
+	};
+	isp_loch12_interrupt_group: isp_fe-interrupt-group@12 {
+		leaf-interrupt-names;
+	};
+	isp_loch13_interrupt_group: isp_fe-interrupt-group@13 {
+		leaf-interrupt-names;
+	};
+	isp_loch14_interrupt_group: isp_fe-interrupt-group@14 {
+		leaf-interrupt-names;
+	};
+	isp_loch15_interrupt_group: isp_fe-interrupt-group@15 {
+		leaf-interrupt-names;
+	};
+	isp_loch16_interrupt_group: isp_fe-interrupt-group@16 {
+		leaf-interrupt-names;
+	};
+	isp_loch17_interrupt_group: isp_fe-interrupt-group@17 {
+		leaf-interrupt-names;
+	};
+	isp_loch18_interrupt_group: isp_fe-interrupt-group@18 {
+		leaf-interrupt-names;
+	};
+	isp_loch19_interrupt_group: isp_fe-interrupt-group@19 {
+		leaf-interrupt-names;
+	};
+	isp_loch20_interrupt_group: isp_fe-interrupt-group@20 {
+		leaf-interrupt-names;
+	};
+	isp_loch21_interrupt_group: isp_fe-interrupt-group@21 {
+		leaf-interrupt-names;
+	};
+	isp_loch22_interrupt_group: isp_fe-interrupt-group@22 {
+		leaf-interrupt-names;
+	};
+	isp_loch23_interrupt_group: isp_fe-interrupt-group@23 {
+		leaf-interrupt-names;
+	};
+	isp_loch24_interrupt_group: isp_fe-interrupt-group@24 {
+		leaf-interrupt-names;
+	};
+	isp_loch25_interrupt_group: isp_fe-interrupt-group@25 {
+		leaf-interrupt-names;
+	};
+	isp_loch26_interrupt_group: isp_fe-interrupt-group@26 {
+		leaf-interrupt-names;
+	};
+	isp_loch27_interrupt_group: isp_fe-interrupt-group@27 {
+		leaf-interrupt-names;
+	};
+	isp_rdma0_interrupt_group: isp_fe-interrupt-group@28 {
+		leaf-interrupt-names;
+	};
+	isp_rdma1_interrupt_group: isp_fe-interrupt-group@29 {
+		leaf-interrupt-names;
+	};
 	isp_fe_csis_core_cmn_ctl: isp_fe-event-info@34 {
 		irq-reg-space = "isp-fe";
 		irq-src-reg = <0x0 0x2008c>;
 		irq-reset-reg = <0x0 0x2008c>;
 		irq-mask-reg = <0x0 0x20094>;
+		irq-type = "aggregate";
 
+		irq-leaf-nodes =
+			<&isp_loch0_interrupt_group>,
+			<&isp_loch1_interrupt_group>,
+			<&isp_loch2_interrupt_group>,
+			<&isp_loch3_interrupt_group>,
+			<&isp_loch4_interrupt_group>,
+			<&isp_loch5_interrupt_group>,
+			<&isp_loch6_interrupt_group>,
+			<&isp_loch7_interrupt_group>,
+			<&isp_loch8_interrupt_group>,
+			<&isp_loch9_interrupt_group>,
+			<&isp_loch10_interrupt_group>,
+			<&isp_loch11_interrupt_group>,
+			<&isp_loch12_interrupt_group>,
+			<&isp_loch13_interrupt_group>,
+			<&isp_loch14_interrupt_group>,
+			<&isp_loch15_interrupt_group>,
+			<&isp_loch16_interrupt_group>,
+			<&isp_loch17_interrupt_group>,
+			<&isp_loch18_interrupt_group>,
+			<&isp_loch19_interrupt_group>,
+			<&isp_loch20_interrupt_group>,
+			<&isp_loch21_interrupt_group>,
+			<&isp_loch22_interrupt_group>,
+			<&isp_loch23_interrupt_group>,
+			<&isp_loch24_interrupt_group>,
+			<&isp_loch25_interrupt_group>,
+			<&isp_loch26_interrupt_group>,
+			<&isp_loch27_interrupt_group>,
+			<&isp_rdma0_interrupt_group>,
+			<&isp_rdma1_interrupt_group>;
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_CMN_CTL_LOCH0>,
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_CMN_CTL_LOCH1>,
@@ -1102,6 +1252,7 @@
 		irq-reset-reg = <0x0 0x20404>;
 		irq-mask-reg = <0x0 0x20410>;
 		irq-overflow-reg = <0x0 0x20408>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ABORT_DONE_LOCH0_ABORT_DONE>,
@@ -1118,6 +1269,7 @@
 		irq-reset-reg = <0x0 0x20804>;
 		irq-mask-reg = <0x0 0x20810>;
 		irq-overflow-reg = <0x0 0x20808>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ABORT_DONE_LOCH1_ABORT_DONE>,
@@ -1134,6 +1286,7 @@
 		irq-reset-reg = <0x0 0x20c04>;
 		irq-mask-reg = <0x0 0x20c10>;
 		irq-overflow-reg = <0x0 0x20c08>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ABORT_DONE_LOCH2_ABORT_DONE>,
@@ -1150,6 +1303,7 @@
 		irq-reset-reg = <0x0 0x21004>;
 		irq-mask-reg = <0x0 0x21010>;
 		irq-overflow-reg = <0x0 0x21008>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ABORT_DONE_LOCH3_ABORT_DONE>,
@@ -1166,6 +1320,7 @@
 		irq-reset-reg = <0x0 0x21404>;
 		irq-mask-reg = <0x0 0x21410>;
 		irq-overflow-reg = <0x0 0x21408>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ABORT_DONE_LOCH4_ABORT_DONE>,
@@ -1182,6 +1337,7 @@
 		irq-reset-reg = <0x0 0x21804>;
 		irq-mask-reg = <0x0 0x21810>;
 		irq-overflow-reg = <0x0 0x21808>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ABORT_DONE_LOCH5_ABORT_DONE>,
@@ -1198,6 +1354,7 @@
 		irq-reset-reg = <0x0 0x21c04>;
 		irq-mask-reg = <0x0 0x21c10>;
 		irq-overflow-reg = <0x0 0x21c08>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ABORT_DONE_LOCH6_ABORT_DONE>,
@@ -1214,6 +1371,7 @@
 		irq-reset-reg = <0x0 0x20424>;
 		irq-mask-reg = <0x0 0x20430>;
 		irq-overflow-reg = <0x0 0x20428>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_PROC_LOCH0_SOF>,
@@ -1236,6 +1394,7 @@
 		irq-reset-reg = <0x0 0x20824>;
 		irq-mask-reg = <0x0 0x20830>;
 		irq-overflow-reg = <0x0 0x20828>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_PROC_LOCH1_SOF>,
@@ -1258,6 +1417,7 @@
 		irq-reset-reg = <0x0 0x20c24>;
 		irq-mask-reg = <0x0 0x20c30>;
 		irq-overflow-reg = <0x0 0x20c28>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_PROC_LOCH2_SOF>,
@@ -1280,6 +1440,7 @@
 		irq-reset-reg = <0x0 0x21024>;
 		irq-mask-reg = <0x0 0x21030>;
 		irq-overflow-reg = <0x0 0x21028>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_PROC_LOCH3_SOF>,
@@ -1302,6 +1463,7 @@
 		irq-reset-reg = <0x0 0x21424>;
 		irq-mask-reg = <0x0 0x21430>;
 		irq-overflow-reg = <0x0 0x21428>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_PROC_LOCH4_SOF>,
@@ -1324,6 +1486,7 @@
 		irq-reset-reg = <0x0 0x21824>;
 		irq-mask-reg = <0x0 0x21830>;
 		irq-overflow-reg = <0x0 0x21828>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_PROC_LOCH5_SOF>,
@@ -1346,6 +1509,7 @@
 		irq-reset-reg = <0x0 0x21c24>;
 		irq-mask-reg = <0x0 0x21c30>;
 		irq-overflow-reg = <0x0 0x21c28>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_PROC_LOCH6_SOF>,
@@ -1368,6 +1532,7 @@
 		irq-reset-reg = <0x0 0x20438>;
 		irq-mask-reg = <0x0 0x20444>;
 		irq-overflow-reg = <0x0 0x2043c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ERR_LOCH0_LOST_OF_VSYNC>,
@@ -1406,6 +1571,7 @@
 		irq-reset-reg = <0x0 0x20838>;
 		irq-mask-reg = <0x0 0x20844>;
 		irq-overflow-reg = <0x0 0x2083c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ERR_LOCH1_LOST_OF_VSYNC>,
@@ -1444,6 +1610,7 @@
 		irq-reset-reg = <0x0 0x20c38>;
 		irq-mask-reg = <0x0 0x20c44>;
 		irq-overflow-reg = <0x0 0x20c3c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ERR_LOCH2_LOST_OF_VSYNC>,
@@ -1482,6 +1649,7 @@
 		irq-reset-reg = <0x0 0x21038>;
 		irq-mask-reg = <0x0 0x21044>;
 		irq-overflow-reg = <0x0 0x2103c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ERR_LOCH3_LOST_OF_VSYNC>,
@@ -1520,6 +1688,7 @@
 		irq-reset-reg = <0x0 0x21438>;
 		irq-mask-reg = <0x0 0x21444>;
 		irq-overflow-reg = <0x0 0x2143c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ERR_LOCH4_LOST_OF_VSYNC>,
@@ -1558,6 +1727,7 @@
 		irq-reset-reg = <0x0 0x21838>;
 		irq-mask-reg = <0x0 0x21844>;
 		irq-overflow-reg = <0x0 0x2183c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ERR_LOCH5_LOST_OF_VSYNC>,
@@ -1596,6 +1766,7 @@
 		irq-reset-reg = <0x0 0x21c38>;
 		irq-mask-reg = <0x0 0x21c44>;
 		irq-overflow-reg = <0x0 0x21c3c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_ERR_LOCH6_LOST_OF_VSYNC>,
@@ -1634,6 +1805,7 @@
 		irq-reset-reg = <0x0 0x2044c>;
 		irq-mask-reg = <0x0 0x20458>;
 		irq-overflow-reg = <0x0 0x20450>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_MUTE_LOCH0_MUTE_EN>,
@@ -1648,6 +1820,7 @@
 		irq-reset-reg = <0x0 0x2084c>;
 		irq-mask-reg = <0x0 0x20858>;
 		irq-overflow-reg = <0x0 0x20850>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_MUTE_LOCH1_MUTE_EN>,
@@ -1662,6 +1835,7 @@
 		irq-reset-reg = <0x0 0x20c4c>;
 		irq-mask-reg = <0x0 0x20c58>;
 		irq-overflow-reg = <0x0 0x20c50>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_MUTE_LOCH2_MUTE_EN>,
@@ -1676,6 +1850,7 @@
 		irq-reset-reg = <0x0 0x2104c>;
 		irq-mask-reg = <0x0 0x21058>;
 		irq-overflow-reg = <0x0 0x21050>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_MUTE_LOCH3_MUTE_EN>,
@@ -1690,6 +1865,7 @@
 		irq-reset-reg = <0x0 0x2144c>;
 		irq-mask-reg = <0x0 0x21458>;
 		irq-overflow-reg = <0x0 0x21450>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_MUTE_LOCH4_MUTE_EN>,
@@ -1704,6 +1880,7 @@
 		irq-reset-reg = <0x0 0x2184c>;
 		irq-mask-reg = <0x0 0x21858>;
 		irq-overflow-reg = <0x0 0x21850>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_MUTE_LOCH5_MUTE_EN>,
@@ -1718,6 +1895,7 @@
 		irq-reset-reg = <0x0 0x21c4c>;
 		irq-mask-reg = <0x0 0x21c58>;
 		irq-overflow-reg = <0x0 0x21c50>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_IMG_MUTE_LOCH6_MUTE_EN>,
