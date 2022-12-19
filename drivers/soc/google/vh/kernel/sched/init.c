@@ -86,6 +86,7 @@ extern void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct ta
 extern void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p,
 					    int flags);
 #endif
+extern void android_vh_use_amu_fie_pixel_mod(void* data, bool *use_amu_fie);
 
 extern struct cpufreq_governor sched_pixel_gov;
 
@@ -254,6 +255,10 @@ static int vh_sched_init(void)
 
 	ret = register_trace_android_vh_binder_restore_priority(
 		vh_binder_restore_priority_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_vh_use_amu_fie(android_vh_use_amu_fie_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
