@@ -1,4 +1,5 @@
 ## SPDX-License-Identifier: GPL-2.0-only
+EXTRA_CFLAGS   += -I$(KERNEL_SRC)/drivers/android
 
 ccflags-y += -I$(srctree) -I$(srctree)/$(src)
 

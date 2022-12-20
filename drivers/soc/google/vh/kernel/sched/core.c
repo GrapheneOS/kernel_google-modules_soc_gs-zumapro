@@ -138,3 +138,28 @@ void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_ma
 
 	return;
 }
+
+void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
+	struct task_struct *p)
+{
+	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
+
+	if (!t->from || vbinder->active)
+		return;
+
+	vbinder->active = true;
+
+	/* inherit prefer_idle */
+	vbinder->prefer_idle = get_prefer_idle(current);
+}
+
+void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction *t,
+	struct task_struct *p)
+{
+	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
+
+	if (vbinder->active) {
+		vbinder->prefer_idle = false;
+		vbinder->active = false;
+	}
+}
