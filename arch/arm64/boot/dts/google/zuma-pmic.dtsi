@@ -855,7 +855,7 @@
 				regulator-min-microvolt = <2400000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
 				channel-mux-selection = <0x0D>;
 				schematic-name = "SD";
 				subsys-name = "IO";
@@ -883,7 +883,7 @@
 				regulator-min-microvolt = <450000>;
 				regulator-max-microvolt = <1350000>;
 				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
 				channel-mux-selection = <0x0F>;
 				schematic-name = "SC";
 				subsys-name = "IO";
