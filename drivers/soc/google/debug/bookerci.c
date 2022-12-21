@@ -650,7 +650,6 @@ static int bci_init_irq(struct bci_dev *bci)
 		dev_info(bci->dev,
 			"Success to request irq%u for BCI handler[%s]\n",
 			irq, name);
-		enable_irq(irq);
 		i++;
 	}
 
