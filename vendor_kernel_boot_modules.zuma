@@ -58,6 +58,8 @@ exynos_tty.ko
 failover.ko
 fscache.ko
 g2d.ko
+gnss_spi.ko
+gnssif.ko
 google-battery.ko
 google-bms.ko
 google-charger.ko
