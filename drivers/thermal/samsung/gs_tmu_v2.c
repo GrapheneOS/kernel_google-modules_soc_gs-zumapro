@@ -3290,7 +3290,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 {
 	struct gs_tmu_data *data;
 	int ret;
-
+	char thermal_group[] = "tmu";
 	data = devm_kzalloc(&pdev->dev, sizeof(struct gs_tmu_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -3373,7 +3373,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	thermal_zone_device_enable(data->tzd);
 
 #if IS_ENABLED(CONFIG_PIXEL_METRICS)
-	data->tr_handle = register_temp_residency_stats(data->tzd->type);
+	data->tr_handle = register_temp_residency_stats(data->tzd->type, thermal_group);
 	if (data->tr_handle < 0)
 		dev_err(&pdev->dev, "failed to get a handle\n");
 #endif

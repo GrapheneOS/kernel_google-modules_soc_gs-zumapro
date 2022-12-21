@@ -618,7 +618,7 @@ static int gs101_spmic_thermal_probe(struct platform_device *pdev)
 	struct s2mpg11_platform_data *pdata;
 	int irq_base, i;
 	u8 mask = 0x01;
-
+	char thermal_group[] = "spmic";
 	chip = devm_kzalloc(&pdev->dev, sizeof(struct gs101_spmic_thermal_chip),
 			    GFP_KERNEL);
 	if (!chip)
@@ -705,7 +705,7 @@ static int gs101_spmic_thermal_probe(struct platform_device *pdev)
 			continue;
 
 #if IS_ENABLED(CONFIG_PIXEL_METRICS)
-		tr_stats_handle = register_temp_residency_stats(tzd->type);
+		tr_stats_handle = register_temp_residency_stats(tzd->type, thermal_group);
 		if (tr_stats_handle < 0) {
 			dev_err(&pdev->dev,
 				"Failed to register for temperature residency stats. ret: %d\n",
