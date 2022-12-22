@@ -4351,10 +4351,10 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "## PCIe ch %d ##\n", ch_num);
 
-	/* pci = devm_kzalloc(&pdev->dev, sizeof(*pci), GFP_KERNEL); */
-	pci = page_address(alloc_page(GFP_DMA32 | __GFP_ZERO));
+	pci = devm_kzalloc(&pdev->dev, sizeof(*pci), GFP_KERNEL);
 	if (!pci) {
-		dev_err(&pdev->dev, "dw_pcie allocation is failed\n");
+		/* dev_err(&pdev->dev, "dw_pcie allocation is failed\n"); */
+
 		return -ENOMEM;
 	}
 
