@@ -28,3 +28,13 @@
 &bts_smc3 {
 	reg = <0x0 0x27F4F534 0x4>;
 };
+
+&cpufreq_domain0 {
+	max-freq = <1880000>;
+};
+&cpufreq_domain1 {
+	max-freq = <2245000>;
+};
+&cpufreq_domain2 {
+	max-freq = <2556000>;
+};
