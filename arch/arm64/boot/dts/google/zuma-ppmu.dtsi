@@ -92,7 +92,7 @@
 				<DATA_BLOCK_FMT_EVT	0x0  0x0  0x1  0x0  0x0  0x0  0x1  0x0>,
 				<REQ_TYPE_FMT_EVT	0x0  0x0  0x0  0x0  0x0  0x0  0x0  0x0>;
 
-		bcm_ip_nr = <94>;
+		bcm_ip_nr = <98>;
 		bcm_ip_print_nr = <10>;
 
 		ip-name = "misc", "hsi0", "hsi1", "hsi2", "gsacore0",
@@ -113,7 +113,8 @@
 			  "nocl0_s1", "nocl0_s2", "nocl0_s3", "nocl0_dp", "nocl0_alive_p",
 			  "nocl0_cpucl0_p", "nocl1a_m0", "nocl1a_m1", "nocl1a_m2", "nocl1a_m3",
 			  "nocl1b_m0", "nocl2aa_m0", "nocl2aa_m1", "nocl2ab_m0", "nocl2ab_m1",
-			  "cpucl0_d0", "cpucl0_d1", "cpucl0_d2", "cpucl0_d3";
+			  "cpucl0_d0", "cpucl0_d1", "cpucl0_d2", "cpucl0_d3",
+			  "slc_ch0_0", "slc_ch1_0", "slc_ch2_0", "slc_ch3_0";
 
 
 		initial_run_bcm_ip =   <0>,  <1>,  <2>,  <3>,              <6>,  <7>,  <8>,  <9>,
