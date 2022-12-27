@@ -26,7 +26,10 @@ zuma_overlays := \
 	zuma-emulator.dtbo \
 	zuma-hybrid.dtbo
 
-zuma_dtbs := zuma-a0.dtb zuma-b0.dtb
+zuma_dtbs := \
+	zuma-a0-foplp.dtb \
+	zuma-a0-ipop.dtb \
+	zuma-b0.dtb
 
 # Usage:
 #   $(call DTBS_overlay_template, overlay, base_dtb, suffix)
