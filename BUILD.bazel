@@ -1,16 +1,4 @@
-# Copyright (C) 2021 The Android Open Source Project
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: GPL-2.0
 
 load("//build/bazel_common_rules/exec:exec.bzl", "exec_test")
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
@@ -24,15 +12,9 @@ load(
     "kernel_unstripped_modules_archive",
     "merged_kernel_uapi_headers",
 )
-load("@kernel_toolchain_info//:dict.bzl", "BRANCH", "CLANG_VERSION")
+load("@kernel_toolchain_info//:dict.bzl", "CLANG_VERSION")
 load(":slider.bzl", "SLIDER_DTBOS")
 load(":tests.bzl", "define_slider_kleaf_tests")
-
-package(
-    default_visibility = [
-        "//private/google-modules:__subpackages__",
-    ],
-)
 
 DEFINE_ABI_TARGETS = False
 
@@ -76,14 +58,15 @@ kernel_build_abi(
     name = "slider",
     srcs = glob([
         "build.config.*",
-        "arch/arm64/configs/slider_gki.fragment",
-        "Kconfig.ext",
-        "Kconfig.ext_modules",
         "**/Kconfig",
         "arch/arm64/boot/dts/**",
         "include/dt-bindings/**",
         "include/dtc/**",
     ]) + [
+        # keep sorted
+        "Kconfig.ext",
+        "Kconfig.ext_modules",
+        "arch/arm64/configs/slider_gki.fragment",
         "//common:kernel_aarch64_sources",
         "//private/google-modules/power/reset:reset.kconfig",
         "//private/google-modules/touch/common:common.kconfig",
@@ -95,8 +78,6 @@ kernel_build_abi(
         "gs101-a0.dtb",
         "gs101-b0.dtb",
     ],
-    abi_definition = "//common:android/abi_gki_aarch64.xml" if DEFINE_ABI_TARGETS else None,
-    additional_kmi_symbol_lists = ["//common:kernel_aarch64_all_kmi_symbol_lists"] if DEFINE_ABI_TARGETS else None,
     base_kernel = "//common:kernel_aarch64_download_or_build",
     build_config = "build.config.slider",
     define_abi_targets = DEFINE_ABI_TARGETS,
@@ -120,12 +101,17 @@ kernel_build_abi(
         "sg.ko",
         "softdog.ko",
         "spidev.ko",
+        "zram.ko",
         "zsmalloc.ko",
     ],
     # Keep in sync with build.config.common
     toolchain_version = CLANG_VERSION,
     # Also refer to unstripped modules archive for abi.prop
     unstripped_modules_archive = ":slider_unstripped_modules_archive",
+    visibility = [
+        # keep sorted
+        "//private/google-modules:__subpackages__",
+    ],
 )
 
 filegroup(
@@ -370,7 +356,7 @@ slider_dist_targets = [
 copy_to_dist_dir(
     name = "slider_dist",
     data = slider_dist_targets,
-    dist_dir = "out/{branch}/dist".format(branch = BRANCH),
+    dist_dir = "out/slider/dist",
     flat = True,
     log = "info",
 )
@@ -378,7 +364,7 @@ copy_to_dist_dir(
 kernel_build_abi_dist(
     name = "slider_abi_dist",
     data = slider_dist_targets,
-    dist_dir = "out_abi/{branch}/dist".format(branch = BRANCH),
+    dist_dir = "out/slider/dist",
     flat = True,
     kernel_build_abi = ":slider",
     log = "info",
