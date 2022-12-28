@@ -37,6 +37,7 @@
 		samsung,iommu-group = <&iommu_group_aur>;
 		gxp-fw-region = <&gxp_fw_reserved>;
 		gxp-scratchpad-region = <&gxp_scratchpad_reserved>;
+		gxp-secure-data-region = <&gxp_secure_data_reserved>;
 		gxp-mcu-fw-region = <&gxp_mcu_fw_reserved>;
 		gxp-memory-per-core = <0 512>;
 		gxp,shareability = <0x20a40700>; /* SYSREG_AUR0 */
