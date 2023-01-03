@@ -11,7 +11,6 @@
 };
 
 #include "zuma.dtsi"
-#include "zuma-sysmmu.dtsi"
 
 &bts_smc0 {
 	reg = <0x0 0x27C4F534 0x4>;
