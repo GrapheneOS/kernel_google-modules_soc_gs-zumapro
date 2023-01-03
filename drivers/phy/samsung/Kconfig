@@ -18,13 +18,6 @@ config PHY_SAMSUNG_USB_CAL
 	  for Samsung USB PHY controller.
 	  This driver provides PHY interface.
 
-config PHY_SAMSUNG_USB_GEN2
-	tristate "Exynos SoC series USB DRD for GEN2"
-	default n
-	help
-	  Support SAMSUNG USB3.1 GEN2 PHY.
-	  This driver provides PHY interface for USB3.1 GEN2 PHY.
-
 config PHY_SAMSUNG_USB_GEN2_V4
 	tristate "Exynos SoC series USB DRD for GEN2 V4"
 	default n
