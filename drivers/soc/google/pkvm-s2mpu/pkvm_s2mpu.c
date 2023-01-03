@@ -18,8 +18,7 @@
 #include <linux/pm_runtime.h>
 
 #include <linux/kvm_host.h>
-#include <asm/kvm_s2mpu.h>
-
+#include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
 
 #define S2MPU_NR_WAYS	4
@@ -42,6 +41,12 @@ struct s2mpu_mptc_entry {
 
 static const struct of_device_id sysmmu_sync_of_match[];
 
+/* Declare EL2 module init function as it is needed by pkvm_load_el2_module. */
+int __kvm_nvhe_s2mpu_hyp_init(const struct pkvm_module_ops *ops);
+/* Token of S2MPU driver, token is the load address of the module and a unique ID for it. */
+static unsigned long token;
+
+/* Number of s2mpu devices. */
 static int nr_devs_total;
 static atomic_t nr_devs_registered = ATOMIC_INIT(0);
 
@@ -296,7 +301,10 @@ int pkvm_s2mpu_suspend(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
 
-	if (data->pkvm_registered && !data->always_on)
+	if(data->always_on)
+		return 0;
+
+	if (data->pkvm_registered)
 		return pkvm_iommu_suspend(dev);
 
 	return 0;
@@ -523,11 +531,27 @@ static struct platform_driver s2mpu_driver = {
 static int s2mpu_driver_register(struct platform_driver *driver)
 {
 	struct device_node *np;
+	int ret = 0;
 
 	for_each_matching_node(np, driver->driver.of_match_table)
 		if (of_device_is_available(np))
 			nr_devs_total++;
 	pr_info("%d devices to be initialized\n", nr_devs_total);
+
+	/* Only try to register the driver with pKVM if pKVM is enabled. */
+	if (is_protected_kvm_enabled()) {
+		ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
+		if (ret) {
+			pr_err("Failed to load s2mpu el2 module: %d\n", ret);
+			return ret;
+		}
+
+		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION_9, token);
+		if (ret) {
+			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
+			return ret;
+		}
+	}
 
 	return platform_driver_register(driver);
 }
