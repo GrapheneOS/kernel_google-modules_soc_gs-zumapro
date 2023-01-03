@@ -16,8 +16,7 @@
 #include <linux/pm_runtime.h>
 
 #include <linux/kvm_host.h>
-#include <asm/kvm_s2mpu.h>
-
+#include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
 
 #define S2MPU_VERSION_9					0x90000000
@@ -39,6 +38,11 @@ struct s2mpu_mptc_entry {
 	u32 others;
 	u32 data;
 };
+
+/* Declare EL2 module init function as it is needed by pkvm_load_el2_module. */
+int __kvm_nvhe_s2mpu_hyp_init(const struct pkvm_module_ops *ops);
+/* Token of S2MPU driver, token is the load address of the module and a unique ID for it. */
+static unsigned long token;
 
 /* Number of s2mpu devices. */
 static int nr_devs_total;
@@ -270,11 +274,6 @@ static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
 	return platform_get_drvdata(to_platform_device(dev));
 }
 
-static u32 s2mpu_version(struct s2mpu_data *data)
-{
-	return readl_relaxed(data->base + REG_NS_VERSION);
-}
-
 /*
  * Configure Zuma S2MPU to a given set of protection bits across all GBs.
  * This is used during bring-up, until pKVM can be updated and take control.
@@ -299,13 +298,13 @@ int pkvm_s2mpu_suspend(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
 
-	if (data->pkvm_registered && !data->always_on)
+	if(data->always_on)
+		return 0;
+
+	if (data->pkvm_registered)
 		return pkvm_iommu_suspend(dev);
 
-	if (s2mpu_version(data) == S2MPU_VERSION_9)
-		return pkvm_s2mpu_zuma_config(dev, MPT_PROT_NONE);
-
-	return 0;
+	return pkvm_s2mpu_zuma_config(dev, MPT_PROT_NONE);
 }
 EXPORT_SYMBOL_GPL(pkvm_s2mpu_suspend);
 
@@ -316,11 +315,7 @@ int pkvm_s2mpu_resume(struct device *dev)
 	if (data->pkvm_registered)
 		return pkvm_iommu_resume(dev);
 
-	if (s2mpu_version(data) == S2MPU_VERSION_9)
-		return pkvm_s2mpu_zuma_config(dev, MPT_PROT_RW);
-
-	writel_relaxed(0, data->base + REG_NS_CTRL0);
-	return 0;
+	return pkvm_s2mpu_zuma_config(dev, MPT_PROT_RW);
 }
 EXPORT_SYMBOL_GPL(pkvm_s2mpu_resume);
 
@@ -391,15 +386,10 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 */
 	s2mpu_probe_irq(pdev, data);
 
-	if (!off_at_boot && s2mpu_version(data) == S2MPU_VERSION_9) {
-		/* Bring-up only. Control from the kernel. */
-		ret = -ENODEV;
-	} else {
-		ret = pkvm_iommu_s2mpu_register(dev, res->start);
-		if (ret && ret != -ENODEV) {
-			dev_err(dev, "could not register: %d\n", ret);
-			return ret;
-		}
+	ret = pkvm_iommu_s2mpu_register(dev, res->start);
+	if (ret && ret != -ENODEV) {
+		dev_err(dev, "could not register: %d\n", ret);
+		return ret;
 	}
 
 	data->pkvm_registered = ret != -ENODEV;
@@ -466,7 +456,13 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 
 	/* Only try to register the driver with pKVM if pKVM is enabled. */
 	if (is_protected_kvm_enabled()) {
-		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION_9);
+		ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
+		if (ret) {
+			pr_err("Failed to load s2mpu el2 module: %d\n", ret);
+			return ret;
+		}
+
+		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION_9, token);
 		if (ret) {
 			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
 			return ret;
