@@ -43,6 +43,19 @@
 #define B2S_OCP_WARN		S2MPG15_PM_B2S_OCP_WARN
 #define B2S_SOFT_OCP_WARN	S2MPG15_PM_B2S_SOFT_OCP_WARN
 
+const unsigned int clk_stats_offset[] = {
+	CPUCL0_CLKDIVSTEP_STAT,
+	CPUCL12_CLKDIVSTEP_STAT,
+	CPUCL12_CLKDIVSTEP_STAT,
+	TPU_CLKDIVSTEP_STAT,
+	G3D_CLKDIVSTEP_STAT
+};
+
+static const char * const clk_ratio_source[] = {
+	"cpu0", "cpu1_heavy", "cpu2_heavy", "tpu_heavy", "gpu_heavy",
+	"cpu1_light", "cpu2_light", "tpu_light", "gpu_light"
+};
+
 static ssize_t batoilo_count_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
