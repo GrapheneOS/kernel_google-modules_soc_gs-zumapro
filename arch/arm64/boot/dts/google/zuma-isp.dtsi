@@ -136,6 +136,9 @@
 
 		/* Device node name */
 		node-name = "top";
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_dpm: lwis_dpm@0 {
