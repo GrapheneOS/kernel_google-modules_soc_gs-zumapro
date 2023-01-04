@@ -2017,6 +2017,157 @@ static const struct attribute_group vdroop_flt_group = {
 	.name = "vdroop_flt",
 };
 
+static ssize_t main_pwrwarn_threshold_show(struct device *dev, struct device_attribute *attr,
+					   char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	int ret, idx;
+
+	ret = sscanf(attr->attr.name, "main_pwrwarn_threshold%d", &idx);
+	if (ret != 1)
+		return -EINVAL;
+	if (idx > METER_CHANNEL_MAX || idx < 0)
+		return -EINVAL;
+
+	return sysfs_emit(buf, "%lld\n", bcl_dev->main_limit[idx]);
+}
+
+static ssize_t main_pwrwarn_threshold_store(struct device *dev, struct device_attribute *attr,
+				       const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	int ret, idx, value;
+
+	ret = kstrtou32(buf, 10, &value);
+	if (ret)
+		return ret;
+	ret = sscanf(attr->attr.name, "main_pwrwarn_threshold%d", &idx);
+	if (ret != 1)
+		return -EINVAL;
+	if (idx > METER_CHANNEL_MAX || idx < 0)
+		return -EINVAL;
+
+	bcl_dev->main_limit[idx] = value;
+
+	return size;
+}
+
+static ssize_t sub_pwrwarn_threshold_show(struct device *dev, struct device_attribute *attr,
+					  char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	int ret, idx;
+
+	ret = sscanf(attr->attr.name, "sub_pwrwarn_threshold%d", &idx);
+	if (ret != 1)
+		return -EINVAL;
+	if (idx > METER_CHANNEL_MAX || idx < 0)
+		return -EINVAL;
+
+	return sysfs_emit(buf, "%lld\n", bcl_dev->sub_limit[idx]);
+}
+
+static ssize_t sub_pwrwarn_threshold_store(struct device *dev, struct device_attribute *attr,
+				       const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	int ret, idx, value;
+
+	ret = kstrtou32(buf, 10, &value);
+	if (ret)
+		return ret;
+	ret = sscanf(attr->attr.name, "sub_pwrwarn_threshold%d", &idx);
+	if (ret != 1)
+		return -EINVAL;
+	if (idx > METER_CHANNEL_MAX || idx < 0)
+		return -EINVAL;
+
+	bcl_dev->sub_limit[idx] = value;
+
+	return size;
+}
+
+#define DEVICE_PWRWARN_ATTR(_name, _num) \
+	struct device_attribute attr_##_name##_num = \
+		__ATTR(_name##_num, 0644, _name##_show, _name##_store)
+
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 0);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 1);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 2);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 3);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 4);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 5);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 6);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 7);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 8);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 9);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 10);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 11);
+static DEVICE_PWRWARN_ATTR(main_pwrwarn_threshold, 12);
+
+static struct attribute *main_pwrwarn_attrs[] = {
+	&attr_main_pwrwarn_threshold0.attr,
+	&attr_main_pwrwarn_threshold1.attr,
+	&attr_main_pwrwarn_threshold2.attr,
+	&attr_main_pwrwarn_threshold3.attr,
+	&attr_main_pwrwarn_threshold4.attr,
+	&attr_main_pwrwarn_threshold5.attr,
+	&attr_main_pwrwarn_threshold6.attr,
+	&attr_main_pwrwarn_threshold7.attr,
+	&attr_main_pwrwarn_threshold8.attr,
+	&attr_main_pwrwarn_threshold9.attr,
+	&attr_main_pwrwarn_threshold10.attr,
+	&attr_main_pwrwarn_threshold11.attr,
+	&attr_main_pwrwarn_threshold12.attr,
+	NULL,
+};
+
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 0);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 1);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 2);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 3);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 4);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 5);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 6);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 7);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 8);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 9);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 10);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 11);
+static DEVICE_PWRWARN_ATTR(sub_pwrwarn_threshold, 12);
+
+static struct attribute *sub_pwrwarn_attrs[] = {
+	&attr_sub_pwrwarn_threshold0.attr,
+	&attr_sub_pwrwarn_threshold1.attr,
+	&attr_sub_pwrwarn_threshold2.attr,
+	&attr_sub_pwrwarn_threshold3.attr,
+	&attr_sub_pwrwarn_threshold4.attr,
+	&attr_sub_pwrwarn_threshold5.attr,
+	&attr_sub_pwrwarn_threshold6.attr,
+	&attr_sub_pwrwarn_threshold7.attr,
+	&attr_sub_pwrwarn_threshold8.attr,
+	&attr_sub_pwrwarn_threshold9.attr,
+	&attr_sub_pwrwarn_threshold10.attr,
+	&attr_sub_pwrwarn_threshold11.attr,
+	&attr_sub_pwrwarn_threshold12.attr,
+	NULL,
+};
+
+static const struct attribute_group main_pwrwarn_group = {
+	.attrs = main_pwrwarn_attrs,
+	.name = "main_pwrwarn",
+};
+
+static const struct attribute_group sub_pwrwarn_group = {
+	.attrs = sub_pwrwarn_attrs,
+	.name = "sub_pwrwarn",
+};
+
+
 const struct attribute_group *mitigation_groups[] = {
 	&instr_group,
 	&triggered_lvl_group,
@@ -2028,5 +2179,7 @@ const struct attribute_group *mitigation_groups[] = {
 	&triggered_capacity_group,
 	&triggered_voltage_group,
 	&vdroop_flt_group,
+	&main_pwrwarn_group,
+	&sub_pwrwarn_group,
 	NULL,
 };

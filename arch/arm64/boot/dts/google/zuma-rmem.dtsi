@@ -44,6 +44,11 @@
 			no-map;
 		};
 
+		gxp_secure_data_reserved: gxp_secure_data@91400000 {
+			reg = <0x0 0x91400000 0x00c00000>;
+			no-map;
+		};
+
 		gxp_mcu_fw_reserved: gxp_mcu_fw@0x92000000 {
 			reg = <0x0 0x92000000 0x00400000>;
 			no-map;
