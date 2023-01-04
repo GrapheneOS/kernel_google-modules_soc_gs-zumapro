@@ -185,6 +185,9 @@ static unsigned int sink_discovery_delay_ms;
 /* Callback for data_active changes */
 void (*data_active_callback)(void *data_active_payload);
 void *data_active_payload;
+/* Callback for orientation changes */
+void (*orientation_callback)(void *orientation_payload);
+void *orientation_payload;
 
 static bool hooks_installed;
 
@@ -644,6 +647,13 @@ void register_data_active_callback(void (*callback)(void *data_active_payload), 
 	data_active_payload = data;
 }
 EXPORT_SYMBOL_GPL(register_data_active_callback);
+
+void register_orientation_callback(void (*callback)(void *orientation_payload), void *data)
+{
+	orientation_callback = callback;
+	orientation_payload = data;
+}
+EXPORT_SYMBOL_GPL(register_orientation_callback);
 
 static void ovp_operation(struct max77759_plat *chip, int operation);
 #ifdef CONFIG_GPIOLIB
@@ -2167,6 +2177,12 @@ static int max77759_usb_set_orientation(struct typec_switch_dev *sw,
 				  (union extcon_property_value)(int)polarity);
 	logbuffer_logk(chip->log, LOGLEVEL_INFO, "%s setting polarity USB_HOST %d",
 		       ret < 0 ? "Failed" : "Succeeded", polarity);
+
+	chip->polarity = polarity;
+
+	if (orientation_callback)
+		(*orientation_callback)(orientation_payload);
+
 	return ret;
 }
 
