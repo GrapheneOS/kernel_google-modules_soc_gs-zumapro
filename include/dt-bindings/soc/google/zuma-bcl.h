@@ -1,0 +1,72 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2022 Google, LLC.
+ *
+ * Device Tree binding constants for ZUMA BCL
+ */
+
+#ifndef _DT_BINDINGS_ZUMA_BCL_H
+#define _DT_BINDINGS_ZUMA_BCL_H
+
+/* Current Limit */
+#define B3M_UPPER_LIMIT	8000
+#define B3M_LOWER_LIMIT	2688
+#define B3M_STEP	166
+#define B2M_UPPER_LIMIT	12000
+#define B2M_LOWER_LIMIT	4000
+#define B2M_STEP	250
+#define B7M_UPPER_LIMIT	12000
+#define B7M_LOWER_LIMIT	4000
+#define B7M_STEP	250
+#define B2S_UPPER_LIMIT	12000
+#define B2S_LOWER_LIMIT	4000
+#define B2S_STEP	250
+#define BO_LIMIT	5000
+#define BO_UPPER_LIMIT	6800
+#define BO_LOWER_LIMIT	3800
+#define BO_STEP	200
+
+/* Thermal Limit */
+#define PMIC_OVERHEAT_UPPER_LIMIT	2000
+#define PMIC_120C_UPPER_LIMIT	1200
+#define PMIC_140C_UPPER_LIMIT	1400
+#define THERMAL_DELAY_INIT_MS	1000
+
+/* Voltage Limit */
+#define SMPL_BATTERY_VOLTAGE	4200
+#define SMPL_UPPER_LIMIT	3300
+#define SMPL_LOWER_LIMIT	2600
+#define SMPL_STEP	100
+#define SMPL_NUM_LVL	32
+#define VD_BATTERY_VOLTAGE	4200
+#define VD_UPPER_LIMIT	3350
+#define VD_LOWER_LIMIT	2600
+#define VD_STEP	50
+#define VD_DELAY	300
+#define UVLO1_LIMIT	1000
+#define UVLO2_LIMIT	1200
+#define SMPL_LIMIT	1100
+#define SOC_LIMIT	80
+#define THERMAL_HYST_LEVEL	100
+
+/* Indexing */
+#define SMPL_WARN	0
+#define OCP_WARN_CPUCL1	1
+#define OCP_WARN_CPUCL2	2
+#define SOFT_OCP_WARN_CPUCL1	3
+#define SOFT_OCP_WARN_CPUCL2	4
+#define OCP_WARN_TPU	5
+#define SOFT_OCP_WARN_TPU	6
+#define OCP_WARN_GPU	7
+#define SOFT_OCP_WARN_GPU	8
+#define PMIC_SOC	9
+#define UVLO1	10
+#define UVLO2	11
+#define BATOILO	12
+#define PMIC_120C	13
+#define PMIC_140C	14
+#define PMIC_OVERHEAT	15
+#define TRIGGERED_SOURCE_MAX	16
+
+#endif /* _DT_BINDINGS_ZUMA_BCL_H */
+
