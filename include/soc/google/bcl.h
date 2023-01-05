@@ -7,8 +7,10 @@
 #include <linux/i2c.h>
 #include <linux/mutex.h>
 #include <linux/power_supply.h>
+#include <linux/pm_qos.h>
 #include <linux/thermal.h>
 #include <linux/workqueue.h>
+#include <soc/google/exynos_pm_qos.h>
 #include <dt-bindings/power/s2mpg1x-power.h>
 #include <dt-bindings/soc/google/zuma-bcl.h>
 
@@ -152,12 +154,27 @@ typedef int (*pmic_get_vdroop_ok_fn)(struct i2c_client *client, bool *state);
 typedef int (*pmic_get_and_clr_irq_fn)(struct i2c_client *client, u8 *irq_val);
 
 struct bcl_ifpmic_ops {
-	pmic_get_vdroop_ok_fn	cb_get_vdroop_ok;
-	pmic_set_uvlo_lvl_fn	cb_uvlo_write;
-	pmic_get_uvlo_lvl_fn	cb_uvlo_read;
-	pmic_set_batoilo_lvl_fn	cb_batoilo_write;
+	pmic_get_vdroop_ok_fn cb_get_vdroop_ok;
+	pmic_set_uvlo_lvl_fn cb_uvlo_write;
+	pmic_get_uvlo_lvl_fn cb_uvlo_read;
+	pmic_set_batoilo_lvl_fn cb_batoilo_write;
 	pmic_get_batoilo_lvl_fn cb_batoilo_read;
 	pmic_get_and_clr_irq_fn cb_get_and_clr_irq;
+};
+
+struct qos_throttle_limit {
+	struct freq_qos_request cpu0_max_qos_req;
+	struct freq_qos_request cpu1_max_qos_req;
+	struct freq_qos_request cpu2_max_qos_req;
+	struct exynos_pm_qos_request gpu_qos_max;
+	struct exynos_pm_qos_request tpu_qos_max;
+	int cpu0_limit;
+	int cpu1_limit;
+	int cpu2_limit;
+	int gpu_limit;
+	int tpu_limit;
+	int gpu_freq_max;
+	int tpu_freq_max;
 };
 
 struct bcl_device {
@@ -256,6 +273,11 @@ struct bcl_device {
 	struct irq_duration_stats pwrwarn_sub_irq_bins[METER_CHANNEL_MAX];
 	const char *main_rail_names[METER_CHANNEL_MAX];
 	const char *sub_rail_names[METER_CHANNEL_MAX];
+
+	struct qos_throttle_limit *bcl_qos[TRIGGERED_SOURCE_MAX];
+	int cpu0_cluster;
+	int cpu1_cluster;
+	int cpu2_cluster;
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);
@@ -277,6 +299,9 @@ int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
 int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
 int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
 u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting);
+void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle);
+int google_bcl_setup_qos(struct bcl_device *bcl_dev);
+void google_bcl_remove_qos(struct bcl_device *bcl_dev);
 #else
 struct bcl_device;
 

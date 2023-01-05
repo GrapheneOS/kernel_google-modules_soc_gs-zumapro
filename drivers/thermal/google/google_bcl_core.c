@@ -111,6 +111,8 @@ static int triggered_read_level(void *data, int *val, int id)
 
 	*val = 0;
 	bcl_dev->bcl_cur_lvl[id] = 0;
+	if (bcl_dev->bcl_qos[id])
+		google_bcl_qos_update(bcl_dev, id, false);
 	if (bcl_dev->bcl_prev_lvl[id] != *val) {
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
@@ -359,6 +361,8 @@ static irqreturn_t irq_handler(int irq, void *data)
 			ocpsmpl_read_stats(bcl_dev, &bcl_dev->bcl_stats[idx], bcl_dev->batt_psy);
 			update_tz(bcl_dev, idx, true);
 		}
+		if (bcl_dev->bcl_qos[idx])
+			google_bcl_qos_update(bcl_dev, idx, true);
 	} else {
 		/* IRQ falling edge */
 		if (idx >= UVLO1 && idx <= BATOILO) {
@@ -372,6 +376,8 @@ static irqreturn_t irq_handler(int irq, void *data)
 			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 
 		update_tz(bcl_dev, idx, false);
+		if (bcl_dev->bcl_qos[idx])
+			google_bcl_qos_update(bcl_dev, idx, false);
 	}
 exit:
 	enable_irq(irq);
@@ -1384,6 +1390,53 @@ static void google_bcl_batoilo_irq_work(struct work_struct *work)
 	google_warn_work(work, BATOILO);
 }
 
+static int get_idx_from_tz(struct bcl_device *bcl_dev, const char *name)
+{
+	int i;
+
+	for (i = 0; i < TRIGGERED_SOURCE_MAX; i++) {
+		if (!strcmp(name, bcl_dev->bcl_tz[i]->type))
+			return i;
+	}
+	return -EINVAL;
+}
+
+static void google_bcl_parse_qos(struct bcl_device *bcl_dev)
+{
+	struct device_node *np = bcl_dev->device->of_node;
+	struct device_node *child;
+	struct device_node *p_np;
+	int idx;
+
+	/* parse qos */
+	p_np = of_get_child_by_name(np, "freq_qos");
+	if (!p_np)
+		return;
+	for_each_child_of_node(p_np, child) {
+		idx = get_idx_from_tz(bcl_dev, child->name);
+		if (idx < 0)
+			continue;
+		bcl_dev->bcl_qos[idx] = devm_kzalloc(bcl_dev->device,
+						     sizeof(struct qos_throttle_limit),
+						     GFP_KERNEL);
+		if (of_property_read_u32(child, "cpucl0",
+					 &bcl_dev->bcl_qos[idx]->cpu0_limit) != 0)
+			bcl_dev->bcl_qos[idx]->cpu0_limit = INT_MAX;
+		if (of_property_read_u32(child, "cpucl1",
+					 &bcl_dev->bcl_qos[idx]->cpu1_limit) != 0)
+			bcl_dev->bcl_qos[idx]->cpu1_limit = INT_MAX;
+		if (of_property_read_u32(child, "cpucl2",
+					 &bcl_dev->bcl_qos[idx]->cpu2_limit) != 0)
+			bcl_dev->bcl_qos[idx]->cpu2_limit = INT_MAX;
+		if (of_property_read_u32(child, "gpu",
+					 &bcl_dev->bcl_qos[idx]->gpu_limit) != 0)
+			bcl_dev->bcl_qos[idx]->gpu_limit = INT_MAX;
+		if (of_property_read_u32(child, "tpu",
+					 &bcl_dev->bcl_qos[idx]->tpu_limit) != 0)
+			bcl_dev->bcl_qos[idx]->tpu_limit = INT_MAX;
+	}
+}
+
 static void google_set_intf_pmic_work(struct work_struct *work)
 {
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device, init_work.work);
@@ -1457,6 +1510,12 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 	}
 
 	bcl_dev->ready = true;
+	google_bcl_parse_qos(bcl_dev);
+	if (google_bcl_setup_qos(bcl_dev) != 0) {
+		dev_err(bcl_dev->device, "Cannot Initiate QOS\n");
+		google_bcl_remove_qos(bcl_dev);
+	}
+
 	return;
 
 retry_init_work:
@@ -1881,6 +1940,12 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->modem_gpio2_pin = of_get_gpio(np, 3);
 	ret = of_property_read_u32(np, "rffe_channel", &val);
 	bcl_dev->rffe_channel = ret ? 11 : val;
+	ret = of_property_read_u32(np, "cpu0_cluster", &val);
+	bcl_dev->cpu0_cluster = ret ? 0 : val;
+	ret = of_property_read_u32(np, "cpu1_cluster", &val);
+	bcl_dev->cpu1_cluster = ret ? 0 : val;
+	ret = of_property_read_u32(np, "cpu2_cluster", &val);
+	bcl_dev->cpu2_cluster = ret ? 0 : val;
 
 	/* parse ODPM main limit */
 	p_np = of_get_child_by_name(np, "main_limit");
@@ -2005,6 +2070,7 @@ static int google_bcl_remove(struct platform_device *pdev)
 	pmic_device_destroy(bcl_dev->mitigation_dev->devt);
 	debugfs_remove_recursive(bcl_dev->debug_entry);
 	google_bcl_remove_thermal(bcl_dev);
+	google_bcl_remove_qos(bcl_dev);
 
 	return 0;
 }
