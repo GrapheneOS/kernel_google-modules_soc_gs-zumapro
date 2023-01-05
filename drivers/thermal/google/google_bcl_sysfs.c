@@ -667,15 +667,45 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 
 static DEVICE_ATTR_RW(enable_mitigation);
 
-static ssize_t offsrc_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t main_offsrc1_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%#x\n", bcl_dev->offsrc);
+	return sysfs_emit(buf, "%#x\n", bcl_dev->main_offsrc1);
 }
 
-static DEVICE_ATTR_RO(offsrc);
+static DEVICE_ATTR_RO(main_offsrc1);
+
+static ssize_t main_offsrc2_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return sysfs_emit(buf, "%#x\n", bcl_dev->main_offsrc2);
+}
+
+static DEVICE_ATTR_RO(main_offsrc2);
+
+static ssize_t sub_offsrc1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return sysfs_emit(buf, "%#x\n", bcl_dev->sub_offsrc1);
+}
+
+static DEVICE_ATTR_RO(sub_offsrc1);
+
+static ssize_t sub_offsrc2_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return sysfs_emit(buf, "%#x\n", bcl_dev->sub_offsrc2);
+}
+
+static DEVICE_ATTR_RO(sub_offsrc2);
 
 static ssize_t pwronsrc_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -700,7 +730,10 @@ static struct attribute *instr_attrs[] = {
 	&dev_attr_mpmm_settings.attr,
 	&dev_attr_ppm_settings.attr,
 	&dev_attr_enable_mitigation.attr,
-	&dev_attr_offsrc.attr,
+	&dev_attr_main_offsrc1.attr,
+	&dev_attr_main_offsrc2.attr,
+	&dev_attr_sub_offsrc1.attr,
+	&dev_attr_sub_offsrc2.attr,
 	&dev_attr_pwronsrc.attr,
 	&dev_attr_ready.attr,
 	NULL,

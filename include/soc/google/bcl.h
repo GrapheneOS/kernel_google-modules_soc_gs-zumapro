@@ -182,7 +182,10 @@ struct bcl_device {
 	bool enabled;
 	bool ready;
 
-	unsigned int offsrc;
+	unsigned int main_offsrc1;
+	unsigned int main_offsrc2;
+	unsigned int sub_offsrc1;
+	unsigned int sub_offsrc2;
 	unsigned int pwronsrc;
 
 	unsigned int vdroop1_pin;

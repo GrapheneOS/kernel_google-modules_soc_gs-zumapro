@@ -1052,8 +1052,10 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	}
 	pmic_read(SUB, bcl_dev, S2MPG15_PM_OFFSRC1, &val);
 	dev_info(bcl_dev->device, "SUB OFFSRC1 : %#x\n", val);
+	bcl_dev->sub_offsrc1 = val;
 	pmic_read(SUB, bcl_dev, S2MPG15_PM_OFFSRC2, &val);
 	dev_info(bcl_dev->device, "SUB OFFSRC2 : %#x\n", val);
+	bcl_dev->sub_offsrc2 = val;
 	pmic_write(SUB, bcl_dev, S2MPG15_PM_OFFSRC1, 0);
 	pmic_write(SUB, bcl_dev, S2MPG15_PM_OFFSRC2, 0);
 
@@ -1315,9 +1317,10 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	/* see b/215371539 */
 	pmic_read(MAIN, bcl_dev, S2MPG14_PM_OFFSRC1, &val);
 	dev_info(bcl_dev->device, "MAIN OFFSRC1 : %#x\n", val);
-	bcl_dev->offsrc = val;
+	bcl_dev->main_offsrc1 = val;
 	pmic_read(MAIN, bcl_dev, S2MPG14_PM_OFFSRC2, &val);
 	dev_info(bcl_dev->device, "MAIN OFFSRC2 : %#x\n", val);
+	bcl_dev->main_offsrc2 = val;
 	pmic_read(MAIN, bcl_dev, S2MPG14_PM_PWRONSRC, &val);
 	dev_info(bcl_dev->device, "MAIN PWRONSRC: %#x\n", val);
 	bcl_dev->pwronsrc = val;
