@@ -1083,46 +1083,6 @@
 		sysmmu,async-fault;
 	};
 
-	sysmmu_hsi2: sysmmu@131C0000 {
-		compatible = "samsung,sysmmu-v9";
-		reg = <0x0 0x131C0000 0x10000>;
-
-		interrupts = <0 IRQ_SYSMMU_STAGE1_NS_HSI2 IRQ_TYPE_LEVEL_HIGH>,
-			     <0 IRQ_SYSMMU_STAGE1_S_HSI2 IRQ_TYPE_LEVEL_HIGH>;
-
-		qos = <15>;
-
-		sysmmu,secure-irq;
-		sysmmu,secure_base = <0x131D0000>;
-
-		port-name = "HSI2";
-		#iommu-cells = <0>;
-		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE)>;
-		pmmu0,stream_property =
-			<1 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_RW STR_ID(0x00) STR_MASK(0x7B)>,
-			<2 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_RW STR_ID(0x09) STR_MASK(0x7B)>,
-			<3 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_RW STR_ID(0x01) STR_MASK(0x7B)>,
-			<4 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_RW STR_ID(0x02) STR_MASK(0x03)>,
-			<5 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_RW STR_ID(0x03) STR_MASK(0x03)>;
-	};
-
-	sysmmu_hsi1: sysmmu@12060000 {
-		compatible = "samsung,sysmmu-v9";
-		reg = <0x0 0x12060000 0x10000>;
-
-		interrupts = <0 IRQ_SYSMMU_STAGE1_NS_HSI1 IRQ_TYPE_LEVEL_HIGH>,
-			     <0 IRQ_SYSMMU_STAGE1_S_HSI1 IRQ_TYPE_LEVEL_HIGH>;
-
-		qos = <15>;
-
-		sysmmu,secure-irq;
-		sysmmu,secure_base = <0x12070000>;
-
-		port-name = "HSI1";
-		#iommu-cells = <0>;
-		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE)>;
-	};
-
 	sysmmu_hsi0: sysmmu@11040000 {
 		compatible = "samsung,sysmmu-v9";
 		reg = <0x0 0x11040000 0x10000>;
