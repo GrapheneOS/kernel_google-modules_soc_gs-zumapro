@@ -149,7 +149,7 @@
 			"BCI: Secure error",
 			"BCI: Non-secure fault",
 			"BCI: Secure fault";
-		interrupt-is-secure = <0>, <1>, <0>, <0>;
+		interrupt-is-secure = <0>, <1>, <0>, <1>;
 		interrupt-is-error = <1>, <1>, <0>, <0>;
 		status = "ok";
 		node0 {
