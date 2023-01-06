@@ -1239,6 +1239,7 @@ static int  samsung_sysmmu_get_resv_regions_by_node(struct device_node *np, stru
 
 		for (i = 0; i < cnt; i += n_all_cells) {
 			struct iommu_resv_region *region;
+			int prot = IOMMU_READ | IOMMU_WRITE;
 
 			base = of_read_number(prop + i, n_addr_cells);
 			size = of_read_number(prop + i + n_addr_cells, n_size_cells);
@@ -1248,7 +1249,7 @@ static int  samsung_sysmmu_get_resv_regions_by_node(struct device_node *np, stru
 				return -EINVAL;
 			}
 
-			region = iommu_alloc_resv_region(base, size, 0, resvtype[type]);
+			region = iommu_alloc_resv_region(base, size, prot, resvtype[type]);
 			if (!region)
 				return -ENOMEM;
 
