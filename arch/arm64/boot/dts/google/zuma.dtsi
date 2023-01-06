@@ -1428,14 +1428,6 @@
 		tmu_name = "BIG";
 		id = <0>;
 		ect_nouse;
-		pause_enable;
-		resume_threshold = <98>;
-		pause_threshold = <103>;
-		pause_cpus = "8";
-		hardlimit_enable;
-		hardlimit_clr_threshold = <93>;
-		hardlimit_threshold = <98>;
-		hardlimit_cooling_state = <THERMAL_NO_LIMIT>;
 		#thermal-sensor-cells = <0>;
 
 		use-pi-thermal;
@@ -1449,7 +1441,6 @@
 		sustainable_power = <2000>;
 
 		tmu_work_affinity = "0-8";
-		hotplug_work_affinity = "0-3";
 
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
@@ -1463,14 +1454,6 @@
 		tmu_name = "MID";
 		id = <1>;
 		ect_nouse;
-		pause_enable;
-		resume_threshold = <98>;
-		pause_threshold = <103>;
-		pause_cpus = "4-7";
-		hardlimit_enable;
-		hardlimit_clr_threshold = <93>;
-		hardlimit_threshold = <98>;
-		hardlimit_cooling_state = <THERMAL_NO_LIMIT>;
 		#thermal-sensor-cells = <0>;
 
 		use-pi-thermal;
@@ -1484,7 +1467,6 @@
 		sustainable_power = <1000>;
 
 		tmu_work_affinity = "0-8";
-		hotplug_work_affinity = "0-3";
 
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
