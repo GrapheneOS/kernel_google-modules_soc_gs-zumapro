@@ -59,7 +59,7 @@
 		compatible = "google,s2mpu";
 		reg = <0x0 0x1ee70000 0x10000>;
 		interrupts = <GIC_SPI IRQ_SYSMMU_STAGE2_NONSEC_G3D_G3D IRQ_TYPE_LEVEL_HIGH>;
-		always-on;
+		power-domains = <&pd_g3d>;
 	};
 
 	s2mpu_s0_gdc: s2mpu_s0_gdc@1d4f0000 {

@@ -85,5 +85,8 @@
 		#cooling-cells = <2>;
 		gpu_power_coeff = <625>;
 		ect-coeff-index = <3>;
+
+		/* S2MPU */
+		s2mpus = <&s2mpu_s0_g3d>;
 	};
 };
