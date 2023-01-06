@@ -29,7 +29,8 @@ zuma_overlays := \
 zuma_dtbs := \
 	zuma-a0-foplp.dtb \
 	zuma-a0-ipop.dtb \
-	zuma-b0.dtb
+	zuma-b0-foplp.dtb \
+	zuma-b0-ipop.dtb
 
 # Usage:
 #   $(call DTBS_overlay_template, overlay, base_dtb, suffix)

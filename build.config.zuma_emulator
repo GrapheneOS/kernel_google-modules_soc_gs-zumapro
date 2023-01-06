@@ -13,7 +13,7 @@ GKI_FRAGMENT_DEFCONFIG=${DEVICE_DIR}/arch/arm64/configs/zuma_emulator.fragment
 
 VENDOR_BOOTCONFIG="androidboot.boot_devices=14100000.virtio_block"
 
-DIST_CMDS="ufdt_apply_overlay \${DIST_DIR}/zuma-a0-foplp.dtb \${DIST_DIR}/zuma-emulator.dtbo \${DIST_DIR}/zuma-out.dtb && ufdt_apply_overlay \${DIST_DIR}/zuma-b0.dtb \${DIST_DIR}/zuma-emulator.dtbo \${DIST_DIR}/zuma-out-b0.dtb"
+DIST_CMDS="ufdt_apply_overlay \${DIST_DIR}/zuma-a0-foplp.dtb \${DIST_DIR}/zuma-emulator.dtbo \${DIST_DIR}/zuma-out.dtb && ufdt_apply_overlay \${DIST_DIR}/zuma-b0-foplp.dtb \${DIST_DIR}/zuma-emulator.dtbo \${DIST_DIR}/zuma-out-b0.dtb"
 
 MAKE_GOALS="$MAKE_GOALS
 modules
@@ -32,7 +32,7 @@ ${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/*.dtbo
 # Sync with zuma.bzl
 FILES="
 google/zuma-a0-foplp.dtb
-google/zuma-b0.dtb
+google/zuma-b0-foplp.dtb
 google/zuma-emulator.dtbo
 "
 
