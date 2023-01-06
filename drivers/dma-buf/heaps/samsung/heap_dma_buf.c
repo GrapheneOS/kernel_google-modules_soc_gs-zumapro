@@ -33,9 +33,11 @@ struct dma_iovm_map {
 	struct sg_table table;
 	unsigned long attrs;
 	unsigned int mapcnt;
+	enum dma_data_direction dir;
 };
 
-static struct dma_iovm_map *dma_iova_create(struct dma_buf_attachment *a)
+static struct dma_iovm_map *dma_iova_create(struct dma_buf_attachment *a,
+					    enum dma_data_direction dir)
 {
 	struct samsung_dma_buffer *buffer = a->dmabuf->priv;
 	struct dma_iovm_map *iovm_map;
@@ -60,6 +62,7 @@ static struct dma_iovm_map *dma_iova_create(struct dma_buf_attachment *a)
 
 	iovm_map->dev = a->dev;
 	iovm_map->attrs = a->dma_map_attrs;
+	iovm_map->dir = dir;
 
 	return iovm_map;
 }
@@ -83,7 +86,7 @@ static void dma_iova_release(struct dma_buf *dmabuf)
 		list_del(&iovm_map->list);
 		if (!dma_heap_tzmp_buffer(iovm_map->dev, buffer->flags))
 			dma_unmap_sgtable(iovm_map->dev, &iovm_map->table,
-					  DMA_TO_DEVICE, DMA_ATTR_SKIP_CPU_SYNC);
+					  iovm_map->dir, DMA_ATTR_SKIP_CPU_SYNC);
 		dma_iova_remove(iovm_map);
 	}
 }
@@ -92,7 +95,8 @@ static void dma_iova_release(struct dma_buf *dmabuf)
 #define DMA_MAP_ATTRS(attrs)	((attrs) & DMA_MAP_ATTRS_MASK)
 
 /* this function should only be called while buffer->lock is held */
-static struct dma_iovm_map *dma_find_iovm_map(struct dma_buf_attachment *a)
+static struct dma_iovm_map *dma_find_iovm_map(struct dma_buf_attachment *a,
+					      enum dma_data_direction dir)
 {
 	struct samsung_dma_buffer *buffer = a->dmabuf->priv;
 	struct dma_iovm_map *iovm_map;
@@ -112,23 +116,24 @@ static struct dma_iovm_map *dma_find_iovm_map(struct dma_buf_attachment *a)
 	attrs = DMA_MAP_ATTRS(a->dma_map_attrs);
 
 	list_for_each_entry(iovm_map, &buffer->attachments, list) {
-		// device virtual mapping doesn't consider direction currently.
 		if ((iommu_get_domain_for_dev(iovm_map->dev) ==
 		    iommu_get_domain_for_dev(a->dev)) &&
-		    (DMA_MAP_ATTRS(iovm_map->attrs) == attrs)) {
+		    (DMA_MAP_ATTRS(iovm_map->attrs) == attrs) &&
+		    (iovm_map->dir == dir || iovm_map->dir == DMA_BIDIRECTIONAL)) {
 			return iovm_map;
 		}
 	}
 	return NULL;
 }
 
-static struct dma_iovm_map *dma_put_iovm_map(struct dma_buf_attachment *a)
+static struct dma_iovm_map *dma_put_iovm_map(struct dma_buf_attachment *a,
+					     enum dma_data_direction dir)
 {
 	struct samsung_dma_buffer *buffer = a->dmabuf->priv;
 	struct dma_iovm_map *iovm_map;
 
 	mutex_lock(&buffer->lock);
-	iovm_map = dma_find_iovm_map(a);
+	iovm_map = dma_find_iovm_map(a, dir);
 	if (iovm_map) {
 		iovm_map->mapcnt--;
 
@@ -136,7 +141,7 @@ static struct dma_iovm_map *dma_put_iovm_map(struct dma_buf_attachment *a)
 			list_del(&iovm_map->list);
 			if (!dma_heap_tzmp_buffer(iovm_map->dev, buffer->flags))
 				dma_unmap_sgtable(iovm_map->dev, &iovm_map->table,
-						  DMA_TO_DEVICE, DMA_ATTR_SKIP_CPU_SYNC);
+						  iovm_map->dir, DMA_ATTR_SKIP_CPU_SYNC);
 			dma_iova_remove(iovm_map);
 			iovm_map = NULL;
 		}
@@ -154,7 +159,7 @@ static struct dma_iovm_map *dma_get_iovm_map(struct dma_buf_attachment *a,
 	int ret;
 
 	mutex_lock(&buffer->lock);
-	iovm_map = dma_find_iovm_map(a);
+	iovm_map = dma_find_iovm_map(a, direction);
 	if (iovm_map) {
 		iovm_map->mapcnt++;
 		mutex_unlock(&buffer->lock);
@@ -162,7 +167,7 @@ static struct dma_iovm_map *dma_get_iovm_map(struct dma_buf_attachment *a,
 	}
 	mutex_unlock(&buffer->lock);
 
-	iovm_map = dma_iova_create(a);
+	iovm_map = dma_iova_create(a, direction);
 	if (!iovm_map)
 		return NULL;
 
@@ -174,7 +179,7 @@ static struct dma_iovm_map *dma_get_iovm_map(struct dma_buf_attachment *a,
 
 		iovm_map->table.nents = 1;
 	} else {
-		ret = dma_map_sgtable(iovm_map->dev, &iovm_map->table, direction,
+		ret = dma_map_sgtable(iovm_map->dev, &iovm_map->table, iovm_map->dir,
 				      iovm_map->attrs | DMA_ATTR_SKIP_CPU_SYNC);
 		if (ret) {
 			dma_iova_remove(iovm_map);
@@ -183,12 +188,12 @@ static struct dma_iovm_map *dma_get_iovm_map(struct dma_buf_attachment *a,
 	}
 
 	mutex_lock(&buffer->lock);
-	dup_iovm_map = dma_find_iovm_map(a);
+	dup_iovm_map = dma_find_iovm_map(a, direction);
 	if (!dup_iovm_map) {
 		list_add(&iovm_map->list, &buffer->attachments);
 	} else {
 		if (!dma_heap_tzmp_buffer(iovm_map->dev, buffer->flags))
-			dma_unmap_sgtable(iovm_map->dev, &iovm_map->table, direction,
+			dma_unmap_sgtable(iovm_map->dev, &iovm_map->table, iovm_map->dir,
 					  DMA_ATTR_SKIP_CPU_SYNC);
 		dma_iova_remove(iovm_map);
 		iovm_map = dup_iovm_map;
@@ -224,7 +229,7 @@ static void samsung_heap_unmap_dma_buf(struct dma_buf_attachment *a,
 	if (!dma_heap_skip_cache_ops(buffer->flags))
 		dma_sync_sgtable_for_cpu(a->dev, table, direction);
 
-	dma_put_iovm_map(a);
+	dma_put_iovm_map(a, direction);
 }
 
 static int samsung_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
