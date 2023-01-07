@@ -4,8 +4,9 @@ load("//build/bazel_common_rules/exec:exec.bzl", "exec_test")
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(
     "//build/kernel/kleaf:kernel.bzl",
-    "kernel_build_abi",
-    "kernel_build_abi_dist",
+    "kernel_abi",
+    "kernel_abi_dist",
+    "kernel_build",
     "kernel_images",
     "kernel_module",
     "kernel_modules_install",
@@ -15,8 +16,6 @@ load(
 load("@kernel_toolchain_info//:dict.bzl", "CLANG_VERSION")
 load(":slider.bzl", "SLIDER_DTBOS")
 load(":tests.bzl", "define_slider_kleaf_tests")
-
-DEFINE_ABI_TARGETS = False
 
 filegroup(
     name = "dt-bindings",
@@ -54,7 +53,7 @@ _slider_modules = [
     "//private/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
 ]
 
-kernel_build_abi(
+kernel_build(
     name = "slider",
     srcs = glob([
         "build.config.*",
@@ -80,17 +79,12 @@ kernel_build_abi(
     ],
     base_kernel = "//common:kernel_aarch64_download_or_build",
     build_config = "build.config.slider",
-    define_abi_targets = DEFINE_ABI_TARGETS,
+    collect_unstripped_modules = True,
     dtstree = "//private/google-modules/soc/gs/arch/arm64/boot/dts:dt",
     implicit_outs = SLIDER_DTBOS,
     kconfig_ext = "Kconfig.ext",
-    # Also refer to the list of ext modules for ABI monitoring targets
-    kernel_modules = _slider_modules,
-    kmi_symbol_list = "//common:android/abi_gki_aarch64_pixel" if DEFINE_ABI_TARGETS else None,
-    kmi_symbol_list_add_only = True if DEFINE_ABI_TARGETS else None,
-    # Note: This is intentionally disabled here. We don't run build_abi.sh on
-    # build.config.slider so we don't care about disabling it there.
-    module_grouping = False if DEFINE_ABI_TARGETS else None,
+    #TODO: Need to add an initial symbol list in android14-6.1 first
+    #kmi_symbol_list = "//common:android/abi_gki_aarch64_pixel",
     module_outs = [
         # keep sorted
         "arm_dsu_pmu.ko",
@@ -107,12 +101,19 @@ kernel_build_abi(
     strip_modules = True,
     # Keep in sync with build.config.common
     toolchain_version = CLANG_VERSION,
-    # Also refer to unstripped modules archive for abi.prop
-    unstripped_modules_archive = ":slider_unstripped_modules_archive",
     visibility = [
         # keep sorted
         "//private/google-modules:__subpackages__",
     ],
+)
+
+kernel_abi(
+    name = "slider_abi",
+    kernel_build = ":slider",
+    kernel_modules = _slider_modules,
+    kmi_symbol_list_add_only = True,
+    module_grouping = False,
+    unstripped_modules_archive = ":slider_unstripped_modules_archive",
 )
 
 filegroup(
@@ -362,12 +363,12 @@ copy_to_dist_dir(
     log = "info",
 )
 
-kernel_build_abi_dist(
+kernel_abi_dist(
     name = "slider_abi_dist",
     data = slider_dist_targets,
     dist_dir = "out/slider/dist",
     flat = True,
-    kernel_build_abi = ":slider",
+    kernel_abi = ":slider_abi",
     log = "info",
 )
 
