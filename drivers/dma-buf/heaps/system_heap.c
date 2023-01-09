@@ -21,8 +21,9 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 
-#include "page_pool.h"
-#include "deferred-free-helper.h"
+/* These headers are in ACK under drivers/dma-buf/heaps. */
+#include <heaps/page_pool.h>
+#include <heaps/deferred-free-helper.h>
 
 static struct dma_heap *sys_heap;
 static struct dma_heap *sys_uncached_heap;
