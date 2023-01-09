@@ -1430,7 +1430,7 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 
 PROC_OPS_RW(pmu_poll_enable);
 
-
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 extern unsigned int sched_lib_cpu_freq_cached_val;
 
 static int sched_lib_cpu_freq_cached_show(struct seq_file *m, void *v)
@@ -1531,9 +1531,8 @@ extern ssize_t sched_lib_name_store(struct file *filp,
 				loff_t *ppos);
 extern int sched_lib_name_show(struct seq_file *m, void *v);
 
-
 PROC_OPS_RW(sched_lib_name);
-
+#endif /* CONFIG_SCHED_LIB */
 
 
 struct pentry {
@@ -1744,11 +1743,13 @@ static struct pentry entries[] = {
 	PROC_ENTRY(prefer_idle_clear),
 	PROC_ENTRY(uclamp_fork_reset_set),
 	PROC_ENTRY(uclamp_fork_reset_clear),
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 	// sched lib
 	PROC_ENTRY(sched_lib_cpu_freq_cached),
 	PROC_ENTRY(sched_lib_freq),
 	PROC_ENTRY(sched_lib_affinity),
 	PROC_ENTRY(sched_lib_name),
+#endif /* CONFIG_SCHED_LIB */
 };
 
 

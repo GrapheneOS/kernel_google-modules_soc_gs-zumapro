@@ -65,10 +65,14 @@ extern void vh_binder_restore_priority_pixel_mod(void *data, struct binder_trans
 	struct task_struct *task);
 extern void vh_dump_throttled_rt_tasks_mod(void *data, int cpu, u64 clock, ktime_t rt_period,
 					   u64 rt_runtime, s64 rt_period_timer_expires);
+
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 extern void android_rvh_show_max_freq(void *unused, struct cpufreq_policy *policy,
 						unsigned int *max_freq);
 extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
 					const struct cpumask *in_mask, int *skip);
+#endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
+
 extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
 	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -240,6 +244,7 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 	ret = register_trace_android_rvh_show_max_freq(android_rvh_show_max_freq, NULL);
 	if (ret)
 		return ret;
@@ -247,6 +252,7 @@ static int vh_sched_init(void)
 	ret = register_trace_android_vh_sched_setaffinity_early(vh_sched_setaffinity_mod, NULL);
 	if (ret)
 		return ret;
+#endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
 
 	ret = register_trace_android_vh_binder_set_priority(
 		vh_binder_set_priority_pixel_mod, NULL);

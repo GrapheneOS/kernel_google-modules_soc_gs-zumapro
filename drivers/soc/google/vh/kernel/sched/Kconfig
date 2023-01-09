@@ -49,3 +49,8 @@ config USE_GROUP_THROTTLE
 	bool "Use group throttle of vendor groups"
 	depends on VH_SCHED
 	default n
+
+config VH_SCHED_LIB
+	bool "Library with additional scheduler options"
+	depends on VH_SCHED
+	default n
