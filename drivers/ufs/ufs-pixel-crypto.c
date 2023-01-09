@@ -169,8 +169,7 @@ static int pixel_ufs_keyslot_evict(struct blk_crypto_profile *profile,
 }
 
 static int pixel_ufs_derive_sw_secret(struct blk_crypto_profile *profile,
-				       const u8 *wrapped_key,
-				       unsigned int wrapped_key_size,
+				       const u8 *eph_key, size_t eph_key_size,
 				       u8 sw_secret[BLK_CRYPTO_SW_SECRET_SIZE])
 {
 	struct ufs_hba *hba = container_of(profile,
@@ -180,11 +179,11 @@ static int pixel_ufs_derive_sw_secret(struct blk_crypto_profile *profile,
 
 	dev_info(ufs->dev,
 		 "kdn: deriving %u-byte raw secret from %u-byte wrapped key\n",
-		 BLK_CRYPTO_SW_SECRET_SIZE, wrapped_key_size);
+		 BLK_CRYPTO_SW_SECRET_SIZE, eph_key_size);
 
 	ret = gsa_kdn_derive_raw_secret(ufs->gsa_dev, sw_secret,
 					BLK_CRYPTO_SW_SECRET_SIZE,
-					wrapped_key, wrapped_key_size);
+					eph_key, eph_key_size);
 	if (ret != BLK_CRYPTO_SW_SECRET_SIZE) {
 		dev_err(ufs->dev, "kdn: failed to derive raw secret; ret=%d\n",
 			ret);
