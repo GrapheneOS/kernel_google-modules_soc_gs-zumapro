@@ -25,7 +25,6 @@
 #include <linux/keycombo.h>
 #include <linux/keydebug.h>
 #include <linux/kernel-top.h>
-#include <linux/keydebug-func.h>
 #include <linux/sysrq.h>
 
 /*
