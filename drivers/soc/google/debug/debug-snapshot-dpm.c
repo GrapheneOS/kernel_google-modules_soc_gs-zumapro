@@ -105,42 +105,39 @@ static void dbg_snapshot_do_dpm(struct pt_regs *regs, unsigned int esr)
 }
 
 /* trace/hooks/fault.h */
-static void dbg_snapshot_do_dpm_die_kernel_fault(void *data, struct pt_regs *regs,
-						 unsigned int esr, unsigned long addr,
-						 const char *msg)
+static void dbg_snapshot_do_dpm_die_kernel_fault(void *data, const char *msg,
+						 unsigned long addr,
+						 unsigned int esr,
+						 struct pt_regs *regs)
 {
 	dbg_snapshot_do_dpm(regs, esr);
 }
 
-static void dbg_snapshot_do_dpm_do_sea(void *data, struct pt_regs *regs, unsigned int esr,
-				       unsigned long addr, const char *msg)
+static void dbg_snapshot_do_dpm_do_sea(void *data, unsigned long addr,
+				       unsigned int esr, struct pt_regs *regs)
 {
 	dbg_snapshot_do_dpm(regs, esr);
 }
 
-static void dbg_snapshot_do_dpm_do_mem_abort(void *data, struct pt_regs *regs,
-					     unsigned int esr, unsigned long addr, const char *msg)
+static void dbg_snapshot_do_dpm_do_mem_abort(void *data, unsigned long addr,
+					     unsigned int esr,
+					     struct pt_regs *regs)
 {
 	dbg_snapshot_do_dpm(regs, esr);
 }
 
-static void dbg_snapshot_do_dpm_do_sp_pc_abort(void *data, struct pt_regs *regs,
-					       unsigned int esr, unsigned long addr, bool user)
+static void dbg_snapshot_do_dpm_do_sp_pc_abort(void *data, unsigned long addr,
+					       unsigned int esr,
+					       struct pt_regs *regs)
 {
 	dbg_snapshot_do_dpm(regs, esr);
 }
 
 /* trace/hooks/traps.h */
-static void dbg_snapshot_do_dpm_do_undefinstr(void *data, struct pt_regs *regs, bool user)
+static void dbg_snapshot_do_dpm_do_undefinstr(void *data, struct pt_regs *regs)
 {
 	unsigned int esr = read_sysreg(esr_el1);
 
-	dbg_snapshot_do_dpm(regs, esr);
-}
-
-static void dbg_snapshot_do_dpm_bad_mode(void *data, struct pt_regs *regs, unsigned int esr,
-					 int reason)
-{
 	dbg_snapshot_do_dpm(regs, esr);
 }
 
@@ -181,11 +178,6 @@ static void register_dbg_snapshot_do_dpm_vendor_hooks(void)
 	/* trace/hooks/traps.h */
 	if (register_trace_android_rvh_do_undefinstr(dbg_snapshot_do_dpm_do_undefinstr, NULL)) {
 		pr_err("dpm: register do_undefinstr failed\n");
-		return;
-	}
-
-	if (register_trace_android_rvh_bad_mode(dbg_snapshot_do_dpm_bad_mode, NULL)) {
-		pr_err("dpm: register bad_mode hook failed\n");
 		return;
 	}
 
