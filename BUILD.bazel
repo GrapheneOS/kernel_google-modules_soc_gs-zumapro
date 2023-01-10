@@ -104,6 +104,7 @@ kernel_build_abi(
         "zram.ko",
         "zsmalloc.ko",
     ],
+    strip_modules = True,
     # Keep in sync with build.config.common
     toolchain_version = CLANG_VERSION,
     # Also refer to unstripped modules archive for abi.prop
