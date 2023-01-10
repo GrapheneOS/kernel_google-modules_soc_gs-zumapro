@@ -1682,26 +1682,6 @@ void exynos_usbdrd_ldo_control(struct exynos_usbdrd_phy *phy_drd, int on)
 	}
 }
 
-void exynos_usbdrd_l7m_control(struct exynos_usbdrd_phy *phy_drd, int on)
-{
-	int ret;
-
-	if (phy_drd->vdd_hsi == NULL) {
-		dev_err(phy_drd->dev, "%s: not defined regulator L7M\n", __func__);
-		return;
-	}
-
-	if (on) {
-		ret = regulator_enable(phy_drd->vdd_hsi);
-		if (ret)
-			 pr_err("Failed to enable vdd_hsi: %d\n", ret);
-	} else {
-		ret = regulator_disable(phy_drd->vdd_hsi);
-		if (ret)
-			 pr_err("Failed to disable vdd_hsi: %d\n", ret);
-	}
-}
-
 /*
  * USB LDO control was moved to phy_conn API from OTG
  * without adding one more phy interface
@@ -1904,22 +1884,6 @@ int exynos_usbdrd_ldo_manual_control(bool on)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(exynos_usbdrd_ldo_manual_control);
-
-int exynos_usbdrd_vdd_hsi_manual_control(bool on)
-{
-	struct exynos_usbdrd_phy *phy_drd;
-
-	phy_drd = exynos_usbdrd_get_struct();
-
-	if (!phy_drd) {
-		pr_err("[%s] exynos_usbdrd_get_struct error\n", __func__);
-		return -ENODEV;
-	}
-	exynos_usbdrd_l7m_control(phy_drd, on);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(exynos_usbdrd_vdd_hsi_manual_control);
 
 bool exynos_usbdrd_get_ldo_status(void)
 {
