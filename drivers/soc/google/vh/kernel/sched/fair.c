@@ -12,7 +12,6 @@
 
 #include "sched_priv.h"
 #include "sched_events.h"
-#include "../systrace.h"
 
 #if IS_ENABLED(CONFIG_PIXEL_EM)
 #include "../../include/pixel_em.h"
