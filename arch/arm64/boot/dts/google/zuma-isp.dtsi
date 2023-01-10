@@ -1032,14 +1032,16 @@
 			<0x0 0x1D844800 0x00200>,  /* GSE PDMA WARP */
 			<0x0 0x1D934000 0xE00>,    /* SSMT D0 GSE */
 			<0x0 0x1D944000 0xE00>,    /* SSMT D1 GSE */
-			<0x0 0x1D954000 0xE00>;    /* SSMT D2 GSE */
+			<0x0 0x1D954000 0xE00>,    /* SSMT D2 GSE */
+			<0x0 0x1D820400 0x4>;      /* GSE SYSREG GSE_USER_CON0*/
 		reg-names =
 			"gse",
 			"gse_pdma",
 			"gse_pdma_warp",
 			"ssmt_d0_gse",
 			"ssmt_d1_gse",
-			"ssmt_d2_gse";
+			"ssmt_d2_gse",
+			"gse_sysreg";
 
 		interrupts =
 			<GIC_SPI IRQ_GSE_NonSecu_IRQ_GSE IRQ_TYPE_LEVEL_HIGH>,
@@ -1229,7 +1231,8 @@
 			<0x0 0x1CFC4000 0xE00>,    /* GTNR Merge SSMT D9 */
 			<0x0 0x1CFD4000 0xE00>,    /* GTNR Merge SSMT D10 */
 			<0x0 0x1CFE4000 0xE00>,    /* GTNR Merge SSMT D11 */
-			<0x0 0x1CC00000 0x10000>;  /* GTNR CMU */
+			<0x0 0x1CC00000 0x10000>,  /* GTNR CMU */
+			<0x0 0x1CC20400 0x4>;      /* GTNR MERGE SYSREG LH_AST_GLUE_OTF*/
 
 		reg-names =
 			"gtnr_merge",
@@ -1245,7 +1248,8 @@
 			"gtnr_merge_ssmt_d9",
 			"gtnr_merge_ssmt_d10",
 			"gtnr_merge_ssmt_d11",
-			"gtnr_cmu";
+			"gtnr_cmu",
+			"gtnr_merge_sysreg";
 
 		interrupts =
 			<GIC_SPI IRQ_TNR_0_TNR IRQ_TYPE_LEVEL_HIGH>,
