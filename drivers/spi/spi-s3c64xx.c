@@ -150,7 +150,6 @@ static LIST_HEAD(drvdata_list);
 
 #define USI_SW_CONF_MASK	(0x7 << 0)
 #define USI_SPI_SW_CONF		BIT(1)
-#define USI_I2C_SW_CONF		BIT(2)
 
 /* Make sure the busy wait won't take too long time. */
 #define MAX_CS_CLOCK_DELAY_US 20
@@ -1965,12 +1964,9 @@ static int s3c64xx_spi_runtime_resume(struct device *dev)
 		clk_prepare_enable(sdd->src_clk);
 		clk_prepare_enable(sdd->clk);
 
-		/* To avoid SW RESET make CS low, change to I2C */
-		regmap_update_bits(sci->usi_reg, sci->usi_offset,
-				USI_SW_CONF_MASK, USI_I2C_SW_CONF);
-		exynos_usi_init(sdd);
 		regmap_update_bits(sci->usi_reg, sci->usi_offset,
 				USI_SW_CONF_MASK, USI_SPI_SW_CONF);
+		exynos_usi_init(sdd);
 		s3c64xx_spi_hwinit(sdd, sdd->port_id);
 	}
 
