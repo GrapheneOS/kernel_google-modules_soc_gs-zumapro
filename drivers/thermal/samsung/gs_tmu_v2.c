@@ -32,7 +32,7 @@
 #include <soc/google/exynos-mcinfo.h>
 #endif
 
-#include "../thermal_core.h"
+#include <thermal_core.h>
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 #include "exynos_acpm_tmu.h"
 #endif
@@ -1175,6 +1175,9 @@ void register_tpu_thermal_pause_cb(tpu_pause_cb tpu_cb, void *data)
 }
 EXPORT_SYMBOL(register_tpu_thermal_pause_cb);
 
+#if 0
+/* TODO: b/199473897 fix this in android-mainline (commit c7f998a0cd01 "Revert
+   "ANDROID: cpu/hotplug: add pause/resume_cpus interface") */
 static void gs101_throttle_pause(struct kthread_work *work)
 {
 	struct gs_tmu_data *data = container_of(work,
@@ -1267,6 +1270,7 @@ static void gs101_throttle_pause(struct kthread_work *work)
 unlock:
 	mutex_unlock(&data->lock);
 }
+#endif
 
 static void gs_throttle_hard_limit(struct kthread_work *work)
 {
@@ -1442,9 +1446,12 @@ static int gs_tmu_irq_work_init(struct platform_device *pdev)
 			kthread_init_work(&data->hotplug_work, gs_throttle_cpu_hotplug);
 		}
 
+		/* TODO: b/199473897 fix this in android-mainline (commit c7f998a0cd01 "Revert
+				"ANDROID: cpu/hotplug: add pause/resume_cpus interface")
 		if (data->pause_enable) {
 			kthread_init_work(&data->pause_work, gs101_throttle_pause);
 		}
+		*/
 
 		kthread_init_worker(&data->pause_worker);
 		scnprintf(kworker_name, CPUHP_USER_NAME_LEN, "%s_pause", data->tmu_name);

@@ -279,6 +279,7 @@ kernel_module(
         "drivers/soc/google/s2mpu/s2mpu.ko",
         "drivers/soc/google/sysrq-hook.ko",
         "drivers/soc/google/vh/kernel/systrace.ko",
+        "drivers/soc/google/vh/kernel/thermal/vh_thermal.ko",
         "drivers/spi/spi-s3c64xx.ko",
         "drivers/thermal/google/google_bcl.ko",
         "drivers/thermal/google/gs101_spmic_thermal.ko",
