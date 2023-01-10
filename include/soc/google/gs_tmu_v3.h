@@ -32,6 +32,16 @@ struct gs_pi_param {
 	bool switched_on;
 };
 
+enum pi_param {
+	SUSTAINABLE_POWER = 0,
+	K_PO = 1,
+	K_PU = 2,
+	K_I = 3,
+	I_MAX = 4,
+	INTEGRAL_CUTOFF = 5,
+	PI_ENABLE = 6
+};
+
 #define STEPWISE_GAIN_MIN 0
 #define STEPWISE_GAIN_MAX 5
 #define ACPM_GOV_TIMER_INTERVAL_MS 50

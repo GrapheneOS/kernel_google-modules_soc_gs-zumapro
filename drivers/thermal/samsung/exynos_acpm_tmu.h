@@ -46,6 +46,10 @@
 #define TMU_IPC_SET_GOV_DEBUG_TIMER_INTERVAL    0x20
 #define TMU_IPC_GET_TRIP_CNT                    0x21
 #define TMU_IPC_RESET_TRIP_CNT                  0x22
+#define TMU_IPC_SET_PI_PARAM                    0x24
+#define TMU_IPC_GET_PI_PARAM                    0x25
+#define TMU_IPC_SET_TABLE                       0x26
+#define TMU_IPC_GET_TABLE                       0x27
 
 /* TMU register offset shift for IPC messages */
 #define TMU_REG_OFFSET_SHIFT_8	(8)
@@ -162,6 +166,10 @@ void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode);
 void exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(int timer_interval);
 void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter);
 void exynos_acpm_tmu_ipc_reset_trip_counter(int tz);
+void exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val);
+void exynos_acpm_tmu_ipc_get_pi_param(int tz, u8 param, u32 *val);
+void exynos_acpm_tmu_ipc_set_table(int tz, u8 index, int val);
+void exynos_acpm_tmu_ipc_get_table(int tz, u8 index, int *val);
 
 struct acpm_irq_callback {
 	void *fn;

@@ -2480,9 +2480,14 @@ sustainable_power_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	if (data->pi_param)
-		return sprintf(buf, "%u\n", data->pi_param->sustainable_power);
-	else
+	if (data->pi_param) {
+		u32 sustainable_power;
+		exynos_acpm_tmu_ipc_get_pi_param(data->id, SUSTAINABLE_POWER, &sustainable_power);
+		if (sustainable_power != data->pi_param->sustainable_power)
+			return sysfs_emit(buf, "%u\n", -1);
+		else
+			return sysfs_emit(buf, "%u\n", data->pi_param->sustainable_power);
+	} else
 		return -EIO;
 }
 
@@ -2502,6 +2507,170 @@ sustainable_power_store(struct device *dev, struct device_attribute *devattr,
 
 	data->pi_param->sustainable_power = sustainable_power;
 
+	exynos_acpm_tmu_ipc_set_pi_param(data->id, SUSTAINABLE_POWER, sustainable_power);
+	return count;
+}
+
+static ssize_t
+integral_cutoff_show(struct device *dev, struct device_attribute *devattr,
+		       char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	if (data->pi_param) {
+		int integral_cutoff = 0;
+		exynos_acpm_tmu_ipc_get_pi_param(data->id, INTEGRAL_CUTOFF, &integral_cutoff);
+		if (integral_cutoff != data->pi_param->integral_cutoff)
+			return sysfs_emit(buf, "%u\n", -1);
+		else
+			return sysfs_emit(buf, "%u\n", data->pi_param->integral_cutoff);
+	} else
+		return -EIO;
+}
+
+static ssize_t
+integral_cutoff_store(struct device *dev, struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int integral_cutoff;
+
+	if (!data->pi_param)
+		return -EIO;
+
+	if (kstrtos32(buf, 10, &integral_cutoff))
+		return -EINVAL;
+
+	data->pi_param->integral_cutoff = integral_cutoff;
+
+	exynos_acpm_tmu_ipc_set_pi_param(data->id, INTEGRAL_CUTOFF, integral_cutoff);
+	return count;
+}
+
+static ssize_t
+acpm_pi_enable_show(struct device *dev, struct device_attribute *devattr,
+		       char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int acpm_pi_enable = 0;
+
+	exynos_acpm_tmu_ipc_get_pi_param(data->id, PI_ENABLE, &acpm_pi_enable);
+	return sysfs_emit(buf, "%u\n", acpm_pi_enable);
+}
+
+static ssize_t
+acpm_pi_enable_store(struct device *dev, struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int acpm_pi_enable;
+
+	if (kstrtos32(buf, 10, &acpm_pi_enable))
+		return -EINVAL;
+
+	exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, acpm_pi_enable);
+	return count;
+}
+
+static ssize_t
+acpm_pi_table_show(struct device *dev, struct device_attribute *devattr,
+		       char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int i;
+	int count = 0;
+	struct thermal_zone_device *tz = data->tzd;
+	struct gs_pi_param *params = data->pi_param;
+	struct thermal_instance *instance;
+	struct thermal_cooling_device *cdev;
+	bool found_actor = false;
+	unsigned long max_state;
+
+	list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
+		if (instance->trip == params->trip_control_temp &&
+		    cdev_is_power_actor(instance->cdev)) {
+			found_actor = true;
+			cdev = instance->cdev;
+			break;
+		}
+	}
+
+	if (!found_actor) {
+		count += sysfs_emit_at(buf, count, "No cdev found\n");
+		return count;
+	}
+
+	cdev->ops->get_max_state(cdev, &max_state);
+	for (i = 0; i <= (int)max_state; i++) {
+		int value;
+		exynos_acpm_tmu_ipc_get_table(data->id, i, &value);
+		count += sysfs_emit_at(buf, count, "%d ", value);
+	}
+	count += sysfs_emit_at(buf, count, "\n");
+
+	return count;
+
+}
+
+static ssize_t
+acpm_pi_table_store(struct device *dev, struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	int ret = 0;
+	char **argv;
+	int argc;
+
+	struct thermal_zone_device *tz = data->tzd;
+	struct gs_pi_param *params = data->pi_param;
+	struct thermal_instance *instance;
+	struct thermal_cooling_device *cdev;
+	bool found_actor = false;
+	unsigned long max_state;
+
+	list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
+		if (instance->trip == params->trip_control_temp &&
+		    cdev_is_power_actor(instance->cdev)) {
+			found_actor = true;
+			cdev = instance->cdev;
+			break;
+		}
+	}
+
+	if (!found_actor)
+		return ret;
+
+	argv = argv_split(GFP_KERNEL, buf, &argc);
+	if (!argv) {
+		ret = -ENOMEM;
+		pr_err("%s: memory allocation error, ret=%d", __func__, ret);
+		goto out;
+	}
+	cdev->ops->get_max_state(cdev, &max_state);
+	if (argc != (int)max_state + 1) {
+		ret = -EINVAL;
+		pr_err("%s: invalid args count, ret=%d, argc=%d, max_state=%d", __func__, ret, argc, (int)max_state);
+	} else {
+		int i;
+		for (i = 0; i <= (int)max_state; i++) {
+			int val;
+			ret = kstrtou32(argv[i], 10, &val);
+			if (ret) {
+				pr_err("%s: parse acpm_pi_table error, ret=%d", __func__, ret);
+				goto out;
+			}
+			exynos_acpm_tmu_ipc_set_table(data->id, i, val);
+		}
+	}
+out:
+	argv_free(argv);
 	return count;
 }
 
@@ -2513,7 +2682,7 @@ polling_delay_on_show(struct device *dev, struct device_attribute *devattr,
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
 	if (data->pi_param)
-		return sprintf(buf, "%u\n", data->pi_param->polling_delay_on);
+		return sysfs_emit(buf, "%u\n", data->pi_param->polling_delay_on);
 	else
 		return -EIO;
 }
@@ -2557,7 +2726,7 @@ polling_delay_off_show(struct device *dev, struct device_attribute *devattr,
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
 	if (data->pi_param)
-		return sprintf(buf, "%u\n", data->pi_param->polling_delay_off);
+		return sysfs_emit(buf, "%u\n", data->pi_param->polling_delay_off);
 	else
 		return -EIO;
 }
@@ -2806,39 +2975,42 @@ static ssize_t ipc_dump2_show(struct device *dev, struct device_attribute *attr,
 			data.val[1], data.val[2], data.val[3],
 			data.val[4], data.val[5], data.val[6], data.val[7]);
 }
-
-#define create_s32_param_attr(name)						\
-	static ssize_t								\
-	name##_show(struct device *dev, struct device_attribute *devattr,	\
-		    char *buf)							\
-	{									\
-	struct platform_device *pdev = to_platform_device(dev);			\
-	struct gs_tmu_data *data = platform_get_drvdata(pdev);		\
-										\
-	if (data->pi_param)							\
-		return sprintf(buf, "%d\n", data->pi_param->name);		\
-	else									\
-		return -EIO;							\
-	}									\
-										\
-	static ssize_t								\
-	name##_store(struct device *dev, struct device_attribute *devattr,	\
-		     const char *buf, size_t count)				\
-	{									\
-		struct platform_device *pdev = to_platform_device(dev);		\
-		struct gs_tmu_data *data = platform_get_drvdata(pdev);	\
-		s32 value;							\
-										\
-		if (!data->pi_param)						\
-			return -EIO;						\
-										\
-		if (kstrtos32(buf, 10, &value))					\
-			return -EINVAL;						\
-										\
-		data->pi_param->name = value;					\
-										\
-		return count;							\
-	}									\
+#define create_s32_param_attr(name, Name)                                                          \
+	static ssize_t name##_show(struct device *dev, struct device_attribute *devattr,           \
+				   char *buf)                                                      \
+	{                                                                                          \
+		struct platform_device *pdev = to_platform_device(dev);                            \
+		struct gs_tmu_data *data = platform_get_drvdata(pdev);                             \
+                                                                                                   \
+		if (data->pi_param) {                                                              \
+			u32 val;                                                                   \
+			exynos_acpm_tmu_ipc_get_pi_param(data->id, Name, &val);                    \
+			if (int_to_frac(val) != data->pi_param->name)                              \
+				return sysfs_emit(buf, "%u\n", -1);                                \
+			else                                                                       \
+				return sysfs_emit(buf, "%d\n", data->pi_param->name);              \
+		} else                                                                             \
+			return -EIO;                                                               \
+	}                                                                                          \
+                                                                                                   \
+	static ssize_t name##_store(struct device *dev, struct device_attribute *devattr,          \
+				    const char *buf, size_t count)                                 \
+	{                                                                                          \
+		struct platform_device *pdev = to_platform_device(dev);                            \
+		struct gs_tmu_data *data = platform_get_drvdata(pdev);                             \
+		s32 value;                                                                         \
+                                                                                                   \
+		if (!data->pi_param)                                                               \
+			return -EIO;                                                               \
+                                                                                                   \
+		if (kstrtos32(buf, 10, &value))                                                    \
+			return -EINVAL;                                                            \
+                                                                                                   \
+		data->pi_param->name = value;                                                      \
+                                                                                                   \
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, Name, frac_to_int(value));              \
+		return count;                                                                      \
+	}                                                                                          \
 	static DEVICE_ATTR_RW(name)
 
 static DEVICE_ATTR_RW(pause_cpus_temp);
@@ -2850,6 +3022,7 @@ static DEVICE_ATTR_RW(hotplug_in_temp);
 static DEVICE_ATTR_RW(cpu_hw_throttling_clr_temp);
 static DEVICE_ATTR_RW(cpu_hw_throttling_trigger_temp);
 static DEVICE_ATTR_RW(sustainable_power);
+static DEVICE_ATTR_RW(acpm_pi_table);
 static DEVICE_ATTR_RW(polling_delay_off);
 static DEVICE_ATTR_RW(polling_delay_on);
 static DEVICE_ATTR_RO(pause_time_in_state_ms);
@@ -2862,11 +3035,12 @@ static DEVICE_ATTR_RO(trip_counter);
 static DEVICE_ATTR_WO(trip_counter_reset);
 static DEVICE_ATTR_RO(ipc_dump1);
 static DEVICE_ATTR_RO(ipc_dump2);
-create_s32_param_attr(k_po);
-create_s32_param_attr(k_pu);
-create_s32_param_attr(k_i);
-create_s32_param_attr(i_max);
-create_s32_param_attr(integral_cutoff);
+create_s32_param_attr(k_po, K_PO);
+create_s32_param_attr(k_pu, K_PU);
+create_s32_param_attr(k_i, K_I);
+create_s32_param_attr(i_max, I_MAX);
+static DEVICE_ATTR_RW(integral_cutoff);
+static DEVICE_ATTR_RW(acpm_pi_enable);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
@@ -2883,6 +3057,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_cpu_hw_throttling_clr_temp.attr,
 	&dev_attr_cpu_hw_throttling_trigger_temp.attr,
 	&dev_attr_sustainable_power.attr,
+	&dev_attr_acpm_pi_table.attr,
 	&dev_attr_k_po.attr,
 	&dev_attr_k_pu.attr,
 	&dev_attr_k_i.attr,
@@ -2898,6 +3073,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_trip_counter_reset.attr,
 	&dev_attr_ipc_dump1.attr,
 	&dev_attr_ipc_dump2.attr,
+	&dev_attr_acpm_pi_enable.attr,
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
@@ -3890,6 +4066,43 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (list_is_singular(&dtm_dev_list)) {
 		sync_kernel_acpm_timestamp();
 		register_pm_notifier(&gs_tmu_pm_nb);
+	}
+
+	if (data->use_pi_thermal) {
+		struct thermal_zone_device *tz = data->tzd;
+		struct gs_pi_param *params = data->pi_param;
+		struct thermal_instance *instance;
+		struct thermal_cooling_device *cdev;
+		bool found_actor = false;
+
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, SUSTAINABLE_POWER,
+						 data->pi_param->sustainable_power);
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PO, frac_to_int(data->pi_param->k_po));
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PU, frac_to_int(data->pi_param->k_pu));
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX, frac_to_int(data->pi_param->i_max));
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, INTEGRAL_CUTOFF,
+						 data->pi_param->integral_cutoff);
+
+		list_for_each_entry (instance, &tz->thermal_instances, tz_node) {
+			if (instance->trip == params->trip_control_temp &&
+			    cdev_is_power_actor(instance->cdev)) {
+				found_actor = true;
+				cdev = instance->cdev;
+				break;
+			}
+		}
+
+		if (found_actor) {
+			int i;
+			unsigned long max_state;
+			cdev->ops->get_max_state(cdev, &max_state);
+			for (i = 0; i < (int)max_state; i++) {
+				int power;
+				cdev->ops->state2power(cdev, i, &power);
+				exynos_acpm_tmu_ipc_set_pi_param(data->id, i, power);
+			}
+		}
 	}
 
 #if IS_ENABLED(CONFIG_MALI_DEBUG_KERNEL_SYSFS)
