@@ -62,7 +62,6 @@
 #include <linux/dma-map-ops.h>
 #include <soc/google/s2mpu.h>
 #include "../../../iommu/exynos-pcie-iommu-exp.h"
-#include <trace/hooks/pci.h>
 
 struct exynos_pcie g_pcie_rc[MAX_RC_NUM];
 int pcie_is_linkup;	/* checkpatch: do not initialise globals to 0 */
@@ -70,7 +69,6 @@ static struct separated_msi_vector sep_msi_vec[MAX_RC_NUM][PCIE_MAX_SEPA_IRQ_NUM
 /* currnet_cnt & current_cnt2 for EOM test */
 static int current_cnt;
 static int current_cnt2;
-static bool is_vhook_registered;
 
 static struct pci_dev *exynos_pcie_get_pci_dev(struct dw_pcie_rp *pp);
 
