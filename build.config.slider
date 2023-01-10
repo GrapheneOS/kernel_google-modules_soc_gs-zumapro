@@ -27,7 +27,7 @@ ${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/gs101-a0.dtb
 ${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/gs101-b0.dtb
 "
 
-MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.slider
+MODULES_LIST=${DEVICE_MODULES_DIR}/vendor_boot_modules.gs101
 
 VENDOR_RAMDISK_CMDS="modify_vendor_ramdisk"
 function modify_vendor_ramdisk() {

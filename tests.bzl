@@ -45,7 +45,7 @@ def define_slider_kleaf_tests():
                                 dtbo_srcs = [":slider/" + e for e in SLIDER_DTBOS] if build_dtbo else None,
                                 kernel_build = ":slider",
                                 kernel_modules_install = ":slider_modules_install",
-                                modules_list = "vendor_boot_modules.slider",
+                                modules_list = "vendor_boot_modules.gs101",
                                 vendor_dlkm_modules_list = "vendor_dlkm_modules.slider" if build_vendor_dlkm else None,
                                 vendor_dlkm_props = "vendor_dlkm.props.slider" if build_vendor_dlkm else None,
                                 vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],

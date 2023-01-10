@@ -342,7 +342,7 @@ kernel_images(
     kernel_build = ":slider",
     kernel_modules_install = ":slider_modules_install",
     # Keep the following in sync with build.config.slider:
-    modules_list = "vendor_boot_modules.slider",
+    modules_list = "vendor_boot_modules.gs101",
     vendor_dlkm_modules_blocklist = "vendor_dlkm.blocklist.slider",
     # No MODULES_BLOCKLIST
     # Keep the following in sync with build.config.gs101:
