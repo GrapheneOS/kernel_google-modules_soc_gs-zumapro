@@ -85,13 +85,13 @@ enum gbms_charger_modes {
 #define VOLTAGE_ALARM_LOW_DIS_MV	0
 #define VBUS_PRESENT_THRESHOLD_MV	4000
 
+#define TCPC_ALERT_VENDOR		BIT(15)
+
 #define FLOATING_CABLE_OR_SINK_INSTANCE_THRESHOLD	10
 #define AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS		600000
 
 #define REGMAP_REG_MAX_ADDR			0x95
 #define REGMAP_REG_COUNT			(REGMAP_REG_MAX_ADDR + 1)
-
-#define SRC_CURRENT_LIMIT_MA		0
 
 #define tcpc_presenting_rd(reg, cc) \
 	(!(TCPC_ROLE_CTRL_DRP & (reg)) && \
@@ -116,6 +116,7 @@ enum gbms_charger_modes {
 #define port_is_sink(cc1, cc2) \
 	(rp_def_detected(cc1, cc2) || rp_1a5_detected(cc1, cc2) || rp_3a_detected(cc1, cc2))
 
+
 static struct logbuffer *tcpm_log;
 
 static bool modparam_conf_sbu;
@@ -125,8 +126,6 @@ MODULE_PARM_DESC(conf_sbu, "Configure sbu pins");
 static char boot_mode_string[64];
 module_param_string(mode, boot_mode_string, sizeof(boot_mode_string), 0440);
 MODULE_PARM_DESC(mode, "Android bootmode");
-
-static bool hooks_installed;
 
 static u32 partner_src_caps[PDO_MAX_OBJECTS];
 static unsigned int nr_partner_src_caps;
@@ -141,6 +140,8 @@ static unsigned int sink_discovery_delay_ms;
 /* Callback for data_active changes */
 void (*data_active_callback)(void *data_active_payload);
 void *data_active_payload;
+
+static bool hooks_installed;
 
 struct tcpci {
 	struct device *dev;
@@ -905,6 +906,16 @@ static void max77759_frs_sourcing_vbus(struct tcpci *tcpci, struct tcpci_data *t
 	int ret;
 
 	kthread_flush_work(&chip->enable_vbus_work.work);
+
+	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
+		chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
+		if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
+			logbuffer_log(chip->log, "ERR: GBMS_MODE_VOTABLE lazy get failed",
+				      PTR_ERR(chip->charger_mode_votable));
+			return;
+		}
+	}
+
 	ret = gvotable_cast_vote(chip->charger_mode_votable, TCPCI_MODE_VOTER,
 				 (void *)GBMS_USB_OTG_FRS_ON, true);
 	logbuffer_log(chip->log, "%s: GBMS_MODE_VOTABLE ret:%d", __func__, ret);
@@ -1153,10 +1164,10 @@ static void reset_ovp_work(struct kthread_work *work)
 
 }
 
-static void max77759_cache_cc(struct max77759_plat *chip)
+static void max77759_get_cc(struct max77759_plat *chip, enum typec_cc_status *cc1,
+			    enum typec_cc_status *cc2)
 {
 	struct tcpci *tcpci = chip->tcpci;
-	enum typec_cc_status cc1, cc2;
 	u8 reg, role_control;
 	int ret;
 
@@ -1168,15 +1179,21 @@ static void max77759_cache_cc(struct max77759_plat *chip)
 	if (ret < 0)
 		return;
 
-	cc1 = tcpci_to_typec_cc((reg >> TCPC_CC_STATUS_CC1_SHIFT) &
+	*cc1 = tcpci_to_typec_cc((reg >> TCPC_CC_STATUS_CC1_SHIFT) &
 				TCPC_CC_STATUS_CC1_MASK,
 				reg & TCPC_CC_STATUS_TERM ||
 				tcpc_presenting_rd(role_control, CC1));
-	cc2 = tcpci_to_typec_cc((reg >> TCPC_CC_STATUS_CC2_SHIFT) &
+	*cc2 = tcpci_to_typec_cc((reg >> TCPC_CC_STATUS_CC2_SHIFT) &
 				TCPC_CC_STATUS_CC2_MASK,
 				reg & TCPC_CC_STATUS_TERM ||
 				tcpc_presenting_rd(role_control, CC2));
+}
 
+static void max77759_cache_cc(struct max77759_plat *chip)
+{
+	enum typec_cc_status cc1, cc2;
+
+	max77759_get_cc(chip, &cc1, &cc2);
 	/*
 	 * If the Vbus OVP is restricted to quick ramp-up time for incoming Vbus to work properly,
 	 * queue a delayed work to check the Vbus status later. Cancel the delayed work once the CC
@@ -1312,7 +1329,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		 * contaminant detection.
 		 */
 		mutex_lock(&chip->rc_lock);
-		if (chip->contaminant_detection && tcpm_is_toggling(tcpci->port)) {
+		if (chip->contaminant_detection && tcpm_port_is_toggling(tcpci->port)) {
 			ret = process_contaminant_alert(chip->contaminant, false, true,
 							&contaminant_cc_update_handled);
 			if (ret < 0) {
@@ -1341,7 +1358,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 			tcpm_cc_change(tcpci->port);
 			max77759_cache_cc(chip);
 			/* TCPM has detected valid CC terminations */
-			if (!tcpm_is_toggling(tcpci->port)) {
+			if (!tcpm_port_is_toggling(tcpci->port)) {
 				chip->floating_cable_or_sink_detected = 0;
 				/*
 				 * Only re-enable auto ultra low power mode only
@@ -1665,30 +1682,6 @@ unlock:
 	return 0;
 }
 
-static void max77759_check_contaminant(void *unused, struct tcpci *tcpci, struct tcpci_data *tdata,
-				       int *restart_toggling)
-{
-	struct max77759_plat *chip = tdata_to_max77759(tdata);
-	bool contaminant_cc_status_handled = false;
-	int ret = 0;
-
-	logbuffer_log(chip->log, "%s: debounce path", __func__);
-	mutex_lock(&chip->rc_lock);
-	if (chip->contaminant_detection) {
-		/*
-		 * contaminant_cc_status_handled unused as contaminant detection
-		 * is expected to restart toggling as needed unless EIO.
-		 */
-		ret = process_contaminant_alert(chip->contaminant, true, false,
-						&contaminant_cc_status_handled);
-		*restart_toggling = ret < 0 ? TCPM_RESTART_TOGGLING : CONTAMINANT_HANDLES_TOGGLING;
-	} else {
-		*restart_toggling = TCPM_RESTART_TOGGLING;
-	}
-
-	mutex_unlock(&chip->rc_lock);
-}
-
 static void max77759_set_partner_usb_comm_capable(struct tcpci *tcpci, struct tcpci_data *data,
 						  bool capable)
 {
@@ -1893,31 +1886,6 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 		bc12_enable(chip->bc12, true);
 
 	return 0;
-}
-
-static void max77759_modify_src_caps(void *unused, unsigned int *nr_src_pdo,
-				     u32 (*src_pdo)[PDO_MAX_OBJECTS], bool *modified)
-{
-	spin_lock(&g_caps_lock);
-
-	if (port_src_pdo_updated) {
-		spin_unlock(&g_caps_lock);
-		return;
-	}
-
-	if (limit_src_cap_enable) {
-		(*src_pdo)[0] &= ~(PDO_CURR_MASK << PDO_FIXED_CURR_SHIFT);
-		(*src_pdo)[0] |= PDO_FIXED_CURR(SRC_CURRENT_LIMIT_MA);
-		*nr_src_pdo = 1;
-	} else {
-		(*src_pdo)[0] |= PDO_FIXED_CURR(orig_src_current);
-		*nr_src_pdo = nr_orig_src_pdo;
-	}
-
-	port_src_pdo_updated = true;
-	*modified = true;
-
-	spin_unlock(&g_caps_lock);
 }
 
 static void max77759_store_partner_src_caps(void *unused, struct tcpm_port *port,
@@ -2143,112 +2111,6 @@ static const struct file_operations force_device_mode_on_fops = {
 };
 #endif
 
-static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *tcpci,
-						   struct tcpci_data *data,
-						   int *override_toggling)
-{
-	*override_toggling = 1;
-}
-
-static void max77759_get_timer_value(void *unused, const char *state, enum typec_timer timer,
-				     unsigned int *val)
-{
-	switch (timer) {
-	case SINK_DISCOVERY_BC12:
-		*val = sink_discovery_delay_ms;
-		break;
-	case SINK_WAIT_CAP:
-		*val = 450;
-		break;
-	case SOURCE_OFF:
-		*val = 870;
-		break;
-	case CC_DEBOUNCE:
-		*val = 170;
-		break;
-	default:
-		break;
-	}
-}
-
-static void max77759_tcpm_log(void *unused, const char *log, bool *bypass)
-{
-	if (tcpm_log)
-		logbuffer_log(tcpm_log, "%s", log);
-
-	*bypass = true;
-}
-
-static int max77759_register_vendor_hooks(struct i2c_client *client)
-{
-	int ret;
-
-	if (hooks_installed)
-		return 0;
-
-	ret = register_trace_android_vh_typec_tcpci_override_toggling(
-			max77759_typec_tcpci_override_toggling, NULL);
-
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpci_override_toggling failed ret:%d",
-			ret);
-		return ret;
-	}
-
-	ret = register_trace_android_rvh_typec_tcpci_chk_contaminant(
-			max77759_check_contaminant, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_rvh_typec_tcpci_chk_contaminant failed ret:%d",
-			ret);
-		return ret;
-	}
-
-	ret = register_trace_android_rvh_typec_tcpci_get_vbus(max77759_get_vbus, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_rvh_typec_tcpci_get_vbus failed ret:%d\n", ret);
-		return ret;
-	}
-
-	ret = register_trace_android_vh_typec_store_partner_src_caps(
-			max77759_store_partner_src_caps, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
-			ret);
-		return ret;
-	}
-
-	ret = register_trace_android_vh_typec_tcpm_get_timer(max77759_get_timer_value, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpm_get_timer failed ret:%d\n", ret);
-		return ret;
-	}
-
-	ret = register_trace_android_vh_typec_tcpm_log(max77759_tcpm_log, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpm_log failed ret:%d\n", ret);
-		return ret;
-	}
-
-	port_src_pdo_updated = true;
-	ret = register_trace_android_vh_typec_tcpm_modify_src_caps(max77759_modify_src_caps, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpm_modify_src_caps failed ret:%d\n",
-			ret);
-		return ret;
-	}
-
-	hooks_installed = true;
-
-	return ret;
-}
-
 static int max77759_setup_data_notifier(struct max77759_plat *chip)
 {
 	struct usb_role_switch_desc desc = { };
@@ -2314,6 +2176,95 @@ static void max77759_teardown_data_notifier(struct max77759_plat *chip)
 		usb_role_switch_unregister(chip->usb_sw);
 }
 
+static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *tcpci,
+						   struct tcpci_data *data,
+						   int *override_toggling)
+{
+	*override_toggling = 1;
+}
+
+static void max77759_get_timer_value(void *unused, const char *state, enum typec_timer timer,
+				     unsigned int *val)
+{
+	switch (timer) {
+	case SINK_DISCOVERY_BC12:
+		*val = sink_discovery_delay_ms;
+		break;
+	case SINK_WAIT_CAP:
+		*val = 450;
+		break;
+	case SOURCE_OFF:
+		*val = 870;
+		break;
+	case CC_DEBOUNCE:
+		*val = 170;
+		break;
+	default:
+		break;
+	}
+}
+
+static void max77759_tcpm_log(void *unused, const char *log, bool *bypass)
+{
+	if (tcpm_log)
+		logbuffer_log(tcpm_log, "%s", log);
+
+	*bypass = true;
+}
+
+static int max77759_register_vendor_hooks(struct i2c_client *client)
+{
+	int ret = 0;
+
+	if (hooks_installed)
+		return 0;
+
+	ret = register_trace_android_vh_typec_tcpci_override_toggling(
+			max77759_typec_tcpci_override_toggling, NULL);
+
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpci_override_toggling failed ret:%d",
+			ret);
+		return ret;
+	}
+
+	ret = register_trace_android_rvh_typec_tcpci_get_vbus(max77759_get_vbus, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_rvh_typec_tcpci_get_vbus failed ret:%d\n", ret);
+		return ret;
+	}
+
+	port_src_pdo_updated = true;
+	ret = register_trace_android_vh_typec_store_partner_src_caps(
+			max77759_store_partner_src_caps, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
+			ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_tcpm_get_timer(max77759_get_timer_value, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_get_timer failed ret:%d\n", ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_tcpm_log(max77759_tcpm_log, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_log failed ret:%d\n", ret);
+		return ret;
+	}
+
+	hooks_installed = true;
+
+	return ret;
+}
+
 static void reenable_auto_ultra_low_power_mode_work_item(struct kthread_work *work)
 {
 	struct max77759_plat *chip = container_of(work, struct max77759_plat,
@@ -2340,6 +2291,31 @@ static enum alarmtimer_restart reenable_auto_ultra_low_power_mode_alarm_handler(
 
 exit:
 	return ALARMTIMER_NORESTART;
+}
+
+static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *tdata)
+{
+	struct max77759_plat *chip = tdata_to_max77759(tdata);
+	bool contaminant_cc_status_handled = false, port_clean = false;
+	int ret = 0;
+
+	mutex_lock(&chip->rc_lock);
+	if (chip->contaminant_detection)
+		ret = process_contaminant_alert(chip->contaminant, true, false,
+						&contaminant_cc_status_handled,
+						&port_clean);
+	mutex_unlock(&chip->rc_lock);
+	if (ret < 0) {
+		logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
+		/* Assume clean port */
+		tcpm_port_clean(chip->port);
+	} else if (port_clean) {
+		logbuffer_log(chip->log, "port clean");
+		tcpm_port_clean(chip->port);
+	} else {
+		logbuffer_log(chip->log, "port dirty");
+		chip->check_contaminant = true;
+	}
 }
 
 static int max77759_probe(struct i2c_client *client,
@@ -2372,6 +2348,14 @@ static int max77759_probe(struct i2c_client *client,
 		return PTR_ERR(chip->data.regmap);
 	}
 
+	chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
+	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
+		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed",
+			PTR_ERR(chip->charger_mode_votable));
+		if (!of_property_read_bool(dn, "gvotable-lazy-probe"))
+			return -EPROBE_DEFER;
+	}
+
 	kthread_init_work(&chip->reenable_auto_ultra_low_power_mode_work,
 			  reenable_auto_ultra_low_power_mode_work_item);
 	alarm_init(&chip->reenable_auto_ultra_low_power_mode_alarm, ALARM_BOOTTIME,
@@ -2380,18 +2364,6 @@ static int max77759_probe(struct i2c_client *client,
 	if (!dn) {
 		dev_err(&client->dev, "of node not found\n");
 		return -EINVAL;
-	}
-
-	chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
-	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
-		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed: %ld\n",
-			PTR_ERR(chip->charger_mode_votable));
-		chg_psy_name = (char *)of_get_property(dn, "chg-psy-name", NULL);
-		/*
-		 * Defer when chg psy is set. This implies mode votable should be present as well.
-		 */
-		if (chg_psy_name)
-			return -EPROBE_DEFER;
 	}
 
 	chip->in_switch_gpio = -EINVAL;
@@ -2454,6 +2426,7 @@ static int max77759_probe(struct i2c_client *client,
 	chip->data.set_partner_usb_comm_capable = max77759_set_partner_usb_comm_capable;
 	chip->data.init = tcpci_init;
 	chip->data.frs_sourcing_vbus = max77759_frs_sourcing_vbus;
+	chip->data.check_contaminant = max_tcpci_check_contaminant;
 
 	chip->log = logbuffer_register("usbpd");
 	if (IS_ERR_OR_NULL(chip->log)) {

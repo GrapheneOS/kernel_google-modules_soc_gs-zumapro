@@ -22,7 +22,6 @@ struct gvotable_election;
 struct logbuffer;
 struct max77759_contaminant;
 struct tcpci_data;
-struct max77759_io_error;
 
 struct max77759_plat {
 	struct tcpci_data data;
@@ -112,6 +111,11 @@ struct max77759_plat {
 	struct alarm reenable_auto_ultra_low_power_mode_alarm;
 	/* Bottom half for alarm */
 	struct kthread_work reenable_auto_ultra_low_power_mode_work;
+	/*
+	 * Set in debounce path from TCPM when contaminant is detected.
+	 * Cleared after exiting dry detection. Needed to move TCPM back into TOGGLING state.
+	 */
+	bool check_contaminant;
 
 	/* Protects contaminant_detection variable and role_control */
 	struct mutex rc_lock;
@@ -146,7 +150,6 @@ struct max77759_plat {
 	struct kthread_delayed_work max77759_io_error_work;
 	/* Hold before calling _max77759_irq */
 	struct mutex irq_status_lock;
-
 	/* EXT_BST_EN exposed as GPIO */
 #ifdef CONFIG_GPIOLIB
 	struct gpio_chip gpio;
@@ -183,7 +186,7 @@ int __attribute__((weak)) maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1
 
 struct max77759_contaminant *max77759_contaminant_init(struct max77759_plat *plat, bool enable);
 int process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path,
-			      bool tcpm_toggling, bool *cc_status_handled);
+			      bool tcpm_toggling, bool *cc_update_handled);
 int enable_contaminant_detection(struct max77759_plat *chip, bool maxq);
 int disable_contaminant_detection(struct max77759_plat *chip);
 bool is_contaminant_detected(struct max77759_plat *chip);
