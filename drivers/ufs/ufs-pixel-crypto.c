@@ -25,10 +25,7 @@
 static void pixel_ufs_crypto_restore_keys(void *unused, struct ufs_hba *hba,
 					  int *err);
 
-static void pixel_ufs_crypto_fill_prdt(void *unused, struct ufs_hba *hba,
-				       struct ufshcd_lrb *lrbp,
-				       unsigned int segments, int *err);
-
+static int pixel_ufs_register_fill_prdt(void);
 static int pixel_ufs_register_fips_self_test(void);
 
 #define CRYPTO_DATA_UNIT_SIZE 4096
@@ -346,8 +343,7 @@ int pixel_ufs_crypto_init(struct ufs_hba *hba)
 	if (err)
 		return err;
 
-	err = register_trace_android_vh_ufs_fill_prdt(
-				pixel_ufs_crypto_fill_prdt, NULL);
+	err = pixel_ufs_register_fill_prdt();
 	if (err)
 		return err;
 
@@ -456,6 +452,7 @@ void pixel_ufs_crypto_resume(struct ufs_hba *hba)
 			ret);
 }
 
+#if !IS_ENABLED(CONFIG_SCSI_UFS_PIXEL_FIPS140)
 /* Configure inline encryption (or decryption) on requests that require it. */
 static void pixel_ufs_crypto_fill_prdt(void *unused, struct ufs_hba *hba,
 				       struct ufshcd_lrb *lrbp,
@@ -508,7 +505,19 @@ static void pixel_ufs_crypto_fill_prdt(void *unused, struct ufs_hba *hba,
 	lrbp->crypto_key_slot = -1;
 }
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_PIXEL_FIPS140)
+static int pixel_ufs_register_fips_self_test(void)
+{
+	return 0;
+}
+
+static int pixel_ufs_register_fill_prdt(void)
+{
+	return register_trace_android_vh_ufs_fill_prdt(
+				pixel_ufs_crypto_fill_prdt, NULL);
+}
+
+#else
+
 static void pixel_ufs_ise_self_test(void *data, struct ufs_hba *hba)
 {
 	/*
@@ -535,9 +544,10 @@ static int pixel_ufs_register_fips_self_test(void)
 	return register_trace_android_rvh_ufs_complete_init(
 		pixel_ufs_ise_self_test, NULL);
 }
-#else
-static int pixel_ufs_register_fips_self_test(void)
+
+static int pixel_ufs_register_fill_prdt(void)
 {
 	return 0;
 }
+
 #endif
