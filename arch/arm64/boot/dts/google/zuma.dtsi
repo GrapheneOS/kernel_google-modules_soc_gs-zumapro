@@ -1164,6 +1164,88 @@
 		};
 	};
 
+	gs_dsulat_devfreq {
+		compatible = "dsulat-devfreq-root";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+
+		dsu_lat: devfreq_dsu_lat@17000090 {
+			compatible = "dsulat-devfreq";
+			devfreq_type = <DEVFREQ_DSU>;
+			devfreq_domain_name = "DSU";
+			pm_qos_class = <PM_QOS_DSU_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_DSU_THROUGHPUT_MAX>;
+			dm-index = <DM_DSU>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <DSU_LATENCY>;
+			dfs_id = <ACPM_DVFS_DSU>;
+
+			core-dev-table-cl0 =
+				< 351000        324000
+				615000        324000
+				820000        324000
+				975000        615000
+				1098000       615000
+				1197000       820000
+				1328000       820000
+				1475000       820000
+				1548000       820000
+				1704000       820000
+				1844000       820000
+				1950000       820000
+				2024000       820000
+				2098000       820000
+				2147000       820000
+				2253000       820000 >;
+
+			core-dev-table-cl1 =
+				< 402000        324000
+				578000        615000
+				697000        615000
+				721000        615000
+				910000        615000
+				1082000       615000
+				1221000       615000
+				1328000       615000
+				1418000       615000
+				1549000       820000
+				1622000       820000
+				1836000       820000
+				1999000       820000
+				2130000       820000
+				2245000       820000
+				2352000       820000
+				2450000       820000
+				2550000       820000
+				2600000       820000 >;
+
+			core-dev-table-cl2 =
+				< 500000        324000
+				893000        615000
+				1164000       615000
+				1328000       820000
+				1557000       975000
+				1745000       975000
+				1852000       975000
+				1901000       975000
+				2049000       975000
+				2147000       975000
+				2294000       975000
+				2409000       975000
+				2556000       975000
+				2687000       975000
+				2802000       975000
+				2914000       975000
+				3015000       975000
+				3178000       975000
+				3310000       975000 >;
+		};
+	};
+
 	cpu0_memlat_cpugrp: cpu0-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu0>;
@@ -1173,6 +1255,7 @@
 			cpulist = <&cpu0>;
 			target-dev = <&mif_cpu0_mem_lat>;
 			cachemiss-ev = <0xA2>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  250000  421000 >,
 				<  324000  546000 >,
@@ -1195,6 +1278,7 @@
 			cpulist = <&cpu1>;
 			target-dev = <&mif_cpu1_mem_lat>;
 			cachemiss-ev = <0xA2>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  250000  421000 >,
 				<  324000  546000 >,
@@ -1217,6 +1301,7 @@
 			cpulist = <&cpu2>;
 			target-dev = <&mif_cpu2_mem_lat>;
 			cachemiss-ev = <0xA2>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  250000  421000 >,
 				<  324000  546000 >,
@@ -1239,6 +1324,7 @@
 			cpulist = <&cpu3>;
 			target-dev = <&mif_cpu3_mem_lat>;
 			cachemiss-ev = <0xA2>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  250000  421000 >,
 				<  324000  546000 >,
@@ -1261,6 +1347,7 @@
 			cpulist = <&cpu4>;
 			target-dev = <&mif_cpu4_mem_lat>;
 			cachemiss-ev = <0x2A>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  320000  421000 >,
 				<  402000  546000 >,
@@ -1284,6 +1371,7 @@
 			cpulist = <&cpu5>;
 			target-dev = <&mif_cpu5_mem_lat>;
 			cachemiss-ev = <0x2A>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  320000  421000 >,
 				<  402000  546000 >,
@@ -1307,6 +1395,7 @@
 			cpulist = <&cpu6>;
 			target-dev = <&mif_cpu6_mem_lat>;
 			cachemiss-ev = <0x2A>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  320000  421000 >,
 				<  402000  546000 >,
@@ -1330,6 +1419,7 @@
 			cpulist = <&cpu7>;
 			target-dev = <&mif_cpu7_mem_lat>;
 			cachemiss-ev = <0x2A>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  320000  421000 >,
 				<  402000  546000 >,
@@ -1353,6 +1443,7 @@
 			cpulist = <&cpu8>;
 			target-dev = <&mif_cpu8_mem_lat>;
 			cachemiss-ev = <0x2A>;
+			governor-name = "dsu_latency";
 			core-dev-table =
 				<  400000  421000 >,
 				<  500000  546000 >,
