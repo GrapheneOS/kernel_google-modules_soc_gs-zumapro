@@ -69,7 +69,7 @@
 		/* UFS quirk managing flags */
 		fixed-prdt-req_list-ocs;
 		/* Auto hibern8 */
-		/* samsung,support-ah8; */
+		samsung,support-ah8;
 
 		/* GSA (KDN) device  */
 		gsa-device = <&gsa>;
