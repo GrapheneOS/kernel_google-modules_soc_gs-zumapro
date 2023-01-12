@@ -530,9 +530,6 @@ static void exynos_ufs_set_features(struct ufs_hba *hba)
 	hba->caps = UFSHCD_CAP_CLK_GATING;
 	if (ufs->ah8_ahit == 0)
 		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
-	else
-	/* deliver ah8 timer and counter values */
-		hba->ahit = ufs->ah8_ahit;
 
 	/* quirks of common driver */
 	hba->quirks = UFSHCD_QUIRK_PRDT_BYTE_GRAN |
@@ -700,6 +697,9 @@ static int exynos_ufs_hce_enable_notify(struct ufs_hba *hba,
 
 		/* device reset */
 		exynos_ufs_dev_hw_reset(hba);
+
+		/* deliver ah8 timer and counter values */
+		hba->ahit = ufs->ah8_ahit;
 		break;
 	case POST_CHANGE:
 		exynos_ufs_ctrl_clk(ufs, true);
