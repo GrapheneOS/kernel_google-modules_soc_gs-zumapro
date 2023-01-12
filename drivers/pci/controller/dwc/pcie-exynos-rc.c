@@ -2200,6 +2200,44 @@ void exynos_pcie_rc_assert_phy_reset(struct pcie_port *pp)
 	exynos_pcie_rc_use_ia(exynos_pcie);
 }
 
+static void exynos_pcie_ch2_phy_disable(struct exynos_pcie *exynos_pcie)
+{
+	void __iomem *phy_base_regs = ioremap(0x131B0000, 0x2000);
+	void __iomem *udbg_base_regs = ioremap(0x131AC700, 0x10);
+	u32 val;
+
+	regmap_update_bits(exynos_pcie->pmureg, 0x3ECC,
+			   PCIE_PHY_CONTROL_MASK, PCIE_PHY_BYPASS);
+
+	val = readl(phy_base_regs + 0x204) & ~(0x3 << 2);
+	writel(val, phy_base_regs + 0x204);
+
+	writel(0x2A, phy_base_regs + 0x1044);
+	writel(0xAA, phy_base_regs + 0x1048);
+	writel(0xA8, phy_base_regs + 0x104C);
+	writel(0x80, phy_base_regs + 0x1050);
+	writel(0x0A, phy_base_regs + 0x185C);
+	udelay(1);
+
+	writel(0xFF, phy_base_regs + 0x0208);
+	udelay(1);
+
+	writel(0x0A, phy_base_regs + 0x0580);
+	writel(0xAA, phy_base_regs + 0x0928);
+
+	//Common Bias, PLL off
+	writel(0x0A, phy_base_regs + 0x00C);
+
+	udelay(50);
+	// External PLL gating
+	val = readl(udbg_base_regs) & ~(0x1 << 0);
+	writel(val, udbg_base_regs);
+	udelay(10);
+
+	regmap_update_bits(exynos_pcie->pmureg, 0x3ECC,
+			   PCIE_PHY_CONTROL_MASK, PCIE_PHY_ISOLATION);
+}
+
 void exynos_pcie_rc_resumed_phydown(struct pcie_port *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
@@ -2217,6 +2255,11 @@ void exynos_pcie_rc_resumed_phydown(struct pcie_port *pp)
 
 	if (exynos_pcie->phy_ops.phy_all_pwrdn)
 		exynos_pcie->phy_ops.phy_all_pwrdn(exynos_pcie, exynos_pcie->ch_num);
+
+	if (exynos_pcie->ch_num == 1) {
+		dev_info(dev, "Disable PCIE2 PHY\n");
+		exynos_pcie_ch2_phy_disable(exynos_pcie);
+	}
 
 	exynos_pcie_rc_phy_clock_enable(pp, PCIE_DISABLE_CLOCK);
 	exynos_pcie_rc_clock_enable(pp, PCIE_DISABLE_CLOCK);
