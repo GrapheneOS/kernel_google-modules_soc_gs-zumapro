@@ -134,6 +134,7 @@
 			phy-names = "usb2-phy", "usb3-phy";
 			/* support usb audio offloading: 1, if not: 0 */
 			usb_audio_offloading = <1>;
+			direct-usb-access;
 
 			maximum-speed = "super-speed-plus";
 			usb3-lpm-capable;
