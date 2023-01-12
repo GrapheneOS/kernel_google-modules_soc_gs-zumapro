@@ -84,7 +84,7 @@
 	};
 
 	chosen: chosen {
-		bootargs = "earlycon=exynos4210,mmio32,0x10870000 console=ttySAC0,115200n8 root=/dev/ram0 rw clocksource=arch_sys_counter androidboot.hardware=zuma androidboot.hardware.platform=zuma androidboot.debug_level=0x4948 clk_ignore_unused loop.max_part=7 coherent_pool=4M firmware_class.path=/vendor/firmware log_buf_len=256K irqaffinity=0rcupdate.rcu_expedited=1 printk.devkmsg=on swiotlb=noforce androidboot.slot_suffix=_a androidboot.secure_boot=NONE nokaslr exynos_drm.panel_name=samsung-emul sysrq_always_enabled no_console_suspend softlockup_panic=1 cpuidle.off=1 kvm-arm.protected_modules";
+		bootargs = "earlycon=exynos4210,mmio32,0x10870000 console=ttySAC0,115200n8 root=/dev/ram0 rw clocksource=arch_sys_counter androidboot.hardware=zuma androidboot.hardware.platform=zuma androidboot.debug_level=0x4948 clk_ignore_unused loop.max_part=7 loop.hw_queue_depth=31 coherent_pool=4M firmware_class.path=/vendor/firmware log_buf_len=256K irqaffinity=0rcupdate.rcu_expedited=1 printk.devkmsg=on swiotlb=noforce androidboot.slot_suffix=_a androidboot.secure_boot=NONE nokaslr exynos_drm.panel_name=samsung-emul sysrq_always_enabled no_console_suspend softlockup_panic=1 cpuidle.off=1 kvm-arm.protected_modules";
 	};
 
 	odm: odm {
