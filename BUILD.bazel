@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+
 package(
     default_visibility = [
         "//private/devices/google:__subpackages__",
@@ -23,14 +25,65 @@ label_flag(
     build_setting_default = ":gs_undefined",
 )
 
-label_flag(
-    name = "device_build_config",
-    build_setting_default = ":gs_undefined",
+string_flag(
+    name = "debug_fragment",
+    build_setting_default = "",
 )
 
-label_flag(
-    name = "gki_build_config",
-    build_setting_default = ":gs_undefined",
+config_setting(
+    name = "blktest",
+    flag_values = {
+        ":debug_fragment": "blktest",
+    },
+)
+
+config_setting(
+    name = "debug_api",
+    flag_values = {
+        ":debug_fragment": "debug_api",
+    },
+)
+
+config_setting(
+    name = "debug_kmemleak",
+    flag_values = {
+        ":debug_fragment": "debug_kmemleak",
+    },
+)
+
+config_setting(
+    name = "debug_locking",
+    flag_values = {
+        ":debug_fragment": "debug_locking",
+    },
+)
+
+config_setting(
+    name = "debug_memory",
+    flag_values = {
+        ":debug_fragment": "debug_memory",
+    },
+)
+
+config_setting(
+    name = "debug_memory_accounting",
+    flag_values = {
+        ":debug_fragment": "debug_memory_accounting",
+    },
+)
+
+config_setting(
+    name = "kasan",
+    flag_values = {
+        ":debug_fragment": "kasan",
+    },
+)
+
+config_setting(
+    name = "khwasan",
+    flag_values = {
+        ":debug_fragment": "khwasan",
+    },
 )
 
 filegroup(

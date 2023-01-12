@@ -144,12 +144,13 @@ def create_debug_fragment(
         ] if gki_build_config_fragment else [],
     )
 
-def debug_build_configs(
+def device_build_configs(
         name,
         base_build_config,
         device_name,
         gki_kernel_dir,
-        gki_build_config_fragment = None):
+        gki_build_config_fragment = None,
+        staging_kernel = None):
     """Creates the full set of debug configs for a pixel device.
 
     Defines these targets for each debug config:
@@ -162,69 +163,68 @@ def debug_build_configs(
       device_name: name of the device
       gki_kernel_dir: the GKI kernel's path to be used, e.g. aosp-staging
       gki_build_config_fragment: the staging kernel's build config fragment
+      staging_kernel: If True, a staging build config is created
     """
 
-    create_debug_fragment(
-        name = "{name}.{debug_name}".format(name = name, debug_name = "blktest"),
-        base_build_config = base_build_config,
-        device_name = device_name,
-        debug_fragment = "//private/google-modules/soc/gs:build.config.slider.blktest",
-        gki_kernel_dir = gki_kernel_dir,
-        gki_build_config_fragment = gki_build_config_fragment,
+    if staging_kernel:
+        staging_build_config(
+            name = "{}_staging".format(name),
+            base_build_config = base_build_config,
+            device_name = device_name,
+            gki_build_config_fragment = gki_build_config_fragment,
+        )
+
+    debug_types = [
+        "blktest",
+        "debug_api",
+        "debug_kmemleak",
+        "debug_locking",
+        "debug_memory",
+        "debug_memory_accounting",
+        "kasan",
+        "khwasan",
+    ]
+    debug_configs_mapping = {}
+    debug_gki_configs_mapping = {}
+    for debug_name in debug_types:
+        create_debug_fragment(
+            name = "{name}.{debug_name}".format(name = name, debug_name = debug_name),
+            base_build_config = base_build_config,
+            device_name = device_name,
+            debug_fragment = "//private/google-modules/soc/gs:build.config.slider.{}".format(debug_name),
+            gki_kernel_dir = gki_kernel_dir,
+            gki_build_config_fragment = gki_build_config_fragment,
+        )
+        debug_configs_mapping["//private/google-modules/soc/gs:{}".format(debug_name)] = \
+            ["//private/devices/google/{device}:{name}.{debug_name}".format(
+                name = name,
+                device = device_name,
+                debug_name = debug_name,
+            )]
+        debug_gki_configs_mapping["//private/google-modules/soc/gs:{}".format(debug_name)] = \
+            ["//private/devices/google/{device}:{name}.{debug_name}.gki".format(
+                name = name,
+                device = device_name,
+                debug_name = debug_name,
+            )]
+
+    debug_configs_mapping["//conditions:default"] = \
+        [":{name}{staging}".format(
+            name = name,
+            staging = "_staging" if staging_kernel else "",
+        )]
+    debug_gki_configs_mapping["//conditions:default"] = \
+        [":{name}{staging}.gki".format(
+            name = name,
+            staging = "_staging" if staging_kernel else "",
+        )]
+
+    native.filegroup(
+        name = "device_build_config",
+        srcs = select(debug_configs_mapping),
     )
-    create_debug_fragment(
-        name = "{name}.{debug_name}".format(name = name, debug_name = "debug_api"),
-        base_build_config = base_build_config,
-        device_name = device_name,
-        debug_fragment = "//private/google-modules/soc/gs:build.config.slider.debug_api",
-        gki_kernel_dir = gki_kernel_dir,
-        gki_build_config_fragment = gki_build_config_fragment,
-    )
-    create_debug_fragment(
-        name = "{name}.{debug_name}".format(name = name, debug_name = "debug_kmemleak"),
-        base_build_config = base_build_config,
-        device_name = device_name,
-        debug_fragment = "//private/google-modules/soc/gs:build.config.slider.debug_kmemleak",
-        gki_kernel_dir = gki_kernel_dir,
-        gki_build_config_fragment = gki_build_config_fragment,
-    )
-    create_debug_fragment(
-        name = "{name}.{debug_name}".format(name = name, debug_name = "debug_locking"),
-        base_build_config = base_build_config,
-        device_name = device_name,
-        debug_fragment = "//private/google-modules/soc/gs:build.config.slider.debug_locking",
-        gki_kernel_dir = gki_kernel_dir,
-        gki_build_config_fragment = gki_build_config_fragment,
-    )
-    create_debug_fragment(
-        name = "{name}.{debug_name}".format(name = name, debug_name = "debug_memory"),
-        base_build_config = base_build_config,
-        device_name = device_name,
-        debug_fragment = "//private/google-modules/soc/gs:build.config.slider.debug_memory",
-        gki_kernel_dir = gki_kernel_dir,
-        gki_build_config_fragment = gki_build_config_fragment,
-    )
-    create_debug_fragment(
-        name = "{name}.{debug_name}".format(name = name, debug_name = "debug_memory_accounting"),
-        base_build_config = base_build_config,
-        device_name = device_name,
-        debug_fragment = "//private/google-modules/soc/gs:build.config.slider.debug_memory_accounting",
-        gki_kernel_dir = gki_kernel_dir,
-        gki_build_config_fragment = gki_build_config_fragment,
-    )
-    create_debug_fragment(
-        name = "{name}.{debug_name}".format(name = name, debug_name = "kasan"),
-        base_build_config = base_build_config,
-        device_name = device_name,
-        debug_fragment = "//private/google-modules/soc/gs:build.config.slider.kasan",
-        gki_kernel_dir = gki_kernel_dir,
-        gki_build_config_fragment = gki_build_config_fragment,
-    )
-    create_debug_fragment(
-        name = "{name}.{debug_name}".format(name = name, debug_name = "khwasan"),
-        base_build_config = base_build_config,
-        device_name = device_name,
-        debug_fragment = "//private/google-modules/soc/gs:build.config.slider.khwasan",
-        gki_kernel_dir = gki_kernel_dir,
-        gki_build_config_fragment = gki_build_config_fragment,
+
+    native.filegroup(
+        name = "gki_build_config",
+        srcs = select(debug_gki_configs_mapping),
     )

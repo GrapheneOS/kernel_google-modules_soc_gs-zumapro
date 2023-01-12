@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Copyright (C) 2023 Google LLC
+
+# Placeholders for device specific bazelrc files. Add as many as you need.
+try-import %workspace%/.d1.bazelrc
+try-import %workspace%/.d2.bazelrc
+try-import %workspace%/.d3.bazelrc
+try-import %workspace%/.d4.bazelrc
+try-import %workspace%/.d5.bazelrc
+
+build:blktest --//private/google-modules/soc/gs:debug_fragment=blktest
+build:debug_api --//private/google-modules/soc/gs:debug_fragment=debug_api
+build:debug_kmemleak --//private/google-modules/soc/gs:debug_fragment=debug_kmemleak
+build:debug_locking--//private/google-modules/soc/gs:debug_fragment=debug_locking
+build:debug_memory --//private/google-modules/soc/gs:debug_fragment=debug_memory
+build:debug_memory_accounting --//private/google-modules/soc/gs:debug_fragment=debug_memory_accounting
+build:kasan --//private/google-modules/soc/gs:debug_fragment=kasan
+build:khwasan--//private/google-modules/soc/gs:debug_fragment=khwasan
+
