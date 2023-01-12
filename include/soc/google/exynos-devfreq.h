@@ -24,6 +24,7 @@
 /* DEVFREQ GOV TYPE */
 #define SIMPLE_INTERACTIVE 0
 #define MEM_LATENCY 1
+#define DSU_LATENCY 2
 
 int devfreq_simple_interactive_init(void);
 #if IS_ENABLED(CONFIG_EXYNOS_ALT_DVFS)
