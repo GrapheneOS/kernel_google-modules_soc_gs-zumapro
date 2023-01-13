@@ -120,9 +120,6 @@
 		phy-names = "usb2-phy", "usb3-phy";
 		/* check susphy support */
 		suspend_clk_freq = <19200000>;
-		/* pm qos int minlock */
-		usb-pm-qos-usb3-int = <356000>;
-		usb-pm-qos-usb2-int = <200000>;
 
 		usbdrd_dwc3: dwc3 {
 			compatible = "synopsys,dwc3";
