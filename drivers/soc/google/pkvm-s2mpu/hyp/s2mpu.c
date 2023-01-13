@@ -20,6 +20,14 @@
 #include <nvhe/trap_handler.h>
 #include "io-mpt-s2mpu.h"
 
+#ifdef memset
+#undef memset
+#endif
+
+#ifdef memcpy
+#undef memcpy
+#endif
+
 #define PA_MAX				((phys_addr_t)SZ_1G * NR_GIGABYTES)
 
 #define SYNC_MAX_RETRIES		5
