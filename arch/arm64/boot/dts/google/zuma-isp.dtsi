@@ -1105,24 +1105,24 @@
 			<0x0 0x1C840000 0x10000>,  /* YUVP */
 			<0x0 0x1C5D4000 0xE00>,    /* SSMT D0 RGBP */
 			<0x0 0x1C914000 0xE00>,    /* SSMT D1 YUVP */
+			<0x0 0x1C420404 0x4>,      /* SYSREG RGBP */
 			<0x0 0x1C604400 0xE00>,    /* SSMT D0 MCFP */
 			<0x0 0x1C614400 0xE00>,    /* SSMT D1 MCFP */
 			<0x0 0x1C624400 0xE00>,    /* SSMT D2 MCFP */
 			<0x0 0x1C634400 0xE00>,    /* SSMT D3 MCFP */
-			<0x0 0x1C644400 0xE00>,    /* SSMT D4 MCFP */
-			<0x0 0x1C420404 0x4>;      /* SYSREG RGBP */
+			<0x0 0x1C644400 0xE00>;    /* SSMT D4 MCFP */
 		reg-names =
 			"rgbp",
 			"mcfp",
 			"yuvp",
 			"ssmt_d0_rgbp",
 			"ssmt_d1_yuvp",
+			"sysreg_rgbp",
 			"ssmt_d0_mcfp",
 			"ssmt_d1_mcfp",
 			"ssmt_d2_mcfp",
 			"ssmt_d3_mcfp",
-			"ssmt_d4_mcfp",
-			"sysreg_rgbp";
+			"ssmt_d4_mcfp";
 
 		interrupts =
 			<GIC_SPI IRQ_RGBP_INTREQ_0_RGBP IRQ_TYPE_LEVEL_HIGH>,
