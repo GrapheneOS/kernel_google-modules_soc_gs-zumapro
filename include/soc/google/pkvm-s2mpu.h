@@ -7,6 +7,15 @@
 #define __PKVM_S2MPU_H
 
 #include <linux/device.h>
+#include <linux/platform_device.h>
+#include <linux/irqreturn.h>
+
+struct s2mpu_data {
+	struct device *dev;
+	void __iomem *base;
+	bool pkvm_registered;
+	bool always_on;
+};
 
 /*
  * Parse the 's2mpus' DT property of 'parent' and create a device link
@@ -32,5 +41,7 @@ static inline bool pkvm_s2mpu_ready(struct device *dev)
 {
 	return !!platform_get_drvdata(to_platform_device(dev));
 }
+
+irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data);
 
 #endif	/* __PKVM_S2MPU_H */

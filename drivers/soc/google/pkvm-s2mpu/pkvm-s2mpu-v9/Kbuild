@@ -15,4 +15,4 @@ $(obj)/pkvm_s2mpu.o: $(src)/../common/pkvm_s2mpu.c FORCE
 $(obj)/s2mpu.o: $(src)/../common/s2mpu.c FORCE
 	$(call if_changed_rule,cc_o_c)
 
-pkvm-s2mpu-y := pkvm_s2mpu.o s2mpu.o ../common/hyp/kvm_nvhe.o
+pkvm-s2mpu-y := pkvm_s2mpu.o s2mpu.o pkvm-s2mpu-faults-v9.o ../common/hyp/kvm_nvhe.o
