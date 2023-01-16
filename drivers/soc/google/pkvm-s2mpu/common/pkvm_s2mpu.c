@@ -19,7 +19,6 @@
 #include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
 
-#define S2MPU_VERSION_9					0x90000000
 #define REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET	0x50
 
 #define S2MPU_NR_WAYS	4
@@ -132,7 +131,7 @@ static const char *str_l1entry_gran(u32 l1attr)
 	if (!(l1attr & L1ENTRY_ATTR_L2TABLE_EN))
 		return "1G";
 
-	switch (FIELD_GET(V9_L1ENTRY_ATTR_GRAN_MASK, l1attr)) {
+	switch (FIELD_GET(L1ENTRY_ATTR_GRAN_MASK, l1attr)) {
 	case L1ENTRY_ATTR_GRAN_4K:
 		return "4K";
 	case L1ENTRY_ATTR_GRAN_64K:
@@ -460,7 +459,7 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 			return ret;
 		}
 
-		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION_9, token);
+		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION, token);
 		if (ret) {
 			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
 			return ret;

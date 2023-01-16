@@ -41,12 +41,16 @@
 #define for_each_child(child, dev) \
 	list_for_each_entry((child), &(dev)->children, siblings)
 
-/* HW version-specific operations. */
-struct s2mpu_reg_ops {
-	int (*init)(struct pkvm_iommu *dev);
-	void (*set_control_regs)(struct pkvm_iommu *dev);
-	u32 (*host_mmio_reg_access_mask)(size_t off, bool is_write);
-};
+/* kvm_s2mpu.h makes all preprocessor checks about the version correctness. */
+#ifdef S2MPU_V9
+#define INIT_S2MPU(dev)					__initialize_ctx(dev)
+#define HOST_MMIO_REG_ACCESS_MASK(off, is_w)		host_mmio_reg_access_mask_v9(off, is_w)
+#define SET_CONTROL_REGS(dev)				__set_control_regs_v9(dev)
+#else /*v1, v2*/
+#define INIT_S2MPU(dev)					__initialize(dev)
+#define HOST_MMIO_REG_ACCESS_MASK(off, is_w)		host_mmio_reg_access_mask_v1_v2(off, is_w)
+#define SET_CONTROL_REGS(dev)				__set_control_regs(dev)
+#endif
 
 struct s2mpu_drv_data {
 	u32 version;
@@ -82,7 +86,6 @@ void *memcpy(void *dst, const void *src, size_t count)
 	return CALL_FROM_OPS(memcpy, dst, src, count);
 }
 
-static const struct s2mpu_reg_ops *reg_ops;
 static struct mpt host_mpt;
 
 const struct pkvm_iommu_ops pkvm_s2mpu_ops;
@@ -139,7 +142,7 @@ static u32 __context_cfg_valid_vid(struct pkvm_iommu *dev, u32 vid_bmap)
 	return res;
 }
 
-static int __initialize_v2(struct pkvm_iommu *dev)
+static int __maybe_unused __initialize_ctx(struct pkvm_iommu *dev)
 {
 	u32 ssmt_valid_vid_bmap, ctx_cfg;
 
@@ -158,7 +161,7 @@ static int __initialize_v2(struct pkvm_iommu *dev)
 	return 0;
 }
 
-static int __initialize(struct pkvm_iommu *dev)
+static int __maybe_unused __initialize(struct pkvm_iommu *dev)
 {
 	struct s2mpu_drv_data *data = (struct s2mpu_drv_data *)dev->data;
 
@@ -169,13 +172,13 @@ static int __initialize(struct pkvm_iommu *dev)
 	case S2MPU_VERSION_1:
 		return 0;
 	case S2MPU_VERSION_2:
-		return __initialize_v2(dev);
+		return __initialize_ctx(dev);
 	default:
 		return -EINVAL;
 	}
 }
 
-static void __set_control_regs(struct pkvm_iommu *dev)
+static void __maybe_unused __set_control_regs(struct pkvm_iommu *dev)
 {
 	u32 ctrl0 = 0, irq_vids;
 
@@ -207,7 +210,8 @@ static void __set_control_regs(struct pkvm_iommu *dev)
 	writel_relaxed(0, dev->va + REG_NS_CTRL1);
 	writel_relaxed(ctrl0, dev->va + REG_NS_CTRL0);
 }
-static void __set_control_regs_v9(struct pkvm_iommu *dev)
+
+static void __maybe_unused __set_control_regs_v9(struct pkvm_iommu *dev)
 {
 	/* Return DECERR to device on permission fault. */
 	writel_relaxed(ALL_VIDS_BITMAP,
@@ -332,7 +336,7 @@ static int initialize_with_prot(struct pkvm_iommu *dev, enum mpt_prot prot)
 {
 	int ret;
 
-	ret = reg_ops->init(dev);
+	ret = INIT_S2MPU(dev);
 	if (ret)
 		return ret;
 
@@ -340,7 +344,7 @@ static int initialize_with_prot(struct pkvm_iommu *dev, enum mpt_prot prot)
 	__all_invalidation(dev);
 
 	/* Set control registers, enable the S2MPU. */
-	reg_ops->set_control_regs(dev);
+	SET_CONTROL_REGS(dev);
 	return 0;
 }
 
@@ -352,7 +356,7 @@ static int initialize_with_mpt(struct pkvm_iommu *dev, struct mpt *mpt)
 {
 	int ret;
 
-	ret = reg_ops->init(dev);
+	ret = INIT_S2MPU(dev);
 	if (ret)
 		return ret;
 
@@ -360,7 +364,7 @@ static int initialize_with_mpt(struct pkvm_iommu *dev, struct mpt *mpt)
 	__all_invalidation(dev);
 
 	/* Set control registers, enable the S2MPU. */
-	reg_ops->set_control_regs(dev);
+	SET_CONTROL_REGS(dev);
 	return 0;
 }
 
@@ -450,7 +454,7 @@ static int s2mpu_suspend(struct pkvm_iommu *dev)
 	return initialize_with_prot(dev, MPT_PROT_NONE);
 }
 
-static u32 host_mmio_reg_access_mask_v9(size_t off, bool is_write)
+static u32 __maybe_unused host_mmio_reg_access_mask_v9(size_t off, bool is_write)
 {
 	const u32 no_access = 0;
 	const u32 read_write = (u32)(-1);
@@ -468,7 +472,7 @@ static u32 host_mmio_reg_access_mask_v9(size_t off, bool is_write)
 	return read_only;
 }
 
-static u32 host_mmio_reg_access_mask_v1_v2(size_t off, bool is_write)
+static u32 __maybe_unused host_mmio_reg_access_mask_v1_v2(size_t off, bool is_write)
 {
 	const u32 no_access = 0;
 	const u32 read_write = (u32)(-1);
@@ -498,7 +502,7 @@ static u32 host_mmio_reg_access_mask(size_t off, bool is_write)
 		return write_only & ALL_VIDS_BITMAP;
 	}
 	/* Check version-specific registers. */
-	return reg_ops->host_mmio_reg_access_mask(off, is_write);
+	return HOST_MMIO_REG_ACCESS_MASK(off, is_write);
 }
 
 static bool s2mpu_host_dabt_handler(struct pkvm_iommu *dev,
@@ -524,20 +528,6 @@ static bool s2mpu_host_dabt_handler(struct pkvm_iommu *dev,
 		cpu_reg(host_ctxt, rd) = readl_relaxed(dev->va + off);
 	return true;
 }
-/*
- * Operations that differ between versions. We need to maintain
- * old behaviour were v1 and v2 can be used together.
- */
-const struct s2mpu_reg_ops ops_v1_v2 = {
-	.init = __initialize,
-	.host_mmio_reg_access_mask = host_mmio_reg_access_mask_v1_v2,
-	.set_control_regs = __set_control_regs,
-};
-const struct s2mpu_reg_ops ops_v9 = {
-	.init = __initialize_v2,
-	.host_mmio_reg_access_mask = host_mmio_reg_access_mask_v9,
-	.set_control_regs = __set_control_regs_v9,
-};
 
 static int s2mpu_init(void *data, size_t size)
 {
@@ -547,7 +537,6 @@ static int s2mpu_init(void *data, size_t size)
 	unsigned int gb;
 	int ret = 0;
 	int smpt_nr_pages, smpt_size;
-	struct s2mpu_mpt_cfg cfg;
 
 	if (size != sizeof(in_mpt))
 		return -EINVAL;
@@ -555,18 +544,8 @@ static int s2mpu_init(void *data, size_t size)
 	/* The host can concurrently modify 'data'. Copy it to avoid TOCTOU. */
 	memcpy(&in_mpt, data, sizeof(in_mpt));
 
-	cfg.version = in_mpt.version;
-	/* Make sure the version sent is supported by the driver. */
-	if ((cfg.version == S2MPU_VERSION_1) || (cfg.version == S2MPU_VERSION_2))
-		reg_ops = &ops_v1_v2;
-	else if (cfg.version == S2MPU_VERSION_9)
-		reg_ops = &ops_v9;
-	else
-		return -ENODEV;
-
 	/* Get page table operations for this version. */
-	mpt_ops = s2mpu_get_mpt_ops(cfg, mod_ops);
-	/* If version is wrong return. */
+	mpt_ops = s2mpu_get_mpt_ops(mod_ops);
 	if (!mpt_ops)
 		return -EINVAL;
 
