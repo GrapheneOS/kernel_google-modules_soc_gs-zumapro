@@ -87,6 +87,33 @@ enum SUBSYSTEM_SOURCE {
 	SUBSYSTEM_SOURCE_MAX,
 };
 
+enum CONCURRENT_PWRWARN_IRQ {
+	NONE_BCL_BIN,
+	MMWAVE_BCL_BIN,
+	RFFE_BCL_BIN,
+	MAX_CONCURRENT_PWRWARN_IRQ,
+};
+
+enum BCL_BATT_IRQ {
+	UVLO1_IRQ_BIN,
+	UVLO2_IRQ_BIN,
+	BATOILO_IRQ_BIN,
+	MAX_BCL_BATT_IRQ,
+};
+
+enum IRQ_DURATION_BIN {
+	LT_5MS,
+	BT_5MS_10MS,
+	GT_10MS,
+};
+
+struct irq_duration_stats {
+	atomic_t lt_5ms_count;
+	atomic_t bt_5ms_10ms_count;
+	atomic_t gt_10ms_count;
+	ktime_t start_time;
+};
+
 extern const unsigned int subsystem_pmu[];
 extern const unsigned int clk_stats_offset[];
 extern const char * const clk_stats_source[];
@@ -224,6 +251,11 @@ struct bcl_device {
 	bool sub_pwr_warn_triggered[METER_CHANNEL_MAX];
 	struct delayed_work main_pwr_irq_work;
 	struct delayed_work sub_pwr_irq_work;
+	struct irq_duration_stats ifpmic_irq_bins[MAX_BCL_BATT_IRQ][MAX_CONCURRENT_PWRWARN_IRQ];
+	struct irq_duration_stats pwrwarn_main_irq_bins[METER_CHANNEL_MAX];
+	struct irq_duration_stats pwrwarn_sub_irq_bins[METER_CHANNEL_MAX];
+	const char *main_rail_names[METER_CHANNEL_MAX];
+	const char *sub_rail_names[METER_CHANNEL_MAX];
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);

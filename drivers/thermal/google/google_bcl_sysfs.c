@@ -56,6 +56,14 @@ static const char * const clk_ratio_source[] = {
 	"cpu1_light", "cpu2_light", "tpu_light", "gpu_light"
 };
 
+static const char * const batt_irq_names[] = {
+	"uvlo1", "uvlo2", "batoilo"
+};
+
+static const char * const concurrent_pwrwarn_irq_names[] = {
+	"none", "mmwave", "rffe"
+};
+
 static ssize_t batoilo_count_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
@@ -2217,6 +2225,136 @@ static const struct attribute_group sub_pwrwarn_group = {
 	.name = "sub_pwrwarn",
 };
 
+static ssize_t less_than_5ms_count_show(struct device *dev, struct device_attribute *attr,
+					char *buf)
+{
+	int irq_count, batt_idx, pwrwarn_idx;
+	ssize_t count = 0;
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	for (batt_idx = 0; batt_idx < MAX_BCL_BATT_IRQ; batt_idx++) {
+		for (pwrwarn_idx = 0; pwrwarn_idx < MAX_CONCURRENT_PWRWARN_IRQ; pwrwarn_idx++) {
+			irq_count = atomic_read(&bcl_dev->ifpmic_irq_bins[batt_idx][pwrwarn_idx]
+						.lt_5ms_count);
+			count += scnprintf(buf + count, PAGE_SIZE - count,
+						"%s + %s: %i\n",
+						batt_irq_names[batt_idx],
+						concurrent_pwrwarn_irq_names[pwrwarn_idx],
+						irq_count);
+		}
+	}
+	for (pwrwarn_idx = 0; pwrwarn_idx < METER_CHANNEL_MAX; pwrwarn_idx++) {
+		irq_count = atomic_read(&bcl_dev->pwrwarn_main_irq_bins[pwrwarn_idx].lt_5ms_count);
+		count += scnprintf(buf + count, PAGE_SIZE - count,
+					"main CH%d[%s]: %i\n",
+					pwrwarn_idx,
+					bcl_dev->main_rail_names[pwrwarn_idx],
+					irq_count);
+	}
+	for (pwrwarn_idx = 0; pwrwarn_idx < METER_CHANNEL_MAX; pwrwarn_idx++) {
+		irq_count = atomic_read(&bcl_dev->pwrwarn_sub_irq_bins[pwrwarn_idx].lt_5ms_count);
+		count += scnprintf(buf + count, PAGE_SIZE - count,
+					"sub CH%d[%s]: %i\n",
+					pwrwarn_idx,
+					bcl_dev->sub_rail_names[pwrwarn_idx],
+					irq_count);
+	}
+	return count;
+}
+
+static DEVICE_ATTR_RO(less_than_5ms_count);
+
+static ssize_t between_5ms_to_10ms_count_show(struct device *dev, struct device_attribute *attr,
+					char *buf)
+{
+	int irq_count, batt_idx, pwrwarn_idx;
+	ssize_t count = 0;
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	for (batt_idx = 0; batt_idx < MAX_BCL_BATT_IRQ; batt_idx++) {
+		for (pwrwarn_idx = 0; pwrwarn_idx < MAX_CONCURRENT_PWRWARN_IRQ; pwrwarn_idx++) {
+			irq_count = atomic_read(&bcl_dev->ifpmic_irq_bins[batt_idx][pwrwarn_idx]
+						.bt_5ms_10ms_count);
+			count += scnprintf(buf + count, PAGE_SIZE - count,
+						"%s + %s: %i\n",
+						batt_irq_names[batt_idx],
+						concurrent_pwrwarn_irq_names[pwrwarn_idx],
+						irq_count);
+		}
+	}
+	for (pwrwarn_idx = 0; pwrwarn_idx < METER_CHANNEL_MAX; pwrwarn_idx++) {
+		irq_count = atomic_read(&bcl_dev->pwrwarn_main_irq_bins[pwrwarn_idx]
+					.bt_5ms_10ms_count);
+		count += scnprintf(buf + count, PAGE_SIZE - count,
+					"main CH%d[%s]: %i\n",
+					pwrwarn_idx,
+					bcl_dev->main_rail_names[pwrwarn_idx],
+					irq_count);
+	}
+	for (pwrwarn_idx = 0; pwrwarn_idx < METER_CHANNEL_MAX; pwrwarn_idx++) {
+		irq_count = atomic_read(&bcl_dev->pwrwarn_sub_irq_bins[pwrwarn_idx]
+					.bt_5ms_10ms_count);
+		count += scnprintf(buf + count, PAGE_SIZE - count,
+					"sub CH%d[%s]: %i\n",
+					pwrwarn_idx,
+					bcl_dev->sub_rail_names[pwrwarn_idx],
+					irq_count);
+	}
+	return count;
+}
+
+static DEVICE_ATTR_RO(between_5ms_to_10ms_count);
+
+static ssize_t greater_than_10ms_count_show(struct device *dev, struct device_attribute *attr,
+					char *buf)
+{
+	int irq_count, batt_idx, pwrwarn_idx;
+	ssize_t count = 0;
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	for (batt_idx = 0; batt_idx < MAX_BCL_BATT_IRQ; batt_idx++) {
+		for (pwrwarn_idx = 0; pwrwarn_idx < MAX_CONCURRENT_PWRWARN_IRQ; pwrwarn_idx++) {
+			irq_count = atomic_read(&bcl_dev->ifpmic_irq_bins[batt_idx][pwrwarn_idx]
+						.gt_10ms_count);
+			count += scnprintf(buf + count, PAGE_SIZE - count,
+						"%s + %s: %i\n",
+						batt_irq_names[batt_idx],
+						concurrent_pwrwarn_irq_names[pwrwarn_idx],
+						irq_count);
+		}
+	}
+	for (pwrwarn_idx = 0; pwrwarn_idx < METER_CHANNEL_MAX; pwrwarn_idx++) {
+		irq_count = atomic_read(&bcl_dev->pwrwarn_main_irq_bins[pwrwarn_idx].gt_10ms_count);
+		count += scnprintf(buf + count, PAGE_SIZE - count,
+					"main CH%d[%s]: %i\n",
+					pwrwarn_idx,
+					bcl_dev->main_rail_names[pwrwarn_idx],
+					irq_count);
+	}
+	for (pwrwarn_idx = 0; pwrwarn_idx < METER_CHANNEL_MAX; pwrwarn_idx++) {
+		irq_count = atomic_read(&bcl_dev->pwrwarn_sub_irq_bins[pwrwarn_idx].gt_10ms_count);
+		count += scnprintf(buf + count, PAGE_SIZE - count,
+					"sub CH%d[%s]: %i\n",
+					pwrwarn_idx,
+					bcl_dev->sub_rail_names[pwrwarn_idx],
+					irq_count);
+	}
+	return count;
+}
+
+static DEVICE_ATTR_RO(greater_than_10ms_count);
+
+static struct attribute *irq_dur_cnt_attrs[] = {
+	&dev_attr_less_than_5ms_count.attr,
+	&dev_attr_between_5ms_to_10ms_count.attr,
+	&dev_attr_greater_than_10ms_count.attr,
+	NULL,
+};
+
+static const struct attribute_group irq_dur_cnt_group = {
+	.attrs = irq_dur_cnt_attrs,
+	.name = "irq_dur_cnt",
+};
 
 const struct attribute_group *mitigation_groups[] = {
 	&instr_group,
@@ -2231,5 +2369,6 @@ const struct attribute_group *mitigation_groups[] = {
 	&vdroop_flt_group,
 	&main_pwrwarn_group,
 	&sub_pwrwarn_group,
+	&irq_dur_cnt_group,
 	NULL,
 };

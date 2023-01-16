@@ -55,6 +55,8 @@
 #define INT3_TSD		S2MPG14_IRQ_TSD_INT3;
 #define GPIO_ALIVE_BASE		(0x154d0000)
 #define GPA9_CON		(0x100)
+#define DELTA_10MS		(10 * NSEC_PER_MSEC)
+#define DELTA_50MS		(50 * NSEC_PER_MSEC)
 
 static const struct platform_device_id google_id_table[] = {
 	{.name = "google_mitigation",},
@@ -62,6 +64,9 @@ static const struct platform_device_id google_id_table[] = {
 };
 
 DEFINE_MUTEX(sysreg_lock);
+
+
+static void update_irq_end_times(struct bcl_device *bcl_dev, int id);
 
 static int triggered_read_level(void *data, int *val, int id)
 {
@@ -110,6 +115,7 @@ static int triggered_read_level(void *data, int *val, int id)
 			mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 					 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 			bcl_dev->bcl_prev_lvl[id] = 0;
+			update_irq_end_times(bcl_dev, id);
 		}
 		return 0;
 	}
@@ -122,6 +128,144 @@ static int triggered_read_level(void *data, int *val, int id)
 		bcl_dev->bcl_prev_lvl[id] = *val;
 	}
 	return 0;
+}
+
+static enum BCL_BATT_IRQ id_to_ind(int id)
+{
+	switch (id) {
+	case UVLO1:
+		return UVLO1_IRQ_BIN;
+	case UVLO2:
+		return UVLO2_IRQ_BIN;
+	case BATOILO:
+		return BATOILO_IRQ_BIN;
+	}
+	return MAX_BCL_BATT_IRQ;
+}
+
+static void bin_incr_ifpmic(struct bcl_device *bcl_dev, enum BCL_BATT_IRQ batt,
+				enum CONCURRENT_PWRWARN_IRQ pwrwarn, ktime_t end_time)
+{
+	ktime_t time_delta;
+	if (bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time == 0)
+		return;
+
+	time_delta = ktime_sub(end_time, bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time);
+	if (ktime_compare(time_delta, DELTA_10MS) < 0)
+		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].lt_5ms_count);
+	else if (ktime_compare(time_delta, DELTA_50MS) < 0)
+		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].bt_5ms_10ms_count);
+	else
+		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].gt_10ms_count);
+
+	bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time = 0;
+}
+
+/*
+ * Track UVLO1/UVLO2/BATOILO IRQ starting times, and any PWRWARN events
+ * happening at the same time as the UVLO1/UVLO2/BATOILO IRQ.
+ */
+static void update_irq_start_times(struct bcl_device *bcl_dev, int id)
+{
+	/* Check if it is a input IRQ */
+	ktime_t start_time = ktime_get();
+	enum BCL_BATT_IRQ irq_ind = id_to_ind(id);
+	if (bcl_dev->ifpmic_irq_bins[irq_ind][NONE_BCL_BIN].start_time != 0)
+		update_irq_end_times(bcl_dev, id);
+	if (irq_ind == MAX_BCL_BATT_IRQ)
+		return;
+
+	bcl_dev->ifpmic_irq_bins[irq_ind][NONE_BCL_BIN].start_time = start_time;
+	if (bcl_dev->sub_pwr_warn_triggered[bcl_dev->rffe_channel])
+		bcl_dev->ifpmic_irq_bins[irq_ind][MMWAVE_BCL_BIN].start_time = start_time;
+	if (bcl_dev->main_pwr_warn_triggered[bcl_dev->rffe_channel])
+		bcl_dev->ifpmic_irq_bins[irq_ind][RFFE_BCL_BIN].start_time = start_time;
+}
+
+static void update_irq_end_times(struct bcl_device *bcl_dev, int id)
+{
+	ktime_t end_time;
+	int irq_ind = -1;
+	int i;
+	bool pwrwarn_irq_triggered;
+
+	end_time = ktime_get();
+	irq_ind = id_to_ind(id);
+	if (irq_ind == MAX_BCL_BATT_IRQ)
+		return;
+
+	for (i = 0; i < MAX_CONCURRENT_PWRWARN_IRQ; i++) {
+		switch (i) {
+		case NONE_BCL_BIN:
+			pwrwarn_irq_triggered = true;
+			break;
+		case MMWAVE_BCL_BIN:
+			pwrwarn_irq_triggered =
+			    bcl_dev->sub_pwr_warn_triggered[bcl_dev->rffe_channel];
+			break;
+		case RFFE_BCL_BIN:
+			pwrwarn_irq_triggered =
+			    bcl_dev->main_pwr_warn_triggered[bcl_dev->rffe_channel];
+			break;
+		}
+		if (pwrwarn_irq_triggered)
+			bin_incr_ifpmic(bcl_dev, irq_ind, i, end_time);
+	}
+}
+
+static void pwrwarn_update_start_time(struct bcl_device *bcl_dev,
+					int id, struct irq_duration_stats *bins,
+					bool *pwr_warn_triggered,
+					enum CONCURRENT_PWRWARN_IRQ bin_ind)
+{
+	ktime_t start_time;
+	bool is_rf = bcl_dev->rffe_channel == id;
+
+	if (bins[id].start_time != 0)
+		return;
+
+	start_time = ktime_get();
+	if (is_rf && pwr_warn_triggered[id]) {
+		if (bcl_dev->bcl_lvl[UVLO1] != 0)
+			bcl_dev->ifpmic_irq_bins[UVLO1_IRQ_BIN][bin_ind].start_time =
+				start_time;
+		if (bcl_dev->bcl_lvl[UVLO2] != 0)
+			bcl_dev->ifpmic_irq_bins[UVLO2_IRQ_BIN][bin_ind].start_time =
+				start_time;
+		if (bcl_dev->bcl_lvl[BATOILO] != 0)
+			bcl_dev->ifpmic_irq_bins[BATOILO_IRQ_BIN][bin_ind].start_time =
+				start_time;
+	}
+	bins[id].start_time = start_time;
+}
+
+static void pwrwarn_update_end_time(struct bcl_device *bcl_dev, int id,
+                                    struct irq_duration_stats *bins,
+                                    enum CONCURRENT_PWRWARN_IRQ bin_ind)
+{
+	ktime_t end_time;
+	ktime_t time_delta;
+	int i;
+	bool is_rf = bcl_dev->rffe_channel == id;
+
+	end_time = ktime_get();
+	if (is_rf) {
+		for (i = 0; i < MAX_BCL_BATT_IRQ; i++)
+			if (bcl_dev->ifpmic_irq_bins[i][bin_ind].start_time != 0)
+				bin_incr_ifpmic(bcl_dev, i, bin_ind, end_time);
+	}
+
+	if (bins[id].start_time == 0)
+		return;
+
+	time_delta = ktime_sub(end_time, bins[id].start_time);
+	if (ktime_compare(time_delta, DELTA_10MS) < 0)
+		atomic_inc(&(bins[id].lt_5ms_count));
+	else if (ktime_compare(time_delta, DELTA_50MS) < 0)
+		atomic_inc(&(bins[id].bt_5ms_10ms_count));
+	else
+		atomic_inc(&(bins[id].gt_10ms_count));
+	bins[id].start_time = 0;
 }
 
 static struct power_supply *google_get_power_supply(struct bcl_device *bcl_dev)
@@ -217,6 +361,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 		if (idx >= UVLO1 && idx <= BATOILO) {
 			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
 			idx = (idx != UVLO1) ? irq_val : idx;
+			update_irq_start_times(bcl_dev, idx);
 		}
 
 		if (bcl_dev->batt_psy_initialized) {
@@ -228,7 +373,10 @@ static irqreturn_t irq_handler(int irq, void *data)
 		if (idx == UVLO2) {
 			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 			update_tz(bcl_dev, BATOILO);
+		}
+		if (idx >= UVLO1 && idx <= BATOILO) {
 			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+			update_irq_end_times(bcl_dev, irq_val);
 		}
 	}
 	update_tz(bcl_dev, idx);
@@ -1035,6 +1183,13 @@ static void main_pwrwarn_irq_work(struct work_struct *work)
 			revisit_needed = bcl_dev->main_pwr_warn_triggered[i];
 		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
 			gpio_set_value(bcl_dev->modem_gpio1_pin, 0);
+		if (!bcl_dev->main_pwr_warn_triggered[i])
+			pwrwarn_update_end_time(bcl_dev, i, bcl_dev->pwrwarn_main_irq_bins,
+						RFFE_BCL_BIN);
+		else
+			pwrwarn_update_start_time(bcl_dev, i, bcl_dev->pwrwarn_main_irq_bins,
+							bcl_dev->main_pwr_warn_triggered,
+							RFFE_BCL_BIN);
 	}
 
 	mutex_unlock(&bcl_dev->main_odpm->lock);
@@ -1067,6 +1222,13 @@ static void sub_pwrwarn_irq_work(struct work_struct *work)
 			revisit_needed = bcl_dev->sub_pwr_warn_triggered[i];
 		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
 			gpio_set_value(bcl_dev->modem_gpio1_pin, 0);
+		if (!bcl_dev->sub_pwr_warn_triggered[i])
+			pwrwarn_update_end_time(bcl_dev, i, bcl_dev->pwrwarn_sub_irq_bins,
+						MMWAVE_BCL_BIN);
+		else
+			pwrwarn_update_start_time(bcl_dev, i, bcl_dev->pwrwarn_sub_irq_bins,
+							bcl_dev->sub_pwr_warn_triggered,
+							MMWAVE_BCL_BIN);
 	}
 
 	mutex_unlock(&bcl_dev->sub_odpm->lock);
@@ -1087,11 +1249,15 @@ static irqreturn_t sub_pwr_warn_irq_handler(int irq, void *data)
 		if (bcl_dev->sub_pwr_warn_irq[i] == irq) {
 			bcl_dev->sub_pwr_warn_triggered[i] = 1;
 			/* Check for Modem MMWAVE */
-			if ((bcl_dev->sub_pwr_warn_triggered[i]) && (i == bcl_dev->rffe_channel))
+			if (i == bcl_dev->rffe_channel)
 				gpio_set_value(bcl_dev->modem_gpio1_pin, 1);
+
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->sub_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
+			pwrwarn_update_start_time(bcl_dev, i, bcl_dev->pwrwarn_sub_irq_bins,
+							bcl_dev->sub_pwr_warn_triggered,
+							MMWAVE_BCL_BIN);
 			break;
 		}
 	}
@@ -1112,11 +1278,15 @@ static irqreturn_t main_pwr_warn_irq_handler(int irq, void *data)
 		if (bcl_dev->main_pwr_warn_irq[i] == irq) {
 			bcl_dev->main_pwr_warn_triggered[i] = 1;
 			/* Check for Modem RFFE */
-			if ((bcl_dev->main_pwr_warn_triggered[i]) && (i == bcl_dev->rffe_channel))
+			if (i == bcl_dev->rffe_channel)
 				gpio_set_value(bcl_dev->modem_gpio1_pin, 1);
+
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->main_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
+			pwrwarn_update_start_time(bcl_dev, i, bcl_dev->pwrwarn_main_irq_bins,
+							bcl_dev->main_pwr_warn_triggered,
+							RFFE_BCL_BIN);
 			break;
 		}
 	}
@@ -1156,6 +1326,8 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	}
 	pdata_sub = dev_get_platdata(sub_dev->dev);
 	bcl_dev->sub_odpm = pdata_sub->meter;
+	for (i = 0; i < METER_CHANNEL_MAX; i++)
+		bcl_dev->sub_rail_names[i] = bcl_dev->sub_odpm->chip.rails[i].schematic_name;
 	bcl_dev->sub_irq_base = pdata_sub->irq_base;
 	bcl_dev->sub_pmic_i2c = sub_dev->pmic;
 	bcl_dev->sub_meter_i2c = sub_dev->meter;
@@ -1413,6 +1585,8 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	}
 	pdata_main = dev_get_platdata(main_dev->dev);
 	bcl_dev->main_odpm = pdata_main->meter;
+	for (i = 0; i < METER_CHANNEL_MAX; i++)
+		bcl_dev->main_rail_names[i] = bcl_dev->main_odpm->chip.rails[i].schematic_name;
 	bcl_dev->main_irq_base = pdata_main->irq_base;
 	/* request smpl_warn interrupt */
 	if (!gpio_is_valid(pdata_main->smpl_warn_pin)) {
@@ -1824,6 +1998,7 @@ static int google_bcl_probe(struct platform_device *pdev)
 	schedule_delayed_work(&bcl_dev->init_work, msecs_to_jiffies(THERMAL_DELAY_INIT_MS));
 	bcl_dev->enabled = true;
 	google_init_debugfs(bcl_dev);
+	bcl_dev->rffe_channel = 0;
 
 	return 0;
 
