@@ -205,7 +205,6 @@ struct bcl_device {
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);
-extern void google_bcl_irq_changed(struct bcl_device *bcl_dev, int index);
 extern int google_set_mpmm(struct bcl_device *data, unsigned int value);
 extern int google_set_ppm(struct bcl_device *data, unsigned int value);
 extern unsigned int google_get_mpmm(struct bcl_device *data);
@@ -271,9 +270,6 @@ static inline int google_set_mpmm(struct bcl_device *data, unsigned int value)
 static inline struct bcl_device *google_retrieve_bcl_handle(void)
 {
 	return NULL;
-}
-static void google_bcl_irq_changed(struct bcl_device *bcl_dev, int index)
-{
 }
 static int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,
 				      const struct bcl_ifpmic_ops *pmic_ops)
