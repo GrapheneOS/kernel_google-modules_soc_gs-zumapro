@@ -458,54 +458,14 @@ static u32 host_mmio_reg_access_mask_v9(size_t off, bool is_write)
 	const u32 write_only = is_write ? read_write : no_access;
 
 	switch (off) {
-	/* Allow reading control registers for debugging. */
-	case REG_NS_CTRL0:
-		return read_only & V9_CTRL0_MASK;
-	case REG_NS_V9_CTRL_ERR_RESP_T_PER_VID_SET:
-		return read_only & ALL_VIDS_BITMAP;
-	case REG_NS_V9_CTRL_PROT_EN_PER_VID_SET:
-		return read_only & ALL_VIDS_BITMAP;
 	case REG_NS_V9_READ_STLB:
 		return write_only & (V9_READ_STLB_MASK_TYPEA|V9_READ_STLB_MASK_TYPEB);
-	case REG_NS_V9_READ_STLB_TPN:
-		return read_only & V9_READ_STLB_TPN_MASK;
-	case REG_NS_V9_READ_STLB_TAG_PPN:
-		return read_only & V9_READ_STLB_TAG_PPN_MASK;
-	case REG_NS_V9_READ_STLB_TAG_OTHERS:
-		return read_only & V9_READ_STLB_TAG_OTHERS_MASK;
-	case REG_NS_V9_READ_STLB_DATA:
-		return read_only;
-	case REG_NS_V9_MPTC_INFO:
-		return read_only & V9_READ_MPTC_INFO_MASK;
 	case REG_NS_V9_READ_MPTC:
 		return write_only & V9_READ_MPTC_MASK;
-	case REG_NS_V9_READ_MPTC_TAG_PPN:
-		return read_only & V9_READ_MPTC_TAG_PPN_MASK;
-	case REG_NS_V9_READ_MPTC_TAG_OTHERS:
-		return read_only & V9_READ_MPTC_TAG_OTHERS_MASK;
-	case REG_NS_V9_READ_MPTC_DATA:
-		return read_only;
-	case REG_NS_V9_PMMU_INFO:
-		return read_only & V9_READ_PMMU_INFO_MASK;
 	case REG_NS_V9_READ_PTLB:
 		return write_only & V9_READ_PTLB_MASK;
-	case REG_NS_V9_READ_PTLB_TAG:
-		return read_only & V9_READ_PTLB_TAG_MASK;
-	case REG_NS_V9_READ_PTLB_DATA_S1_EN_PPN_AP:
-		return read_only & V9_READ_PTLB_DATA_S1_ENABLE_PPN_AP_MASK;
-	case REG_NS_V9_READ_PTLB_DATA_S1_DIS_AP_LIST:
-		return read_only;
-	case REG_NS_V9_PMMU_INDICATOR:
-		return read_only & V9_READ_PMMU_INDICATOR_MASK;
-	case REG_NS_V9_SWALKER_INFO:
-		return read_only&V9_SWALKER_INFO_MASK;
 	};
-	if (off >= REG_NS_V9_PMMU_PTLB_INFO(0) && off < REG_NS_V9_PMMU_PTLB_INFO(V9_MAX_PTLB_NUM))
-		return read_only&V9_READ_PMMU_PTLB_INFO_MASK;
-	if (off >= REG_NS_V9_STLB_INFO(0) && off < REG_NS_V9_STLB_INFO(V9_MAX_STLB_NUM))
-		return read_only&V9_READ_SLTB_INFO_MASK;
-
-	return no_access;
+	return read_only;
 }
 
 static u32 host_mmio_reg_access_mask_v1_v2(size_t off, bool is_write)
@@ -516,61 +476,27 @@ static u32 host_mmio_reg_access_mask_v1_v2(size_t off, bool is_write)
 	const u32 write_only = is_write ? read_write : no_access;
 
 	switch (off) {
-	/* Allow reading control registers for debugging. */
-	case REG_NS_CTRL0:
-		return read_only & CTRL0_MASK;
-	case REG_NS_CTRL1:
-		return read_only & CTRL1_MASK;
 	/* Allow reading MPTC entries for debugging. That involves:
 	 *   - writing (set,way) to READ_MPTC
 	 *   - reading READ_MPTC_*
 	 */
 	case REG_NS_READ_MPTC:
 		return write_only & READ_MPTC_MASK;
-	case REG_NS_READ_MPTC_TAG_PPN:
-		return read_only & READ_MPTC_TAG_PPN_MASK;
-	case REG_NS_READ_MPTC_TAG_OTHERS:
-		return read_only & READ_MPTC_TAG_OTHERS_MASK;
-	case REG_NS_READ_MPTC_DATA:
-		return read_only;
 	};
-	return no_access;
+	return read_only;
 }
 
 static u32 host_mmio_reg_access_mask(size_t off, bool is_write)
 {
 	const u32 no_access  = 0;
 	const u32 read_write = (u32)(-1);
-	const u32 read_only  = is_write ? no_access  : read_write;
 	const u32 write_only = is_write ? read_write : no_access;
-	u32 masked_off;
 
 	switch (off) {
-	case REG_NS_CFG:
-		return read_only & CFG_MASK;
 	/* Allow EL1 IRQ handler to clear interrupts. */
 	case REG_NS_INTERRUPT_CLEAR:
 		return write_only & ALL_VIDS_BITMAP;
-	/* Allow reading number of sets used by MPTC. */
-	case REG_NS_INFO:
-		return read_only & INFO_NUM_SET_MASK;
-	/* Allow EL1 IRQ handler to read bitmap of pending interrupts. */
-	case REG_NS_FAULT_STATUS:
-		return read_only & ALL_VIDS_BITMAP;
 	}
-
-	/* Allow reading L1ENTRY registers for debugging. */
-	if (off >= REG_NS_L1ENTRY_L2TABLE_ADDR(0, 0) &&
-	    off < REG_NS_L1ENTRY_ATTR(NR_VIDS, 0))
-		return read_only;
-
-	/* Allow EL1 IRQ handler to read fault information. */
-	masked_off = off & ~REG_NS_FAULT_VID_MASK;
-	if ((masked_off == REG_NS_FAULT_PA_LOW(0)) ||
-	    (masked_off == REG_NS_FAULT_PA_HIGH(0)) ||
-	    (masked_off == REG_NS_FAULT_INFO(0)))
-		return read_only;
-
 	/* Check version-specific registers. */
 	return reg_ops->host_mmio_reg_access_mask(off, is_write);
 }
@@ -595,7 +521,7 @@ static bool s2mpu_host_dabt_handler(struct pkvm_iommu *dev,
 	if (is_write)
 		writel_relaxed(cpu_reg(host_ctxt, rd) & mask, dev->va + off);
 	else
-		cpu_reg(host_ctxt, rd) = readl_relaxed(dev->va + off) & mask;
+		cpu_reg(host_ctxt, rd) = readl_relaxed(dev->va + off);
 	return true;
 }
 /*
