@@ -408,7 +408,6 @@ struct fmpt {
 
 struct mpt {
 	struct fmpt fmpt[NR_GIGABYTES];
-	enum s2mpu_version version;
 };
 
 /* Compile time configuration for S2MPU. */
