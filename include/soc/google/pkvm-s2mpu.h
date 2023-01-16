@@ -23,7 +23,7 @@ struct device *pkvm_s2mpu_of_parse(struct device *parent);
 int pkvm_s2mpu_suspend(struct device *dev);
 int pkvm_s2mpu_resume(struct device *dev);
 
-int pkvm_iommu_s2mpu_init(u32 version, unsigned long token);
+int pkvm_iommu_s2mpu_init(unsigned long token);
 int pkvm_iommu_s2mpu_register(struct device *dev, phys_addr_t pa);
 int pkvm_iommu_sysmmu_sync_register(struct device *dev, phys_addr_t pa,
 				    struct device *parent);

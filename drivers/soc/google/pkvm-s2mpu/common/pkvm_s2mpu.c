@@ -459,7 +459,7 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 			return ret;
 		}
 
-		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION, token);
+		ret = pkvm_iommu_s2mpu_init(token);
 		if (ret) {
 			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
 			return ret;
