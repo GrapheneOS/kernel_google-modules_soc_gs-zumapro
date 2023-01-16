@@ -210,19 +210,6 @@
 						 V9_CTRL0_ENF_FLT_MODE_S1_NONSEC_MASK | \
 						 V9_CTRL0_FAULT_MODE_MASK)
 
-/*
- * S2MPU V9 specific values (some new and some different from old versions)
- * to avoid any confusion all names are prefixed with V9.
- */
-#define V9_L1ENTRY_ATTR_GRAN_MASK		BIT(3)
-#define V9_MPT_PROT_BITS			4
-#define V9_MPT_ACCESS_SHIFT			2
-
-/* V1,V2 variants. */
-#define MPT_ACCESS_SHIFT			0
-#define L1ENTRY_ATTR_GRAN_MASK			GENMASK(5, 4)
-#define MPT_PROT_BITS				2
-
 #define REG_NS_CTRL0				0x0
 #define REG_NS_CTRL1				0x4
 #define REG_NS_CFG				0x10
@@ -399,15 +386,6 @@ enum s2mpu_version {
 	S2MPU_VERSION_9 = 0x90000000,
 };
 
-static inline int smpt_order_from_version(enum s2mpu_version version)
-{
-	if (version == S2MPU_VERSION_9)
-		return SMPT_ORDER(V9_MPT_PROT_BITS);
-	else if ((version == S2MPU_VERSION_1) || (version == S2MPU_VERSION_2))
-		return SMPT_ORDER(MPT_PROT_BITS);
-	BUG();
-}
-
 enum mpt_prot {
 	MPT_PROT_NONE	= 0,
 	MPT_PROT_R	= BIT(0),
@@ -432,5 +410,43 @@ struct mpt {
 	struct fmpt fmpt[NR_GIGABYTES];
 	enum s2mpu_version version;
 };
+
+/* Compile time configuration for S2MPU. */
+
+#define GRAN_BYTE(gran)			(((gran) << MPT_PROT_BITS) | (gran))
+#define GRAN_HWORD(gran)		((GRAN_BYTE(gran) << 8) | (GRAN_BYTE(gran)))
+#define GRAN_WORD(gran)			(((u32)(GRAN_HWORD(gran) << 16) | (GRAN_HWORD(gran))))
+#define GRAN_DWORD(gran)		((u64)((u64)GRAN_WORD(gran) << 32) | (u64)(GRAN_WORD(gran)))
+
+#if defined(S2MPU_V9) && defined(S2MPU_V1)
+#error "Both S2MPU defined at same time!"
+#endif
+
+#if defined(S2MPU_V9)
+#define S2MPU_VERSION				0x90000000
+#define L1ENTRY_ATTR_GRAN_MASK			BIT(3)
+#define MPT_PROT_BITS				4
+#define MPT_ACCESS_SHIFT			2
+static const u64 mpt_prot_doubleword[] = {
+	[MPT_PROT_NONE] = 0x0000000000000000 | GRAN_DWORD(SMPT_GRAN_ATTR),
+	[MPT_PROT_R]    = 0x4444444444444444 | GRAN_DWORD(SMPT_GRAN_ATTR),
+	[MPT_PROT_W]	= 0x8888888888888888 | GRAN_DWORD(SMPT_GRAN_ATTR),
+	[MPT_PROT_RW]   = 0xcccccccccccccccc | GRAN_DWORD(SMPT_GRAN_ATTR),
+};
+#elif defined(S2MPU_V1)
+/* V1,V2 variants, we use V1 to represent both. */
+#define S2MPU_VERSION				0x10000000
+#define MPT_ACCESS_SHIFT			0
+#define L1ENTRY_ATTR_GRAN_MASK			GENMASK(5, 4)
+#define MPT_PROT_BITS				2
+static const u64 mpt_prot_doubleword[] = {
+	[MPT_PROT_NONE] = 0x0000000000000000,
+	[MPT_PROT_R]    = 0x5555555555555555,
+	[MPT_PROT_W]	= 0xaaaaaaaaaaaaaaaa,
+	[MPT_PROT_RW]   = 0xffffffffffffffff,
+};
+#else
+#error "Unknown S2MPU version"
+#endif
 
 #endif /* __ARM64_KVM_S2MPU_H__ */

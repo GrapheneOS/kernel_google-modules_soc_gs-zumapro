@@ -29,7 +29,7 @@ static int init_s2mpu_driver(u32 version, u64 tok)
 	unsigned long addr;
 	u64 pfn;
 	int ret = 0;
-	const int smpt_order = smpt_order_from_version(version);
+	const int smpt_order = SMPT_ORDER(MPT_PROT_BITS);
 
 	mutex_lock(&lock);
 	if (init_done)
