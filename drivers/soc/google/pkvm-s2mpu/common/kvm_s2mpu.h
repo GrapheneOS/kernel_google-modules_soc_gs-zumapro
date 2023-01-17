@@ -432,6 +432,7 @@ struct mpt {
 #define L1ENTRY_ATTR_GRAN_MASK			BIT(3)
 #define MPT_PROT_BITS				4
 #define MPT_ACCESS_SHIFT			2
+#define S2MPU_NAME				"s2mpu-v9"
 static const u64 mpt_prot_doubleword[] = {
 	[MPT_PROT_NONE] = 0x0000000000000000 | GRAN_DWORD(SMPT_GRAN_ATTR),
 	[MPT_PROT_R]    = 0x4444444444444444 | GRAN_DWORD(SMPT_GRAN_ATTR),
@@ -444,6 +445,7 @@ static const u64 mpt_prot_doubleword[] = {
 #define MPT_ACCESS_SHIFT			0
 #define L1ENTRY_ATTR_GRAN_MASK			GENMASK(5, 4)
 #define MPT_PROT_BITS				2
+#define S2MPU_NAME				"s2mpu"
 static const u64 mpt_prot_doubleword[] = {
 	[MPT_PROT_NONE] = 0x0000000000000000,
 	[MPT_PROT_R]    = 0x5555555555555555,
