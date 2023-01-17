@@ -28,6 +28,7 @@
  * to avoid any confusion all names are prefixed with V9.
  */
 #define REG_NS_V9_CTRL_PROT_EN_PER_VID_SET	0x50
+#define REG_NS_V9_CTRL_PROT_EN_PER_VID_CLR	0x54
 #define REG_NS_V9_CTRL_ERR_RESP_T_PER_VID_SET	0x70
 #define REG_NS_V9_CFG_MPTW_ATTRIBUTE		0x10
 

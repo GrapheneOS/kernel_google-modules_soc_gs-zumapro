@@ -18,8 +18,6 @@
 #include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
 
-#define REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET	0x50
-
 /* Declare EL2 module init function as it is needed by pkvm_load_el2_module. */
 int __kvm_nvhe_s2mpu_hyp_init(const struct pkvm_module_ops *ops);
 /* Token of S2MPU driver, token is the load address of the module and a unique ID for it. */
@@ -138,26 +136,6 @@ static void s2mpu_probe_irq(struct platform_device *pdev, struct s2mpu_data *dat
 	}
 }
 
-/*
- * Configure Zuma S2MPU to a given set of protection bits across all GBs.
- * This is used during bring-up, until pKVM can be updated and take control.
- */
-static int pkvm_s2mpu_zuma_config(struct device *dev, enum mpt_prot prot)
-{
-	struct s2mpu_data *data = s2mpu_dev_data(dev);
-	unsigned int gb, vid;
-
-	for_each_gb_and_vid(gb, vid) {
-		writel_relaxed(L1ENTRY_ATTR_1G(prot),
-			       data->base + REG_NS_L1ENTRY_ATTR(vid, gb));
-	}
-	writel_relaxed(INVALIDATION_INVALIDATE,
-		       data->base + REG_NS_ALL_INVALIDATION);
-	writel_relaxed(ALL_VIDS_BITMAP,
-		       data->base + REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET);
-	return 0;
-}
-
 int pkvm_s2mpu_suspend(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
@@ -168,7 +146,7 @@ int pkvm_s2mpu_suspend(struct device *dev)
 	if (data->pkvm_registered)
 		return pkvm_iommu_suspend(dev);
 
-	return pkvm_s2mpu_zuma_config(dev, MPT_PROT_NONE);
+	return 0;
 }
 EXPORT_SYMBOL_GPL(pkvm_s2mpu_suspend);
 
@@ -179,7 +157,13 @@ int pkvm_s2mpu_resume(struct device *dev)
 	if (data->pkvm_registered)
 		return pkvm_iommu_resume(dev);
 
-	return pkvm_s2mpu_zuma_config(dev, MPT_PROT_RW);
+	/* Need to bypass S2MPU if pKVM is not there (ex: in userspace fastboot). */
+#ifdef S2MPU_V9
+	writel_relaxed(0xFF, data->base + REG_NS_V9_CTRL_PROT_EN_PER_VID_CLR);
+#else
+	writel_relaxed(0, data->base + REG_NS_CTRL0);
+#endif
+	return 0;
 }
 EXPORT_SYMBOL_GPL(pkvm_s2mpu_resume);
 
