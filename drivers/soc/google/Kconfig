@@ -266,6 +266,12 @@ config PKVM_S2MPU
 	help
 	This module is a driver for the stage-2 IOMMU controlled by hypervisor.
 
+config PKVM_S2MPU_V9
+	tristate "S2MPU V9 driver compatible with pKVM"
+	default n
+	help
+	This module is a driver for the stage-2 IOMMU controlled by hypervisor.
+
 config WLAN_TRACKER
 	bool "WiFi performance tracker driver"
 	depends on SOC_GS201
