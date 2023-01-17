@@ -149,20 +149,12 @@ static DEFINE_PER_CPU(struct memlat_cpu_grp*, cpu_grp_p);
 
 #define MAX_COUNT_LIM 0xFFFFFFFFFFFFFFFF
 
-int get_ev_data(int cpu, int inst_ev, int cyc_ev, int stall_ev, int cachemiss_ev,
-				      unsigned long *inst, unsigned long *cyc,
+int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 				      unsigned long *stall, unsigned long *cachemiss,
                                       unsigned long *mem_stall)
 {
 	struct memlat_cpu_grp *cpu_grp = per_cpu(cpu_grp_p, cpu);
-	struct memlat_mon *mons = cpu_grp->mons;
 	struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
-
-	if (cpu_grp->common_ev_ids[INST_IDX] != inst_ev ||
-	    cpu_grp->common_ev_ids[CYC_IDX] != cyc_ev ||
-	    cpu_grp->common_ev_ids[STALL_IDX] != stall_ev ||
-	    mons->miss_ev_id != cachemiss_ev)
-		return -EINVAL;
 
 	spin_lock(&cpu_data->pmu_lock);
 	*inst = cpu_data->inst;
