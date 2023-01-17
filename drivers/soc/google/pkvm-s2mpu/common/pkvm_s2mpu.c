@@ -279,14 +279,14 @@ static const struct dev_pm_ops s2mpu_pm_ops = {
 };
 
 static const struct of_device_id s2mpu_of_match[] = {
-	{ .compatible = "google,s2mpu" },
+	{ .compatible = "google," S2MPU_NAME },
 	{},
 };
 
 static struct platform_driver s2mpu_driver = {
 	.probe = s2mpu_probe,
 	.driver = {
-		.name = "pkvm-s2mpu",
+		.name = "pkvm-" S2MPU_NAME,
 		.of_match_table = s2mpu_of_match,
 		.pm = &s2mpu_pm_ops,
 	},
