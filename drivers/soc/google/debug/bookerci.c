@@ -258,13 +258,16 @@ static const char * hni_errors[] = {
 	"BRESP error and poison error"
 };
 static const char * hnf_errors[] = {
+	"Unknown",
 	"Data single-bit ECC",
 	"Data double-bit ECC",
 	"Single-bit ECC overflow",
 	"Tag single-bit ECC",
 	"Tag double-bit ECC",
+	"Unknown",
 	"SF tag single-bit ECC",
 	"SF tag double-bit ECC",
+	"Unknown",
 	"Data parity error",
 	"Data parity and poison",
 	"NDE"
@@ -276,11 +279,14 @@ static const char * hnf_optypes[] = {
 	"Other op types"
 };
 static const char * mtsx_errors[] = {
+	"Unknown",
 	"Data single-bit ECC",
 	"Data double-bit ECC",
 	"Single-bit ECC overflow",
+	"Unknown",
 	"Control single-bit ECC",
 	"Control double-bit ECC",
+	"Unknown",
 	"AXI AR Slave Error",
 	"AXI AR Decode Error",
 	"AXI AR Poison Error",
