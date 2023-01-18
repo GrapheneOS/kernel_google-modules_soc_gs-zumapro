@@ -4042,17 +4042,19 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		goto err_thermal;
 	}
 
-	ret = devm_request_irq(&pdev->dev, data->irq, gs_tmu_irq,
-			       IRQF_SHARED, dev_name(&pdev->dev), data);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to request irq: %d\n", data->irq);
-		goto err_thermal;
-	}
+	if (!acpm_gov_common.turn_on) {
+		ret = devm_request_irq(&pdev->dev, data->irq, gs_tmu_irq, IRQF_SHARED,
+				       dev_name(&pdev->dev), data);
+		if (ret) {
+			dev_err(&pdev->dev, "Failed to request irq: %d\n", data->irq);
+			goto err_thermal;
+		}
 
-	ret = gs_tmu_irq_work_init(pdev);
-	if (ret) {
-		dev_err(&pdev->dev, "cannot gs tmu interrupt work initialize\n");
-		goto err_thermal;
+		ret = gs_tmu_irq_work_init(pdev);
+		if (ret) {
+			dev_err(&pdev->dev, "cannot gs tmu interrupt work initialize\n");
+			goto err_thermal;
+		}
 	}
 
 	if (acpm_gov_common.turn_on)
@@ -4203,7 +4205,8 @@ static int gs_tmu_suspend(struct device *dev)
 		kthread_flush_work(&data->hotplug_work);
 	if (data->pause_enable)
 		kthread_flush_work(&data->pause_work);
-	kthread_flush_work(&data->irq_work);
+	if (!acpm_gov_common.turn_on)
+		kthread_flush_work(&data->irq_work);
 
 	gs_tmu_control(pdev, false);
 	if (suspended_count == num_of_devices) {
@@ -4224,7 +4227,6 @@ static int gs_tmu_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
-	struct cpumask mask;
 	int temp, stat;
 
 	if (suspended_count == num_of_devices) {
@@ -4245,8 +4247,11 @@ static int gs_tmu_resume(struct device *dev)
 		enable_irq(data->irq);
 	suspended_count--;
 
-	cpumask_and(&mask, cpu_possible_mask, &data->tmu_work_affinity);
-	set_cpus_allowed_ptr(data->thermal_worker.task, &mask);
+	if (!acpm_gov_common.turn_on) {
+		struct cpumask mask;
+		cpumask_and(&mask, cpu_possible_mask, &data->tmu_work_affinity);
+		set_cpus_allowed_ptr(data->thermal_worker.task, &mask);
+	}
 
 	if (!suspended_count)
 		pr_info("%s: TMU resume complete\n", __func__);
