@@ -1516,19 +1516,21 @@ static int gs_tmu_pm_notify(struct notifier_block *nb,
 	case PM_RESTORE_PREPARE:
 	case PM_SUSPEND_PREPARE:
 		atomic_set(&gs_tmu_in_suspend, 1);
-		list_for_each_entry(data, &dtm_dev_list, node) {
-			if (data->use_pi_thermal)
-				kthread_cancel_delayed_work_sync(&data->pi_work);
-		}
+		if (!acpm_gov_common.turn_on)
+			list_for_each_entry (data, &dtm_dev_list, node) {
+				if (data->use_pi_thermal)
+					kthread_cancel_delayed_work_sync(&data->pi_work);
+			}
 		break;
 	case PM_POST_HIBERNATION:
 	case PM_POST_RESTORE:
 	case PM_POST_SUSPEND:
 		atomic_set(&gs_tmu_in_suspend, 0);
-		list_for_each_entry(data, &dtm_dev_list, node) {
-			if (data->use_pi_thermal)
-				start_pi_polling(data, 0);
-		}
+		if (!acpm_gov_common.turn_on)
+			list_for_each_entry (data, &dtm_dev_list, node) {
+				if (data->use_pi_thermal)
+					start_pi_polling(data, 0);
+			}
 		break;
 	default:
 		break;
@@ -4194,7 +4196,8 @@ static int gs_tmu_suspend(struct device *dev)
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
 	suspended_count++;
-	disable_irq(data->irq);
+	if (!acpm_gov_common.turn_on)
+		disable_irq(data->irq);
 
 	if (data->hotplug_enable)
 		kthread_flush_work(&data->hotplug_work);
@@ -4236,10 +4239,10 @@ static int gs_tmu_resume(struct device *dev)
 
 	exynos_acpm_tmu_set_read_temp(data->id, &temp, &stat);
 
-	pr_info("%s: thermal zone %d temp %d stat %d\n",
-		__func__, data->tzd->id, temp, stat);
+	pr_info("%s: thermal zone %d temp %d stat %d\n", __func__, data->tzd->id, temp, stat);
 
-	enable_irq(data->irq);
+	if (!acpm_gov_common.turn_on)
+		enable_irq(data->irq);
 	suspended_count--;
 
 	cpumask_and(&mask, cpu_possible_mask, &data->tmu_work_affinity);
