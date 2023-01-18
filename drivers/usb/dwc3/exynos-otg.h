@@ -66,7 +66,7 @@ struct dwc3_otg {
 	int			dwc3_suspended;
 	int			fsm_reset;
 	int			in_shutdown;
-	bool			usb_charged;
+	bool			skip_retry;
 
 	struct mutex lock;
 	u16 combo_phy_control;
