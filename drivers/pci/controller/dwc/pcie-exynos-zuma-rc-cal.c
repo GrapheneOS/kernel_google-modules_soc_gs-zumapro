@@ -65,6 +65,12 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 
 		//Common Bias, PLL off
 		writel(0x0A, phy_base_regs + 0x00C);
+
+		udelay(50);
+		// External PLL gating
+		val = readl(udbg_base_regs + 0xC700) & ~BIT(0);
+		writel(val, udbg_base_regs + 0xC700);
+		udelay(10);
 	}
 	else { //PCIe GEN3 2 lane channel
 		val = readl(phy_base_regs + 0x204) & ~(0x3 << 2);
@@ -116,6 +122,10 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
 	if (exynos_pcie->ch_num == 1) { //PCIE GEN3 1 lane channel
+		// External PLL gating
+		val = readl(udbg_base_regs + 0xC700) | BIT(0);
+		writel(val, udbg_base_regs + 0xC700);
+		udelay(100);
 		writel(0x00, phy_base_regs + 0x000C);
 
 		writel(0x55, phy_base_regs + 0x0928);
