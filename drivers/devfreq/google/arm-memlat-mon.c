@@ -55,7 +55,8 @@ struct cpu_data {
 	unsigned long inst;
 	unsigned long cyc;
 	unsigned long stall;
-	unsigned long cachemiss;
+	unsigned long l2_cachemiss;
+	unsigned long l3_cachemiss;
 	unsigned long mem_stall;
 };
 
@@ -150,8 +151,8 @@ static DEFINE_PER_CPU(struct memlat_cpu_grp*, cpu_grp_p);
 #define MAX_COUNT_LIM 0xFFFFFFFFFFFFFFFF
 
 int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
-				      unsigned long *stall, unsigned long *cachemiss,
-                                      unsigned long *mem_stall)
+				      unsigned long *stall, unsigned long *l2_cachemiss,
+                                      unsigned long *l3_cachemiss, unsigned long *mem_stall)
 {
 	struct memlat_cpu_grp *cpu_grp = per_cpu(cpu_grp_p, cpu);
 	struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
@@ -160,7 +161,8 @@ int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 	*inst = cpu_data->inst;
 	*cyc = cpu_data->cyc;
 	*stall = cpu_data->stall;
-	*cachemiss = cpu_data->cachemiss;
+	*l2_cachemiss = cpu_data->l2_cachemiss;
+	*l3_cachemiss = cpu_data->l3_cachemiss;
 	*mem_stall = cpu_data->mem_stall;
 	spin_unlock(&cpu_data->pmu_lock);
 
@@ -252,7 +254,8 @@ static void update_counts_idle_core(struct memlat_cpu_grp *cpu_grp, int cpu)
 	cpu_data->inst = common_evs[INST_IDX].last_delta;
 	cpu_data->cyc = common_evs[CYC_IDX].last_delta;
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
-	cpu_data->cachemiss = mon->miss_ev[mon_idx].last_delta;
+	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
+	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
 	spin_unlock(&cpu_data->pmu_lock);
 }
@@ -329,7 +332,8 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 	cpu_data->inst = common_evs[INST_IDX].last_delta;
 	cpu_data->cyc = common_evs[CYC_IDX].last_delta;
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
-	cpu_data->cachemiss = mon->miss_ev[mon_idx].last_delta;
+	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
+	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
 	spin_unlock(&cpu_data->pmu_lock);
 }
@@ -351,6 +355,7 @@ static unsigned long get_cnt(struct memlat_hwmon *hw)
 		devstats->stall_pct = cpu_data->stall_pct;
 		devstats->inst_count = common_evs[INST_IDX].last_delta;
 		devstats->mem_stall_count = cpu_data->mem_stall;
+		devstats->l2_cachemiss_count = cpu_data->l2_cachemiss;
 
 		if (mon->miss_ev)
 			devstats->mem_count =
@@ -678,6 +683,7 @@ static void stop_hwmon(struct memlat_hwmon *hw)
 		devstats->mem_count = 0;
 		devstats->freq = 0;
 		devstats->stall_pct = 0;
+		devstats->l2_cachemiss_count = 0;
 	}
 
 	if (!cpu_grp->num_active_mons) {
@@ -816,6 +822,13 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 		event_id = STALL_EV;
 	}
 	cpu_grp->common_ev_ids[STALL_IDX] = event_id;
+
+	ret = of_property_read_u32(dev->of_node, "l2-cachemiss-ev", &event_id);
+	if (ret) {
+		dev_dbg(dev, "L2 cachemiss event not specified. Skipping.\n");
+		event_id = L2D_CACHE_REFILL_EV;
+	}
+	cpu_grp->common_ev_ids[L2D_CACHE_REFILL_IDX] = event_id;
 
 	num_cpus = cpumask_weight(&cpu_grp->cpus);
 	cpu_grp->cpus_data =

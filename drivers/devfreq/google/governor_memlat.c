@@ -291,7 +291,8 @@ static int devfreq_memlat_get_freq(struct devfreq *df,
 					hw->core_stats[i].mem_count,
 					hw->core_stats[i].freq,
 					hw->core_stats[i].stall_pct,
-					hw->core_stats[i].mem_stall_count, ratio);
+					hw->core_stats[i].mem_stall_count,
+					hw->core_stats[i].l2_cachemiss_count, ratio);
 
 		if (ratio <= node->ratio_ceil
 		    && hw->core_stats[i].stall_pct >= node->stall_floor
@@ -311,6 +312,7 @@ static int devfreq_memlat_get_freq(struct devfreq *df,
 					hw->core_stats[lat_dev].mem_count,
 					hw->core_stats[lat_dev].freq,
 					hw->core_stats[lat_dev].mem_stall_count,
+					hw->core_stats[lat_dev].l2_cachemiss_count,
 					max_freq);
 	}
 
