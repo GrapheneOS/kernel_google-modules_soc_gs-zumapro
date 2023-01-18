@@ -4100,12 +4100,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 
 	data->acpm_pi_enable = false;
 	if (data->use_pi_thermal) {
-		struct thermal_zone_device *tz = data->tzd;
-		struct gs_pi_param *params = data->pi_param;
-		struct thermal_instance *instance;
-		struct thermal_cooling_device *cdev;
-		bool found_actor = false;
-
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, SUSTAINABLE_POWER,
 						 data->pi_param->sustainable_power);
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PO, frac_to_int(data->pi_param->k_po));
@@ -4114,26 +4108,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX, frac_to_int(data->pi_param->i_max));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, INTEGRAL_CUTOFF,
 						 data->pi_param->integral_cutoff);
-
-		list_for_each_entry (instance, &tz->thermal_instances, tz_node) {
-			if (instance->trip == params->trip_control_temp &&
-			    cdev_is_power_actor(instance->cdev)) {
-				found_actor = true;
-				cdev = instance->cdev;
-				break;
-			}
-		}
-
-		if (found_actor) {
-			int i;
-			unsigned long max_state;
-			cdev->ops->get_max_state(cdev, &max_state);
-			for (i = 0; i <= (int)max_state; i++) {
-				int power;
-				cdev->ops->state2power(cdev, i, &power);
-				exynos_acpm_tmu_ipc_set_table(data->id, i, power);
-			}
-		}
 	}
 
 #if IS_ENABLED(CONFIG_MALI_DEBUG_KERNEL_SYSFS)
