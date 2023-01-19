@@ -10,7 +10,7 @@
 #include <asm/asm-uaccess.h>
 
 /*
- *	flush_cache_all()
+ *	dss_flush_cache_all()
  *	Corrupted registers: x0-x7, x9-x11
  *
  *	Flush the entire cache system.  The data cache flush is now achieved
@@ -20,7 +20,7 @@
  *	unification in a single instruction.
  */
 
-SYM_FUNC_START(flush_cache_all)
+SYM_FUNC_START(dss_flush_cache_all)
 	mov	x12, lr
 	dmb	sy			// ensure ordering with previous memory accesses
 	mrs	x0, clidr_el1		// read clidr
@@ -41,6 +41,18 @@ loop1:
 	restore_irq x9
 	and	x2, x1, #7		// extract the length of the cache lines
 	add	x2, x2, #4		// add 4 (line length offset)
+
+	mrs     x14, id_aa64mmfr2_el1	// check architecture version
+	mov     x15, #0xf
+	and     x15, x15, x14, lsr #20
+	cbz     x15, format_32bit
+	mov     x4, #0x1fffff
+	and     x4, x4, x1, lsr #3      // find maximum number on the way size
+	clz     w5, w4			// find bit position of way size increment
+	mov     x7, #0xffffff
+	and     x7, x7, x1, lsr #32	// extract max number of the index size
+	b       loop2
+format_32bit:
 	mov	x4, #0x3ff
 	and	x4, x4, x1, lsr #3	// find maximum number on the way size
 	clz	w5, w4			// find bit position of way size increment

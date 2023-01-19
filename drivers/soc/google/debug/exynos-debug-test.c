@@ -21,6 +21,7 @@
 #include <linux/nmi.h>
 #include <linux/spinlock.h>
 #include <linux/platform_device.h>
+#include <linux/soc/samsung/exynos-smc.h>
 
 #include <dt-bindings/soc/google/debug-snapshot-def.h>
 #include <soc/google/debug-snapshot.h>
@@ -617,16 +618,13 @@ static void simulate_ECC_INJECTION(void *info)
 	unsigned long lev = *((unsigned long *)info);
 	u64 count = 0x1000;
 	u64 ctrl = 0x80000002;
+	struct arm_smccc_res res;
 
 	dev_info(exynos_debug_desc.dev,
 		 "CPU%d: Level%d: ECC error injection!\n",
 		 raw_smp_processor_id(), lev);
 
-	write_ERRSELR_EL1(lev);
-	asm volatile("msr S3_0_c5_c4_6, %0\n"
-			"isb\n" :: "r"(count));
-	asm volatile("msr S3_0_c5_c4_5, %0\n"
-			"isb\n" :: "r"(ctrl));
+	arm_smccc_smc(SIP_SVD_GS_DEBUG_CMD, CMD_ECC, lev, count, ctrl, 0, 0, 0, &res);
 }
 
 static void simulate_ECC(char *arg)

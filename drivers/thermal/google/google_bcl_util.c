@@ -20,6 +20,18 @@
 #define CPU1_CLUSTER_MIN 4
 #define CPU2_CLUSTER_MIN 8
 
+const char * const clk_stats_source[] = {
+	"cpu0", "cpu1", "cpu2", "tpu", "gpu"
+};
+
+const unsigned int subsystem_pmu[] = {
+	PMU_ALIVE_CPU0_OUT,
+	PMU_ALIVE_CPU1_OUT,
+	PMU_ALIVE_CPU2_OUT,
+	PMU_ALIVE_TPU_OUT,
+	PMU_ALIVE_GPU_OUT
+};
+
 int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 {
 	switch (pmic) {

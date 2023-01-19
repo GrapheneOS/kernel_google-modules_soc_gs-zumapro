@@ -8,6 +8,8 @@
 
 #if defined(CONFIG_SOC_GS101)
 #include "gs101/ufs-dump.h"
+#elif defined(CONFIG_SOC_GS201)
+#include "gs201/ufs-dump.h"
 #elif defined(CONFIG_SOC_ZUMA)
 #include "zuma/ufs-dump.h"
 #endif

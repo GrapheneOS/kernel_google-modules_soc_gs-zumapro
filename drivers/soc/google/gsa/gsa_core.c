@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 
 #include <linux/gsa/gsa_aoc.h>
+#include <linux/gsa/gsa_dsp.h>
 #include <linux/gsa/gsa_kdn.h>
 #include <linux/gsa/gsa_sjtag.h>
 #include <linux/gsa/gsa_tpu.h>
@@ -31,6 +32,7 @@ struct gsa_dev_state {
 	struct mutex bb_lock; /* protects access to bounce buffer */
 	struct gsa_tz_chan_ctx aoc_srv;
 	struct gsa_tz_chan_ctx tpu_srv;
+	struct gsa_tz_chan_ctx dsp_srv;
 };
 
 /*
@@ -201,6 +203,36 @@ int gsa_send_tpu_cmd(struct device *gsa, enum gsa_tpu_cmd arg)
 	return gsa_tz_send_hwmgr_state_cmd(&s->tpu_srv, arg);
 }
 EXPORT_SYMBOL_GPL(gsa_send_tpu_cmd);
+
+/*
+ *  External DSP interface
+ */
+int gsa_load_dsp_fw_image(struct device *gsa,
+			  dma_addr_t img_meta,
+			  phys_addr_t img_body)
+{
+	return gsa_send_load_img_cmd(gsa, GSA_MB_CMD_LOAD_DSP_FW_IMG,
+				     img_meta, img_body);
+}
+EXPORT_SYMBOL_GPL(gsa_load_dsp_fw_image);
+
+int gsa_unload_dsp_fw_image(struct device *gsa)
+{
+	struct platform_device *pdev = to_platform_device(gsa);
+	struct gsa_dev_state *s = platform_get_drvdata(pdev);
+
+	return gsa_tz_send_hwmgr_unload_fw_image_cmd(&s->dsp_srv);
+}
+EXPORT_SYMBOL_GPL(gsa_unload_dsp_fw_image);
+
+int gsa_send_dsp_cmd(struct device *gsa, enum gsa_dsp_cmd arg)
+{
+	struct platform_device *pdev = to_platform_device(gsa);
+	struct gsa_dev_state *s = platform_get_drvdata(pdev);
+
+	return gsa_tz_send_hwmgr_state_cmd(&s->dsp_srv, arg);
+}
+EXPORT_SYMBOL_GPL(gsa_send_dsp_cmd);
 
 
 /*
@@ -611,6 +643,7 @@ static int gsa_probe(struct platform_device *pdev)
 	/* Initialize TZ serice link to HWMGR */
 	gsa_tz_chan_ctx_init(&s->aoc_srv, HWMGR_AOC_PORT, dev);
 	gsa_tz_chan_ctx_init(&s->tpu_srv, HWMGR_TPU_PORT, dev);
+	gsa_tz_chan_ctx_init(&s->dsp_srv, HWMGR_DSP_PORT, dev);
 
 	dev_info(dev, "Initialized\n");
 
@@ -624,6 +657,7 @@ static int gsa_remove(struct platform_device *pdev)
 	/* close connection to tz services */
 	gsa_tz_chan_close(&s->aoc_srv);
 	gsa_tz_chan_close(&s->tpu_srv);
+	gsa_tz_chan_close(&s->dsp_srv);
 
 	return 0;
 }

@@ -109,9 +109,9 @@ unsigned int map_scaling_freq(int cpu, unsigned int freq)
 	return policy ? clamp(freq, policy->min, policy->max) : freq;
 }
 
-extern int get_ev_data(int cpu, int inst_ev, int cyc_ev, int stall_ev, int cachemiss_ev,
-			unsigned long *inst, unsigned long *cyc,
-			unsigned long *stall, unsigned long *cachemiss, unsigned long *mem_stall);
+extern int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
+			unsigned long *stall, unsigned long *cachemiss,
+			unsigned long *mem_stall);
 
 /************************ Governor internals ***********************/
 static bool check_pmu_limit_conditions(u64 lcpi, u64 spc, struct sugov_policy *sg_policy)
@@ -979,9 +979,8 @@ static void pmu_limit_work(struct kthread_work *work)
 		raw_spin_unlock_irqrestore(&sg_policy->update_lock, flags);
 
 		for_each_cpu(ccpu, policy->cpus) {
-			ret = get_ev_data(ccpu, INST_EV, CYC_EV,
-					  STALL_EV, L3D_CACHE_REFILL_EV, &inst, &cyc,
-					  &stall, &cachemiss, &mem_stall);
+			ret = get_ev_data(ccpu, &inst, &cyc, &stall, &cachemiss,
+					  &mem_stall);
 
 			if (ret) {
 				sg_policy->tunables->pmu_limit_enable = false;

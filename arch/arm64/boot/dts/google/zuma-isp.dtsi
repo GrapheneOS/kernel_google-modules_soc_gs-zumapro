@@ -136,6 +136,9 @@
 
 		/* Device node name */
 		node-name = "top";
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_dpm: lwis_dpm@0 {
@@ -960,7 +963,8 @@
 			<0x0 0x1D144000 0xE00>,    /* SSMT D4 MCSC */
 			<0x0 0x1D154000 0xE00>,    /* SSMT D5 MCSC */
 			<0x0 0x1D164000 0xE00>,    /* SSMT D6 MCSC */
-			<0x0 0x1D000000 0x10000>;  /* CMU MCSC */
+			<0x0 0x1D000000 0x10000>,  /* CMU MCSC */
+			<0x0 0x1D020400 0x4>;      /* MCSC MCSC_USER_CON0 SYSREG */
 		reg-names =
 			"mcsc",
 			"ssmt_d0_mcsc",
@@ -970,7 +974,8 @@
 			"ssmt_d4_mcsc",
 			"ssmt_d5_mcsc",
 			"ssmt_d6_mcsc",
-			"cmu_mcsc";
+			"cmu_mcsc",
+			"mcsc_sysreg";
 
 		interrupts =
 			<GIC_SPI IRQ_MCSC_0_MCSC IRQ_TYPE_LEVEL_HIGH>,
@@ -1027,14 +1032,16 @@
 			<0x0 0x1D844800 0x00200>,  /* GSE PDMA WARP */
 			<0x0 0x1D934000 0xE00>,    /* SSMT D0 GSE */
 			<0x0 0x1D944000 0xE00>,    /* SSMT D1 GSE */
-			<0x0 0x1D954000 0xE00>;    /* SSMT D2 GSE */
+			<0x0 0x1D954000 0xE00>,    /* SSMT D2 GSE */
+			<0x0 0x1D820400 0x4>;      /* GSE SYSREG GSE_USER_CON0*/
 		reg-names =
 			"gse",
 			"gse_pdma",
 			"gse_pdma_warp",
 			"ssmt_d0_gse",
 			"ssmt_d1_gse",
-			"ssmt_d2_gse";
+			"ssmt_d2_gse",
+			"gse_sysreg";
 
 		interrupts =
 			<GIC_SPI IRQ_GSE_NonSecu_IRQ_GSE IRQ_TYPE_LEVEL_HIGH>,
@@ -1100,14 +1107,24 @@
 			<0x0 0x1C840000 0x10000>,  /* YUVP */
 			<0x0 0x1C5D4000 0xE00>,    /* SSMT D0 RGBP */
 			<0x0 0x1C914000 0xE00>,    /* SSMT D1 YUVP */
-			<0x0 0x1C420404 0x4>;      /* SYSREG RGBP */
+			<0x0 0x1C420404 0x4>,      /* SYSREG RGBP */
+			<0x0 0x1C604400 0xE00>,    /* SSMT D0 MCFP */
+			<0x0 0x1C614400 0xE00>,    /* SSMT D1 MCFP */
+			<0x0 0x1C624400 0xE00>,    /* SSMT D2 MCFP */
+			<0x0 0x1C634400 0xE00>,    /* SSMT D3 MCFP */
+			<0x0 0x1C644400 0xE00>;    /* SSMT D4 MCFP */
 		reg-names =
 			"rgbp",
 			"mcfp",
 			"yuvp",
 			"ssmt_d0_rgbp",
 			"ssmt_d1_yuvp",
-			"sysreg_rgbp";
+			"sysreg_rgbp",
+			"ssmt_d0_mcfp",
+			"ssmt_d1_mcfp",
+			"ssmt_d2_mcfp",
+			"ssmt_d3_mcfp",
+			"ssmt_d4_mcfp";
 
 		interrupts =
 			<GIC_SPI IRQ_RGBP_INTREQ_0_RGBP IRQ_TYPE_LEVEL_HIGH>,
@@ -1214,7 +1231,8 @@
 			<0x0 0x1CFC4000 0xE00>,    /* GTNR Merge SSMT D9 */
 			<0x0 0x1CFD4000 0xE00>,    /* GTNR Merge SSMT D10 */
 			<0x0 0x1CFE4000 0xE00>,    /* GTNR Merge SSMT D11 */
-			<0x0 0x1CC00000 0x10000>;  /* GTNR CMU */
+			<0x0 0x1CC00000 0x10000>,  /* GTNR CMU */
+			<0x0 0x1CC20400 0x4>;      /* GTNR MERGE SYSREG LH_AST_GLUE_OTF*/
 
 		reg-names =
 			"gtnr_merge",
@@ -1230,7 +1248,8 @@
 			"gtnr_merge_ssmt_d9",
 			"gtnr_merge_ssmt_d10",
 			"gtnr_merge_ssmt_d11",
-			"gtnr_cmu";
+			"gtnr_cmu",
+			"gtnr_merge_sysreg";
 
 		interrupts =
 			<GIC_SPI IRQ_TNR_0_TNR IRQ_TYPE_LEVEL_HIGH>,
@@ -1399,15 +1418,15 @@
 
 		/* SLC partitions */
 		pt_id =
-			"CAMERA2WAY",
+			"CAMERA1WAY",
+			"CAMERA2WAY0",
+			"CAMERA2WAY1",
+			"CAMERA2WAY2",
+			"CAMERA3WAY0",
+			"CAMERA3WAY1",
+			"CAMERA3WAY2",
 			"CAMERA4WAY0",
-			"CAMERA4WAY1",
-			"CAMERA4WAY2",
-			"CAMERA6WAY0",
-			"CAMERA6WAY1",
-			"CAMERA6WAY2",
-			"CAMERA8WAY0",
-			"CAMERA12WAY0";
+			"CAMERA6WAY0";
 
 		pt_size = <512 1024 1024 1024 1536 1536 1536 2048 3072>;
 	};

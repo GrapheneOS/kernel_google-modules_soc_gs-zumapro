@@ -493,6 +493,64 @@ void exynos_acpm_tmu_ipc_reset_trip_counter(int tz)
 	exynos_acpm_tmu_ipc_send_data(&message);
 }
 
+void exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_PI_PARAM;
+	message.req.tzid = tz;
+	message.req.rsvd = param;
+	message.data[2] = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+void exynos_acpm_tmu_ipc_get_pi_param(int tz, u8 param, u32 *val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_PI_PARAM;
+	message.req.tzid = tz;
+	message.req.rsvd = param;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*val = message.data[2];
+}
+
+void exynos_acpm_tmu_ipc_set_table(int tz, u8 index, int val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_TABLE;
+	message.req.tzid = tz;
+	message.req.rsvd = index;
+	message.data[2] = (u32)val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+void exynos_acpm_tmu_ipc_get_table(int tz, u8 index, int *val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TABLE;
+	message.req.tzid = tz;
+	message.req.rsvd = index;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*val = (int)message.data[2];
+}
+
 int exynos_acpm_tmu_init(void)
 {
 	struct device_node *np;

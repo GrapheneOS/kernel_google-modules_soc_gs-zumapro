@@ -4,14 +4,7 @@
  *
  */
 
-/dts-v1/;
-/ {
-	/* soc revision info */
-	soc_id = <0x09865001 0x00000000>;
-};
-
 #include "zuma.dtsi"
-#include "zuma-sysmmu.dtsi"
 
 &bts_smc0 {
 	reg = <0x0 0x27C4F534 0x4>;
@@ -29,12 +22,6 @@
 	reg = <0x0 0x27F4F534 0x4>;
 };
 
-&cpufreq_domain0 {
-	max-freq = <1880000>;
-};
-&cpufreq_domain1 {
-	max-freq = <2245000>;
-};
-&cpufreq_domain2 {
-	max-freq = <2556000>;
+&bigwave {
+	ip_ver = <0x1>;
 };

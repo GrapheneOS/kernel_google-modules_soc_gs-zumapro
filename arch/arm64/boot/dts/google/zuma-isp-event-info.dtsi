@@ -1063,73 +1063,163 @@
 			"isp_fe_loch6_csis_core_img_mute";
 	};
 	isp_loch7_interrupt_group: isp_fe-interrupt-group@7 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch0_csis_core_pd_abort_done",
+		"isp_fe_loch0_csis_core_pd_proc",
+		"isp_fe_loch0_csis_core_pd_err",
+		"isp_fe_loch0_csis_core_pd_mute";
 	};
 	isp_loch8_interrupt_group: isp_fe-interrupt-group@8 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch1_csis_core_pd_abort_done",
+		"isp_fe_loch1_csis_core_pd_proc",
+		"isp_fe_loch1_csis_core_pd_err",
+		"isp_fe_loch1_csis_core_pd_mute";
 	};
 	isp_loch9_interrupt_group: isp_fe-interrupt-group@9 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch2_csis_core_pd_abort_done",
+		"isp_fe_loch2_csis_core_pd_proc",
+		"isp_fe_loch2_csis_core_pd_err",
+		"isp_fe_loch2_csis_core_pd_mute";
 	};
 	isp_loch10_interrupt_group: isp_fe-interrupt-group@10 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch3_csis_core_pd_abort_done",
+		"isp_fe_loch3_csis_core_pd_proc",
+		"isp_fe_loch3_csis_core_pd_err",
+		"isp_fe_loch3_csis_core_pd_mute";
 	};
 	isp_loch11_interrupt_group: isp_fe-interrupt-group@11 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch4_csis_core_pd_abort_done",
+		"isp_fe_loch4_csis_core_pd_proc",
+		"isp_fe_loch4_csis_core_pd_err",
+		"isp_fe_loch4_csis_core_pd_mute";
 	};
 	isp_loch12_interrupt_group: isp_fe-interrupt-group@12 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch5_csis_core_pd_abort_done",
+		"isp_fe_loch5_csis_core_pd_proc",
+		"isp_fe_loch5_csis_core_pd_err",
+		"isp_fe_loch5_csis_core_pd_mute";
 	};
 	isp_loch13_interrupt_group: isp_fe-interrupt-group@13 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch6_csis_core_pd_abort_done",
+		"isp_fe_loch6_csis_core_pd_proc",
+		"isp_fe_loch6_csis_core_pd_err",
+		"isp_fe_loch6_csis_core_pd_mute";
 	};
 	isp_loch14_interrupt_group: isp_fe-interrupt-group@14 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch0_csis_core_vc_abort_done",
+		"isp_fe_loch0_csis_core_vc_proc",
+		"isp_fe_loch0_csis_core_vc_err",
+		"isp_fe_loch0_csis_core_vc_mute";
 	};
 	isp_loch15_interrupt_group: isp_fe-interrupt-group@15 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch1_csis_core_vc_abort_done",
+		"isp_fe_loch1_csis_core_vc_proc",
+		"isp_fe_loch1_csis_core_vc_err",
+		"isp_fe_loch1_csis_core_vc_mute";
 	};
 	isp_loch16_interrupt_group: isp_fe-interrupt-group@16 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch2_csis_core_vc_abort_done",
+		"isp_fe_loch2_csis_core_vc_proc",
+		"isp_fe_loch2_csis_core_vc_err",
+		"isp_fe_loch2_csis_core_vc_mute";
 	};
 	isp_loch17_interrupt_group: isp_fe-interrupt-group@17 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch3_csis_core_vc_abort_done",
+		"isp_fe_loch3_csis_core_vc_proc",
+		"isp_fe_loch3_csis_core_vc_err",
+		"isp_fe_loch3_csis_core_vc_mute";
 	};
 	isp_loch18_interrupt_group: isp_fe-interrupt-group@18 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch4_csis_core_vc_abort_done",
+		"isp_fe_loch4_csis_core_vc_proc",
+		"isp_fe_loch4_csis_core_vc_err",
+		"isp_fe_loch4_csis_core_vc_mute";
 	};
 	isp_loch19_interrupt_group: isp_fe-interrupt-group@19 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch5_csis_core_vc_abort_done",
+		"isp_fe_loch5_csis_core_vc_proc",
+		"isp_fe_loch5_csis_core_vc_err",
+		"isp_fe_loch5_csis_core_vc_mute";
 	};
 	isp_loch20_interrupt_group: isp_fe-interrupt-group@20 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch6_csis_core_vc_abort_done",
+		"isp_fe_loch6_csis_core_vc_proc",
+		"isp_fe_loch6_csis_core_vc_err",
+		"isp_fe_loch6_csis_core_vc_mute";
 	};
 	isp_loch21_interrupt_group: isp_fe-interrupt-group@21 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch7_csis_core_vc_abort_done",
+		"isp_fe_loch7_csis_core_vc_proc",
+		"isp_fe_loch7_csis_core_vc_err",
+		"isp_fe_loch7_csis_core_vc_mute";
 	};
 	isp_loch22_interrupt_group: isp_fe-interrupt-group@22 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch8_csis_core_vc_abort_done",
+		"isp_fe_loch8_csis_core_vc_proc",
+		"isp_fe_loch8_csis_core_vc_err",
+		"isp_fe_loch8_csis_core_vc_mute";
 	};
 	isp_loch23_interrupt_group: isp_fe-interrupt-group@23 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch9_csis_core_vc_abort_done",
+		"isp_fe_loch9_csis_core_vc_proc",
+		"isp_fe_loch9_csis_core_vc_err",
+		"isp_fe_loch9_csis_core_vc_mute";
 	};
 	isp_loch24_interrupt_group: isp_fe-interrupt-group@24 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch10_csis_core_vc_abort_done",
+		"isp_fe_loch10_csis_core_vc_proc",
+		"isp_fe_loch10_csis_core_vc_err",
+		"isp_fe_loch10_csis_core_vc_mute";
 	};
 	isp_loch25_interrupt_group: isp_fe-interrupt-group@25 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch11_csis_core_vc_abort_done",
+		"isp_fe_loch11_csis_core_vc_proc",
+		"isp_fe_loch11_csis_core_vc_err",
+		"isp_fe_loch11_csis_core_vc_mute";
 	};
 	isp_loch26_interrupt_group: isp_fe-interrupt-group@26 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch12_csis_core_vc_abort_done",
+		"isp_fe_loch12_csis_core_vc_proc",
+		"isp_fe_loch12_csis_core_vc_err",
+		"isp_fe_loch12_csis_core_vc_mute";
 	};
 	isp_loch27_interrupt_group: isp_fe-interrupt-group@27 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_loch13_csis_core_vc_abort_done",
+		"isp_fe_loch13_csis_core_vc_proc",
+		"isp_fe_loch13_csis_core_vc_err",
+		"isp_fe_loch13_csis_core_vc_mute";
 	};
 	isp_rdma0_interrupt_group: isp_fe-interrupt-group@28 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_ctx0_csis_core_rdma_abort_done",
+		"isp_fe_ctx0_csis_core_rdma_proc",
+		"isp_fe_ctx0_csis_core_rdma_err";
 	};
 	isp_rdma1_interrupt_group: isp_fe-interrupt-group@29 {
-		leaf-interrupt-names;
+		leaf-interrupt-names =
+		"isp_fe_ctx1_csis_core_rdma_abort_done",
+		"isp_fe_ctx1_csis_core_rdma_proc",
+		"isp_fe_ctx1_csis_core_rdma_err";
 	};
 	isp_fe_csis_core_cmn_ctl: isp_fe-event-info@34 {
 		irq-reg-space = "isp-fe";
@@ -1911,6 +2001,7 @@
 		irq-reset-reg = <0x0 0x22004>;
 		irq-mask-reg = <0x0 0x22010>;
 		irq-overflow-reg = <0x0 0x22008>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ABORT_DONE_LOCH0_ABORT_DONE>,
@@ -1927,6 +2018,7 @@
 		irq-reset-reg = <0x0 0x22404>;
 		irq-mask-reg = <0x0 0x22410>;
 		irq-overflow-reg = <0x0 0x22408>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ABORT_DONE_LOCH1_ABORT_DONE>,
@@ -1943,6 +2035,7 @@
 		irq-reset-reg = <0x0 0x22804>;
 		irq-mask-reg = <0x0 0x22810>;
 		irq-overflow-reg = <0x0 0x22808>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ABORT_DONE_LOCH2_ABORT_DONE>,
@@ -1959,6 +2052,7 @@
 		irq-reset-reg = <0x0 0x22c04>;
 		irq-mask-reg = <0x0 0x22c10>;
 		irq-overflow-reg = <0x0 0x22c08>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ABORT_DONE_LOCH3_ABORT_DONE>,
@@ -1975,6 +2069,7 @@
 		irq-reset-reg = <0x0 0x23004>;
 		irq-mask-reg = <0x0 0x23010>;
 		irq-overflow-reg = <0x0 0x23008>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ABORT_DONE_LOCH4_ABORT_DONE>,
@@ -1991,6 +2086,7 @@
 		irq-reset-reg = <0x0 0x23404>;
 		irq-mask-reg = <0x0 0x23410>;
 		irq-overflow-reg = <0x0 0x23408>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ABORT_DONE_LOCH5_ABORT_DONE>,
@@ -2007,6 +2103,7 @@
 		irq-reset-reg = <0x0 0x23804>;
 		irq-mask-reg = <0x0 0x23810>;
 		irq-overflow-reg = <0x0 0x23808>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ABORT_DONE_LOCH6_ABORT_DONE>,
@@ -2023,6 +2120,7 @@
 		irq-reset-reg = <0x0 0x22024>;
 		irq-mask-reg = <0x0 0x22030>;
 		irq-overflow-reg = <0x0 0x22028>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_PROC_LOCH0_SOF>,
@@ -2045,6 +2143,7 @@
 		irq-reset-reg = <0x0 0x22424>;
 		irq-mask-reg = <0x0 0x22430>;
 		irq-overflow-reg = <0x0 0x22428>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_PROC_LOCH1_SOF>,
@@ -2067,6 +2166,7 @@
 		irq-reset-reg = <0x0 0x22824>;
 		irq-mask-reg = <0x0 0x22830>;
 		irq-overflow-reg = <0x0 0x22828>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_PROC_LOCH2_SOF>,
@@ -2089,6 +2189,7 @@
 		irq-reset-reg = <0x0 0x22c24>;
 		irq-mask-reg = <0x0 0x22c30>;
 		irq-overflow-reg = <0x0 0x22c28>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_PROC_LOCH3_SOF>,
@@ -2111,6 +2212,7 @@
 		irq-reset-reg = <0x0 0x23024>;
 		irq-mask-reg = <0x0 0x23030>;
 		irq-overflow-reg = <0x0 0x23028>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_PROC_LOCH4_SOF>,
@@ -2133,6 +2235,7 @@
 		irq-reset-reg = <0x0 0x23424>;
 		irq-mask-reg = <0x0 0x23430>;
 		irq-overflow-reg = <0x0 0x23428>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_PROC_LOCH5_SOF>,
@@ -2155,6 +2258,7 @@
 		irq-reset-reg = <0x0 0x23824>;
 		irq-mask-reg = <0x0 0x23830>;
 		irq-overflow-reg = <0x0 0x23828>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_PROC_LOCH6_SOF>,
@@ -2177,6 +2281,7 @@
 		irq-reset-reg = <0x0 0x22038>;
 		irq-mask-reg = <0x0 0x22044>;
 		irq-overflow-reg = <0x0 0x2203c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ERR_LOCH0_LOST_OF_VSYNC>,
@@ -2215,6 +2320,7 @@
 		irq-reset-reg = <0x0 0x22438>;
 		irq-mask-reg = <0x0 0x22444>;
 		irq-overflow-reg = <0x0 0x2243c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ERR_LOCH1_LOST_OF_VSYNC>,
@@ -2253,6 +2359,7 @@
 		irq-reset-reg = <0x0 0x22838>;
 		irq-mask-reg = <0x0 0x22844>;
 		irq-overflow-reg = <0x0 0x2283c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ERR_LOCH2_LOST_OF_VSYNC>,
@@ -2291,6 +2398,7 @@
 		irq-reset-reg = <0x0 0x22c38>;
 		irq-mask-reg = <0x0 0x22c44>;
 		irq-overflow-reg = <0x0 0x22c3c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ERR_LOCH3_LOST_OF_VSYNC>,
@@ -2329,6 +2437,7 @@
 		irq-reset-reg = <0x0 0x23038>;
 		irq-mask-reg = <0x0 0x23044>;
 		irq-overflow-reg = <0x0 0x2303c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ERR_LOCH4_LOST_OF_VSYNC>,
@@ -2367,6 +2476,7 @@
 		irq-reset-reg = <0x0 0x23438>;
 		irq-mask-reg = <0x0 0x23444>;
 		irq-overflow-reg = <0x0 0x2343c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ERR_LOCH5_LOST_OF_VSYNC>,
@@ -2405,6 +2515,7 @@
 		irq-reset-reg = <0x0 0x23838>;
 		irq-mask-reg = <0x0 0x23844>;
 		irq-overflow-reg = <0x0 0x2383c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_ERR_LOCH6_LOST_OF_VSYNC>,
@@ -2443,6 +2554,7 @@
 		irq-reset-reg = <0x0 0x2204c>;
 		irq-mask-reg = <0x0 0x22058>;
 		irq-overflow-reg = <0x0 0x22050>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_MUTE_LOCH0_MUTE_EN>,
@@ -2457,6 +2569,7 @@
 		irq-reset-reg = <0x0 0x2244c>;
 		irq-mask-reg = <0x0 0x22458>;
 		irq-overflow-reg = <0x0 0x22450>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_MUTE_LOCH1_MUTE_EN>,
@@ -2471,6 +2584,7 @@
 		irq-reset-reg = <0x0 0x2284c>;
 		irq-mask-reg = <0x0 0x22858>;
 		irq-overflow-reg = <0x0 0x22850>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_MUTE_LOCH2_MUTE_EN>,
@@ -2485,6 +2599,7 @@
 		irq-reset-reg = <0x0 0x22c4c>;
 		irq-mask-reg = <0x0 0x22c58>;
 		irq-overflow-reg = <0x0 0x22c50>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_MUTE_LOCH3_MUTE_EN>,
@@ -2499,6 +2614,7 @@
 		irq-reset-reg = <0x0 0x2304c>;
 		irq-mask-reg = <0x0 0x23058>;
 		irq-overflow-reg = <0x0 0x23050>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_MUTE_LOCH4_MUTE_EN>,
@@ -2513,6 +2629,7 @@
 		irq-reset-reg = <0x0 0x2344c>;
 		irq-mask-reg = <0x0 0x23458>;
 		irq-overflow-reg = <0x0 0x23450>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_MUTE_LOCH5_MUTE_EN>,
@@ -2527,6 +2644,7 @@
 		irq-reset-reg = <0x0 0x2384c>;
 		irq-mask-reg = <0x0 0x23858>;
 		irq-overflow-reg = <0x0 0x23850>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_PD_MUTE_LOCH6_MUTE_EN>,
@@ -2542,6 +2660,7 @@
 		irq-reset-reg = <0x0 0x23c04>;
 		irq-mask-reg = <0x0 0x23c10>;
 		irq-overflow-reg = <0x0 0x23c08>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH0_ABORT_DONE>,
@@ -2558,6 +2677,7 @@
 		irq-reset-reg = <0x0 0x24004>;
 		irq-mask-reg = <0x0 0x24010>;
 		irq-overflow-reg = <0x0 0x24008>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH1_ABORT_DONE>,
@@ -2574,6 +2694,7 @@
 		irq-reset-reg = <0x0 0x24404>;
 		irq-mask-reg = <0x0 0x24410>;
 		irq-overflow-reg = <0x0 0x24408>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH2_ABORT_DONE>,
@@ -2590,6 +2711,7 @@
 		irq-reset-reg = <0x0 0x24804>;
 		irq-mask-reg = <0x0 0x24810>;
 		irq-overflow-reg = <0x0 0x24808>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH3_ABORT_DONE>,
@@ -2606,6 +2728,7 @@
 		irq-reset-reg = <0x0 0x24c04>;
 		irq-mask-reg = <0x0 0x24c10>;
 		irq-overflow-reg = <0x0 0x24c08>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH4_ABORT_DONE>,
@@ -2622,6 +2745,7 @@
 		irq-reset-reg = <0x0 0x25004>;
 		irq-mask-reg = <0x0 0x25010>;
 		irq-overflow-reg = <0x0 0x25008>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH5_ABORT_DONE>,
@@ -2638,6 +2762,7 @@
 		irq-reset-reg = <0x0 0x25404>;
 		irq-mask-reg = <0x0 0x25410>;
 		irq-overflow-reg = <0x0 0x25408>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH6_ABORT_DONE>,
@@ -2654,6 +2779,7 @@
 		irq-reset-reg = <0x0 0x25804>;
 		irq-mask-reg = <0x0 0x25810>;
 		irq-overflow-reg = <0x0 0x25808>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH7_ABORT_DONE>,
@@ -2670,6 +2796,7 @@
 		irq-reset-reg = <0x0 0x25c04>;
 		irq-mask-reg = <0x0 0x25c10>;
 		irq-overflow-reg = <0x0 0x25c08>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH8_ABORT_DONE>,
@@ -2686,6 +2813,7 @@
 		irq-reset-reg = <0x0 0x26004>;
 		irq-mask-reg = <0x0 0x26010>;
 		irq-overflow-reg = <0x0 0x26008>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH9_ABORT_DONE>,
@@ -2702,6 +2830,7 @@
 		irq-reset-reg = <0x0 0x26404>;
 		irq-mask-reg = <0x0 0x26410>;
 		irq-overflow-reg = <0x0 0x26408>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH10_ABORT_DONE>,
@@ -2718,6 +2847,7 @@
 		irq-reset-reg = <0x0 0x26804>;
 		irq-mask-reg = <0x0 0x26810>;
 		irq-overflow-reg = <0x0 0x26808>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH11_ABORT_DONE>,
@@ -2734,6 +2864,7 @@
 		irq-reset-reg = <0x0 0x26c04>;
 		irq-mask-reg = <0x0 0x26c10>;
 		irq-overflow-reg = <0x0 0x26c08>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH12_ABORT_DONE>,
@@ -2750,6 +2881,7 @@
 		irq-reset-reg = <0x0 0x27004>;
 		irq-mask-reg = <0x0 0x27010>;
 		irq-overflow-reg = <0x0 0x27008>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ABORT_DONE_LOCH13_ABORT_DONE>,
@@ -2766,6 +2898,7 @@
 		irq-reset-reg = <0x0 0x23c24>;
 		irq-mask-reg = <0x0 0x23c30>;
 		irq-overflow-reg = <0x0 0x23c28>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH0_SOF>,
@@ -2788,6 +2921,7 @@
 		irq-reset-reg = <0x0 0x24024>;
 		irq-mask-reg = <0x0 0x24030>;
 		irq-overflow-reg = <0x0 0x24028>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH1_SOF>,
@@ -2810,6 +2944,7 @@
 		irq-reset-reg = <0x0 0x24424>;
 		irq-mask-reg = <0x0 0x24430>;
 		irq-overflow-reg = <0x0 0x24428>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH2_SOF>,
@@ -2832,6 +2967,7 @@
 		irq-reset-reg = <0x0 0x24824>;
 		irq-mask-reg = <0x0 0x24830>;
 		irq-overflow-reg = <0x0 0x24828>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH3_SOF>,
@@ -2854,6 +2990,7 @@
 		irq-reset-reg = <0x0 0x24c24>;
 		irq-mask-reg = <0x0 0x24c30>;
 		irq-overflow-reg = <0x0 0x24c28>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH4_SOF>,
@@ -2876,6 +3013,7 @@
 		irq-reset-reg = <0x0 0x25024>;
 		irq-mask-reg = <0x0 0x25030>;
 		irq-overflow-reg = <0x0 0x25028>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH5_SOF>,
@@ -2898,6 +3036,7 @@
 		irq-reset-reg = <0x0 0x25424>;
 		irq-mask-reg = <0x0 0x25430>;
 		irq-overflow-reg = <0x0 0x25428>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH6_SOF>,
@@ -2920,6 +3059,7 @@
 		irq-reset-reg = <0x0 0x25824>;
 		irq-mask-reg = <0x0 0x25830>;
 		irq-overflow-reg = <0x0 0x25828>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH7_SOF>,
@@ -2942,6 +3082,7 @@
 		irq-reset-reg = <0x0 0x25c24>;
 		irq-mask-reg = <0x0 0x25c30>;
 		irq-overflow-reg = <0x0 0x25c28>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH8_SOF>,
@@ -2964,6 +3105,7 @@
 		irq-reset-reg = <0x0 0x26024>;
 		irq-mask-reg = <0x0 0x26030>;
 		irq-overflow-reg = <0x0 0x26028>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH9_SOF>,
@@ -2986,6 +3128,7 @@
 		irq-reset-reg = <0x0 0x26424>;
 		irq-mask-reg = <0x0 0x26430>;
 		irq-overflow-reg = <0x0 0x26428>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH10_SOF>,
@@ -3008,6 +3151,7 @@
 		irq-reset-reg = <0x0 0x26824>;
 		irq-mask-reg = <0x0 0x26830>;
 		irq-overflow-reg = <0x0 0x26828>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH11_SOF>,
@@ -3030,6 +3174,7 @@
 		irq-reset-reg = <0x0 0x26c24>;
 		irq-mask-reg = <0x0 0x26c30>;
 		irq-overflow-reg = <0x0 0x26c28>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH12_SOF>,
@@ -3052,6 +3197,7 @@
 		irq-reset-reg = <0x0 0x27024>;
 		irq-mask-reg = <0x0 0x27030>;
 		irq-overflow-reg = <0x0 0x27028>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_PROC_LOCH13_SOF>,
@@ -3074,6 +3220,7 @@
 		irq-reset-reg = <0x0 0x23c38>;
 		irq-mask-reg = <0x0 0x23c44>;
 		irq-overflow-reg = <0x0 0x23c3c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH0_LOST_OF_VSYNC>,
@@ -3112,6 +3259,7 @@
 		irq-reset-reg = <0x0 0x24038>;
 		irq-mask-reg = <0x0 0x24044>;
 		irq-overflow-reg = <0x0 0x2403c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH1_LOST_OF_VSYNC>,
@@ -3150,6 +3298,7 @@
 		irq-reset-reg = <0x0 0x24438>;
 		irq-mask-reg = <0x0 0x24444>;
 		irq-overflow-reg = <0x0 0x2443c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH2_LOST_OF_VSYNC>,
@@ -3188,6 +3337,7 @@
 		irq-reset-reg = <0x0 0x24838>;
 		irq-mask-reg = <0x0 0x24844>;
 		irq-overflow-reg = <0x0 0x2483c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH3_LOST_OF_VSYNC>,
@@ -3226,6 +3376,7 @@
 		irq-reset-reg = <0x0 0x24c38>;
 		irq-mask-reg = <0x0 0x24c44>;
 		irq-overflow-reg = <0x0 0x24c3c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH4_LOST_OF_VSYNC>,
@@ -3264,6 +3415,7 @@
 		irq-reset-reg = <0x0 0x25038>;
 		irq-mask-reg = <0x0 0x25044>;
 		irq-overflow-reg = <0x0 0x2503c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH5_LOST_OF_VSYNC>,
@@ -3302,6 +3454,7 @@
 		irq-reset-reg = <0x0 0x25438>;
 		irq-mask-reg = <0x0 0x25444>;
 		irq-overflow-reg = <0x0 0x2543c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH6_LOST_OF_VSYNC>,
@@ -3340,6 +3493,7 @@
 		irq-reset-reg = <0x0 0x25838>;
 		irq-mask-reg = <0x0 0x25844>;
 		irq-overflow-reg = <0x0 0x2583c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH7_LOST_OF_VSYNC>,
@@ -3378,6 +3532,7 @@
 		irq-reset-reg = <0x0 0x25c38>;
 		irq-mask-reg = <0x0 0x25c44>;
 		irq-overflow-reg = <0x0 0x25c3c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH8_LOST_OF_VSYNC>,
@@ -3416,6 +3571,7 @@
 		irq-reset-reg = <0x0 0x26038>;
 		irq-mask-reg = <0x0 0x26044>;
 		irq-overflow-reg = <0x0 0x2603c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH9_LOST_OF_VSYNC>,
@@ -3454,6 +3610,7 @@
 		irq-reset-reg = <0x0 0x26438>;
 		irq-mask-reg = <0x0 0x26444>;
 		irq-overflow-reg = <0x0 0x2643c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH10_LOST_OF_VSYNC>,
@@ -3492,6 +3649,7 @@
 		irq-reset-reg = <0x0 0x26838>;
 		irq-mask-reg = <0x0 0x26844>;
 		irq-overflow-reg = <0x0 0x2683c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH11_LOST_OF_VSYNC>,
@@ -3530,6 +3688,7 @@
 		irq-reset-reg = <0x0 0x26c38>;
 		irq-mask-reg = <0x0 0x26c44>;
 		irq-overflow-reg = <0x0 0x26c3c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH12_LOST_OF_VSYNC>,
@@ -3568,6 +3727,7 @@
 		irq-reset-reg = <0x0 0x27038>;
 		irq-mask-reg = <0x0 0x27044>;
 		irq-overflow-reg = <0x0 0x2703c>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_ERR_LOCH13_LOST_OF_VSYNC>,
@@ -3606,6 +3766,7 @@
 		irq-reset-reg = <0x0 0x23c4c>;
 		irq-mask-reg = <0x0 0x23c58>;
 		irq-overflow-reg = <0x0 0x23c50>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH0_MUTE_EN>,
@@ -3620,6 +3781,7 @@
 		irq-reset-reg = <0x0 0x2404c>;
 		irq-mask-reg = <0x0 0x24058>;
 		irq-overflow-reg = <0x0 0x24050>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH1_MUTE_EN>,
@@ -3634,6 +3796,7 @@
 		irq-reset-reg = <0x0 0x2444c>;
 		irq-mask-reg = <0x0 0x24458>;
 		irq-overflow-reg = <0x0 0x24450>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH2_MUTE_EN>,
@@ -3648,6 +3811,7 @@
 		irq-reset-reg = <0x0 0x2484c>;
 		irq-mask-reg = <0x0 0x24858>;
 		irq-overflow-reg = <0x0 0x24850>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH3_MUTE_EN>,
@@ -3662,6 +3826,7 @@
 		irq-reset-reg = <0x0 0x24c4c>;
 		irq-mask-reg = <0x0 0x24c58>;
 		irq-overflow-reg = <0x0 0x24c50>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH4_MUTE_EN>,
@@ -3676,6 +3841,7 @@
 		irq-reset-reg = <0x0 0x2504c>;
 		irq-mask-reg = <0x0 0x25058>;
 		irq-overflow-reg = <0x0 0x25050>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH5_MUTE_EN>,
@@ -3690,6 +3856,7 @@
 		irq-reset-reg = <0x0 0x2544c>;
 		irq-mask-reg = <0x0 0x25458>;
 		irq-overflow-reg = <0x0 0x25450>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH6_MUTE_EN>,
@@ -3704,6 +3871,7 @@
 		irq-reset-reg = <0x0 0x2584c>;
 		irq-mask-reg = <0x0 0x25858>;
 		irq-overflow-reg = <0x0 0x25850>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH7_MUTE_EN>,
@@ -3718,6 +3886,7 @@
 		irq-reset-reg = <0x0 0x25c4c>;
 		irq-mask-reg = <0x0 0x25c58>;
 		irq-overflow-reg = <0x0 0x25c50>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH8_MUTE_EN>,
@@ -3732,6 +3901,7 @@
 		irq-reset-reg = <0x0 0x2604c>;
 		irq-mask-reg = <0x0 0x26058>;
 		irq-overflow-reg = <0x0 0x26050>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH9_MUTE_EN>,
@@ -3746,6 +3916,7 @@
 		irq-reset-reg = <0x0 0x2644c>;
 		irq-mask-reg = <0x0 0x26458>;
 		irq-overflow-reg = <0x0 0x26450>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH10_MUTE_EN>,
@@ -3760,6 +3931,7 @@
 		irq-reset-reg = <0x0 0x2684c>;
 		irq-mask-reg = <0x0 0x26858>;
 		irq-overflow-reg = <0x0 0x26850>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH11_MUTE_EN>,
@@ -3774,6 +3946,7 @@
 		irq-reset-reg = <0x0 0x26c4c>;
 		irq-mask-reg = <0x0 0x26c58>;
 		irq-overflow-reg = <0x0 0x26c50>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH12_MUTE_EN>,
@@ -3788,6 +3961,7 @@
 		irq-reset-reg = <0x0 0x2704c>;
 		irq-mask-reg = <0x0 0x27058>;
 		irq-overflow-reg = <0x0 0x27050>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_VC_MUTE_LOCH13_MUTE_EN>,
@@ -3803,6 +3977,7 @@
 		irq-reset-reg = <0x0 0x27430>;
 		irq-mask-reg = <0x0 0x2743c>;
 		irq-overflow-reg = <0x0 0x27434>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_RDMA_ABORT_DONE_CTX0_ABORT_DONE>,
@@ -3819,6 +3994,7 @@
 		irq-reset-reg = <0x0 0x27830>;
 		irq-mask-reg = <0x0 0x2783c>;
 		irq-overflow-reg = <0x0 0x27834>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_RDMA_ABORT_DONE_CTX1_ABORT_DONE>,
@@ -3836,6 +4012,7 @@
 		irq-reset-reg = <0x0 0x2744c>;
 		irq-mask-reg = <0x0 0x27458>;
 		irq-overflow-reg = <0x0 0x27450>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_RDMA_PROC_CTX0_SHADOW_UPDATE>,
@@ -3852,6 +4029,7 @@
 		irq-reset-reg = <0x0 0x2784c>;
 		irq-mask-reg = <0x0 0x27858>;
 		irq-overflow-reg = <0x0 0x27850>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_RDMA_PROC_CTX1_SHADOW_UPDATE>,
@@ -3869,6 +4047,7 @@
 		irq-reset-reg = <0x0 0x27460>;
 		irq-mask-reg = <0x0 0x2746c>;
 		irq-overflow-reg = <0x0 0x27464>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_RDMA_ERR_CTX0_RDMA_ERR>,
@@ -3885,6 +4064,7 @@
 		irq-reset-reg = <0x0 0x27860>;
 		irq-mask-reg = <0x0 0x2786c>;
 		irq-overflow-reg = <0x0 0x27864>;
+		irq-type = "leaf";
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_ISP_FE_CSIS_CORE_RDMA_ERR_CTX1_RDMA_ERR>,
@@ -7300,6 +7480,9 @@
 
 		irq-events =
 			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_VOTF_LOST_FLUSH>,
+			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_COUTF02_MCSC_OVERLAP_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_COUTF02_MCSC_PIXEL_CNT_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_COUTF02_MCSC_INPUT_PROTOCOL_ERR>,
 			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_DTP_DBG_CNT_ERR>,
 			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_YUVNR_DBG_CNT_ERR>,
 			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_YUV422TO444_DBG_CNT_ERR>,
@@ -7318,9 +7501,14 @@
 			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_DEGAMMA_RGB_LINER_DBG_CNT_ERR>,
 			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_RGB2YUV420_DBG_CNT_ERR>,
 			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_RGB2YUV422_DBG_CNT_ERR>,
-			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_YUV420TO422_DBG_CNT_ERR>;
+			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_YUV420TO422_DBG_CNT_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_CCM_DBG_CNT_ERR>,
+			<LWIS_PLATFORM_EVENT_ID_BE_CORE_YUVP_INT1_CLUT_DBG_CNT_ERR>;
 		int-reg-bits =
 			<BE_CORE_YUVP_INT1_VOTF_LOST_FLUSH>,
+			<BE_CORE_YUVP_INT1_COUTF02_MCSC_OVERLAP_ERR>,
+			<BE_CORE_YUVP_INT1_COUTF02_MCSC_PIXEL_CNT_ERR>,
+			<BE_CORE_YUVP_INT1_COUTF02_MCSC_INPUT_PROTOCOL_ERR>,
 			<BE_CORE_YUVP_INT1_DTP_DBG_CNT_ERR>,
 			<BE_CORE_YUVP_INT1_YUVNR_DBG_CNT_ERR>,
 			<BE_CORE_YUVP_INT1_YUV422TO444_DBG_CNT_ERR>,
@@ -7339,7 +7527,9 @@
 			<BE_CORE_YUVP_INT1_DEGAMMA_RGB_LINER_DBG_CNT_ERR>,
 			<BE_CORE_YUVP_INT1_RGB2YUV420_DBG_CNT_ERR>,
 			<BE_CORE_YUVP_INT1_RGB2YUV422_DBG_CNT_ERR>,
-			<BE_CORE_YUVP_INT1_YUV420TO422_DBG_CNT_ERR>;
+			<BE_CORE_YUVP_INT1_YUV420TO422_DBG_CNT_ERR>,
+			<BE_CORE_YUVP_INT1_CCM_DBG_CNT_ERR>,
+			<BE_CORE_YUVP_INT1_CLUT_DBG_CNT_ERR>;
 	};
 
 	be_core_yuvp_cmdq_int: be_core-event-info@8 {

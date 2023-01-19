@@ -4,14 +4,7 @@
  *
  */
 
-/dts-v1/;
-/ {
-	/* soc revision info */
-	soc_id = <0x09865000 0x00000000>;
-};
-
 #include "zuma.dtsi"
-#include "zuma-sysmmu.dtsi"
 
 &bts_smc0 {
 	reg = <0x0 0x27C4F534 0x4>;

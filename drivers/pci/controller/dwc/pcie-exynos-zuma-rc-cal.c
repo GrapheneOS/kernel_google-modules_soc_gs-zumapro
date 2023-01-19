@@ -65,6 +65,12 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 
 		//Common Bias, PLL off
 		writel(0x0A, phy_base_regs + 0x00C);
+
+		udelay(50);
+		// External PLL gating
+		val = readl(udbg_base_regs + 0xC700) & ~BIT(0);
+		writel(val, udbg_base_regs + 0xC700);
+		udelay(10);
 	}
 	else { //PCIe GEN3 2 lane channel
 		val = readl(phy_base_regs + 0x204) & ~(0x3 << 2);
@@ -116,6 +122,10 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
 	if (exynos_pcie->ch_num == 1) { //PCIE GEN3 1 lane channel
+		// External PLL gating
+		val = readl(udbg_base_regs + 0xC700) | BIT(0);
+		writel(val, udbg_base_regs + 0xC700);
+		udelay(100);
 		writel(0x00, phy_base_regs + 0x000C);
 
 		writel(0x55, phy_base_regs + 0x0928);
@@ -652,141 +662,108 @@ EXPORT_SYMBOL_GPL(exynos_pcie_rc_pcie_phy_config);
 int exynos_pcie_rc_eom(struct device *dev, void *phy_base_regs)
 {
 	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
-	struct exynos_pcie_ops *pcie_ops = &exynos_pcie->exynos_pcie_ops;
-	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
 	struct device_node *np = dev->of_node;
 	unsigned int val;
-	unsigned int speed_rate, num_of_smpl;
+	unsigned int num_of_smpl;
 	unsigned int lane_width = 1;
+	unsigned int timeout;
 	int i, ret;
 	int test_cnt = 0;
 	struct pcie_eom_result **eom_result;
 
 	u32 phase_sweep = 0;
-	u32 phase_step = 1;
-	u32 phase_loop = 1;
 	u32 vref_sweep = 0;
-	u32 vref_step = 1;
 	u32 err_cnt = 0;
-	u32 cdr_value = 0;
-	u32 eom_done = 0;
 	u32 err_cnt_13_8;
 	u32 err_cnt_7_0;
 
-	dev_info(dev, "[%s] START!\n", __func__);
+	dev_info(dev, "Start EoM\n");
 
 	ret = of_property_read_u32(np, "num-lanes", &lane_width);
 	if (ret) {
-		dev_err(dev, "[%s] failed to get num of lane(lane width=0\n", __func__);
-		lane_width = 0;
-	} else {
-		dev_info(dev, "[%s] num-lanes : %d\n", __func__, lane_width);
+		dev_err(dev, "failed to get num of lane\n");
+		return -EINVAL;
 	}
+	dev_info(dev, "num-lanes : %d\n", lane_width);
 
 	/* eom_result[lane_num][test_cnt] */
-	eom_result = kcalloc(1, sizeof(struct pcie_eom_result *) * lane_width, GFP_KERNEL);
+	eom_result = kzalloc(sizeof(struct pcie_eom_result *) * lane_width, GFP_KERNEL);
+	if (!eom_result)
+		return -ENOMEM;
+
 	for (i = 0; i < lane_width; i++) {
-		eom_result[i] = devm_kzalloc(dev, sizeof(*eom_result[i]) *
+		eom_result[i] = kzalloc(sizeof(struct pcie_eom_result) *
 				EOM_PH_SEL_MAX * EOM_DEF_VREF_MAX, GFP_KERNEL);
-	}
-	for (i = 0; i < lane_width; i++) {
 		if (!eom_result[i]) {
-			dev_err(dev, "[%s] failed to alloc 'eom_result[%d]\n",
-				       __func__, i);
+			kfree(eom_result);
 			return -ENOMEM;
 		}
 	}
 
 	exynos_pcie->eom_result = eom_result;
 
-	pcie_ops->rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &val);
-	speed_rate = (val >> 16) & 0xf;
-
-	if (speed_rate == 1 || speed_rate == 2) {
-		dev_err(dev, "[%s] speed_rate(GEN%d) is not GEN3 or GEN4\n", __func__, speed_rate);
-		/* memory free 'eom_result' */
-		for (i = 0; i < lane_width; i++)
-			devm_kfree(dev, eom_result[i]);
-
-		return -EINVAL;
-	}
-
-	num_of_smpl = 13;
+	num_of_smpl = 0xf;
 
 	for (i = 0; i < lane_width; i++) {
-		writel(0xE7, phy_base_regs + RX_EFOM_BIT_WIDTH_SEL);
+		writel(0x21, phy_base_regs + RX_SSLMS_ADAP_HOLD_PMAD);
+		writel(0x0, phy_base_regs + RX_EFOM_MODE);
+		writel(0x0, phy_base_regs + RX_FOM_EN);
 
-		val = readl(phy_base_regs + ANA_RX_DFE_EOM_PI_STR_CTRL);
-		val |= 0xF;
-		writel(val, phy_base_regs + ANA_RX_DFE_EOM_PI_STR_CTRL);
+		writel(0x2, phy_base_regs + RX_EFOM_SETTLE_TIME);
+		writel(0xA, phy_base_regs + RX_EFOM_NUM_OF_SAMPLE);
+		writel(0x3, phy_base_regs + RX_SSLMS_ADAP_COEF_SEL_7_0);
 
-		val = readl(phy_base_regs + ANA_RX_DFE_EOM_PI_DIVSEL_G12);
-		val |= (0x4 | 0x10);
-		writel(val, phy_base_regs + ANA_RX_DFE_EOM_PI_DIVSEL_G12);
+		writel(0x27, phy_base_regs + RX_SSLMS_ADAP_HOLD_PMAD);
+		writel(0xE2, phy_base_regs + RX_EFOM_SETTLE_TIME);
+		writel(0x50, phy_base_regs + RX_EFOM_BIT_WIDTH_SEL);
+		writel(0x14, phy_base_regs + RX_EFOM_MODE);
+		writel(0x2, phy_base_regs + RX_FOM_EN);
 
-		val = readl(phy_base_regs + ANA_RX_DFE_EOM_PI_DIVSEL_G34);
-		val |= (0x4 | 0x20);	/* target sfr  changed: ANA_RC_...DIVSEL_G32 -> G34 */
-		writel(val, phy_base_regs + ANA_RX_DFE_EOM_PI_DIVSEL_G34);
+		for (phase_sweep = 0; phase_sweep < PHASE_MAX; phase_sweep++) {
+			writel(phase_sweep, phy_base_regs + RX_EFOM_EOM_PH_SEL);
 
-		val = readl(phy_base_regs + RX_CDR_LOCK) >> 2;
-		cdr_value = val & 0x1;
-		eom_done = readl(phy_base_regs + RX_EFOM_DONE) & 0x1;
-		dev_info(dev, "eom_done 0x%x , cdr_value : 0x%x\n", eom_done, cdr_value);
-
-		writel(0x0, phy_base_regs + RX_EFOM_NUMOF_SMPL_13_8);
-		writel(num_of_smpl, phy_base_regs + RX_EFOM_NUMOF_SMPL_7_0);
-
-		for (phase_sweep = 0; phase_sweep <= 0x47 * phase_loop;
-				phase_sweep = phase_sweep + phase_step) {
-			val = (phase_sweep % 72) << 1;
-			writel(val, phy_base_regs + RX_EFOM_EOM_PH_SEL);
-
-			for (vref_sweep = 0; vref_sweep <= 255;
-			     vref_sweep = vref_sweep + vref_step) {
-				/* malfunction code: writel(0x12, phy_base_regs + RX_EFOM_MODE); */
-				val = readl(phy_base_regs + RX_EFOM_MODE);
-				val &= ~(0x1f);
-				val |= (0x2 | 0x10);
-				writel(val, phy_base_regs + RX_EFOM_MODE);
+			for (vref_sweep = 0; vref_sweep < VREF_MAX; vref_sweep++) {
+				writel(0x14, phy_base_regs + RX_EFOM_MODE);
+				writel(0x2, phy_base_regs + RX_FOM_EN);
 
 				writel(vref_sweep, phy_base_regs + RX_EFOM_DFE_VREF_CTRL);
 
-				/* malfunction code:  writel(0x13, phy_base_regs + RX_EFOM_MODE); */
-				val = readl(phy_base_regs + RX_EFOM_MODE);
-				val |= 0x1;	/* value changed: 0x13 -> 0x1 */
-				writel(val, phy_base_regs + RX_EFOM_MODE);
+				writel(0x3, phy_base_regs + RX_FOM_EN);
 
-				val = readl(phy_base_regs + RX_EFOM_DONE) & 0x1;
-				while (val != 0x1) {
+				timeout = 0;
+				do {
+					if (timeout == 100) {
+						dev_err(dev, "timeout happened\n");
+						return false;
+					}
+
 					udelay(1);
-					val = readl(phy_base_regs +
-							RX_EFOM_DONE) & 0x1;
-				}
+					val = readl(phy_base_regs + RX_EFOM_DONE) & (0x1);
 
-				err_cnt_13_8 = readl(phy_base_regs +
-						MON_RX_EFOM_ERR_CNT_13_8) << 8;
-				err_cnt_7_0 = readl(phy_base_regs +
-						MON_RX_EFOM_ERR_CNT_7_0);
-				err_cnt = err_cnt_13_8 + err_cnt_7_0;
+					timeout++;
+				} while (val != 0x1);
 
-				if (vref_sweep == 128)
-					dev_info(dev, "%d,%d : %d %d %d\n", i, test_cnt,
-						 phase_sweep, vref_sweep, err_cnt);
+				err_cnt_13_8 = readl(phy_base_regs + MON_RX_EFOM_ERR_CNT_13_8) << 8;
+				err_cnt_7_0 = readl(phy_base_regs + MON_RX_EFOM_ERR_CNT_7_0);
+				err_cnt = err_cnt_13_8 | err_cnt_7_0;
 
-				/* save result */
+				dev_dbg(dev, "%d,%d : %d %d %d\n",
+					i, test_cnt, phase_sweep, vref_sweep,
+					err_cnt);
+
+				//save result
 				eom_result[i][test_cnt].phase = phase_sweep;
 				eom_result[i][test_cnt].vref = vref_sweep;
 				eom_result[i][test_cnt].err_cnt = err_cnt;
-
 				test_cnt++;
 			}
 		}
-		writel(0x21, phy_base_regs + 0xBA0); /* 0xBA0 */
-		writel(0x00, phy_base_regs + 0xCA0); /* RX_EFOM_MODE = 0xCA0 */
+		writel(0x21, phy_base_regs + RX_SSLMS_ADAP_HOLD_PMAD);
+		writel(0x0, phy_base_regs + RX_EFOM_MODE);
+		writel(0x0, phy_base_regs + RX_FOM_EN);
 
 		/* goto next lane */
-		phy_base_regs += 0x800;
+		phy_base_regs += 0x1000;
 		test_cnt = 0;
 	}
 

@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright 2023 Google LLC.
+ *
+ */
+
+/dts-v1/;
+/ {
+	/* List of SoCs that this device tree is compatible with */
+	soc_compatible {
+		A0_IPOP {
+			description = "A0,IPOP";
+			product_id = <0x09865>;
+			major = <0x0>;
+			minor = <0x0>;
+			pkg_mode = <0x1>;
+		};
+	};
+};
+
+#include "zuma-a0.dtsi"

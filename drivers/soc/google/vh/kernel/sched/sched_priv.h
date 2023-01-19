@@ -13,6 +13,7 @@
 #define DEF_UTIL_THRESHOLD  1280
 #define DEF_UTIL_POST_INIT_SCALE  512
 #define C1_EXIT_LATENCY     1
+#define PREFER_IDLE_PRIO_HIGH 110
 /*
  * For cpu running normal tasks, its uclamp.min will be 0 and uclamp.max will be 1024,
  * and the sum will be 1024. We use this as index that cpu is not running important tasks.
@@ -72,6 +73,9 @@ struct vendor_group_property {
 	bool prefer_high_cap;
 	bool task_spreading;
 	unsigned int group_throttle;
+	cpumask_t preferred_idle_mask_low;
+	cpumask_t preferred_idle_mask_mid;
+	cpumask_t preferred_idle_mask_high;
 	struct uclamp_se uc_req[UCLAMP_CNT];
 };
 
@@ -114,8 +118,7 @@ struct vendor_task_group_struct {
 ANDROID_VENDOR_CHECK_SIZE_ALIGN(u64 android_vendor_data1[4], struct vendor_task_group_struct t);
 
 extern bool vendor_sched_reduce_prefer_idle;
-
-static struct vendor_group_property vg[VG_MAX];
+extern struct vendor_group_property vg[VG_MAX];
 
 /*****************************************************************************/
 /*                       Upstream Code Section                               */

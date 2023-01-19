@@ -32,6 +32,16 @@ struct gs_pi_param {
 	bool switched_on;
 };
 
+enum pi_param {
+	SUSTAINABLE_POWER = 0,
+	K_PO = 1,
+	K_PU = 2,
+	K_I = 3,
+	I_MAX = 4,
+	INTEGRAL_CUTOFF = 5,
+	PI_ENABLE = 6
+};
+
 #define STEPWISE_GAIN_MIN 0
 #define STEPWISE_GAIN_MAX 5
 #define ACPM_GOV_TIMER_INTERVAL_MS 50
@@ -158,6 +168,7 @@ struct gs_tmu_data {
 	atomic64_t trip_counter[TRIP_LEVEL_NUM];
 	union acpm_gov_params_un acpm_gov_params;
 	u32 fvp_get_target_freq;
+	bool acpm_pi_enable;
 };
 
 enum throttling_stats_type {
@@ -365,6 +376,7 @@ struct curr_state {
 	u8 temperature;
 	u8 ctrl_temp;
 	u8 reserved;
+	u32 err_integral;
 };
 
 struct buffered_curr_state {
@@ -373,7 +385,7 @@ struct buffered_curr_state {
 	u8 cdev_state;
 	u8 temperature;
 	u8 ctrl_temp;
-	u8 reserved[4];
+	u32 err_integral;
 };
 
 struct gov_trace_data_struct {

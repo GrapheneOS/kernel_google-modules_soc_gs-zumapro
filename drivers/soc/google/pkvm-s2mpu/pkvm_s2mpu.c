@@ -16,8 +16,7 @@
 #include <linux/pm_runtime.h>
 
 #include <linux/kvm_host.h>
-#include <asm/kvm_s2mpu.h>
-
+#include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
 
 #define S2MPU_VERSION_9					0x90000000
@@ -39,6 +38,15 @@ struct s2mpu_mptc_entry {
 	u32 others;
 	u32 data;
 };
+
+/* Declare EL2 module init function as it is needed by pkvm_load_el2_module. */
+int __kvm_nvhe_s2mpu_hyp_init(const struct pkvm_module_ops *ops);
+/* Token of S2MPU driver, token is the load address of the module and a unique ID for it. */
+static unsigned long token;
+
+/* Number of s2mpu devices. */
+static int nr_devs_total;
+static atomic_t nr_devs_registered = ATOMIC_INIT(0);
 
 static struct platform_device *__of_get_phandle_pdev(struct device *parent,
 						     const char *prop, int index)
@@ -124,13 +132,11 @@ static const char *str_l1entry_gran(u32 l1attr)
 	if (!(l1attr & L1ENTRY_ATTR_L2TABLE_EN))
 		return "1G";
 
-	switch (FIELD_GET(L1ENTRY_ATTR_GRAN_MASK, l1attr)) {
+	switch (FIELD_GET(V9_L1ENTRY_ATTR_GRAN_MASK, l1attr)) {
 	case L1ENTRY_ATTR_GRAN_4K:
 		return "4K";
 	case L1ENTRY_ATTR_GRAN_64K:
 		return "64K";
-	case L1ENTRY_ATTR_GRAN_2M:
-		return "2M";
 	default:
 		return "invalid";
 	}
@@ -159,14 +165,14 @@ static struct s2mpu_mptc_entry read_mptc(void __iomem *base, u32 set, u32 way)
 {
 	struct s2mpu_mptc_entry entry;
 
-	writel_relaxed(READ_MPTC(set, way), base + REG_NS_READ_MPTC);
+	writel_relaxed(V9_READ_MPTC(set, way), base + REG_NS_V9_READ_MPTC);
 
-	entry.ppn = readl_relaxed(base + REG_NS_READ_MPTC_TAG_PPN),
-	entry.others = readl_relaxed(base + REG_NS_READ_MPTC_TAG_OTHERS),
-	entry.data = readl_relaxed(base + REG_NS_READ_MPTC_DATA),
+	entry.ppn = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_PPN),
+	entry.others = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_OTHERS),
+	entry.data = readl_relaxed(base + REG_NS_V9_READ_MPTC_DATA),
 
-	entry.valid = FIELD_GET(READ_MPTC_TAG_OTHERS_VALID_BIT, entry.others);
-	entry.vid = FIELD_GET(READ_MPTC_TAG_OTHERS_VID_MASK, entry.others);
+	entry.valid = FIELD_GET(V9_READ_MPTC_TAG_PPN_VALID_MASK, entry.ppn);
+	entry.vid = FIELD_GET(V9_READ_MPTC_TAG_OTHERS_VID_MASK, entry.others);
 	return entry;
 }
 
@@ -214,7 +220,8 @@ static irqreturn_t s2mpu_irq_handler(int irq, void *ptr)
 	}
 
 	dev_err(dev, "================== MPTC ENTRIES ==================\n");
-	nr_sets = FIELD_GET(INFO_NUM_SET_MASK, readl_relaxed(data->base + REG_NS_INFO));
+	nr_sets = FIELD_GET(V9_READ_MPTC_INFO_NUM_MPTC_SET,
+			    readl_relaxed(data->base + REG_NS_V9_MPTC_INFO));
 	for (invalid = 0, set = 0; set < nr_sets; set++) {
 		for (way = 0; way < S2MPU_NR_WAYS; way++) {
 			mptc = read_mptc(data->base, set, way);
@@ -267,11 +274,6 @@ static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
 	return platform_get_drvdata(to_platform_device(dev));
 }
 
-static u32 s2mpu_version(struct s2mpu_data *data)
-{
-	return readl_relaxed(data->base + REG_NS_VERSION);
-}
-
 /*
  * Configure Zuma S2MPU to a given set of protection bits across all GBs.
  * This is used during bring-up, until pKVM can be updated and take control.
@@ -296,13 +298,13 @@ int pkvm_s2mpu_suspend(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
 
-	if (data->pkvm_registered && !data->always_on)
+	if(data->always_on)
+		return 0;
+
+	if (data->pkvm_registered)
 		return pkvm_iommu_suspend(dev);
 
-	if (s2mpu_version(data) == S2MPU_VERSION_9)
-		return pkvm_s2mpu_zuma_config(dev, MPT_PROT_NONE);
-
-	return 0;
+	return pkvm_s2mpu_zuma_config(dev, MPT_PROT_NONE);
 }
 EXPORT_SYMBOL_GPL(pkvm_s2mpu_suspend);
 
@@ -313,11 +315,7 @@ int pkvm_s2mpu_resume(struct device *dev)
 	if (data->pkvm_registered)
 		return pkvm_iommu_resume(dev);
 
-	if (s2mpu_version(data) == S2MPU_VERSION_9)
-		return pkvm_s2mpu_zuma_config(dev, MPT_PROT_RW);
-
-	writel_relaxed(0, data->base + REG_NS_CTRL0);
-	return 0;
+	return pkvm_s2mpu_zuma_config(dev, MPT_PROT_RW);
 }
 EXPORT_SYMBOL_GPL(pkvm_s2mpu_resume);
 
@@ -357,7 +355,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct s2mpu_data *data;
 	bool off_at_boot, has_pd;
-	int ret;
+	int ret, nr_devs;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -388,22 +386,29 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 */
 	s2mpu_probe_irq(pdev, data);
 
-	if (!off_at_boot && s2mpu_version(data) == S2MPU_VERSION_9) {
-		/* Bring-up only. Control from the kernel. */
-		ret = -ENODEV;
-	} else {
-		ret = pkvm_iommu_s2mpu_register(dev, res->start);
-		if (ret && ret != -ENODEV) {
-			dev_err(dev, "could not register: %d\n", ret);
-			return ret;
-		}
+	ret = pkvm_iommu_s2mpu_register(dev, res->start);
+	if (ret && ret != -ENODEV) {
+		dev_err(dev, "could not register: %d\n", ret);
+		return ret;
 	}
 
 	data->pkvm_registered = ret != -ENODEV;
 	if (!data->pkvm_registered)
 		dev_warn(dev, "pKVM disabled, control from kernel\n");
+	else {
+		nr_devs = atomic_inc_return(&nr_devs_registered);
+		dev_info(dev, "registered with hypervisor [%d/%d]\n", nr_devs, nr_devs_total);
+	}
 
 	platform_set_drvdata(pdev, data);
+
+	if (data->pkvm_registered && nr_devs == nr_devs_total) {
+		ret = pkvm_iommu_finalize();
+		if (!ret)
+			pr_info("List of devices successfully finalized for pkvm s2mpu\n");
+		else
+			pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
+	}
 
 	/*
 	 * Most S2MPUs are in an allow-all state at boot. Call the hypervisor
@@ -440,7 +445,34 @@ static struct platform_driver s2mpu_driver = {
 	},
 };
 
-module_platform_driver(s2mpu_driver);
+static int s2mpu_driver_register(struct platform_driver *driver)
+{
+	struct device_node *np;
+	int ret = 0;
+
+	for_each_matching_node(np, driver->driver.of_match_table)
+		if (of_device_is_available(np))
+			nr_devs_total++;
+
+	/* Only try to register the driver with pKVM if pKVM is enabled. */
+	if (is_protected_kvm_enabled()) {
+		ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
+		if (ret) {
+			pr_err("Failed to load s2mpu el2 module: %d\n", ret);
+			return ret;
+		}
+
+		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION_9, token);
+		if (ret) {
+			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
+			return ret;
+		}
+	}
+
+	return platform_driver_register(driver);
+}
+
+module_driver(s2mpu_driver, s2mpu_driver_register, platform_driver_unregister);
 
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("David Brazdil <dbrazdil@google.com>");

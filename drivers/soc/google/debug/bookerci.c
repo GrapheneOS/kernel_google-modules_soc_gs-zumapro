@@ -53,6 +53,7 @@ enum node_type {
 	NODE_TYPE_RND = 0xD,
 	NODE_TYPE_RNF = 0xF,
 	NODE_TYPE_MTSX = 0x10,
+	NODE_TYPE_UNUSED = 0xFF
 };
 
 struct reg_desc {
@@ -257,13 +258,16 @@ static const char * hni_errors[] = {
 	"BRESP error and poison error"
 };
 static const char * hnf_errors[] = {
+	"Unknown",
 	"Data single-bit ECC",
 	"Data double-bit ECC",
 	"Single-bit ECC overflow",
 	"Tag single-bit ECC",
 	"Tag double-bit ECC",
+	"Unknown",
 	"SF tag single-bit ECC",
 	"SF tag double-bit ECC",
+	"Unknown",
 	"Data parity error",
 	"Data parity and poison",
 	"NDE"
@@ -275,11 +279,14 @@ static const char * hnf_optypes[] = {
 	"Other op types"
 };
 static const char * mtsx_errors[] = {
+	"Unknown",
 	"Data single-bit ECC",
 	"Data double-bit ECC",
 	"Single-bit ECC overflow",
+	"Unknown",
 	"Control single-bit ECC",
 	"Control double-bit ECC",
+	"Unknown",
 	"AXI AR Slave Error",
 	"AXI AR Decode Error",
 	"AXI AR Poison Error",
@@ -296,7 +303,7 @@ static const char * mtsx_optypes[] = {
 };
 
 static enum node_type errgsr_to_type_map[] = {
-	NODE_TYPE_XP, NODE_TYPE_HNI, NODE_TYPE_HNF, NODE_TYPE_SBSX, NODE_TYPE_MTSX
+	NODE_TYPE_XP, NODE_TYPE_HNI, NODE_TYPE_HNF, NODE_TYPE_SBSX, NODE_TYPE_UNUSED, NODE_TYPE_MTSX
 };
 
 static u64 read_bci_reg(phys_addr_t reg)

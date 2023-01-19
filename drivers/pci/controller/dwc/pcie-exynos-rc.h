@@ -313,22 +313,32 @@
 
 #define EXYNOS_IP_VER_OF_WHI   0x984500
 
-#define EOM_PH_SEL_MAX		72
-#define EOM_DEF_VREF_MAX	256
+#define EOM_PH_SEL_MAX                  128
+#define EOM_DEF_VREF_MAX                256
+#define VREF_MAX                        256
+#define PHASE_MAX                       128
 
-#define RX_CDR_LOCK			0xE0C
-#define RX_EFOM_DONE			0xE0C
-#define RX_EFOM_BIT_WIDTH_SEL		0xCA8
-#define ANA_RX_DFE_EOM_PI_STR_CTRL	0x988
-#define ANA_RX_DFE_EOM_PI_DIVSEL_G12	0x980
-#define ANA_RX_DFE_EOM_PI_DIVSEL_G34	0x984
-#define RX_EFOM_EOM_PH_SEL		0xCC4
-#define RX_EFOM_MODE			0xCA0
-#define MON_RX_EFOM_ERR_CNT_13_8	0xEBC
-#define MON_RX_EFOM_ERR_CNT_7_0		0xEC0
-#define RX_EFOM_DFE_VREF_CTRL		0xCB8
-#define RX_EFOM_NUMOF_SMPL_13_8		0xCAC
-#define RX_EFOM_NUMOF_SMPL_7_0		0xCB0
+#define RX_CDR_LOCK                     0xE0C
+#define RX_EFOM_DONE                    0x140C
+#define RX_EFOM_BIT_WIDTH_SEL           0x12AC
+#define ANA_RX_DFE_EOM_PI_STR_CTRL      0x988
+#define ANA_RX_DFE_EOM_PI_DIVSEL_G12    0x980
+#define ANA_RX_DFE_EOM_PI_DIVSEL_G32    0x984
+#define RX_FOM_EN                       0x1050
+#define RX_SSLMS_ADAP_COEF_SEL_7_0      0x119C
+#define RX_EFOM_SETTLE_TIME             0x12A8
+#define RX_EFOM_EOM_PH_SEL              0x1558
+#define RX_EFOM_MODE                    0x1548
+#define RX_SSLMS_ADAP_HOLD_PMAD         0x11A0
+#define RX_EFOM_NUM_OF_SAMPLE           0x154C
+#define RX_EFOM_NUM_OF_SAMPLE_13_8      0x154C
+#define RX_EFOM_NUM_OF_SAMPLE_7_0       0x154C
+#define MON_RX_EFOM_ERR_CNT_13_8        0x1564
+#define MON_RX_EFOM_ERR_CNT_7_0         0x1560
+#define RX_EFOM_DFE_VREF_CTRL           0x1550
+#define RX_EFOM_START                   0x1540
+#define RX_EFOM_NUMOF_SMPL_13_8         0xCAC
+#define RX_EFOM_NUMOF_SMPL_7_0          0xCB0
 
 struct pcie_eom_result {
 	unsigned int phase;

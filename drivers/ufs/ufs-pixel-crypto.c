@@ -25,10 +25,7 @@
 static void pixel_ufs_crypto_restore_keys(void *unused, struct ufs_hba *hba,
 					  int *err);
 
-static void pixel_ufs_crypto_fill_prdt(void *unused, struct ufs_hba *hba,
-				       struct ufshcd_lrb *lrbp,
-				       unsigned int segments, int *err);
-
+static int pixel_ufs_register_fill_prdt(void);
 static int pixel_ufs_register_fips_self_test(void);
 
 #define CRYPTO_DATA_UNIT_SIZE 4096
@@ -169,8 +166,7 @@ static int pixel_ufs_keyslot_evict(struct blk_crypto_profile *profile,
 }
 
 static int pixel_ufs_derive_sw_secret(struct blk_crypto_profile *profile,
-				       const u8 *wrapped_key,
-				       unsigned int wrapped_key_size,
+				       const u8 *eph_key, size_t eph_key_size,
 				       u8 sw_secret[BLK_CRYPTO_SW_SECRET_SIZE])
 {
 	struct ufs_hba *hba = container_of(profile,
@@ -180,11 +176,11 @@ static int pixel_ufs_derive_sw_secret(struct blk_crypto_profile *profile,
 
 	dev_info(ufs->dev,
 		 "kdn: deriving %u-byte raw secret from %u-byte wrapped key\n",
-		 BLK_CRYPTO_SW_SECRET_SIZE, wrapped_key_size);
+		 BLK_CRYPTO_SW_SECRET_SIZE, eph_key_size);
 
 	ret = gsa_kdn_derive_raw_secret(ufs->gsa_dev, sw_secret,
 					BLK_CRYPTO_SW_SECRET_SIZE,
-					wrapped_key, wrapped_key_size);
+					eph_key, eph_key_size);
 	if (ret != BLK_CRYPTO_SW_SECRET_SIZE) {
 		dev_err(ufs->dev, "kdn: failed to derive raw secret; ret=%d\n",
 			ret);
@@ -347,8 +343,7 @@ int pixel_ufs_crypto_init(struct ufs_hba *hba)
 	if (err)
 		return err;
 
-	err = register_trace_android_vh_ufs_fill_prdt(
-				pixel_ufs_crypto_fill_prdt, NULL);
+	err = pixel_ufs_register_fill_prdt();
 	if (err)
 		return err;
 
@@ -457,6 +452,7 @@ void pixel_ufs_crypto_resume(struct ufs_hba *hba)
 			ret);
 }
 
+#if !IS_ENABLED(CONFIG_SCSI_UFS_PIXEL_FIPS140)
 /* Configure inline encryption (or decryption) on requests that require it. */
 static void pixel_ufs_crypto_fill_prdt(void *unused, struct ufs_hba *hba,
 				       struct ufshcd_lrb *lrbp,
@@ -509,7 +505,19 @@ static void pixel_ufs_crypto_fill_prdt(void *unused, struct ufs_hba *hba,
 	lrbp->crypto_key_slot = -1;
 }
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_PIXEL_FIPS140)
+static int pixel_ufs_register_fips_self_test(void)
+{
+	return 0;
+}
+
+static int pixel_ufs_register_fill_prdt(void)
+{
+	return register_trace_android_vh_ufs_fill_prdt(
+				pixel_ufs_crypto_fill_prdt, NULL);
+}
+
+#else
+
 static void pixel_ufs_ise_self_test(void *data, struct ufs_hba *hba)
 {
 	/*
@@ -536,9 +544,10 @@ static int pixel_ufs_register_fips_self_test(void)
 	return register_trace_android_rvh_ufs_complete_init(
 		pixel_ufs_ise_self_test, NULL);
 }
-#else
-static int pixel_ufs_register_fips_self_test(void)
+
+static int pixel_ufs_register_fill_prdt(void)
 {
 	return 0;
 }
+
 #endif

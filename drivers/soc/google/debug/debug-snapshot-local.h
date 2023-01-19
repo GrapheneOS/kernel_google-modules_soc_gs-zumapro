@@ -93,7 +93,7 @@ extern struct dbg_snapshot_log_item *dbg_snapshot_log_get_item_by_index(int inde
 extern void dbg_snapshot_set_enable_log_item(const char *name, int en);
 extern int dbg_snapshot_get_dpm_none_dump_mode(void);
 extern void dbg_snapshot_set_dpm_none_dump_mode(unsigned int mode);
-extern void flush_cache_all(void);
+extern void dss_flush_cache_all(void);
 
 extern struct dbg_snapshot_log *dss_log;
 extern struct dbg_snapshot_desc dss_desc;
