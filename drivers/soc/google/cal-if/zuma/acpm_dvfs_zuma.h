@@ -20,6 +20,7 @@ enum acpm_dvfs_id {
 	MFC,
 	DISP,
 	AOC,
+	BW,
 	SPARE,
 	LPM,
 	AUR,
@@ -41,6 +42,7 @@ struct vclk acpm_vclk_list[] = {
 	CMUCAL_ACPM_VCLK(CAM, NULL, NULL, NULL, NULL),
 	CMUCAL_ACPM_VCLK(MFC, NULL, NULL, NULL, NULL),
 	CMUCAL_ACPM_VCLK(DISP, NULL, NULL, NULL, NULL),
+	CMUCAL_ACPM_VCLK(BW, NULL, NULL, NULL, NULL),
 };
 
 unsigned int acpm_vclk_size = ARRAY_SIZE(acpm_vclk_list);
