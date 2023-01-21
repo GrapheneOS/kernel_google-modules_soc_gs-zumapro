@@ -945,14 +945,14 @@ static void main_pwrwarn_irq_work(struct work_struct *work)
 	bool revisit_needed = false;
 	int i;
 	u64 micro_unit[ODPM_CHANNEL_MAX];
+	u64 measurement;
 
 	mutex_lock(&bcl_dev->main_odpm->lock);
 
-	odpm_get_lpf_values(bcl_dev->main_odpm, METER_CHANNEL_MAX, micro_unit);
+	odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		bcl_dev->main_pwr_warn_triggered[i] = (micro_unit[i] > bcl_dev->main_limit[i]);
-		if (!bcl_dev->main_pwr_warn_triggered[i])
-			dev_info(bcl_dev->device, "%s: CH%d_PWR_WARN, clear\n", __func__, i);
+		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		bcl_dev->main_pwr_warn_triggered[i] = (measurement > bcl_dev->main_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->main_pwr_warn_triggered[i];
 	}
@@ -971,14 +971,14 @@ static void sub_pwrwarn_irq_work(struct work_struct *work)
 	bool revisit_needed = false;
 	int i;
 	u64 micro_unit[ODPM_CHANNEL_MAX];
+	u64 measurement;
 
 	mutex_lock(&bcl_dev->sub_odpm->lock);
 
-	odpm_get_lpf_values(bcl_dev->sub_odpm, METER_CHANNEL_MAX, micro_unit);
+	odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		bcl_dev->sub_pwr_warn_triggered[i] = (micro_unit[i] > bcl_dev->sub_limit[i]);
-		if (!bcl_dev->sub_pwr_warn_triggered[i])
-			dev_info(bcl_dev->device, "%s: CH%d_PWR_WARN, clear\n", __func__, i);
+		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		bcl_dev->sub_pwr_warn_triggered[i] = (measurement > bcl_dev->sub_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->sub_pwr_warn_triggered[i];
 	}
@@ -1070,6 +1070,7 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	bcl_dev->sub_odpm = pdata_sub->meter;
 	bcl_dev->sub_irq_base = pdata_sub->irq_base;
 	bcl_dev->sub_pmic_i2c = sub_dev->pmic;
+	bcl_dev->sub_meter_i2c = sub_dev->meter;
 	bcl_dev->sub_dev = sub_dev->dev;
 	bcl_dev->bcl_lvl[OCP_WARN_GPU] = B2S_UPPER_LIMIT - THERMAL_HYST_LEVEL -
 			(pdata_sub->b2_ocp_warn_lvl * B2S_STEP);
@@ -1332,6 +1333,7 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 		bypass_smpl_warn = true;
 	}
 	bcl_dev->main_pmic_i2c = main_dev->pmic;
+	bcl_dev->main_meter_i2c = main_dev->meter;
 	bcl_dev->main_dev = main_dev->dev;
 	/* clear MAIN information every boot */
 	/* see b/215371539 */
@@ -1521,6 +1523,41 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 	return 0;
 }
 
+u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting)
+{
+	int rail_i;
+	s2mpg1415_meter_muxsel muxsel;
+	struct odpm_info *info;
+	const u32 one_billion = 1000000000;
+	u64 resolution_max, raw_unit;
+	u32 resolution;
+
+	if (!bcl_dev)
+		return 0;
+	if (pmic == MAIN)
+		info = bcl_dev->main_odpm;
+	else
+		info = bcl_dev->sub_odpm;
+
+	if (!info)
+		return 0;
+
+	rail_i = info->channels[idx].rail_i;
+	muxsel = info->chip.rails[rail_i].mux_select;
+	if (idx < 9) {
+		if (pmic == MAIN)
+			resolution = s2mpg14_muxsel_to_current_resolution(muxsel);
+		else
+			resolution = s2mpg15_muxsel_to_current_resolution(muxsel);
+		resolution_max = _IQ30_to_int((u64)resolution * one_billion);
+
+		return (setting << LPF_CURRENT_SHIFT) * resolution_max / one_billion;
+	} else {
+		raw_unit = EXTERNAL_RESOLUTION_VSHUNT / info->chip.rails[rail_i].shunt_uohms;
+		return (setting << LPF_CURRENT_SHIFT) * raw_unit;
+	}
+}
+
 static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 {
 	int ret, i = 0;
@@ -1565,7 +1602,10 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 		for_each_child_of_node(p_np, child) {
 			of_property_read_u32(child, "setting", &read);
 			if (i < METER_CHANNEL_MAX) {
-				bcl_dev->main_limit[i] = read;
+				bcl_dev->main_setting[i] = read;
+				meter_write(MAIN, bcl_dev, S2MPG14_METER_PWR_WARN0 + i, read);
+				bcl_dev->main_limit[i] = settings_to_current(bcl_dev, MAIN, i,
+									     read);
 				i++;
 			}
 		}
@@ -1578,7 +1618,9 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 		for_each_child_of_node(p_np, child) {
 			of_property_read_u32(child, "setting", &read);
 			if (i < METER_CHANNEL_MAX) {
-				bcl_dev->sub_limit[i] = read;
+				bcl_dev->sub_setting[i] = read;
+				meter_write(SUB, bcl_dev, S2MPG15_METER_PWR_WARN0 + i, read);
+				bcl_dev->sub_limit[i] = settings_to_current(bcl_dev, SUB, i, read);
 				i++;
 			}
 		}

@@ -66,6 +66,7 @@
 #define PMU_CLK_OUT (0x3E80)
 #define THRESHOLD_DELAY_MS 50
 #define PWRWARN_DELAY_MS 50
+#define LPF_CURRENT_SHIFT 4
 
 enum SUBSYSTEM_SOURCE {
 	CPU0,
@@ -155,6 +156,8 @@ struct bcl_device {
 
 	struct i2c_client *main_pmic_i2c;
 	struct i2c_client *sub_pmic_i2c;
+	struct i2c_client *main_meter_i2c;
+	struct i2c_client *sub_meter_i2c;
 	struct i2c_client *intf_pmic_i2c;
 
 	struct mutex ratio_lock;
@@ -194,6 +197,8 @@ struct bcl_device {
 	unsigned int tpu_clk_out;
 
 	int main_irq_base, sub_irq_base;
+	u8 main_setting[METER_CHANNEL_MAX];
+	u8 sub_setting[METER_CHANNEL_MAX];
 	u64 main_limit[METER_CHANNEL_MAX];
 	u64 sub_limit[METER_CHANNEL_MAX];
 	int main_pwr_warn_irq[METER_CHANNEL_MAX];
@@ -220,8 +225,26 @@ void bcl_enable_power(void);
 void __iomem *get_addr_by_subsystem(void *dev, const char *subsystem);
 int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
 int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
+int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
+int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
+u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting);
 #else
 struct bcl_device;
+
+static inline settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting)
+{
+	return 0;
+}
+
+static inline int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
+{
+	return 0;
+}
+
+int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
+{
+	return 0;
+}
 
 static inline int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 {
