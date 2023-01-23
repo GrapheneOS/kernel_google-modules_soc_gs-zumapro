@@ -14,6 +14,7 @@
 #include <linux/dmaengine.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/seq_file.h>
 #include <linux/spi/spi.h>
 #include <linux/gpio.h>
 #include <linux/of.h>
@@ -29,6 +30,8 @@
 #ifdef CONFIG_CPU_IDLE
 #include <soc/google/exynos-cpupm.h>
 #endif
+
+#include <linux/pinctrl/consumer.h>
 
 static LIST_HEAD(drvdata_list);
 
