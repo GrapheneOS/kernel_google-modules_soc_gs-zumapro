@@ -15,6 +15,7 @@
 #include <linux/sysrq.h>
 #include <linux/console.h>
 #include <linux/delay.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spidev.h>
 #include <linux/kthread.h>
