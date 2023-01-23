@@ -19,6 +19,7 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/gpio/driver.h>
@@ -26,6 +27,7 @@
 #include <linux/of_device.h>
 #include <linux/spinlock.h>
 #include <linux/syscore_ops.h>
+#include <linux/pinctrl/pinctrl.h>
 
 /* core.h should come from <ACK>/drivers/pinctrl */
 #include "core.h"
