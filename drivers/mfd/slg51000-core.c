@@ -14,6 +14,7 @@
 #include <linux/mfd/core.h>
 #include <linux/mfd/slg51000.h>
 #include <linux/of_gpio.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/regmap.h>
 
 #define SLG51000_CHIP_ID_LEN            3
