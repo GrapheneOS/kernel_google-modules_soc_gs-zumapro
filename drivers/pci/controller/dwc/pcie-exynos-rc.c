@@ -18,6 +18,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_address.h>
 #include <linux/pci.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/resource.h>
