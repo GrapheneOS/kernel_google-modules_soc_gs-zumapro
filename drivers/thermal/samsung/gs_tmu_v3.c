@@ -4057,12 +4057,12 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "cannot gs tmu interrupt work initialize\n");
 			goto err_thermal;
 		}
-	}
 
-	if (acpm_gov_common.turn_on)
+		if (data->use_pi_thermal)
+			kthread_init_delayed_work(&data->pi_work, gs_pi_polling);
+	} else {
 		disable_irq_nosync(data->irq);
-	else if (data->use_pi_thermal)
-		kthread_init_delayed_work(&data->pi_work, gs_pi_polling);
+	}
 
 	gs_tmu_control(pdev, true);
 
@@ -4079,7 +4079,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			start_pi_polling(data, 0);
 	}
 
-	if (acpm_gov_common.turn_on)
+	if (acpm_gov_common.turn_on) {
 		if (data->acpm_gov_params.fields.enable) {
 			data->acpm_gov_params.fields.ctrl_temp_idx =
 				data->pi_param->trip_control_temp;
@@ -4089,9 +4089,9 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			//sending an IPC to setup GOV param
 			exynos_acpm_tmu_ipc_set_gov_config(data->id, data->acpm_gov_params.qword);
 		}
-
-	if (!acpm_gov_common.turn_on)
+	} else {
 		thermal_zone_device_enable(data->tzd);
+	}
 
 	if (is_first) {
 		sync_kernel_acpm_timestamp();
