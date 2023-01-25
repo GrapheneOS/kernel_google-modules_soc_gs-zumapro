@@ -106,6 +106,7 @@ static int triggered_read_level(void *data, int *val, int id)
 						 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 				bcl_dev->bcl_prev_lvl[id] = *val;
 			}
+			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 			return -EINVAL;
 		} else
 			gpio_level = (state) ? 0 : 1;
@@ -239,6 +240,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 	if (gpio_level == polarity) {
 		/* IRQ latched */
 		if (idx == UVLO2) {
+			gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
 			if (bcl_cb_vdroop_ok(bcl_dev, &state) == 0)
 				idx = (state) ? BATOILO : UVLO2;
 		}
@@ -247,8 +249,10 @@ static irqreturn_t irq_handler(int irq, void *data)
 			ocpsmpl_read_stats(bcl_dev, &bcl_dev->bcl_stats[idx], bcl_dev->batt_psy);
 		}
 	} else {
-		if (idx == UVLO2)
+		if (idx == UVLO2) {
+			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 			update_tz(bcl_dev, BATOILO);
+		}
 	}
 	update_tz(bcl_dev, idx);
 	enable_irq(irq);
@@ -955,6 +959,8 @@ static void main_pwrwarn_irq_work(struct work_struct *work)
 		bcl_dev->main_pwr_warn_triggered[i] = (measurement > bcl_dev->main_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->main_pwr_warn_triggered[i];
+		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
+			gpio_set_value(bcl_dev->modem_gpio1_pin, 0);
 	}
 
 	mutex_unlock(&bcl_dev->main_odpm->lock);
@@ -981,6 +987,8 @@ static void sub_pwrwarn_irq_work(struct work_struct *work)
 		bcl_dev->sub_pwr_warn_triggered[i] = (measurement > bcl_dev->sub_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->sub_pwr_warn_triggered[i];
+		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
+			gpio_set_value(bcl_dev->modem_gpio1_pin, 0);
 	}
 
 	mutex_unlock(&bcl_dev->sub_odpm->lock);
@@ -1000,6 +1008,9 @@ static irqreturn_t sub_pwr_warn_irq_handler(int irq, void *data)
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
 		if (bcl_dev->sub_pwr_warn_irq[i] == irq) {
 			bcl_dev->sub_pwr_warn_triggered[i] = 1;
+			/* Check for Modem MMWAVE */
+			if ((bcl_dev->sub_pwr_warn_triggered[i]) && (i == bcl_dev->rffe_channel))
+				gpio_set_value(bcl_dev->modem_gpio1_pin, 1);
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->sub_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
@@ -1022,6 +1033,9 @@ static irqreturn_t main_pwr_warn_irq_handler(int irq, void *data)
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
 		if (bcl_dev->main_pwr_warn_irq[i] == irq) {
 			bcl_dev->main_pwr_warn_triggered[i] = 1;
+			/* Check for Modem RFFE */
+			if ((bcl_dev->main_pwr_warn_triggered[i]) && (i == bcl_dev->rffe_channel))
+				gpio_set_value(bcl_dev->modem_gpio1_pin, 1);
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->main_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
@@ -1591,6 +1605,8 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->vdroop2_pin = of_get_gpio(np, 1);
 	bcl_dev->modem_gpio1_pin = of_get_gpio(np, 2);
 	bcl_dev->modem_gpio2_pin = of_get_gpio(np, 3);
+	ret = of_property_read_u32(np, "rffe_channel", &val);
+	bcl_dev->rffe_channel = ret ? 11 : val;
 
 	/* parse ODPM main limit */
 	p_np = of_get_child_by_name(np, "main_limit");
@@ -1632,6 +1648,40 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_enable_power();
 }
 
+static int google_bcl_configure_modem(struct bcl_device *bcl_dev)
+{
+	struct pinctrl *modem_pinctrl;
+	struct pinctrl_state *batoilo_pinctrl_state, *rffe_pinctrl_state;
+	int ret;
+
+	modem_pinctrl = devm_pinctrl_get(bcl_dev->device);
+	if (IS_ERR_OR_NULL(modem_pinctrl)) {
+		dev_err(bcl_dev->device, "Cannot find modem_pinctrl!\n");
+		return -EINVAL;
+	}
+	batoilo_pinctrl_state = pinctrl_lookup_state(modem_pinctrl, "bcl-batoilo-modem");
+	if (IS_ERR_OR_NULL(batoilo_pinctrl_state)) {
+		dev_err(bcl_dev->device, "batoilo: pinctrl lookup state failed!\n");
+		return -EINVAL;
+	}
+	rffe_pinctrl_state = pinctrl_lookup_state(modem_pinctrl, "bcl-rffe-modem");
+	if (IS_ERR_OR_NULL(rffe_pinctrl_state)) {
+		dev_err(bcl_dev->device, "rffe: pinctrl lookup state failed!\n");
+		return -EINVAL;
+	}
+	ret = pinctrl_select_state(modem_pinctrl, batoilo_pinctrl_state);
+	if (ret < 0) {
+		dev_err(bcl_dev->device, "batoilo: pinctrl select state failed!!\n");
+		return -EINVAL;
+	}
+	ret = pinctrl_select_state(modem_pinctrl, rffe_pinctrl_state);
+	if (ret < 0) {
+		dev_err(bcl_dev->device, "rffe: pinctrl select state failed!!\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static int google_bcl_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -1655,6 +1705,7 @@ static int google_bcl_probe(struct platform_device *pdev)
 	google_set_sub_pmic(bcl_dev);
 	google_set_intf_pmic(bcl_dev);
 	google_bcl_parse_dtree(bcl_dev);
+	google_bcl_configure_modem(bcl_dev);
 
 	ret = google_init_fs(bcl_dev);
 	if (ret < 0)
