@@ -250,7 +250,7 @@ static ssize_t print_histogram(struct power_stats_device *ps_dev, char *buf,
 	ssize_t s = 0;
 
 	for (i = 0; i < MAX_NUM_FREQS; i++) {
-		if (hist->freq_count[i] == 0)
+		if (hist->freqs[i] == 0)
 			break;
 
 		elapsed_time = (hist->cur_freq == hist->freqs[i]) ?
