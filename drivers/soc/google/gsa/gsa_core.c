@@ -688,7 +688,7 @@ static void __exit gsa_driver_exit(void)
 }
 
 /* XXX - EPROBE_DEFER would be better. */
-#ifdef CONFIG_GSA_PKVM
+#if IS_ENABLED(CONFIG_GSA_PKVM)
 MODULE_SOFTDEP("pre: pkvm-s2mpu");
 #endif
 
