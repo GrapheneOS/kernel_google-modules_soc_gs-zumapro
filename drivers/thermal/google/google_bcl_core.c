@@ -1003,8 +1003,6 @@ static irqreturn_t sub_pwr_warn_irq_handler(int irq, void *data)
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->sub_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
-			dev_info(bcl_dev->device,
-				 "%s: CH%d_PWR_WARN, %d triggered\n", __func__, i, irq);
 			break;
 		}
 	}
@@ -1027,8 +1025,6 @@ static irqreturn_t main_pwr_warn_irq_handler(int irq, void *data)
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->main_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
-			dev_info(bcl_dev->device,
-				 "%s: CH%d_PWR_WARN, %d triggered\n", __func__, i, irq);
 			break;
 		}
 	}
