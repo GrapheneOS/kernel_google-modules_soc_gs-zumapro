@@ -2286,8 +2286,7 @@ void exynos_pcie_rc_cpl_timeout_work(struct work_struct *work)
 static void exynos_pcie_rc_use_ia(struct exynos_pcie *exynos_pcie)
 {
 	if (!exynos_pcie->use_ia) {
-		pr_info("[%s] Not support I/A(use_ia = false)\n", __func__);
-
+		pr_debug("[%s] Not support I/A(use_ia = false)\n", __func__);
 		return;
 	}
 
@@ -2742,11 +2741,11 @@ program_msi_data:
 	exynos_pcie_rc_rd_own_conf(pp, PCIE_MSI_INTR0_MASK, 4, &mask_val);
 
 	if (exynos_pcie->separated_msi) {
-		pr_info("Enable Separated MSI IRQs.\n");
+		dev_dbg(dev, "Enable Separated MSI IRQs.\n");
 		for (i = PCIE_START_SEP_MSI_VEC; i < PCIE_MAX_SEPA_IRQ_NUM; i++) {
 			if (sep_msi_vec[exynos_pcie->ch_num][i].is_used) {
 				/* Enable MSI interrupt for separated MSI. */
-				pr_info("Separated MSI%d is Enabled.\n", i);
+				dev_dbg(dev, "Separated MSI%d is Enabled.\n", i);
 				exynos_pcie_rc_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE +
 						(i * MSI_REG_CTRL_BLOCK_SIZE), 4, 0x1);
 				exynos_pcie_rc_wr_own_conf(pp, PCIE_MSI_INTR0_MASK +
@@ -2755,7 +2754,7 @@ program_msi_data:
 		}
 	}
 #if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
-	dev_info(dev, "MSI INIT: check MSI_INTR0_ENABLE(0x%x): 0x%x\n", PCIE_MSI_INTR0_ENABLE, val);
+	dev_dbg(dev, "MSI INIT: check MSI_INTR0_ENABLE(0x%x): 0x%x\n", PCIE_MSI_INTR0_ENABLE, val);
 	if (exynos_pcie->ep_device_type != EP_QC_WIFI) {
 		if (val != 0xf1) {
 			exynos_pcie_rc_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE, 4, 0xf1);
@@ -2763,7 +2762,7 @@ program_msi_data:
 		}
 	}
 
-	dev_info(dev, "MSI INIT: check MSI_INTR0_MASK(0x%x): 0x%x\n", PCIE_MSI_INTR0_MASK, mask_val);
+	dev_dbg(dev, "MSI INIT: check MSI_INTR0_MASK(0x%x): 0x%x\n", PCIE_MSI_INTR0_MASK, mask_val);
 	mask_val &= ~(val);
 	exynos_pcie_rc_wr_own_conf(pp, PCIE_MSI_INTR0_MASK, 4, mask_val);
 	udelay(1);
@@ -2777,7 +2776,7 @@ program_msi_data:
 		exynos_pcie_rc_rd_own_conf(pp, PCIE_MSI_INTR0_MASK, 4, &mask_val);
 		exynos_pcie_rc_rd_own_conf(pp, PCIE_MSI_INTR0_ENABLE, 4, &val);
 	}
-	dev_info(dev, "%s: MSI INIT END (MSI_ENABLE(0x%x)=0x%x, MSI_MASK(0x%x)=0x%x)\n",
+	dev_dbg(dev, "%s: MSI INIT END (MSI_ENABLE(0x%x)=0x%x, MSI_MASK(0x%x)=0x%x)\n",
 		__func__, PCIE_MSI_INTR0_ENABLE, val, PCIE_MSI_INTR0_MASK, mask_val);
 
 	return 0;
@@ -2865,7 +2864,7 @@ retry:
 	/* set #PERST high */
 	gpio_set_value(exynos_pcie->perst_gpio, 1);
 
-	dev_info(dev, "%s: Set PERST to HIGH, gpio val = %d\n",
+	dev_dbg(dev, "%s: Set PERST to HIGH, gpio val = %d\n",
 		__func__, gpio_get_value(exynos_pcie->perst_gpio));
 
 	usleep_range(exynos_pcie->perst_delay_us,
@@ -2904,7 +2903,7 @@ retry:
 	if (exynos_pcie->use_cache_coherency)
 		exynos_pcie_rc_set_iocc(pp, 1);
 
-	dev_info(dev, "D state: %x, LTSSM: %x\n",
+	dev_dbg(dev, "D state: %x, LTSSM: %x\n",
 		exynos_elbi_read(exynos_pcie, PCIE_PM_DSTATE) & PCIE_PM_DSTATE_MASK,
 		exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP) & PCIE_ELBI_LTSSM_STATE_MASK);
 
@@ -2973,7 +2972,7 @@ retry:
 
 		exynos_pcie_rc_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &val);
 		val = (val >> 16) & 0xf;
-		dev_info(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
+		dev_dbg(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
 			val, exynos_pcie->max_link_speed);
 
 		/* check link training result(speed) */
@@ -2992,14 +2991,14 @@ retry:
 
 				goto retry;
 			} else {
-				dev_info(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
+				dev_dbg(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
 					val, exynos_pcie->max_link_speed);
 			}
 		}
 
 		/* check L0 state one more time after link recovery */
 		count = 0;
-		dev_info(dev, "check L0 state after link recovery\n");
+		dev_dbg(dev, "check L0 state after link recovery\n");
 		while (count < MAX_TIMEOUT) {
 			val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP)
 			      & PCIE_ELBI_LTSSM_STATE_MASK;
@@ -3122,7 +3121,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 
 		power_stats_update_up(exynos_pcie);
 
-		dev_info(dev, "[%s] exynos_pcie->probe_ok : %d\n", __func__, exynos_pcie->probe_ok);
+		dev_dbg(dev, "[%s] exynos_pcie->probe_ok : %d\n", __func__, exynos_pcie->probe_ok);
 		if (!exynos_pcie->probe_ok) {
 			exynos_pcie_rc_rd_own_conf(pp, PCI_VENDOR_ID, 4, &val);
 			vendor_id = val & ID_MASK;
@@ -3256,7 +3255,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
 
 		gpio_set_value(exynos_pcie->perst_gpio, 0);
-		dev_info(dev, "%s: Set PERST to LOW, gpio val = %d\n",
+		dev_dbg(dev, "%s: Set PERST to LOW, gpio val = %d\n",
 			__func__, gpio_get_value(exynos_pcie->perst_gpio));
 
 		/* LTSSM disable */
@@ -3755,7 +3754,7 @@ int exynos_pcie_poweron(int ch_num, int spd)
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
 
-	dev_info(pci->dev, "%s requested with link speed GEN%d\n", __func__, spd);
+	dev_dbg(pci->dev, "%s requested with link speed GEN%d\n", __func__, spd);
 	exynos_pcie->max_link_speed = spd;
 
 	return exynos_pcie_rc_poweron(ch_num);
@@ -3938,8 +3937,8 @@ int exynos_pcie_register_event(struct exynos_pcie_register_event *reg)
 
 	if (pp) {
 		exynos_pcie->event_reg = reg;
-		dev_info(pci->dev, "Event 0x%x is registered for RC %d\n",
-			 reg->events, exynos_pcie->ch_num);
+		dev_dbg(pci->dev, "Event 0x%x is registered for RC %d\n",
+			reg->events, exynos_pcie->ch_num);
 	} else {
 		pr_err("PCIe: did not find RC for pci endpoint device\n");
 		ret = -ENODEV;

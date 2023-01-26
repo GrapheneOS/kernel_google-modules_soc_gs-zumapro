@@ -40,7 +40,7 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
 	u32 val;
 
-	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
+	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
 	if (exynos_pcie->ch_num == 1) { //PCIE GEN3 1 lane channel
 		val = readl(phy_base_regs + 0x204) & ~(0x3 << 2);
@@ -119,7 +119,7 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
 	u32 val;
 
-	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
+	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
 	if (exynos_pcie->ch_num == 1) { //PCIE GEN3 1 lane channel
 		// External PLL gating
@@ -239,7 +239,7 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 	u32 val;
 	u32 i;
 
-	dev_info(exynos_pcie->pci->dev, "PCIe CAL ver 0.2\n");
+	dev_dbg(exynos_pcie->pci->dev, "PCIe CAL ver 0.2\n");
 
 	if (exynos_pcie->ch_num == 1) {
 		/* I/A will be disabled in PCIe poweroff
