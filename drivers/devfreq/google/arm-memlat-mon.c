@@ -57,6 +57,8 @@ struct cpu_data {
 	unsigned long stall;
 	unsigned long l2_cachemiss;
 	unsigned long l3_cachemiss;
+	unsigned long l2_cache_wb;
+	unsigned long l3_cache_access;
 	unsigned long mem_stall;
 };
 
@@ -152,7 +154,8 @@ static DEFINE_PER_CPU(struct memlat_cpu_grp*, cpu_grp_p);
 
 int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 				      unsigned long *stall, unsigned long *l2_cachemiss,
-                                      unsigned long *l3_cachemiss, unsigned long *mem_stall)
+				      unsigned long *l3_cachemiss, unsigned long *mem_stall,
+				      unsigned long *l2_cache_wb, unsigned long *l3_cache_access)
 {
 	struct memlat_cpu_grp *cpu_grp = per_cpu(cpu_grp_p, cpu);
 	struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
@@ -163,6 +166,8 @@ int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 	*stall = cpu_data->stall;
 	*l2_cachemiss = cpu_data->l2_cachemiss;
 	*l3_cachemiss = cpu_data->l3_cachemiss;
+	*l2_cache_wb = cpu_data->l2_cache_wb;
+	*l3_cache_access = cpu_data->l3_cache_access;
 	*mem_stall = cpu_data->mem_stall;
 	spin_unlock(&cpu_data->pmu_lock);
 
@@ -256,6 +261,8 @@ static void update_counts_idle_core(struct memlat_cpu_grp *cpu_grp, int cpu)
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
 	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
+	cpu_data->l2_cache_wb = mon->miss_ev[L2_WB_IDX].last_delta;
+	cpu_data->l3_cache_access = mon->miss_ev[L3_ACCESS_IDX].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
 	spin_unlock(&cpu_data->pmu_lock);
 }
@@ -334,6 +341,8 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
 	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
+	cpu_data->l2_cache_wb = mon->miss_ev[L2_WB_IDX].last_delta;
+	cpu_data->l3_cache_access = mon->miss_ev[L3_ACCESS_IDX].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
 	spin_unlock(&cpu_data->pmu_lock);
 }
@@ -829,6 +838,20 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 		event_id = L2D_CACHE_REFILL_EV;
 	}
 	cpu_grp->common_ev_ids[L2D_CACHE_REFILL_IDX] = event_id;
+
+	ret = of_property_read_u32(dev->of_node, "l2-wb-ev", &event_id);
+	if (ret) {
+		dev_dbg(dev, "L2 cache wb event not specified. Skipping.\n");
+		event_id = L2_WB_EV;
+	}
+	cpu_grp->common_ev_ids[L2_WB_IDX] = event_id;
+
+	ret = of_property_read_u32(dev->of_node, "l3-access-ev", &event_id);
+	if (ret) {
+		dev_dbg(dev, "L3 access event not specified. Skipping.\n");
+		event_id = L3_ACCESS_EV;
+	}
+	cpu_grp->common_ev_ids[L3_ACCESS_IDX] = event_id;
 
 	num_cpus = cpumask_weight(&cpu_grp->cpus);
 	cpu_grp->cpus_data =
