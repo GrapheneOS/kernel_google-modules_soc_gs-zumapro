@@ -23,6 +23,8 @@
 	(bcl)->pmic_ops->cb_batoilo_write((bcl)->intf_pmic_i2c, v) : -ENODEV)
 #define bcl_cb_vdroop_ok(bcl, v) (((bcl)->pmic_ops && (bcl)->intf_pmic_i2c) ? \
 	(bcl)->pmic_ops->cb_get_vdroop_ok((bcl)->intf_pmic_i2c, v) : -ENODEV)
+#define bcl_cb_get_and_clr_irq(bcl, v) (((bcl)->pmic_ops && (bcl)->intf_pmic_i2c) ? \
+	(bcl)->pmic_ops->cb_get_and_clr_irq((bcl)->intf_pmic_i2c, v) : -ENODEV)
 
 /* helpers for UVLO1 and UVLO2 */
 #define bcl_cb_uvlo1_read(bcl, v)	bcl_cb_uvlo_read(bcl, UVLO1, v)
@@ -112,6 +114,7 @@ typedef int (*pmic_get_uvlo_lvl_fn)(struct i2c_client *client, uint8_t mode, uns
 typedef int (*pmic_set_batoilo_lvl_fn)(struct i2c_client *client, unsigned int lvl);
 typedef int (*pmic_get_batoilo_lvl_fn)(struct i2c_client *client, unsigned int *lvl);
 typedef int (*pmic_get_vdroop_ok_fn)(struct i2c_client *client, bool *state);
+typedef int (*pmic_get_and_clr_irq_fn)(struct i2c_client *client, u8 *irq_val);
 
 struct bcl_ifpmic_ops {
 	pmic_get_vdroop_ok_fn	cb_get_vdroop_ok;
@@ -119,6 +122,7 @@ struct bcl_ifpmic_ops {
 	pmic_get_uvlo_lvl_fn	cb_uvlo_read;
 	pmic_set_batoilo_lvl_fn	cb_batoilo_write;
 	pmic_get_batoilo_lvl_fn cb_batoilo_read;
+	pmic_get_and_clr_irq_fn cb_get_and_clr_irq;
 };
 
 struct bcl_device {

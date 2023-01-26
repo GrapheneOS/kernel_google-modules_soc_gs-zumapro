@@ -90,6 +90,7 @@ static int triggered_read_level(void *data, int *val, int id)
 	bool state = true;
 	int polarity = (id == SMPL_WARN) ? 0 : 1;
 	int gpio_level;
+	u8 irq_val = 0;
 
 	if (id == UVLO1)
 		gpio_level = gpio_get_value(bcl_dev->vdroop1_pin);
@@ -117,6 +118,10 @@ static int triggered_read_level(void *data, int *val, int id)
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 		bcl_dev->bcl_prev_lvl[id] = *val;
+
+		/* Check for any additional IRQs if vdroop2 was held high */
+		if (id == UVLO2 || id == BATOILO)
+			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
 		return 0;
 	}
 	if (id >= UVLO1 && id <= BATOILO) {
@@ -220,9 +225,11 @@ static irqreturn_t irq_handler(int irq, void *data)
 {
 	struct bcl_device *bcl_dev = data;
 	u8 idx;
+	u8 irq_val = 0;
+	int err = 0;
 	int gpio_level;
 	int polarity;
-	bool state;
+
 	if (!bcl_dev)
 		return IRQ_HANDLED;
 
@@ -239,19 +246,26 @@ static irqreturn_t irq_handler(int irq, void *data)
 
 	if (gpio_level == polarity) {
 		/* IRQ latched */
-		if (idx == UVLO2) {
+		if (idx == UVLO2)
 			gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
-			if (bcl_cb_vdroop_ok(bcl_dev, &state) == 0)
-				idx = (state) ? BATOILO : UVLO2;
-		}
+
+		if (idx >= UVLO1 && idx <= BATOILO)
+			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+
+		/* IRQ is either UVLO1, UVLO2, or BATOILO */
+		if (irq_val != 0 && err == 0)
+			idx = irq_val;
+
 		if (bcl_dev->batt_psy_initialized) {
 			atomic_inc(&bcl_dev->bcl_cnt[idx]);
 			ocpsmpl_read_stats(bcl_dev, &bcl_dev->bcl_stats[idx], bcl_dev->batt_psy);
 		}
 	} else {
+		/* IRQ falling edge */
 		if (idx == UVLO2) {
 			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 			update_tz(bcl_dev, BATOILO);
+			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
 		}
 	}
 	update_tz(bcl_dev, idx);
@@ -543,7 +557,8 @@ int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,
 
 	if (!pmic_ops || !pmic_ops->cb_get_vdroop_ok ||
 	    !pmic_ops->cb_uvlo_read || !pmic_ops->cb_uvlo_write ||
-	    !pmic_ops->cb_batoilo_read || !pmic_ops->cb_batoilo_write)
+	    !pmic_ops->cb_batoilo_read || !pmic_ops->cb_batoilo_write ||
+	    !pmic_ops->cb_get_and_clr_irq)
 		return -EINVAL;
 
 	bcl_dev->pmic_ops = pmic_ops;
