@@ -228,6 +228,9 @@
 #define REG_NS_FAULT_PA_LOW(vid)		(0x2004 + ((vid) * 0x20))
 #define REG_NS_FAULT_PA_HIGH(vid)		(0x2008 + ((vid) * 0x20))
 #define REG_NS_FAULT_INFO(vid)			(0x2010 + ((vid) * 0x20))
+#define REG_NS_FAULT_INFO1(vid)			(0x2014 + ((vid) * 0x20))
+#define REG_NS_FAULT_INFO2(vid)			(0x2018 + ((vid) * 0x20))
+
 #define REG_NS_READ_MPTC			0x3000
 #define REG_NS_READ_MPTC_TAG_PPN		0x3004
 #define REG_NS_READ_MPTC_TAG_OTHERS		0x3008
@@ -303,6 +306,8 @@
 #define FAULT_INFO_RW_BIT			BIT(20)
 #define FAULT_INFO_LEN_MASK			GENMASK(19, 16)
 #define FAULT_INFO_ID_MASK			GENMASK(15, 0)
+#define FAULT2_PMMU_ID_MASK			GENMASK(31, 24)
+#define FAULT2_STREAM_ID_MASK			GENMASK(23, 0)
 
 #define L1ENTRY_L2TABLE_ADDR_SHIFT		4
 #define L1ENTRY_L2TABLE_ADDR(pa)		((pa) >> L1ENTRY_L2TABLE_ADDR_SHIFT)
