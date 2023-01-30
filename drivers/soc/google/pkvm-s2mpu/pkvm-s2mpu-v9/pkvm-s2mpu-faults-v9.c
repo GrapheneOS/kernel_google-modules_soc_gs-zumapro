@@ -73,14 +73,16 @@ static const char *str_l1entry_prot(u32 l1attr)
 static struct s2mpu_mptc_entry read_mptc(void __iomem *base, u32 set, u32 way)
 {
 	struct s2mpu_mptc_entry entry;
+	u32 tag_ppn;
 
 	writel_relaxed(V9_READ_MPTC(set, way), base + REG_NS_V9_READ_MPTC);
 
-	entry.ppn = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_PPN),
+	tag_ppn = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_PPN),
 	entry.others = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_OTHERS),
 	entry.data = readl_relaxed(base + REG_NS_V9_READ_MPTC_DATA),
 
-	entry.valid = FIELD_GET(V9_READ_MPTC_TAG_PPN_VALID_MASK, entry.ppn);
+	entry.ppn = FIELD_GET(V9_READ_MPTC_TAG_PPN_TPN_PPN_MASK, tag_ppn);
+	entry.valid = FIELD_GET(V9_READ_MPTC_TAG_PPN_VALID_MASK, tag_ppn);
 	entry.vid = FIELD_GET(V9_READ_MPTC_TAG_OTHERS_VID_MASK, entry.others);
 	return entry;
 }
@@ -89,7 +91,9 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 {
 	struct device *dev = data->dev;
 	unsigned int vid, gb;
-	u32 vid_bmap, fault_info, fmpt, smpt, nr_sets, set, way, invalid;
+	u32 vid_bmap, fmpt, smpt, nr_sets, set, way, invalid;
+	/* Fault variables. */
+	u32 fault_info, fault_info2, axi_id, pmmu_id, stream_id;
 	phys_addr_t fault_pa;
 	struct s2mpu_mptc_entry mptc;
 	irqreturn_t ret = IRQ_NONE;
@@ -100,7 +104,11 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 
 		fault_pa = hi_lo_readq_relaxed(data->base + REG_NS_FAULT_PA_HIGH_LOW(vid));
 		fault_info = readl_relaxed(data->base + REG_NS_FAULT_INFO(vid));
+		axi_id = readl_relaxed(data->base + REG_NS_FAULT_INFO1(vid));
+		fault_info2 = readl_relaxed(data->base + REG_NS_FAULT_INFO2(vid));
 		WARN_ON(FIELD_GET(FAULT_INFO_VID_MASK, fault_info) != vid);
+		pmmu_id = FIELD_GET(FAULT2_PMMU_ID_MASK, fault_info2);
+		stream_id = FIELD_GET(FAULT2_STREAM_ID_MASK, fault_info2);
 
 		dev_err(dev, "============== S2MPU FAULT DETECTED ==============\n");
 		dev_err(dev, "  PA=%pap, FAULT_INFO=0x%08x\n",
@@ -108,10 +116,9 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 		dev_err(dev, "  DIRECTION: %s, TYPE: %s\n",
 			str_fault_direction(fault_info),
 			str_fault_type(fault_info));
-		dev_err(dev, "  VID=%u, REQ_LENGTH=%lu, REQ_AXI_ID=%lu\n",
-			vid,
-			FIELD_GET(FAULT_INFO_LEN_MASK, fault_info),
-			FIELD_GET(FAULT_INFO_ID_MASK, fault_info));
+		dev_err(dev, "  VID=%u, REQ_LENGTH=%lu, REQ_AXI_ID=%u\n",
+			vid, FIELD_GET(FAULT_INFO_LEN_MASK, fault_info), axi_id);
+		dev_err(dev, "  PMMU_ID=%u, STREAM_ID=%u\n", pmmu_id, stream_id);
 
 		for_each_gb(gb) {
 			fmpt = readl_relaxed(data->base + REG_NS_L1ENTRY_ATTR(vid, gb));
