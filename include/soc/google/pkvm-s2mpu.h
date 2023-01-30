@@ -17,6 +17,7 @@ struct s2mpu_data {
 	bool always_on;
 	bool has_sysmmu;
 	bool has_pd;
+	bool pm_ref;
 };
 
 /*

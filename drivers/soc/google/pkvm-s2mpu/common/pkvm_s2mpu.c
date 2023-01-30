@@ -55,6 +55,26 @@ static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
 	return platform_get_drvdata(to_platform_device(dev));
 }
 
+static int pkvm_s2mpu_of_link_with_cons(struct device *s2mpu)
+{
+	struct platform_device *pdev;
+	struct device_link *link;
+	int i;
+
+	/* Link all S2MPUs as suppliers to the parent. */
+	for (i = 0; (pdev = __of_get_phandle_pdev(s2mpu, "dma-cons", i)); i++) {
+		if (IS_ERR(pdev))
+			return PTR_ERR(pdev);
+
+		link = device_link_add(/*consumer=*/&pdev->dev, /*supplier=*/s2mpu,
+				       DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_PM_RUNTIME);
+		if (!link)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
 int __pkvm_s2mpu_of_link(struct device *parent)
 {
 	struct platform_device *pdev;
@@ -207,13 +227,23 @@ static int s2mpu_late_resume(struct device *dev)
 	return __pkvm_s2mpu_resume(dev);
 }
 
+static void s2mpu_sync_state(struct device *dev)
+{
+	struct s2mpu_data *data = dev_get_drvdata(dev);
+
+	/* drop extra ref count taken during probe */
+	if (data->pm_ref && !data->always_on)
+		pm_runtime_put_sync(dev);
+
+}
+
 static int s2mpu_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	struct s2mpu_data *data;
-	bool off_at_boot, has_sync;
+	bool off_at_boot, has_sync, dma_at_boot;
 	int ret, nr_devs;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -238,12 +268,16 @@ static int s2mpu_probe(struct platform_device *pdev)
 	off_at_boot = !!of_get_property(np, "off-at-boot", NULL);
 	has_sync = !!of_get_property(np, "built-in-sync", NULL);
 	data->has_pd = !!of_get_property(np, "power-domains", NULL);
+	dma_at_boot = !!of_get_property(np, "dma-cons", NULL);
 	/*
 	 * Try to parse IRQ information. This is optional as it only affects
 	 * runtime fault reporting, and therefore errors do not fail the whole
 	 * driver initialization.
 	 */
 	s2mpu_probe_irq(pdev, data);
+
+	/* If a device have a dma-cons property link it as a consumer. */
+	WARN_ON(pkvm_s2mpu_of_link_with_cons(dev));
 
 	ret = pkvm_iommu_s2mpu_register(dev, res->start, has_sync);
 	if (ret && ret != -ENODEV) {
@@ -266,13 +300,26 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 * Most S2MPUs are in an allow-all state at boot. Call the hypervisor
 	 * to initialize the S2MPU to a blocking state. This corresponds to
 	 * the state the hypervisor sets on suspend.
+	 * Some DMA masters are already operational, for those resume them
+	 * which would configure the S2MPU with the host MPT.
 	 */
-	if (!off_at_boot)
+	if (dma_at_boot)
+		WARN_ON(__pkvm_s2mpu_resume(dev));
+	else if (!off_at_boot)
 		WARN_ON(__pkvm_s2mpu_suspend(dev));
 
 	pm_runtime_enable(dev);
-	if (data->always_on)
+
+	/*
+	 * We get a reference for nodes with dma-cons as if we enabled run time pm for them, it will
+	 * cause faults and it is not safe yet to suspend them.
+	 * when the DMA device is probed it should properly configure the device and sync_state()
+	 * would put the device reference.
+	 */
+	if (data->always_on || (data->has_pd && dma_at_boot)) {
 		pm_runtime_get_sync(dev);
+		data->pm_ref = true;
+	}
 
 	return 0;
 }
@@ -293,6 +340,7 @@ static struct platform_driver s2mpu_driver = {
 		.name = "pkvm-" S2MPU_NAME,
 		.of_match_table = s2mpu_of_match,
 		.pm = &s2mpu_pm_ops,
+		.sync_state = s2mpu_sync_state,
 	},
 };
 
