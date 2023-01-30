@@ -17,6 +17,13 @@ struct s2mpu_mptc_entry {
 	u32 data;
 };
 
+struct s2mpu_ptlb_entry {
+	bool valid;
+	bool stage1_enabled;
+	u32 tag;
+	u32 ap_list;
+};
+
 static const char *str_fault_direction(u32 fault_info)
 {
 	return (fault_info & FAULT_INFO_RW_BIT) ? "write" : "read";
@@ -87,6 +94,28 @@ static struct s2mpu_mptc_entry read_mptc(void __iomem *base, u32 set, u32 way)
 	return entry;
 }
 
+static struct  s2mpu_ptlb_entry read_ptlb(void __iomem *base, int pmmu_id,
+					  int ptlb_i, int set, int way)
+{
+	struct s2mpu_ptlb_entry entry;
+
+	writel_relaxed(V9_READ_PTLB(pmmu_id, ptlb_i, set, way), base + REG_NS_V9_READ_PTLB);
+	entry.tag = readl_relaxed(base + REG_NS_V9_READ_PTLB_TAG);
+	entry.valid = FIELD_GET(V9_READ_PTLB_TAG_VALID_MASK, entry.tag);
+	entry.stage1_enabled = FIELD_GET(V9_READ_PTLB_TAG_STAGE1_ENABLED_MASK, entry.tag);
+
+	/*
+	 * Each PTLB line have one stage-1 page descriptor and corresponding access control
+	 * descriptor when storing stage-1 enabled content. Otherwise, each PTLB line have 16
+	 * access control descriptors when storing stage-1 disabled content.
+	 */
+	if (entry.stage1_enabled)
+		entry.ap_list = readl_relaxed(base + REG_NS_V9_READ_PTLB_DATA_S1_EN_PPN_AP);
+	else
+		entry.ap_list = readl_relaxed(base + REG_NS_V9_READ_PTLB_DATA_S1_DIS_AP_LIST);
+	return entry;
+}
+
 irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 {
 	struct device *dev = data->dev;
@@ -94,8 +123,12 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 	u32 vid_bmap, fmpt, smpt, nr_sets, set, way, invalid;
 	/* Fault variables. */
 	u32 fault_info, fault_info2, axi_id, pmmu_id, stream_id;
+	/* PTLB variables. */
+	u32 ptlb_num, ptlb_way, ptlb_set, ptlb_i, ptlb_info;
 	phys_addr_t fault_pa;
 	struct s2mpu_mptc_entry mptc;
+	struct s2mpu_ptlb_entry ptlb;
+
 	irqreturn_t ret = IRQ_NONE;
 
 	while ((vid_bmap = readl_relaxed(data->base + REG_NS_FAULT_STATUS))) {
@@ -151,6 +184,33 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 		}
 	}
 	dev_err(dev, "  invalid entries: %u\n", invalid);
+	dev_err(dev, "==================================================\n");
+
+	dev_err(dev, "================ PRIVATE MMU =====================\n");
+	ptlb_num = FIELD_GET(V9_READ_PMMU_INFO_NUM_PTLB,
+			     readl_relaxed(data->base + REG_NS_V9_PMMU_INFO));
+	dev_err(dev, "  Number of PTLB: %u\n", ptlb_num);
+	for (invalid = 0, ptlb_i = 0; ptlb_i < ptlb_num; ++ptlb_i) {
+		ptlb_info = readl_relaxed(data->base + REG_NS_V9_PMMU_PTLB_INFO(ptlb_i));
+		ptlb_way = FIELD_GET(V9_READ_PMMU_PTLB_INFO_NUM_WAY, ptlb_info);
+		ptlb_set = FIELD_GET(V9_READ_PMMU_PTLB_INFO_NUM_SET, ptlb_info);
+		dev_err(dev, "  PTLB[%u] number of ways %u, Number of sets %u",
+			ptlb_i, ptlb_way, ptlb_set);
+		for (set = 0; set < ptlb_set; ++set) {
+			for (way = 0; way < ptlb_way; ++way) {
+				ptlb = read_ptlb(data->base, pmmu_id, ptlb_i, set, way);
+				if (!ptlb.valid) {
+					invalid++;
+					continue;
+				}
+				dev_err(dev, "  PTLB[ptlb=%u, set=%u, way=%u]\n",
+					ptlb_i, set, way);
+				dev_err(dev, "    {TAG=%#x, STAGE1_ENABLED=%#x, DATA_AP=%#x}\n",
+					ptlb.tag, ptlb.stage1_enabled, ptlb.ap_list);
+			}
+		}
+	}
+	dev_err(dev, " Invalid entries: %u\n", invalid);
 	dev_err(dev, "==================================================\n");
 
 	return ret;
