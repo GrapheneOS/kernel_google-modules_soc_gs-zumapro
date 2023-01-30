@@ -261,8 +261,8 @@ static void update_counts_idle_core(struct memlat_cpu_grp *cpu_grp, int cpu)
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
 	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
-	cpu_data->l2_cache_wb = mon->miss_ev[L2_WB_IDX].last_delta;
-	cpu_data->l3_cache_access = mon->miss_ev[L3_ACCESS_IDX].last_delta;
+	cpu_data->l2_cache_wb = common_evs[L2_WB_IDX].last_delta;
+	cpu_data->l3_cache_access = common_evs[L3_ACCESS_IDX].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
 	spin_unlock(&cpu_data->pmu_lock);
 }
@@ -341,8 +341,8 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
 	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
-	cpu_data->l2_cache_wb = mon->miss_ev[L2_WB_IDX].last_delta;
-	cpu_data->l3_cache_access = mon->miss_ev[L3_ACCESS_IDX].last_delta;
+	cpu_data->l2_cache_wb = common_evs[L2_WB_IDX].last_delta;
+	cpu_data->l3_cache_access = common_evs[L3_ACCESS_IDX].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
 	spin_unlock(&cpu_data->pmu_lock);
 }
