@@ -2248,6 +2248,49 @@ static const struct kernel_param_ops param_ops_acpm_gov_turn_on = {
 
 module_param_cb(acpm_gov_turn_on, &param_ops_acpm_gov_turn_on, NULL, 0644);
 
+static int param_update_acpm_pi_table_set(const char *val, const struct kernel_param *kp)
+{
+	struct gs_tmu_data *data;
+
+	list_for_each_entry (data, &dtm_dev_list, node) {
+		if (data->use_pi_thermal) {
+			struct thermal_zone_device *tz = data->tzd;
+			struct gs_pi_param *params = data->pi_param;
+			struct thermal_instance *instance;
+			struct thermal_cooling_device *cdev;
+			bool found_actor = false;
+
+			list_for_each_entry (instance, &tz->thermal_instances, tz_node) {
+				if (instance->trip == params->trip_control_temp &&
+				    cdev_is_power_actor(instance->cdev)) {
+					found_actor = true;
+					cdev = instance->cdev;
+					break;
+				}
+			}
+
+			if (found_actor) {
+				int i;
+				unsigned long max_state;
+				cdev->ops->get_max_state(cdev, &max_state);
+				for (i = 0; i <= (int)max_state; i++) {
+					int power;
+					cdev->ops->state2power(cdev, i, &power);
+					exynos_acpm_tmu_ipc_set_table(data->id, i, power);
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+static const struct kernel_param_ops param_ops_update_acpm_pi_table = {
+	.set = param_update_acpm_pi_table_set,
+};
+
+module_param_cb(update_acpm_pi_table, &param_ops_update_acpm_pi_table, NULL, 0200);
+
 static ssize_t fvp_get_target_freq_show(struct device *dev, struct device_attribute *devattr,
 					char *buf)
 {
