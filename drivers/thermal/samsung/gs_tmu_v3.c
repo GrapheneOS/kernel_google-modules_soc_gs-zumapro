@@ -2639,10 +2639,14 @@ acpm_pi_enable_store(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	if (kstrtobool(buf, &data->acpm_pi_enable))
-		return -EINVAL;
+	if (data->use_pi_thermal) {
+		if (kstrtobool(buf, &data->acpm_pi_enable))
+			return -EINVAL;
 
-	exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
+	} else {
+		return -EINVAL;
+	}
 	return count;
 }
 
@@ -2652,16 +2656,22 @@ acpm_pi_table_show(struct device *dev, struct device_attribute *devattr,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
-	int i;
 	int count = 0;
-	struct thermal_zone_device *tz = data->tzd;
-	struct gs_pi_param *params = data->pi_param;
+	int i;
+	struct thermal_zone_device *tz;
+	struct gs_pi_param *params;
 	struct thermal_instance *instance;
 	struct thermal_cooling_device *cdev;
 	bool found_actor = false;
 	unsigned long max_state;
 
-	list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
+	if (!data->use_pi_thermal)
+		return 0;
+
+	tz = data->tzd;
+	params = data->pi_param;
+
+	list_for_each_entry (instance, &tz->thermal_instances, tz_node) {
 		if (instance->trip == params->trip_control_temp &&
 		    cdev_is_power_actor(instance->cdev)) {
 			found_actor = true;
@@ -2684,7 +2694,6 @@ acpm_pi_table_show(struct device *dev, struct device_attribute *devattr,
 	count += sysfs_emit_at(buf, count, "\n");
 
 	return count;
-
 }
 
 static ssize_t
@@ -2693,19 +2702,23 @@ acpm_pi_table_store(struct device *dev, struct device_attribute *devattr,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
-
 	int ret = 0;
 	char **argv;
 	int argc;
-
-	struct thermal_zone_device *tz = data->tzd;
-	struct gs_pi_param *params = data->pi_param;
+	struct thermal_zone_device *tz;
+	struct gs_pi_param *params;
 	struct thermal_instance *instance;
 	struct thermal_cooling_device *cdev;
 	bool found_actor = false;
 	unsigned long max_state;
 
-	list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
+	if (!data->use_pi_thermal)
+		return 0;
+
+	tz = data->tzd;
+	params = data->pi_param;
+
+	list_for_each_entry (instance, &tz->thermal_instances, tz_node) {
 		if (instance->trip == params->trip_control_temp &&
 		    cdev_is_power_actor(instance->cdev)) {
 			found_actor = true;
@@ -2726,7 +2739,8 @@ acpm_pi_table_store(struct device *dev, struct device_attribute *devattr,
 	cdev->ops->get_max_state(cdev, &max_state);
 	if (argc != (int)max_state + 1) {
 		ret = -EINVAL;
-		pr_err("%s: invalid args count, ret=%d, argc=%d, max_state=%d", __func__, ret, argc, (int)max_state);
+		pr_err("%s: invalid args count, ret=%d, argc=%d, max_state=%d", __func__, ret, argc,
+		       (int)max_state);
 	} else {
 		int i;
 		for (i = 0; i <= (int)max_state; i++) {
