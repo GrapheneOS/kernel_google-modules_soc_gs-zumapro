@@ -89,7 +89,6 @@ int pkvm_s2mpu_of_link(struct device *parent)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(pkvm_s2mpu_of_link);
 
 struct device *pkvm_s2mpu_of_parse(struct device *parent)
 {
@@ -101,7 +100,6 @@ struct device *pkvm_s2mpu_of_parse(struct device *parent)
 
 	return &pdev->dev;
 }
-EXPORT_SYMBOL_GPL(pkvm_s2mpu_of_parse);
 
 static irqreturn_t s2mpu_irq_handler(int irq, void *ptr)
 {
@@ -148,7 +146,6 @@ int pkvm_s2mpu_suspend(struct device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(pkvm_s2mpu_suspend);
 
 int pkvm_s2mpu_resume(struct device *dev)
 {
@@ -165,7 +162,6 @@ int pkvm_s2mpu_resume(struct device *dev)
 #endif
 	return 0;
 }
-EXPORT_SYMBOL_GPL(pkvm_s2mpu_resume);
 
 static int s2mpu_late_suspend(struct device *dev)
 {

@@ -1548,11 +1548,11 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 
 	/*Link power domain of crossponding s2mpu to this iommu instance*/
 	if (IS_ENABLED(CONFIG_PKVM_S2MPU_V9)) {
-		ret = pkvm_s2mpu_of_link(dev);
+		ret = pkvm_s2mpu_of_link_v9(dev);
 		if (ret == -EAGAIN)
 			return -EPROBE_DEFER;
 		else if (ret) {
-			dev_err(dev, "can't link with s2mpu, error %d\n", ret);
+			dev_err(dev, "can't link with s2mpu v9, error %d\n", ret);
 			return ret;
 		}
 	}
