@@ -7,7 +7,8 @@
 #include <soc/google/pkvm-s2mpu.h>
 #include <linux/io-64-nonatomic-hi-lo.h>
 
-#define S2MPU_NR_WAYS	4
+#define S2MPU_NR_WAYS		4
+#define S2MPU_STLB_LINE_SIZE	4
 
 struct s2mpu_mptc_entry {
 	bool valid;
@@ -116,6 +117,49 @@ static struct  s2mpu_ptlb_entry read_ptlb(void __iomem *base, int pmmu_id,
 	return entry;
 }
 
+static int dump_stlb_typea(struct s2mpu_data *data, int stlb_i, int set, int way)
+{
+	int tag, valid, others, stlb_data, tpn, invalid_cnt = 0;
+	struct device *dev = data->dev;
+	int subline;
+
+	for (subline  = 0 ; subline < S2MPU_STLB_LINE_SIZE ; ++subline) {
+		writel_relaxed(V9_READ_STLB_TYPEA(stlb_i, subline, set, way),
+			       data->base + REG_NS_V9_READ_STLB);
+		tag = readl_relaxed(data->base + REG_NS_V9_READ_STLB_TAG_PPN);
+		tpn = readl_relaxed(data->base + REG_NS_V9_READ_STLB_TPN);
+		valid = FIELD_GET(V9_READ_STLB_TPN_VALID_MASK, tpn);
+		others =  readl_relaxed(data->base + REG_NS_V9_READ_STLB_TAG_OTHERS);
+		stlb_data =  readl_relaxed(data->base + REG_NS_V9_READ_STLB_DATA);
+		invalid_cnt += !valid;
+		if (valid) {
+			dev_err(dev, "  STLB[set=%u, way=%u, stlb=%u, subline=%u]",
+				set, way, stlb_i, subline);
+			dev_err(dev, "     {TAG=%#x, OTHERS=%#x, DATA=%#x, TPN=%#x}\n",
+				tag, others, stlb_data, tpn);
+		}
+	}
+
+	return invalid_cnt;
+}
+
+static int dump_stlb_typeb(struct s2mpu_data *data, int stlb_i, int set, int way)
+{
+	int tag, valid, others, stlb_data;
+	struct device *dev = data->dev;
+
+	writel_relaxed(V9_READ_STLB_TYPEB(stlb_i, set, way), data->base + REG_NS_V9_READ_STLB);
+	tag = readl_relaxed(data->base + REG_NS_V9_READ_STLB_TAG_PPN);
+	valid = FIELD_GET(V9_READ_STLB_TAG_PPN_VALID_MASK_TYPEB, tag);
+	others = readl_relaxed(data->base + REG_NS_V9_READ_STLB_TAG_OTHERS);
+	stlb_data = readl_relaxed(data->base + REG_NS_V9_READ_STLB_DATA);
+	if (valid) {
+		dev_err(dev, "  STLB[set=%u, way=%u, stlb=%u]={TAG=%#x, OTHERS=%#x, DATA=%#x}\n",
+			set, way, stlb_i, tag, others, stlb_data);
+	}
+	return !valid;
+}
+
 irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 {
 	struct device *dev = data->dev;
@@ -125,6 +169,8 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 	u32 fault_info, fault_info2, axi_id, pmmu_id, stream_id;
 	/* PTLB variables. */
 	u32 ptlb_num, ptlb_way, ptlb_set, ptlb_i, ptlb_info;
+	/* STLB variables. */
+	u32 stlb_i, stlb_num, stlb_info, stlb_way, stlb_set;
 	phys_addr_t fault_pa;
 	struct s2mpu_mptc_entry mptc;
 	struct s2mpu_ptlb_entry ptlb;
@@ -211,6 +257,28 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 		}
 	}
 	dev_err(dev, " Invalid entries: %u\n", invalid);
+	dev_err(dev, "==================================================\n");
+
+	dev_err(dev, "============= STLB ENTRIES TYPE %c ===============\n",
+		'B' - data->has_sysmmu);
+	stlb_num = FIELD_GET(V9_SWALKER_INFO_NUM_STLB_MASK,
+			     readl_relaxed(data->base + REG_NS_V9_SWALKER_INFO));
+	dev_err(dev, "================== Num of STLBs %u ================\n", stlb_num);
+	for (invalid = 0, stlb_i = 0 ; stlb_i < stlb_num ; ++stlb_i) {
+		stlb_info = readl_relaxed(data->base + REG_NS_V9_STLB_INFO(stlb_i));
+		stlb_set = FIELD_GET(V9_READ_SLTB_INFO_SET_MASK, stlb_info);
+		stlb_way = FIELD_GET(V9_READ_SLTB_INFO_WAY_MASK, stlb_info);
+		dev_err(dev, "Number of ways %u, Number of sets %u", stlb_way, stlb_set);
+		for (set = 0 ; set < stlb_set ; ++set) {
+			for (way = 0 ; way < stlb_way ; ++way) {
+				if (data->has_sysmmu)
+					invalid += dump_stlb_typea(data, stlb_i, set, way);
+				else
+					invalid += dump_stlb_typeb(data, stlb_i, set, way);
+			}
+		}
+	}
+	dev_err(dev, "  Invalid entries: %u\n", invalid);
 	dev_err(dev, "==================================================\n");
 
 	return ret;

@@ -47,10 +47,16 @@ static struct platform_device *__of_get_phandle_pdev(struct device *parent,
 	return pdev;
 }
 
+static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
+{
+	return platform_get_drvdata(to_platform_device(dev));
+}
+
 int pkvm_s2mpu_of_link(struct device *parent)
 {
 	struct platform_device *pdev;
 	struct device_link *link;
+	struct s2mpu_data *data;
 	int i;
 
 	/* Check that all S2MPUs have been initialized. */
@@ -69,6 +75,16 @@ int pkvm_s2mpu_of_link(struct device *parent)
 
 		link = device_link_add(/*consumer=*/parent, /*supplier=*/&pdev->dev,
 				       DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_PM_RUNTIME);
+
+		/*
+		 * If device has an SysMMU, it has typeA STLB.
+		 * This relies on SysMMU nodes not being disabled so the at probe this function
+		 * would be called.
+		 */
+		data  = s2mpu_dev_data(&pdev->dev);
+		if (data && of_device_is_compatible(parent->of_node, "samsung,sysmmu-v9"))
+			data->has_sysmmu = true;
+
 		if (!link)
 			return -EINVAL;
 	}
@@ -120,11 +136,6 @@ static void s2mpu_probe_irq(struct platform_device *pdev, struct s2mpu_data *dat
 		dev_err(&pdev->dev, "failed to register IRQ, IRQ not enabled");
 		return;
 	}
-}
-
-static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
-{
-	return platform_get_drvdata(to_platform_device(dev));
 }
 
 /*
@@ -262,6 +273,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 			pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
 	}
 
+	data->has_sysmmu = false;
 	/*
 	 * Most S2MPUs are in an allow-all state at boot. Call the hypervisor
 	 * to initialize the S2MPU to a blocking state. This corresponds to
