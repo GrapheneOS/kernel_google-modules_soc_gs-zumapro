@@ -933,7 +933,11 @@ static void main_pwrwarn_irq_work(struct work_struct *work)
 
 	odpm_get_raw_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		const int rail_i = bcl_dev->main_odpm->channels[i].rail_i;
+		if (bcl_dev->main_odpm->chip.rails[rail_i].type == ODPM_RAIL_TYPE_SHUNT)
+			measurement = micro_unit[i];
+		else
+			measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
 		bcl_dev->main_pwr_warn_triggered[i] = (measurement > bcl_dev->main_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->main_pwr_warn_triggered[i];
@@ -961,7 +965,11 @@ static void sub_pwrwarn_irq_work(struct work_struct *work)
 
 	odpm_get_raw_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		const int rail_i = bcl_dev->sub_odpm->channels[i].rail_i;
+		if (bcl_dev->sub_odpm->chip.rails[rail_i].type == ODPM_RAIL_TYPE_SHUNT)
+			measurement = micro_unit[i];
+		else
+			measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
 		bcl_dev->sub_pwr_warn_triggered[i] = (measurement > bcl_dev->sub_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->sub_pwr_warn_triggered[i];
