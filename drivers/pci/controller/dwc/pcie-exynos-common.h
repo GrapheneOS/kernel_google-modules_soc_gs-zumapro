@@ -271,6 +271,7 @@ struct exynos_pcie {
 	int			idle_ip_index;
 	int			separated_msi;
 	bool			use_msi;
+	bool			support_msi64_addressing;
 	bool			use_cache_coherency;
 	bool			use_sicd;
 	bool			use_pcieon_sleep;

@@ -1557,7 +1557,7 @@ static int exynos_pcie_rc_parse_dt(struct device *dev, struct exynos_pcie *exyno
 	struct device_node *syscon_np;
 	struct resource res;
 	const char *use_cache_coherency;
-	const char *use_msi;
+	const char *use_msi, *support_msi64_addressing;
 	const char *use_sicd;
 	const char *use_sysmmu;
 	const char *use_ia;
@@ -1656,6 +1656,21 @@ static int exynos_pcie_rc_parse_dt(struct device *dev, struct exynos_pcie *exyno
 		exynos_pcie->use_msi = false;
 	}
 
+	if (exynos_pcie->use_msi &&
+	    !of_property_read_string(np, "support-msi64-addressing", &support_msi64_addressing)) {
+		if (!strcmp(support_msi64_addressing, "true")) {
+			exynos_pcie->support_msi64_addressing = true;
+			dev_info(dev, "Support for 64-bit MSI addressing is ENABLED.\n");
+		} else if (!strcmp(support_msi64_addressing, "false")) {
+			dev_info(dev, "## PCIe don't support 64-bit MSI addressing\n");
+			exynos_pcie->support_msi64_addressing = false;
+		} else {
+			dev_err(dev, "Invalid support-msi64-addressing value(Set to default->true)\n");
+			exynos_pcie->support_msi64_addressing = true;
+		}
+	} else {
+		exynos_pcie->support_msi64_addressing = false;
+	}
 
 	/* Even if MSI is enabled, we need to set msi_irq to -ENODEV.
 	 * This ensures that the core pci driver doesn't register the msi_irq in
@@ -4447,6 +4462,23 @@ skip_sep_request_irq:
 		if (ret) {
 			dev_err(&pdev->dev, "Failed to set DMA mask to 32-bit.");
 		}
+	}
+
+	if (exynos_pcie->support_msi64_addressing) {
+		/* Setup MSI flags */
+		u16 cap;
+		u8 offset;
+
+		dw_pcie_dbi_ro_wr_en(exynos_pcie->pci);
+		offset = dw_pcie_find_capability(exynos_pcie->pci, PCI_CAP_ID_MSI);
+		cap = dw_pcie_readw_dbi(exynos_pcie->pci, offset + PCI_MSI_FLAGS);
+
+		/* Enable MSI with 64-bit support */
+		cap |= PCI_MSI_FLAGS_ENABLE | PCI_MSI_FLAGS_64BIT;
+		dw_pcie_writew_dbi(exynos_pcie->pci, offset + PCI_MSI_FLAGS, cap);
+		dw_pcie_dbi_ro_wr_dis(exynos_pcie->pci);
+
+		dev_dbg(&pdev->dev, "MSI is supported with 64-bit mask.\n");
 	}
 
 	ret = dw_pcie_host_init(pp);
