@@ -9,6 +9,12 @@ struct dsulat_node {
 	unsigned int ratio_ceil_cl0;
 	unsigned int ratio_ceil_cl1;
 	unsigned int ratio_ceil_cl2;
+	unsigned int wb_pct_thres_cl0;
+	unsigned int wb_pct_thres_cl1;
+	unsigned int wb_pct_thres_cl2;
+	unsigned int wb_filter_ratio_cl0;
+	unsigned int wb_filter_ratio_cl1;
+	unsigned int wb_filter_ratio_cl2;
 	unsigned int stall_floor;
 	bool mon_started;
 	bool already_zero;

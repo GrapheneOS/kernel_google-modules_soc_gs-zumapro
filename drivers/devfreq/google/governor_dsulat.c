@@ -207,10 +207,10 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 {
 	int cpu;
 	unsigned long inst, cyc, stall, l2_cachemiss, l3_cachemiss, freq, mem_stall, mem_count;
-	unsigned long l2_cache_wb, l3_cache_access;
+	unsigned long l2_cache_wb, l3_cache_access, wb_pct;
 	struct dsulat_node *node = df->data;
 	unsigned long max_freq = 0, dsu_freq = 0;
-	unsigned int ratio, ratio_ceil;
+	unsigned int ratio, ratio_ceil, wb_pct_thres, wb_filter_ratio;
 	int ret;
 
 	/*
@@ -241,6 +241,8 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 		else
 			ratio = inst;
 
+		wb_pct = mult_frac(100, l2_cache_wb, l3_cache_access);
+
 		if (!freq)
 			continue;
 		trace_dsulat_dev_meas(dev_name(df->dev.parent),
@@ -249,17 +251,29 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 					l2_cachemiss,
 					freq,
 					stall,
+					l2_cache_wb,
+					l3_cache_access,
+					wb_pct,
 					mem_stall, ratio);
 
-		if (cpu < CONFIG_VH_MID_CAPACITY_CPU)
+		if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
 			ratio_ceil = node->ratio_ceil_cl0;
-		else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU)
+			wb_pct_thres = node->wb_pct_thres_cl0;
+			wb_filter_ratio = node->wb_filter_ratio_cl0;
+		} else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
 			ratio_ceil = node->ratio_ceil_cl1;
-		else
+			wb_pct_thres = node->wb_pct_thres_cl1;
+			wb_filter_ratio = node->wb_filter_ratio_cl1;
+		} else {
 			ratio_ceil = node->ratio_ceil_cl2;
+			wb_pct_thres = node->wb_pct_thres_cl2;
+			wb_filter_ratio = node->wb_filter_ratio_cl2;
+		}
 
-		if (ratio <= ratio_ceil
-			&& stall >= node->stall_floor) {
+		if ((ratio <= ratio_ceil
+			&& stall >= node->stall_floor) ||
+			(wb_pct >= wb_pct_thres
+			 && ratio <= wb_filter_ratio)) {
 			dsu_freq = core_to_dev_freq(cpu, node, freq);
 			if (!max_freq || dsu_freq > max_freq) {
 				max_freq = dsu_freq;
@@ -269,6 +283,9 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 							l2_cachemiss,
 							freq,
 							stall,
+							l2_cache_wb,
+							l3_cache_access,
+							wb_pct,
 							mem_stall,
 							max_freq);
 			}
@@ -294,6 +311,30 @@ show_attr(ratio_ceil_cl2)
 store_attr(ratio_ceil_cl2, 1U, 20000U)
 static DEVICE_ATTR(ratio_ceil_cl2, 0644, show_ratio_ceil_cl2, store_ratio_ceil_cl2);
 
+show_attr(wb_pct_thres_cl0)
+store_attr(wb_pct_thres_cl0, 1U, 100U)
+static DEVICE_ATTR(wb_pct_thres_cl0, 0644, show_wb_pct_thres_cl0, store_wb_pct_thres_cl0);
+
+show_attr(wb_pct_thres_cl1)
+store_attr(wb_pct_thres_cl1, 1U, 100U)
+static DEVICE_ATTR(wb_pct_thres_cl1, 0644, show_wb_pct_thres_cl1, store_wb_pct_thres_cl1);
+
+show_attr(wb_pct_thres_cl2)
+store_attr(wb_pct_thres_cl2, 1U, 100U)
+static DEVICE_ATTR(wb_pct_thres_cl2, 0644, show_wb_pct_thres_cl2, store_wb_pct_thres_cl2);
+
+show_attr(wb_filter_ratio_cl0)
+store_attr(wb_filter_ratio_cl0, 1U, 50000U)
+static DEVICE_ATTR(wb_filter_ratio_cl0, 0644, show_wb_filter_ratio_cl0, store_wb_filter_ratio_cl0);
+
+show_attr(wb_filter_ratio_cl1)
+store_attr(wb_filter_ratio_cl1, 1U, 50000U)
+static DEVICE_ATTR(wb_filter_ratio_cl1, 0644, show_wb_filter_ratio_cl1, store_wb_filter_ratio_cl1);
+
+show_attr(wb_filter_ratio_cl2)
+store_attr(wb_filter_ratio_cl2, 1U, 50000U)
+static DEVICE_ATTR(wb_filter_ratio_cl2, 0644, show_wb_filter_ratio_cl2, store_wb_filter_ratio_cl2);
+
 show_attr(stall_floor)
 store_attr(stall_floor, 0U, 100U)
 static DEVICE_ATTR(stall_floor, 0644, show_stall_floor, store_stall_floor);
@@ -302,6 +343,12 @@ static struct attribute *dsulat_dev_attr[] = {
 	&dev_attr_ratio_ceil_cl0.attr,
 	&dev_attr_ratio_ceil_cl1.attr,
 	&dev_attr_ratio_ceil_cl2.attr,
+	&dev_attr_wb_pct_thres_cl0.attr,
+	&dev_attr_wb_pct_thres_cl1.attr,
+	&dev_attr_wb_pct_thres_cl2.attr,
+	&dev_attr_wb_filter_ratio_cl0.attr,
+	&dev_attr_wb_filter_ratio_cl1.attr,
+	&dev_attr_wb_filter_ratio_cl2.attr,
 	&dev_attr_stall_floor.attr,
 	&dev_attr_freq_map.attr,
 	NULL,
