@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0
-config DMABUF_HEAPS_DEFERRED_FREE
-	tristate
 
 config DMABUF_HEAPS_PAGE_POOL
 	tristate
