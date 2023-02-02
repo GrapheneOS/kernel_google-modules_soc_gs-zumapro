@@ -499,6 +499,22 @@
 		samsung,tzmp;
 	};
 
+	drmdp_adma: drmdp-adma {
+		status = "disabled";
+		compatible = "samsung,displayport-adma";
+		samsung,dp_tx_addr = <0x110F0000>;
+	};
+
+	drmdp_adma_pb: drmdp-adma-pb {
+		#sound-dai-cells = <0>;
+		compatible = "samsung,dp-dma";
+		id = <0>; /* 0: playback, 1: capture */
+
+		dmas = <&pdma0 30>;
+		dma-names = "tx";
+		samsung,fifo_addr = <0x110F5818>;
+	};
+
 	drmdecon0: drmdecon@0x19470000 {
 		compatible = "samsung,exynos-decon";
 		reg = <0x0 0x19470000 0x6000>,	/* DECON0_MAIN */
