@@ -248,4 +248,11 @@
 		alloc-ranges = <0x0 0x80000000 0x80000000>;
 		alignment = <0x0 0x00010000>;
 	};
+
+	dpado_mem: dpado-rmem {
+		compatible = "exynos,dp_ado_rmem";
+		size = <0x200000>; //1MB for each(playback, capture)
+		alloc-ranges = <0x0 0x80000000 0x80000000>;
+		alignment = <0x0 0x00010000>;
+	};
 };
