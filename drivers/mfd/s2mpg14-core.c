@@ -476,14 +476,12 @@ err_w_lock:
 	return ret;
 }
 
-static int s2mpg14_i2c_remove(struct i2c_client *i2c)
+static void s2mpg14_i2c_remove(struct i2c_client *i2c)
 {
 	struct s2mpg14_dev *s2mpg14 = i2c_get_clientdata(i2c);
 
 	mfd_remove_devices(s2mpg14->dev);
 	i2c_unregister_device(s2mpg14->i2c);
-
-	return 0;
 }
 
 static const struct i2c_device_id s2mpg14_i2c_id[] = {
