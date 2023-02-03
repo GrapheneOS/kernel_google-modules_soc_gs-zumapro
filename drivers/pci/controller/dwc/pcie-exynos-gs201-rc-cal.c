@@ -344,7 +344,7 @@ int exynos_pcie_rc_eom(struct device *dev, void *phy_base_regs)
 	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
 	struct exynos_pcie_ops *pcie_ops = &exynos_pcie->exynos_pcie_ops;
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct device_node *np = dev->of_node;
 	unsigned int val;
 	unsigned int speed_rate, num_of_smpl;
@@ -483,7 +483,7 @@ int exynos_pcie_rc_eom(struct device *dev, void *phy_base_regs)
 	return 0;
 }
 
-void exynos_pcie_rc_phy_init(struct pcie_port *pp)
+void exynos_pcie_rc_phy_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
