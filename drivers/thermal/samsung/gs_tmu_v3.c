@@ -749,9 +749,9 @@ static int gs_get_trend(void *p, int trip, enum thermal_trend *trend)
 		*trend = THERMAL_TREND_STABLE;
 	} else {
 		if (tz->temperature >= trip_temp)
-			*trend = THERMAL_TREND_RAISE_FULL;
+			*trend = THERMAL_TREND_RAISING;
 		else
-			*trend = THERMAL_TREND_DROP_FULL;
+			*trend = THERMAL_TREND_DROPPING;
 	}
 
 	return 0;
