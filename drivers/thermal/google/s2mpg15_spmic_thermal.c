@@ -212,9 +212,9 @@ err:
 /*
  * Get temperature for given tz.
  */
-static int s2mpg15_spmic_thermal_get_temp(void *data, int *temp)
+static int s2mpg15_spmic_thermal_get_temp(struct thermal_zone_device *tz, int *temp)
 {
-	struct s2mpg15_spmic_thermal_sensor *s = data;
+	struct s2mpg15_spmic_thermal_sensor *s = tz->devdata;
 	struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal = s->chip;
 	int raw, ret = 0;
 	u8 mask = 0x1;
@@ -253,10 +253,10 @@ err_exit:
 /*
  * Set monitor window for given tz.
  */
-static int s2mpg15_spmic_thermal_set_trips(void *data, int low_temp,
+static int s2mpg15_spmic_thermal_set_trips(struct thermal_zone_device *tz, int low_temp,
 					 int high_temp)
 {
-	struct s2mpg15_spmic_thermal_sensor *s = data;
+	struct s2mpg15_spmic_thermal_sensor *s = tz->devdata;
 	struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal = s->chip;
 	struct device *dev = s2mpg15_spmic_thermal->dev;
 	int emul_temp, low_volt, high_volt, ret = 0;
@@ -315,9 +315,9 @@ s2mpg15_spmic_thermal_set_hot_trip(struct s2mpg15_spmic_thermal_sensor *s, int t
  * Set temperature threshold for given tz, only critical threshold will be
  * programmed as shutdown threshold.
  */
-static int s2mpg15_spmic_thermal_set_trip_temp(void *data, int trip, int temp)
+static int s2mpg15_spmic_thermal_set_trip_temp(struct thermal_zone_device *tz, int trip, int temp)
 {
-	struct s2mpg15_spmic_thermal_sensor *s = data;
+	struct s2mpg15_spmic_thermal_sensor *s = tz->devdata;
 	const struct thermal_trip *trip_points;
 	int ret = 0;
 
@@ -340,9 +340,9 @@ static int s2mpg15_spmic_thermal_set_trip_temp(void *data, int trip, int temp)
 /*
  * Set emulation temperture for given tz.
  */
-static int s2mpg15_spmic_thermal_set_emul_temp(void *data, int temp)
+static int s2mpg15_spmic_thermal_set_emul_temp(struct thermal_zone_device *tz, int temp)
 {
-	struct s2mpg15_spmic_thermal_sensor *sensor = data;
+	struct s2mpg15_spmic_thermal_sensor *sensor = tz->devdata;
 	int ret = 0;
 	u8 value, mask = 0x1;
 
@@ -384,7 +384,7 @@ s2mpg15_spmic_thermal_init(struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_ther
 	}
 }
 
-static struct thermal_zone_of_device_ops s2mpg15_spmic_thermal_ops = {
+static struct thermal_zone_device_ops s2mpg15_spmic_thermal_ops = {
 	.get_temp = s2mpg15_spmic_thermal_get_temp,
 	.set_trips = s2mpg15_spmic_thermal_set_trips,
 	.set_trip_temp = s2mpg15_spmic_thermal_set_trip_temp,
@@ -505,7 +505,7 @@ s2mpg15_spmic_thermal_unregister_tzd(struct s2mpg15_spmic_thermal_chip *chip)
 
 	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
 		dev_info(dev, "Unregistering %d sensor\n", i);
-		devm_thermal_zone_of_sensor_unregister(chip->dev,
+		devm_thermal_of_zone_unregister(chip->dev,
 						       chip->sensor[i].tzd);
 	}
 }
@@ -524,7 +524,7 @@ s2mpg15_spmic_thermal_register_tzd(struct s2mpg15_spmic_thermal_chip *s2mpg15_sp
 
 	for (i = 0; i < GTHERM_CHAN_NUM; i++, mask <<= 1) {
 		dev_info(dev, "Registering %d sensor\n", i);
-		tzd = devm_thermal_zone_of_sensor_register(s2mpg15_spmic_thermal->dev, i,
+		tzd = devm_thermal_of_zone_register(s2mpg15_spmic_thermal->dev, i,
 							   &s2mpg15_spmic_thermal->sensor[i],
 							   &s2mpg15_spmic_thermal_ops);
 
