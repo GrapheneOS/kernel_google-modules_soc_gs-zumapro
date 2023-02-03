@@ -3,13 +3,13 @@
  * Copyright (c) 2021 Samsung Electronics Co., Ltd.
  */
 
-#include <linux/dma-iommu.h>
 #include <linux/kmemleak.h>
 #include <linux/module.h>
 #include <linux/of_iommu.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/dma-mapping.h>
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
 
@@ -313,7 +313,7 @@ static inline void pgtable_flush(void *vastart, void *vaend)
 				   vaend - vastart, DMA_TO_DEVICE);
 }
 
-static bool samsung_sysmmu_capable(enum iommu_cap cap)
+static bool samsung_sysmmu_capable(struct device *dev, enum iommu_cap cap)
 {
 	return cap == IOMMU_CAP_CACHE_COHERENCY;
 }
@@ -1203,11 +1203,6 @@ static bool samsung_sysmmu_dev_has_feat(struct device *dev, enum iommu_dev_featu
 	return true;
 }
 
-static bool samsung_sysmmu_dev_feat_enabled(struct device *dev, enum iommu_dev_features f)
-{
-	return samsung_sysmmu_dev_has_feat(dev, f);
-}
-
 static int samsung_sysmmu_dev_enable_feat(struct device *dev, enum iommu_dev_features f)
 {
 	if (!samsung_sysmmu_dev_has_feat(dev, f))
@@ -1364,10 +1359,7 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.device_group		= samsung_sysmmu_device_group,
 	.of_xlate		= samsung_sysmmu_of_xlate,
 	.get_resv_regions	= samsung_sysmmu_get_resv_regions,
-	.put_resv_regions	= samsung_sysmmu_put_resv_regions,
 	.def_domain_type	= samsung_sysmmu_def_domain_type,
-	.dev_has_feat		= samsung_sysmmu_dev_has_feat,
-	.dev_feat_enabled	= samsung_sysmmu_dev_feat_enabled,
 	.dev_enable_feat	= samsung_sysmmu_dev_enable_feat,
 	.dev_disable_feat	= samsung_sysmmu_dev_disable_feat,
 	.aux_attach_dev		= samsung_sysmmu_aux_attach_dev,
@@ -1542,8 +1534,6 @@ static int samsung_sysmmu_init_global(void)
 		ret = -ENOMEM;
 		goto err_init_slpt_fail;
 	}
-
-	bus_set_iommu(&platform_bus_type, &samsung_sysmmu_ops);
 
 	device_initialize(&sync_dev);
 	sysmmu_global_init_done = true;
