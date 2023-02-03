@@ -2077,7 +2077,7 @@ void exynos_pcie_rc_print_msi_register(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	u32 val;
 	int ctrl;
 
@@ -2580,7 +2580,7 @@ static struct dw_pcie_host_ops exynos_pcie_rc_ops = {
 	.host_init = exynos_pcie_rc_init,
 };
 
-void exynos_pcie_msi_post_process(struct pcie_port *pp)
+void exynos_pcie_msi_post_process(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -4006,7 +4006,7 @@ EXPORT_SYMBOL_GPL(exynos_pcie_rc_set_affinity);
 int exynos_pcie_rc_set_enable_wake(struct irq_data *data, unsigned int enable)
 {
 	int ret = 0;
-	struct pcie_port *pp = data->parent_data->domain->host_data;
+	struct dw_pcie_rp *pp = data->parent_data->domain->host_data;
 
 	if (pp == NULL) {
 		pr_err("Warning: exynos_pcie_rc_set_enable_wake: not exist pp\n");
@@ -4059,11 +4059,12 @@ static void __maybe_unused exynos_pcie_rc_set_tpoweron(struct dw_pcie_rp *pp, in
 	val |= WIFI_ALL_PM_ENABEL;
 	writel(val, ep_dbi_base + WIFI_L1SS_CONTROL);
 }
+#endif
 
 static int exynos_pcie_msi_set_affinity(struct irq_data *irq_data, const struct cpumask *mask,
 					bool force)
 {
-	struct pcie_port *pp = irq_data->parent_data->domain->host_data;
+	struct dw_pcie_rp *pp = irq_data->parent_data->domain->host_data;
 
 	if (pp == NULL) {
 		pr_err("Warning: exynos_pcie_msi_set_affinity: not exist pp\n");
@@ -4126,7 +4127,7 @@ static const char *sep_irq_name[PCIE_MAX_SEPA_IRQ_NUM] = {
 
 static irqreturn_t exynos_pcie_msi0_handler(int irq, void *arg)
 {
-	struct pcie_port *pp = arg;
+	struct dw_pcie_rp *pp = arg;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	struct device *dev = pci->dev;
@@ -4179,7 +4180,7 @@ static irqreturn_t exynos_pcie_msi0_handler(int irq, void *arg)
 
 static irqreturn_t exynos_pcie_msi1_handler(int irq, void *arg)
 {
-	struct pcie_port *pp = arg;
+	struct dw_pcie_rp *pp = arg;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	struct device *dev = pci->dev;
@@ -4206,7 +4207,7 @@ static irqreturn_t exynos_pcie_msi1_handler(int irq, void *arg)
 
 static irqreturn_t exynos_pcie_msi2_handler(int irq, void *arg)
 {
-	struct pcie_port *pp = arg;
+	struct dw_pcie_rp *pp = arg;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	struct device *dev = pci->dev;
@@ -4233,7 +4234,7 @@ static irqreturn_t exynos_pcie_msi2_handler(int irq, void *arg)
 
 static irqreturn_t exynos_pcie_msi3_handler(int irq, void *arg)
 {
-	struct pcie_port *pp = arg;
+	struct dw_pcie_rp *pp = arg;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	struct device *dev = pci->dev;
@@ -4260,7 +4261,7 @@ static irqreturn_t exynos_pcie_msi3_handler(int irq, void *arg)
 
 static irqreturn_t exynos_pcie_msi4_handler(int irq, void *arg)
 {
-	struct pcie_port *pp = arg;
+	struct dw_pcie_rp *pp = arg;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	struct device *dev = pci->dev;
@@ -4294,7 +4295,7 @@ int register_separated_msi_vector(int ch_num, irq_handler_t handler, void *conte
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	int i, ret;
 
 	for (i = 1; i < PCIE_MAX_SEPA_IRQ_NUM; i++) {
