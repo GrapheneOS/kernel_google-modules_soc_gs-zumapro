@@ -288,14 +288,14 @@ static void google_smpl_warn_work(struct work_struct *work)
 	google_warn_work(work, SMPL_WARN);
 }
 
-static int smpl_warn_read_voltage(void *data, int *val)
+static int smpl_warn_read_voltage(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SMPL_WARN);
+	return triggered_read_level(tz->devdata, val, SMPL_WARN);
 }
 
-static int ocp_cpu1_read_current(void *data, int *val)
+static int ocp_cpu1_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, OCP_WARN_CPUCL1);
+	return triggered_read_level(tz->devdata, val, OCP_WARN_CPUCL1);
 }
 
 static void google_cpu1_warn_work(struct work_struct *work)
@@ -303,9 +303,9 @@ static void google_cpu1_warn_work(struct work_struct *work)
 	google_warn_work(work, OCP_WARN_CPUCL1);
 }
 
-static int ocp_cpu2_read_current(void *data, int *val)
+static int ocp_cpu2_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, OCP_WARN_CPUCL2);
+	return triggered_read_level(tz->devdata, val, OCP_WARN_CPUCL2);
 }
 
 static void google_cpu2_warn_work(struct work_struct *work)
@@ -313,9 +313,9 @@ static void google_cpu2_warn_work(struct work_struct *work)
 	google_warn_work(work, OCP_WARN_CPUCL2);
 }
 
-static int soft_ocp_cpu1_read_current(void *data, int *val)
+static int soft_ocp_cpu1_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SOFT_OCP_WARN_CPUCL1);
+	return triggered_read_level(tz->devdata, val, SOFT_OCP_WARN_CPUCL1);
 }
 
 static void google_soft_cpu1_warn_work(struct work_struct *work)
@@ -323,9 +323,9 @@ static void google_soft_cpu1_warn_work(struct work_struct *work)
 	google_warn_work(work, SOFT_OCP_WARN_CPUCL1);
 }
 
-static int soft_ocp_cpu2_read_current(void *data, int *val)
+static int soft_ocp_cpu2_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SOFT_OCP_WARN_CPUCL2);
+	return triggered_read_level(tz->devdata, val, SOFT_OCP_WARN_CPUCL2);
 }
 
 static void google_soft_cpu2_warn_work(struct work_struct *work)
@@ -333,9 +333,9 @@ static void google_soft_cpu2_warn_work(struct work_struct *work)
 	google_warn_work(work, SOFT_OCP_WARN_CPUCL2);
 }
 
-static int ocp_tpu_read_current(void *data, int *val)
+static int ocp_tpu_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, OCP_WARN_TPU);
+	return triggered_read_level(tz->devdata, val, OCP_WARN_TPU);
 }
 
 static void google_tpu_warn_work(struct work_struct *work)
@@ -343,9 +343,9 @@ static void google_tpu_warn_work(struct work_struct *work)
 	google_warn_work(work, OCP_WARN_TPU);
 }
 
-static int soft_ocp_tpu_read_current(void *data, int *val)
+static int soft_ocp_tpu_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SOFT_OCP_WARN_TPU);
+	return triggered_read_level(tz->devdata, val, SOFT_OCP_WARN_TPU);
 }
 
 static void google_soft_tpu_warn_work(struct work_struct *work)
@@ -353,9 +353,9 @@ static void google_soft_tpu_warn_work(struct work_struct *work)
 	google_warn_work(work, SOFT_OCP_WARN_TPU);
 }
 
-static int ocp_gpu_read_current(void *data, int *val)
+static int ocp_gpu_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, OCP_WARN_GPU);
+	return triggered_read_level(tz->devdata, val, OCP_WARN_GPU);
 }
 
 static void google_gpu_warn_work(struct work_struct *work)
@@ -363,9 +363,9 @@ static void google_gpu_warn_work(struct work_struct *work)
 	google_warn_work(work, OCP_WARN_GPU);
 }
 
-static int soft_ocp_gpu_read_current(void *data, int *val)
+static int soft_ocp_gpu_read_current(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, SOFT_OCP_WARN_GPU);
+	return triggered_read_level(tz->devdata, val, SOFT_OCP_WARN_GPU);
 }
 
 static void google_soft_gpu_warn_work(struct work_struct *work)
@@ -378,9 +378,9 @@ static void google_pmic_120c_work(struct work_struct *work)
 	google_warn_work(work, PMIC_120C);
 }
 
-static int pmic_120c_read_temp(void *data, int *val)
+static int pmic_120c_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, PMIC_120C);
+	return triggered_read_level(tz->devdata, val, PMIC_120C);
 }
 
 static void google_pmic_140c_work(struct work_struct *work)
@@ -388,9 +388,9 @@ static void google_pmic_140c_work(struct work_struct *work)
 	google_warn_work(work, PMIC_140C);
 }
 
-static int pmic_140c_read_temp(void *data, int *val)
+static int pmic_140c_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, PMIC_140C);
+	return triggered_read_level(tz->devdata, val, PMIC_140C);
 }
 
 static void google_pmic_overheat_work(struct work_struct *work)
@@ -398,30 +398,28 @@ static void google_pmic_overheat_work(struct work_struct *work)
 	google_warn_work(work, PMIC_OVERHEAT);
 }
 
-static int tsd_overheat_read_temp(void *data, int *val)
+static int tsd_overheat_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, PMIC_OVERHEAT);
+	return triggered_read_level(tz->devdata, val, PMIC_OVERHEAT);
 }
 
-static int google_bcl_uvlo1_read_temp(void *data, int *val)
+static int google_bcl_uvlo1_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, UVLO1);
+	return triggered_read_level(tz->devdata, val, UVLO1);
 }
 
-static int google_bcl_uvlo2_read_temp(void *data, int *val)
+static int google_bcl_uvlo2_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, UVLO2);
+	return triggered_read_level(tz->devdata, val, UVLO2);
 }
 
-static int google_bcl_batoilo_read_temp(void *data, int *val)
+static int google_bcl_batoilo_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	return triggered_read_level(data, val, BATOILO);
+	return triggered_read_level(tz->devdata, val, BATOILO);
 }
 
-static int google_bcl_set_soc(void *data, int low, int high)
+static int google_bcl_set_soc(struct bcl_device *bcl_dev, int low, int high)
 {
-	struct bcl_device *bcl_dev = data;
-
 	if (high == bcl_dev->trip_high_temp)
 		return 0;
 
@@ -434,9 +432,13 @@ static int google_bcl_set_soc(void *data, int low, int high)
 	return 0;
 }
 
-static int google_bcl_read_soc(void *data, int *val)
+static int tz_bcl_set_soc(struct thermal_zone_device *tz, int low, int high)
 {
-	struct bcl_device *bcl_dev = data;
+	return google_bcl_set_soc(tz->devdata, low, high);
+}
+
+static int google_bcl_read_soc(struct bcl_device *bcl_dev, int *val)
+{
 	union power_supply_propval ret = {
 		0,
 	};
@@ -460,6 +462,11 @@ static int google_bcl_read_soc(void *data, int *val)
 	return err;
 }
 
+static int tz_bcl_read_soc(struct thermal_zone_device *tz, int *val)
+{
+	return google_bcl_read_soc(tz->devdata, val);
+}
+
 static void google_bcl_evaluate_soc(struct work_struct *work)
 {
 	int battery_percentage_reverse;
@@ -478,7 +485,7 @@ static void google_bcl_evaluate_soc(struct work_struct *work)
 	mutex_unlock(&bcl_dev->state_trans_lock);
 	if (!bcl_dev->bcl_tz[PMIC_SOC]) {
 		bcl_dev->bcl_tz[PMIC_SOC] =
-				thermal_zone_of_sensor_register(bcl_dev->device,
+				devm_thermal_of_zone_register(bcl_dev->device,
 								PMIC_SOC, bcl_dev,
 								&bcl_dev->bcl_ops[PMIC_SOC]);
 		if (IS_ERR(bcl_dev->bcl_tz[PMIC_SOC])) {
@@ -526,7 +533,7 @@ static int google_bcl_remove_thermal(struct bcl_device *bcl_dev)
 		if (i > SOFT_OCP_WARN_TPU)
 			dev = bcl_dev->sub_dev;
 		if (bcl_dev->bcl_tz[i])
-			thermal_zone_of_sensor_unregister(dev, bcl_dev->bcl_tz[i]);
+			devm_thermal_of_zone_unregister(dev, bcl_dev->bcl_tz[i]);
 	}
 
 	return 0;
@@ -748,7 +755,7 @@ static int google_bcl_register_irq(struct bcl_device *bcl_dev, int id, const cha
 		return ret;
 	}
 
-	bcl_dev->bcl_tz[id] = thermal_zone_of_sensor_register(bcl_dev->device, id, bcl_dev,
+	bcl_dev->bcl_tz[id] = devm_thermal_of_zone_register(bcl_dev->device, id, bcl_dev,
 							      &bcl_dev->bcl_ops[id]);
 	if (IS_ERR(bcl_dev->bcl_tz[id])) {
 		dev_err(bcl_dev->device, "TZ register failed. %d, err:%ld\n", id,
@@ -1180,11 +1187,11 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 		goto retry_init_work;
 
 	bcl_dev->batt_psy = google_get_power_supply(bcl_dev);
-	bcl_dev->bcl_tz[PMIC_SOC] = thermal_zone_of_sensor_register(bcl_dev->device,
+	bcl_dev->bcl_tz[PMIC_SOC] = devm_thermal_of_zone_register(bcl_dev->device,
 								    PMIC_SOC, bcl_dev,
 								    &bcl_dev->bcl_ops[PMIC_SOC]);
-	bcl_dev->bcl_ops[PMIC_SOC].get_temp = google_bcl_read_soc;
-	bcl_dev->bcl_ops[PMIC_SOC].set_trips = google_bcl_set_soc;
+	bcl_dev->bcl_ops[PMIC_SOC].get_temp = tz_bcl_read_soc;
+	bcl_dev->bcl_ops[PMIC_SOC].set_trips = tz_bcl_set_soc;
 	if (IS_ERR(bcl_dev->bcl_tz[PMIC_SOC])) {
 		dev_err(bcl_dev->device, "soc TZ register failed. err:%ld\n",
 			PTR_ERR(bcl_dev->bcl_tz[PMIC_SOC]));
@@ -1223,7 +1230,7 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 		dev_err(bcl_dev->device, "bcl_register fail: UVLO2\n");
 		return;
 	}
-	bcl_dev->bcl_tz[BATOILO] = thermal_zone_of_sensor_register(bcl_dev->device, BATOILO,
+	bcl_dev->bcl_tz[BATOILO] = devm_thermal_of_zone_register(bcl_dev->device, BATOILO,
 								   bcl_dev,
 								   &bcl_dev->bcl_ops[BATOILO]);
 	if (IS_ERR(bcl_dev->bcl_tz[BATOILO])) {

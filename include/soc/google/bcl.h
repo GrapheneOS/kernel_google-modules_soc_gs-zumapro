@@ -148,7 +148,7 @@ struct bcl_device {
 	int trip_low_temp;
 	int trip_val;
 	struct mutex state_trans_lock;
-	struct thermal_zone_of_device_ops bcl_ops[TRIGGERED_SOURCE_MAX];
+	struct thermal_zone_device_ops bcl_ops[TRIGGERED_SOURCE_MAX];
 	struct mutex bcl_irq_lock[TRIGGERED_SOURCE_MAX];
 	struct delayed_work bcl_irq_work[TRIGGERED_SOURCE_MAX];
 	struct thermal_zone_device *bcl_tz[TRIGGERED_SOURCE_MAX];
