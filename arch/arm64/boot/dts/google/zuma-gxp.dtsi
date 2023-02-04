@@ -43,6 +43,7 @@
 		gxp-mcu-fw-region = <&gxp_mcu_fw_reserved>;
 		gxp-memory-per-core = <0 512>;
 		gxp,shareability = <0x20a40700>; /* SYSREG_AUR0 */
+		gsa-device=<&gsa>;
 	};
 	gxp_cooling: gxp-cooling {
 		#cooling-cells = <2>;
