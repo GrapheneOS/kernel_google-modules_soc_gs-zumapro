@@ -1935,7 +1935,7 @@ static struct v4l2_queryctrl controls[] = {
 		.type = V4L2_CTRL_TYPE_INTEGER,
 		.name = "Hierarchical Base Layer Priority",
 		.minimum = 0,
-		.maximum = (1 << 6) - 1 - 6,
+		.maximum = 63,
 		.step = 1,
 		.default_value = 0,
 	},
