@@ -1168,7 +1168,9 @@ static int  samsung_sysmmu_get_resv_regions_by_node(struct device_node *np, stru
 				return -EINVAL;
 			}
 
-			region = iommu_alloc_resv_region(base, size, prot, resvtype[type]);
+			region = iommu_alloc_resv_region(base, size, prot,
+							 resvtype[type],
+							 GFP_KERNEL);
 			if (!region)
 				return -ENOMEM;
 
