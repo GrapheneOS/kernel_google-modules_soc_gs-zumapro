@@ -281,8 +281,8 @@ static void acpm_log_print(void)
 {
 	mutex_lock(&print_log_mutex);
 	if (acpm_debug->debug_log_level >= 2)
-		acpm_log_print_buff(&acpm_debug->preempt);
-	acpm_log_print_buff(&acpm_debug->normal);
+		acpm_log_print_buff(&acpm_debug->normal);
+	acpm_log_print_buff(&acpm_debug->preempt);
 	mutex_unlock(&print_log_mutex);
 }
 

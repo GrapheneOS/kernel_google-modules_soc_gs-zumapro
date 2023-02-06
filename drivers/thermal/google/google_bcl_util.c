@@ -32,6 +32,28 @@ const unsigned int subsystem_pmu[] = {
 	PMU_ALIVE_GPU_OUT
 };
 
+int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
+{
+	switch (pmic) {
+		case SUB:
+			return s2mpg15_write_reg((bcl_dev)->sub_meter_i2c, reg, value);
+		case MAIN:
+			return s2mpg14_write_reg((bcl_dev)->main_meter_i2c, reg, value);
+	}
+	return 0;
+}
+
+int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
+{
+	switch (pmic) {
+		case SUB:
+			return s2mpg15_read_reg((bcl_dev)->sub_meter_i2c, reg, value);
+		case MAIN:
+			return s2mpg14_read_reg((bcl_dev)->main_meter_i2c, reg, value);
+	}
+	return 0;
+}
+
 int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 {
 	switch (pmic) {

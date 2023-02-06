@@ -23,6 +23,8 @@
 	(bcl)->pmic_ops->cb_batoilo_write((bcl)->intf_pmic_i2c, v) : -ENODEV)
 #define bcl_cb_vdroop_ok(bcl, v) (((bcl)->pmic_ops && (bcl)->intf_pmic_i2c) ? \
 	(bcl)->pmic_ops->cb_get_vdroop_ok((bcl)->intf_pmic_i2c, v) : -ENODEV)
+#define bcl_cb_get_and_clr_irq(bcl, v) (((bcl)->pmic_ops && (bcl)->intf_pmic_i2c) ? \
+	(bcl)->pmic_ops->cb_get_and_clr_irq((bcl)->intf_pmic_i2c, v) : -ENODEV)
 
 /* helpers for UVLO1 and UVLO2 */
 #define bcl_cb_uvlo1_read(bcl, v)	bcl_cb_uvlo_read(bcl, UVLO1, v)
@@ -66,6 +68,7 @@
 #define PMU_CLK_OUT (0x3E80)
 #define THRESHOLD_DELAY_MS 50
 #define PWRWARN_DELAY_MS 50
+#define LPF_CURRENT_SHIFT 4
 
 enum SUBSYSTEM_SOURCE {
 	CPU0,
@@ -111,6 +114,7 @@ typedef int (*pmic_get_uvlo_lvl_fn)(struct i2c_client *client, uint8_t mode, uns
 typedef int (*pmic_set_batoilo_lvl_fn)(struct i2c_client *client, unsigned int lvl);
 typedef int (*pmic_get_batoilo_lvl_fn)(struct i2c_client *client, unsigned int *lvl);
 typedef int (*pmic_get_vdroop_ok_fn)(struct i2c_client *client, bool *state);
+typedef int (*pmic_get_and_clr_irq_fn)(struct i2c_client *client, u8 *irq_val);
 
 struct bcl_ifpmic_ops {
 	pmic_get_vdroop_ok_fn	cb_get_vdroop_ok;
@@ -118,6 +122,7 @@ struct bcl_ifpmic_ops {
 	pmic_get_uvlo_lvl_fn	cb_uvlo_read;
 	pmic_set_batoilo_lvl_fn	cb_batoilo_write;
 	pmic_get_batoilo_lvl_fn cb_batoilo_read;
+	pmic_get_and_clr_irq_fn cb_get_and_clr_irq;
 };
 
 struct bcl_device {
@@ -155,6 +160,8 @@ struct bcl_device {
 
 	struct i2c_client *main_pmic_i2c;
 	struct i2c_client *sub_pmic_i2c;
+	struct i2c_client *main_meter_i2c;
+	struct i2c_client *sub_meter_i2c;
 	struct i2c_client *intf_pmic_i2c;
 
 	struct mutex ratio_lock;
@@ -187,6 +194,7 @@ struct bcl_device {
 	unsigned int vdroop2_pin;
 	unsigned int modem_gpio1_pin;
 	unsigned int modem_gpio2_pin;
+	unsigned int rffe_channel;
 
 	/* debug */
 	struct dentry *debug_entry;
@@ -194,6 +202,8 @@ struct bcl_device {
 	unsigned int tpu_clk_out;
 
 	int main_irq_base, sub_irq_base;
+	u8 main_setting[METER_CHANNEL_MAX];
+	u8 sub_setting[METER_CHANNEL_MAX];
 	u64 main_limit[METER_CHANNEL_MAX];
 	u64 sub_limit[METER_CHANNEL_MAX];
 	int main_pwr_warn_irq[METER_CHANNEL_MAX];
@@ -220,8 +230,26 @@ void bcl_enable_power(void);
 void __iomem *get_addr_by_subsystem(void *dev, const char *subsystem);
 int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
 int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
+int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
+int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
+u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting);
 #else
 struct bcl_device;
+
+static inline settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting)
+{
+	return 0;
+}
+
+static inline int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
+{
+	return 0;
+}
+
+int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
+{
+	return 0;
+}
 
 static inline int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 {

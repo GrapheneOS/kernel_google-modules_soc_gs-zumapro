@@ -36,5 +36,6 @@
 /* DEVFREQ GOV TYPE */
 #define SIMPLE_INTERACTIVE 0
 #define MEM_LATENCY 1
+#define DSU_LATENCY 2
 
 #endif

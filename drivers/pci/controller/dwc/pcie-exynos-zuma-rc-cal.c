@@ -40,7 +40,7 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
 	u32 val;
 
-	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
+	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
 	if (exynos_pcie->ch_num == 1) { //PCIE GEN3 1 lane channel
 		val = readl(phy_base_regs + 0x204) & ~(0x3 << 2);
@@ -119,7 +119,7 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
 	u32 val;
 
-	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
+	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
 	if (exynos_pcie->ch_num == 1) { //PCIE GEN3 1 lane channel
 		// External PLL gating
@@ -186,7 +186,46 @@ void exynos_pcie_rc_pcie_phy_otp_config(void *phy_base_regs, int ch_num)
 }
 #endif
 
+#define NEW_DATA_AVERAGE_WEIGHT  10
+static void link_stats_log_pll_lock(struct exynos_pcie *pcie, u32 pll_lock_time)
+{
+	pcie->link_stats.pll_lock_time_avg =
+	    DIV_ROUND_CLOSEST(pcie->link_stats.pll_lock_time_avg *
+			      (100 - NEW_DATA_AVERAGE_WEIGHT) +
+			      pll_lock_time * NEW_DATA_AVERAGE_WEIGHT, 100);
+}
+
 #define LCPLL_REF_CLK_SEL	(0x3 << 4)
+
+static int check_exynos_pcie_reg_status(struct exynos_pcie *exynos_pcie,
+					void __iomem *base, int offset, int bit,
+					int *cnt)
+{
+	int i;
+	u32 status;
+	ktime_t timestamp = ktime_get();
+
+	for (i = 0; i < 1000; i++) {
+		udelay(10);
+		status = readl(base + offset) & BIT(bit);
+		if (status != 0)
+			break;
+	}
+	timestamp = ktime_sub(ktime_get(), timestamp);
+
+	if (cnt)
+		*cnt = i;
+	dev_dbg(exynos_pcie->pci->dev, "elapsed time: %lld uS\n", ktime_to_us(timestamp));
+
+	if (status == 0)
+		dev_err(exynos_pcie->pci->dev, "status 0x%x failed\n",
+			offset);
+	else
+		dev_dbg(exynos_pcie->pci->dev, "status 0x%x passed cnt=%d\n",
+			offset, i);
+
+	return status;
+}
 
 void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 {
@@ -196,13 +235,11 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 	void __iomem *phy_base_regs = exynos_pcie->phy_base;
 	void __iomem *phy_pcs_base_regs = exynos_pcie->phy_pcs_base;
 	int num_lanes = exynos_pcie->num_lanes;
+	int lock_cnt;
 	u32 val;
 	u32 i;
-	u32 ext_pll_lock = 0;
-	u32 pll_lock = 0, cdr_lock = 0;
-	u32 oc_done = 0;
 
-	dev_info(exynos_pcie->pci->dev, "PCIe CAL ver 0.2\n");
+	dev_dbg(exynos_pcie->pci->dev, "PCIe CAL ver 0.2\n");
 
 	if (exynos_pcie->ch_num == 1) {
 		/* I/A will be disabled in PCIe poweroff
@@ -226,17 +263,8 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(val, udbg_base_regs + 0xC700);        //Release External PLL init
 
 		/* check external pll lock */
-		for (i = 0; i < 1000; i++) {
-			udelay(1);
-			ext_pll_lock = readl(udbg_base_regs + 0xC734) & (1 << 2);
-
-			if (ext_pll_lock != 0)
-				break;
-		}
-		if (ext_pll_lock == 0) {
-			printk("External PLL lock fail");
-			//return 0;
-		}
+		check_exynos_pcie_reg_status(exynos_pcie, udbg_base_regs,
+					     0xC734, 2, &lock_cnt);
 
 		/* soc_ctrl setting */
 		val = readl(soc_base_regs + 0x4004) & ~(1 << 2);
@@ -418,36 +446,17 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x1, elbi_base_regs + 0x1408);
 		writel(0x1, elbi_base_regs + 0x1400);
 
-		/* check pll & cdr lock */
-		phy_base_regs = exynos_pcie->phy_base;
-		for (i = 0; i < 1000; i++) {
-			udelay(15);
-			pll_lock = readl(phy_base_regs + 0x0A80) & (1 << 0);
-			cdr_lock = readl(phy_base_regs + 0x15C0) & (1 << 4);
-
-			if ((pll_lock != 0) && (cdr_lock != 0))
-				break;
-		}
-		if ((pll_lock == 0) || (cdr_lock == 0)) {
-			printk("PLL & CDR lock fail");
-			//return 0;
-		}
+		/* check pll lock */
+		check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+					     0x0A80, 0, &lock_cnt);
+		/* check cdr lock */
+		if (check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+						 0x15C0, 4, &lock_cnt))
+			link_stats_log_pll_lock(exynos_pcie, lock_cnt);
 
 		/* check offset calibration */
-		for (i = 0; i < 1000; i++) {
-			udelay(10);
-			oc_done = readl(phy_base_regs + 0x140C) & (1 << 7);
-
-			if (oc_done != 0)
-				break;
-		}
-		if (oc_done == 0) {
-			printk("OC fail");
-			//return 0;
-		}
-
-		/* udbg setting */
-		//need to udbg base SFR
+		check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+					     0x140C, 7, &lock_cnt);
 
 		//L1 exit off by DBI
 		writel(0x1, elbi_base_regs + 0x1078);
@@ -469,17 +478,8 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(val, udbg_base_regs + 0xC700);        //Override External PLL RESETB
 
 		/* check external pll lock */
-		for (i = 0; i < 1000; i++) {
-			udelay(1);
-			ext_pll_lock = readl(udbg_base_regs + 0xC704) & (1 << 3);
-
-			if (ext_pll_lock != 0)
-				break;
-		}
-		if (ext_pll_lock == 0) {
-			printk("External PLL lock fail");
-			//return 0;
-		}
+		check_exynos_pcie_reg_status(exynos_pcie, udbg_base_regs,
+					     0xC704, 3, &lock_cnt);
 
 		/* soc_ctrl setting */
 		val = readl(soc_base_regs + 0x4004) & ~(1 << 2);
@@ -618,33 +618,17 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x1, elbi_base_regs + 0x1408);
 		writel(0x1, elbi_base_regs + 0x1400);
 
-		/* check pll & cdr lock */
-		phy_base_regs = exynos_pcie->phy_base;
-		for (i = 0; i < 1000; i++) {
-			udelay(1);
-			pll_lock = readl(phy_base_regs + 0x0A80) & (1 << 0);
-			cdr_lock = readl(phy_base_regs + 0x15C0) & (1 << 4);
-
-			if ((pll_lock != 0) && (cdr_lock != 0))
-				break;
-		}
-		if ((pll_lock == 0) || (cdr_lock == 0)) {
-			printk("PLL & CDR lock fail");
-			//return 0;
-		}
+		/* check pll lock */
+		check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+					     0x0A80, 0, &lock_cnt);
+		/* check cdr lock */
+		if (check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+						 0x15C0, 4, &lock_cnt))
+			link_stats_log_pll_lock(exynos_pcie, lock_cnt);
 
 		/* check offset calibration */
-		for (i = 0; i < 1000; i++) {
-			udelay(10);
-			oc_done = readl(phy_base_regs + 0x140C) & (1 << 7);
-
-			if (oc_done != 0)
-				break;
-		}
-		if (oc_done == 0) {
-			printk("OC fail");
-			//return 0;
-		}
+		check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+					     0x140C, 7, &lock_cnt);
 
 		/* udbg setting */
 		//need to udbg base SFR

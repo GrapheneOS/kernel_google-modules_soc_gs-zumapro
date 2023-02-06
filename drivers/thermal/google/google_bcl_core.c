@@ -90,6 +90,7 @@ static int triggered_read_level(void *data, int *val, int id)
 	bool state = true;
 	int polarity = (id == SMPL_WARN) ? 0 : 1;
 	int gpio_level;
+	u8 irq_val = 0;
 
 	if (id == UVLO1)
 		gpio_level = gpio_get_value(bcl_dev->vdroop1_pin);
@@ -106,6 +107,7 @@ static int triggered_read_level(void *data, int *val, int id)
 						 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 				bcl_dev->bcl_prev_lvl[id] = *val;
 			}
+			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 			return -EINVAL;
 		} else
 			gpio_level = (state) ? 0 : 1;
@@ -116,6 +118,10 @@ static int triggered_read_level(void *data, int *val, int id)
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 		bcl_dev->bcl_prev_lvl[id] = *val;
+
+		/* Check for any additional IRQs if vdroop2 was held high */
+		if (id == UVLO2 || id == BATOILO)
+			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
 		return 0;
 	}
 	if (id >= UVLO1 && id <= BATOILO) {
@@ -219,9 +225,11 @@ static irqreturn_t irq_handler(int irq, void *data)
 {
 	struct bcl_device *bcl_dev = data;
 	u8 idx;
+	u8 irq_val = 0;
+	int err = 0;
 	int gpio_level;
 	int polarity;
-	bool state;
+
 	if (!bcl_dev)
 		return IRQ_HANDLED;
 
@@ -238,17 +246,27 @@ static irqreturn_t irq_handler(int irq, void *data)
 
 	if (gpio_level == polarity) {
 		/* IRQ latched */
-		if (idx == UVLO2) {
-			if (bcl_cb_vdroop_ok(bcl_dev, &state) == 0)
-				idx = (state) ? BATOILO : UVLO2;
-		}
+		if (idx == UVLO2)
+			gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
+
+		if (idx >= UVLO1 && idx <= BATOILO)
+			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+
+		/* IRQ is either UVLO1, UVLO2, or BATOILO */
+		if (irq_val != 0 && err == 0)
+			idx = irq_val;
+
 		if (bcl_dev->batt_psy_initialized) {
 			atomic_inc(&bcl_dev->bcl_cnt[idx]);
 			ocpsmpl_read_stats(bcl_dev, &bcl_dev->bcl_stats[idx], bcl_dev->batt_psy);
 		}
 	} else {
-		if (idx == UVLO2)
+		/* IRQ falling edge */
+		if (idx == UVLO2) {
+			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 			update_tz(bcl_dev, BATOILO);
+			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+		}
 	}
 	update_tz(bcl_dev, idx);
 	enable_irq(irq);
@@ -539,7 +557,8 @@ int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,
 
 	if (!pmic_ops || !pmic_ops->cb_get_vdroop_ok ||
 	    !pmic_ops->cb_uvlo_read || !pmic_ops->cb_uvlo_write ||
-	    !pmic_ops->cb_batoilo_read || !pmic_ops->cb_batoilo_write)
+	    !pmic_ops->cb_batoilo_read || !pmic_ops->cb_batoilo_write ||
+	    !pmic_ops->cb_get_and_clr_irq)
 		return -EINVAL;
 
 	bcl_dev->pmic_ops = pmic_ops;
@@ -945,16 +964,18 @@ static void main_pwrwarn_irq_work(struct work_struct *work)
 	bool revisit_needed = false;
 	int i;
 	u64 micro_unit[ODPM_CHANNEL_MAX];
+	u64 measurement;
 
 	mutex_lock(&bcl_dev->main_odpm->lock);
 
-	odpm_get_lpf_values(bcl_dev->main_odpm, METER_CHANNEL_MAX, micro_unit);
+	odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		bcl_dev->main_pwr_warn_triggered[i] = (micro_unit[i] > bcl_dev->main_limit[i]);
-		if (!bcl_dev->main_pwr_warn_triggered[i])
-			dev_info(bcl_dev->device, "%s: CH%d_PWR_WARN, clear\n", __func__, i);
+		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		bcl_dev->main_pwr_warn_triggered[i] = (measurement > bcl_dev->main_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->main_pwr_warn_triggered[i];
+		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
+			gpio_set_value(bcl_dev->modem_gpio1_pin, 0);
 	}
 
 	mutex_unlock(&bcl_dev->main_odpm->lock);
@@ -971,16 +992,18 @@ static void sub_pwrwarn_irq_work(struct work_struct *work)
 	bool revisit_needed = false;
 	int i;
 	u64 micro_unit[ODPM_CHANNEL_MAX];
+	u64 measurement;
 
 	mutex_lock(&bcl_dev->sub_odpm->lock);
 
-	odpm_get_lpf_values(bcl_dev->sub_odpm, METER_CHANNEL_MAX, micro_unit);
+	odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		bcl_dev->sub_pwr_warn_triggered[i] = (micro_unit[i] > bcl_dev->sub_limit[i]);
-		if (!bcl_dev->sub_pwr_warn_triggered[i])
-			dev_info(bcl_dev->device, "%s: CH%d_PWR_WARN, clear\n", __func__, i);
+		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		bcl_dev->sub_pwr_warn_triggered[i] = (measurement > bcl_dev->sub_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->sub_pwr_warn_triggered[i];
+		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
+			gpio_set_value(bcl_dev->modem_gpio1_pin, 0);
 	}
 
 	mutex_unlock(&bcl_dev->sub_odpm->lock);
@@ -1000,11 +1023,12 @@ static irqreturn_t sub_pwr_warn_irq_handler(int irq, void *data)
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
 		if (bcl_dev->sub_pwr_warn_irq[i] == irq) {
 			bcl_dev->sub_pwr_warn_triggered[i] = 1;
+			/* Check for Modem MMWAVE */
+			if ((bcl_dev->sub_pwr_warn_triggered[i]) && (i == bcl_dev->rffe_channel))
+				gpio_set_value(bcl_dev->modem_gpio1_pin, 1);
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->sub_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
-			dev_info(bcl_dev->device,
-				 "%s: CH%d_PWR_WARN, %d triggered\n", __func__, i, irq);
 			break;
 		}
 	}
@@ -1024,11 +1048,12 @@ static irqreturn_t main_pwr_warn_irq_handler(int irq, void *data)
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
 		if (bcl_dev->main_pwr_warn_irq[i] == irq) {
 			bcl_dev->main_pwr_warn_triggered[i] = 1;
+			/* Check for Modem RFFE */
+			if ((bcl_dev->main_pwr_warn_triggered[i]) && (i == bcl_dev->rffe_channel))
+				gpio_set_value(bcl_dev->modem_gpio1_pin, 1);
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->main_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
-			dev_info(bcl_dev->device,
-				 "%s: CH%d_PWR_WARN, %d triggered\n", __func__, i, irq);
 			break;
 		}
 	}
@@ -1070,6 +1095,7 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	bcl_dev->sub_odpm = pdata_sub->meter;
 	bcl_dev->sub_irq_base = pdata_sub->irq_base;
 	bcl_dev->sub_pmic_i2c = sub_dev->pmic;
+	bcl_dev->sub_meter_i2c = sub_dev->meter;
 	bcl_dev->sub_dev = sub_dev->dev;
 	bcl_dev->bcl_lvl[OCP_WARN_GPU] = B2S_UPPER_LIMIT - THERMAL_HYST_LEVEL -
 			(pdata_sub->b2_ocp_warn_lvl * B2S_STEP);
@@ -1332,6 +1358,7 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 		bypass_smpl_warn = true;
 	}
 	bcl_dev->main_pmic_i2c = main_dev->pmic;
+	bcl_dev->main_meter_i2c = main_dev->meter;
 	bcl_dev->main_dev = main_dev->dev;
 	/* clear MAIN information every boot */
 	/* see b/215371539 */
@@ -1521,6 +1548,41 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 	return 0;
 }
 
+u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting)
+{
+	int rail_i;
+	s2mpg1415_meter_muxsel muxsel;
+	struct odpm_info *info;
+	const u32 one_billion = 1000000000;
+	u64 resolution_max, raw_unit;
+	u32 resolution;
+
+	if (!bcl_dev)
+		return 0;
+	if (pmic == MAIN)
+		info = bcl_dev->main_odpm;
+	else
+		info = bcl_dev->sub_odpm;
+
+	if (!info)
+		return 0;
+
+	rail_i = info->channels[idx].rail_i;
+	muxsel = info->chip.rails[rail_i].mux_select;
+	if (idx < 9) {
+		if (pmic == MAIN)
+			resolution = s2mpg14_muxsel_to_current_resolution(muxsel);
+		else
+			resolution = s2mpg15_muxsel_to_current_resolution(muxsel);
+		resolution_max = _IQ30_to_int((u64)resolution * one_billion);
+
+		return (setting << LPF_CURRENT_SHIFT) * resolution_max / one_billion;
+	} else {
+		raw_unit = EXTERNAL_RESOLUTION_VSHUNT / info->chip.rails[rail_i].shunt_uohms;
+		return (setting << LPF_CURRENT_SHIFT) * raw_unit;
+	}
+}
+
 static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 {
 	int ret, i = 0;
@@ -1558,6 +1620,8 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->vdroop2_pin = of_get_gpio(np, 1);
 	bcl_dev->modem_gpio1_pin = of_get_gpio(np, 2);
 	bcl_dev->modem_gpio2_pin = of_get_gpio(np, 3);
+	ret = of_property_read_u32(np, "rffe_channel", &val);
+	bcl_dev->rffe_channel = ret ? 11 : val;
 
 	/* parse ODPM main limit */
 	p_np = of_get_child_by_name(np, "main_limit");
@@ -1565,7 +1629,10 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 		for_each_child_of_node(p_np, child) {
 			of_property_read_u32(child, "setting", &read);
 			if (i < METER_CHANNEL_MAX) {
-				bcl_dev->main_limit[i] = read;
+				bcl_dev->main_setting[i] = read;
+				meter_write(MAIN, bcl_dev, S2MPG14_METER_PWR_WARN0 + i, read);
+				bcl_dev->main_limit[i] = settings_to_current(bcl_dev, MAIN, i,
+									     read);
 				i++;
 			}
 		}
@@ -1578,7 +1645,9 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 		for_each_child_of_node(p_np, child) {
 			of_property_read_u32(child, "setting", &read);
 			if (i < METER_CHANNEL_MAX) {
-				bcl_dev->sub_limit[i] = read;
+				bcl_dev->sub_setting[i] = read;
+				meter_write(SUB, bcl_dev, S2MPG15_METER_PWR_WARN0 + i, read);
+				bcl_dev->sub_limit[i] = settings_to_current(bcl_dev, SUB, i, read);
 				i++;
 			}
 		}
@@ -1592,6 +1661,40 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	if (google_bcl_init_clk_div(bcl_dev, CPU0, bcl_dev->cpu0_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU0 Address is NULL\n");
 	bcl_enable_power();
+}
+
+static int google_bcl_configure_modem(struct bcl_device *bcl_dev)
+{
+	struct pinctrl *modem_pinctrl;
+	struct pinctrl_state *batoilo_pinctrl_state, *rffe_pinctrl_state;
+	int ret;
+
+	modem_pinctrl = devm_pinctrl_get(bcl_dev->device);
+	if (IS_ERR_OR_NULL(modem_pinctrl)) {
+		dev_err(bcl_dev->device, "Cannot find modem_pinctrl!\n");
+		return -EINVAL;
+	}
+	batoilo_pinctrl_state = pinctrl_lookup_state(modem_pinctrl, "bcl-batoilo-modem");
+	if (IS_ERR_OR_NULL(batoilo_pinctrl_state)) {
+		dev_err(bcl_dev->device, "batoilo: pinctrl lookup state failed!\n");
+		return -EINVAL;
+	}
+	rffe_pinctrl_state = pinctrl_lookup_state(modem_pinctrl, "bcl-rffe-modem");
+	if (IS_ERR_OR_NULL(rffe_pinctrl_state)) {
+		dev_err(bcl_dev->device, "rffe: pinctrl lookup state failed!\n");
+		return -EINVAL;
+	}
+	ret = pinctrl_select_state(modem_pinctrl, batoilo_pinctrl_state);
+	if (ret < 0) {
+		dev_err(bcl_dev->device, "batoilo: pinctrl select state failed!!\n");
+		return -EINVAL;
+	}
+	ret = pinctrl_select_state(modem_pinctrl, rffe_pinctrl_state);
+	if (ret < 0) {
+		dev_err(bcl_dev->device, "rffe: pinctrl select state failed!!\n");
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static int google_bcl_probe(struct platform_device *pdev)
@@ -1617,6 +1720,7 @@ static int google_bcl_probe(struct platform_device *pdev)
 	google_set_sub_pmic(bcl_dev);
 	google_set_intf_pmic(bcl_dev);
 	google_bcl_parse_dtree(bcl_dev);
+	google_bcl_configure_modem(bcl_dev);
 
 	ret = google_init_fs(bcl_dev);
 	if (ret < 0)

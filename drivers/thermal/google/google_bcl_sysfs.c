@@ -2076,7 +2076,7 @@ static ssize_t main_pwrwarn_threshold_show(struct device *dev, struct device_att
 	if (idx >= METER_CHANNEL_MAX || idx < 0)
 		return -EINVAL;
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->main_limit[idx]);
+	return sysfs_emit(buf, "%d=%lld\n", bcl_dev->main_setting[idx], bcl_dev->main_limit[idx]);
 }
 
 static ssize_t main_pwrwarn_threshold_store(struct device *dev, struct device_attribute *attr,
@@ -2095,7 +2095,9 @@ static ssize_t main_pwrwarn_threshold_store(struct device *dev, struct device_at
 	if (idx >= METER_CHANNEL_MAX || idx < 0)
 		return -EINVAL;
 
-	bcl_dev->main_limit[idx] = value;
+	bcl_dev->main_setting[idx] = value;
+	bcl_dev->main_limit[idx] = settings_to_current(bcl_dev, MAIN, idx, value);
+	meter_write(MAIN, bcl_dev, S2MPG14_METER_PWR_WARN0 + idx, value);
 
 	return size;
 }
@@ -2113,7 +2115,7 @@ static ssize_t sub_pwrwarn_threshold_show(struct device *dev, struct device_attr
 	if (idx >= METER_CHANNEL_MAX || idx < 0)
 		return -EINVAL;
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->sub_limit[idx]);
+	return sysfs_emit(buf, "%d=%lld\n", bcl_dev->sub_setting[idx], bcl_dev->sub_limit[idx]);
 }
 
 static ssize_t sub_pwrwarn_threshold_store(struct device *dev, struct device_attribute *attr,
@@ -2132,7 +2134,9 @@ static ssize_t sub_pwrwarn_threshold_store(struct device *dev, struct device_att
 	if (idx >= METER_CHANNEL_MAX || idx < 0)
 		return -EINVAL;
 
-	bcl_dev->sub_limit[idx] = value;
+	bcl_dev->sub_setting[idx] = value;
+	bcl_dev->sub_limit[idx] = settings_to_current(bcl_dev, SUB, idx, value);
+	meter_write(SUB, bcl_dev, S2MPG15_METER_PWR_WARN0 + idx, value);
 
 	return size;
 }

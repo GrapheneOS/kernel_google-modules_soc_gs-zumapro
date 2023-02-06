@@ -24,124 +24,18 @@
 #include <linux/of_fdt.h>
 #include "governor.h"
 #include "governor_memlat.h"
+#include "governor_dsulat.h"
+#include "arm-memlat-mon.h"
 #include <linux/perf_event.h>
 #include <linux/of_device.h>
 #include <linux/mutex.h>
 #include <trace/hooks/cpuidle.h>
 #include <linux/spinlock.h>
 
+static struct devfreq *dsu_df;
+
 static DEFINE_PER_CPU(bool, is_idle);
 static DEFINE_PER_CPU(bool, is_on);
-
-enum mon_type {
-	MEMLAT_CPU_GRP,
-	MEMLAT_MON,
-	NUM_MON_TYPES
-};
-
-struct event_data {
-	struct perf_event *pevent;
-	unsigned long prev_count;
-	unsigned long last_delta;
-	unsigned long total;
-};
-
-struct cpu_data {
-	struct event_data common_evs[NUM_COMMON_EVS];
-	struct event_data amu_evs;
-	unsigned long freq;
-	unsigned long stall_pct;
-	spinlock_t    pmu_lock;
-	unsigned long inst;
-	unsigned long cyc;
-	unsigned long stall;
-	unsigned long cachemiss;
-	unsigned long mem_stall;
-};
-
-/**
- * struct memlat_mon - A specific consumer of cpu_grp generic counters.
- *
- * @is_active:			Whether or not this mon is currently running
- *				memlat.
- * @cpus:			CPUs this mon votes on behalf of. Must be a
- *				subset of @cpu_grp's CPUs. If no CPUs provided,
- *				defaults to using all of @cpu_grp's CPUs.
- * @miss_ev_id:			The event code corresponding to the @miss_ev
- *				perf event. Will be 0 for compute.
- * @miss_ev:			The cache miss perf event exclusive to this
- *				mon. Will be NULL for compute.
- * @requested_update_ms:	The mon's desired polling rate. The lowest
- *				@requested_update_ms of all mons determines
- *				@cpu_grp's update_ms.
- * @hw:				The memlat_hwmon struct corresponding to this
- *				mon's specific memlat instance.
- * @cpu_grp:			The cpu_grp who owns this mon.
- */
-struct memlat_mon {
-	bool			is_active;
-	cpumask_t		cpus;
-	unsigned int		miss_ev_id;
-	unsigned int		requested_update_ms;
-	struct event_data	*miss_ev;
-	struct memlat_hwmon	hw;
-
-	struct memlat_cpu_grp	*cpu_grp;
-};
-
-/**
- * struct memlat_cpu_grp - A coordinator of both HW reads and devfreq updates
- * for one or more memlat_mons.
- *
- * @cpus:			The CPUs this cpu_grp will read events from.
- * @common_ev_ids:		The event codes of the events all mons need.
- * @cpus_data:			The cpus data array of length #cpus. Includes
- *				event_data of all the events all mons need as
- *				well as common computed cpu data like freq.
- * @last_update_ts:		Used to avoid redundant reads.
- * @last_ts_delta_us:		The time difference between the most recent
- *				update and the one before that. Used to compute
- *				effective frequency.
- * @work:			The delayed_work used for handling updates.
- * @update_ms:			The frequency with which @work triggers.
- * @num_mons:		The number of @mons for this cpu_grp.
- * @num_inited_mons:	The number of @mons who have probed.
- * @num_active_mons:	The number of @mons currently running
- *				memlat.
- * @mons:			All of the memlat_mon structs representing
- *				the different voters who share this cpu_grp.
- * @mons_lock:		A lock used to protect the @mons.
- */
-struct memlat_cpu_grp {
-	struct			list_head node;
-	cpumask_t		cpus;
-	unsigned int		common_ev_ids[NUM_COMMON_EVS];
-	struct cpu_data		*cpus_data;
-	ktime_t			last_update_ts;
-	unsigned long		last_ts_delta_us;
-
-	struct delayed_work	work;
-	unsigned int		update_ms;
-
-	unsigned int		num_mons;
-	unsigned int		num_inited_mons;
-	unsigned int		num_active_mons;
-	struct memlat_mon	*mons;
-	struct mutex		mons_lock;
-	bool			initialized;
-};
-
-struct memlat_mon_spec {
-	enum mon_type type;
-};
-
-#define to_cpu_data(cpu_grp, cpu) \
-	(&cpu_grp->cpus_data[cpu - cpumask_first(&cpu_grp->cpus)])
-#define to_common_evs(cpu_grp, cpu) \
-	(cpu_grp->cpus_data[cpu - cpumask_first(&cpu_grp->cpus)].common_evs)
-#define to_devstats(mon, cpu) \
-	(&mon->hw.core_stats[cpu - cpumask_first(&mon->cpus)])
-#define to_mon(hwmon) container_of(hwmon, struct memlat_mon, hw)
 
 static struct workqueue_struct *memlat_wq;
 static LIST_HEAD(cpu_grp_list);
@@ -150,23 +44,43 @@ static DEFINE_PER_CPU(struct memlat_cpu_grp*, cpu_grp_p);
 #define MAX_COUNT_LIM 0xFFFFFFFFFFFFFFFF
 
 int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
-				      unsigned long *stall, unsigned long *cachemiss,
-                                      unsigned long *mem_stall)
+				      unsigned long *stall, unsigned long *l2_cachemiss,
+				      unsigned long *l3_cachemiss, unsigned long *mem_stall,
+				      unsigned long *l2_cache_wb, unsigned long *l3_cache_access,
+				      unsigned long *mem_count, unsigned long *freq)
 {
 	struct memlat_cpu_grp *cpu_grp = per_cpu(cpu_grp_p, cpu);
+	struct memlat_mon *mons = cpu_grp->mons;
 	struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
+
+	unsigned int mon_idx =
+		cpu - cpumask_first(&mons->cpus);
 
 	spin_lock(&cpu_data->pmu_lock);
 	*inst = cpu_data->inst;
 	*cyc = cpu_data->cyc;
+	*freq = cpu_data->freq;
 	*stall = cpu_data->stall;
-	*cachemiss = cpu_data->cachemiss;
+	*l2_cachemiss = cpu_data->l2_cachemiss;
+	*l3_cachemiss = cpu_data->l3_cachemiss;
+	*l2_cache_wb = cpu_data->l2_cache_wb;
+	*l3_cache_access = cpu_data->l3_cache_access;
 	*mem_stall = cpu_data->mem_stall;
+	if (mons->miss_ev) {
+		*mem_count = mons->miss_ev[mon_idx].last_delta;
+        } else {
+		*mem_count = 1;
+        }
 	spin_unlock(&cpu_data->pmu_lock);
 
 	return 0;
 }
 EXPORT_SYMBOL(get_ev_data);
+
+void set_dsu_devfreq(struct devfreq *dsu_devfreq) {
+	dsu_df = dsu_devfreq;
+}
+EXPORT_SYMBOL(set_dsu_devfreq);
 
 static inline void read_event(struct event_data *event)
 {
@@ -252,7 +166,10 @@ static void update_counts_idle_core(struct memlat_cpu_grp *cpu_grp, int cpu)
 	cpu_data->inst = common_evs[INST_IDX].last_delta;
 	cpu_data->cyc = common_evs[CYC_IDX].last_delta;
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
-	cpu_data->cachemiss = mon->miss_ev[mon_idx].last_delta;
+	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
+	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
+	cpu_data->l2_cache_wb = common_evs[L2_WB_IDX].last_delta;
+	cpu_data->l3_cache_access = common_evs[L3_ACCESS_IDX].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
 	spin_unlock(&cpu_data->pmu_lock);
 }
@@ -329,7 +246,10 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 	cpu_data->inst = common_evs[INST_IDX].last_delta;
 	cpu_data->cyc = common_evs[CYC_IDX].last_delta;
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
-	cpu_data->cachemiss = mon->miss_ev[mon_idx].last_delta;
+	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
+	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
+	cpu_data->l2_cache_wb = common_evs[L2_WB_IDX].last_delta;
+	cpu_data->l3_cache_access = common_evs[L3_ACCESS_IDX].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
 	spin_unlock(&cpu_data->pmu_lock);
 }
@@ -351,6 +271,7 @@ static unsigned long get_cnt(struct memlat_hwmon *hw)
 		devstats->stall_pct = cpu_data->stall_pct;
 		devstats->inst_count = common_evs[INST_IDX].last_delta;
 		devstats->mem_stall_count = cpu_data->mem_stall;
+		devstats->l2_cachemiss_count = cpu_data->l2_cachemiss;
 
 		if (mon->miss_ev)
 			devstats->mem_count =
@@ -602,6 +523,17 @@ static void memlat_monitor_work(struct work_struct *work)
 		if (err)
 			dev_err(mon->hw.dev, "Memlat update failed: %d\n", err);
 		mutex_unlock(&df->lock);
+
+		// Add callback for DSU
+                if (!strncmp(mon->governor_name, "dsu_latency", DEVFREQ_NAME_LEN)) {
+			if (dsu_df) {
+				mutex_lock(&dsu_df->lock);
+				err = update_devfreq(dsu_df);
+				if (err)
+					dev_err(&dsu_df->dev, "Dsulat update failed: %d\n", err);
+				mutex_unlock(&dsu_df->lock);
+			}
+		}
 	}
 
 	queue_cpugrp_work(cpu_grp);
@@ -678,6 +610,7 @@ static void stop_hwmon(struct memlat_hwmon *hw)
 		devstats->mem_count = 0;
 		devstats->freq = 0;
 		devstats->stall_pct = 0;
+		devstats->l2_cachemiss_count = 0;
 	}
 
 	if (!cpu_grp->num_active_mons) {
@@ -817,6 +750,27 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 	}
 	cpu_grp->common_ev_ids[STALL_IDX] = event_id;
 
+	ret = of_property_read_u32(dev->of_node, "l2-cachemiss-ev", &event_id);
+	if (ret) {
+		dev_dbg(dev, "L2 cachemiss event not specified. Skipping.\n");
+		event_id = L2D_CACHE_REFILL_EV;
+	}
+	cpu_grp->common_ev_ids[L2D_CACHE_REFILL_IDX] = event_id;
+
+	ret = of_property_read_u32(dev->of_node, "l2-wb-ev", &event_id);
+	if (ret) {
+		dev_dbg(dev, "L2 cache wb event not specified. Skipping.\n");
+		event_id = L2_WB_EV;
+	}
+	cpu_grp->common_ev_ids[L2_WB_IDX] = event_id;
+
+	ret = of_property_read_u32(dev->of_node, "l3-access-ev", &event_id);
+	if (ret) {
+		dev_dbg(dev, "L3 access event not specified. Skipping.\n");
+		event_id = L3_ACCESS_EV;
+	}
+	cpu_grp->common_ev_ids[L3_ACCESS_IDX] = event_id;
+
 	num_cpus = cpumask_weight(&cpu_grp->cpus);
 	cpu_grp->cpus_data =
 		devm_kzalloc(dev, num_cpus * sizeof(*cpu_grp->cpus_data),
@@ -841,6 +795,7 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	struct memlat_hwmon *hw;
 	unsigned int event_id, num_cpus, cpu;
 	struct cpu_data *cpu_data;
+        const char *name;
 
 	if (!memlat_wq)
 		memlat_wq = alloc_workqueue("memlat_wq",
@@ -925,6 +880,16 @@ static int memlat_mon_probe(struct platform_device *pdev)
 		goto unlock_out;
 	}
 	mon->miss_ev_id = event_id;
+
+	ret = of_property_read_string(dev->of_node, "governor-name",
+		&name);
+	if (ret) {
+		dev_err(dev, "Cannot find request governor for mon: %d\n",
+				ret);
+		ret = -EINVAL;
+		goto unlock_out;
+	}
+	strncpy(mon->governor_name, name, DEVFREQ_NAME_LEN);
 
 	ret = register_memlat(dev, hw);
 

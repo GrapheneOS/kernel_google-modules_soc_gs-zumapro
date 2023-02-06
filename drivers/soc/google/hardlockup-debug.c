@@ -233,7 +233,7 @@ static unsigned long hardlockup_debug_get_locked_cpu_mask(void)
 	return mask;
 }
 
-static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned int esr)
+static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 {
 	static atomic_t show_mem_once = ATOMIC_INIT(1);
 	static atomic_t print_schedstat_once = ATOMIC_INIT(1);

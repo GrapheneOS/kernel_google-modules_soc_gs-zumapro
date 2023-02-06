@@ -234,8 +234,9 @@ static void slc_acpm_check(struct slc_acpm_driver_data *driver_data)
 			 "ptid %d size %dK\n",
 			 ptid, 4 * size4kB);
 		if (!driver_data->ptids[ptid].resize) {
-			WARN_ONCE(1, "unallocated ptid %d size %dK\n",
-				  ptid, 4 * size4kB);
+			/*
+			 * ptid was freed
+			 */
 			continue;
 		}
 		spin_lock_irqsave(&driver_data->sl, flags);

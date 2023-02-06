@@ -189,8 +189,7 @@ static LIST_HEAD(dtm_dev_list);
 
 static struct acpm_gov_common acpm_gov_common = {
 #if IS_ENABLED(CONFIG_SOC_ZUMA)
-	/* TODO: make it true after having the team test out the stability */
-	.turn_on = false,
+	.turn_on = true,
 #else
 	.turn_on = false,
 #endif

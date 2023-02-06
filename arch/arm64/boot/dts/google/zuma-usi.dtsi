@@ -87,7 +87,7 @@
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
 		samsung,scl-clk-stretching;
-//		samsung,no_lose_arbitration;
+		samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
 		interrupts = <GIC_SPI IRQ_USI1_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
@@ -108,7 +108,7 @@
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
 		samsung,scl-clk-stretching;
-//		samsung,no_lose_arbitration;
+		samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
 		interrupts = <GIC_SPI IRQ_USI2_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
@@ -129,7 +129,7 @@
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
 		samsung,scl-clk-stretching;
-//		samsung,no_lose_arbitration;
+		samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
 		interrupts = <GIC_SPI IRQ_USI3_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
@@ -150,7 +150,7 @@
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
 		samsung,scl-clk-stretching;
-//		samsung,no_lose_arbitration;
+		samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
 		interrupts = <GIC_SPI IRQ_USI4_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";

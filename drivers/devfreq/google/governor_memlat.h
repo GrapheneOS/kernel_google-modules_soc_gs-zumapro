@@ -13,12 +13,18 @@ enum common_ev_idx {
 	INST_IDX,
 	CYC_IDX,
 	STALL_IDX,
+	L2D_CACHE_REFILL_IDX,
+	L2_WB_IDX,
+	L3_ACCESS_IDX,
 	NUM_COMMON_EVS
 };
 
 #define INST_EV	0x08
 #define CYC_EV	0x11
 #define STALL_EV 0x24
+#define L2D_CACHE_REFILL_EV 0x17
+#define L2_WB_EV 0x18
+#define L3_ACCESS_EV 0x2B
 #define L3D_CACHE_REFILL_EV 0x2A
 
 /**
@@ -36,6 +42,7 @@ struct dev_stats {
 	unsigned long freq;
 	unsigned long stall_pct;
 	unsigned long mem_stall_count;
+	unsigned long l2_cachemiss_count;
 };
 
 struct core_dev_map {

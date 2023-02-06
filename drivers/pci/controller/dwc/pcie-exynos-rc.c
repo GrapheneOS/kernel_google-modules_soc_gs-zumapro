@@ -80,10 +80,10 @@ struct exynos_pm_qos_request exynos_pcie_int_qos[MAX_RC_NUM];
  * PCIe channel1 is in the HSI2 block.
  */
 #define pcie_ch_to_hsi(ch_num)	((ch_num) + 1)
+#define to_pci_dev_from_dev(dev) container_of((dev), struct pci_dev, dev)
 #if IS_ENABLED(CONFIG_GS_S2MPU) || IS_ENABLED(CONFIG_EXYNOS_PCIE_IOMMU)
 static const struct dma_map_ops pcie_dma_ops;
 static struct device fake_dma_dev;
-#define to_pci_dev_from_dev(dev) container_of((dev), struct pci_dev, dev)
 //static void exynos_d3_sleep_hook(void *unused, struct pci_dev *dev,
 //				 unsigned int *delay);
 
@@ -784,9 +784,226 @@ static DEVICE_ATTR_RW(link_speed);
 static DEVICE_ATTR_RO(link_state);
 static DEVICE_ATTR_RO(power_stats);
 
+/* percentage (0-100) to weight new datapoints in moving average */
+#define NEW_DATA_AVERAGE_WEIGHT  10
+static void link_stats_init(struct exynos_pcie *pcie)
+{
+	pcie->link_stats.link_down_irq_count = 0;
+	pcie->link_stats.link_down_irq_count_reported = 0;
+	pcie->link_stats.cmpl_timeout_irq_count = 0;
+	pcie->link_stats.cmpl_timeout_irq_count_reported = 0;
+	pcie->link_stats.link_up_failure_count = 0;
+	pcie->link_stats.link_up_failure_count_reported = 0;
+	pcie->link_stats.link_recovery_failure_count = 0;
+	pcie->link_stats.link_recovery_failure_count_reported = 0;
+	pcie->link_stats.pll_lock_time_avg = 0;
+	pcie->link_stats.link_up_time_avg = 0;
+}
+
+static void link_stats_log_link_up(struct exynos_pcie *pcie, u32 link_up_time)
+{
+	pcie->link_stats.link_up_time_avg =
+	    DIV_ROUND_CLOSEST(pcie->link_stats.link_up_time_avg *
+			      (100 - NEW_DATA_AVERAGE_WEIGHT) +
+			      link_up_time * NEW_DATA_AVERAGE_WEIGHT, 100);
+}
+
+static ssize_t link_down_irqs_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+	u32 value = pcie->link_stats.link_down_irq_count;
+
+	/* report delta since last write */
+	value -= pcie->link_stats.link_down_irq_count_reported;
+
+	return sysfs_emit(buf, "%d\n", value);
+}
+
+static ssize_t link_down_irqs_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	int ret;
+	u32 value, delta;
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	/* Writing a value marks those as reported */
+	ret = kstrtouint(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	delta = pcie->link_stats.link_down_irq_count -
+		pcie->link_stats.link_down_irq_count_reported;
+
+	if (value > delta) {
+		dev_info(dev, "Value needs to be <= %d\n", delta);
+		return -EINVAL;
+	}
+
+	pcie->link_stats.link_down_irq_count_reported += value;
+
+	return count;
+}
+
+static ssize_t complete_timeout_irqs_show(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+	u32 value = pcie->link_stats.cmpl_timeout_irq_count;
+
+	/* report delta since last sysfs write */
+	value -= pcie->link_stats.cmpl_timeout_irq_count_reported;
+
+	return sysfs_emit(buf, "%d\n", value);
+}
+
+static ssize_t complete_timeout_irqs_store(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf, size_t count)
+{
+	int ret;
+	u32 value, delta;
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	/* Writing a value marks those as reported */
+	ret = kstrtouint(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	delta = pcie->link_stats.cmpl_timeout_irq_count -
+		pcie->link_stats.cmpl_timeout_irq_count_reported;
+
+	if (value > delta) {
+		dev_info(dev, "Value needs to be <= %d\n", delta);
+		return -EINVAL;
+	}
+
+	pcie->link_stats.cmpl_timeout_irq_count_reported += value;
+
+	return count;
+}
+
+
+static ssize_t link_up_failures_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+	u32 value = pcie->link_stats.link_up_failure_count;
+
+	/* report delta since last write */
+	value -= pcie->link_stats.link_up_failure_count_reported;
+
+	return sysfs_emit(buf, "%d\n", value);
+}
+
+static ssize_t link_up_failures_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	int ret;
+	u32 value, delta;
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	/* Writing a value marks those as reported */
+	ret = kstrtouint(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	delta = pcie->link_stats.link_up_failure_count -
+		pcie->link_stats.link_up_failure_count_reported;
+
+	if (value > delta) {
+		dev_info(dev, "Value needs to be <= %d\n", delta);
+		return -EINVAL;
+	}
+
+	pcie->link_stats.link_up_failure_count_reported += value;
+
+	return count;
+}
+
+static ssize_t link_recovery_failures_show(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+	u32 value = pcie->link_stats.link_recovery_failure_count;
+
+	/* report delta since last write */
+	value -= pcie->link_stats.link_recovery_failure_count_reported;
+
+	return sysfs_emit(buf, "%d\n", value);
+}
+
+static ssize_t link_recovery_failures_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	int ret;
+	u32 value, delta;
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	/* Writing a value marks those as reported */
+	ret = kstrtouint(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	delta = pcie->link_stats.link_recovery_failure_count -
+		pcie->link_stats.link_recovery_failure_count_reported;
+
+	if (value > delta) {
+		dev_info(dev, "Value needs to be <= %d\n", delta);
+		return -EINVAL;
+	}
+
+	pcie->link_stats.link_recovery_failure_count_reported += value;
+
+	return count;
+}
+
+static ssize_t pll_lock_average_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", pcie->link_stats.pll_lock_time_avg);
+}
+
+static ssize_t link_up_average_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", pcie->link_stats.link_up_time_avg);
+}
+
+static DEVICE_ATTR_RW(link_down_irqs);
+static DEVICE_ATTR_RW(complete_timeout_irqs);
+static DEVICE_ATTR_RW(link_up_failures);
+static DEVICE_ATTR_RW(link_recovery_failures);
+static DEVICE_ATTR_RO(pll_lock_average);
+static DEVICE_ATTR_RO(link_up_average);
+
+static struct attribute *link_stats_attrs[] = {
+	&dev_attr_link_down_irqs.attr,
+	&dev_attr_complete_timeout_irqs.attr,
+	&dev_attr_link_up_failures.attr,
+	&dev_attr_link_recovery_failures.attr,
+	&dev_attr_pll_lock_average.attr,
+	&dev_attr_link_up_average.attr,
+	NULL,
+};
+
+static const struct attribute_group link_stats_group = {
+	.attrs = link_stats_attrs,
+	.name = "link_stats",
+};
+
 static inline int create_pcie_sys_file(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
+	struct pci_dev *pdev = to_pci_dev_from_dev(dev);
 	int ret;
 	int num_lane;
 
@@ -839,16 +1056,25 @@ static inline int create_pcie_sys_file(struct device *dev)
 		return ret;
 	}
 
+	ret = sysfs_create_group(&pdev->dev.kobj, &link_stats_group);
+	if (ret) {
+		dev_err(dev, "couldn't create sysfs group for link_stats(%d)\n", ret);
+		return ret;
+	}
+
 	return 0;
 }
 
 static inline void remove_pcie_sys_file(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev_from_dev(dev);
+
 	device_remove_file(dev, &dev_attr_pcie_rc_test);
 	device_remove_file(dev, &dev_attr_l12_state);
 	device_remove_file(dev, &dev_attr_link_speed);
 	device_remove_file(dev, &dev_attr_link_state);
 	device_remove_file(dev, &dev_attr_power_stats);
+	sysfs_remove_group(&pdev->dev.kobj, &link_stats_group);
 }
 
 static int exynos_pcie_rc_clock_enable(struct pcie_port *pp, int enable)
@@ -2060,8 +2286,7 @@ void exynos_pcie_rc_cpl_timeout_work(struct work_struct *work)
 static void exynos_pcie_rc_use_ia(struct exynos_pcie *exynos_pcie)
 {
 	if (!exynos_pcie->use_ia) {
-		pr_info("[%s] Not support I/A(use_ia = false)\n", __func__);
-
+		pr_debug("[%s] Not support I/A(use_ia = false)\n", __func__);
 		return;
 	}
 
@@ -2399,6 +2624,7 @@ static irqreturn_t exynos_pcie_rc_irq_handler(int irq, void *arg)
 		dev_info(dev, "! PCIE LINK DOWN-irq1_state: 0x%x !\n", val_irq1);
 		dev_info(dev, "(irq0 = 0x%x, irq1 = 0x%x, irq2 = 0x%x)\n",
 			 val_irq0, val_irq1, val_irq2);
+		exynos_pcie->link_stats.link_down_irq_count++;
 
 		if (exynos_pcie->cpl_timeout_recovery) {
 			dev_err(dev, "already in cpl recovery\n");
@@ -2413,6 +2639,7 @@ static irqreturn_t exynos_pcie_rc_irq_handler(int irq, void *arg)
 		dev_info(dev, "!! PCIE_CPL_TIMEOUT-irq2_state: 0x%x !!\n", val_irq2);
 		dev_info(dev, "(irq0 = 0x%x, irq1 = 0x%x, irq2 = 0x%x)\n",
 				val_irq0, val_irq1, val_irq2);
+		exynos_pcie->link_stats.cmpl_timeout_irq_count++;
 
 		val_irq2 = exynos_elbi_read(exynos_pcie, PCIE_IRQ2);
 		dev_info(dev, "check irq22 pending clear: irq2_state = 0x%x\n", val_irq2);
@@ -2514,11 +2741,11 @@ program_msi_data:
 	exynos_pcie_rc_rd_own_conf(pp, PCIE_MSI_INTR0_MASK, 4, &mask_val);
 
 	if (exynos_pcie->separated_msi) {
-		pr_info("Enable Separated MSI IRQs.\n");
+		dev_dbg(dev, "Enable Separated MSI IRQs.\n");
 		for (i = PCIE_START_SEP_MSI_VEC; i < PCIE_MAX_SEPA_IRQ_NUM; i++) {
 			if (sep_msi_vec[exynos_pcie->ch_num][i].is_used) {
 				/* Enable MSI interrupt for separated MSI. */
-				pr_info("Separated MSI%d is Enabled.\n", i);
+				dev_dbg(dev, "Separated MSI%d is Enabled.\n", i);
 				exynos_pcie_rc_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE +
 						(i * MSI_REG_CTRL_BLOCK_SIZE), 4, 0x1);
 				exynos_pcie_rc_wr_own_conf(pp, PCIE_MSI_INTR0_MASK +
@@ -2527,7 +2754,7 @@ program_msi_data:
 		}
 	}
 #if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
-	dev_info(dev, "MSI INIT: check MSI_INTR0_ENABLE(0x%x): 0x%x\n", PCIE_MSI_INTR0_ENABLE, val);
+	dev_dbg(dev, "MSI INIT: check MSI_INTR0_ENABLE(0x%x): 0x%x\n", PCIE_MSI_INTR0_ENABLE, val);
 	if (exynos_pcie->ep_device_type != EP_QC_WIFI) {
 		if (val != 0xf1) {
 			exynos_pcie_rc_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE, 4, 0xf1);
@@ -2535,7 +2762,7 @@ program_msi_data:
 		}
 	}
 
-	dev_info(dev, "MSI INIT: check MSI_INTR0_MASK(0x%x): 0x%x\n", PCIE_MSI_INTR0_MASK, mask_val);
+	dev_dbg(dev, "MSI INIT: check MSI_INTR0_MASK(0x%x): 0x%x\n", PCIE_MSI_INTR0_MASK, mask_val);
 	mask_val &= ~(val);
 	exynos_pcie_rc_wr_own_conf(pp, PCIE_MSI_INTR0_MASK, 4, mask_val);
 	udelay(1);
@@ -2549,7 +2776,7 @@ program_msi_data:
 		exynos_pcie_rc_rd_own_conf(pp, PCIE_MSI_INTR0_MASK, 4, &mask_val);
 		exynos_pcie_rc_rd_own_conf(pp, PCIE_MSI_INTR0_ENABLE, 4, &val);
 	}
-	dev_info(dev, "%s: MSI INIT END (MSI_ENABLE(0x%x)=0x%x, MSI_MASK(0x%x)=0x%x)\n",
+	dev_dbg(dev, "%s: MSI INIT END (MSI_ENABLE(0x%x)=0x%x, MSI_MASK(0x%x)=0x%x)\n",
 		__func__, PCIE_MSI_INTR0_ENABLE, val, PCIE_MSI_INTR0_MASK, mask_val);
 
 	return 0;
@@ -2637,7 +2864,7 @@ retry:
 	/* set #PERST high */
 	gpio_set_value(exynos_pcie->perst_gpio, 1);
 
-	dev_info(dev, "%s: Set PERST to HIGH, gpio val = %d\n",
+	dev_dbg(dev, "%s: Set PERST to HIGH, gpio val = %d\n",
 		__func__, gpio_get_value(exynos_pcie->perst_gpio));
 
 	usleep_range(exynos_pcie->perst_delay_us,
@@ -2676,7 +2903,7 @@ retry:
 	if (exynos_pcie->use_cache_coherency)
 		exynos_pcie_rc_set_iocc(pp, 1);
 
-	dev_info(dev, "D state: %x, LTSSM: %x\n",
+	dev_dbg(dev, "D state: %x, LTSSM: %x\n",
 		exynos_elbi_read(exynos_pcie, PCIE_PM_DSTATE) & PCIE_PM_DSTATE_MASK,
 		exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP) & PCIE_ELBI_LTSSM_STATE_MASK);
 
@@ -2702,6 +2929,7 @@ retry:
 		      & PCIE_ELBI_LTSSM_STATE_MASK;
 		dev_err(dev, "Link is not up, try count: %d, linksts: %s(0x%x)\n",
 			try_cnt, LINK_STATE_DISP(val), val);
+		exynos_pcie->link_stats.link_up_failure_count++;
 
 		if (try_cnt < 10) {
 			gpio_set_value(exynos_pcie->perst_gpio, 0);
@@ -2718,6 +2946,7 @@ retry:
 			exynos_pcie_rc_print_link_history(pp);
 			exynos_pcie_rc_dump_link_down_status(exynos_pcie->ch_num);
 			exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
+			exynos_pcie->link_stats.link_recovery_failure_count++;
 
 			if (exynos_pcie->ip_ver >= 0x889000 &&
 			    exynos_pcie->ep_device_type == EP_BCM_WIFI) {
@@ -2730,6 +2959,7 @@ retry:
 		val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP)
 		      & PCIE_ELBI_LTSSM_STATE_MASK;
 		dev_info(dev, "%s(0x%x)\n", LINK_STATE_DISP(val), val);
+		link_stats_log_link_up(exynos_pcie, count);
 
 		dev_dbg(dev, "(phy+0xC08=0x%x)(phy+0x1408=0x%x)(phy+0xC6C=0x%x)(phy+0x146C=0x%x)\n",
 			exynos_phy_read(exynos_pcie, 0xC08),
@@ -2742,7 +2972,7 @@ retry:
 
 		exynos_pcie_rc_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &val);
 		val = (val >> 16) & 0xf;
-		dev_info(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
+		dev_dbg(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
 			val, exynos_pcie->max_link_speed);
 
 		/* check link training result(speed) */
@@ -2761,14 +2991,14 @@ retry:
 
 				goto retry;
 			} else {
-				dev_info(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
+				dev_dbg(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
 					val, exynos_pcie->max_link_speed);
 			}
 		}
 
 		/* check L0 state one more time after link recovery */
 		count = 0;
-		dev_info(dev, "check L0 state after link recovery\n");
+		dev_dbg(dev, "check L0 state after link recovery\n");
 		while (count < MAX_TIMEOUT) {
 			val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP)
 			      & PCIE_ELBI_LTSSM_STATE_MASK;
@@ -2891,7 +3121,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 
 		power_stats_update_up(exynos_pcie);
 
-		dev_info(dev, "[%s] exynos_pcie->probe_ok : %d\n", __func__, exynos_pcie->probe_ok);
+		dev_dbg(dev, "[%s] exynos_pcie->probe_ok : %d\n", __func__, exynos_pcie->probe_ok);
 		if (!exynos_pcie->probe_ok) {
 			exynos_pcie_rc_rd_own_conf(pp, PCI_VENDOR_ID, 4, &val);
 			vendor_id = val & ID_MASK;
@@ -3025,7 +3255,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
 
 		gpio_set_value(exynos_pcie->perst_gpio, 0);
-		dev_info(dev, "%s: Set PERST to LOW, gpio val = %d\n",
+		dev_dbg(dev, "%s: Set PERST to LOW, gpio val = %d\n",
 			__func__, gpio_get_value(exynos_pcie->perst_gpio));
 
 		/* LTSSM disable */
@@ -3524,7 +3754,7 @@ int exynos_pcie_poweron(int ch_num, int spd)
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
 
-	dev_info(pci->dev, "%s requested with link speed GEN%d\n", __func__, spd);
+	dev_dbg(pci->dev, "%s requested with link speed GEN%d\n", __func__, spd);
 	exynos_pcie->max_link_speed = spd;
 
 	return exynos_pcie_rc_poweron(ch_num);
@@ -3707,8 +3937,8 @@ int exynos_pcie_register_event(struct exynos_pcie_register_event *reg)
 
 	if (pp) {
 		exynos_pcie->event_reg = reg;
-		dev_info(pci->dev, "Event 0x%x is registered for RC %d\n",
-			 reg->events, exynos_pcie->ch_num);
+		dev_dbg(pci->dev, "Event 0x%x is registered for RC %d\n",
+			reg->events, exynos_pcie->ch_num);
 	} else {
 		pr_err("PCIe: did not find RC for pci endpoint device\n");
 		ret = -ENODEV;
@@ -4441,6 +4671,7 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 	dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(36));
 	platform_set_drvdata(pdev, exynos_pcie);
 	power_stats_init(exynos_pcie);
+	link_stats_init(exynos_pcie);
 
 #if IS_ENABLED(CONFIG_GS_S2MPU)
 	s2mpu_dn = of_parse_phandle(np, "s2mpu", 0);
