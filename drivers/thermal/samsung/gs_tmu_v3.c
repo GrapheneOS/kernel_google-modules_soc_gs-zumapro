@@ -3963,8 +3963,6 @@ static int gs_tmu_parse_ect(struct gs_tmu_data *data)
 struct gs_tmu_data *gpu_thermal_data;
 #endif
 
-extern void register_tz_id_ignore_genl(int tz_id);
-
 static int gs_tmu_probe(struct platform_device *pdev)
 {
 	struct gs_tmu_data *data;
@@ -4147,9 +4145,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (!strncmp(data->tmu_name, "ISP", 3))
 		exynos_isp_cooling_init();
 #endif
-
-	register_tz_id_ignore_genl(data->tzd->id);
-
 	return 0;
 
 err_sensor:
