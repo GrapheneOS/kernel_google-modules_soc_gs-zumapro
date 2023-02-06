@@ -249,12 +249,11 @@ static irqreturn_t irq_handler(int irq, void *data)
 		if (idx == UVLO2)
 			gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
 
-		if (idx >= UVLO1 && idx <= BATOILO)
-			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
-
 		/* IRQ is either UVLO1, UVLO2, or BATOILO */
-		if (irq_val != 0 && err == 0)
-			idx = irq_val;
+		if (idx >= UVLO1 && idx <= BATOILO) {
+			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+			idx = (idx != UVLO1) ? irq_val : idx;
+		}
 
 		if (bcl_dev->batt_psy_initialized) {
 			atomic_inc(&bcl_dev->bcl_cnt[idx]);
