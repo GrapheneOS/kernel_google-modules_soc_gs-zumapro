@@ -874,6 +874,90 @@ static int set_modem_gpio2(void *data, u64 val)
 	return 0;
 }
 
+static int get_add_perph(void *data, u64 *val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	*val = (u64)bcl_dev->add_perph;
+	return 0;
+}
+
+static int set_add_perph(void *data, u64 val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	if (val < 0 || val > SUBSYSTEM_SOURCE_MAX)
+		return -EINVAL;
+
+	bcl_dev->add_perph = (u8)val;
+	return 0;
+}
+
+static int get_add_addr(void *data, u64 *val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	*val = bcl_dev->add_addr;
+	return 0;
+}
+
+static int set_add_addr(void *data, u64 val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	if (val < 0 || val > SZ_128)
+		return -EINVAL;
+
+	bcl_dev->add_addr = val;
+	return 0;
+}
+
+static int get_add_data(void *data, u64 *val)
+{
+	struct bcl_device *bcl_dev = data;
+	void __iomem *read_addr;
+
+	if (bcl_dev->add_addr < 0 || bcl_dev->add_addr > SZ_128)
+		return -EINVAL;
+
+	if (bcl_dev->add_perph < 0 || bcl_dev->add_perph > SUBSYSTEM_SOURCE_MAX)
+		return -EINVAL;
+
+	mutex_lock(&sysreg_lock);
+	read_addr = bcl_dev->base_add_mem[bcl_dev->add_perph] + bcl_dev->add_addr;
+	*val = __raw_readl(read_addr);
+	mutex_unlock(&sysreg_lock);
+
+	return 0;
+}
+
+static int set_add_data(void *data, u64 val)
+{
+	struct bcl_device *bcl_dev = data;
+	void __iomem *write_addr;
+
+	if (bcl_dev->add_addr < 0 || bcl_dev->add_addr > SZ_128)
+		return -EINVAL;
+
+	if (bcl_dev->add_perph < 0 || bcl_dev->add_perph > SUBSYSTEM_SOURCE_MAX)
+		return -EINVAL;
+
+	if (!bcl_dev)
+		return -ENOMEM;
+
+	if (!bcl_dev->base_add_mem[bcl_dev->add_perph]) {
+		pr_err("Error in ADD perph\n");
+		return -ENOMEM;
+	}
+
+	mutex_lock(&sysreg_lock);
+	write_addr = bcl_dev->base_add_mem[bcl_dev->add_perph] + bcl_dev->add_addr;
+	__raw_writel(val, write_addr);
+	mutex_unlock(&sysreg_lock);
+	return 0;
+}
+
+
 DEFINE_SIMPLE_ATTRIBUTE(cpu0_clkout_fops, get_cpu0clk, set_cpu0clk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(cpu1_clkout_fops, get_cpu1clk, set_cpu1clk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(cpu2_clkout_fops, get_cpu2clk, set_cpu2clk, "0x%llx\n");
@@ -881,9 +965,13 @@ DEFINE_SIMPLE_ATTRIBUTE(gpu_clkout_fops, get_gpuclk, set_gpuclk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(tpu_clkout_fops, get_tpuclk, set_tpuclk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(modem_gpio1_fops, get_modem_gpio1, set_modem_gpio1, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(modem_gpio2_fops, get_modem_gpio2, set_modem_gpio2, "0x%llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(add_perph_fops, get_add_perph, set_add_perph, "0x%llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(add_addr_fops, get_add_addr, set_add_addr, "0x%llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(add_data_fops, get_add_data, set_add_data, "0x%llx\n");
 
 static void google_init_debugfs(struct bcl_device *bcl_dev)
 {
+	struct dentry *dentry_add;
 	bcl_dev->debug_entry = debugfs_create_dir("google_bcl", 0);
 	debugfs_create_file("cpu0_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &cpu0_clkout_fops);
 	debugfs_create_file("cpu1_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &cpu1_clkout_fops);
@@ -892,6 +980,10 @@ static void google_init_debugfs(struct bcl_device *bcl_dev)
 	debugfs_create_file("tpu_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &tpu_clkout_fops);
 	debugfs_create_file("modem_gpio1", 0644, bcl_dev->debug_entry, bcl_dev, &modem_gpio1_fops);
 	debugfs_create_file("modem_gpio2", 0644, bcl_dev->debug_entry, bcl_dev, &modem_gpio2_fops);
+	dentry_add = debugfs_create_dir("add", bcl_dev->debug_entry);
+	debugfs_create_file("perph", 0600, dentry_add, bcl_dev, &add_perph_fops);
+	debugfs_create_file("addr", 0600, dentry_add, bcl_dev, &add_addr_fops);
+	debugfs_create_file("data", 0600, dentry_add, bcl_dev, &add_data_fops);
 }
 
 static void google_set_throttling(struct bcl_device *bcl_dev)
@@ -1516,6 +1608,41 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 	mutex_init(&bcl_dev->ratio_lock);
 	google_bcl_enable_vdroop_irq(bcl_dev);
 
+	bcl_dev->base_add_mem[CPU0] = devm_ioremap(bcl_dev->device, ADD_CPUCL0, SZ_128);
+	if (!bcl_dev->base_add_mem[CPU0]) {
+		dev_err(bcl_dev->device, "cpu0_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[CPU1] = devm_ioremap(bcl_dev->device, ADD_CPUCL1, SZ_128);
+	if (!bcl_dev->base_add_mem[CPU1]) {
+		dev_err(bcl_dev->device, "cpu1_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[CPU2] = devm_ioremap(bcl_dev->device, ADD_CPUCL2, SZ_128);
+	if (!bcl_dev->base_add_mem[CPU2]) {
+		dev_err(bcl_dev->device, "cpu2_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[TPU] = devm_ioremap(bcl_dev->device, ADD_TPU, SZ_128);
+	if (!bcl_dev->base_add_mem[TPU]) {
+		dev_err(bcl_dev->device, "tpu_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[GPU] = devm_ioremap(bcl_dev->device, ADD_G3D, SZ_128);
+	if (!bcl_dev->base_add_mem[GPU]) {
+		dev_err(bcl_dev->device, "gpu_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[AUR] = devm_ioremap(bcl_dev->device, ADD_AUR, SZ_128);
+	if (!bcl_dev->base_add_mem[AUR]) {
+		dev_err(bcl_dev->device, "aur_add_mem ioremap failed\n");
+		return -EIO;
+	}
 	return 0;
 }
 

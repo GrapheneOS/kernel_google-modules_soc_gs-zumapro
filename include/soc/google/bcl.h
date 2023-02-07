@@ -39,6 +39,7 @@
 #define CPUCL2_BASE (0x29d80000)
 #define G3D_BASE (0x1EE00000)
 #define TPU_BASE (0x1A300000)
+#define AUR_BASE (0x20A00000)
 #define SYSREG_CPUCL0_BASE (0x29c20000)
 #define CLUSTER0_GENERAL_CTRL_64 (0x1404)
 #define CLKDIVSTEP (0x830)
@@ -69,6 +70,12 @@
 #define THRESHOLD_DELAY_MS 50
 #define PWRWARN_DELAY_MS 50
 #define LPF_CURRENT_SHIFT 4
+#define ADD_CPUCL0 (0x29ce0000)
+#define ADD_CPUCL1 (0x29d10000)
+#define ADD_CPUCL2 (0x29d90000)
+#define ADD_G3D (0x1EE60000)
+#define ADD_TPU (0x1A3A0000)
+#define ADD_AUR (0x20AF0000)
 
 enum SUBSYSTEM_SOURCE {
 	CPU0,
@@ -76,6 +83,7 @@ enum SUBSYSTEM_SOURCE {
 	CPU2,
 	TPU,
 	GPU,
+	AUR,
 	SUBSYSTEM_SOURCE_MAX,
 };
 
@@ -200,6 +208,10 @@ struct bcl_device {
 	struct dentry *debug_entry;
 	unsigned int gpu_clk_out;
 	unsigned int tpu_clk_out;
+	u8 add_perph;
+	u64 add_addr;
+	u64 add_data;
+	void __iomem *base_add_mem[SUBSYSTEM_SOURCE_MAX];
 
 	int main_irq_base, sub_irq_base;
 	u8 main_setting[METER_CHANNEL_MAX];
