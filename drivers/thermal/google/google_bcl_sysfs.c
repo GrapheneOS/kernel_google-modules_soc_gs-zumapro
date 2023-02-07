@@ -649,6 +649,8 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 			bcl_enable_power();
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
+		for (i = 0; i < TRIGGERED_SOURCE_MAX; i++)
+			enable_irq(bcl_dev->bcl_irq[i]);
 	} else {
 		bcl_dev->gpu_clkdivstep &= ~(1 << 0);
 		bcl_dev->tpu_clkdivstep &= ~(1 << 0);
@@ -661,6 +663,8 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 			bcl_enable_power();
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
+		for (i = 0; i < TRIGGERED_SOURCE_MAX; i++)
+			disable_irq_nosync(bcl_dev->bcl_irq[i]);
 	}
 	return size;
 }
