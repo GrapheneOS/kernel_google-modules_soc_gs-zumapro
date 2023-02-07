@@ -173,9 +173,9 @@ static void update_counts_idle_core(struct memlat_cpu_grp *cpu_grp, int cpu)
 	cpu_data->inst = cpu_data->amu_evs[INST_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
 	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
-	cpu_data->l2_cache_wb = common_evs[L2_WB_IDX].last_delta;
-	cpu_data->l3_cache_access = common_evs[L3_ACCESS_IDX].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs[MEM_STALL_IDX].last_delta;
+	cpu_data->l2_cache_wb = 0;
+	cpu_data->l3_cache_access = 0;
 	spin_unlock(&cpu_data->pmu_lock);
 }
 
@@ -252,10 +252,10 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
 	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
-	cpu_data->l2_cache_wb = common_evs[L2_WB_IDX].last_delta;
-	cpu_data->l3_cache_access = common_evs[L3_ACCESS_IDX].last_delta;
 	cpu_data->mem_stall = cpu_data->amu_evs[MEM_STALL_IDX].last_delta;
-        cpu_data->inst = cpu_data->amu_evs[INST_IDX].last_delta;
+	cpu_data->inst = cpu_data->amu_evs[INST_IDX].last_delta;
+	cpu_data->l2_cache_wb = 0;
+	cpu_data->l3_cache_access = 0;
 	spin_unlock(&cpu_data->pmu_lock);
 }
 
@@ -752,20 +752,6 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 		event_id = L2D_CACHE_REFILL_EV;
 	}
 	cpu_grp->common_ev_ids[L2D_CACHE_REFILL_IDX] = event_id;
-
-	ret = of_property_read_u32(dev->of_node, "l2-wb-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "L2 cache wb event not specified. Skipping.\n");
-		event_id = L2_WB_EV;
-	}
-	cpu_grp->common_ev_ids[L2_WB_IDX] = event_id;
-
-	ret = of_property_read_u32(dev->of_node, "l3-access-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "L3 access event not specified. Skipping.\n");
-		event_id = L3_ACCESS_EV;
-	}
-	cpu_grp->common_ev_ids[L3_ACCESS_IDX] = event_id;
 
 	num_cpus = cpumask_weight(&cpu_grp->cpus);
 	cpu_grp->cpus_data =
