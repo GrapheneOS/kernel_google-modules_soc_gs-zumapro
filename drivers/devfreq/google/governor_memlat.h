@@ -10,7 +10,6 @@
 #include <linux/devfreq.h>
 
 enum common_ev_idx {
-	INST_IDX,
 	CYC_IDX,
 	STALL_IDX,
 	L2D_CACHE_REFILL_IDX,
@@ -19,7 +18,12 @@ enum common_ev_idx {
 	NUM_COMMON_EVS
 };
 
-#define INST_EV	0x08
+enum amu_ev_idx {
+	INST_IDX,
+	MEM_STALL_IDX,
+	NUM_AMU_EVS
+};
+
 #define CYC_EV	0x11
 #define STALL_EV 0x24
 #define L2D_CACHE_REFILL_EV 0x17

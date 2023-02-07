@@ -18,7 +18,7 @@ struct event_data {
 
 struct cpu_data {
 	struct event_data common_evs[NUM_COMMON_EVS];
-	struct event_data amu_evs;
+	struct event_data amu_evs[NUM_AMU_EVS];
 	unsigned long freq;
 	unsigned long stall_pct;
 	spinlock_t    pmu_lock;
