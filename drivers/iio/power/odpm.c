@@ -1527,17 +1527,25 @@ static ssize_t measurement_stop_show(struct device *dev,
 	return count;
 }
 
-void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
-			 u64 micro_unit[ODPM_CHANNEL_MAX])
+void odpm_get_raw_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
+			     u32 micro_unit[ODPM_CHANNEL_MAX])
 {
-	int ch;
-	u32 data[ODPM_CHANNEL_MAX];
 	const int samp_rate = info->chip.int_sampling_rate_i;
 	u32 acquisition_time_us = s2mpg1415_meter_get_acquisition_time_us(samp_rate);
 
 	odpm_io_set_lpf_mode(info, mode);
 	usleep_range(acquisition_time_us, acquisition_time_us + 100);
-	odpm_io_get_lpf_data(info, data);
+	odpm_io_get_lpf_data(info, micro_unit);
+}
+EXPORT_SYMBOL_GPL(odpm_get_raw_lpf_values);
+
+static void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
+				u64 micro_unit[ODPM_CHANNEL_MAX])
+{
+	int ch;
+	u32 data[ODPM_CHANNEL_MAX];
+
+	odpm_get_raw_lpf_values(info, mode, data);
 
 	for (ch = 0; ch < ODPM_CHANNEL_MAX; ch++) {
 
@@ -1556,7 +1564,6 @@ void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
 		micro_unit[ch] = (u32)_IQ30_to_int(micro_unit_iq30);
 	}
 }
-EXPORT_SYMBOL_GPL(odpm_get_lpf_values);
 
 static ssize_t odpm_show_lpf_values(struct device *dev,
 				    struct device_attribute *attr, char *buf,

@@ -108,6 +108,7 @@ struct odpm_info {
 	bool sleeping;
 };
 
-void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
-			 u64 micro_unit[ODPM_CHANNEL_MAX]);
+void odpm_get_raw_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
+                             u32 micro_unit[ODPM_CHANNEL_MAX]);
+
 #endif /* __ODPM_H */

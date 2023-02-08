@@ -63,30 +63,9 @@ static const struct platform_device_id google_id_table[] = {
 
 DEFINE_MUTEX(sysreg_lock);
 
-static int bcl_odpm_map(int id)
-{
-	switch (id) {
-	case OCP_WARN_GPU:
-	case SOFT_OCP_WARN_GPU:
-		return BUCK4;
-	case OCP_WARN_TPU:
-	case SOFT_OCP_WARN_TPU:
-		return BUCK10;
-	case OCP_WARN_CPUCL1:
-	case SOFT_OCP_WARN_CPUCL1:
-		return BUCK3;
-	case OCP_WARN_CPUCL2:
-	case SOFT_OCP_WARN_CPUCL2:
-	default:
-		return BUCK2;
-	}
-}
-
 static int triggered_read_level(void *data, int *val, int id)
 {
 	struct bcl_device *bcl_dev = data;
-	u64 micro_unit[ODPM_CHANNEL_MAX];
-	u64 odpm_current = 0;
 	bool state = true;
 	int polarity = (id == SMPL_WARN) ? 0 : 1;
 	int gpio_level;
@@ -135,23 +114,8 @@ static int triggered_read_level(void *data, int *val, int id)
 		return 0;
 	}
 
-	/* If IRQ not asserted, check ODPM */
-	if ((id == OCP_WARN_GPU) || (id == SOFT_OCP_WARN_GPU)) {
-		mutex_lock(&bcl_dev->sub_odpm->lock);
-		odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-		mutex_unlock(&bcl_dev->sub_odpm->lock);
-	} else {
-		mutex_lock(&bcl_dev->main_odpm->lock);
-		odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-		mutex_unlock(&bcl_dev->main_odpm->lock);
-	}
-
 	*val = 0;
 	bcl_dev->bcl_tz_cnt[id] = 0;
-	if ((id != SMPL_WARN) && (odpm_current > (bcl_dev->bcl_lvl[id] / bcl_dev->odpm_ratio)))
-		*val = bcl_dev->bcl_lvl[id] + THERMAL_HYST_LEVEL;
 	if (bcl_dev->bcl_prev_lvl[id] != *val) {
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
@@ -962,12 +926,12 @@ static void main_pwrwarn_irq_work(struct work_struct *work)
 						  main_pwr_irq_work.work);
 	bool revisit_needed = false;
 	int i;
-	u64 micro_unit[ODPM_CHANNEL_MAX];
-	u64 measurement;
+	u32 micro_unit[ODPM_CHANNEL_MAX];
+	u32 measurement;
 
 	mutex_lock(&bcl_dev->main_odpm->lock);
 
-	odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+	odpm_get_raw_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
 		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
 		bcl_dev->main_pwr_warn_triggered[i] = (measurement > bcl_dev->main_limit[i]);
@@ -990,12 +954,12 @@ static void sub_pwrwarn_irq_work(struct work_struct *work)
 						  sub_pwr_irq_work.work);
 	bool revisit_needed = false;
 	int i;
-	u64 micro_unit[ODPM_CHANNEL_MAX];
-	u64 measurement;
+	u32 micro_unit[ODPM_CHANNEL_MAX];
+	u32 measurement;
 
 	mutex_lock(&bcl_dev->sub_odpm->lock);
 
-	odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+	odpm_get_raw_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
 		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
 		bcl_dev->sub_pwr_warn_triggered[i] = (measurement > bcl_dev->sub_limit[i]);
@@ -1613,8 +1577,6 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->cpu1_clkdivstep = ret ? 0 : val;
 	ret = of_property_read_u32(np, "cpu0_clkdivstep", &val);
 	bcl_dev->cpu0_clkdivstep = ret ? 0 : val;
-	ret = of_property_read_u32(np, "odpm_ratio", &val);
-	bcl_dev->odpm_ratio = (ret || !val) ? 2 : val;
 	bcl_dev->vdroop1_pin = of_get_gpio(np, 0);
 	bcl_dev->vdroop2_pin = of_get_gpio(np, 1);
 	bcl_dev->modem_gpio1_pin = of_get_gpio(np, 2);
