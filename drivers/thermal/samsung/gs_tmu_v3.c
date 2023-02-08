@@ -2124,7 +2124,6 @@ static int param_acpm_gov_tracing_mode_set(const char *val, const struct kernel_
 		return -EINVAL;
 
 	if (tracing_mode_val == ACPM_GOV_DEBUG_MODE_DISABLED) {
-		disable_irq(cb.ipc_ch);
 		if(acpm_gov_common.tracing_mode == ACPM_GOV_DEBUG_MODE_BULK) {
 			capture_bulk_trace();
 		}
@@ -2133,7 +2132,6 @@ static int param_acpm_gov_tracing_mode_set(const char *val, const struct kernel_
 		if (tracing_mode_val == ACPM_GOV_DEBUG_MODE_BULK) {
 			acpm_gov_common.tracing_buffer_flush_pending = true;
 		}
-		enable_irq(cb.ipc_ch);
 	}
 
 	acpm_gov_common.tracing_mode = tracing_mode_val;
@@ -2218,8 +2216,6 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 
 	if (exynos_acpm_tmu_cb_init(&cb))
 		return -1;
-
-	disable_irq(cb.ipc_ch);
 
 	exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(acpm_gov_common.tracing_mode);
 	exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(acpm_gov_common.timer_interval);
@@ -4001,7 +3997,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			}
 			if (exynos_acpm_tmu_cb_init(&cb))
 				goto err_thermal;
-			disable_irq(cb.ipc_ch);
 		}
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 		exynos_acpm_tmu_init();
@@ -4183,9 +4178,6 @@ static int gs_tmu_remove(struct platform_device *pdev)
 	}
 	mutex_unlock(&data->lock);
 
-	if (list_empty(&dtm_dev_list))
-		if (acpm_gov_common.turn_on)
-			disable_irq(cb.ipc_ch);
 	return 0;
 }
 
