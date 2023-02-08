@@ -30,14 +30,8 @@
 #define MMU_SWALKER_INFO_NUM_PMMU(reg)		((reg) & 0xFFFF)
 #define MMU_PMMU_INFO_NUM_STREAM_TABLE(reg)	(((reg) >> 16) & 0xFFFF)
 
-#define FLPD_AP_READ		BIT(4)
-#define FLPD_AP_WRITE		BIT(5)
 #define FLPD_SHAREABLE_FLAG	BIT(6)
-
-#define SLPD_AP_READ		BIT(2)
-#define SLPD_AP_WRITE		BIT(3)
 #define SLPD_SHAREABLE_FLAG	BIT(4)
-
 #define DEFAULT_QOS_VALUE	-1
 #define DEFAULT_STREAM_NONE	~0U
 #define UNUSED_STREAM_INDEX	~0U
@@ -246,13 +240,6 @@ static inline void __sysmmu_init_config_attribute(struct sysmmu_drvdata *data, u
 
 	cfg &= ~CFG_PT_CACHEABLE_MASK;
 	cfg |= CFG_PT_CACHEABLE_NORMAL_NC;
-
-	/*
-	 * Note: No requirement for PBHA[1:0] now,
-	 * hence in future, if PBHA is used then use_ap
-	 * should be reviewed.
-	 */
-	cfg |= CFG_USE_AP;
 
 	if (data->qos != DEFAULT_QOS_VALUE) {
 		cfg &= ~CFG_QOS(0xF);
@@ -696,11 +683,6 @@ static int lv1set_section(struct samsung_sysmmu_domain *domain,
 		atomic_set(pgcnt, NUM_LV2ENTRIES);
 	}
 
-	if (prot & IOMMU_READ)
-		attr |= FLPD_AP_READ;
-	if (prot & IOMMU_WRITE)
-		attr |= FLPD_AP_WRITE;
-
 	*sent = make_sysmmu_pte(paddr, SECT_FLAG, attr);
 	pgtable_flush(sent, sent + 1);
 
@@ -721,11 +703,6 @@ static int lv2set_page(sysmmu_pte_t *pent, phys_addr_t paddr,
 		       size_t size, int prot, atomic_t *pgcnt)
 {
 	int attr = !!(prot & IOMMU_CACHE) ? SLPD_SHAREABLE_FLAG : 0;
-
-	if (prot & IOMMU_READ)
-		attr |= SLPD_AP_READ;
-	if (prot & IOMMU_WRITE)
-		attr |= SLPD_AP_WRITE;
 
 	if (size == SPAGE_SIZE) {
 		if (WARN_ON(!lv2ent_unmapped(pent)))

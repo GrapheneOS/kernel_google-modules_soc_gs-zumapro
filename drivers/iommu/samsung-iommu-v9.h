@@ -52,7 +52,6 @@
 typedef u64 sysmmu_iova_t;
 typedef u32 sysmmu_pte_t;
 
-#define CFG_USE_AP			BIT(2)
 #define CFG_QOS_OVRRIDE			BIT(11)
 #define CFG_QOS(n)			(((n) & 0xF) << 7)
 #define CFG_PT_CACHEABLE_SHIFT		16
