@@ -493,7 +493,19 @@ static int dbg_snapshot_rmem_setup(struct device *dev)
 			ess_base = dss_base;
 			rmem->priv = vaddr;
 		}
+		if (!dss_base) {
+			dev_err(dev, "Header memory region needs to be first!");
+			/* This has to be the first and only mapped entry. */
+			vunmap(vaddr);
+			return -EINVAL;
+		}
+
 		dss_base->size += rmem->size;
+	}
+
+	if (!dss_base) {
+		dev_err(dev, "No/Invalid header memory region found");
+		return -EINVAL;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(dss_items); i++) {
