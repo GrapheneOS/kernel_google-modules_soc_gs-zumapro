@@ -51,6 +51,9 @@
 #define frac_to_int(x) ((x) >> FRAC_BITS)
 
 #define INVALID_TRIP -1
+/* current version of trace struct is only supported in verion 3 */
+#define EXPECT_BUF_VER 3
+#define ACPM_BUF_VER (acpm_gov_common.buffer_version & 0xff)
 
 enum tmu_type_t {
 	TMU_TYPE_CPU,
@@ -230,7 +233,7 @@ static bool get_bulk_mode_curr_state_buffer(void __iomem *base, struct gov_trace
 {
 	int offset = 0;
 
-	if((acpm_gov_common.buffer_version & 0xff) > 0) {
+	if(ACPM_BUF_VER > 0) {
 		/* offset for u64 buffer_version field */
 		offset = 8;
 	}
@@ -248,7 +251,7 @@ static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_sta
 {
 	if (base) {
 		int cdev_state_offset = 0;
-		if ((acpm_gov_common.buffer_version & 0xff) > 0) {
+		if (ACPM_BUF_VER > 0) {
 			/* offset for u64 buffer_version field */
 			cdev_state_offset = 8;
 		}
@@ -374,12 +377,16 @@ static void capture_bulk_trace(void)
 			      k_po[gov_buffer.buffered_curr_state[start_idx].tzid] :
 			      k_pu[gov_buffer.buffered_curr_state[start_idx].tzid];
 		trace_thermal_exynos_acpm_bulk(
-			(int)(gov_buffer.buffered_curr_state[start_idx].tzid),
-			(int)(gov_buffer.buffered_curr_state[start_idx].temperature),
-			(int)(gov_buffer.buffered_curr_state[start_idx].ctrl_temp),
-			(unsigned long)(gov_buffer.buffered_curr_state[start_idx].cdev_state),
-			(int)(gov_buffer.buffered_curr_state[start_idx].err_integral), (int)k_p,
-			(int)k_i[gov_buffer.buffered_curr_state[start_idx].tzid],
+			(u8)(gov_buffer.buffered_curr_state[start_idx].tzid),
+			(u8)(gov_buffer.buffered_curr_state[start_idx].temperature),
+			(u8)(gov_buffer.buffered_curr_state[start_idx].ctrl_temp),
+			(u8)(gov_buffer.buffered_curr_state[start_idx].cdev_state),
+			(s32)(gov_buffer.buffered_curr_state[start_idx].pid_err_integral),
+			(s16)(gov_buffer.buffered_curr_state[start_idx].pid_power_range),
+			(s16)(gov_buffer.buffered_curr_state[start_idx].pid_p),
+			(s32)(gov_buffer.buffered_curr_state[start_idx].pid_i),
+			(s32)frac_to_int(k_p),
+			(s32)frac_to_int(k_i[gov_buffer.buffered_curr_state[start_idx].tzid]),
 			acpm_to_kernel_ts(get_gov_buffer_timestamp(&gov_buffer, start_idx)));
 		if (++start_idx >= GOV_TRACE_DATA_LEN)
 			start_idx = 0;
@@ -388,16 +395,16 @@ static void capture_bulk_trace(void)
 
 static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 {
+	/* current version of buffered_curr_state is only supported in verion 3 */
+	if(ACPM_BUF_VER != EXPECT_BUF_VER)
+		return;
+
 	switch (acpm_gov_common.tracing_mode) {
 	case ACPM_GOV_DEBUG_MODE_BULK:
 		capture_bulk_trace();
 		break;
 	case ACPM_GOV_DEBUG_MODE_HIGH_OVERHEAD: {
 		struct gs_tmu_data *data;
-
-		/* current version of curr_state is only supported in verion 2 */
-		if((acpm_gov_common.buffer_version & 0xff) != 2)
-			return;
 
 		list_for_each_entry (data, &dtm_dev_list, node) {
 			struct curr_state curr_state;
@@ -412,10 +419,12 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 					k_i = data->pi_param->k_i;
 				}
 				trace_thermal_exynos_acpm_high_overhead(
-					(int)data->id, (int)curr_state.temperature,
-					(int)curr_state.ctrl_temp,
-					(unsigned long)curr_state.cdev_state,
-					(int)curr_state.err_integral, (int)k_p, (int)k_i);
+					(int)data->id, (u8)curr_state.temperature,
+					(u8)curr_state.ctrl_temp,
+					(u8)curr_state.cdev_state,
+					(s32)curr_state.pid_err_integral,
+					(s32)frac_to_int(k_p),
+					(s32)frac_to_int(k_i));
 			}
 		}
 	} break;
