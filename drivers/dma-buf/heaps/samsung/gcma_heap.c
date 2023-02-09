@@ -17,12 +17,13 @@
 #include <linux/platform_device.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#include <linux/pfn.h>
+#include <soc/google/gcma.h>
 
 #include "samsung-dma-heap.h"
 
 struct gcma_heap {
 	struct gen_pool *pool;
-	struct reserved_mem *rmem;
 };
 
 static struct dma_buf *gcma_heap_allocate(struct dma_heap *heap, unsigned long len,
@@ -36,6 +37,7 @@ static struct dma_buf *gcma_heap_allocate(struct dma_heap *heap, unsigned long l
 	unsigned int alignment = samsung_dma_heap->alignment;
 	unsigned long size;
 	phys_addr_t paddr;
+	unsigned long pfn;
 	int protret = 0, ret = -ENOMEM;
 
 	if (dma_heap_flags_video_aligned(samsung_dma_heap->flags))
@@ -49,9 +51,12 @@ static struct dma_buf *gcma_heap_allocate(struct dma_heap *heap, unsigned long l
 
 	paddr = gen_pool_alloc(gcma_heap->pool, size);
 	if (!paddr) {
-		perrfn("failed to allocate from %s, size %lu", gcma_heap->rmem->name, size);
+		perrfn("failed to allocate from GCMA, size %lu", size);
 		goto free_gen;
 	}
+
+	pfn = PFN_DOWN(paddr);
+	gcma_alloc_range(pfn, pfn + (size >> PAGE_SHIFT) - 1);
 
 	pages = phys_to_page(paddr);
 	sg_set_page(buffer->sg_table.sgl, pages, size, 0);
@@ -92,9 +97,13 @@ static void gcma_heap_release(struct samsung_dma_buffer *buffer)
 	struct samsung_dma_heap *samsung_dma_heap = buffer->heap;
 	struct gcma_heap *gcma_heap = samsung_dma_heap->priv;
 	int ret = 0;
+	unsigned long pfn;
 
 	if (dma_heap_flags_protected(samsung_dma_heap->flags))
 		ret = samsung_dma_buffer_unprotect(buffer);
+
+	pfn = PFN_DOWN(sg_phys(buffer->sg_table.sgl));
+	gcma_free_range(pfn, pfn + (buffer->len >> PAGE_SHIFT) - 1);
 
 	if (!ret)
 		gen_pool_free(gcma_heap->pool, sg_phys(buffer->sg_table.sgl), buffer->len);
@@ -127,7 +136,10 @@ static int gcma_heap_probe(struct platform_device *pdev)
 	if (!gcma_heap)
 		return -ENOMEM;
 
-	gcma_heap->rmem = rmem;
+	ret = register_gcma_area(rmem->name, rmem->base, rmem->size);
+	if (ret)
+		return ret;
+
 	gcma_heap->pool = devm_gen_pool_create(&pdev->dev, PAGE_SHIFT, -1, 0);
 	if (!gcma_heap->pool)
 		return -ENOMEM;
