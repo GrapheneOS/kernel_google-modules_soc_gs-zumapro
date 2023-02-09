@@ -10,7 +10,6 @@
 #include <linux/module.h>
 #include <linux/of_platform.h>
 
-#include <linux/io-64-nonatomic-hi-lo.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/moduleparam.h>
@@ -30,7 +29,7 @@ static unsigned long token;
 
 /* Number of s2mpu devices. */
 static int nr_devs_total;
-static atomic_t nr_devs_registered = ATOMIC_INIT(0);
+static int nr_devs_registered;
 
 static struct platform_device *__of_get_phandle_pdev(struct device *parent,
 						     const char *prop, int index)
@@ -244,19 +243,11 @@ static int s2mpu_probe(struct platform_device *pdev)
 	if (!data->pkvm_registered)
 		dev_warn(dev, "pKVM disabled, control from kernel\n");
 	else {
-		nr_devs = atomic_inc_return(&nr_devs_registered);
+		nr_devs = nr_devs_registered++;
 		dev_info(dev, "registered with hypervisor [%d/%d]\n", nr_devs, nr_devs_total);
 	}
 
 	platform_set_drvdata(pdev, data);
-
-	if (data->pkvm_registered && nr_devs == nr_devs_total) {
-		ret = pkvm_iommu_finalize(0);
-		if (!ret)
-			pr_info("List of devices successfully finalized for pkvm s2mpu\n");
-		else
-			pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
-	}
 
 	data->has_sysmmu = false;
 	/*
@@ -317,7 +308,19 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 		}
 	}
 
-	return platform_driver_register(driver);
+	ret = platform_driver_probe(&s2mpu_driver, s2mpu_probe);
+
+	if (!is_protected_kvm_enabled())
+		return ret;
+
+	/* If one device is not probed it will not be controlled by the hypervisor. */
+	ret = pkvm_iommu_finalize(WARN_ON(nr_devs_total != nr_devs_registered) ? -ENXIO : 0);
+	if (!ret)
+		pr_info("List of devices successfully finalized for pkvm s2mpu\n");
+	else
+		pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
+
+	return ret;
 }
 
 module_driver(s2mpu_driver, s2mpu_driver_register, platform_driver_unregister);
