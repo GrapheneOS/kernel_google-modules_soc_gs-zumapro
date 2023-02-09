@@ -40,6 +40,9 @@ obj-y				    	+= debug/
 # Emerald Hill
 obj-$(CONFIG_GOOGLE_EH) += eh/
 
+# GCMA
+obj-$(CONFIG_GCMA) += gcma/
+
 # S2MPU
 obj-$(CONFIG_GS_S2MPU)			+= s2mpu/
 
