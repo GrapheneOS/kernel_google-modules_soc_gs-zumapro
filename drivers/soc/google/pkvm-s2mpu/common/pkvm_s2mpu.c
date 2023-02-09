@@ -13,10 +13,15 @@
 #include <linux/io-64-nonatomic-hi-lo.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
+#include <linux/moduleparam.h>
 
 #include <linux/kvm_host.h>
 #include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
+
+/* Print caches in s2mpu faults. */
+static bool print_caches;
+module_param(print_caches, bool, 0);
 
 /* Declare EL2 module init function as it is needed by pkvm_load_el2_module. */
 int __kvm_nvhe_s2mpu_hyp_init(const struct pkvm_module_ops *ops);
@@ -103,7 +108,7 @@ struct device *pkvm_s2mpu_of_parse(struct device *parent)
 
 static irqreturn_t s2mpu_irq_handler(int irq, void *ptr)
 {
-	return s2mpu_fault_handler((struct s2mpu_data *)ptr);
+	return s2mpu_fault_handler((struct s2mpu_data *)ptr, print_caches);
 }
 
 /*

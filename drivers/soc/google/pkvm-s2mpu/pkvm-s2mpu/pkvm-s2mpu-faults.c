@@ -85,7 +85,7 @@ static struct s2mpu_mptc_entry read_mptc(void __iomem *base, u32 set, u32 way)
 	return entry;
 }
 
-irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
+irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data, bool print_caches)
 {
 	struct device *dev = data->dev;
 	unsigned int vid, gb;
@@ -121,6 +121,10 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 		writel_relaxed(BIT(vid), data->base + REG_NS_INTERRUPT_CLEAR);
 		ret = IRQ_HANDLED;
 	}
+
+	if (!print_caches)
+		return ret;
+
 	dev_err(dev, "================== MPTC ENTRIES ==================\n");
 	nr_sets = FIELD_GET(INFO_NUM_SET_MASK, readl_relaxed(data->base + REG_NS_INFO));
 	for (invalid = 0, set = 0; set < nr_sets; set++) {

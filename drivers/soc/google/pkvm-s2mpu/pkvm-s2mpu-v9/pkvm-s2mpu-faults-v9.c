@@ -160,7 +160,7 @@ static int dump_stlb_typeb(struct s2mpu_data *data, int stlb_i, int set, int way
 	return !valid;
 }
 
-irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
+irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data, bool print_caches)
 {
 	struct device *dev = data->dev;
 	unsigned int vid, gb;
@@ -212,6 +212,9 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data)
 		writel_relaxed(BIT(vid), data->base + REG_NS_INTERRUPT_CLEAR);
 		ret = IRQ_HANDLED;
 	}
+
+	if (!print_caches)
+		return ret;
 
 	dev_err(dev, "================== MPTC ENTRIES ==================\n");
 	nr_sets = FIELD_GET(V9_READ_MPTC_INFO_NUM_MPTC_SET,
