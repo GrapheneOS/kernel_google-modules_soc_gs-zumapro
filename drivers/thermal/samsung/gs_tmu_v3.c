@@ -186,6 +186,7 @@ static unsigned int num_of_devices, suspended_count;
 
 /* list of multiple instance for each thermal sensor */
 static LIST_HEAD(dtm_dev_list);
+static DEFINE_SPINLOCK(dev_list_spinlock);
 
 static struct acpm_gov_common acpm_gov_common = {
 #if IS_ENABLED(CONFIG_SOC_ZUMA)
@@ -3965,6 +3966,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 {
 	struct gs_tmu_data *data;
 	int ret;
+	bool is_first = false;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(struct gs_tmu_data), GFP_KERNEL);
 	if (!data)
@@ -3977,12 +3979,18 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_sensor;
 
-	if (list_empty(&dtm_dev_list)) {
+	spin_lock(&dev_list_spinlock);
+	is_first = list_empty(&dtm_dev_list);
+	list_add_tail(&data->node, &dtm_dev_list);
+	num_of_devices++;
+	spin_unlock(&dev_list_spinlock);
+
+	if (is_first) {
 		if (acpm_gov_common.turn_on) {
 			if (acpm_ipc_get_buffer("GOV_DBG", (char **)&acpm_gov_common.sm_base,
 						&acpm_gov_common.sm_size)) {
 				pr_info("GOV: unavailable\n");
-				goto err_thermal;
+				goto err_dtm_dev_list;
 			}
 			if (acpm_gov_common.sm_size == 0xf10) {
 				acpm_gov_common.buffer_version = 0x0;
@@ -3992,11 +4000,11 @@ static int gs_tmu_probe(struct platform_device *pdev)
 					      sizeof(acpm_gov_common.buffer_version));
 				if ((acpm_gov_common.buffer_version >> 32) != ACPM_SM_BUFFER_VERSION_UPPER_32b) {
 					pr_err("GOV: shared memory table version mismatch\n");
-					return -1;
+					goto err_dtm_dev_list;
 				}
 			}
 			if (exynos_acpm_tmu_cb_init(&cb))
-				goto err_thermal;
+				goto err_dtm_dev_list;
 		}
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 		exynos_acpm_tmu_init();
@@ -4014,7 +4022,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (IS_ERR(data->tzd)) {
 		ret = PTR_ERR(data->tzd);
 		dev_err(&pdev->dev, "Failed to register sensor: %d\n", ret);
-		goto err_sensor;
+		goto err_dtm_dev_list;
 	}
 
 	thermal_zone_device_disable(data->tzd);
@@ -4064,11 +4072,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (data->hardlimit_enable)
 		hard_limit_stats_setup(data);
 
-	mutex_lock(&data->lock);
-	list_add_tail(&data->node, &dtm_dev_list);
-	num_of_devices++;
-	mutex_unlock(&data->lock);
-
 	if (data->use_pi_thermal) {
 		reset_pi_trips(data);
 		reset_pi_params(data);
@@ -4090,7 +4093,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (!acpm_gov_common.turn_on)
 		thermal_zone_device_enable(data->tzd);
 
-	if (list_is_singular(&dtm_dev_list)) {
+	if (is_first) {
 		sync_kernel_acpm_timestamp();
 		register_pm_notifier(&gs_tmu_pm_nb);
 	}
@@ -4149,36 +4152,17 @@ static int gs_tmu_probe(struct platform_device *pdev)
 
 err_thermal:
 	thermal_zone_of_sensor_unregister(&pdev->dev, data->tzd);
+err_dtm_dev_list:
+	spin_lock(&dev_list_spinlock);
+	list_del(&data->node);
+	spin_unlock(&dev_list_spinlock);
 err_sensor:
 	return ret;
 }
 
 static int gs_tmu_remove(struct platform_device *pdev)
 {
-	struct gs_tmu_data *data = platform_get_drvdata(pdev);
-	struct thermal_zone_device *tzd = data->tzd;
-	struct gs_tmu_data *devnode;
-
-	thermal_zone_of_sensor_unregister(&pdev->dev, tzd);
-	gs_tmu_control(pdev, false);
-
-	if (acpm_gov_common.turn_on)
-		if (data->acpm_gov_params.fields.enable) {
-		        data->acpm_gov_params.fields.enable = 0;
-			exynos_acpm_tmu_ipc_set_gov_config(data->id, data->acpm_gov_params.qword);
-		}
-
-	mutex_lock(&data->lock);
-	list_for_each_entry(devnode, &dtm_dev_list, node) {
-		if (devnode->id == data->id) {
-			list_del(&devnode->node);
-			num_of_devices--;
-			break;
-		}
-	}
-	mutex_unlock(&data->lock);
-
-	return 0;
+	return -EBUSY;
 }
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)
@@ -4265,6 +4249,7 @@ static struct platform_driver gs_tmu_driver = {
 		.pm     = EXYNOS_TMU_PM,
 		.of_match_table = gs_tmu_match,
 		.suppress_bind_attrs = true,
+		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 	.probe = gs_tmu_probe,
 	.remove	= gs_tmu_remove,
