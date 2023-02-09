@@ -97,7 +97,7 @@
 	};
 
 	faceauth_rawimage_heap: faceauth_rawimage_heap {
-		compatible = "samsung,dma-heap-cma";
+		compatible = "google,dma-heap-gcma";
 		memory-region = <&farawimg>;
 		dma-heap,name = "farawimg";
 		dma-heap,secure;
@@ -222,8 +222,6 @@
 	};
 
 	farawimg: farawimg {
-		compatible = "shared-dma-pool";
-		reusable;
 		size = <0x10000000>;
 		alignment = <0x0 0x00010000>;
 		alloc-ranges = <0x9 0x80000000 0x80000000>,
