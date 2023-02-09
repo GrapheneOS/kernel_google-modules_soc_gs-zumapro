@@ -211,6 +211,18 @@ static inline int __init carveout_dma_heap_init(void)
 #define carveout_dma_heap_exit() do { } while (0)
 #endif
 
+#if defined(CONFIG_DMABUF_HEAPS_GOOGLE_GCMA)
+int __init gcma_dma_heap_init(void);
+void gcma_dma_heap_exit(void);
+#else
+static inline int __init gcma_dma_heap_init(void)
+{
+	return 0;
+}
+
+#define gcma_dma_heap_exit() do { } while (0)
+#endif
+
 #if defined(CONFIG_DMABUF_HEAPS_SAMSUNG_CHUNK)
 int __init chunk_dma_heap_init(void);
 void chunk_dma_heap_exit(void);
