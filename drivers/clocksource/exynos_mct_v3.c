@@ -63,8 +63,10 @@ static void exynos_mct_set_compensation(unsigned long osc, unsigned long rtc)
 }
 
 /* Clocksource handling */
-static void exynos_mct_frc_start(void)
+static void exynos_mct_frc_start(int div)
 {
+	writel_relaxed(BIT(MCT_DIV_REQ_BIT) + ((div - 1) & 0xffUL),
+			reg_base + EXYNOS_MCT_MCT_CFG);
 	writel_relaxed(MCT_FRC_ENABLE, reg_base + EXYNOS_MCT_MCT_FRC_ENABLE);
 }
 
@@ -305,7 +307,7 @@ static int exynos_timer_resources(struct device_node *np)
 	}
 
 	exynos_mct_set_compensation(osc_clk_rate, rtc_clk_rate);
-	exynos_mct_frc_start();
+	exynos_mct_frc_start(div);
 
 	for_each_possible_cpu(cpu) {
 		int mct_irq;
