@@ -2097,6 +2097,11 @@ void exynos_pcie_rc_print_msi_register(int ch_num)
 	u32 val;
 	int ctrl;
 
+	if (exynos_pcie->state != STATE_LINK_UP) {
+		dev_err(pci->dev, "[%s] Link is not up\n", __func__);
+		return;
+	}
+
 	val = exynos_elbi_read(exynos_pcie, PCIE_IRQ2_EN);
 	dev_info(pci->dev, "PCIE_IRQ2_EN: 0x%x\n", val);
 
