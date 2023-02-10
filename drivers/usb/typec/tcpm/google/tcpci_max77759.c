@@ -183,7 +183,7 @@ spinlock_t g_caps_lock;
 static unsigned int sink_discovery_delay_ms;
 
 /* Callback for data_active changes */
-void (*data_active_callback)(void *data_active_payload);
+void (*data_active_callback)(void *data_active_payload, enum typec_data_role role, bool active);
 void *data_active_payload;
 /* Callback for orientation changes */
 void (*orientation_callback)(void *orientation_payload);
@@ -641,7 +641,9 @@ static struct device_attribute *max77759_device_attrs[] = {
 	NULL
 };
 
-void register_data_active_callback(void (*callback)(void *data_active_payload), void *data)
+void register_data_active_callback(void (*callback)(void *data_active_payload,
+						    enum typec_data_role role, bool active),
+				   void *data)
 {
 	data_active_callback = callback;
 	data_active_payload = data;
@@ -1031,20 +1033,16 @@ void enable_data_path_locked(struct max77759_plat *chip)
 		return;
 	}
 
-	if (chip->alt_path_active) {
-		LOG(LOG_LVL_DEBUG, chip->log, "%s skipping as alt path is active", __func__);
-		return;
-	}
-
-	logbuffer_logk(chip->log, LOGLEVEL_INFO,
-		       "%s pd_data_capable:%u no_bc_12:%u bc12_data_capable:%u attached:%u debug_acc_conn:%u bc12_running:%u",
-		       __func__, chip->pd_data_capable ? 1 : 0, chip->no_bc_12 ? 1 : 0,
-		       chip->bc12_data_capable ? 1 : 0, chip->attached ? 1 : 0,
-		       chip->debug_acc_connected, chip->bc12_running ? 1 : 0);
-
 	enable_data = ((chip->pd_data_capable || chip->no_bc_12 || chip->bc12_data_capable ||
 		       chip->debug_acc_connected) && !chip->bc12_running) ||
 		       chip->data_role == TYPEC_HOST;
+
+	logbuffer_logk(chip->log, LOGLEVEL_INFO,
+		       "pd_data_capable:%u no_bc_12:%u bc12_data_capable:%u attached:%u debug_acc:%u bc12_running:%u data_active:%u",
+		       chip->pd_data_capable ? 1 : 0, chip->no_bc_12 ? 1 : 0,
+		       chip->bc12_data_capable ? 1 : 0, chip->attached ? 1 : 0,
+		       chip->debug_acc_connected, chip->bc12_running ? 1 : 0,
+		       chip->data_active ? 1 : 0);
 
 	if (chip->attached && enable_data && !chip->data_active) {
 		/* Disable BC1.2 to prevent BC1.2 detection during PR_SWAP */
@@ -1054,6 +1052,23 @@ void enable_data_path_locked(struct max77759_plat *chip)
 		 * before BC12 started to run.
 		 */
 		chip->bc12_running = false;
+
+		if (chip->alt_path_active) {
+			LOG(LOG_LVL_DEBUG, chip->log, "%s skipping enabling as alt path is active",
+			    __func__);
+			/* Enable switch for Host mode because alt_path works for Host Mode only */
+			if (chip->data_role == TYPEC_HOST) {
+				ret = max77759_write8(regmap, TCPC_VENDOR_USBSW_CTRL,
+						      USBSW_CONNECT);
+				LOG(LOG_LVL_DEBUG, chip->log, "Turning on dp switches %s", ret < 0 ?
+				    "fail" : "success");
+			}
+
+			chip->active_data_role = chip->data_role;
+			if (data_active_callback)
+				(*data_active_callback)(data_active_payload, chip->data_role, true);
+			return;
+		}
 
 		/*
 		 * b/188614064: While swapping from host to device switches will not be configured
@@ -1075,10 +1090,19 @@ void enable_data_path_locked(struct max77759_plat *chip)
 			       ret < 0 ? "Failed" : "Succeeded",
 			       chip->data_role == TYPEC_HOST ? "Host" : "Device");
 		chip->data_active = true;
-		if (data_active_callback)
-			(*data_active_callback)(data_active_payload);
 		chip->active_data_role = chip->data_role;
+		if (data_active_callback)
+			(*data_active_callback)(data_active_payload, chip->active_data_role, true);
 	} else if (chip->data_active && (!chip->attached || !enable_data)) {
+		if (chip->alt_path_active) {
+			LOG(LOG_LVL_DEBUG, chip->log, "%s skipping turning off as alt path is active",
+			    __func__);
+			if (data_active_callback)
+				(*data_active_callback)(data_active_payload,
+							chip->active_data_role, false);
+			return;
+		}
+
 		ret = extcon_set_state_sync(chip->extcon, chip->active_data_role == TYPEC_HOST ?
 					    EXTCON_USB_HOST : EXTCON_USB, 0);
 		logbuffer_logk(chip->log, LOGLEVEL_INFO, "%s turning off %s",
@@ -1086,7 +1110,7 @@ void enable_data_path_locked(struct max77759_plat *chip)
 			       chip->active_data_role == TYPEC_HOST ? "Host" : "Device");
 		chip->data_active = false;
 		if (data_active_callback)
-			(*data_active_callback)(data_active_payload);
+			(*data_active_callback)(data_active_payload, chip->active_data_role, false);
 		if  (chip->active_data_role == TYPEC_HOST) {
 			ret = max77759_write8(regmap, TCPC_VENDOR_USBSW_CTRL, USBSW_DISCONNECT);
 			LOG(LOG_LVL_DEBUG, chip->log,
@@ -2343,7 +2367,7 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 	enable_data = chip->pd_data_capable || chip->no_bc_12 || chip->bc12_data_capable ||
 		chip->data_role == TYPEC_HOST || chip->debug_acc_connected;
 
-	if (!chip->force_device_mode_on && chip->data_active &&
+	if (!chip->force_device_mode_on && chip->data_active && !chip->alt_path_active &&
 	    (chip->active_data_role != typec_data_role || !attached || !enable_data)) {
 		ret = extcon_set_state_sync(chip->extcon,
 					    chip->active_data_role ==
@@ -2354,7 +2378,7 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 		    chip->active_data_role == TYPEC_HOST ? "Host" : "Device");
 		chip->data_active = false;
 		if (data_active_callback)
-			(*data_active_callback)(data_active_payload);
+			(*data_active_callback)(data_active_payload, chip->active_data_role, false);
 
 		if  (chip->active_data_role == TYPEC_HOST) {
 			ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_USBSW_CTRL,
@@ -2608,7 +2632,7 @@ static ssize_t force_device_mode_on_write(struct file *file, const char __user *
 		    chip->active_data_role == TYPEC_HOST ? "Host" : "Device");
 		chip->data_active = false;
 		if (data_active_callback)
-			(*data_active_callback)(data_active_payload);
+			(*data_active_callback)(data_active_payload, chip->active_data_role, false);
 	}
 
 	if (result && !chip->data_active) {
@@ -2616,10 +2640,9 @@ static ssize_t force_device_mode_on_write(struct file *file, const char __user *
 		LOG(LOG_LVL_DEBUG, chip->log,
 		    "%s: %s turning on device", __func__, ret < 0 ? "Failed" : "Succeeded");
 		chip->data_active = !ret;
-		if (data_active_callback)
-			(*data_active_callback)(data_active_payload);
 		chip->active_data_role = TYPEC_DEVICE;
-
+		if (data_active_callback)
+			(*data_active_callback)(data_active_payload, chip->active_data_role, true);
 	} else if (!result) {
 		enable_data_path_locked(chip);
 	}
