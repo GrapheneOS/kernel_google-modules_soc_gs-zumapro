@@ -19,7 +19,7 @@
 			/* Modem interface information */
 			cpif {
 				compatible = "samsung,exynos-cp";
-				status = "okay";
+				status = "disabled";
 
 				pci_ch_num = <0>;
 				pci_db_addr = <0x14E60000>;
