@@ -57,6 +57,8 @@
 #define GPA9_CON		(0x100)
 #define DELTA_10MS		(10 * NSEC_PER_MSEC)
 #define DELTA_50MS		(50 * NSEC_PER_MSEC)
+#define VSHUNT_MULTIPLIER	10000
+#define MILLI_TO_MICRO		1000
 
 static const struct platform_device_id google_id_table[] = {
 	{.name = "google_mitigation",},
@@ -1176,12 +1178,8 @@ static void main_pwrwarn_irq_work(struct work_struct *work)
 
 	odpm_get_raw_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		const int rail_i = bcl_dev->main_odpm->channels[i].rail_i;
-		if (bcl_dev->main_odpm->chip.rails[rail_i].type == ODPM_RAIL_TYPE_SHUNT)
-			measurement = micro_unit[i];
-		else
-			measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
-		bcl_dev->main_pwr_warn_triggered[i] = (measurement > bcl_dev->main_limit[i]);
+		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		bcl_dev->main_pwr_warn_triggered[i] = (measurement > bcl_dev->main_setting[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->main_pwr_warn_triggered[i];
 		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
@@ -1215,12 +1213,8 @@ static void sub_pwrwarn_irq_work(struct work_struct *work)
 
 	odpm_get_raw_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		const int rail_i = bcl_dev->sub_odpm->channels[i].rail_i;
-		if (bcl_dev->sub_odpm->chip.rails[rail_i].type == ODPM_RAIL_TYPE_SHUNT)
-			measurement = micro_unit[i];
-		else
-			measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
-		bcl_dev->sub_pwr_warn_triggered[i] = (measurement > bcl_dev->sub_limit[i]);
+		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		bcl_dev->sub_pwr_warn_triggered[i] = (measurement > bcl_dev->sub_setting[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->sub_pwr_warn_triggered[i];
 		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
@@ -1376,8 +1370,8 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 		bcl_dev->sub_pwr_warn_irq[i] =
 				bcl_dev->sub_irq_base + S2MPG15_IRQ_PWR_WARN_CH0_INT5 + i;
 		ret = devm_request_threaded_irq(bcl_dev->device, bcl_dev->sub_pwr_warn_irq[i],
-						NULL, sub_pwr_warn_irq_handler, 0, "PWR_WARN",
-						bcl_dev);
+						NULL, sub_pwr_warn_irq_handler, 0,
+						bcl_dev->sub_rail_names[i], bcl_dev);
 		if (ret < 0) {
 			dev_err(bcl_dev->device, "Failed to request PWR_WARN_CH%d IRQ: %d: %d\n",
 				i, bcl_dev->sub_pwr_warn_irq[i], ret);
@@ -1702,8 +1696,8 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 		bcl_dev->main_pwr_warn_irq[i] = bcl_dev->main_irq_base
 				+ S2MPG14_IRQ_PWR_WARN_CH0_INT6 + i;
 		ret = devm_request_threaded_irq(bcl_dev->device, bcl_dev->main_pwr_warn_irq[i],
-						NULL, main_pwr_warn_irq_handler, 0, "PWR_WARN",
-						bcl_dev);
+						NULL, main_pwr_warn_irq_handler, 0,
+						bcl_dev->main_rail_names[i], bcl_dev);
 		if (ret < 0) {
 			dev_err(bcl_dev->device, "Failed to request PWR_WARN_CH%d IRQ: %d: %d\n",
 				i, bcl_dev->main_pwr_warn_irq[i], ret);
@@ -1832,8 +1826,7 @@ u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setti
 	int rail_i;
 	s2mpg1415_meter_muxsel muxsel;
 	struct odpm_info *info;
-	const u32 one_billion = 1000000000;
-	u64 resolution_max, raw_unit;
+	u64 raw_unit;
 	u32 resolution;
 
 	if (!bcl_dev)
@@ -1848,18 +1841,19 @@ u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setti
 
 	rail_i = info->channels[idx].rail_i;
 	muxsel = info->chip.rails[rail_i].mux_select;
-	if (idx < 9) {
+	if ((strstr(bcl_dev->main_rail_names[idx], "VSYS") != NULL) ||
+		(strstr(bcl_dev->sub_rail_names[idx], "VSYS") != NULL)) {
+			resolution = (u32) VSHUNT_MULTIPLIER * ((u64)EXTERNAL_RESOLUTION_VSHUNT) /
+					info->chip.rails[rail_i].shunt_uohms;
+	} else {
 		if (pmic == MAIN)
 			resolution = s2mpg14_muxsel_to_current_resolution(muxsel);
 		else
 			resolution = s2mpg15_muxsel_to_current_resolution(muxsel);
-		resolution_max = _IQ30_to_int((u64)resolution * one_billion);
-
-		return (setting << LPF_CURRENT_SHIFT) * resolution_max / one_billion;
-	} else {
-		raw_unit = EXTERNAL_RESOLUTION_VSHUNT / info->chip.rails[rail_i].shunt_uohms;
-		return (setting << LPF_CURRENT_SHIFT) * raw_unit;
 	}
+	raw_unit = (u64)setting * resolution;
+	raw_unit = raw_unit * MILLI_TO_MICRO;
+	return (u32)_IQ30_to_int(raw_unit);
 }
 
 static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
@@ -1908,8 +1902,9 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 			if (i < METER_CHANNEL_MAX) {
 				bcl_dev->main_setting[i] = read;
 				meter_write(MAIN, bcl_dev, S2MPG14_METER_PWR_WARN0 + i, read);
-				bcl_dev->main_limit[i] = settings_to_current(bcl_dev, MAIN, i,
-									     read);
+				bcl_dev->main_limit[i] =
+				    settings_to_current(bcl_dev, MAIN, i,
+				                        read << LPF_CURRENT_SHIFT);
 				i++;
 			}
 		}
@@ -1924,7 +1919,9 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 			if (i < METER_CHANNEL_MAX) {
 				bcl_dev->sub_setting[i] = read;
 				meter_write(SUB, bcl_dev, S2MPG15_METER_PWR_WARN0 + i, read);
-				bcl_dev->sub_limit[i] = settings_to_current(bcl_dev, SUB, i, read);
+				bcl_dev->sub_limit[i] =
+				    settings_to_current(bcl_dev, SUB, i,
+				                        read << LPF_CURRENT_SHIFT);
 				i++;
 			}
 		}
