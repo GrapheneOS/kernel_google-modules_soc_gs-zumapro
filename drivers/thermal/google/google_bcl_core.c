@@ -1998,7 +1998,6 @@ static int google_bcl_probe(struct platform_device *pdev)
 	schedule_delayed_work(&bcl_dev->init_work, msecs_to_jiffies(THERMAL_DELAY_INIT_MS));
 	bcl_dev->enabled = true;
 	google_init_debugfs(bcl_dev);
-	bcl_dev->rffe_channel = 0;
 
 	return 0;
 
