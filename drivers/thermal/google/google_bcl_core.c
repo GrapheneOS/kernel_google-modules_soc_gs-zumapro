@@ -1304,7 +1304,7 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	struct device_node *np = bcl_dev->device->of_node;
 	struct i2c_client *i2c;
 	u8 val = 0;
-	int ret, i;
+	int ret, i, rail_i;
 
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_GPU], google_gpu_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_GPU], google_soft_gpu_warn_work);
@@ -1326,8 +1326,10 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	}
 	pdata_sub = dev_get_platdata(sub_dev->dev);
 	bcl_dev->sub_odpm = pdata_sub->meter;
-	for (i = 0; i < METER_CHANNEL_MAX; i++)
-		bcl_dev->sub_rail_names[i] = bcl_dev->sub_odpm->chip.rails[i].schematic_name;
+	for (i = 0; i < METER_CHANNEL_MAX; i++) {
+		rail_i = bcl_dev->sub_odpm->channels[i].rail_i;
+		bcl_dev->sub_rail_names[i] = bcl_dev->sub_odpm->chip.rails[rail_i].schematic_name;
+	}
 	bcl_dev->sub_irq_base = pdata_sub->irq_base;
 	bcl_dev->sub_pmic_i2c = sub_dev->pmic;
 	bcl_dev->sub_meter_i2c = sub_dev->meter;
@@ -1552,7 +1554,7 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	struct device_node *np = bcl_dev->device->of_node;
 	struct i2c_client *i2c;
 	bool bypass_smpl_warn = false;
-	int ret, i;
+	int ret, i, rail_i;
 
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SMPL_WARN], google_smpl_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_TPU], google_tpu_warn_work);
@@ -1585,8 +1587,10 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	}
 	pdata_main = dev_get_platdata(main_dev->dev);
 	bcl_dev->main_odpm = pdata_main->meter;
-	for (i = 0; i < METER_CHANNEL_MAX; i++)
-		bcl_dev->main_rail_names[i] = bcl_dev->main_odpm->chip.rails[i].schematic_name;
+	for (i = 0; i < METER_CHANNEL_MAX; i++) {
+		rail_i = bcl_dev->main_odpm->channels[i].rail_i;
+		bcl_dev->main_rail_names[i] = bcl_dev->main_odpm->chip.rails[rail_i].schematic_name;
+	}
 	bcl_dev->main_irq_base = pdata_main->irq_base;
 	/* request smpl_warn interrupt */
 	if (!gpio_is_valid(pdata_main->smpl_warn_pin)) {
