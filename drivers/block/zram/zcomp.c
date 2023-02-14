@@ -12,10 +12,11 @@
 #include <linux/bio.h>
 #include <linux/swap.h>
 
+#include "zram_drv.h"
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/zram.h>
 
-#include "zram_drv.h"
 #include "zcomp.h"
 
 #define ZCOMP_ALGO_NAME_MAX 64
