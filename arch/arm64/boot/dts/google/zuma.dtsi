@@ -827,6 +827,9 @@
 			hispeed_load = <100>;
 			hispeed_freq = <1352000>;
 
+			/* boot_info */
+			boot_info = <60 3744000>;
+
 			/* MIF to INT mapping table used in ALT DVFS */
 			mif_int_map = <
 				/*
