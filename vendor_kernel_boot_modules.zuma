@@ -123,6 +123,7 @@ panel-samsung-s6e3hc3.ko
 panel-samsung-s6e3hc4.ko
 panel-samsung-sofef01.ko
 pca9468.ko
+exynos-pcie-iommu.ko
 pcie-exynos-gs.ko
 pcie-exynos-zuma-rc-cal.ko
 perf_trace_counters.ko

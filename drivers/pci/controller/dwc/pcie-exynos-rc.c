@@ -235,9 +235,9 @@ static void *pcie_dma_alloc_attrs(struct device *dev, size_t size,
 				   dma_handle, flag, attrs);
 	if (exynos_pcie->s2mpu) {
 		s2mpu_update_refcnt(dev, *dma_handle, size, true, DMA_BIDIRECTIONAL);
-	} else if (exynos_pcie->use_sysmmu) {
+	} else if (exynos_pcie->use_sysmmu && cpu_addr != NULL) {
 		ret = pcie_iommu_map(*dma_handle, *dma_handle, size,
-				     DMA_BIDIRECTIONAL, pcie_ch_to_hsi(ch_num));
+				DMA_BIDIRECTIONAL, pcie_ch_to_hsi(ch_num));
 		if (ret != 0) {
 			pr_err("Can't map PCIe SysMMU table!\n");
 			dma_free_attrs(&fake_dma_dev, size,
@@ -279,9 +279,9 @@ static dma_addr_t pcie_dma_map_page(struct device *dev, struct page *page,
 				      size, dir, attrs);
 	if (exynos_pcie->s2mpu) {
 		s2mpu_update_refcnt(dev, dma_addr, size, true, dir);
-	} else if (exynos_pcie->use_sysmmu) {
+	} else if (exynos_pcie->use_sysmmu && dma_addr != DMA_MAPPING_ERROR) {
 		ret = pcie_iommu_map(dma_addr, dma_addr, size,
-				     dir, pcie_ch_to_hsi(ch_num));
+				dir, pcie_ch_to_hsi(ch_num));
 		if (ret != 0) {
 			pr_err("DMA map - Can't map PCIe SysMMU table!!!\n");
 			return 0;
@@ -2601,6 +2601,7 @@ void exynos_pcie_rc_assert_phy_reset(struct pcie_port *pp)
 
 	ret = exynos_pcie_rc_phy_clock_enable(pp, PCIE_ENABLE_CLOCK);
 	dev_dbg(dev, "phy clk enable, ret value = %d\n", ret);
+
 	if (exynos_pcie->phy_ops.phy_config)
 		exynos_pcie->phy_ops.phy_config(exynos_pcie, exynos_pcie->ch_num);
 
