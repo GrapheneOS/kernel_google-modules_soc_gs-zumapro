@@ -953,12 +953,10 @@ static ssize_t uvlo2_lvl_store(struct device *dev,
 	if (bcl_cb_uvlo2_write(bcl_dev, value) < 0)
 		return -EIO;
 	bcl_dev->bcl_lvl[UVLO2] = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[UVLO2]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO2], 0,
-							 VD_BATTERY_VOLTAGE - value);
-	if (bcl_dev->bcl_tz[UVLO2])
+	if (bcl_dev->bcl_tz[UVLO2]) {
+		bcl_dev->bcl_tz[UVLO2]->trips[0].temperature = VD_BATTERY_VOLTAGE - value;
 		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO2], THERMAL_EVENT_UNSPECIFIED);
-	if (ret)
-		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
+	}
 	return size;
 }
 
@@ -1002,11 +1000,10 @@ static ssize_t batoilo_lvl_store(struct device *dev,
 	if (bcl_cb_batoilo_write(bcl_dev, value) < 0)
 		return -EIO;
 	bcl_dev->bcl_lvl[BATOILO] = value - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[BATOILO]->ops->set_trip_temp(bcl_dev->bcl_tz[BATOILO], 0, value);
-	if (bcl_dev->bcl_tz[BATOILO])
+	if (bcl_dev->bcl_tz[BATOILO]) {
+		bcl_dev->bcl_tz[BATOILO]->trips[0].temperature = value;
 		thermal_zone_device_update(bcl_dev->bcl_tz[BATOILO], THERMAL_EVENT_UNSPECIFIED);
-	if (ret)
-		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
+	}
 	return size;
 }
 
@@ -1066,13 +1063,10 @@ static ssize_t smpl_lvl_store(struct device *dev,
 		return ret;
 	}
 	bcl_dev->bcl_lvl[SMPL_WARN] = SMPL_BATTERY_VOLTAGE - val - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[SMPL_WARN]->ops->set_trip_temp(bcl_dev->bcl_tz[SMPL_WARN], 0,
-							     SMPL_BATTERY_VOLTAGE - val);
-	if (ret)
-		dev_err(bcl_dev->device, "Fail to set smpl_warn trip temp\n");
-	if (bcl_dev->bcl_tz[SMPL_WARN])
+	if (bcl_dev->bcl_tz[SMPL_WARN]) {
+		bcl_dev->bcl_tz[SMPL_WARN]->trips[0].temperature = SMPL_BATTERY_VOLTAGE - val;
 		thermal_zone_device_update(bcl_dev->bcl_tz[SMPL_WARN], THERMAL_EVENT_UNSPECIFIED);
-
+	}
 	return size;
 
 }
@@ -1119,16 +1113,13 @@ static int set_ocp_lvl(struct bcl_device *bcl_dev, u64 val, u8 addr, u8 pmic, u8
 	value &= ~(OCP_WARN_MASK) << OCP_WARN_LVL_SHIFT;
 	value |= ((ulimit - val) / step) << OCP_WARN_LVL_SHIFT;
 	ret = pmic_write(pmic, bcl_dev, addr, value);
-	if (!ret) {
+	if (!ret)
 		bcl_dev->bcl_lvl[id] = val - THERMAL_HYST_LEVEL;
-		ret = bcl_dev->bcl_tz[id]->ops->set_trip_temp(bcl_dev->bcl_tz[id], 0, val);
-		if (ret)
-			dev_err(bcl_dev->device, "Fail to set ocp_warn trip temp\n");
-	}
 	mutex_unlock(&bcl_dev->bcl_irq_lock[id]);
-	if (bcl_dev->bcl_tz[id])
+	if (bcl_dev->bcl_tz[id]) {
+		bcl_dev->bcl_tz[id]->trips[0].temperature = val;
 		thermal_zone_device_update(bcl_dev->bcl_tz[id], THERMAL_EVENT_UNSPECIFIED);
-
+	}
 	return ret;
 }
 
