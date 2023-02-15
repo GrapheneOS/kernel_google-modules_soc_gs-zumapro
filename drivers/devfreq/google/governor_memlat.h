@@ -28,6 +28,15 @@ enum amu_ev_idx {
 #define L3D_CACHE_REFILL_EV 0x2A
 
 /**
+ * memlat cpuidle awareness state
+ */
+enum memlat_cpuidle_state_aware_state {
+	NO_MEMLAT_CPUIDLE_STATE_AWARE,
+	ALL_MEMLAT_CPUIDLE_STATE_AWARE,
+	DEEP_MEMLAT_CPUIDLE_STATE_AWARE,
+};
+
+/**
  * struct dev_stats - Device stats
  * @inst_count:			Number of instructions executed.
  * @mem_count:			Number of memory accesses made.
@@ -48,6 +57,19 @@ struct dev_stats {
 struct core_dev_map {
 	unsigned int core_mhz;
 	unsigned int target_freq;
+};
+
+struct memlat_node {
+	unsigned int ratio_ceil;
+	unsigned int stall_floor;
+	bool mon_started;
+	bool already_zero;
+	struct list_head list;
+	void *orig_data;
+	struct memlat_hwmon *hw;
+	struct devfreq_governor *gov;
+	struct attribute_group *attr_grp;
+	unsigned long resume_freq;
 };
 
 /**
@@ -78,6 +100,7 @@ struct memlat_hwmon {
 	struct device_node *(*get_child_of_node)(struct device *dev);
 	void (*request_update_ms)(struct memlat_hwmon *hw,
 				  unsigned int update_ms);
+	int (*get_cpu_idle_state)(unsigned int cpu);
 	struct device *dev;
 	struct device_node *of_node;
 
