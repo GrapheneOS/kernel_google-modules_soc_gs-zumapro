@@ -226,15 +226,6 @@ static int s2mpg14_power_key_detection(struct s2mpg14_dev *s2mpg14)
 	return 0;
 }
 
-static void s2mpg14_irq_work_func(struct work_struct *work)
-{
-	pr_info("main pmic interrupt(%#02x, %#02x, %#02x, %#02x, %#02x, %#02x, %#02x)\n",
-		irq_reg[S2MPG14_IRQS_PMIC_INT1], irq_reg[S2MPG14_IRQS_PMIC_INT2],
-		irq_reg[S2MPG14_IRQS_PMIC_INT3], irq_reg[S2MPG14_IRQS_PMIC_INT4],
-		irq_reg[S2MPG14_IRQS_PMIC_INT5], irq_reg[S2MPG14_IRQS_METER_INT1],
-		irq_reg[S2MPG14_IRQS_METER_INT2]);
-}
-
 static irqreturn_t s2mpg14_irq_thread(int irq, void *data)
 {
 	struct s2mpg14_dev *s2mpg14 = data;
@@ -277,8 +268,6 @@ static irqreturn_t s2mpg14_irq_thread(int irq, void *data)
 			return IRQ_HANDLED;
 		}
 
-		queue_delayed_work(s2mpg14->irq_wqueue, &s2mpg14->irq_work, 0);
-
 		ret = s2mpg14_power_key_detection(s2mpg14);
 		if (ret)
 			dev_err(s2mpg14->dev, "POWER-KEY detection error\n");
@@ -293,19 +282,6 @@ static irqreturn_t s2mpg14_irq_thread(int irq, void *data)
 	}
 
 	return IRQ_HANDLED;
-}
-
-static int s2mpg14_set_wqueue(struct s2mpg14_dev *s2mpg14)
-{
-	s2mpg14->irq_wqueue = create_singlethread_workqueue("s2mpg14-wqueue");
-	if (!s2mpg14->irq_wqueue) {
-		pr_err("%s: fail to create workqueue\n", __func__);
-		return 1;
-	}
-
-	INIT_DELAYED_WORK(&s2mpg14->irq_work, s2mpg14_irq_work_func);
-
-	return 0;
 }
 
 int s2mpg14_irq_init(struct s2mpg14_dev *s2mpg14)
@@ -331,9 +307,6 @@ int s2mpg14_irq_init(struct s2mpg14_dev *s2mpg14)
 	s2mpg14->sysreg_pending = ioremap(SYSREG_VGPIO2AP + INTC0_IPEND, SZ_32);
 	if (!s2mpg14->sysreg_pending)
 		pr_err("%s: fail to allocate INTC0_IPEND memory\n", __func__);
-
-	/* Set workqueue */
-	s2mpg14_set_wqueue(s2mpg14);
 
 	/* Mask individual interrupt sources */
 	for (i = 0; i < S2MPG14_IRQ_GROUP_NR; i++) {
@@ -405,7 +378,6 @@ void s2mpg14_irq_exit(struct s2mpg14_dev *s2mpg14)
 
 	iounmap(s2mpg14->mem_base);
 
-	cancel_delayed_work_sync(&s2mpg14->irq_work);
 	destroy_workqueue(s2mpg14->irq_wqueue);
 }
 EXPORT_SYMBOL_GPL(s2mpg14_irq_exit);
