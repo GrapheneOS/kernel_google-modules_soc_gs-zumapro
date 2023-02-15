@@ -554,6 +554,36 @@ static struct exynos_pm_qos_object bci_throughput_max_pm_qos = {
         .name = "bci_throughput_max",
 };
 
+static BLOCKING_NOTIFIER_HEAD(tpu_freq_min_notifier);
+static struct exynos_pm_qos_constraints tpu_freq_min_constraints = {
+	.list = PLIST_HEAD_INIT(tpu_freq_min_constraints.list),
+	.target_value = 0,
+	.default_value = 0,
+	.type = EXYNOS_PM_QOS_MIN,
+	.notifiers = &tpu_freq_min_notifier,
+	.lock = __SPIN_LOCK_UNLOCKED(tpu_freq_min_constraints.lock),
+};
+
+static struct exynos_pm_qos_object tpu_freq_min_pm_qos = {
+	.constraints = &tpu_freq_min_constraints,
+	.name = "tpu_freq_min",
+};
+
+static BLOCKING_NOTIFIER_HEAD(tpu_freq_max_notifier);
+static struct exynos_pm_qos_constraints tpu_freq_max_constraints = {
+	.list = PLIST_HEAD_INIT(tpu_freq_max_constraints.list),
+	.target_value = INT_MAX,
+	.default_value = INT_MAX,
+	.type = EXYNOS_PM_QOS_MAX,
+	.notifiers = &tpu_freq_max_notifier,
+	.lock = __SPIN_LOCK_UNLOCKED(tpu_freq_max_constraints.lock),
+};
+
+static struct exynos_pm_qos_object tpu_freq_max_pm_qos = {
+	.constraints = &tpu_freq_max_constraints,
+	.name = "tpu_freq_max",
+};
+
 static struct exynos_pm_qos_object *exynos_pm_qos_array[] = {
 	&null_exynos_pm_qos,
 	&cluster0_freq_min_pm_qos,
@@ -584,6 +614,8 @@ static struct exynos_pm_qos_object *exynos_pm_qos_array[] = {
 	&bci_throughput_max_pm_qos,
 	&gpu_freq_min_pm_qos,
 	&gpu_freq_max_pm_qos,
+	&tpu_freq_min_pm_qos,
+	&tpu_freq_max_pm_qos,
 };
 
 /* unlocked internal variant */

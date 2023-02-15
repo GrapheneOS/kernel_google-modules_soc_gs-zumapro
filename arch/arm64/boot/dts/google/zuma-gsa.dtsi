@@ -7,6 +7,9 @@
 
 		/* NS mailbox */
 		reg = <0 0x16490000 0x1000>;
+
+		log-region = <&gsa_reserved_log>;
+
 		interrupts = <GIC_SPI IRQ_MAILBOX_GSA2NONTZ_GSA
 			      IRQ_TYPE_LEVEL_HIGH>;
 

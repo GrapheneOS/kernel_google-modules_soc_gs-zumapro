@@ -30,7 +30,12 @@
 		};
 
 		gsa_reserved_protected: gsa@0x90200000 {
-			reg = <0x0 0x90200000 0x400000>;
+			reg = <0x0 0x90200000 0x3FF000>;
+			no-map;
+		};
+
+		gsa_reserved_log: gsa@0x905FF000 {
+			reg = <0x0 0x905FF000 0x1000>;
 			no-map;
 		};
 

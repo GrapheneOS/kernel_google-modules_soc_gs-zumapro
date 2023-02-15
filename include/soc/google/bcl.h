@@ -39,6 +39,7 @@
 #define CPUCL2_BASE (0x29d80000)
 #define G3D_BASE (0x1EE00000)
 #define TPU_BASE (0x1A300000)
+#define AUR_BASE (0x20A00000)
 #define SYSREG_CPUCL0_BASE (0x29c20000)
 #define CLUSTER0_GENERAL_CTRL_64 (0x1404)
 #define CLKDIVSTEP (0x830)
@@ -69,6 +70,12 @@
 #define THRESHOLD_DELAY_MS 50
 #define PWRWARN_DELAY_MS 50
 #define LPF_CURRENT_SHIFT 4
+#define ADD_CPUCL0 (0x29ce0000)
+#define ADD_CPUCL1 (0x29d10000)
+#define ADD_CPUCL2 (0x29d90000)
+#define ADD_G3D (0x1EE60000)
+#define ADD_TPU (0x1A3A0000)
+#define ADD_AUR (0x20AF0000)
 
 enum SUBSYSTEM_SOURCE {
 	CPU0,
@@ -76,7 +83,35 @@ enum SUBSYSTEM_SOURCE {
 	CPU2,
 	TPU,
 	GPU,
+	AUR,
 	SUBSYSTEM_SOURCE_MAX,
+};
+
+enum CONCURRENT_PWRWARN_IRQ {
+	NONE_BCL_BIN,
+	MMWAVE_BCL_BIN,
+	RFFE_BCL_BIN,
+	MAX_CONCURRENT_PWRWARN_IRQ,
+};
+
+enum BCL_BATT_IRQ {
+	UVLO1_IRQ_BIN,
+	UVLO2_IRQ_BIN,
+	BATOILO_IRQ_BIN,
+	MAX_BCL_BATT_IRQ,
+};
+
+enum IRQ_DURATION_BIN {
+	LT_5MS,
+	BT_5MS_10MS,
+	GT_10MS,
+};
+
+struct irq_duration_stats {
+	atomic_t lt_5ms_count;
+	atomic_t bt_5ms_10ms_count;
+	atomic_t gt_10ms_count;
+	ktime_t start_time;
 };
 
 extern const unsigned int subsystem_pmu[];
@@ -200,6 +235,10 @@ struct bcl_device {
 	struct dentry *debug_entry;
 	unsigned int gpu_clk_out;
 	unsigned int tpu_clk_out;
+	u8 add_perph;
+	u64 add_addr;
+	u64 add_data;
+	void __iomem *base_add_mem[SUBSYSTEM_SOURCE_MAX];
 
 	int main_irq_base, sub_irq_base;
 	u8 main_setting[METER_CHANNEL_MAX];
@@ -212,6 +251,11 @@ struct bcl_device {
 	bool sub_pwr_warn_triggered[METER_CHANNEL_MAX];
 	struct delayed_work main_pwr_irq_work;
 	struct delayed_work sub_pwr_irq_work;
+	struct irq_duration_stats ifpmic_irq_bins[MAX_BCL_BATT_IRQ][MAX_CONCURRENT_PWRWARN_IRQ];
+	struct irq_duration_stats pwrwarn_main_irq_bins[METER_CHANNEL_MAX];
+	struct irq_duration_stats pwrwarn_sub_irq_bins[METER_CHANNEL_MAX];
+	const char *main_rail_names[METER_CHANNEL_MAX];
+	const char *sub_rail_names[METER_CHANNEL_MAX];
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);

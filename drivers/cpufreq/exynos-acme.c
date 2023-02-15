@@ -313,6 +313,11 @@ static int __exynos_cpufreq_target(struct cpufreq_policy *policy,
 		goto out;
 	}
 
+	if (target_freq > domain->user_max_qos_req.pnode.prio) {
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* Target is same as current, skip scaling */
 	if (domain->old == target_freq)
 		goto out;

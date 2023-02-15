@@ -729,17 +729,19 @@ static u32 odpm_get_resolution_milli_iq30(struct odpm_info *info, int rail_i,
 			/* Losing a fraction of resolution performing u64 divisions,
 			 * as there is no support for 128 bit divisions
 			 */
-			if (mode == S2MPG1415_METER_CURRENT)
-				raw_unit_iq60 = ((u64)EXTERNAL_RESOLUTION_VSHUNT) /
-						info->chip.rails[rail_i].shunt_uohms;
-			else
+			if (mode == S2MPG1415_METER_CURRENT) {
+				raw_unit_iq60 = 10000 * ((u64)EXTERNAL_RESOLUTION_VSHUNT) /
+					info->chip.rails[rail_i].shunt_uohms;
+				ret = raw_unit_iq60;
+			} else {
 				raw_unit_iq60 = ((u64)EXTERNAL_RESOLUTION_VRAIL *
-						(u64)EXTERNAL_RESOLUTION_VSHUNT *
-						(u64)EXTERNAL_RESOLUTION_TRIM) /
-						info->chip.rails[rail_i].shunt_uohms;
+						 (u64)EXTERNAL_RESOLUTION_VSHUNT *
+						 (u64)EXTERNAL_RESOLUTION_TRIM) /
+					info->chip.rails[rail_i].shunt_uohms;
 
-			/* Scale back to iq30 (with conversion to milli) */
-			ret = _IQ30_to_int(raw_unit_iq60 * 1000);
+				/* Scale back to iq30 */
+				ret = _IQ30_to_int(raw_unit_iq60 * 10);
+			}
 		}
 		break;
 	}
@@ -1527,17 +1529,25 @@ static ssize_t measurement_stop_show(struct device *dev,
 	return count;
 }
 
-void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
-			 u64 micro_unit[ODPM_CHANNEL_MAX])
+void odpm_get_raw_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
+			     u32 micro_unit[ODPM_CHANNEL_MAX])
 {
-	int ch;
-	u32 data[ODPM_CHANNEL_MAX];
 	const int samp_rate = info->chip.int_sampling_rate_i;
 	u32 acquisition_time_us = s2mpg1415_meter_get_acquisition_time_us(samp_rate);
 
 	odpm_io_set_lpf_mode(info, mode);
 	usleep_range(acquisition_time_us, acquisition_time_us + 100);
-	odpm_io_get_lpf_data(info, data);
+	odpm_io_get_lpf_data(info, micro_unit);
+}
+EXPORT_SYMBOL_GPL(odpm_get_raw_lpf_values);
+
+static void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
+				u64 micro_unit[ODPM_CHANNEL_MAX])
+{
+	int ch;
+	u32 data[ODPM_CHANNEL_MAX];
+
+	odpm_get_raw_lpf_values(info, mode, data);
 
 	for (ch = 0; ch < ODPM_CHANNEL_MAX; ch++) {
 
@@ -1556,7 +1566,6 @@ void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
 		micro_unit[ch] = (u32)_IQ30_to_int(micro_unit_iq30);
 	}
 }
-EXPORT_SYMBOL_GPL(odpm_get_lpf_values);
 
 static ssize_t odpm_show_lpf_values(struct device *dev,
 				    struct device_attribute *attr, char *buf,

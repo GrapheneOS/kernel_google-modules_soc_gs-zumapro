@@ -55,6 +55,8 @@
 #define INT3_TSD		S2MPG14_IRQ_TSD_INT3;
 #define GPIO_ALIVE_BASE		(0x154d0000)
 #define GPA9_CON		(0x100)
+#define DELTA_10MS		(10 * NSEC_PER_MSEC)
+#define DELTA_50MS		(50 * NSEC_PER_MSEC)
 
 static const struct platform_device_id google_id_table[] = {
 	{.name = "google_mitigation",},
@@ -63,30 +65,12 @@ static const struct platform_device_id google_id_table[] = {
 
 DEFINE_MUTEX(sysreg_lock);
 
-static int bcl_odpm_map(int id)
-{
-	switch (id) {
-	case OCP_WARN_GPU:
-	case SOFT_OCP_WARN_GPU:
-		return BUCK4;
-	case OCP_WARN_TPU:
-	case SOFT_OCP_WARN_TPU:
-		return BUCK10;
-	case OCP_WARN_CPUCL1:
-	case SOFT_OCP_WARN_CPUCL1:
-		return BUCK3;
-	case OCP_WARN_CPUCL2:
-	case SOFT_OCP_WARN_CPUCL2:
-	default:
-		return BUCK2;
-	}
-}
+
+static void update_irq_end_times(struct bcl_device *bcl_dev, int id);
 
 static int triggered_read_level(void *data, int *val, int id)
 {
 	struct bcl_device *bcl_dev = data;
-	u64 micro_unit[ODPM_CHANNEL_MAX];
-	u64 odpm_current = 0;
 	bool state = true;
 	int polarity = (id == SMPL_WARN) ? 0 : 1;
 	int gpio_level;
@@ -131,33 +115,157 @@ static int triggered_read_level(void *data, int *val, int id)
 			mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 					 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 			bcl_dev->bcl_prev_lvl[id] = 0;
+			update_irq_end_times(bcl_dev, id);
 		}
 		return 0;
 	}
 
-	/* If IRQ not asserted, check ODPM */
-	if ((id == OCP_WARN_GPU) || (id == SOFT_OCP_WARN_GPU)) {
-		mutex_lock(&bcl_dev->sub_odpm->lock);
-		odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-		mutex_unlock(&bcl_dev->sub_odpm->lock);
-	} else {
-		mutex_lock(&bcl_dev->main_odpm->lock);
-		odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
-		odpm_current = micro_unit[bcl_odpm_map(id)] / 1000;
-		mutex_unlock(&bcl_dev->main_odpm->lock);
-	}
-
 	*val = 0;
 	bcl_dev->bcl_tz_cnt[id] = 0;
-	if ((id != SMPL_WARN) && (odpm_current > (bcl_dev->bcl_lvl[id] / bcl_dev->odpm_ratio)))
-		*val = bcl_dev->bcl_lvl[id] + THERMAL_HYST_LEVEL;
 	if (bcl_dev->bcl_prev_lvl[id] != *val) {
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 		bcl_dev->bcl_prev_lvl[id] = *val;
 	}
 	return 0;
+}
+
+static enum BCL_BATT_IRQ id_to_ind(int id)
+{
+	switch (id) {
+	case UVLO1:
+		return UVLO1_IRQ_BIN;
+	case UVLO2:
+		return UVLO2_IRQ_BIN;
+	case BATOILO:
+		return BATOILO_IRQ_BIN;
+	}
+	return MAX_BCL_BATT_IRQ;
+}
+
+static void bin_incr_ifpmic(struct bcl_device *bcl_dev, enum BCL_BATT_IRQ batt,
+				enum CONCURRENT_PWRWARN_IRQ pwrwarn, ktime_t end_time)
+{
+	ktime_t time_delta;
+	if (bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time == 0)
+		return;
+
+	time_delta = ktime_sub(end_time, bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time);
+	if (ktime_compare(time_delta, DELTA_10MS) < 0)
+		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].lt_5ms_count);
+	else if (ktime_compare(time_delta, DELTA_50MS) < 0)
+		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].bt_5ms_10ms_count);
+	else
+		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].gt_10ms_count);
+
+	bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time = 0;
+}
+
+/*
+ * Track UVLO1/UVLO2/BATOILO IRQ starting times, and any PWRWARN events
+ * happening at the same time as the UVLO1/UVLO2/BATOILO IRQ.
+ */
+static void update_irq_start_times(struct bcl_device *bcl_dev, int id)
+{
+	/* Check if it is a input IRQ */
+	ktime_t start_time = ktime_get();
+	enum BCL_BATT_IRQ irq_ind = id_to_ind(id);
+	if (bcl_dev->ifpmic_irq_bins[irq_ind][NONE_BCL_BIN].start_time != 0)
+		update_irq_end_times(bcl_dev, id);
+	if (irq_ind == MAX_BCL_BATT_IRQ)
+		return;
+
+	bcl_dev->ifpmic_irq_bins[irq_ind][NONE_BCL_BIN].start_time = start_time;
+	if (bcl_dev->sub_pwr_warn_triggered[bcl_dev->rffe_channel])
+		bcl_dev->ifpmic_irq_bins[irq_ind][MMWAVE_BCL_BIN].start_time = start_time;
+	if (bcl_dev->main_pwr_warn_triggered[bcl_dev->rffe_channel])
+		bcl_dev->ifpmic_irq_bins[irq_ind][RFFE_BCL_BIN].start_time = start_time;
+}
+
+static void update_irq_end_times(struct bcl_device *bcl_dev, int id)
+{
+	ktime_t end_time;
+	int irq_ind = -1;
+	int i;
+	bool pwrwarn_irq_triggered;
+
+	end_time = ktime_get();
+	irq_ind = id_to_ind(id);
+	if (irq_ind == MAX_BCL_BATT_IRQ)
+		return;
+
+	for (i = 0; i < MAX_CONCURRENT_PWRWARN_IRQ; i++) {
+		switch (i) {
+		case NONE_BCL_BIN:
+			pwrwarn_irq_triggered = true;
+			break;
+		case MMWAVE_BCL_BIN:
+			pwrwarn_irq_triggered =
+			    bcl_dev->sub_pwr_warn_triggered[bcl_dev->rffe_channel];
+			break;
+		case RFFE_BCL_BIN:
+			pwrwarn_irq_triggered =
+			    bcl_dev->main_pwr_warn_triggered[bcl_dev->rffe_channel];
+			break;
+		}
+		if (pwrwarn_irq_triggered)
+			bin_incr_ifpmic(bcl_dev, irq_ind, i, end_time);
+	}
+}
+
+static void pwrwarn_update_start_time(struct bcl_device *bcl_dev,
+					int id, struct irq_duration_stats *bins,
+					bool *pwr_warn_triggered,
+					enum CONCURRENT_PWRWARN_IRQ bin_ind)
+{
+	ktime_t start_time;
+	bool is_rf = bcl_dev->rffe_channel == id;
+
+	if (bins[id].start_time != 0)
+		return;
+
+	start_time = ktime_get();
+	if (is_rf && pwr_warn_triggered[id]) {
+		if (bcl_dev->bcl_lvl[UVLO1] != 0)
+			bcl_dev->ifpmic_irq_bins[UVLO1_IRQ_BIN][bin_ind].start_time =
+				start_time;
+		if (bcl_dev->bcl_lvl[UVLO2] != 0)
+			bcl_dev->ifpmic_irq_bins[UVLO2_IRQ_BIN][bin_ind].start_time =
+				start_time;
+		if (bcl_dev->bcl_lvl[BATOILO] != 0)
+			bcl_dev->ifpmic_irq_bins[BATOILO_IRQ_BIN][bin_ind].start_time =
+				start_time;
+	}
+	bins[id].start_time = start_time;
+}
+
+static void pwrwarn_update_end_time(struct bcl_device *bcl_dev, int id,
+                                    struct irq_duration_stats *bins,
+                                    enum CONCURRENT_PWRWARN_IRQ bin_ind)
+{
+	ktime_t end_time;
+	ktime_t time_delta;
+	int i;
+	bool is_rf = bcl_dev->rffe_channel == id;
+
+	end_time = ktime_get();
+	if (is_rf) {
+		for (i = 0; i < MAX_BCL_BATT_IRQ; i++)
+			if (bcl_dev->ifpmic_irq_bins[i][bin_ind].start_time != 0)
+				bin_incr_ifpmic(bcl_dev, i, bin_ind, end_time);
+	}
+
+	if (bins[id].start_time == 0)
+		return;
+
+	time_delta = ktime_sub(end_time, bins[id].start_time);
+	if (ktime_compare(time_delta, DELTA_10MS) < 0)
+		atomic_inc(&(bins[id].lt_5ms_count));
+	else if (ktime_compare(time_delta, DELTA_50MS) < 0)
+		atomic_inc(&(bins[id].bt_5ms_10ms_count));
+	else
+		atomic_inc(&(bins[id].gt_10ms_count));
+	bins[id].start_time = 0;
 }
 
 static struct power_supply *google_get_power_supply(struct bcl_device *bcl_dev)
@@ -249,12 +357,12 @@ static irqreturn_t irq_handler(int irq, void *data)
 		if (idx == UVLO2)
 			gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
 
-		if (idx >= UVLO1 && idx <= BATOILO)
-			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
-
 		/* IRQ is either UVLO1, UVLO2, or BATOILO */
-		if (irq_val != 0 && err == 0)
-			idx = irq_val;
+		if (idx >= UVLO1 && idx <= BATOILO) {
+			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+			idx = (idx != UVLO1) ? irq_val : idx;
+			update_irq_start_times(bcl_dev, idx);
+		}
 
 		if (bcl_dev->batt_psy_initialized) {
 			atomic_inc(&bcl_dev->bcl_cnt[idx]);
@@ -265,7 +373,10 @@ static irqreturn_t irq_handler(int irq, void *data)
 		if (idx == UVLO2) {
 			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 			update_tz(bcl_dev, BATOILO);
+		}
+		if (idx >= UVLO1 && idx <= BATOILO) {
 			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+			update_irq_end_times(bcl_dev, irq_val);
 		}
 	}
 	update_tz(bcl_dev, idx);
@@ -911,6 +1022,90 @@ static int set_modem_gpio2(void *data, u64 val)
 	return 0;
 }
 
+static int get_add_perph(void *data, u64 *val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	*val = (u64)bcl_dev->add_perph;
+	return 0;
+}
+
+static int set_add_perph(void *data, u64 val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	if (val < 0 || val > SUBSYSTEM_SOURCE_MAX)
+		return -EINVAL;
+
+	bcl_dev->add_perph = (u8)val;
+	return 0;
+}
+
+static int get_add_addr(void *data, u64 *val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	*val = bcl_dev->add_addr;
+	return 0;
+}
+
+static int set_add_addr(void *data, u64 val)
+{
+	struct bcl_device *bcl_dev = data;
+
+	if (val < 0 || val > SZ_128)
+		return -EINVAL;
+
+	bcl_dev->add_addr = val;
+	return 0;
+}
+
+static int get_add_data(void *data, u64 *val)
+{
+	struct bcl_device *bcl_dev = data;
+	void __iomem *read_addr;
+
+	if (bcl_dev->add_addr < 0 || bcl_dev->add_addr > SZ_128)
+		return -EINVAL;
+
+	if (bcl_dev->add_perph < 0 || bcl_dev->add_perph > SUBSYSTEM_SOURCE_MAX)
+		return -EINVAL;
+
+	mutex_lock(&sysreg_lock);
+	read_addr = bcl_dev->base_add_mem[bcl_dev->add_perph] + bcl_dev->add_addr;
+	*val = __raw_readl(read_addr);
+	mutex_unlock(&sysreg_lock);
+
+	return 0;
+}
+
+static int set_add_data(void *data, u64 val)
+{
+	struct bcl_device *bcl_dev = data;
+	void __iomem *write_addr;
+
+	if (bcl_dev->add_addr < 0 || bcl_dev->add_addr > SZ_128)
+		return -EINVAL;
+
+	if (bcl_dev->add_perph < 0 || bcl_dev->add_perph > SUBSYSTEM_SOURCE_MAX)
+		return -EINVAL;
+
+	if (!bcl_dev)
+		return -ENOMEM;
+
+	if (!bcl_dev->base_add_mem[bcl_dev->add_perph]) {
+		pr_err("Error in ADD perph\n");
+		return -ENOMEM;
+	}
+
+	mutex_lock(&sysreg_lock);
+	write_addr = bcl_dev->base_add_mem[bcl_dev->add_perph] + bcl_dev->add_addr;
+	__raw_writel(val, write_addr);
+	mutex_unlock(&sysreg_lock);
+	return 0;
+}
+
+
 DEFINE_SIMPLE_ATTRIBUTE(cpu0_clkout_fops, get_cpu0clk, set_cpu0clk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(cpu1_clkout_fops, get_cpu1clk, set_cpu1clk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(cpu2_clkout_fops, get_cpu2clk, set_cpu2clk, "0x%llx\n");
@@ -918,9 +1113,13 @@ DEFINE_SIMPLE_ATTRIBUTE(gpu_clkout_fops, get_gpuclk, set_gpuclk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(tpu_clkout_fops, get_tpuclk, set_tpuclk, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(modem_gpio1_fops, get_modem_gpio1, set_modem_gpio1, "0x%llx\n");
 DEFINE_SIMPLE_ATTRIBUTE(modem_gpio2_fops, get_modem_gpio2, set_modem_gpio2, "0x%llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(add_perph_fops, get_add_perph, set_add_perph, "0x%llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(add_addr_fops, get_add_addr, set_add_addr, "0x%llx\n");
+DEFINE_SIMPLE_ATTRIBUTE(add_data_fops, get_add_data, set_add_data, "0x%llx\n");
 
 static void google_init_debugfs(struct bcl_device *bcl_dev)
 {
+	struct dentry *dentry_add;
 	bcl_dev->debug_entry = debugfs_create_dir("google_bcl", 0);
 	debugfs_create_file("cpu0_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &cpu0_clkout_fops);
 	debugfs_create_file("cpu1_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &cpu1_clkout_fops);
@@ -929,6 +1128,10 @@ static void google_init_debugfs(struct bcl_device *bcl_dev)
 	debugfs_create_file("tpu_clk_out", 0644, bcl_dev->debug_entry, bcl_dev, &tpu_clkout_fops);
 	debugfs_create_file("modem_gpio1", 0644, bcl_dev->debug_entry, bcl_dev, &modem_gpio1_fops);
 	debugfs_create_file("modem_gpio2", 0644, bcl_dev->debug_entry, bcl_dev, &modem_gpio2_fops);
+	dentry_add = debugfs_create_dir("add", bcl_dev->debug_entry);
+	debugfs_create_file("perph", 0600, dentry_add, bcl_dev, &add_perph_fops);
+	debugfs_create_file("addr", 0600, dentry_add, bcl_dev, &add_addr_fops);
+	debugfs_create_file("data", 0600, dentry_add, bcl_dev, &add_data_fops);
 }
 
 static void google_set_throttling(struct bcl_device *bcl_dev)
@@ -963,19 +1166,30 @@ static void main_pwrwarn_irq_work(struct work_struct *work)
 						  main_pwr_irq_work.work);
 	bool revisit_needed = false;
 	int i;
-	u64 micro_unit[ODPM_CHANNEL_MAX];
-	u64 measurement;
+	u32 micro_unit[ODPM_CHANNEL_MAX];
+	u32 measurement;
 
 	mutex_lock(&bcl_dev->main_odpm->lock);
 
-	odpm_get_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+	odpm_get_raw_lpf_values(bcl_dev->main_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		const int rail_i = bcl_dev->main_odpm->channels[i].rail_i;
+		if (bcl_dev->main_odpm->chip.rails[rail_i].type == ODPM_RAIL_TYPE_SHUNT)
+			measurement = micro_unit[i];
+		else
+			measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
 		bcl_dev->main_pwr_warn_triggered[i] = (measurement > bcl_dev->main_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->main_pwr_warn_triggered[i];
 		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
 			gpio_set_value(bcl_dev->modem_gpio1_pin, 0);
+		if (!bcl_dev->main_pwr_warn_triggered[i])
+			pwrwarn_update_end_time(bcl_dev, i, bcl_dev->pwrwarn_main_irq_bins,
+						RFFE_BCL_BIN);
+		else
+			pwrwarn_update_start_time(bcl_dev, i, bcl_dev->pwrwarn_main_irq_bins,
+							bcl_dev->main_pwr_warn_triggered,
+							RFFE_BCL_BIN);
 	}
 
 	mutex_unlock(&bcl_dev->main_odpm->lock);
@@ -991,19 +1205,30 @@ static void sub_pwrwarn_irq_work(struct work_struct *work)
 						  sub_pwr_irq_work.work);
 	bool revisit_needed = false;
 	int i;
-	u64 micro_unit[ODPM_CHANNEL_MAX];
-	u64 measurement;
+	u32 micro_unit[ODPM_CHANNEL_MAX];
+	u32 measurement;
 
 	mutex_lock(&bcl_dev->sub_odpm->lock);
 
-	odpm_get_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
+	odpm_get_raw_lpf_values(bcl_dev->sub_odpm, S2MPG1415_METER_CURRENT, micro_unit);
 	for (i = 0; i < METER_CHANNEL_MAX; i++) {
-		measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
+		const int rail_i = bcl_dev->sub_odpm->channels[i].rail_i;
+		if (bcl_dev->sub_odpm->chip.rails[rail_i].type == ODPM_RAIL_TYPE_SHUNT)
+			measurement = micro_unit[i];
+		else
+			measurement = micro_unit[i] >> LPF_CURRENT_SHIFT;
 		bcl_dev->sub_pwr_warn_triggered[i] = (measurement > bcl_dev->sub_limit[i]);
 		if (!revisit_needed)
 			revisit_needed = bcl_dev->sub_pwr_warn_triggered[i];
 		if ((!revisit_needed) && (i == bcl_dev->rffe_channel))
 			gpio_set_value(bcl_dev->modem_gpio1_pin, 0);
+		if (!bcl_dev->sub_pwr_warn_triggered[i])
+			pwrwarn_update_end_time(bcl_dev, i, bcl_dev->pwrwarn_sub_irq_bins,
+						MMWAVE_BCL_BIN);
+		else
+			pwrwarn_update_start_time(bcl_dev, i, bcl_dev->pwrwarn_sub_irq_bins,
+							bcl_dev->sub_pwr_warn_triggered,
+							MMWAVE_BCL_BIN);
 	}
 
 	mutex_unlock(&bcl_dev->sub_odpm->lock);
@@ -1024,11 +1249,15 @@ static irqreturn_t sub_pwr_warn_irq_handler(int irq, void *data)
 		if (bcl_dev->sub_pwr_warn_irq[i] == irq) {
 			bcl_dev->sub_pwr_warn_triggered[i] = 1;
 			/* Check for Modem MMWAVE */
-			if ((bcl_dev->sub_pwr_warn_triggered[i]) && (i == bcl_dev->rffe_channel))
+			if (i == bcl_dev->rffe_channel)
 				gpio_set_value(bcl_dev->modem_gpio1_pin, 1);
+
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->sub_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
+			pwrwarn_update_start_time(bcl_dev, i, bcl_dev->pwrwarn_sub_irq_bins,
+							bcl_dev->sub_pwr_warn_triggered,
+							MMWAVE_BCL_BIN);
 			break;
 		}
 	}
@@ -1049,11 +1278,15 @@ static irqreturn_t main_pwr_warn_irq_handler(int irq, void *data)
 		if (bcl_dev->main_pwr_warn_irq[i] == irq) {
 			bcl_dev->main_pwr_warn_triggered[i] = 1;
 			/* Check for Modem RFFE */
-			if ((bcl_dev->main_pwr_warn_triggered[i]) && (i == bcl_dev->rffe_channel))
+			if (i == bcl_dev->rffe_channel)
 				gpio_set_value(bcl_dev->modem_gpio1_pin, 1);
+
 			/* Setup Timer to clear the triggered */
 			mod_delayed_work(system_unbound_wq, &bcl_dev->main_pwr_irq_work,
 					 msecs_to_jiffies(PWRWARN_DELAY_MS));
+			pwrwarn_update_start_time(bcl_dev, i, bcl_dev->pwrwarn_main_irq_bins,
+							bcl_dev->main_pwr_warn_triggered,
+							RFFE_BCL_BIN);
 			break;
 		}
 	}
@@ -1093,6 +1326,8 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	}
 	pdata_sub = dev_get_platdata(sub_dev->dev);
 	bcl_dev->sub_odpm = pdata_sub->meter;
+	for (i = 0; i < METER_CHANNEL_MAX; i++)
+		bcl_dev->sub_rail_names[i] = bcl_dev->sub_odpm->chip.rails[i].schematic_name;
 	bcl_dev->sub_irq_base = pdata_sub->irq_base;
 	bcl_dev->sub_pmic_i2c = sub_dev->pmic;
 	bcl_dev->sub_meter_i2c = sub_dev->meter;
@@ -1350,6 +1585,8 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	}
 	pdata_main = dev_get_platdata(main_dev->dev);
 	bcl_dev->main_odpm = pdata_main->meter;
+	for (i = 0; i < METER_CHANNEL_MAX; i++)
+		bcl_dev->main_rail_names[i] = bcl_dev->main_odpm->chip.rails[i].schematic_name;
 	bcl_dev->main_irq_base = pdata_main->irq_base;
 	/* request smpl_warn interrupt */
 	if (!gpio_is_valid(pdata_main->smpl_warn_pin)) {
@@ -1545,6 +1782,41 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 	mutex_init(&bcl_dev->ratio_lock);
 	google_bcl_enable_vdroop_irq(bcl_dev);
 
+	bcl_dev->base_add_mem[CPU0] = devm_ioremap(bcl_dev->device, ADD_CPUCL0, SZ_128);
+	if (!bcl_dev->base_add_mem[CPU0]) {
+		dev_err(bcl_dev->device, "cpu0_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[CPU1] = devm_ioremap(bcl_dev->device, ADD_CPUCL1, SZ_128);
+	if (!bcl_dev->base_add_mem[CPU1]) {
+		dev_err(bcl_dev->device, "cpu1_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[CPU2] = devm_ioremap(bcl_dev->device, ADD_CPUCL2, SZ_128);
+	if (!bcl_dev->base_add_mem[CPU2]) {
+		dev_err(bcl_dev->device, "cpu2_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[TPU] = devm_ioremap(bcl_dev->device, ADD_TPU, SZ_128);
+	if (!bcl_dev->base_add_mem[TPU]) {
+		dev_err(bcl_dev->device, "tpu_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[GPU] = devm_ioremap(bcl_dev->device, ADD_G3D, SZ_128);
+	if (!bcl_dev->base_add_mem[GPU]) {
+		dev_err(bcl_dev->device, "gpu_add_mem ioremap failed\n");
+		return -EIO;
+	}
+
+	bcl_dev->base_add_mem[AUR] = devm_ioremap(bcl_dev->device, ADD_AUR, SZ_128);
+	if (!bcl_dev->base_add_mem[AUR]) {
+		dev_err(bcl_dev->device, "aur_add_mem ioremap failed\n");
+		return -EIO;
+	}
 	return 0;
 }
 
@@ -1614,8 +1886,6 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->cpu1_clkdivstep = ret ? 0 : val;
 	ret = of_property_read_u32(np, "cpu0_clkdivstep", &val);
 	bcl_dev->cpu0_clkdivstep = ret ? 0 : val;
-	ret = of_property_read_u32(np, "odpm_ratio", &val);
-	bcl_dev->odpm_ratio = (ret || !val) ? 2 : val;
 	bcl_dev->vdroop1_pin = of_get_gpio(np, 0);
 	bcl_dev->vdroop2_pin = of_get_gpio(np, 1);
 	bcl_dev->modem_gpio1_pin = of_get_gpio(np, 2);
@@ -1728,6 +1998,7 @@ static int google_bcl_probe(struct platform_device *pdev)
 	schedule_delayed_work(&bcl_dev->init_work, msecs_to_jiffies(THERMAL_DELAY_INIT_MS));
 	bcl_dev->enabled = true;
 	google_init_debugfs(bcl_dev);
+	bcl_dev->rffe_channel = 0;
 
 	return 0;
 

@@ -38,6 +38,8 @@
 
 #define MCT_CSTAT_CLEAR			(0x1)
 
+#define MCT_DIV_REQ_BIT			(8)
+
 #define DEFAULT_RTC_CLK_RATE		32768 // 32.768Khz
 #define DEFAULT_CLK_DIV			3     // 1/3
 
