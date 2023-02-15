@@ -172,7 +172,7 @@ void exynos_acpm_tmu_reg_write(u8 tmu_id, u16 offset, u32 val);
 void exynos_acpm_tmu_ipc_get_target_freq(int tz, u32 *freq);
 void exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword);
 void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode);
-void exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(int timer_interval);
+int exynos_acpm_tmu_ipc_set_gov_time_windows(int timer_interval, int thermal_press_window);
 void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter);
 void exynos_acpm_tmu_ipc_reset_trip_counter(int tz);
 void exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val);

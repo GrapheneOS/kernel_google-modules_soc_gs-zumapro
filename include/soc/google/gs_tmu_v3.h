@@ -44,9 +44,14 @@ enum pi_param {
 
 #define STEPWISE_GAIN_MIN 0
 #define STEPWISE_GAIN_MAX 31
-#define ACPM_GOV_TIMER_INTERVAL_MS 25
+#define ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT 25
+#define ACPM_GOV_TIMER_INTERVAL_MS_MIN 10
+#define ACPM_GOV_TIMER_INTERVAL_MS_MAX 100
 #define INTEGRAL_THRESH_MIN 0
 #define INTEGRAL_THRESH_MAX 255
+#define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT 100
+#define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MIN 0
+#define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MAX 1000
 struct acpm_gov_params_st {
 	u8 ctrl_temp_idx;
 	u8 switch_on_temp_idx;
@@ -69,6 +74,8 @@ enum acpm_gov_debug_mode_enum {
 	ACPM_GOV_DEBUG_MODE_INVALID,
 };
 
+#define NR_CPU 3
+
 struct acpm_gov_common {
 	u64 kernel_ts;
 	u64 acpm_ts;
@@ -82,6 +89,7 @@ struct acpm_gov_common {
 	u64 buffer_version;
 	struct gov_trace_data_struct *bulk_trace_buffer;
 	spinlock_t lock;
+	u16 thermal_press_window;
 };
 
 #define TRIP_LEVEL_NUM 8
@@ -321,9 +329,12 @@ enum tmu_grp_idx_t {
 	TZ_END,
 };
 
+#define NR_TZ TZ_END
+
 int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on);
 
 #define ACPM_SM_BUFFER_VERSION_UPPER_32b 0x5A554D41ULL
+#define ACPM_SM_BUFFER_VERSION_SIZE 8
 #define BULK_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20
 #define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
@@ -358,9 +369,16 @@ struct buffered_curr_state {
 	u32 pid_i;
 };
 
+struct thermal_state {
+	u8 switched_on;
+	u8 dfs_reserved;
+	u8 therm_press[NR_CPU];
+	u8 reserved[3];
+};
+
 struct gov_trace_data_struct {
 	struct buffered_curr_state buffered_curr_state[BULK_TRACE_DATA_LEN];
-	struct curr_state curr_state[7];
+	struct curr_state curr_state[NR_TZ];
 };
 
 #endif /* _GS_TMU_V3_H */

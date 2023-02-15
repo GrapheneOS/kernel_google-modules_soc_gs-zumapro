@@ -454,7 +454,7 @@ void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode)
 	exynos_acpm_tmu_ipc_send_data(&message);
 }
 
-void exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(int timer_interval)
+int exynos_acpm_tmu_ipc_set_gov_time_windows(int timer_interval, int thermal_press_window)
 {
 	union tmu_ipc_message message;
 
@@ -462,8 +462,11 @@ void exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(int timer_interval)
 
 	message.req.type = TMU_IPC_SET_GOV_DEBUG_TIMER_INTERVAL;
 	message.req.req_rsvd0 = (u8)(timer_interval & 0xff);
+	message.req.req_rsvd1 = (u8)(thermal_press_window & 0xff);
+	message.req.req_rsvd2 = (u8)((thermal_press_window>>8) & 0xff);
 
 	exynos_acpm_tmu_ipc_send_data(&message);
+	return message.resp.ret;
 }
 
 void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter)

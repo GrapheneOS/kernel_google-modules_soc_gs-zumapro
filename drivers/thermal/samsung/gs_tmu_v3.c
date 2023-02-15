@@ -52,7 +52,7 @@
 
 #define INVALID_TRIP -1
 /* current version of trace struct is only supported in verion 3 */
-#define EXPECT_BUF_VER 3
+#define EXPECT_BUF_VER 4
 #define ACPM_BUF_VER (acpm_gov_common.buffer_version & 0xff)
 
 enum tmu_type_t {
@@ -189,7 +189,8 @@ static struct acpm_gov_common acpm_gov_common = {
 	.last_ts = 0,
 	.tracing_buffer_flush_pending = false,
 	.tracing_mode = ACPM_GOV_DEBUG_MODE_DISABLED,
-	.timer_interval = ACPM_GOV_TIMER_INTERVAL_MS,
+	.timer_interval = ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT,
+	.thermal_press_window = ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT,
 	.buffer_version = -1,
 	.bulk_trace_buffer = NULL,
 };
@@ -224,7 +225,7 @@ static bool get_bulk_mode_curr_state_buffer(void __iomem *base,
 
 	if(ACPM_BUF_VER > 0) {
 		/* offset for u64 buffer_version field */
-		offset = 8;
+		offset = ACPM_SM_BUFFER_VERSION_SIZE;
 	}
 
 	if (base) {
@@ -243,7 +244,7 @@ static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_sta
 		int cdev_state_offset = 0;
 		if (ACPM_BUF_VER > 0) {
 			/* offset for u64 buffer_version field */
-			cdev_state_offset = 8;
+			cdev_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
 		}
 		cdev_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN +
 				    sizeof(struct curr_state) * id;
@@ -359,6 +360,20 @@ static int thermal_metrics_reset_stats(tr_handle instance)
 	exynos_acpm_tmu_set_read_temp(tzid, &acpm_temp, &ipc_stat);
 
 	return ret;
+}
+
+static bool get_thermal_state_from_acpm(void __iomem *base, struct thermal_state *thermal_state)
+{
+	if (base) {
+		int thermal_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
+		thermal_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN +
+					sizeof(struct curr_state) * NR_TZ;
+		memcpy_fromio(thermal_state, base + thermal_state_offset,
+			      sizeof(struct thermal_state));
+		return true;
+	}
+
+	return false;
 }
 
 static u64 get_bulk_trace_buffer_timestamp(struct gov_trace_data_struct *bulk_trace_buffer, int idx)
@@ -504,7 +519,8 @@ unlock:
 
 static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 {
-	/* current version of buffered_curr_state is only supported in verion 3 */
+	struct thermal_state thermal_state;
+
 	if(ACPM_BUF_VER != EXPECT_BUF_VER)
 		return;
 
@@ -539,6 +555,12 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 	} break;
 	default:
 		break;
+	}
+
+	if (get_thermal_state_from_acpm(acpm_gov_common.sm_base, &thermal_state)) {
+		struct gs_tmu_data *data;
+		list_for_each_entry (data, &dtm_dev_list, node)
+			data->trip_switch_on = (thermal_state.switched_on >> data->id) & 1;
 	}
 }
 
@@ -2383,6 +2405,26 @@ static const struct kernel_param_ops param_ops_acpm_gov_tracing_mode = {
 
 module_param_cb(acpm_gov_tracing_mode, &param_ops_acpm_gov_tracing_mode, NULL, 0644);
 
+static int param_acpm_gov_thermal_state_get(char *buf, const struct kernel_param *kp)
+{
+	struct thermal_state therm_state;
+
+	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
+	    get_thermal_state_from_acpm(acpm_gov_common.sm_base, &therm_state)) {
+		return sysfs_emit(buf, "switch_on=%x, little=%d, mid=%d, big=%d\n",
+				  therm_state.switched_on, therm_state.therm_press[TZ_LIT],
+				  therm_state.therm_press[TZ_MID], therm_state.therm_press[TZ_BIG]);
+	}
+
+	return -EIO;
+}
+
+static const struct kernel_param_ops param_ops_acpm_gov_thermal_state = {
+	.get = param_acpm_gov_thermal_state_get,
+};
+
+module_param_cb(acpm_gov_thermal_state, &param_ops_acpm_gov_thermal_state, NULL, 0444);
+
 static int param_acpm_gov_timer_interval_get(char *buf, const struct kernel_param *kp)
 {
 	return sysfs_emit(buf, "%d\n", acpm_gov_common.timer_interval);
@@ -2394,16 +2436,20 @@ static int param_acpm_gov_timer_interval_set(const char *val, const struct kerne
 
 	if (kstrtou8(val, 10, &timer_interval_val)) {
 		pr_err("%s: timer_interval parse error", __func__);
-		return -1;
+		return -EINVAL;
 	}
 
-	if ((timer_interval_val < 0) || (timer_interval_val > 255)) {
+	if ((timer_interval_val < ACPM_GOV_TIMER_INTERVAL_MS_MIN) || (timer_interval_val > ACPM_GOV_TIMER_INTERVAL_MS_MAX)) {
 		return -ERANGE;
 	}
 
-	acpm_gov_common.timer_interval = timer_interval_val;
+	if (exynos_acpm_tmu_ipc_set_gov_time_windows(timer_interval_val,
+						     acpm_gov_common.thermal_press_window)) {
+		pr_err("%s: timer interval and thermal pressure window values are incompatible", __func__);
+		return -EINVAL;
+	}
 
-	exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(acpm_gov_common.timer_interval);
+	acpm_gov_common.timer_interval = timer_interval_val;
 
 	return 0;
 }
@@ -2414,6 +2460,45 @@ static const struct kernel_param_ops param_ops_acpm_gov_timer_interval = {
 };
 
 module_param_cb(acpm_gov_timer_interval, &param_ops_acpm_gov_timer_interval, NULL, 0644);
+
+static int param_acpm_gov_thermal_press_window_get(char *buf, const struct kernel_param *kp)
+{
+	return sysfs_emit(buf, "%d\n", acpm_gov_common.thermal_press_window);
+}
+
+static int param_acpm_gov_thermal_press_window_set(const char *val, const struct kernel_param *kp)
+{
+	u16 thermal_press_window_val;
+
+	if (kstrtou16(val, 10, &thermal_press_window_val)) {
+		pr_err("%s: thermal_press_window parse error", __func__);
+		return -EINVAL;
+	}
+
+	if ((thermal_press_window_val < ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MIN) ||
+	    (thermal_press_window_val > ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MAX)) {
+		return -ERANGE;
+	}
+
+	if (exynos_acpm_tmu_ipc_set_gov_time_windows(acpm_gov_common.timer_interval,
+						     thermal_press_window_val)) {
+		pr_err("%s: timer interval and thermal pressure window values are incompatible",
+		       __func__);
+		return -EINVAL;
+	}
+
+	acpm_gov_common.thermal_press_window = thermal_press_window_val;
+
+	return 0;
+}
+
+static const struct kernel_param_ops param_ops_acpm_gov_thermal_press_window = {
+	.get = param_acpm_gov_thermal_press_window_get,
+	.set = param_acpm_gov_thermal_press_window_set,
+};
+
+module_param_cb(acpm_gov_thermal_press_window, &param_ops_acpm_gov_thermal_press_window, NULL,
+		0644);
 
 static int param_acpm_gov_turn_on_get(char *buf, const struct kernel_param *kp)
 {
@@ -2427,7 +2512,7 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 
 	if (kstrtou8(val, 10, &turn_on_val)) {
 		pr_err("%s: turn_on parse error", __func__);
-		return -1;
+		return -EINVAL;
 	}
 
 	/* only allowing 0 -> 1 */
@@ -2436,7 +2521,7 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 
 	if (acpm_ipc_get_buffer("GOV_DBG", (char **)&acpm_gov_common.sm_base, &acpm_gov_common.sm_size)) {
 		pr_err("GOV: unavailable\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	if (acpm_gov_common.sm_size == 0xf10) {
@@ -2446,15 +2531,19 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 			      sizeof(acpm_gov_common.buffer_version));
 		if ((acpm_gov_common.buffer_version >> 32) != ACPM_SM_BUFFER_VERSION_UPPER_32b) {
 			pr_err("GOV: shared memory table version mismatch\n");
-			return -1;
+			return -EINVAL;
 		}
 	}
 
 	if (exynos_acpm_tmu_cb_init(&cb))
-		return -1;
+		return -EINVAL;
 
 	exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(acpm_gov_common.tracing_mode);
-	exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(acpm_gov_common.timer_interval);
+	if (exynos_acpm_tmu_ipc_set_gov_time_windows(acpm_gov_common.timer_interval,
+						     acpm_gov_common.thermal_press_window)) {
+		pr_err("GOV: timer interval and thermal press window configuration error\n");
+		return -EINVAL;
+	}
 
 	//run loop for all TZ
 	list_for_each_entry (gsdata, &dtm_dev_list, node) {
@@ -4328,8 +4417,12 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		if (acpm_gov_common.turn_on) {
 			exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(
 				acpm_gov_common.tracing_mode);
-			exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(
-				acpm_gov_common.timer_interval);
+			if (exynos_acpm_tmu_ipc_set_gov_time_windows(
+				    acpm_gov_common.timer_interval,
+				    acpm_gov_common.thermal_press_window)) {
+				pr_err("GOV: timer interval and thermal press window configuration error\n");
+				goto err_dtm_dev_list;
+			}
 		}
 	}
 
