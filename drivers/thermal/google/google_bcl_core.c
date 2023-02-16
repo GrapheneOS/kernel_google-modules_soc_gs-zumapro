@@ -334,7 +334,6 @@ static irqreturn_t irq_handler(int irq, void *data)
 	struct bcl_device *bcl_dev = data;
 	u8 idx;
 	u8 irq_val = 0;
-	int err = 0;
 	int gpio_level;
 	int polarity;
 
@@ -353,33 +352,37 @@ static irqreturn_t irq_handler(int irq, void *data)
 		gpio_level = gpio_get_value(bcl_dev->bcl_pin[idx]);
 
 	if (gpio_level == polarity) {
-		/* IRQ latched */
-		if (idx == UVLO2)
-			gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
-
 		/* IRQ is either UVLO1, UVLO2, or BATOILO */
 		if (idx >= UVLO1 && idx <= BATOILO) {
 			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+			if (irq_val == 0)
+				goto exit;
 			idx = (idx != UVLO1) ? irq_val : idx;
 			update_irq_start_times(bcl_dev, idx);
 		}
+		if (idx == BATOILO)
+			gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
 
 		if (bcl_dev->batt_psy_initialized) {
 			atomic_inc(&bcl_dev->bcl_cnt[idx]);
 			ocpsmpl_read_stats(bcl_dev, &bcl_dev->bcl_stats[idx], bcl_dev->batt_psy);
+			update_tz(bcl_dev, idx);
 		}
 	} else {
 		/* IRQ falling edge */
-		if (idx == UVLO2) {
-			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
-			update_tz(bcl_dev, BATOILO);
-		}
 		if (idx >= UVLO1 && idx <= BATOILO) {
-			err = bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+			if (irq_val == 0)
+				goto exit;
+			idx = (idx != UVLO1) ? irq_val : idx;
 			update_irq_end_times(bcl_dev, irq_val);
 		}
+		if (idx == BATOILO)
+			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
+
+		update_tz(bcl_dev, idx);
 	}
-	update_tz(bcl_dev, idx);
+exit:
 	enable_irq(irq);
 	return IRQ_HANDLED;
 }
