@@ -22,6 +22,10 @@
 	reg = <0x0 0x27F4F534 0x4>;
 };
 
+&cpufreq_domain1 {
+	soft-max-freq = <2367000>;
+};
+
 &bigwave {
 	ip_ver = <0x1>;
 };
