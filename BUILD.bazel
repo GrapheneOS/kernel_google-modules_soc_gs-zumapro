@@ -83,8 +83,7 @@ kernel_build(
     dtstree = "//private/google-modules/soc/gs/arch/arm64/boot/dts:dt",
     implicit_outs = SLIDER_DTBOS,
     kconfig_ext = "Kconfig.ext",
-    #TODO: Need to add an initial symbol list in android14-6.1 first
-    #kmi_symbol_list = "//common:android/abi_gki_aarch64_pixel",
+    kmi_symbol_list = "//common:android/abi_gki_aarch64_pixel",
     module_outs = [
         # keep sorted
         "arm_dsu_pmu.ko",
@@ -95,8 +94,6 @@ kernel_build(
         "sg.ko",
         "softdog.ko",
         "spidev.ko",
-        "zram.ko",
-        "zsmalloc.ko",
     ],
     strip_modules = True,
     # Keep in sync with build.config.common
@@ -337,6 +334,18 @@ kernel_images(
     ],
 )
 
+_gki_modules = [
+    # keep sorted
+    "//common:kernel_aarch64/drivers/block/zram/zram.ko",
+    "//common:kernel_aarch64/lib/crypto/libarc4.ko",
+    "//common:kernel_aarch64/mm/zsmalloc.ko",
+    "//common:kernel_aarch64/net/ieee802154/ieee802154.ko",
+    "//common:kernel_aarch64/net/mac80211/mac80211.ko",
+    "//common:kernel_aarch64/net/mac802154/mac802154.ko",
+    "//common:kernel_aarch64/net/rfkill/rfkill.ko",
+    "//common:kernel_aarch64/net/wireless/cfg80211.ko",
+]
+
 slider_dist_targets = [
     ":slider",
     ":slider_images",
@@ -351,7 +360,7 @@ slider_dist_targets = [
     ":slider_modules_install",
     "//common:kernel_aarch64_download_or_build",
     "//common:kernel_aarch64_additional_artifacts_download_or_build",
-]
+] + _gki_modules
 
 copy_to_dist_dir(
     name = "slider_dist",
