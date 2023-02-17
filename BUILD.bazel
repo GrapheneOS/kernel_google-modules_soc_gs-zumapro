@@ -98,6 +98,8 @@ kernel_build(
     strip_modules = True,
     # Keep in sync with build.config.common
     toolchain_version = CLANG_VERSION,
+    # TODO(http://b/269674780#comment20): do we still need this?
+    trim_nonlisted_kmi = True,
     visibility = [
         # keep sorted
         "//private/google-modules:__subpackages__",
