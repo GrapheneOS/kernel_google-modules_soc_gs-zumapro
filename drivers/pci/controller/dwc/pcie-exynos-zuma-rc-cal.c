@@ -754,7 +754,7 @@ int exynos_pcie_rc_eom(struct device *dev, void *phy_base_regs)
 	return 0;
 }
 
-void exynos_pcie_rc_phy_init(struct pcie_port *pp)
+void exynos_pcie_rc_phy_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);

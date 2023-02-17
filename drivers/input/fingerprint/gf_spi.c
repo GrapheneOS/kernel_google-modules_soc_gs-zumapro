@@ -553,32 +553,24 @@ static int gf_open(struct inode *inode, struct file *filp)
 
 	if (status) {
 		pr_info("No device for minor %d\n", iminor(inode));
-		goto err_parse_dt;
+		goto err_setup;
 	}
 
+	if (!gf_dev->users) {
+		status = irq_setup(gf_dev);
+		if (status)
+			goto err_setup;
+	}
 	gf_dev->users++;
+
 	filp->private_data = gf_dev;
 	nonseekable_open(inode, filp);
 	pr_info("Succeed to open device. irq = %d\n",
 		gf_dev->irq);
-	if (gf_dev->users == 1) {
-		status = gf_parse_dts(gf_dev);
-		if (status)
-			goto err_parse_dt;
-
-		status = irq_setup(gf_dev);
-		if (status)
-			goto err_irq;
-	}
 	gf_hw_reset(gf_dev, 10);
 	gf_dev->device_available = 1;
 
-	mutex_unlock(&gf_spi_lock);
-
-	return status;
-err_irq:
-	gf_cleanup(gf_dev);
-err_parse_dt:
+err_setup:
 	mutex_unlock(&gf_spi_lock);
 	return status;
 }
@@ -607,7 +599,6 @@ static int gf_release(struct inode *inode, struct file *filp)
 	gf_dev->users--;
 	if (!gf_dev->users) {
 		irq_cleanup(gf_dev);
-		gf_cleanup(gf_dev);
 
 		/* power off the sensor */
 		gf_dev->device_available = 0;
@@ -659,6 +650,10 @@ static int gf_probe(struct platform_device *pdev)
 	gf_dev->pwr_gpio = -EINVAL;
 	gf_dev->device_available = 0;
 	gf_dev->fb_black = 0;
+
+	status = gf_parse_dts(gf_dev);
+	if (status)
+		return status;
 
 	gf_dev->input = input_allocate_device();
 	if (gf_dev->input == NULL) {

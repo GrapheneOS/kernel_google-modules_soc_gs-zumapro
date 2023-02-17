@@ -343,7 +343,7 @@ err_w_lock:
 	return ret;
 }
 
-static int s2mpg15_i2c_remove(struct i2c_client *i2c)
+static void s2mpg15_i2c_remove(struct i2c_client *i2c)
 {
 	struct s2mpg15_dev *s2mpg15 = i2c_get_clientdata(i2c);
 
@@ -351,8 +351,6 @@ static int s2mpg15_i2c_remove(struct i2c_client *i2c)
 		device_init_wakeup(s2mpg15->dev, false);
 	mfd_remove_devices(s2mpg15->dev);
 	i2c_unregister_device(s2mpg15->i2c);
-
-	return 0;
 }
 
 static const struct i2c_device_id s2mpg15_i2c_id[] = {

@@ -455,12 +455,10 @@ static void eusb_repeater_shutdown(struct i2c_client *client)
 {
 }
 
-static int eusb_repeater_remove(struct i2c_client *client)
+static void eusb_repeater_remove(struct i2c_client *client)
 {
 	struct eusb_repeater_data *tud = i2c_get_clientdata(client);
-
 	mutex_destroy(&tud->i2c_mutex);
-	return 0;
 }
 
 

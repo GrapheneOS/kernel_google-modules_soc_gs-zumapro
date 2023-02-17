@@ -27,8 +27,6 @@
 #include <linux/spinlock.h>
 #include <linux/syscore_ops.h>
 
-#include <dt-bindings/pinctrl/samsung.h>
-
 /* core.h should come from <ACK>/drivers/pinctrl */
 #include "core.h"
 #include "pinctrl-samsung.h"
@@ -713,7 +711,7 @@ static int samsung_gpio_set_direction(struct gpio_chip *gc,
 	data = readl(reg);
 	data &= ~(mask << shift);
 	if (!input)
-		data |= EXYNOS_PIN_FUNC_OUTPUT << shift;
+		data |= PIN_CON_FUNC_OUTPUT << shift;
 	writel(data, reg);
 
 	return 0;
@@ -1197,7 +1195,6 @@ static int samsung_pinctrl_probe(struct platform_device *pdev)
 	struct samsung_pinctrl_drv_data *drvdata;
 	const struct samsung_pin_ctrl *ctrl;
 	struct device *dev = &pdev->dev;
-	struct resource *res;
 	int ret;
 
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
@@ -1211,9 +1208,11 @@ static int samsung_pinctrl_probe(struct platform_device *pdev)
 	}
 	drvdata->dev = dev;
 
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (res)
-		drvdata->irq = res->start;
+	ret = platform_get_irq_optional(pdev, 0);
+	if (ret < 0 && ret != -ENXIO)
+		return ret;
+	if (ret > 0)
+		drvdata->irq = ret;
 
 	if (ctrl->retention_data) {
 		drvdata->retention_ctrl = ctrl->retention_data->init(drvdata,
@@ -1226,16 +1225,16 @@ static int samsung_pinctrl_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	if (ctrl->eint_gpio_init)
+		ctrl->eint_gpio_init(drvdata);
+	if (ctrl->eint_wkup_init)
+		ctrl->eint_wkup_init(drvdata);
+
 	ret = samsung_gpiolib_register(pdev, drvdata);
 	if (ret) {
 		samsung_pinctrl_unregister(pdev, drvdata);
 		return ret;
 	}
-
-	if (ctrl->eint_gpio_init)
-		ctrl->eint_gpio_init(drvdata);
-	if (ctrl->eint_wkup_init)
-		ctrl->eint_wkup_init(drvdata);
 
 	platform_set_drvdata(pdev, drvdata);
 

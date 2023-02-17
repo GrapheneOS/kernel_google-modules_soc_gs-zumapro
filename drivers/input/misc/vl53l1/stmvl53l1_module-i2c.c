@@ -586,7 +586,7 @@ done_freemem:
 	return -EPERM;
 }
 
-static int stmvl53l1_remove(struct i2c_client *client)
+static void stmvl53l1_remove(struct i2c_client *client)
 {
 	struct stmvl53l1_data *data = i2c_get_clientdata(client);
 	struct i2c_data *i2c_data = (struct i2c_data *)data->client_object;
@@ -602,8 +602,6 @@ static int stmvl53l1_remove(struct i2c_client *client)
 
 	stmvl53l1_put(data->client_object);
 	kref_put(&shared_i2c_data->refcount, shared_i2c_data_release);
-
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP

@@ -118,6 +118,7 @@ nitrous.ko
 odpm.ko
 overheat_mitigation.ko
 p9221.ko
+page_pool.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
 panel-samsung-s6e3fc3.ko

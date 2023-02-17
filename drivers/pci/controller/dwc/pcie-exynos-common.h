@@ -33,7 +33,7 @@
 #define to_exynos_pcie(x)	dev_get_drvdata((x)->dev)
 
 #define PCIE_BUS_PRIV_DATA(pdev) \
-	((struct pcie_port *)(pdev)->bus->sysdata)
+	((struct dw_pcie_rp *)(pdev)->bus->sysdata)
 
 #define MAX_PCIE_PIN_STATE	2
 #define PCIE_PIN_ACTIVE		0
@@ -224,11 +224,11 @@ struct pcie_phyops {
 struct exynos_pcie_ops {
 	int (*poweron)(int ch_num);
 	void (*poweroff)(int ch_num);
-	int (*rd_own_conf)(struct pcie_port *pp, int where, int size, u32 *val);
-	int (*wr_own_conf)(struct pcie_port *pp, int where, int size, u32 val);
-	int (*rd_other_conf)(struct pcie_port *pp, struct pci_bus *bus, u32 devfn, int where,
+	int (*rd_own_conf)(struct dw_pcie_rp *pp, int where, int size, u32 *val);
+	int (*wr_own_conf)(struct dw_pcie_rp *pp, int where, int size, u32 val);
+	int (*rd_other_conf)(struct dw_pcie_rp *pp, struct pci_bus *bus, u32 devfn, int where,
 			     int size, u32 *val);
-	int (*wr_other_conf)(struct pcie_port *pp, struct pci_bus *bus, u32 devfn, int where,
+	int (*wr_other_conf)(struct dw_pcie_rp *pp, struct pci_bus *bus, u32 devfn, int where,
 			     int size, u32 val);
 };
 

@@ -254,21 +254,20 @@ static int exynos_cpufreq_verify(struct cpufreq_policy_data *new_policy)
 	struct cpufreq_policy policy;
 	unsigned int min_freq, max_freq;
 	int index, ret;
-	unsigned long max_capacity, capacity;
 
 	if (!domain)
 		return -EINVAL;
 
 	policy.freq_table = new_policy->freq_table;
 
-	index = cpufreq_table_find_index_ah(&policy, new_policy->max);
+	index = cpufreq_table_find_index_ah(&policy, new_policy->max, false);
 	if (index == -1) {
 		pr_err("%s : failed to find a proper max frequency\n", __func__);
 		return -EINVAL;
 	}
 	max_freq = policy.freq_table[index].frequency;
 
-	index = cpufreq_table_find_index_al(&policy, new_policy->min);
+	index = cpufreq_table_find_index_al(&policy, new_policy->min, false);
 	if (index == -1) {
 		pr_err("%s : failed to find a proper min frequency\n", __func__);
 		return -EINVAL;
@@ -287,12 +286,7 @@ static int exynos_cpufreq_verify(struct cpufreq_policy_data *new_policy)
 
 	ret = cpufreq_frequency_table_verify(new_policy, domain->freq_table);
 	if (!ret) {
-		max_capacity = arch_scale_cpu_capacity(cpumask_first(&domain->cpus));
-		capacity = new_policy->max * max_capacity;
-		capacity /= new_policy->cpuinfo.max_freq;
-		arch_set_thermal_pressure(&domain->cpus, max_capacity - capacity);
-		pr_debug_ratelimited("thermal pressure: %lu, cpus: %*pbl\n",
-			max_capacity - capacity, cpumask_pr_args(&domain->cpus));
+		arch_update_thermal_pressure(&domain->cpus, new_policy->max);
 	}
 	return ret;
 }

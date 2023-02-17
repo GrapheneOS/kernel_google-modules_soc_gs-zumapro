@@ -20,6 +20,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/spinlock.h>
 #include <linux/usb/pd.h>
+#include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <misc/logbuffer.h>
@@ -28,8 +29,6 @@
 #include "bc_max77759.h"
 #include <linux/usb/max77759_export.h>
 #include "max77759_helper.h"
-/* This header comes from the GKI kernel tree */
-#include <tcpm/tcpci.h>
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
 #include "usb_icl_voter.h"
@@ -89,11 +88,6 @@ enum gbms_charger_modes {
 #define REGMAP_REG_MAX_ADDR			0x95
 #define REGMAP_REG_COUNT			(REGMAP_REG_MAX_ADDR + 1)
 
-#define tcpc_presenting_rd(reg, cc) \
-	(!(TCPC_ROLE_CTRL_DRP & (reg)) && \
-	 (((reg) & (TCPC_ROLE_CTRL_## cc ##_MASK << TCPC_ROLE_CTRL_## cc ##_SHIFT)) == \
-	  (TCPC_ROLE_CTRL_CC_RD << TCPC_ROLE_CTRL_## cc ##_SHIFT)))
-
 #define cc_open_or_toggling(cc1, cc2) \
 	(((cc1) == TYPEC_CC_OPEN) && ((cc2) == TYPEC_CC_OPEN))
 
@@ -131,8 +125,6 @@ static unsigned int sink_discovery_delay_ms;
 /* Callback for data_active changes */
 void (*data_active_callback)(void *data_active_payload);
 void *data_active_payload;
-
-static bool hooks_installed;
 
 struct tcpci {
 	struct device *dev;
@@ -1034,23 +1026,6 @@ static void reset_ovp_work(struct kthread_work *work)
 	logbuffer_log(chip->log, "ovp reset done");
 }
 
-static enum typec_cc_status tcpci_to_typec_cc(unsigned int cc, bool sink)
-{
-	switch (cc) {
-	case 0x1:
-		return sink ? TYPEC_CC_RP_DEF : TYPEC_CC_RA;
-	case 0x2:
-		return sink ? TYPEC_CC_RP_1_5 : TYPEC_CC_RD;
-	case 0x3:
-		if (sink)
-			return TYPEC_CC_RP_3_0;
-		fallthrough;
-	case 0x0:
-	default:
-		return TYPEC_CC_OPEN;
-	}
-}
-
 static void max77759_cache_cc(struct max77759_plat *chip)
 {
 	struct tcpci *tcpci = chip->tcpci;
@@ -1092,6 +1067,13 @@ static void max77759_cache_cc(struct max77759_plat *chip)
 	chip->cc1 = cc1;
 	chip->cc2 = cc2;
 }
+
+/**
+ * The patch introducing tcpm_is_debouncing() was reverted in android-mainline
+ * (See aosp/1911031). While we wait for such patch to be sent upstream let's
+ * stub out tcpm_is_debouncing() here. TODO(b/215766959): revert this hack.
+ **/
+static inline bool tcpm_is_debouncing(struct tcpm_port *tcpm) { return false; }
 
 static irqreturn_t _max77759_irq(struct max77759_plat *chip, u16 status,
 				 struct logbuffer *log)
@@ -1500,7 +1482,8 @@ static void max77759_set_partner_usb_comm_capable(struct tcpci *tcpci, struct tc
 	mutex_unlock(&chip->data_path_lock);
 }
 
-static int max77759_usb_set_orientation(struct typec_switch *sw, enum typec_orientation orientation)
+static int max77759_usb_set_orientation(struct typec_switch_dev *sw,
+					enum typec_orientation orientation)
 {
 	struct max77759_plat *chip = typec_switch_get_drvdata(sw);
 	enum typec_cc_polarity polarity = orientation == TYPEC_ORIENTATION_REVERSE ?
@@ -1614,24 +1597,6 @@ static int max77759_set_vbus_voltage_max_mv(struct i2c_client *tcpc_client,
 	return 0;
 }
 
-static void max77759_get_vbus(void *unused, struct tcpci *tcpci, struct tcpci_data *data, int *vbus,
-			      int *bypass)
-{
-	struct max77759_plat *chip = tdata_to_max77759(data);
-	u8 pwr_status;
-	int ret;
-
-	ret = max77759_read8(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status);
-	if (!ret && !chip->vbus_present && (pwr_status & TCPC_POWER_STATUS_VBUS_PRES)) {
-		logbuffer_log(chip->log, "[%s]: syncing vbus_present", __func__);
-		chip->vbus_present = 1;
-	}
-
-	logbuffer_log(chip->log, "[%s]: vbus_present %d", __func__, chip->vbus_present);
-	*vbus = chip->vbus_present;
-	*bypass = 1;
-}
-
 static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 {
 	struct max77759_plat *chip = usb_role_switch_get_drvdata(sw);
@@ -1692,23 +1657,6 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 		bc12_enable(chip->bc12, true);
 
 	return 0;
-}
-
-static void max77759_store_partner_src_caps(void *unused, struct tcpm_port *port,
-					    unsigned int *nr_source_caps,
-					    u32 (*source_caps)[PDO_MAX_OBJECTS])
-{
-	int i;
-
-	spin_lock(&g_caps_lock);
-
-	nr_partner_src_caps = *nr_source_caps > PDO_MAX_OBJECTS ?
-			      PDO_MAX_OBJECTS : *nr_source_caps;
-
-	for (i = 0; i < nr_partner_src_caps; i++)
-		partner_src_caps[i] = (*source_caps)[i];
-
-	spin_unlock(&g_caps_lock);
 }
 
 /*
@@ -1982,94 +1930,6 @@ static void max77759_teardown_data_notifier(struct max77759_plat *chip)
 		usb_role_switch_unregister(chip->usb_sw);
 }
 
-static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *tcpci,
-						   struct tcpci_data *data,
-						   int *override_toggling)
-{
-	*override_toggling = 1;
-}
-
-static void max77759_get_timer_value(void *unused, const char *state, enum typec_timer timer,
-				     unsigned int *val)
-{
-	switch (timer) {
-	case SINK_DISCOVERY_BC12:
-		*val = 500;
-		break;
-	case SINK_WAIT_CAP:
-		*val = 450;
-		break;
-	case SOURCE_OFF:
-		*val = 870;
-		break;
-	case CC_DEBOUNCE:
-		*val = 170;
-		break;
-	default:
-		break;
-	}
-}
-
-static void max77759_tcpm_log(void *unused, const char *log, bool *bypass)
-{
-	if (tcpm_log)
-		logbuffer_log(tcpm_log, "%s", log);
-
-	*bypass = true;
-}
-
-static int max77759_register_vendor_hooks(struct i2c_client *client)
-{
-	int ret;
-
-	if (hooks_installed)
-		return 0;
-
-	ret = register_trace_android_vh_typec_tcpci_override_toggling(
-			max77759_typec_tcpci_override_toggling, NULL);
-
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpci_override_toggling failed ret:%d",
-			ret);
-		return ret;
-	}
-
-	ret = register_trace_android_rvh_typec_tcpci_get_vbus(max77759_get_vbus, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_rvh_typec_tcpci_get_vbus failed ret:%d\n", ret);
-		return ret;
-	}
-
-	ret = register_trace_android_vh_typec_store_partner_src_caps(
-			max77759_store_partner_src_caps, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
-			ret);
-		return ret;
-	}
-
-	ret = register_trace_android_vh_typec_tcpm_get_timer(max77759_get_timer_value, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpm_get_timer failed ret:%d\n", ret);
-		return ret;
-	}
-
-	ret = register_trace_android_vh_typec_tcpm_log(max77759_tcpm_log, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpm_log failed ret:%d\n", ret);
-		return ret;
-	}
-
-	hooks_installed = true;
-
-	return ret;
-}
-
 static int max77759_probe(struct i2c_client *client,
 			  const struct i2c_device_id *i2c_id)
 {
@@ -2082,10 +1942,6 @@ static int max77759_probe(struct i2c_client *client,
 	u32 ovp_handle;
 	const char *ovp_status;
 	enum of_gpio_flags flags;
-
-	ret = max77759_register_vendor_hooks(client);
-	if (ret)
-		return ret;
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -2355,7 +2211,7 @@ logbuffer_unreg:
 	return ret;
 }
 
-static int max77759_remove(struct i2c_client *client)
+static void max77759_remove(struct i2c_client *client)
 {
 	struct max77759_plat *chip = i2c_get_clientdata(client);
 	int i;
@@ -2379,8 +2235,6 @@ static int max77759_remove(struct i2c_client *client)
 		kthread_destroy_worker(chip->wq);
 	power_supply_unreg_notifier(&chip->psy_notifier);
 	max77759_teardown_data_notifier(chip);
-
-	return 0;
 }
 
 static void max77759_shutdown(struct i2c_client *client)

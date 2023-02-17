@@ -229,7 +229,7 @@ static void acpm_log_print_helper(unsigned int head, unsigned int arg0,
 		id = (head >> LOG_ID_SHIFT) & 0xf;
 		is_raw = (head >> LOG_IS_RAW_SHIFT) & 0x1;
 		if (is_raw) {
-			pr_info("[ACPM_FW] : id:%u, %x, %x, %x\n",
+			pr_debug("[ACPM_FW] : id:%u, %x, %x, %x\n",
 				id, arg0, arg1, arg2);
 		} else {
 			time = ((u64) arg0 << 24) | ((u64) head & 0xffffff);
@@ -237,7 +237,7 @@ static void acpm_log_print_helper(unsigned int head, unsigned int arg0,
 			time = (time * APM_SYSTICK_PERIOD_US) / 1000;
 			str = (char *) acpm_srambase + (arg1 & 0xffffff);
 
-			pr_info("[ACPM_FW] : %llu id:%u, %s, %x\n",
+			pr_debug("[ACPM_FW] : %llu id:%u, %s, %x\n",
 				time, id, str, arg2);
 		}
 	}

@@ -278,6 +278,9 @@ static LIST_HEAD(drvdata_list);
 #define RTS_PINCTRL		1
 #define DEFAULT_PINCTRL		0
 
+#define USI_CON			0xC4
+#define USI_OPTION		0xC8
+
 #define USI_RESET		0
 #define USI_SET_RESET		BIT(0)
 #define USI_HWACG_CLKREQ_ON	BIT(1)
@@ -1787,7 +1790,7 @@ static u16 udivslot_table[16] = {
 
 static void exynos_serial_set_termios(struct uart_port *port,
 				      struct ktermios *termios,
-				      struct ktermios *old)
+				      const struct ktermios *old)
 {
 	struct s3c2410_uartcfg *cfg = exynos_port_to_cfg(port);
 	struct exynos_uart_port *ourport = to_ourport(port);
@@ -2238,7 +2241,7 @@ static void exynos_serial_resetport(struct uart_port *port,
 	ucon &= ucon_mask;
 	if (ourport->dbg_mode & UART_LOOPBACK_MODE) {
 		dev_err(port->dev, "Change Loopback mode!\n");
-		ucon |= S3C2443_UCON_LOOPBACK;
+		ucon |= S3C2410_UCON_LOOPBACK;
 	}
 
 	/* Disable RTS when RX FIFO contains 63 bytes */
@@ -3006,7 +3009,7 @@ static void exynos_serial_put_poll_char(struct uart_port *port,
 #endif /* CONFIG_CONSOLE_POLL */
 
 static void
-exynos_serial_console_putchar(struct uart_port *port, int ch)
+exynos_serial_console_putchar(struct uart_port *port, unsigned char ch)
 {
 	unsigned int ufcon = rd_regl(port, S3C2410_UFCON);
 	unsigned int ucon;

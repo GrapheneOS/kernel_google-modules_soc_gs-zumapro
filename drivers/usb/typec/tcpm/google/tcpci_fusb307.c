@@ -18,14 +18,13 @@
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/role.h>
+#include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec_mux.h>
 #include <misc/gvotable.h>
 #include <misc/logbuffer.h>
 
 #include "tcpci_otg_helper.h"
-/* This header comes from the GKI kernel tree */
-#include <tcpm/tcpci.h>
 #include "usb_icl_voter.h"
 #include "usb_psy.h"
 
@@ -95,7 +94,7 @@ struct fusb307b_plat {
 	/* Notifier for data role */
 	struct usb_role_switch *usb_sw;
 	/* Notifier for orientation */
-	struct typec_switch *typec_sw;
+	struct typec_switch_dev *typec_sw;
 
 	struct i2c_client *uic_i2c_client;
 	struct device_node *uic_device_node;
@@ -428,7 +427,8 @@ static void fusb307b_set_pd_data_capable(struct tcpci *tcpci, struct tcpci_data 
 	mutex_unlock(&chip->data_path_lock);
 }
 
-static int fusb307b_usb_set_orientation(struct typec_switch *sw, enum typec_orientation orientation)
+static int fusb307b_usb_set_orientation(struct typec_switch_dev *sw,
+					enum typec_orientation orientation)
 {
 	struct fusb307b_plat *chip = typec_switch_get_drvdata(sw);
 	enum typec_cc_polarity polarity = orientation == TYPEC_ORIENTATION_REVERSE ?
@@ -819,7 +819,7 @@ unreg_log:
 	return ret;
 }
 
-static int fusb307b_remove(struct i2c_client *client)
+static void fusb307b_remove(struct i2c_client *client)
 {
 	struct fusb307b_plat *chip = i2c_get_clientdata(client);
 
@@ -830,8 +830,6 @@ static int fusb307b_remove(struct i2c_client *client)
 	kthread_destroy_worker(chip->wq);
 	power_supply_unreg_notifier(&chip->psy_notifier);
 	fusb307b_teardown_data_notifier(chip);
-
-	return 0;
 }
 
 static const struct i2c_device_id fusb307b_id[] = {

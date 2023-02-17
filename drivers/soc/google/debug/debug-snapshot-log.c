@@ -259,6 +259,8 @@ static void dbg_snapshot_handle_suspend_diag(unsigned long last_idx, unsigned lo
 	bool has_dev_pm_cb = (idx == curr_idx) ? false : true;
 	long long delta_time = 0;
 
+	if (!dss_log)
+		return;
 	if (!has_dev_pm_cb) {
 		delta_time = dss_log->suspend[curr_idx].time - dss_log->suspend[last_idx].time;
 	} else {
@@ -365,6 +367,8 @@ void dbg_snapshot_cpuidle_mod(char *modes, unsigned int state, s64 diff, int en)
 	int cpu = raw_smp_processor_id();
 	unsigned int i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_CPUIDLE_ID))
 		return;
 
@@ -385,6 +389,8 @@ void dbg_snapshot_regulator(unsigned long long timestamp, char *f_name,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_REGULATOR_ID))
 		return;
 
@@ -408,6 +414,8 @@ void dbg_snapshot_thermal(struct exynos_tmu_data *data, unsigned int temp,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_THERMAL_ID))
 		return;
 
@@ -429,6 +437,8 @@ void dbg_snapshot_clk(struct clk_hw *clock, const char *func_name,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_CLK_ID))
 		return;
 
@@ -447,6 +457,8 @@ void dbg_snapshot_pmu(int id, const char *func_name, int mode)
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_PMU_ID))
 		return;
 
@@ -465,6 +477,8 @@ void dbg_snapshot_freq(int type, unsigned long old_freq,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (unlikely(type < 0 || type > dss_freq_size))
 		return;
 
@@ -488,6 +502,8 @@ void dbg_snapshot_dm(int type, unsigned long min, unsigned long max,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_DM_ID))
 		return;
 
@@ -510,6 +526,8 @@ void dbg_snapshot_acpm(unsigned long long timestamp, const char *log,
 	unsigned long i;
 	int len;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_ACPM_ID))
 		return;
 
@@ -530,6 +548,8 @@ void dbg_snapshot_printk(const char *fmt, ...)
 	unsigned long i;
 	va_list args;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_PRINTK_ID))
 		return;
 
@@ -548,6 +568,8 @@ EXPORT_SYMBOL_GPL(dbg_snapshot_printk);
 
 void dbg_snapshot_itmon_irq_received(void)
 {
+	if (!dss_itmon)
+		return;
 	if (!dss_items[DSS_ITEM_ITMON_ID].entry.enabled)
 		return;
 
@@ -561,6 +583,8 @@ void dbg_snapshot_itmon_backup_log(const char *fmt, ...)
 	size_t len_log, len_logs;
 	va_list args;
 
+	if (!dss_itmon)
+		return;
 	if (!dss_items[DSS_ITEM_ITMON_ID].entry.enabled)
 		return;
 
@@ -596,6 +620,8 @@ static void dbg_snapshot_print_last_irq(int cpu)
 	struct dbg_snapshot_log_item *log_item = &dss_log_items[DSS_LOG_IRQ_ID];
 	unsigned long idx, sec, msec;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -616,6 +642,8 @@ static void dbg_snapshot_print_last_task(int cpu)
 	unsigned long idx, sec, msec;
 	struct task_struct *task;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -635,6 +663,8 @@ static void dbg_snapshot_print_last_work(int cpu)
 	struct dbg_snapshot_log_item *log_item = &dss_log_items[DSS_LOG_WORK_ID];
 	unsigned long idx, sec, msec;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -653,6 +683,8 @@ static void dbg_snapshot_print_last_cpuidle(int cpu)
 	struct dbg_snapshot_log_item *log_item = &dss_log_items[DSS_LOG_CPUIDLE_ID];
 	unsigned long idx, sec, msec;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -689,6 +721,8 @@ static void dbg_snapshot_print_freqinfo(void)
 	unsigned long i, idx, sec, msec;
 	unsigned long old_freq, target_freq;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 

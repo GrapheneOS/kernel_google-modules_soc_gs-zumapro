@@ -233,7 +233,7 @@ static unsigned long hardlockup_debug_get_locked_cpu_mask(void)
 	return mask;
 }
 
-static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned int esr)
+static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 {
 	static atomic_t show_mem_once = ATOMIC_INIT(1);
 	static atomic_t print_schedstat_once = ATOMIC_INIT(1);
@@ -312,7 +312,7 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned int esr)
 			struct pm_dev_priv *priv;
 			struct interval_tree_node *node, *next;
 
-			pr_emerg("pm_suspend_task '%s' %d hung (state=%ld)",
+			pr_emerg("pm_suspend_task '%s' %d hung (state=%u)",
 					pm_suspend_task->comm, pm_suspend_task->pid,
 					pm_suspend_task->__state);
 			sched_show_task(pm_suspend_task);

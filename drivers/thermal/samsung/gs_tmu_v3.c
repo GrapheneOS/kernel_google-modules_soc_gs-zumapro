@@ -644,9 +644,9 @@ static void gs_tmu_control(struct platform_device *pdev, bool on)
 
 #define MCINFO_LOG_THRESHOLD	(4)
 
-static int gs_get_temp(void *p, int *temp)
+static int gs_get_temp(struct thermal_zone_device *tz, int *temp)
 {
-	struct gs_tmu_data *data = p;
+	struct gs_tmu_data *data = tz->devdata;
 #if IS_ENABLED(CONFIG_EXYNOS_MCINFO)
 	unsigned int mcinfo_count;
 	unsigned int mcinfo_result[4] = {0, 0, 0, 0};
@@ -732,10 +732,10 @@ static int gs_get_temp(void *p, int *temp)
 	return 0;
 }
 
-static int gs_get_trend(void *p, int trip, enum thermal_trend *trend)
+static int gs_get_trend(struct thermal_zone_device *tz, int trip,
+			enum thermal_trend *trend)
 {
-	struct gs_tmu_data *data = p;
-	struct thermal_zone_device *tz = data->tzd;
+	struct gs_tmu_data *data = tz->devdata;
 	int trip_temp, ret = 0;
 
 	if (!tz)
@@ -749,18 +749,18 @@ static int gs_get_trend(void *p, int trip, enum thermal_trend *trend)
 		*trend = THERMAL_TREND_STABLE;
 	} else {
 		if (tz->temperature >= trip_temp)
-			*trend = THERMAL_TREND_RAISE_FULL;
+			*trend = THERMAL_TREND_RAISING;
 		else
-			*trend = THERMAL_TREND_DROP_FULL;
+			*trend = THERMAL_TREND_DROPPING;
 	}
 
 	return 0;
 }
 
-static int gs_tmu_set_trip_temp(void *drv_data, int trip, int temp)
+static int gs_tmu_set_trip_temp(struct thermal_zone_device *tz, int trip,
+				int temp)
 {
-	struct gs_tmu_data *data = drv_data;
-	struct thermal_zone_device *tz = data->tzd;
+	struct gs_tmu_data *data = tz->devdata;
 	enum thermal_trip_type type;
 	int i, trip_temp, ret = 0;
 	unsigned char threshold[8] = {0, };
@@ -803,9 +803,9 @@ static int gs_tmu_set_trip_temp(void *drv_data, int trip, int temp)
 }
 
 #if IS_ENABLED(CONFIG_THERMAL_EMULATION)
-static int gs_tmu_set_emulation(void *drv_data, int temp)
+static int gs_tmu_set_emulation(struct thermal_zone_device *tz, int temp)
 {
-	struct gs_tmu_data *data = drv_data;
+	struct gs_tmu_data *data = tz->devdata;
 	int ret = -EINVAL;
 	unsigned char emul_temp;
 
@@ -821,7 +821,7 @@ out:
 	return ret;
 }
 #else
-static int gs_tmu_set_emulation(void *drv_data, int temp)
+static int gs_tmu_set_emulation(struct thermal_zone_device *tz, int temp)
 {
 	return -EINVAL;
 }
@@ -844,7 +844,7 @@ static void reset_pi_trips(struct gs_tmu_data *data)
 	last_active = INVALID_TRIP;
 	last_passive = INVALID_TRIP;
 
-	for (i = 0; i < tz->trips; i++) {
+	for (i = 0; i < tz->num_trips; i++) {
 		enum thermal_trip_type type;
 		int ret;
 
@@ -1921,7 +1921,7 @@ static int gs_map_dt_data(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct thermal_zone_of_device_ops gs_sensor_ops = {
+static const struct thermal_zone_device_ops gs_sensor_ops = {
 	.get_temp = gs_get_temp,
 	.set_emul_temp = gs_tmu_set_emulation,
 	.get_trend = gs_get_trend,
@@ -3963,8 +3963,6 @@ static int gs_tmu_parse_ect(struct gs_tmu_data *data)
 struct gs_tmu_data *gpu_thermal_data;
 #endif
 
-extern void register_tz_id_ignore_genl(int tz_id);
-
 static int gs_tmu_probe(struct platform_device *pdev)
 {
 	struct gs_tmu_data *data;
@@ -3986,7 +3984,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			if (acpm_ipc_get_buffer("GOV_DBG", (char **)&acpm_gov_common.sm_base,
 						&acpm_gov_common.sm_size)) {
 				pr_info("GOV: unavailable\n");
-				goto err_thermal;
+				goto err_sensor;
 			}
 			if (acpm_gov_common.sm_size == 0xf10) {
 				acpm_gov_common.buffer_version = 0x0;
@@ -4000,7 +3998,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 				}
 			}
 			if (exynos_acpm_tmu_cb_init(&cb))
-				goto err_thermal;
+				goto err_sensor;
 			disable_irq(cb.ipc_ch);
 		}
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
@@ -4015,7 +4013,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		}
 	}
 
-	data->tzd = thermal_zone_of_sensor_register(&pdev->dev, 0, data, &gs_sensor_ops);
+	data->tzd = devm_thermal_of_zone_register(&pdev->dev, 0, data, &gs_sensor_ops);
 	if (IS_ERR(data->tzd)) {
 		ret = PTR_ERR(data->tzd);
 		dev_err(&pdev->dev, "Failed to register sensor: %d\n", ret);
@@ -4038,7 +4036,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	ret = gs_tmu_initialize(pdev);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to initialize TMU\n");
-		goto err_thermal;
+		goto err_sensor;
 	}
 
 	if (!acpm_gov_common.turn_on) {
@@ -4046,13 +4044,13 @@ static int gs_tmu_probe(struct platform_device *pdev)
 				       dev_name(&pdev->dev), data);
 		if (ret) {
 			dev_err(&pdev->dev, "Failed to request irq: %d\n", data->irq);
-			goto err_thermal;
+			goto err_sensor;
 		}
 
 		ret = gs_tmu_irq_work_init(pdev);
 		if (ret) {
 			dev_err(&pdev->dev, "cannot gs tmu interrupt work initialize\n");
-			goto err_thermal;
+			goto err_sensor;
 		}
 	}
 
@@ -4147,13 +4145,8 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (!strncmp(data->tmu_name, "ISP", 3))
 		exynos_isp_cooling_init();
 #endif
-
-	register_tz_id_ignore_genl(data->tzd->id);
-
 	return 0;
 
-err_thermal:
-	thermal_zone_of_sensor_unregister(&pdev->dev, data->tzd);
 err_sensor:
 	return ret;
 }
@@ -4161,10 +4154,8 @@ err_sensor:
 static int gs_tmu_remove(struct platform_device *pdev)
 {
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
-	struct thermal_zone_device *tzd = data->tzd;
 	struct gs_tmu_data *devnode;
 
-	thermal_zone_of_sensor_unregister(&pdev->dev, tzd);
 	gs_tmu_control(pdev, false);
 
 	if (acpm_gov_common.turn_on)

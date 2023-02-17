@@ -3,13 +3,13 @@
  * Copyright (c) 2021 Samsung Electronics Co., Ltd.
  */
 
-#include <linux/dma-iommu.h>
 #include <linux/kmemleak.h>
 #include <linux/module.h>
 #include <linux/of_iommu.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/dma-mapping.h>
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
 
@@ -313,7 +313,7 @@ static inline void pgtable_flush(void *vastart, void *vaend)
 				   vaend - vastart, DMA_TO_DEVICE);
 }
 
-static bool samsung_sysmmu_capable(enum iommu_cap cap)
+static bool samsung_sysmmu_capable(struct device *dev, enum iommu_cap cap)
 {
 	return cap == IOMMU_CAP_CACHE_COHERENCY;
 }
@@ -386,14 +386,6 @@ static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 	if (!domain->lv2entcnt)
 		goto err_counter;
 
-	if (type == IOMMU_DOMAIN_DMA) {
-		int ret = iommu_get_dma_cookie(&domain->domain);
-
-		if (ret) {
-			pr_err("failed to get dma cookie (%d)\n", ret);
-			goto err_get_dma_cookie;
-		}
-	}
 
 	if (samsung_iommu_init_log(&domain->log, SYSMMU_EVENT_MAX)) {
 		pr_err("failed to init domian logging\n");
@@ -407,8 +399,6 @@ static struct iommu_domain *samsung_sysmmu_domain_alloc(unsigned int type)
 	return &domain->domain;
 
 err_init_log:
-	iommu_put_dma_cookie(&domain->domain);
-err_get_dma_cookie:
 	kfree(domain->lv2entcnt);
 err_counter:
 	kmem_cache_free(flpt_cache, domain->page_table);
@@ -423,7 +413,6 @@ static void samsung_sysmmu_domain_free(struct iommu_domain *dom)
 	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
 
 	samsung_iommu_deinit_log(&domain->log);
-	iommu_put_dma_cookie(dom);
 	kmem_cache_free(flpt_cache, domain->page_table);
 	kfree(domain->lv2entcnt);
 	kfree(domain);
@@ -1100,98 +1089,10 @@ static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *a
 	return 0;
 }
 
-static int samsung_sysmmu_aux_attach_dev(struct iommu_domain *dom, struct device *dev)
-{
-	struct sysmmu_clientdata *client;
-	struct samsung_sysmmu_domain *domain;
-	struct sysmmu_drvdata *drvdata;
-	unsigned long flags;
-	unsigned int vid;
-
-	domain = attach_helper(dom, dev);
-	if (IS_ERR(domain))
-		return (int)PTR_ERR(domain);
-
-	if (domain->group) {
-		dev_err(dev, "IOMMU domain is already in use as vid 0 domain\n");
-		return -EBUSY;
-	}
-	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
-	if (client->sysmmu_count != 1) {
-		dev_err(dev, "IOMMU AUX domains not supported for devices served by more than one IOMMU\n");
-		return -ENXIO;
-	}
-	drvdata = client->sysmmus[0];
-	spin_lock_irqsave(&drvdata->lock, flags);
-	if (!drvdata->attached_count) {
-		dev_err(dev, "IOMMU needs to be enabled to attach AUX domain\n");
-		spin_unlock_irqrestore(&drvdata->lock, flags);
-		return -ENXIO;
-	}
-	for (vid = 1; vid < MAX_VIDS; vid++) {
-		if ((drvdata->vmid_mask & BIT(vid)))
-			continue;
-		if (!drvdata->pgtable[vid])
-			break;
-	}
-	if (vid == MAX_VIDS) {
-		dev_err(dev, "Unable to allocate vid for AUX domain\n");
-		spin_unlock_irqrestore(&drvdata->lock, flags);
-		return -EBUSY;
-	}
-	drvdata->pgtable[vid] = virt_to_phys(domain->page_table);
-	if (pm_runtime_active(drvdata->dev))
-		__sysmmu_enable_vid(drvdata, vid);
-	spin_unlock_irqrestore(&drvdata->lock, flags);
-	domain->vm_sysmmu = drvdata;
-	domain->vid = vid;
-	return 0;
-}
-
-static void samsung_sysmmu_aux_detach_dev(struct iommu_domain *dom, struct device *dev)
-{
-	struct samsung_sysmmu_domain *domain;
-	struct sysmmu_drvdata *drvdata;
-	unsigned long flags;
-	unsigned int vid;
-
-	domain = to_sysmmu_domain(dom);
-
-	if (WARN_ON(!domain->vm_sysmmu || !domain->vid))
-		return;
-
-	drvdata = domain->vm_sysmmu;
-	vid = domain->vid;
-
-	spin_lock_irqsave(&drvdata->lock, flags);
-	drvdata->pgtable[vid] = 0;
-	if (pm_runtime_active(drvdata->dev))
-		__sysmmu_disable_vid(drvdata, vid);
-	spin_unlock_irqrestore(&drvdata->lock, flags);
-
-	domain->vm_sysmmu = NULL;
-	domain->vid = 0;
-}
-
-static int samsung_sysmmu_aux_get_pasid(struct iommu_domain *dom, struct device *dev)
-{
-	struct samsung_sysmmu_domain *domain;
-
-	domain = to_sysmmu_domain(dom);
-
-	if (!domain->vm_sysmmu)
-		return -EINVAL;
-
-	return (int)domain->vid;
-}
-
 static bool samsung_sysmmu_dev_has_feat(struct device *dev, enum iommu_dev_features f)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
 	struct sysmmu_clientdata *client;
-
-	if (f != IOMMU_DEV_FEAT_AUX)
-		return false;
 
 	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
 	if (!fwspec || !client || fwspec->ops != &samsung_sysmmu_ops)
@@ -1201,11 +1102,6 @@ static bool samsung_sysmmu_dev_has_feat(struct device *dev, enum iommu_dev_featu
 		return false;
 
 	return true;
-}
-
-static bool samsung_sysmmu_dev_feat_enabled(struct device *dev, enum iommu_dev_features f)
-{
-	return samsung_sysmmu_dev_has_feat(dev, f);
 }
 
 static int samsung_sysmmu_dev_enable_feat(struct device *dev, enum iommu_dev_features f)
@@ -1272,7 +1168,9 @@ static int  samsung_sysmmu_get_resv_regions_by_node(struct device_node *np, stru
 				return -EINVAL;
 			}
 
-			region = iommu_alloc_resv_region(base, size, prot, resvtype[type]);
+			region = iommu_alloc_resv_region(base, size, prot,
+							 resvtype[type],
+							 GFP_KERNEL);
 			if (!region)
 				return -ENOMEM;
 
@@ -1351,29 +1249,25 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.owner			= THIS_MODULE,
 	.capable		= samsung_sysmmu_capable,
 	.domain_alloc		= samsung_sysmmu_domain_alloc,
-	.domain_free		= samsung_sysmmu_domain_free,
-	.attach_dev		= samsung_sysmmu_attach_dev,
-	.detach_dev		= samsung_sysmmu_detach_dev,
-	.map			= samsung_sysmmu_map,
-	.unmap			= samsung_sysmmu_unmap,
-	.flush_iotlb_all	= samsung_sysmmu_flush_iotlb_all,
-	.iotlb_sync		= samsung_sysmmu_iotlb_sync,
-	.iova_to_phys		= samsung_sysmmu_iova_to_phys,
 	.probe_device		= samsung_sysmmu_probe_device,
 	.release_device		= samsung_sysmmu_release_device,
 	.device_group		= samsung_sysmmu_device_group,
 	.of_xlate		= samsung_sysmmu_of_xlate,
 	.get_resv_regions	= samsung_sysmmu_get_resv_regions,
-	.put_resv_regions	= samsung_sysmmu_put_resv_regions,
 	.def_domain_type	= samsung_sysmmu_def_domain_type,
-	.dev_has_feat		= samsung_sysmmu_dev_has_feat,
-	.dev_feat_enabled	= samsung_sysmmu_dev_feat_enabled,
 	.dev_enable_feat	= samsung_sysmmu_dev_enable_feat,
 	.dev_disable_feat	= samsung_sysmmu_dev_disable_feat,
-	.aux_attach_dev		= samsung_sysmmu_aux_attach_dev,
-	.aux_detach_dev		= samsung_sysmmu_aux_detach_dev,
-	.aux_get_pasid		= samsung_sysmmu_aux_get_pasid,
 	.pgsize_bitmap		= SECT_SIZE | LPAGE_SIZE | SPAGE_SIZE,
+	.default_domain_ops     = &(const struct iommu_domain_ops) {
+		.attach_dev             = samsung_sysmmu_attach_dev,
+		.detach_dev             = samsung_sysmmu_detach_dev,
+		.map                    = samsung_sysmmu_map,
+		.unmap                  = samsung_sysmmu_unmap,
+		.flush_iotlb_all        = samsung_sysmmu_flush_iotlb_all,
+		.iotlb_sync             = samsung_sysmmu_iotlb_sync,
+		.iova_to_phys           = samsung_sysmmu_iova_to_phys,
+		.free                   = samsung_sysmmu_domain_free,
+	}
 };
 
 static int sysmmu_get_hw_info(struct sysmmu_drvdata *data)
@@ -1542,8 +1436,6 @@ static int samsung_sysmmu_init_global(void)
 		ret = -ENOMEM;
 		goto err_init_slpt_fail;
 	}
-
-	bus_set_iommu(&platform_bus_type, &samsung_sysmmu_ops);
 
 	device_initialize(&sync_dev);
 	sysmmu_global_init_done = true;

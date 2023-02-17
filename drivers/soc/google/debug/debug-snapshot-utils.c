@@ -235,7 +235,7 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 	unsigned char idx = 0;
 	unsigned long state, pc = 0;
 
-	if ((!tsk) || !try_get_task_stack(tsk) || (tsk->flags & PF_FROZEN) ||
+	if ((!tsk) || !try_get_task_stack(tsk) || (tsk->flags & TASK_FROZEN) ||
 	    !(tsk->__state == TASK_RUNNING ||
 	    tsk->__state == TASK_UNINTERRUPTIBLE ||
 	    tsk->__state == TASK_KILLABLE))
@@ -254,7 +254,7 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 	 */
 	touch_softlockup_watchdog();
 
-	pr_info("%8d %16llu %16llu %16llu %c(%ld) %3d %16pK %16pK %c %16s\n",
+	pr_info("%8d %16llu %16llu %16llu %c(%u) %3d %16pK %16pK %c %16s\n",
 		tsk->pid, tsk->utime, tsk->stime,
 		tsk->se.exec_start, state_array[idx], (tsk->__state),
 		task_cpu(tsk), (void *) pc, tsk, is_main ? '*' : ' ', tsk->comm);
