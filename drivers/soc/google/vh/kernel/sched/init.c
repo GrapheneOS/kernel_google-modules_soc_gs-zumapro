@@ -75,6 +75,8 @@ extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
 
 extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
 	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
+void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_flags *rf,
+		int *pulled_task, int *done);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 extern void rvh_attach_entity_load_avg_pixel_mod(void *data, struct cfs_rq *cfs_rq,
 						 struct sched_entity *se);
@@ -203,6 +205,11 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 #endif
+
+	ret = register_trace_android_rvh_sched_newidle_balance(
+		sched_newidle_balance_pixel_mod, NULL);
+	if (ret)
+		return ret;
 
 	ret = register_trace_android_rvh_post_init_entity_util_avg(
 		rvh_post_init_entity_util_avg_pixel_mod, NULL);
