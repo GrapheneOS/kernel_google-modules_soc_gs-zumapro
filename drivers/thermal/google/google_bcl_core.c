@@ -228,13 +228,13 @@ static void pwrwarn_update_start_time(struct bcl_device *bcl_dev,
 
 	start_time = ktime_get();
 	if (is_rf && pwr_warn_triggered[id]) {
-		if (bcl_dev->bcl_lvl[UVLO1] != 0)
+		if (bcl_dev->ifpmic_irq_bins[UVLO1_IRQ_BIN][NONE_BCL_BIN].start_time != 0)
 			bcl_dev->ifpmic_irq_bins[UVLO1_IRQ_BIN][bin_ind].start_time =
 				start_time;
-		if (bcl_dev->bcl_lvl[UVLO2] != 0)
+		if (bcl_dev->ifpmic_irq_bins[UVLO2_IRQ_BIN][NONE_BCL_BIN].start_time != 0)
 			bcl_dev->ifpmic_irq_bins[UVLO2_IRQ_BIN][bin_ind].start_time =
 				start_time;
-		if (bcl_dev->bcl_lvl[BATOILO] != 0)
+		if (bcl_dev->ifpmic_irq_bins[BATOILO_IRQ_BIN][NONE_BCL_BIN].start_time != 0)
 			bcl_dev->ifpmic_irq_bins[BATOILO_IRQ_BIN][bin_ind].start_time =
 				start_time;
 	}
