@@ -167,13 +167,15 @@
 			<0x0 0x1C040000 0xD0000>,  /* CSIS LINK & PHY*/
 			<0x0 0x1C020000 0x10000>,  /* SYSREG_ISPFE */
 			<0x0 0x1C390000 0x5000>,   /* PDMA */
-			<0x0 0x1C395000 0x1000>;   /* PDMA WRAP */
+			<0x0 0x1C395000 0x1000>,   /* PDMA WRAP */
+			<0x0 0x26040000 0x10000>;  /* CMU TOP */
 		reg-names =
 			"isp-fe",
 			"csis-link-phy",
 			"isp-fe-sysreg",
 			"pdma",
-			"pdma-wrap";
+			"pdma-wrap",
+			"cmu-top";
 
 		clocks = <&clock UMUX_CLKCMU_ISPFE>;
 		clock-names = "UMUX_CLKCMU_ISPFE";
