@@ -403,7 +403,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, data);
 
 	if (data->pkvm_registered && nr_devs == nr_devs_total) {
-		ret = pkvm_iommu_finalize();
+		ret = pkvm_iommu_finalize(0);
 		if (!ret)
 			pr_info("List of devices successfully finalized for pkvm s2mpu\n");
 		else
