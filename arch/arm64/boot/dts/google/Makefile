@@ -32,6 +32,13 @@ zuma_dtbs := \
 	zuma-b0-foplp.dtb \
 	zuma-b0-ipop.dtb
 
+zumapro_overlays := \
+	zumapro-emulator.dtbo \
+	zumapro-hybrid.dtbo
+
+zumapro_dtbs := \
+	zumapro-a0-foplp.dtb
+
 # Usage:
 #   $(call DTBS_overlay_template, overlay, base_dtb, suffix)
 #
@@ -71,3 +78,4 @@ endef
 # dtb which could be used to verify the overlay applies cleanly.
 $(call multi_dtbs_overlay, $(gs101_raviole_dtbs), $(gs101_raviole_overlays), $(CONFIG_SOC_GS101))
 $(call multi_dtbs_overlay, $(zuma_dtbs), $(zuma_overlays), $(CONFIG_SOC_ZUMA))
+$(call multi_dtbs_overlay, $(zumapro_dtbs), $(zumapro_overlays), $(CONFIG_SOC_ZUMA))
