@@ -5,7 +5,7 @@ set -e
 
 export GKI_KERNEL_DIR=${GKI_KERNEL_DIR:-"aosp-staging"}
 export KLEAF_SUPPRESS_BUILD_SH_DEPRECATION_WARNING=1
-
+export GKI_RAMDISK_PREBUILT_BINARY=prebuilts/boot-artifacts/ramdisks/vendor_ramdisk-oriole.img
 : ${OUT_DIR:="out/"}
 export OUT_DIR
 
@@ -39,11 +39,11 @@ mkdir -p "${DIST_DIR}/zebu/"
 #set -x
 "$UNPACK_BOOTIMG_PATH" --boot_img "${DIST_DIR}/boot.img" --out "${DIST_DIR}/ext_bootimg"
 "$UNPACK_BOOTIMG_PATH" --boot_img "${DIST_DIR}/vendor_kernel_boot.img" --out "${DIST_DIR}/ext_vendor_kernel_bootimg"
-cat "${DIST_DIR}/ext_vendor_kernel_bootimg/vendor_ramdisk00" "${DIST_DIR}/ext_bootimg/ramdisk" > \
-	      "${DIST_DIR}/zebu/zebu_ramdisk.img"
+cat "${DIST_DIR}/ext_bootimg/ramdisk" "${DIST_DIR}/ext_vendor_kernel_bootimg/vendor_ramdisk00" > \
+              "${DIST_DIR}/zebu/zebu_ramdisk.img"
+
 #set +x
 cp -v "${DIST_DIR}/Image" "${DIST_DIR}/zebu/Image"
-#cp -v "${DIST_DIR}/ext_vendor_bootimg/dtb" "${DIST_DIR}/zebu/devicetree.dtb"
-#cp -v "${DIST_DIR}/zuma-out.dtb" "${DIST_DIR}/zebu/zuma-emulator.dtb"
-#cp -v "${DIST_DIR}/zuma-out.dtb" "${DIST_DIR}/zebu/zuma-hybrid.dtb"
-cp -v "${DIST_DIR}/zuma-out.dtb" "${DIST_DIR}/zebu/zuma-out.dtb"
+
+# change the zumapro-out-a0.dtb for any other revision if you want
+cp -v "${DIST_DIR}/zumapro-out-a0.dtb" "${DIST_DIR}/zebu/zumapro-out.dtb"
