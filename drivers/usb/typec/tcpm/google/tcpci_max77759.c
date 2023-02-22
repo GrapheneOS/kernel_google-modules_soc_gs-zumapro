@@ -1919,7 +1919,6 @@ static void max77759_set_port_data_capable(struct i2c_client *tcpc_client,
 static const unsigned int usbpd_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
-	EXTCON_DISP_DP,
 	EXTCON_MECHANICAL,
 	EXTCON_NONE,
 };
@@ -2137,20 +2136,15 @@ static void dp_notification_work_item(struct kthread_work *work)
 	struct dp_notification_event *evt = container_of(work, struct dp_notification_event,
 							 dp_notification_work);
 	struct max77759_plat *chip = evt->chip;
-	int dp, hpd, ret;
+	int dp, ret;
 
 	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp wq %s: %lu", __func__, evt->mode);
 
 	switch (evt->mode) {
-	case TYPEC_DP_STATE_HPD:
-		dp = 1;
-		hpd = 1;
-		break;
 	case TYPEC_DP_STATE_A:
 	case TYPEC_DP_STATE_C:
 	case TYPEC_DP_STATE_E:
 		dp = 1;
-		hpd = 0;
 		chip->lanes = 4;
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
@@ -2162,7 +2156,6 @@ static void dp_notification_work_item(struct kthread_work *work)
 	case TYPEC_DP_STATE_D:
 	case TYPEC_DP_STATE_F:
 		dp = 1;
-		hpd = 0;
 		chip->lanes = 2;
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
@@ -2172,37 +2165,16 @@ static void dp_notification_work_item(struct kthread_work *work)
 		break;
 	default:
 		dp = 0;
-		hpd = 0;
 	}
 
 	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ? SBUSW_PATH_1 : 0);
 	logbuffer_log(chip->log, "SBU dp switch %s %s ret:%d", dp ? "enable" : "disable",
 		      ret < 0 ? "fail" : "success", ret);
 
-	ret = extcon_set_property(chip->extcon, EXTCON_DISP_DP, EXTCON_PROP_DISP_HPD,
-				  (union extcon_property_value)hpd);
-	logbuffer_log(chip->log, "%s Setting hpd: %s ret:%d", ret < 0 ? "Failed" : "Succeeded",
-		      hpd ? "on" : "off", ret);
-
-	if (evt->mode != TYPEC_DP_STATE_HPD) {
-		ret = extcon_set_property(chip->extcon, EXTCON_DISP_DP,
-					  EXTCON_PROP_DISP_ORIENTATION,
-					  (union extcon_property_value)(int)chip->orientation);
-		logbuffer_log(chip->log, "%s Setting orientation: %d ret:%d", ret < 0 ?
-			      "Failed" : "Succeeded", chip->orientation, ret);
-
-		ret = extcon_set_property(chip->extcon, EXTCON_DISP_DP, EXTCON_PROP_DISP_PIN_CONFIG,
-					  (union extcon_property_value)(int)evt->mode);
-		logbuffer_log(chip->log, "%s Setting pin config: %d ret:%d", ret < 0 ?
-			      "Failed" : "Succeeded", evt->mode, ret);
-	}
-
-	ret = extcon_set_state_sync(chip->extcon, EXTCON_DISP_DP, dp);
 	logbuffer_log(chip->log, "%s Signaling dp altmode: %s ret:%d", ret < 0 ?
 		      "Failed" : "Succeeded", dp ? "on" : "off", ret);
-
-	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp altmode hpd:%d orientation:%d lanes:%d dp:%d",
-		      hpd, (int)chip->orientation, chip->lanes, dp);
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp altmode orientation:%d lanes:%d dp:%d",
+		      (int)chip->orientation, chip->lanes, dp);
 
 	devm_kfree(chip->dev, evt);
 }
@@ -2250,12 +2222,6 @@ static int max77759_setup_data_notifier(struct max77759_plat *chip)
 				       EXTCON_PROP_USB_TYPEC_POLARITY);
 	extcon_set_property_capability(chip->extcon, EXTCON_USB_HOST,
 				       EXTCON_PROP_USB_TYPEC_POLARITY);
-	extcon_set_property_capability(chip->extcon, EXTCON_DISP_DP,
-				       EXTCON_PROP_DISP_HPD);
-	extcon_set_property_capability(chip->extcon, EXTCON_DISP_DP,
-				       EXTCON_PROP_DISP_PIN_CONFIG);
-	extcon_set_property_capability(chip->extcon, EXTCON_DISP_DP,
-				       EXTCON_PROP_DISP_ORIENTATION);
 
 	of_property_read_u32(dev_of_node(chip->dev), "conn", &conn_handle);
 	desc.fwnode = &of_find_node_by_phandle(conn_handle)->fwnode;
