@@ -186,6 +186,10 @@
 		ect_nouse;
 		#thermal-sensor-cells = <0>;
 		tmu_work_affinity = "0-8";
+
+		use-acpm-gov;
+		irq_stepwise_gain = <2>;
+		timer_stepwise_gain = <1>;
 	};
 
 	thermal_zones: thermal-zones {
