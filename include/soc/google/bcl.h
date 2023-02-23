@@ -178,6 +178,7 @@ struct bcl_device {
 	unsigned int bcl_lvl[TRIGGERED_SOURCE_MAX];
 	atomic_t bcl_cnt[TRIGGERED_SOURCE_MAX];
 	int bcl_prev_lvl[TRIGGERED_SOURCE_MAX];
+	int bcl_cur_lvl[TRIGGERED_SOURCE_MAX];
 
 	int trip_high_temp;
 	int trip_low_temp;
@@ -189,7 +190,6 @@ struct bcl_device {
 	struct thermal_zone_device *bcl_tz[TRIGGERED_SOURCE_MAX];
 
 	unsigned int bcl_irq[TRIGGERED_SOURCE_MAX];
-	int bcl_tz_cnt[TRIGGERED_SOURCE_MAX];
 	int bcl_pin[TRIGGERED_SOURCE_MAX];
 	struct ocpsmpl_stats bcl_stats[TRIGGERED_SOURCE_MAX];
 

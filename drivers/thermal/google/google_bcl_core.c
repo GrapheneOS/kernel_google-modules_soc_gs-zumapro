@@ -73,7 +73,6 @@ static void update_irq_end_times(struct bcl_device *bcl_dev, int id);
 static int triggered_read_level(void *data, int *val, int id)
 {
 	struct bcl_device *bcl_dev = data;
-	bool state = true;
 	int polarity = (id == SMPL_WARN) ? 0 : 1;
 	int gpio_level;
 	u8 irq_val = 0;
@@ -85,21 +84,8 @@ static int triggered_read_level(void *data, int *val, int id)
 	else
 		gpio_level = gpio_get_value(bcl_dev->bcl_pin[id]);
 
-	if ((id >= UVLO2 && id <= BATOILO) && (bcl_dev->bcl_tz_cnt[id] == 0)) {
-		if (bcl_cb_vdroop_ok(bcl_dev, &state) < 0) {
-			*val = 0;
-			if (bcl_dev->bcl_prev_lvl[id] != 0) {
-				mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
-						 msecs_to_jiffies(THRESHOLD_DELAY_MS));
-				bcl_dev->bcl_prev_lvl[id] = *val;
-			}
-			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
-			return -EINVAL;
-		} else
-			gpio_level = (state) ? 0 : 1;
-	}
 	/* Check polarity */
-	if ((gpio_level == polarity) || (bcl_dev->bcl_tz_cnt[id] == 1)) {
+	if ((gpio_level == polarity) && (bcl_dev->bcl_cur_lvl[id] != 0)) {
 		*val = bcl_dev->bcl_lvl[id] + THERMAL_HYST_LEVEL;
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
@@ -113,6 +99,7 @@ static int triggered_read_level(void *data, int *val, int id)
 	if (id >= UVLO1 && id <= BATOILO) {
 		/* Zero is applied in case bcl_lvl[id] has a different value */
 		*val = 0;
+		bcl_dev->bcl_cur_lvl[id] = 0;
 		if (bcl_dev->bcl_prev_lvl[id] != 0) {
 			mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 					 msecs_to_jiffies(THRESHOLD_DELAY_MS));
@@ -123,7 +110,7 @@ static int triggered_read_level(void *data, int *val, int id)
 	}
 
 	*val = 0;
-	bcl_dev->bcl_tz_cnt[id] = 0;
+	bcl_dev->bcl_cur_lvl[id] = 0;
 	if (bcl_dev->bcl_prev_lvl[id] != *val) {
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
@@ -321,12 +308,14 @@ static u8 irq_to_id(struct bcl_device *bcl_dev, int irq)
 	return 0;
 }
 
-static void update_tz(struct bcl_device *bcl_dev, int idx)
+static void update_tz(struct bcl_device *bcl_dev, int idx, bool triggered)
 {
-	if ((bcl_dev->bcl_tz[idx]) && (bcl_dev->bcl_tz_cnt[idx] == 0)) {
-		bcl_dev->bcl_tz_cnt[idx] = 1;
+	if (triggered)
+		bcl_dev->bcl_cur_lvl[idx] = bcl_dev->bcl_lvl[idx] + THERMAL_HYST_LEVEL;
+	else
+		bcl_dev->bcl_cur_lvl[idx] = 0;
+	if ((bcl_dev->bcl_tz[idx]) && (bcl_dev->bcl_prev_lvl[idx] != bcl_dev->bcl_cur_lvl[idx])) {
 		bcl_dev->bcl_tz[idx]->temperature = 0;
-		bcl_dev->bcl_prev_lvl[idx] = 0;
 		thermal_zone_device_update(bcl_dev->bcl_tz[idx], THERMAL_EVENT_UNSPECIFIED);
 	}
 }
@@ -368,7 +357,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 		if (bcl_dev->batt_psy_initialized) {
 			atomic_inc(&bcl_dev->bcl_cnt[idx]);
 			ocpsmpl_read_stats(bcl_dev, &bcl_dev->bcl_stats[idx], bcl_dev->batt_psy);
-			update_tz(bcl_dev, idx);
+			update_tz(bcl_dev, idx, true);
 		}
 	} else {
 		/* IRQ falling edge */
@@ -382,7 +371,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 		if (idx == BATOILO)
 			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
 
-		update_tz(bcl_dev, idx);
+		update_tz(bcl_dev, idx, false);
 	}
 exit:
 	enable_irq(irq);
@@ -394,7 +383,6 @@ static void google_warn_work(struct work_struct *work, int idx)
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
 						  bcl_irq_work[idx].work);
 
-	bcl_dev->bcl_tz_cnt[idx] = 0;
 	if (bcl_dev->bcl_tz[idx])
 		thermal_zone_device_update(bcl_dev->bcl_tz[idx], THERMAL_EVENT_UNSPECIFIED);
 }
@@ -1563,7 +1551,7 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	INIT_DELAYED_WORK(&bcl_dev->main_pwr_irq_work, main_pwrwarn_irq_work);
 
 	for (i = 0; i < TRIGGERED_SOURCE_MAX; i++) {
-		bcl_dev->bcl_tz_cnt[i] = 0;
+		bcl_dev->bcl_cur_lvl[i] = 0;
 		bcl_dev->bcl_prev_lvl[i] = 0;
 		atomic_set(&bcl_dev->bcl_cnt[i], 0);
 		mutex_init(&bcl_dev->bcl_irq_lock[i]);
