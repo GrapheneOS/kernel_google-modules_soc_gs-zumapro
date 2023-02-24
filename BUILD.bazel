@@ -159,6 +159,7 @@ filegroup(
         # List of headers needed by external modules
         "drivers/dma-buf/heaps/samsung/samsung-dma-heap.h",
         "drivers/usb/host/xhci-exynos.h",
+        "drivers/soc/google/cpif/modem_notifier.h",
 
         # Needed for external modules to include in their makefiles
         "Makefile.include",
