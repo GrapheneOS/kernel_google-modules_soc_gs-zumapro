@@ -1950,6 +1950,7 @@ static int exynos_devfreq_target(struct device *dev, unsigned long *target_freq,
 	s32 target_idx;
 	s32 target_time = 0;
 	int ret = 0;
+	s32 soft_max_freq;
 
 	if (data->devfreq_disabled)
 		return -EAGAIN;
@@ -1968,6 +1969,13 @@ static int exynos_devfreq_target(struct device *dev, unsigned long *target_freq,
 	*target_freq = dev_pm_opp_get_freq(target_opp);
 	target_volt = (u32)dev_pm_opp_get_voltage(target_opp);
 	dev_pm_opp_put(target_opp);
+
+	soft_max_freq = exynos_pm_qos_read_req_value(data->pm_qos_class_max,
+						     &data->pm_qos_soft_max_freq);
+	if (*target_freq > soft_max_freq) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	target_idx = exynos_devfreq_get_opp_idx(data->opp_list, data->max_state,
 						*target_freq);

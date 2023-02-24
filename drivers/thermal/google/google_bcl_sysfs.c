@@ -2108,7 +2108,8 @@ static ssize_t main_pwrwarn_threshold_store(struct device *dev, struct device_at
 		return -EINVAL;
 
 	bcl_dev->main_setting[idx] = value;
-	bcl_dev->main_limit[idx] = settings_to_current(bcl_dev, MAIN, idx, value);
+	bcl_dev->main_limit[idx] = settings_to_current(bcl_dev, MAIN, idx,
+	                                               value << LPF_CURRENT_SHIFT);
 	meter_write(MAIN, bcl_dev, S2MPG14_METER_PWR_WARN0 + idx, value);
 
 	return size;
@@ -2147,7 +2148,8 @@ static ssize_t sub_pwrwarn_threshold_store(struct device *dev, struct device_att
 		return -EINVAL;
 
 	bcl_dev->sub_setting[idx] = value;
-	bcl_dev->sub_limit[idx] = settings_to_current(bcl_dev, SUB, idx, value);
+	bcl_dev->sub_limit[idx] = settings_to_current(bcl_dev, SUB, idx,
+	                                              value << LPF_CURRENT_SHIFT);
 	meter_write(SUB, bcl_dev, S2MPG15_METER_PWR_WARN0 + idx, value);
 
 	return size;

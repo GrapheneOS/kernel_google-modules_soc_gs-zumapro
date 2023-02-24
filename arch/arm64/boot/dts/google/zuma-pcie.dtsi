@@ -48,6 +48,7 @@
 		use-cache-coherency = "false";
 		use-pcieon-sleep = "false";
 		use-msi = "false";
+		support-msi64-addressing = "false";
 		use-sicd = "false";
 		use-sysmmu = "false";
 		use-ia = "false";
@@ -110,6 +111,7 @@
 		use-cache-coherency = "false";
 		use-pcieon-sleep = "false";
 		use-msi = "false";
+		support-msi64-addressing = "false";
 		use-sicd = "false";
 		use-sysmmu = "false";
 		use-ia = "false";

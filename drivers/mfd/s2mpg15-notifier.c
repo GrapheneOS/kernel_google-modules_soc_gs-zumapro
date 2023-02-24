@@ -280,9 +280,7 @@ static const u8 s2mpg15_get_irq_mask[] = {
 };
 
 static void s2mpg15_call_interrupt(struct s2mpg15_dev *s2mpg15,
-				   u8 pm_int1, u8 pm_int2, u8 pm_int3, u8 pm_int4,
-				   u8 meter_int1, u8 meter_int2,
-				   u8 meter_int3, u8 meter_int4)
+				   u8 pm_int1, u8 pm_int2, u8 pm_int3, u8 pm_int4)
 {
 	size_t i;
 	u8 reg = 0;
@@ -295,15 +293,6 @@ static void s2mpg15_call_interrupt(struct s2mpg15_dev *s2mpg15,
 		    (pm_int4 & s2mpg15_get_irq_mask[reg]))
 			s2mpg15_buck_ocp_irq(s2mpg15, i);
 	}
-}
-
-static void s2mpg15_irq_work_func(struct work_struct *work)
-{
-	pr_info("%s: sub pmic interrupt(%#02x, %#02x, %#02x, %#02x, %#02x, %#02x, %#02x, %#02x)\n",
-		__func__, irq_reg_sub[S2MPG15_IRQS_PMIC_INT1], irq_reg_sub[S2MPG15_IRQS_PMIC_INT2],
-		irq_reg_sub[S2MPG15_IRQS_PMIC_INT3], irq_reg_sub[S2MPG15_IRQS_PMIC_INT4],
-		irq_reg_sub[S2MPG15_IRQS_METER_INT1], irq_reg_sub[S2MPG15_IRQS_METER_INT2],
-		irq_reg_sub[S2MPG15_IRQS_METER_INT3], irq_reg_sub[S2MPG15_IRQS_METER_INT4]);
 }
 
 static int s2mpg15_notifier_handler(struct notifier_block *nb,
@@ -338,16 +327,11 @@ static int s2mpg15_notifier_handler(struct notifier_block *nb,
 		return NOTIFY_DONE;
 	}
 
-	queue_delayed_work(s2mpg15->irq_wqueue, &s2mpg15->irq_work, 0);
 
 	s2mpg15_call_interrupt(s2mpg15, irq_reg_sub[S2MPG15_IRQS_PMIC_INT1],
 			       irq_reg_sub[S2MPG15_IRQS_PMIC_INT2],
 			       irq_reg_sub[S2MPG15_IRQS_PMIC_INT3],
-			       irq_reg_sub[S2MPG15_IRQS_PMIC_INT4],
-			       irq_reg_sub[S2MPG15_IRQS_METER_INT1],
-			       irq_reg_sub[S2MPG15_IRQS_METER_INT2],
-			       irq_reg_sub[S2MPG15_IRQS_METER_INT3],
-			       irq_reg_sub[S2MPG15_IRQS_METER_INT4]);
+			       irq_reg_sub[S2MPG15_IRQS_PMIC_INT4]);
 
 	for (i = 0; i < S2MPG15_IRQ_GROUP_NR; i++)
 		irq_reg_sub[i] &= ~s2mpg15->irq_masks_cur[i];
@@ -422,19 +406,6 @@ static int s2mpg15_set_interrupt(struct s2mpg15_dev *s2mpg15)
 	return 0;
 }
 
-static int s2mpg15_set_wqueue(struct s2mpg15_dev *s2mpg15)
-{
-	s2mpg15->irq_wqueue = create_singlethread_workqueue("s2mpg15-wqueue");
-	if (!s2mpg15->irq_wqueue) {
-		dev_err(s2mpg15->dev, "fail to create workqueue\n");
-		return -1;
-	}
-
-	INIT_DELAYED_WORK(&s2mpg15->irq_work, s2mpg15_irq_work_func);
-
-	return 0;
-}
-
 static void s2mpg15_set_notifier(struct s2mpg15_dev *s2mpg15)
 {
 	sub_pmic_notifier.notifier_call = s2mpg15_notifier_handler;
@@ -456,13 +427,6 @@ int s2mpg15_notifier_init(struct s2mpg15_dev *s2mpg15)
 
 	/* Register notifier */
 	s2mpg15_set_notifier(s2mpg15);
-
-	/* Set workqueue */
-	ret = s2mpg15_set_wqueue(s2mpg15);
-	if (ret < 0) {
-		dev_err(s2mpg15->dev, "s2mpg15_set_wqueue fail\n");
-		return ret;
-	}
 
 	/* Set interrupt */
 	ret = s2mpg15_set_interrupt(s2mpg15);

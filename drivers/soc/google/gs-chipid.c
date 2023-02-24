@@ -22,6 +22,7 @@ struct gs_chipid_variant {
 	int rev_reg;
 	int main_rev_bit;
 	int sub_rev_bit;
+	int pkg_rev_bit;
 	int dvfs_version_reg;
 };
 
@@ -52,6 +53,7 @@ struct gs_chipid_info {
 	u32 lot_id;
 	char *lot_id2;
 	u32 dvfs_version;
+	u32 pkg_revision;
 	u64 unique_id;
 	char ap_hw_tune_str[AP_HW_TUNE_HEX_STR_SIZE+1];
 	u8 ap_hw_tune_arr[AP_HW_TUNE_HEX_ARRAY_SIZE];
@@ -104,8 +106,9 @@ static const struct gs_chipid_variant drv_data_gs101 = {
 	.product_ver = 1,
 	.unique_id_reg = 0x04,
 	.rev_reg = 0x10,
-	.main_rev_bit = 0,
+	.main_rev_bit = 20,
 	.sub_rev_bit = 16,
+	.pkg_rev_bit = 24,
 	.dvfs_version_reg = 0x900C,
 };
 
@@ -113,8 +116,9 @@ static const struct gs_chipid_variant drv_data_gs201 = {
 	.product_ver = 1,
 	.unique_id_reg = 0x04,
 	.rev_reg = 0x10,
-	.main_rev_bit = 0,
+	.main_rev_bit = 20,
 	.sub_rev_bit = 16,
+	.pkg_rev_bit = 24,
 	.dvfs_version_reg = 0x900C,
 };
 
@@ -122,8 +126,9 @@ static const struct gs_chipid_variant drv_data_zuma = {
 	.product_ver = 1,
 	.unique_id_reg = 0x04,
 	.rev_reg = 0x10,
-	.main_rev_bit = 0,
+	.main_rev_bit = 20,
 	.sub_rev_bit = 16,
+	.pkg_rev_bit = 24,
 	.dvfs_version_reg = 0x900C,
 };
 
@@ -201,6 +206,12 @@ static ssize_t dvfs_version_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%u\n", gs_soc_info.dvfs_version);
 }
 
+static ssize_t pkg_revision_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", gs_soc_info.pkg_revision);
+}
+
 static ssize_t revision_show(struct device *dev,
 			     struct device_attribute *attr, char *buf)
 {
@@ -255,6 +266,7 @@ static DEVICE_ATTR_RO(unique_id);
 static DEVICE_ATTR_RO(lot_id);
 static DEVICE_ATTR_RO(lot_id2);
 static DEVICE_ATTR_RO(dvfs_version);
+static DEVICE_ATTR_RO(pkg_revision);
 static DEVICE_ATTR_RO(revision);
 static DEVICE_ATTR_RO(evt_ver);
 static DEVICE_ATTR_RO(raw_str);
@@ -268,6 +280,7 @@ static struct attribute *chipid_sysfs_attrs[] = {
 	&dev_attr_lot_id.attr,
 	&dev_attr_lot_id2.attr,
 	&dev_attr_dvfs_version.attr,
+	&dev_attr_pkg_revision.attr,
 	&dev_attr_revision.attr,
 	&dev_attr_evt_ver.attr,
 	&dev_attr_raw_str.attr,
@@ -345,12 +358,13 @@ static void gs_chipid_get_chipid_info(void __iomem *reg)
 		break;
 	}
 
-	gs_soc_info.main_rev = (val >> data->main_rev_bit) & REV_MASK;
 
 	val = readl_relaxed(reg + data->rev_reg);
+	gs_soc_info.main_rev = (val >> data->main_rev_bit) & REV_MASK;
 	gs_soc_info.sub_rev = (val >> data->sub_rev_bit) & REV_MASK;
 	gs_soc_info.revision = (gs_soc_info.main_rev << 4)
 	    | gs_soc_info.sub_rev;
+	gs_soc_info.pkg_revision = (val >> data->pkg_rev_bit);
 
 	uniq_id0 = readl_relaxed(reg + data->unique_id_reg);
 	uniq_id1 = readl_relaxed(reg + data->unique_id_reg + 4);

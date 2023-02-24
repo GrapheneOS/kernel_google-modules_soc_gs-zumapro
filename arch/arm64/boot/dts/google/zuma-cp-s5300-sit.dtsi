@@ -16,6 +16,11 @@
 			#address-cells = <2>;
 			#size-cells = <1>;
 
+			cp_tm1: cp-tm1 {
+				compatible = "google,gs101-cp-thermal";
+				#thermal-sensor-cells = <1>;
+			};
+
 			/* Modem interface information */
 			cpif {
 				compatible = "samsung,exynos-cp";

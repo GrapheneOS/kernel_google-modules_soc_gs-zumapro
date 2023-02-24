@@ -1035,6 +1035,7 @@
 
 		mif_cpu0_mem_lat: devfreq_mif_cpu0_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <0>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1050,6 +1051,7 @@
 
 		mif_cpu1_mem_lat: devfreq_mif_cpu1_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <1>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1065,6 +1067,7 @@
 
 		mif_cpu2_mem_lat: devfreq_mif_cpu2_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <2>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1080,6 +1083,7 @@
 
 		mif_cpu3_mem_lat: devfreq_mif_cpu3_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <3>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1095,6 +1099,7 @@
 
 		mif_cpu4_mem_lat: devfreq_mif_cpu4_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <4>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1110,6 +1115,7 @@
 
 		mif_cpu5_mem_lat: devfreq_mif_cpu5_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <5>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1125,6 +1131,7 @@
 
 		mif_cpu6_mem_lat: devfreq_mif_cpu6_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <6>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1140,6 +1147,7 @@
 
 		mif_cpu7_mem_lat: devfreq_mif_cpu7_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <7>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1155,6 +1163,7 @@
 
 		mif_cpu8_mem_lat: devfreq_mif_cpu8_memlat@17000010 {
 			compatible = "memlat-devfreq";
+			cpu = <8>;
 			devfreq_type = <DEVFREQ_MIF>;
 			devfreq_domain_name = "MIF";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
@@ -1188,66 +1197,7 @@
 			/* governor data */
 			governor = <DSU_LATENCY>;
 			dfs_id = <ACPM_DVFS_DSU>;
-
-			core-dev-table-cl0 =
-				< 351000        324000
-				615000        324000
-				820000        324000
-				975000        615000
-				1098000       615000
-				1197000       820000
-				1328000       820000
-				1475000       820000
-				1548000       820000
-				1704000       820000
-				1844000       820000
-				1950000       820000
-				2024000       820000
-				2098000       820000
-				2147000       820000
-				2253000       820000 >;
-
-			core-dev-table-cl1 =
-				< 402000        324000
-				578000        615000
-				697000        615000
-				721000        615000
-				910000        615000
-				1082000       615000
-				1221000       615000
-				1328000       615000
-				1418000       615000
-				1549000       820000
-				1622000       820000
-				1836000       820000
-				1999000       820000
-				2130000       820000
-				2245000       820000
-				2352000       820000
-				2450000       820000
-				2550000       820000
-				2600000       820000 >;
-
-			core-dev-table-cl2 =
-				< 500000        324000
-				893000        615000
-				1164000       615000
-				1328000       820000
-				1557000       975000
-				1745000       975000
-				1852000       975000
-				1901000       975000
-				2049000       975000
-				2147000       975000
-				2294000       975000
-				2409000       975000
-				2556000       975000
-				2687000       975000
-				2802000       975000
-				2914000       975000
-				3015000       975000
-				3178000       975000
-				3310000       975000 >;
+			/* 'core-dev-table-clx' field defined in A0/B0 dtsi files */
 		};
 	};
 

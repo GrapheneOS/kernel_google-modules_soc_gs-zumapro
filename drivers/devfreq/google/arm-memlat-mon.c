@@ -36,6 +36,7 @@ static struct devfreq *dsu_df;
 
 static DEFINE_PER_CPU(bool, is_idle);
 static DEFINE_PER_CPU(bool, is_on);
+static DEFINE_PER_CPU(int, cpu_idle_state);
 
 static struct workqueue_struct *memlat_wq;
 static LIST_HEAD(cpu_grp_list);
@@ -196,6 +197,7 @@ static void vendor_update_event_cpu_idle_enter(void *data, int *state, struct cp
 		}
 	}
 	__this_cpu_write(is_idle, true);
+	__this_cpu_write(cpu_idle_state, *state);
 }
 
 static void vendor_update_event_cpu_idle_exit(void *data, int state, struct cpuidle_device *dev)
@@ -203,6 +205,12 @@ static void vendor_update_event_cpu_idle_exit(void *data, int state, struct cpui
 	if (!__this_cpu_read(is_on))
 		return;
 	__this_cpu_write(is_idle, false);
+	__this_cpu_write(cpu_idle_state, state);
+}
+
+static int get_cpu_idle_state(unsigned int cpu)
+{
+	return per_cpu(is_idle, cpu) ? per_cpu(cpu_idle_state, cpu) : -1;
 }
 
 static void update_counts(struct memlat_cpu_grp *cpu_grp)
@@ -843,6 +851,7 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	hw->start_hwmon = &start_hwmon;
 	hw->stop_hwmon = &stop_hwmon;
 	hw->get_cnt = &get_cnt;
+	hw->get_cpu_idle_state = &get_cpu_idle_state;
 	hw->request_update_ms = &request_update_ms;
 
 	mon->miss_ev =

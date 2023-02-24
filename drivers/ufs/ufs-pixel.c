@@ -8,6 +8,7 @@
  */
 
 #include <core/ufshcd-priv.h>
+#include <linux/workqueue.h>
 #include "ufs-exynos-gs.h"
 
 #define CREATE_TRACE_POINTS
@@ -23,8 +24,6 @@ enum {
 
 #define ufshcd_eh_in_progress(h) \
 	((h)->eh_flags & UFSHCD_EH_IN_PROGRESS)
-
-extern struct workqueue_struct *system_highpri_wq;
 
 static void pixel_ufs_update_slowio_min_us(struct ufs_hba *hba)
 {
