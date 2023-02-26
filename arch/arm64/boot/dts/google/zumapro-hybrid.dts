@@ -16,8 +16,8 @@
 	fragment@boardbase {
 		target-path="/";
 		__overlay__ {
-			model = "ZUMA Hybrid based";
-			compatible = "google,ZUMA Hybrid", "google,ZUMA";
+			model = "ZUMA_PRO Hybrid based";
+			compatible = "google,ZUMA_PRO Hybrid", "google,ZUMA_PRO";
 		};
 	};
 };

@@ -14,8 +14,8 @@
 	fragment@boardbase {
 		target-path="/";
 		__overlay__ {
-			model = "ZUMA Emulator based";
-			compatible = "google,ZUMA Emulator", "google,ZUMA";
+			model = "ZUMA_PRO Emulator based";
+			compatible = "google,ZUMA_PRO Emulator", "google,ZUMA_PRO";
 			fixed-rate-clocks {
 				console_clock: console-clock {
 					compatible = "fixed-clock";
