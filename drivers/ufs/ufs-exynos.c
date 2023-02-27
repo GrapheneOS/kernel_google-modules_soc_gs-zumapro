@@ -877,6 +877,8 @@ static void exynos_ufs_set_nexus_t_xfer_req(struct ufs_hba *hba,
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	u32 type;
 
+	lockdep_assert_held(&hba->outstanding_lock);
+
 	if (!IS_C_STATE_ON(ufs) ||
 	    (ufs->h_state != H_LINK_UP &&
 	     ufs->h_state != H_LINK_BOOST &&
@@ -900,6 +902,8 @@ static void exynos_ufs_set_nexus_t_task_mgmt(struct ufs_hba *hba,
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	u32 type;
+
+	lockdep_assert_held(hba->host->host_lock);
 
 	if (!IS_C_STATE_ON(ufs) ||
 	    (ufs->h_state != H_LINK_BOOST &&
