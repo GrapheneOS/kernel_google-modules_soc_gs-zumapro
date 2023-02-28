@@ -381,43 +381,6 @@ static bool odpm_match_ext_sampling_rate(struct odpm_info *info,
 	return success;
 }
 
-static int odpm_configure_vbatt(struct platform_device *odpm_vbatt_en_pdev,
-				bool enabled)
-{
-	struct pinctrl *odpm_pinctrl;
-	struct pinctrl_state *odpm_pinctrl_state;
-	int ret = 0;
-
-	if (!odpm_vbatt_en_pdev) {
-		pr_err("odpm: not configuring vbatt channel\n");
-		return -EINVAL;
-	}
-
-	odpm_pinctrl = devm_pinctrl_get(&odpm_vbatt_en_pdev->dev);
-	if (IS_ERR_OR_NULL(odpm_pinctrl)) {
-		pr_err("odpm: cannot find odpm_pinctrl!\n");
-		return -EINVAL;
-	}
-
-	odpm_pinctrl_state = pinctrl_lookup_state(odpm_pinctrl,
-						  enabled ?
-						  "odpm-vbatt-enable" : "odpm-vbatt-disable");
-	if (IS_ERR_OR_NULL(odpm_pinctrl_state)) {
-		pr_err("odpm: pinctrl lookup state failed!\n");
-		return -EINVAL;
-	}
-
-	ret = pinctrl_select_state(odpm_pinctrl, odpm_pinctrl_state);
-	if (ret < 0) {
-		pr_err("odpm: pinctrl select state failed!!\n");
-		return -EINVAL;
-	}
-
-	pr_info("odpm: vbatt channel %s\n", enabled ? "enabled" : "disabled");
-
-	return ret;
-}
-
 static int odpm_parse_dt_rail(struct odpm_rail_data *rail_data,
 			      struct device_node *node)
 {
@@ -621,7 +584,7 @@ static int odpm_parse_dt_channels(struct odpm_info *info,
 static int odpm_parse_dt(struct device *dev, struct odpm_info *info)
 {
 	struct device_node *pmic_np = dev->parent->parent->of_node;
-	struct device_node *odpm_np, *odpm_vbatt_en_np, *channels_np;
+	struct device_node *odpm_np, *channels_np;
 	u32 sampling_rate;
 	int sampling_rate_i;
 	int ret;
@@ -639,19 +602,6 @@ static int odpm_parse_dt(struct device *dev, struct odpm_info *info)
 	if (!channels_np) {
 		pr_err("odpm: cannot find channels DT node!\n");
 		return -EINVAL;
-	}
-
-	/* Create odpm_vbatt_en device */
-	odpm_vbatt_en_np = of_find_node_by_name(pmic_np, "odpm_vbatt_en");
-	if (!odpm_vbatt_en_np) {
-		pr_info("odpm: cannot find odpm_vbatt_en node!\n");
-		info->odpm_vbatt_en_pdev = NULL;
-	} else {
-		info->odpm_vbatt_en_pdev = of_platform_device_create(odpm_vbatt_en_np, NULL, dev);
-		if (!info->odpm_vbatt_en_pdev) {
-			pr_err("odpm: odpm_vbatt_en pdev not found\n");
-			return -EINVAL;
-		}
 	}
 
 	/* Get main properties; sample-rate, chip-name, etc. */
@@ -1733,14 +1683,6 @@ static int odpm_remove(struct platform_device *pdev)
 	struct odpm_info *info = iio_priv(indio_dev);
 	int ret;
 
-	/* Disable VBATT channel */
-	if (info->chip.hw_id == ID_S2MPG14 &&
-	    info->odpm_vbatt_en_pdev) {
-		pr_err("odpm: disable vbatt channel..\n");
-		odpm_configure_vbatt(info->odpm_vbatt_en_pdev, false);
-		of_platform_device_destroy(&info->odpm_vbatt_en_pdev->dev, NULL);
-	}
-
 	ret = alarm_cancel(&info->alarmtimer_refresh);
 	if (ret < 0) {
 		pr_err("odpm: cannot delete the refresh timer\n");
@@ -1864,12 +1806,6 @@ static int odpm_probe(struct platform_device *pdev)
 		pr_err("odpm: DT parsing error!\n");
 		odpm_remove(pdev);
 		return ret;
-	}
-
-	/* Enabled VBATT channel */
-	if (odpm_info->chip.hw_id == ID_S2MPG14 &&
-	    odpm_info->odpm_vbatt_en_pdev) {
-		odpm_configure_vbatt(odpm_info->odpm_vbatt_en_pdev, true);
 	}
 
 	/* Initialize other data in odpm_info */
