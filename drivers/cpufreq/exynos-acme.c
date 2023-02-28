@@ -588,11 +588,26 @@ static ssize_t max_freq_qos_list_show(struct device *dev,
 	return len;
 }
 
+static ssize_t fw_freq_show(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	struct exynos_cpufreq_domain *domain;
+	long freq;
+	ssize_t len = 0;
+
+	list_for_each_entry(domain, &domains, list) {
+		freq = cal_dfs_get_rate_acpm(domain->cal_id);
+		len += sysfs_emit_at(buf, len, "cpu%d: freq: %ld\n",
+					     cpumask_first(&domain->cpus), freq);
+	}
+	return len;
+}
+
 static DEVICE_ATTR_RW(freq_qos_max);
 static DEVICE_ATTR_RW(freq_qos_min);
 static DEVICE_ATTR_RO(min_freq_qos_list);
 static DEVICE_ATTR_RO(max_freq_qos_list);
-
+static DEVICE_ATTR_RO(fw_freq);
 /*********************************************************************
  *                       CPUFREQ DEV FOPS                            *
  *********************************************************************/
@@ -1321,6 +1336,12 @@ static int exynos_cpufreq_probe(struct platform_device *pdev)
 	ret = sysfs_create_file(&pdev->dev.kobj, &dev_attr_max_freq_qos_list.attr);
 	if (ret) {
 		pr_err("failed to create max_freq_qos_list node\n");
+		return ret;
+	}
+
+	ret = sysfs_create_file(&pdev->dev.kobj, &dev_attr_fw_freq.attr);
+	if (ret) {
+		pr_err("failed to create fw_freq node\n");
 		return ret;
 	}
 
