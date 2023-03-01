@@ -15,6 +15,9 @@
 #include <linux/mfd/samsung/s2mpg1415-register.h>
 #include <soc/google/bcl.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/bcl_exynos.h>
+
 void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle)
 {
 	if (id > TRIGGERED_SOURCE_MAX || id < 0 || !bcl_dev->bcl_qos[id])
@@ -27,6 +30,12 @@ void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle)
 				throttle ? bcl_dev->bcl_qos[id]->cpu2_limit : INT_MAX);
 	exynos_pm_qos_update_request(&bcl_dev->bcl_qos[id]->tpu_qos_max,
 				     throttle ? bcl_dev->bcl_qos[id]->tpu_limit : INT_MAX);
+	trace_bcl_irq_trigger(id, throttle, throttle ? bcl_dev->bcl_qos[id]->cpu0_limit : INT_MAX,
+	                      throttle ? bcl_dev->bcl_qos[id]->cpu1_limit : INT_MAX,
+	                      throttle ? bcl_dev->bcl_qos[id]->cpu2_limit : INT_MAX,
+	                      throttle ? bcl_dev->bcl_qos[id]->tpu_limit : INT_MAX,
+	                      throttle ? bcl_dev->bcl_qos[id]->gpu_limit : INT_MAX,
+	                      bcl_dev->bcl_stats[id].voltage, bcl_dev->bcl_stats[id].capacity);
 }
 
 static int init_freq_qos(struct bcl_device *bcl_dev, struct qos_throttle_limit *throttle)
