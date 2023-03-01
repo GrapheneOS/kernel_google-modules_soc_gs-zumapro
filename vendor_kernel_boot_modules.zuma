@@ -143,7 +143,7 @@ s2mpg1415-gpio.ko
 s2mpg15-mfd.ko
 s2mpg15-powermeter.ko
 s2mpg15-regulator.ko
-s2mpg15-spmic-thermal.ko
+s2mpg15_spmic_thermal.ko
 s3c2410_wdt.ko
 s5910.ko
 samsung-dma.ko
