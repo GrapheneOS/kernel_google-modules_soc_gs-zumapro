@@ -96,27 +96,17 @@ static int triggered_read_level(void *data, int *val, int id)
 			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
 		return 0;
 	}
-	if (id >= UVLO1 && id <= BATOILO) {
-		/* Zero is applied in case bcl_lvl[id] has a different value */
-		*val = 0;
-		bcl_dev->bcl_cur_lvl[id] = 0;
-		if (bcl_dev->bcl_prev_lvl[id] != 0) {
-			mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
-					 msecs_to_jiffies(THRESHOLD_DELAY_MS));
-			bcl_dev->bcl_prev_lvl[id] = 0;
-			update_irq_end_times(bcl_dev, id);
-		}
-		return 0;
-	}
 
 	*val = 0;
 	bcl_dev->bcl_cur_lvl[id] = 0;
-	if (bcl_dev->bcl_qos[id])
-		google_bcl_qos_update(bcl_dev, id, false);
 	if (bcl_dev->bcl_prev_lvl[id] != *val) {
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 		bcl_dev->bcl_prev_lvl[id] = *val;
+		if (bcl_dev->bcl_qos[id])
+			google_bcl_qos_update(bcl_dev, id, false);
+		if (id >= UVLO1 && id <= BATOILO)
+			update_irq_end_times(bcl_dev, id);
 	}
 	return 0;
 }
@@ -1419,6 +1409,7 @@ static void google_bcl_parse_qos(struct bcl_device *bcl_dev)
 		bcl_dev->bcl_qos[idx] = devm_kzalloc(bcl_dev->device,
 						     sizeof(struct qos_throttle_limit),
 						     GFP_KERNEL);
+		bcl_dev->bcl_qos[idx]->throttle = false;
 		if (of_property_read_u32(child, "cpucl0",
 					 &bcl_dev->bcl_qos[idx]->cpu0_limit) != 0)
 			bcl_dev->bcl_qos[idx]->cpu0_limit = INT_MAX;
