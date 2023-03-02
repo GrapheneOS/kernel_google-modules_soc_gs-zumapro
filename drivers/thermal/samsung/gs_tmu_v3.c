@@ -2134,7 +2134,7 @@ static int param_acpm_gov_tracing_mode_set(const char *val, const struct kernel_
 		return -EINVAL;
 
 	if (tracing_mode_val == ACPM_GOV_DEBUG_MODE_DISABLED) {
-		if(acpm_gov_common.tracing_mode == ACPM_GOV_DEBUG_MODE_BULK) {
+		if((acpm_gov_common.tracing_mode == ACPM_GOV_DEBUG_MODE_BULK) && (ACPM_BUF_VER == EXPECT_BUF_VER)) {
 			capture_bulk_trace();
 		}
 		acpm_gov_common.tracing_buffer_flush_pending = false;
