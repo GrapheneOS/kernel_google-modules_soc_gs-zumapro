@@ -12,7 +12,7 @@ Date:		May, 2021
 Contact:	"George Lee" <geolee@google.com>
 Description:
 		SUBSYSTEM can be selected from cpu0_clk_div, cpu1_clk_div, cpu2_clk_div,
-		tpu_clk_div, gpu_clk_div.
+		aur_clk_div, tpu_clk_div, gpu_clk_div.
 		The reported value is the readback of the corresponding register.
 
 What:		/sys/devices/virtual/pmic/mitigation/clock_stats/<SUBSYSTEM>
@@ -20,7 +20,7 @@ Date:		May, 2021
 Contact:	"George Lee" <geolee@google.com>
 Description:
 		SUBSYSTEM can be selected from cpu0_clk_stats, cpu1_clk_stats, cpu2_clk_stats,
-		tpu_clk_stats, gpu_clk_stats.
+		aur_clk_stats, tpu_clk_stats, gpu_clk_stats.
 		The reported value is the readback of the corresponding register.
 
 What:		/sys/devices/virtual/pmic/mitigation/clock_ratio/<SUBSYSTEM>
