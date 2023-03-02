@@ -83,6 +83,7 @@ itmon.ko
 keycombo.ko
 keydebug.ko
 libarc4.ko
+ln8411_driver.ko
 logbuffer.ko
 mac80211.ko
 mali_kbase.ko

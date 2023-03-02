@@ -910,6 +910,19 @@ static ssize_t show_alt_dvfs_info(struct device *dev,
 #endif
 }
 
+static ssize_t fw_freq_show(struct device *dev,
+					    struct device_attribute *attr,
+					    char *buf)
+{
+	struct device *parent = dev->parent;
+	struct platform_device *pdev =
+		container_of(parent, struct platform_device, dev);
+	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
+	long freq =  cal_dfs_get_rate_acpm(data->dfs_id);
+
+	return sysfs_emit(buf, "%ld\n", freq);
+}
+
 static DEVICE_ATTR(alt_dvfs_info, 0640, show_alt_dvfs_info, NULL);
 
 static DEVICE_ATTR(exynos_devfreq_info, 0640, show_exynos_devfreq_info, NULL);
@@ -927,6 +940,7 @@ static DEVICE_ATTR(soft_max_freq, 0640,
 		   show_soft_max_freq,
 		   store_soft_max_freq);
 static DEVICE_ATTR_WO(cancel_boot_freq);
+static DEVICE_ATTR_RO(fw_freq);
 
 static ssize_t time_in_state_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
@@ -963,6 +977,7 @@ static struct attribute *exynos_devfreq_sysfs_entries[] = {
 	&dev_attr_soft_max_freq.attr,
 	&dev_attr_alt_dvfs_info.attr,
 	&dev_attr_cancel_boot_freq.attr,
+	&dev_attr_fw_freq.attr,
 	NULL,
 };
 

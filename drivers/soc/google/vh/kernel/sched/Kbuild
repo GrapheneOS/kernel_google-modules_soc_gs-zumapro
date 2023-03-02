@@ -5,7 +5,8 @@ ccflags-y += -I$(srctree) -I$(srctree)/$(src)
 
 # vendor sched module
 obj-$(CONFIG_VH_SCHED) += vh_sched.o
-vh_sched-y += core.o fair.o init.o procfs_node.o rt.o cpufreq_gov.o acpu.o sched_lib.o topology.o
+vh_sched-y += core.o fair.o init.o procfs_node.o rt.o cpufreq_gov.o acpu.o topology.o
+vh_sched-$(CONFIG_VH_SCHED_LIB) += sched_lib.o
 
 # vendor sched tracing module
 obj-$(CONFIG_VH_SCHED) += sched_tp.o

@@ -38,7 +38,7 @@
 		k_pu = <60>;
 		k_i = <50>;
 		i_max = <5>;
-		integral_cutoff = <0>;
+		integral_cutoff = <10>;
 		sustainable_power = <2000>;
 
 		tmu_work_affinity = "0-8";
@@ -107,10 +107,6 @@
 		tmu_name = "G3D";
 		id = <3>;
 		ect_nouse;
-		hardlimit_enable;
-		hardlimit_clr_threshold = <93>;
-		hardlimit_threshold = <98>;
-		hardlimit_cooling_state = <THERMAL_NO_LIMIT>;
 		#thermal-sensor-cells = <0>;
 
 		use-pi-thermal;
@@ -149,10 +145,6 @@
 		tmu_name = "TPU";
 		id = <5>;
 		ect_nouse;
-		hardlimit_enable;
-		hardlimit_clr_threshold = <102>;
-		hardlimit_threshold = <107>;
-		hardlimit_cooling_state = <THERMAL_NO_LIMIT>;
 		#thermal-sensor-cells = <0>;
 
 		use-pi-thermal;
@@ -192,7 +184,7 @@
 
 			trips {
 				big_cold: big-cold {
-					temperature = <20000>;
+					temperature = <20000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -247,7 +239,7 @@
 
 			trips {
 				mid_cold: mid-cold {
-					temperature = <20000>;
+					temperature = <20000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -302,7 +294,7 @@
 
 			trips {
 				little_cold: little-cold {
-					temperature = <20000>;
+					temperature = <20000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -357,7 +349,7 @@
 
 			trips {
 				gpu_cold: gpu-cold {
-					temperature = <20000>;
+					temperature = <20000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -419,38 +411,38 @@
 					type = "active";
 				};
 				isp_alert1: isp-alert1 {
-					temperature = <76000>; /* millicelsius */
-					hysteresis = <5000>; /* millicelsius */
+					temperature = <70000>; /* millicelsius */
+					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				isp_alert2: isp-alert2 {
-					temperature = <81000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
-					type = "active";
+					type = "passive";
 				};
 				isp_alert3: isp-alert3 {
-					temperature = <86000>; /* millicelsius */
-					hysteresis = <5000>; /* millicelsius */
-					type = "active";
+					temperature = <94000>; /* millicelsius */
+					hysteresis = <4000>; /* millicelsius */
+					type = "passive";
 				};
 				isp_alert4: isp-alert4 {
-					temperature = <91000>; /* millicelsius */
-					hysteresis = <5000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
+					hysteresis = <1000>; /* millicelsius */
 					type = "active";
 				};
 				isp_alert5: isp-alert5 {
-					temperature = <96000>; /* millicelsius */
-					hysteresis = <5000>; /* millicelsius */
+					temperature = <98000>; /* millicelsius */
+					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				isp_alert6: isp-alert6 {
-					temperature = <101000>; /* millicelsius */
+					temperature = <103000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				isp_hot: isp-hot {
 					temperature = <115000>; /* millicelsius */
-					hysteresis = <5000>; /* millicelsius */
+					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
 			};
@@ -463,7 +455,7 @@
 
 			trips {
 				tpu_cold: tpu-cold {
-					temperature = <20000>;
+					temperature = <20000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -518,7 +510,7 @@
 
 			trips {
 				aur_cold: aur-cold {
-					temperature = <20000>;
+					temperature = <20000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};

@@ -125,9 +125,9 @@ static inline void read_event_local(struct event_data *event)
 
 }
 
-static void read_amu_mem_stall(struct memlat_cpu_grp *cpu_grp)
+static void read_amu_counters(struct memlat_cpu_grp *cpu_grp)
 {
-	unsigned long mem_stall, cpu_inst, delta;
+	unsigned long mem_stall, cpu_inst, cpu_cycle, delta;
 	struct cpu_data *cpu_data;
 	unsigned int cpu;
 
@@ -143,6 +143,11 @@ static void read_amu_mem_stall(struct memlat_cpu_grp *cpu_grp)
 		delta = cpu_inst - cpu_data->amu_evs[INST_IDX].prev_count;
 		cpu_data->amu_evs[INST_IDX].prev_count = cpu_inst;
 		cpu_data->amu_evs[INST_IDX].last_delta = delta;
+
+		cpu_cycle = read_sysreg_s(SYS_AMEVCNTR0_CORE_EL0);
+		delta = cpu_cycle - cpu_data->amu_evs[CYCLE_IDX].prev_count;
+		cpu_data->amu_evs[CYCLE_IDX].prev_count = cpu_cycle;
+		cpu_data->amu_evs[CYCLE_IDX].last_delta = delta;
 	}
 }
 
@@ -166,10 +171,10 @@ static void update_counts_idle_core(struct memlat_cpu_grp *cpu_grp, int cpu)
 		mon_idx = cpu - cpumask_first(&mon->cpus);
 		read_event_local(&mon->miss_ev[mon_idx]);
 	}
-	read_amu_mem_stall(cpu_grp);
+	read_amu_counters(cpu_grp);
 
 	spin_lock(&cpu_data->pmu_lock);
-	cpu_data->cyc = common_evs[CYC_IDX].last_delta;
+	cpu_data->cyc = cpu_data->amu_evs[CYCLE_IDX].last_delta;
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
 	cpu_data->inst = cpu_data->amu_evs[INST_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
@@ -234,12 +239,12 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 
 		if (!common_evs[STALL_IDX].pevent)
 			common_evs[STALL_IDX].last_delta =
-				common_evs[CYC_IDX].last_delta;
+				cpu_data->amu_evs[CYCLE_IDX].last_delta;
 
-		cpu_data->freq = common_evs[CYC_IDX].last_delta / delta;
+		cpu_data->freq = cpu_data->amu_evs[CYCLE_IDX].last_delta / delta;
 		cpu_data->stall_pct = mult_frac(100,
 				common_evs[STALL_IDX].last_delta,
-				common_evs[CYC_IDX].last_delta);
+				cpu_data->amu_evs[CYCLE_IDX].last_delta);
 	}
 
 	for (i = 0; i < cpu_grp->num_mons; i++) {
@@ -254,9 +259,9 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 		}
 	}
 
-	read_amu_mem_stall(cpu_grp);
+	read_amu_counters(cpu_grp);
 	spin_lock(&cpu_data->pmu_lock);
-	cpu_data->cyc = common_evs[CYC_IDX].last_delta;
+	cpu_data->cyc = cpu_data->amu_evs[CYCLE_IDX].last_delta;
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
 	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
@@ -738,14 +743,6 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 			     GFP_KERNEL);
 	if (!cpu_grp->mons)
 		return -ENOMEM;
-
-	ret = of_property_read_u32(dev->of_node, "cyc-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "Cyc event not specified. Using def:0x%x\n",
-			CYC_EV);
-		event_id = CYC_EV;
-	}
-	cpu_grp->common_ev_ids[CYC_IDX] = event_id;
 
 	ret = of_property_read_u32(dev->of_node, "stall-ev", &event_id);
 	if (ret) {

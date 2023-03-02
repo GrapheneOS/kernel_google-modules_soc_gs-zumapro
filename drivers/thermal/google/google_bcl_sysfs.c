@@ -12,24 +12,16 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/kernel.h>
-#include <linux/interrupt.h>
 #include <linux/io.h>
-#include <linux/irq.h>
 #include <linux/err.h>
-#include <linux/of.h>
-#include <linux/of_address.h>
-#include <linux/of_gpio.h>
-#include <linux/of_irq.h>
-#include <linux/of_platform.h>
-#include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/power_supply.h>
-#include <linux/thermal.h>
+#include <linux/platform_device.h>
+#include <soc/google/bcl.h>
 #include <dt-bindings/interrupt-controller/zuma.h>
 #include <linux/regulator/pmic_class.h>
 #include <linux/mfd/samsung/s2mpg14-register.h>
 #include <linux/mfd/samsung/s2mpg15-register.h>
-#include <soc/google/bcl.h>
 
 #define SMPL_WARN_CTRL		S2MPG14_PM_SMPL_WARN_CTRL
 #define SMPL_WARN_SHIFT		S2MPG14_SMPL_WARN_LVL_SHIFT
@@ -2217,6 +2209,196 @@ static struct attribute *sub_pwrwarn_attrs[] = {
 	NULL,
 };
 
+static ssize_t qos_show(struct bcl_device *bcl_dev, int idx, char *buf)
+{
+	if (!bcl_dev)
+		return -EIO;
+	if (!bcl_dev->bcl_qos[idx])
+		return -EIO;
+	return sysfs_emit(buf, "CPU0,CPU1,CPU2,GPU,TPU\n%d,%d,%d,%d,%d\n",
+			  bcl_dev->bcl_qos[idx]->cpu0_limit,
+			  bcl_dev->bcl_qos[idx]->cpu1_limit,
+			  bcl_dev->bcl_qos[idx]->cpu2_limit,
+			  bcl_dev->bcl_qos[idx]->gpu_limit,
+			  bcl_dev->bcl_qos[idx]->tpu_limit);
+}
+
+static ssize_t qos_store(struct bcl_device *bcl_dev, int idx, const char *buf, size_t size)
+{
+	unsigned int cpu0, cpu1, cpu2, gpu, tpu;
+
+	if (sscanf(buf, "%d,%d,%d,%d,%d", &cpu0, &cpu1, &cpu2, &gpu, &tpu) != 5)
+		return -EINVAL;
+	if (!bcl_dev)
+		return -EIO;
+	if (!bcl_dev->bcl_qos[idx])
+		return -EIO;
+	bcl_dev->bcl_qos[idx]->cpu0_limit = cpu0;
+	bcl_dev->bcl_qos[idx]->cpu1_limit = cpu1;
+	bcl_dev->bcl_qos[idx]->cpu2_limit = cpu2;
+	bcl_dev->bcl_qos[idx]->gpu_limit = gpu;
+	bcl_dev->bcl_qos[idx]->tpu_limit = tpu;
+
+	return size;
+}
+
+static ssize_t qos_batoilo_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_show(bcl_dev, BATOILO, buf);
+}
+
+static ssize_t qos_batoilo_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_store(bcl_dev, BATOILO, buf, size);
+}
+
+static ssize_t qos_vdroop1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_show(bcl_dev, UVLO1, buf);
+}
+
+static ssize_t qos_vdroop1_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_store(bcl_dev, UVLO1, buf, size);
+}
+
+static ssize_t qos_vdroop2_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_show(bcl_dev, UVLO2, buf);
+}
+
+static ssize_t qos_vdroop2_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_store(bcl_dev, UVLO2, buf, size);
+}
+
+static ssize_t qos_smpl_warn_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_show(bcl_dev, SMPL_WARN, buf);
+}
+
+static ssize_t qos_smpl_warn_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_store(bcl_dev, SMPL_WARN, buf, size);
+}
+
+static ssize_t qos_ocp_cpu2_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_show(bcl_dev, OCP_WARN_CPUCL2, buf);
+}
+
+static ssize_t qos_ocp_cpu2_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_store(bcl_dev, OCP_WARN_CPUCL2, buf, size);
+}
+
+static ssize_t qos_ocp_cpu1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_show(bcl_dev, OCP_WARN_CPUCL1, buf);
+}
+
+static ssize_t qos_ocp_cpu1_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_store(bcl_dev, OCP_WARN_CPUCL1, buf, size);
+}
+
+static ssize_t qos_ocp_tpu_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_show(bcl_dev, OCP_WARN_TPU, buf);
+}
+
+static ssize_t qos_ocp_tpu_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_store(bcl_dev, OCP_WARN_TPU, buf, size);
+}
+
+static ssize_t qos_ocp_gpu_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_show(bcl_dev, OCP_WARN_GPU, buf);
+}
+
+static ssize_t qos_ocp_gpu_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return qos_store(bcl_dev, OCP_WARN_GPU, buf, size);
+}
+
+static DEVICE_ATTR_RW(qos_batoilo);
+static DEVICE_ATTR_RW(qos_vdroop1);
+static DEVICE_ATTR_RW(qos_vdroop2);
+static DEVICE_ATTR_RW(qos_smpl_warn);
+static DEVICE_ATTR_RW(qos_ocp_cpu2);
+static DEVICE_ATTR_RW(qos_ocp_cpu1);
+static DEVICE_ATTR_RW(qos_ocp_gpu);
+static DEVICE_ATTR_RW(qos_ocp_tpu);
+
+static struct attribute *qos_attrs[] = {
+	&dev_attr_qos_batoilo.attr,
+	&dev_attr_qos_vdroop1.attr,
+	&dev_attr_qos_vdroop2.attr,
+	&dev_attr_qos_smpl_warn.attr,
+	&dev_attr_qos_ocp_cpu2.attr,
+	&dev_attr_qos_ocp_cpu1.attr,
+	&dev_attr_qos_ocp_gpu.attr,
+	&dev_attr_qos_ocp_tpu.attr,
+	NULL,
+};
+
 static const struct attribute_group main_pwrwarn_group = {
 	.attrs = main_pwrwarn_attrs,
 	.name = "main_pwrwarn",
@@ -2358,6 +2540,11 @@ static const struct attribute_group irq_dur_cnt_group = {
 	.name = "irq_dur_cnt",
 };
 
+static const struct attribute_group qos_group = {
+	.attrs = qos_attrs,
+	.name = "qos",
+};
+
 const struct attribute_group *mitigation_groups[] = {
 	&instr_group,
 	&triggered_lvl_group,
@@ -2372,5 +2559,6 @@ const struct attribute_group *mitigation_groups[] = {
 	&main_pwrwarn_group,
 	&sub_pwrwarn_group,
 	&irq_dur_cnt_group,
+	&qos_group,
 	NULL,
 };

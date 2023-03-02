@@ -376,7 +376,7 @@ struct curr_state {
 	u8 temperature;
 	u8 ctrl_temp;
 	u8 reserved;
-	u32 err_integral;
+	u32 pid_err_integral;
 };
 
 struct buffered_curr_state {
@@ -385,7 +385,10 @@ struct buffered_curr_state {
 	u8 cdev_state;
 	u8 temperature;
 	u8 ctrl_temp;
-	u32 err_integral;
+	u32 pid_err_integral;
+	u16 pid_power_range;
+	u16 pid_p;
+	u32 pid_i;
 };
 
 struct gov_trace_data_struct {
