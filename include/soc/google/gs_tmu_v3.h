@@ -80,6 +80,8 @@ struct acpm_gov_common {
 	bool tracing_buffer_flush_pending;
 	bool turn_on;
 	u64 buffer_version;
+	struct gov_trace_data_struct *bulk_trace_buffer;
+	spinlock_t lock;
 };
 
 #define TRIP_LEVEL_NUM 8
@@ -318,7 +320,7 @@ enum tmu_grp_idx_t {
 int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on);
 
 #define ACPM_SM_BUFFER_VERSION_UPPER_32b 0x5A554D41ULL
-#define GOV_TRACE_DATA_LEN 240
+#define BULK_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20
 #define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
 struct gov_data {
@@ -348,7 +350,7 @@ struct buffered_curr_state {
 };
 
 struct gov_trace_data_struct {
-	struct buffered_curr_state buffered_curr_state[GOV_TRACE_DATA_LEN];
+	struct buffered_curr_state buffered_curr_state[BULK_TRACE_DATA_LEN];
 	struct curr_state curr_state[7];
 };
 
