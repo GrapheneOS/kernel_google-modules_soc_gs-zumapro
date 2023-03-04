@@ -44,7 +44,9 @@ enum {
  * Located domain
  */
 enum spi_domain {
-	NO_POWER_DOMAIN = 0,
+	DOMAIN_TOP = 0,
+	DOMAIN_ISP,
+	DOMAIN_CAM1,
 };
 
 struct platform_device;
