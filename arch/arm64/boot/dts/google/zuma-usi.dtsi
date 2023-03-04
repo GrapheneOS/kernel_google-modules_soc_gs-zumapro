@@ -360,7 +360,6 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		power-domains = <&pd_hsi0>;
 		status = "disabled";
 		};
 	/* BLK_HSI0 USI1_HSI0 */
@@ -379,7 +378,6 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		power-domains = <&pd_hsi0>;
 		status = "disabled";
 	};
 	/* BLK_HSI0 USI2_HSI0 */
@@ -398,7 +396,6 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		power-domains = <&pd_hsi0>;
 		status = "disabled";
 	};
 	/* BLK_HSI0 USI3_HSI0 */
@@ -417,7 +414,6 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		power-domains = <&pd_hsi0>;
 		status = "disabled";
 	};
 	/* BLK_HSI0 USI4_HSI0 */
@@ -436,7 +432,6 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		power-domains = <&pd_hsi0>;
 		status = "disabled";
 	};
 
