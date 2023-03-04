@@ -1175,10 +1175,6 @@ static int exynos5_i2c_probe(struct platform_device *pdev)
 		}
 	}
 
-	i2c->power_domain = NO_POWER_DOMAIN;
-	if (of_get_property(dev->of_node, "power-domains", NULL))
-		i2c->power_domain = ACTIVE_POWER_DOMAIN;
-
 	ret = of_property_read_u32(np, "samsung,tscl-h", &i2c->tscl_h);
 	if (!ret)
 		dev_warn(&pdev->dev, "tSCL_HIGH val: 0x%x\n", i2c->tscl_h);
@@ -1370,16 +1366,6 @@ static int exynos5_i2c_runtime_resume(struct device *dev)
 	int ret = 0;
 
 	exynos_update_ip_idle_status(i2c->idle_ip_index, 0);
-
-	if (i2c->power_domain == ACTIVE_POWER_DOMAIN) {
-		if (!IS_ERR(i2c->usi_reg))
-			regmap_update_bits(i2c->usi_reg, i2c->usi_offset,
-				   USI_SW_CONF_MASK, USI_I2C_SW_CONF);
-
-		exynos_usi_init(i2c);
-		exynos5_i2c_reset(i2c);
-	}
-
 	ret = clk_enable(i2c->clk);
 	i2c->runtime_resumed = 1;
 	if (ret) {
@@ -1429,11 +1415,9 @@ static int exynos5_i2c_resume_noirq(struct device *dev)
 	struct exynos5_i2c *i2c = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	if (i2c->power_domain == NO_POWER_DOMAIN) {
-		if (!IS_ERR(i2c->usi_reg))
-			regmap_update_bits(i2c->usi_reg, i2c->usi_offset,
-					   USI_SW_CONF_MASK, USI_I2C_SW_CONF);
-	}
+	if (!IS_ERR(i2c->usi_reg))
+		regmap_update_bits(i2c->usi_reg, i2c->usi_offset,
+				   USI_SW_CONF_MASK, USI_I2C_SW_CONF);
 
 	i2c_lock_bus(&i2c->adap, I2C_LOCK_ROOT_ADAPTER);
 
@@ -1448,11 +1432,8 @@ static int exynos5_i2c_resume_noirq(struct device *dev)
 		return ret;
 	}
 
-	if (i2c->power_domain == NO_POWER_DOMAIN) {
-		exynos_usi_init(i2c);
-		exynos5_i2c_reset(i2c);
-	}
-
+	exynos_usi_init(i2c);
+	exynos5_i2c_reset(i2c);
 	clk_disable(i2c->clk);
 	exynos_update_ip_idle_status(i2c->idle_ip_index, 1);
 	i2c->suspended = 0;
