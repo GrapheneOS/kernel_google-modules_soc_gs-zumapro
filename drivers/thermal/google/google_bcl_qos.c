@@ -20,8 +20,10 @@
 
 void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle)
 {
-	if (id > TRIGGERED_SOURCE_MAX || id < 0 || !bcl_dev->bcl_qos[id])
+	if (id > TRIGGERED_SOURCE_MAX || id < 0 || !bcl_dev->bcl_qos[id]
+	    || bcl_dev->bcl_qos[id]->throttle == throttle)
 		return;
+	bcl_dev->bcl_qos[id]->throttle = throttle;
 	freq_qos_update_request(&bcl_dev->bcl_qos[id]->cpu0_max_qos_req,
 				throttle ? bcl_dev->bcl_qos[id]->cpu0_limit : INT_MAX);
 	freq_qos_update_request(&bcl_dev->bcl_qos[id]->cpu1_max_qos_req,

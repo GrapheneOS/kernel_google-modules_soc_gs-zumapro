@@ -22,12 +22,14 @@
 		       0x0 0x152A0000 0x1000
 		       /* PMU AUR_STATUS */
 		       0x0 0x15462304 0x4
+		       /* CMU AUR */
+		       0x0 0x20A00000 0x1000
 		       /* SSMTs */
 		       0x0 0x20AD0000 0x10000
 		       0x0 0x20AE0000 0x10000>;
 		reg-names = "aur",
 			    "mailbox0", "mailbox1", "mailbox2", "mailbox3", "mailbox4",
-			    "pmu_aur_status", "ssmt_idma", "ssmt_inst_data";
+			    "pmu_aur_status", "cmu", "ssmt_idma", "ssmt_inst_data";
 		interrupts = <GIC_SPI IRQ_MAILBOX_AURCORE02AP_ALIVE IRQ_TYPE_LEVEL_HIGH
 			      GIC_SPI IRQ_MAILBOX_AURCORE12AP_ALIVE IRQ_TYPE_LEVEL_HIGH
 			      GIC_SPI IRQ_MAILBOX_AURCORE22AP_ALIVE IRQ_TYPE_LEVEL_HIGH

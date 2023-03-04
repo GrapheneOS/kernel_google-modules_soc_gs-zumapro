@@ -242,8 +242,8 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 				cpu_data->amu_evs[CYCLE_IDX].last_delta;
 
 		cpu_data->freq = cpu_data->amu_evs[CYCLE_IDX].last_delta / delta;
-		cpu_data->stall_pct = mult_frac(100,
-				common_evs[STALL_IDX].last_delta,
+		cpu_data->stall_pct = mult_frac(10000,
+				cpu_data->amu_evs[MEM_STALL_IDX].last_delta,
 				cpu_data->amu_evs[CYCLE_IDX].last_delta);
 	}
 

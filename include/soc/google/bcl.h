@@ -173,6 +173,7 @@ struct qos_throttle_limit {
 	int cpu2_limit;
 	int gpu_limit;
 	int tpu_limit;
+	bool throttle;
 };
 
 struct bcl_device {

@@ -314,7 +314,7 @@ store_attr(ratio_ceil, 1U, 20000U)
 static DEVICE_ATTR(ratio_ceil, 0644, show_ratio_ceil, store_ratio_ceil);
 
 show_attr(stall_floor)
-store_attr(stall_floor, 0U, 100U)
+store_attr(stall_floor, 0U, 10000U)
 static DEVICE_ATTR(stall_floor, 0644, show_stall_floor, store_stall_floor);
 
 static struct attribute *memlat_dev_attr[] = {
