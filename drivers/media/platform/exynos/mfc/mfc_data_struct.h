@@ -315,6 +315,7 @@ enum mfc_nal_q_stop_cause {
 	NALQ_STOP_2CORE			= 13,
 	NALQ_STOP_TWO_PASS_ENC		= 14,
 	NALQ_STOP_ADAPTIVE_GOP		= 15,
+	NALQ_STOP_QPE_TWO_PASS		= 16,
 	/* nal_q exception cause */
 	NALQ_EXCEPTION_DRC		= 25,
 	NALQ_EXCEPTION_NEED_DPB		= 26,
@@ -1760,6 +1761,8 @@ struct mfc_enc_params {
 	u32 mv_hor_range;
 	u32 mv_ver_range;
 
+	u8 qpe_two_pass_enable;
+
 	union {
 		struct mfc_h264_enc_params h264;
 		struct mfc_mpeg4_enc_params mpeg4;
@@ -2155,6 +2158,8 @@ struct mfc_enc {
 	struct mfc_user_shared_handle sh_handle_svc;
 	struct mfc_user_shared_handle sh_handle_roi;
 	struct mfc_user_shared_handle sh_handle_hdr;
+
+	bool nal_q_disable_for_qpe_two_pass;
 };
 
 struct mfc_fmt {

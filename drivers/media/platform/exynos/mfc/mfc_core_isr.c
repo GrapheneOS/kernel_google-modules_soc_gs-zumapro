@@ -1433,6 +1433,11 @@ static int __mfc_handle_stream(struct mfc_core *core, struct mfc_ctx *ctx, unsig
 	enc->frame_type = slice_type;
 	ctx->sequence++;
 
+	if (slice_type == MFC_REG_E_SLICE_TYPE_I && reason == MFC_REG_R2H_CMD_FRAME_DONE_RET) {
+		mfc_debug(2, "[FRAME] first frame with two pass for initial qpe is done\n");
+		enc->nal_q_disable_for_qpe_two_pass = false;
+	}
+
 	if (enc->in_slice) {
 		if (mfc_is_queue_count_same(&ctx->buf_queue_lock, &ctx->dst_buf_queue, 0)) {
 			mfc_clear_bit(ctx->num, &core->work_bits);

@@ -141,6 +141,10 @@ int mfc_core_nal_q_check_enable(struct mfc_core *core)
 				if (p->adaptive_gop_enable) {
 					core->nal_q_stop_cause |= (1 << NALQ_STOP_ADAPTIVE_GOP);
 					mfc_core_debug(2, "There is adaptive gop\n");
+				}
+				if (p->qpe_two_pass_enable && enc->nal_q_disable_for_qpe_two_pass) {
+					core->nal_q_stop_cause |= (1 << NALQ_STOP_QPE_TWO_PASS);
+					mfc_debug(2, "It is first frame with two pass for initial qpe option\n");
 					return 0;
 				}
 			}

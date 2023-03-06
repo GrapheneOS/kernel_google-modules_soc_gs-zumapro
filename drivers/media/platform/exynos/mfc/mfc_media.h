@@ -617,4 +617,7 @@ enum v4l2_mpeg_mfc51_video_frame_type {
 					(V4L2_CID_MPEG_MFC_BASE + 269)
 #define V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE			\
 					(V4L2_CID_MPEG_MFC_BASE + 270)
+#define V4L2_CID_MPEG_MFC_QPE_TWO_PASS_ENABLE			\
+					(V4L2_CID_MPEG_MFC_BASE + 272)
+
 #endif /* __EXYNOS_MFC_MEDIA_H */

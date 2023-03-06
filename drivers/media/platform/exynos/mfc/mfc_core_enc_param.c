@@ -483,6 +483,13 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 		mfc_set_bits(reg, 0xFF, 0, p->vbv_buf_size);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_VBV_BUFFER_SIZE);
 
+	/* two pass for initial qpe */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_HIGH_QUALITY_MODE);
+	mfc_clear_set_bits(reg, 0x1, 6, p->qpe_two_pass_enable);
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_HIGH_QUALITY_MODE);
+	mfc_debug(2, "qpe two pass is %s\n",
+            p->qpe_two_pass_enable ? "enabled" : "disabled");
+
 	/* Video signal type */
 	__mfc_set_video_signal_type(core, ctx);
 

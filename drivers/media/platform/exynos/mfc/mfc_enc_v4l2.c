@@ -1042,6 +1042,7 @@ static int __mfc_enc_ext_info(struct mfc_ctx *ctx)
 	val |= ENC_SET_OPERATING_FPS;
 	val |= ENC_SET_GOP_CTRL;
 	val |= ENC_SET_PRIORITY;
+	val |= ENC_SET_QPE_TWO_PASS_ENABLE;
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->color_aspect_enc))
 		val |= ENC_SET_COLOR_ASPECT;
@@ -2055,6 +2056,11 @@ static int __mfc_enc_set_param(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 		break;
 	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_ENABLE:
 		p->codec.hevc.sub_gop_enable = ctrl->value;
+	case V4L2_CID_MPEG_MFC_QPE_TWO_PASS_ENABLE:
+		p->qpe_two_pass_enable = ctrl->value;
+		enc->nal_q_disable_for_qpe_two_pass = ctrl->value;
+		mfc_debug(2, "[QPE TWO PASS] qpe two pass %s\n",
+				p->qpe_two_pass_enable ? "enable" : "disable");
 		break;
 	/* These are stored in specific variables */
 	case V4L2_CID_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_LAYER_CH:
