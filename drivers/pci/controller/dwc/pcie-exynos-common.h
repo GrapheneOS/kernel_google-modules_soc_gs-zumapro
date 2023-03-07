@@ -333,6 +333,9 @@ struct exynos_pcie {
 	u32 btl_offset;
 	u32 btl_size;
 
+	struct device dup_ep_dev;
+	int copy_dup_ep;
+
 	bool use_phy_isol_con;
 	int phy_control;
 	struct logbuffer *log;
