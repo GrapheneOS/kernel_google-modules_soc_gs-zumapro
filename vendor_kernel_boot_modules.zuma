@@ -84,7 +84,7 @@ i2c-exynos5.ko
 itmon.ko
 keycombo.ko
 keydebug.ko
-ln8411_driver.ko
+ln8411.ko
 logbuffer.ko
 mali_kbase.ko
 mali_pixel.ko
