@@ -1934,9 +1934,9 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	ret = of_property_read_u32(np, "cpu0_cluster", &val);
 	bcl_dev->cpu0_cluster = ret ? 0 : val;
 	ret = of_property_read_u32(np, "cpu1_cluster", &val);
-	bcl_dev->cpu1_cluster = ret ? 0 : val;
+	bcl_dev->cpu1_cluster = ret ? 4 : val;
 	ret = of_property_read_u32(np, "cpu2_cluster", &val);
-	bcl_dev->cpu2_cluster = ret ? 0 : val;
+	bcl_dev->cpu2_cluster = ret ? 8 : val;
 
 	/* parse ODPM main limit */
 	p_np = of_get_child_by_name(np, "main_limit");
