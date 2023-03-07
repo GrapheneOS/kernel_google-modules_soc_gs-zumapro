@@ -49,6 +49,9 @@ bool pmu_poll_enabled;
 extern int pmu_poll_enable(void);
 extern void pmu_poll_disable(void);
 
+extern unsigned int sysctl_sched_uclamp_min_filter_multiplier;
+extern unsigned int sysctl_sched_uclamp_max_filter_divider;
+
 #define MAX_PROC_SIZE 128
 
 static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "bg", "sys_bg",
@@ -1068,6 +1071,127 @@ static int uclamp_util_diff_stats_show(struct seq_file *m, void *v)
 
 PROC_OPS_RO(uclamp_util_diff_stats);
 
+/* uclamp filters controls */
+static int uclamp_min_filter_enable_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", static_branch_likely(&uclamp_min_filter_enable) ? 1 : 0);
+	return 0;
+}
+static ssize_t uclamp_min_filter_enable_store(struct file *filp,
+					      const char __user *ubuf,
+					      size_t count, loff_t *pos)
+{
+	int enable = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &enable))
+		return -EINVAL;
+
+	if (enable)
+		static_branch_enable(&uclamp_min_filter_enable);
+	else
+		static_branch_disable(&uclamp_min_filter_enable);
+
+	return count;
+}
+PROC_OPS_RW(uclamp_min_filter_enable);
+
+static int uclamp_min_filter_multiplier_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_uclamp_min_filter_multiplier);
+	return 0;
+}
+static ssize_t uclamp_min_filter_multiplier_store(struct file *filp,
+						  const char __user *ubuf,
+						  size_t count, loff_t *pos)
+{
+	int val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	sysctl_sched_uclamp_min_filter_multiplier = val;
+	return count;
+}
+PROC_OPS_RW(uclamp_min_filter_multiplier);
+
+static int uclamp_max_filter_enable_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", static_branch_likely(&uclamp_max_filter_enable) ? 1 : 0);
+	return 0;
+}
+static ssize_t uclamp_max_filter_enable_store(struct file *filp,
+					      const char __user *ubuf,
+					      size_t count, loff_t *pos)
+{
+	int enable = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &enable))
+		return -EINVAL;
+
+	if (enable)
+		static_branch_enable(&uclamp_max_filter_enable);
+	else
+		static_branch_disable(&uclamp_max_filter_enable);
+
+	return count;
+}
+PROC_OPS_RW(uclamp_max_filter_enable);
+
+static int uclamp_max_filter_divider_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_uclamp_max_filter_divider);
+	return 0;
+}
+static ssize_t uclamp_max_filter_divider_store(struct file *filp,
+					       const char __user *ubuf,
+					       size_t count, loff_t *pos)
+{
+	int val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	sysctl_sched_uclamp_max_filter_divider = val;
+	return count;
+}
+PROC_OPS_RW(uclamp_max_filter_divider);
+
 
 static ssize_t reset_uclamp_stats_store(struct file *filp,
 							const char __user *ubuf,
@@ -1522,6 +1646,11 @@ static struct pentry entries[] = {
 	PROC_ENTRY(sched_lib_affinity),
 	PROC_ENTRY(sched_lib_name),
 #endif /* CONFIG_SCHED_LIB */
+	// uclamp filter
+	PROC_ENTRY(uclamp_min_filter_enable),
+	PROC_ENTRY(uclamp_min_filter_multiplier),
+	PROC_ENTRY(uclamp_max_filter_enable),
+	PROC_ENTRY(uclamp_max_filter_divider),
 };
 
 
