@@ -2505,7 +2505,7 @@ void exynos_pcie_rc_resumed_phydown(struct pcie_port *pp)
 		exynos_pcie->phy_ops.phy_all_pwrdn(exynos_pcie, exynos_pcie->ch_num);
 
 	if (exynos_pcie->ch_num == 1) {
-		dev_info(dev, "Disable PCIE2 PHY\n");
+		dev_dbg(dev, "Disable PCIE2 PHY\n");
 		exynos_pcie_ch2_phy_disable(exynos_pcie);
 	}
 
@@ -4901,7 +4901,7 @@ static int exynos_pcie_rc_suspend_noirq(struct device *dev)
 
 	logbuffer_log(exynos_pcie->log, "pm_suspend_no_irq called");
 	if (exynos_pcie->state == STATE_LINK_DOWN) {
-		dev_info(dev, "PCIe PMU ISOLATION\n");
+		dev_dbg(dev, "PCIe PMU ISOLATION\n");
 		exynos_pcie_phy_isolation(exynos_pcie, PCIE_PHY_ISOLATION);
 	}
 
