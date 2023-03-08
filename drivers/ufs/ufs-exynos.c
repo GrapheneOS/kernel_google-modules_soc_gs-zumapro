@@ -674,6 +674,24 @@ static void exynos_ufs_override_hba_params(struct ufs_hba *hba)
 	hba->spm_lvl = UFS_PM_LVL_5;
 }
 
+static void exynos_ufs_update_clkgate_delay_ms(struct ufs_hba *hba)
+{
+	int timer, scale;
+
+	if (!hba->ahit)
+		return;
+
+	timer = FIELD_GET(UFSHCI_AHIBERN8_TIMER_MASK, hba->ahit);
+	scale = FIELD_GET(UFSHCI_AHIBERN8_SCALE_MASK, hba->ahit);
+	for (; scale > 0; --scale)
+		timer *= UFSHCI_AHIBERN8_SCALE_FACTOR;
+	timer /= 1000;
+
+	/* Let's use 2x delay_ms */
+	if (timer)
+		hba->clk_gating.delay_ms = timer << 1;
+}
+
 static int exynos_ufs_hce_enable_notify(struct ufs_hba *hba,
 					enum ufs_notify_change_status notify)
 {
@@ -708,6 +726,9 @@ static int exynos_ufs_hce_enable_notify(struct ufs_hba *hba,
 
 		/* deliver ah8 timer and counter values */
 		hba->ahit = ufs->ah8_ahit;
+
+		/* adjust clkgate_delay */
+		exynos_ufs_update_clkgate_delay_ms(hba);
 		break;
 	case POST_CHANGE:
 		exynos_ufs_ctrl_clk(ufs, true);
