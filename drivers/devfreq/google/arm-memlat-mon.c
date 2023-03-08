@@ -151,56 +151,11 @@ static void read_amu_counters(struct memlat_cpu_grp *cpu_grp)
 	}
 }
 
-static void update_counts_idle_core(struct memlat_cpu_grp *cpu_grp, int cpu)
-{
-	unsigned int i;
-	struct memlat_mon *mon;
-	unsigned int mon_idx;
-	struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
-	struct event_data *common_evs = cpu_data->common_evs;
-
-	for (i = 0; i < NUM_COMMON_EVS; i++)
-		read_event_local(&common_evs[i]);
-
-	for (i = 0; i < cpu_grp->num_mons; i++) {
-		mon = &cpu_grp->mons[i];
-
-		if (!mon->is_active || !mon->miss_ev)
-			continue;
-
-		mon_idx = cpu - cpumask_first(&mon->cpus);
-		read_event_local(&mon->miss_ev[mon_idx]);
-	}
-	read_amu_counters(cpu_grp);
-
-	spin_lock(&cpu_data->pmu_lock);
-	cpu_data->cyc = cpu_data->amu_evs[CYCLE_IDX].last_delta;
-	cpu_data->stall = common_evs[STALL_IDX].last_delta;
-	cpu_data->inst = cpu_data->amu_evs[INST_IDX].last_delta;
-	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
-	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
-	cpu_data->mem_stall = cpu_data->amu_evs[MEM_STALL_IDX].last_delta;
-	cpu_data->l2_cache_wb = 0;
-	cpu_data->l3_cache_access = 0;
-	spin_unlock(&cpu_data->pmu_lock);
-}
-
-
 static void vendor_update_event_cpu_idle_enter(void *data, int *state, struct cpuidle_device *dev)
 {
-	struct memlat_cpu_grp *cpu_grp;
-
 	if (!__this_cpu_read(is_on))
 		return;
 
-	list_for_each_entry(cpu_grp, &cpu_grp_list, node) {
-		if (!cpu_grp->initialized)
-			continue;
-		if (cpumask_test_cpu(dev->cpu, &cpu_grp->cpus)) {
-			update_counts_idle_core(cpu_grp, dev->cpu);
-			break;
-		}
-	}
 	__this_cpu_write(is_idle, true);
 	__this_cpu_write(cpu_idle_state, *state);
 }

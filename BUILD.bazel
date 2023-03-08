@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
 package(
@@ -84,6 +85,23 @@ config_setting(
     flag_values = {
         ":debug_fragment": "khwasan",
     },
+)
+
+config_setting(
+    name = "cmdline_lto_is_none",
+    flag_values = {
+        "//build/kernel/kleaf:lto": "none",
+    },
+)
+
+# These debug fragments sets LTO=none.
+selects.config_setting_group(
+    name = "lto_none",
+    match_any = [
+        # keep sorted
+        ":cmdline_lto_is_none",
+        ":kasan",
+    ],
 )
 
 filegroup(

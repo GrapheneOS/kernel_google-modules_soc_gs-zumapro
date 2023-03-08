@@ -46,6 +46,8 @@ static int init_freq_qos(struct bcl_device *bcl_dev, struct qos_throttle_limit *
 	int ret;
 
 	policy = cpufreq_cpu_get(bcl_dev->cpu0_cluster);
+	if (!policy)
+		return -EINVAL;
 
 	ret = freq_qos_add_request(&policy->constraints, &throttle->cpu0_max_qos_req,
 				   FREQ_QOS_MAX, INT_MAX);
@@ -54,6 +56,9 @@ static int init_freq_qos(struct bcl_device *bcl_dev, struct qos_throttle_limit *
 		return ret;
 
 	policy = cpufreq_cpu_get(bcl_dev->cpu1_cluster);
+	if (!policy)
+		return -EINVAL;
+
 	ret = freq_qos_add_request(&policy->constraints, &throttle->cpu1_max_qos_req,
 				   FREQ_QOS_MAX, INT_MAX);
 	cpufreq_cpu_put(policy);
@@ -61,6 +66,9 @@ static int init_freq_qos(struct bcl_device *bcl_dev, struct qos_throttle_limit *
 		return ret;
 
 	policy = cpufreq_cpu_get(bcl_dev->cpu2_cluster);
+	if (!policy)
+		return -EINVAL;
+
 	ret = freq_qos_add_request(&policy->constraints, &throttle->cpu2_max_qos_req,
 				   FREQ_QOS_MAX, INT_MAX);
 	cpufreq_cpu_put(policy);

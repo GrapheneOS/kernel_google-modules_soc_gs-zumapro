@@ -50,6 +50,27 @@ TRACE_EVENT(zcomp_decompress_end,
 			__entry->pfn,
 			__entry->index)
 );
+
+TRACE_EVENT(zram_read_from_bdev,
+
+	TP_PROTO(struct zram *zram, unsigned long entry_element),
+
+	TP_ARGS(zram, entry_element),
+
+	TP_STRUCT__entry(
+		__field(unsigned long,	nr_bd_read)
+		__field(unsigned long,	entry_element)
+	),
+
+	TP_fast_assign(
+		__entry->nr_bd_read	= zram_stat_read(zram, NR_BD_READ);
+		__entry->entry_element	= entry_element;
+	),
+
+	TP_printk("nr_bd_read=%lu entry_element=%lu",
+			__entry->nr_bd_read,
+			__entry->entry_element)
+);
 #endif /* _TRACE_ZRAM_H */
 
 /* This part must be outside protection */
