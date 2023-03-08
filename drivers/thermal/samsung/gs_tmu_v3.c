@@ -4164,7 +4164,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		register_pm_notifier(&gs_tmu_pm_nb);
 	}
 
-	data->acpm_pi_enable = false;
 	if (data->use_pi_thermal) {
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, SUSTAINABLE_POWER,
 						 data->pi_param->sustainable_power);
@@ -4174,6 +4173,10 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX, frac_to_int(data->pi_param->i_max));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, INTEGRAL_CUTOFF,
 						 data->pi_param->integral_cutoff);
+		data->acpm_pi_enable = true;
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
+	} else {
+		data->acpm_pi_enable = false;
 	}
 
 #if IS_ENABLED(CONFIG_MALI_DEBUG_KERNEL_SYSFS)
