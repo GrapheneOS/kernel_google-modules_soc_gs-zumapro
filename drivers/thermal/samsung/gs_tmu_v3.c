@@ -1170,7 +1170,11 @@ static void init_bcl_dev(struct kthread_work *work)
 		data->ppm_clr_throttle_level = google_get_ppm(data->bcl_dev);
 
 	if (!data->mpmm_clr_throttle_level)
-		data->mpmm_clr_throttle_level = google_get_mpmm(data->bcl_dev);
+		data->mpmm_clr_throttle_level = google_get_mpmm(data->bcl_dev, LITTLE);
+	if (!data->mpmm_clr_throttle_level)
+		data->mpmm_clr_throttle_level = google_get_mpmm(data->bcl_dev, MID);
+	if (!data->mpmm_clr_throttle_level)
+		data->mpmm_clr_throttle_level = google_get_mpmm(data->bcl_dev, BIG);
 
 	if (data->ppm_clr_throttle_level < 0)
 		ret = data->ppm_clr_throttle_level;
@@ -1179,14 +1183,14 @@ static void init_bcl_dev(struct kthread_work *work)
 		ret = data->mpmm_clr_throttle_level;
 
 	if (ret < 0) {
-		pr_err_ratelimited("%s: failed to get ppm(0x%x)/mpmm(0x%x) setting, ret = %d\n",
+		pr_err_ratelimited("%s: failed to get ppm(%#x)/mpmm(%#x) setting, ret = %d\n",
 				   data->tmu_name,
 				   data->ppm_clr_throttle_level,
 				   data->mpmm_clr_throttle_level, ret);
 		goto init_exit;
 	}
 
-	pr_info("%s: parsing default setting ppm: 0x%x, mpmm: 0x%x\n", data->tmu_name,
+	pr_info("%s: parsing default setting ppm: %#x, mpmm: %#x\n", data->tmu_name,
 		data->ppm_clr_throttle_level, data->mpmm_clr_throttle_level);
 
 init_exit:
@@ -1213,20 +1217,41 @@ static void gs_throttle_arm(struct kthread_work *work)
 
 			ret = google_set_ppm(data->bcl_dev, data->ppm_clr_throttle_level);
 			if (ret) {
-				pr_err_ratelimited("Failed to clr ppm throttle to 0x%x, ret = %d",
+				pr_err_ratelimited("Failed to clr ppm throttle to %#x, ret = %d",
 						   data->ppm_clr_throttle_level, ret);
 				goto unlock;
 			}
-			pr_info_ratelimited("Set ppm throttle to 0x%x\n",
+			pr_info_ratelimited("Set ppm throttle to %#x\n",
 					    data->ppm_clr_throttle_level);
 
-			ret = google_set_mpmm(data->bcl_dev, data->mpmm_clr_throttle_level);
+			ret = google_set_mpmm(data->bcl_dev, data->mpmm_clr_throttle_level,
+					      LITTLE);
 			if (ret) {
-				pr_err_ratelimited("Failed to clr mpmm throttle to 0x%x, ret = %d",
+				pr_err_ratelimited("Failed to clr LITTLE mpmm throttle to %#x, ret = %d",
 						   data->mpmm_clr_throttle_level, ret);
 				goto unlock;
 			}
-			pr_info_ratelimited("Set mpmm throttle to 0x%x\n",
+			pr_info_ratelimited("Set LITTLE mpmm throttle to %#x\n",
+					    data->mpmm_clr_throttle_level);
+
+			ret = google_set_mpmm(data->bcl_dev, data->mpmm_clr_throttle_level,
+					      MID);
+			if (ret) {
+				pr_err_ratelimited("Failed to clr MID mpmm throttle to %#x, ret = %d",
+						   data->mpmm_clr_throttle_level, ret);
+				goto unlock;
+			}
+			pr_info_ratelimited("Set MID mpmm throttle to %#x\n",
+					    data->mpmm_clr_throttle_level);
+
+			ret = google_set_mpmm(data->bcl_dev, data->mpmm_clr_throttle_level,
+					      BIG);
+			if (ret) {
+				pr_err_ratelimited("Failed to clr BIG mpmm throttle to %#x, ret = %d",
+						   data->mpmm_clr_throttle_level, ret);
+				goto unlock;
+			}
+			pr_info_ratelimited("Set BIG mpmm throttle to %#x\n",
 					    data->mpmm_clr_throttle_level);
 
 			data->is_cpu_hw_throttled = false;
@@ -1237,20 +1262,41 @@ static void gs_throttle_arm(struct kthread_work *work)
 
 			ret = google_set_ppm(data->bcl_dev, data->ppm_throttle_level);
 			if (ret) {
-				pr_err_ratelimited("Failed to set ppm throttle to 0x%x, ret = %d",
+				pr_err_ratelimited("Failed to set ppm throttle to %#x, ret = %d",
 						   data->ppm_throttle_level, ret);
 				goto unlock;
 			}
-			pr_info_ratelimited("Set ppm throttle to 0x%x\n",
+			pr_info_ratelimited("Set ppm throttle to %#x\n",
 					    data->ppm_throttle_level);
 
-			ret = google_set_mpmm(data->bcl_dev, data->mpmm_throttle_level);
+			ret = google_set_mpmm(data->bcl_dev, data->mpmm_throttle_level,
+			                      LITTLE);
 			if (ret) {
-				pr_err_ratelimited("Failed to set mpmm throttle to 0x%x, ret = %d",
+				pr_err_ratelimited("Failed to set LITTLE mpmm to %#x, ret = %d",
 						   data->mpmm_throttle_level, ret);
 				goto unlock;
 			}
-			pr_info_ratelimited("Set mpmm throttle to 0x%x\n",
+			pr_info_ratelimited("Set LITTLE mpmm throttle to %#x\n",
+					    data->mpmm_throttle_level);
+
+			ret = google_set_mpmm(data->bcl_dev, data->mpmm_throttle_level,
+			                      MID);
+			if (ret) {
+				pr_err_ratelimited("Failed to set MID mpmm to %#x, ret = %d",
+						   data->mpmm_throttle_level, ret);
+				goto unlock;
+			}
+			pr_info_ratelimited("Set MID mpmm throttle to %#x\n",
+					    data->mpmm_throttle_level);
+
+			ret = google_set_mpmm(data->bcl_dev, data->mpmm_throttle_level,
+			                      BIG);
+			if (ret) {
+				pr_err_ratelimited("Failed to set BIG mpmm to %#x, ret = %d",
+						   data->mpmm_throttle_level, ret);
+				goto unlock;
+			}
+			pr_info_ratelimited("Set BIG mpmm throttle to %#x\n",
 					    data->mpmm_throttle_level);
 
 			data->is_cpu_hw_throttled = true;
