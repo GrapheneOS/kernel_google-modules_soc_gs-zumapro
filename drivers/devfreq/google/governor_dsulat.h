@@ -30,12 +30,12 @@ struct dsulat_node {
 
 #if IS_ENABLED(CONFIG_DEVFREQ_GOV_MEMLAT)
 int register_dsulat(struct exynos_devfreq_data *dsu_data);
-void set_dsu_devfreq(struct devfreq *dsu_devfreq);
+void set_dsu_data(struct exynos_devfreq_data *dsu_data);
 #else
 static inline int register_dsulat(struct exynos_devfreq_data *dsu_data)
 {
 	return 0;
 }
-void set_dsu_devfreq(struct devfreq *dsu_devfreq) {}
+static void set_dsu_data(struct exynos_devfreq_data *dsu_data) {}
 #endif
 #endif  // _GOVERNOR_DSULAT_H_

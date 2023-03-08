@@ -31,8 +31,9 @@
 #include <linux/mutex.h>
 #include <trace/hooks/cpuidle.h>
 #include <linux/spinlock.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 
-static struct devfreq *dsu_df;
+static struct exynos_devfreq_data *dsu_data;
 
 static DEFINE_PER_CPU(bool, is_idle);
 static DEFINE_PER_CPU(bool, is_on);
@@ -78,10 +79,10 @@ int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 }
 EXPORT_SYMBOL(get_ev_data);
 
-void set_dsu_devfreq(struct devfreq *dsu_devfreq) {
-	dsu_df = dsu_devfreq;
+void set_dsu_data(struct exynos_devfreq_data *dsu_data_drv) {
+	dsu_data = dsu_data_drv;
 }
-EXPORT_SYMBOL(set_dsu_devfreq);
+EXPORT_SYMBOL(set_dsu_data);
 
 static inline void read_event(struct event_data *event)
 {
@@ -498,7 +499,8 @@ static void memlat_monitor_work(struct work_struct *work)
 
 		// Add callback for DSU
                 if (!strncmp(mon->governor_name, "dsu_latency", DEVFREQ_NAME_LEN)) {
-			if (dsu_df) {
+			if (dsu_data) {
+                               struct devfreq *dsu_df = dsu_data->devfreq;
 				mutex_lock(&dsu_df->lock);
 				err = update_devfreq(dsu_df);
 				if (err)
@@ -554,12 +556,21 @@ static int start_hwmon(struct memlat_hwmon *hw)
 	if (should_init_cpu_grp)
 		queue_cpugrp_work(cpu_grp);
 
-
 unlock_out:
 	mutex_unlock(&cpu_grp->mons_lock);
 	kfree(attr);
 
 	return ret;
+}
+
+static void devfreq_dsulat_boost_freq(struct exynos_devfreq_data *dsu_data)
+{
+	unsigned int max_freq, min_freq;
+	/* get maximal frequency for DSU */
+	exynos_devfreq_get_boundary(DEVFREQ_DSU, &max_freq, &min_freq);
+
+	if (exynos_pm_qos_request_active(&dsu_data->sys_pm_qos_min))
+		exynos_pm_qos_update_request(&dsu_data->sys_pm_qos_min, max_freq);
 }
 
 static void stop_hwmon(struct memlat_hwmon *hw)
@@ -592,6 +603,9 @@ static void stop_hwmon(struct memlat_hwmon *hw)
 		list_del(&cpu_grp->node);
 	}
 	mutex_unlock(&cpu_grp->mons_lock);
+
+	/* boost DSU freqeuncy to max for simpleperf */
+	devfreq_dsulat_boost_freq(dsu_data);
 }
 
 /**
