@@ -1,15 +1,15 @@
 # List of modules loaded during first stage init from vendor_boot
 # Sort order defined by
 # LC_ALL=C sort
-#9p.ko
-#9pnet.ko
-#9pnet_virtio.ko
+9p.ko
+9pnet.ko
+9pnet_virtio.ko
 #at24.ko
 #bc_max77759.ko
 #bcm47765.ko
 #bigwave.ko
 #bts.ko
-#cachefiles.ko
+cachefiles.ko
 #cfg80211.ko
 #clk_exynos_gs.ko
 #cmupmucal.ko
@@ -45,8 +45,8 @@
 #exynos_mfc.ko
 #exynos_pm_qos.ko
 exynos_tty.ko
-#failover.ko
-#fscache.ko
+failover.ko
+fscache.ko
 #g2d.ko
 #google-battery.ko
 #google-bms.ko
@@ -76,8 +76,8 @@ logbuffer.ko
 #max77759_charger.ko
 #max77759_contaminant.ko
 #max77759_helper.ko
-#net_failover.ko
-#netfs.ko
+net_failover.ko
+netfs.ko
 #nitrous.ko
 #p9221.ko
 #page_pool.ko
@@ -146,11 +146,12 @@ logbuffer.ko
 #usb_f_rndis.ko
 #usb_psy.ko
 #usbc_cooling_dev.ko
-#virtio_balloon.ko
-#virtio_blk.ko
-#virtio_crypto.ko
-#virtio_mmio.ko
-#virtio_net.ko
-#virtio_pci.ko
-#virtio_pci_modern_dev.ko
+virtio_balloon.ko
+virtio_blk.ko
+virtio_crypto.ko
+virtio_mmio.ko
+virtio_net.ko
+virtio_pci.ko
+virtio_pci_modern_dev.ko
+virtio_pci_legacy_dev.ko
 #xhci-exynos.ko
