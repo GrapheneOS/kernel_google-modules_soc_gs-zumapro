@@ -18,7 +18,6 @@ bigwave.ko
 bookerci.ko
 bts.ko
 cachefiles.ko
-cfg80211.ko
 clk_exynos_gs.ko
 cmupmucal.ko
 cpif.ko
@@ -84,10 +83,8 @@ i2c-exynos5.ko
 itmon.ko
 keycombo.ko
 keydebug.ko
-libarc4.ko
 ln8411_driver.ko
 logbuffer.ko
-mac80211.ko
 mali_kbase.ko
 mali_pixel.ko
 max1720x-battery.ko
@@ -99,7 +96,6 @@ max77759_helper.ko
 memlat-devfreq.ko
 net_failover.ko
 netfs.ko
-nitrous.ko
 odpm.ko
 open-dice.ko
 p9221.ko
@@ -129,7 +125,6 @@ pl330.ko
 pmic_class.ko
 power_stats.ko
 regmap-spmi.ko
-rfkill.ko
 rio.ko
 rtc-s2mpg14.ko
 s2mpg14-key.ko
@@ -150,6 +145,7 @@ samsung_dma_heap.ko
 samsung_iommu_v9.ko
 sbb-mux.ko
 sched_tp.ko
+sg.ko
 shm_ipc.ko
 sjtag-driver.ko
 slc_acpm.ko
