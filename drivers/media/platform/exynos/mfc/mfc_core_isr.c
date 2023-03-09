@@ -1543,6 +1543,8 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				mfc_core_get_profile(),
 				mfc_core_get_luma_bit_depth_minus8() + 8,
 				mfc_core_get_chroma_bit_depth_minus8() + 8);
+		} else {
+			ctx->is_10bit = 0;
 		}
 	}
 
