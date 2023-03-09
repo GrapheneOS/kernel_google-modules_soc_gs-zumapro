@@ -4444,15 +4444,6 @@ static void __maybe_unused exynos_pcie_rc_set_tpoweron(struct dw_pcie_rp *pp, in
 static int exynos_pcie_msi_set_affinity(struct irq_data *irq_data, const struct cpumask *mask,
 					bool force)
 {
-	struct dw_pcie_rp *pp = irq_data->parent_data->domain->host_data;
-
-	if (pp == NULL) {
-		pr_err("Warning: exynos_pcie_msi_set_affinity: not exist pp\n");
-		return -EINVAL;
-	}
-
-	irq_set_affinity_hint(pp->irq, mask);
-
 	return 0;
 }
 
