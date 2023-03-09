@@ -1432,6 +1432,7 @@
 	cpu8_memlat_cpugrp: cpu8-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu8>;
+		stall-backend-ev= <0x4005>;
 
 		cpu8_cpu_mif_latmon: cpu8-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
