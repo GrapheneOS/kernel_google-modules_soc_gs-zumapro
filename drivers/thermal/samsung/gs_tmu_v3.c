@@ -2096,6 +2096,23 @@ static ssize_t acpm_gov_timer_stepwise_gain_store(struct device *dev,
 	return count;
 }
 
+static ssize_t tj_cur_cdev_state_show(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	struct curr_state curr_state;
+	u8 tj_cur_cdev_state_val;
+
+	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
+	    get_curr_state_from_acpm(acpm_gov_common.sm_base, data->id, &curr_state))
+		tj_cur_cdev_state_val = curr_state.cdev_state;
+	else
+		return -EIO;
+
+	return sysfs_emit(buf, "%u\n", tj_cur_cdev_state_val);
+}
+
 static int param_acpm_gov_kernel_ts_get(char *buf, const struct kernel_param *kp)
 {
 	return sysfs_emit(buf, "%llu\n", acpm_gov_common.kernel_ts);
@@ -3204,6 +3221,7 @@ static DEVICE_ATTR_RW(acpm_pi_enable);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
+static DEVICE_ATTR_RO(tj_cur_cdev_state);
 
 static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_pause_cpus_temp.attr,
@@ -3237,6 +3255,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
+	&dev_attr_tj_cur_cdev_state.attr,
 	NULL,
 };
 
