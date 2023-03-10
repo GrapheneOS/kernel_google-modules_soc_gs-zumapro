@@ -361,6 +361,21 @@ typedef int (*tpu_pause_cb)(enum thermal_pause_state action, void *data);
 
 void register_tpu_thermal_pause_cb(tpu_pause_cb tpu_cb, void *data);
 
+enum tmu_grp_idx_t {
+	TZ_BIG,
+	TZ_MID,
+	TZ_LIT,
+	TZ_GPU,
+	TZ_ISP,
+	TZ_TPU,
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	TZ_AUR,
+#endif
+	TZ_END,
+};
+
+int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on);
+
 #define ACPM_SM_BUFFER_VERSION_UPPER_32b 0x5A554D41ULL
 #define GOV_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20

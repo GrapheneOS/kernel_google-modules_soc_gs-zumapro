@@ -66,19 +66,6 @@ enum tmu_type_t {
 	TMU_TYPE_END,
 };
 
-enum tmu_grp_idx_t {
-	TZ_BIG,
-	TZ_MID,
-	TZ_LIT,
-	TZ_GPU,
-	TZ_ISP,
-	TZ_TPU,
-#if IS_ENABLED(CONFIG_SOC_ZUMA)
-	TZ_AUR,
-#endif
-	TZ_END,
-};
-
 #if IS_ENABLED(CONFIG_SOC_GS101)
 #define TZ_BIG_SENSOR_MASK (TMU_P0_SENSOR_MASK | \
 			    TMU_P6_SENSOR_MASK | \
@@ -4071,6 +4058,15 @@ static int gs_tmu_parse_ect(struct gs_tmu_data *data)
 #if IS_ENABLED(CONFIG_MALI_DEBUG_KERNEL_SYSFS)
 struct gs_tmu_data *gpu_thermal_data;
 #endif
+
+int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on)
+{
+	if ((tzid < 0) || (tzid >= TZ_END))
+		return -EINVAL;
+	exynos_acpm_tmu_ipc_set_power_status(tzid, on);
+	return 0;
+}
+EXPORT_SYMBOL(set_acpm_tj_power_status);
 
 extern void register_tz_id_ignore_genl(int tz_id);
 
