@@ -475,6 +475,10 @@ static struct dsulat_node *register_common(struct device *dev)
 	if (!node)
 		return ERR_PTR(-ENOMEM);
 
+	node->ratio_ceil_cl0 = 700;
+	node->ratio_ceil_cl1 = 1000;
+	node->ratio_ceil_cl2 = 3000;
+
 	node->freq_map_cl0 = init_core_dev_map(dev, NULL,
 			"core-dev-table-cl0");
 	if (!node->freq_map_cl0) {
