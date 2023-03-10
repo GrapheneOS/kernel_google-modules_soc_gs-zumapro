@@ -304,7 +304,7 @@ static void dwc3_core_config(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 		    (DWC3_LLUCTL_PIPE_RESET) | (DWC3_LLUCTL_LTSSM_TIMER_OVRRD) |
 		    (DWC3_LLUCTL_TX_TS1_CNT(0x0));
 
-		if (exynos->config.force_gen1)
+		if (exynos->config.force_gen1 && exynos->force_speed != USB_SPEED_SUPER_PLUS)
 			reg |= DWC3_FORCE_GEN1;
 
 		dwc3_exynos_writel(dwc->regs, DWC3_LLUCTL, reg);
@@ -1013,9 +1013,8 @@ static DEVICE_ATTR_RW(usb_data_enabled);
 static ssize_t force_speed_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct dwc3_exynos *exynos = dev_get_drvdata(dev);
-	struct dwc3 *dwc = exynos->dwc;
 
-	return sysfs_emit(buf, "%s\n", usb_speed_string(dwc->maximum_speed));
+	return sysfs_emit(buf, "%s\n", usb_speed_string(exynos->force_speed));
 }
 
 static ssize_t force_speed_store(struct device *dev, struct device_attribute *attr, const char *buf,
@@ -1024,15 +1023,16 @@ static ssize_t force_speed_store(struct device *dev, struct device_attribute *at
 	struct dwc3_exynos *exynos = dev_get_drvdata(dev);
 	struct dwc3_otg *dotg = exynos->dotg;
 	struct otg_fsm *fsm = &dotg->fsm;
-	int force_speed = 0;
 	int vbus_state = 0;
 
 	if (sysfs_streq(buf, "super-speed-plus")) {
-		force_speed = USB_SPEED_SUPER_PLUS;
+		exynos->force_speed = USB_SPEED_SUPER_PLUS;
 	} else if (sysfs_streq(buf, "super-speed")) {
-		force_speed = USB_SPEED_SUPER;
+		exynos->force_speed = USB_SPEED_SUPER;
 	} else if (sysfs_streq(buf, "high-speed")) {
-		force_speed = USB_SPEED_HIGH;
+		exynos->force_speed = USB_SPEED_HIGH;
+	} else if (sysfs_streq(buf, "full-speed")) {
+		exynos->force_speed = USB_SPEED_FULL;
 	} else {
 		return -EINVAL;
 	}
@@ -1043,7 +1043,8 @@ static ssize_t force_speed_store(struct device *dev, struct device_attribute *at
 		dwc3_otg_run_sm(fsm);
 	}
 
-	exynos->dwc->maximum_speed = force_speed;
+	exynos->dwc->maximum_speed = exynos->force_speed;
+	exynos->dwc->gadget->max_speed = exynos->dwc->maximum_speed;
 
 	if (vbus_state) {
 		fsm->b_sess_vld = vbus_state;
