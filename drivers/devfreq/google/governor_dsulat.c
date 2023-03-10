@@ -227,6 +227,10 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 
 	for (cpu = 0; cpu < CONFIG_VH_SCHED_CPU_NR; cpu++)
 	{
+		/* ignore idle cpu for DSU frequency boosting */
+		if (get_cpu_idle_state(cpu) == DEEP_MEMLAT_CPUIDLE_STATE_AWARE)
+			continue;
+
 		ret = get_ev_data(cpu, &inst, &cyc,
 				  &stall, &l2_cachemiss, &l3_cachemiss, &mem_stall,
 				  &l2_cache_wb, &l3_cache_access, &mem_count, &freq);

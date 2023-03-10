@@ -169,10 +169,11 @@ static void vendor_update_event_cpu_idle_exit(void *data, int state, struct cpui
 	__this_cpu_write(cpu_idle_state, state);
 }
 
-static int get_cpu_idle_state(unsigned int cpu)
+int get_cpu_idle_state(unsigned int cpu)
 {
 	return per_cpu(is_idle, cpu) ? per_cpu(cpu_idle_state, cpu) : -1;
 }
+EXPORT_SYMBOL(get_cpu_idle_state);
 
 static void update_counts(struct memlat_cpu_grp *cpu_grp)
 {
