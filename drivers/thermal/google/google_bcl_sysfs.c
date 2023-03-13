@@ -557,10 +557,8 @@ static ssize_t mpmm_settings_store(struct device *dev, struct device_attribute *
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	int value;
-	int ret;
 
-	ret = sscanf(buf, "%#x", &value);
-	if (ret != 1)
+	if (kstrtouint(buf, 16, &value) < 0)
 		return -EINVAL;
 
         google_set_mpmm(bcl_dev, value, src);
