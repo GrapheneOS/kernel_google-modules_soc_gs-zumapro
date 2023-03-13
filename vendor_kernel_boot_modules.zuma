@@ -7,6 +7,7 @@
 acpm_flexpmu_dbg.ko
 aoc_core.ko
 aoc_tbn_service_dev.ko
+aoc_alsa_dev_util.ko
 aoc_usb_driver.ko
 arm-cmn.ko
 arm-memlat-mon.ko
