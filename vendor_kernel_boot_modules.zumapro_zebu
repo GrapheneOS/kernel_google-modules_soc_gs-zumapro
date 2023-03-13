@@ -114,9 +114,9 @@ panel-samsung-emul.ko
 #s2mpg15-powermeter.ko
 #s2mpg15-regulator.ko
 #s3c2410_wdt.ko
-#samsung-iommu-group.ko
+samsung-iommu-group.ko
 #samsung_dma_heap.ko
-#samsung_iommu_v9.ko
+samsung_iommu_v9.ko
 #shm_ipc.ko
 #slc_acpm.ko
 #slc_dummy.ko
