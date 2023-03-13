@@ -24,12 +24,14 @@ void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle)
 	    || bcl_dev->bcl_qos[id]->throttle == throttle)
 		return;
 	bcl_dev->bcl_qos[id]->throttle = throttle;
+	bcl_disable_power();
 	freq_qos_update_request(&bcl_dev->bcl_qos[id]->cpu0_max_qos_req,
 				throttle ? bcl_dev->bcl_qos[id]->cpu0_limit : INT_MAX);
 	freq_qos_update_request(&bcl_dev->bcl_qos[id]->cpu1_max_qos_req,
 				throttle ? bcl_dev->bcl_qos[id]->cpu1_limit : INT_MAX);
 	freq_qos_update_request(&bcl_dev->bcl_qos[id]->cpu2_max_qos_req,
 				throttle ? bcl_dev->bcl_qos[id]->cpu2_limit : INT_MAX);
+	bcl_enable_power();
 	exynos_pm_qos_update_request(&bcl_dev->bcl_qos[id]->tpu_qos_max,
 				     throttle ? bcl_dev->bcl_qos[id]->tpu_limit : INT_MAX);
 	trace_bcl_irq_trigger(id, throttle, throttle ? bcl_dev->bcl_qos[id]->cpu0_limit : INT_MAX,
@@ -86,11 +88,14 @@ int google_bcl_setup_qos(struct bcl_device *bcl_dev)
 		if (!bcl_dev->bcl_qos[i])
 			continue;
 
+		bcl_disable_power();
 		ret = init_freq_qos(bcl_dev, bcl_dev->bcl_qos[i]);
 		if (ret < 0) {
 			dev_err(bcl_dev->device, "Cannot init pm qos on %d for cpu0\n", i);
+			bcl_enable_power();
 			return ret;
 		}
+		bcl_enable_power();
 		exynos_pm_qos_add_request(&bcl_dev->bcl_qos[i]->tpu_qos_max, PM_QOS_TPU_FREQ_MAX,
 					  INT_MAX);
 	}
@@ -104,9 +109,11 @@ void google_bcl_remove_qos(struct bcl_device *bcl_dev)
 	for (i = 0; i < TRIGGERED_SOURCE_MAX; i++) {
 		if (!bcl_dev->bcl_qos[i])
 			continue;
+		bcl_disable_power();
 		freq_qos_remove_request(&bcl_dev->bcl_qos[i]->cpu0_max_qos_req);
 		freq_qos_remove_request(&bcl_dev->bcl_qos[i]->cpu1_max_qos_req);
 		freq_qos_remove_request(&bcl_dev->bcl_qos[i]->cpu2_max_qos_req);
+		bcl_enable_power();
 		exynos_pm_qos_remove_request(&bcl_dev->bcl_qos[i]->tpu_qos_max);
 		bcl_dev->bcl_qos[i] = NULL;
 	}
