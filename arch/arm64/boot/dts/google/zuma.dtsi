@@ -1499,6 +1499,7 @@
 		samsung,iommu-group = <&iommu_group_g2d>;
 		iommus = <&sysmmu_g2d>;
 		dma-coherent;
+		smfc,int_qos_minlock = <533000>;
 	};
 
 	acpm_tmu {
