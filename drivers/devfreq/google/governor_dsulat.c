@@ -21,6 +21,8 @@
 #include <linux/device.h>
 #include <linux/of.h>
 #include <linux/devfreq.h>
+#include <soc/google/exynos_pm_qos.h>
+#include <trace/events/power.h>
 #include "governor.h"
 #include "governor_memlat.h"
 #include "governor_dsulat.h"
@@ -135,7 +137,6 @@ static void stop_monitor(struct devfreq *df)
 	node->mon_started = false;
 }
 
-
 static int gov_start(struct devfreq *df)
 {
 	int ret = 0;
@@ -195,6 +196,37 @@ static void gov_stop(struct devfreq *df)
 	stop_monitor(df);
 	df->data = node->orig_data;
 	node->orig_data = NULL;
+}
+
+static unsigned long dsu_to_bci_freq(struct dsulat_node *node,
+				     unsigned long dsuf)
+{
+	struct core_dev_map *map;
+	unsigned long freq = 0;
+
+	map = node->freq_map_dsu_bci;
+	if (!map)
+		goto out;
+
+	dsuf = dsuf / 1000;
+	while (map->core_mhz && map->core_mhz < dsuf)
+		map++;
+	if (!map->core_mhz)
+		map--;
+	freq = map->target_freq;
+
+out:
+	pr_debug("dsuf: %lu -> bcif: %lu\n", dsuf, freq);
+	return freq;
+}
+
+static void update_bci_freq(struct dsulat_node *node, unsigned long dsu_freq)
+{
+	unsigned long bci_freq = 0;
+	bci_freq = dsu_to_bci_freq(node, dsu_freq);
+
+	exynos_pm_qos_update_request(&node->dsu_bci_qos_req, bci_freq);
+	trace_clock_set_rate("dsu2bci", bci_freq, raw_smp_processor_id());
 }
 
 extern int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
@@ -297,8 +329,11 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 
 	}
 
-	if (max_freq)
+	if (max_freq) {
 		*target_freq = max_freq;
+		/* Update BCI freq based on modified DSU freq */
+		update_bci_freq(node, max_freq);
+	}
 
 	return 0;
 }
@@ -459,7 +494,7 @@ static struct core_dev_map *init_core_dev_map(struct device *dev,
 		if (ret)
 			return NULL;
 		tbl[i].target_freq = data;
-		pr_debug("Entry%d CPU:%u, Dev:%u\n", i, tbl[i].core_mhz,
+		pr_debug("Entry%d Src_freq:%u, Target_freq:%u\n", i, tbl[i].core_mhz,
 			tbl[i].target_freq);
 	}
 	tbl[i].core_mhz = 0;
@@ -479,26 +514,32 @@ static struct dsulat_node *register_common(struct device *dev)
 	node->ratio_ceil_cl1 = 1000;
 	node->ratio_ceil_cl2 = 3000;
 
-	node->freq_map_cl0 = init_core_dev_map(dev, NULL,
-			"core-dev-table-cl0");
+	node->freq_map_cl0 = init_core_dev_map(dev, NULL, "core-dev-table-cl0");
 	if (!node->freq_map_cl0) {
 		dev_err(dev, "Couldn't find the core-dev freq table for cl0!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl1 = init_core_dev_map(dev, NULL,
-			"core-dev-table-cl1");
+	node->freq_map_cl1 = init_core_dev_map(dev, NULL, "core-dev-table-cl1");
 	if (!node->freq_map_cl1) {
 		dev_err(dev, "Couldn't find the core-dev freq table for cl1!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl2 = init_core_dev_map(dev, NULL,
-                                        "core-dev-table-cl2");
+	node->freq_map_cl2 = init_core_dev_map(dev, NULL, "core-dev-table-cl2");
 	if (!node->freq_map_cl2) {
 		dev_err(dev, "Couldn't find the core-dev freq table for cl2!\n");
 		return ERR_PTR(-EINVAL);
 	}
+
+	node->freq_map_dsu_bci = init_core_dev_map(dev, NULL, "dsu-bci-table");
+	if (!node->freq_map_dsu_bci) {
+		dev_err(dev, "Couldn't find the dsu-bci freq table!\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	/* Add dsu->bci pm_qos request */
+	exynos_pm_qos_add_request(&node->dsu_bci_qos_req, PM_QOS_BCI_THROUGHPUT, 0);
 
 	return node;
 }

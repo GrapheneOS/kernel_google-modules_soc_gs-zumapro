@@ -23,9 +23,11 @@ struct dsulat_node {
 	struct core_dev_map *freq_map_cl0;
 	struct core_dev_map *freq_map_cl1;
 	struct core_dev_map *freq_map_cl2;
+	struct core_dev_map *freq_map_dsu_bci;
 	struct devfreq_governor *gov;
 	struct attribute_group *attr_grp;
 	unsigned long resume_freq;
+	struct exynos_pm_qos_request		dsu_bci_qos_req;
 };
 
 #if IS_ENABLED(CONFIG_DEVFREQ_GOV_MEMLAT)
