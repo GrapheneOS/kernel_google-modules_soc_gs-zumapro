@@ -1237,6 +1237,7 @@
 			governor = <DSU_LATENCY>;
 			dfs_id = <ACPM_DVFS_DSU>;
 			/* 'core-dev-table-clx' field defined in A0/B0 dtsi files */
+			/* 'dsu-bci-table' field defined in A0/B0 dtsi files */
 		};
 	};
 
