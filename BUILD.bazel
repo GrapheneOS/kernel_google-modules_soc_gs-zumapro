@@ -28,29 +28,31 @@ filegroup(
     ],
 )
 
+# The list ordering matches EXT_MODULES in build.config.slider in order to
+# retain the very fragile module load ordering.
 _slider_modules = [
-    # keep sorted
-    "//private/google-modules/amplifiers/audiometrics:audiometrics.slider",
-    "//private/google-modules/amplifiers/cs35l41:cs35l41.slider",
-    "//private/google-modules/amplifiers/cs40l25:cs40l25.slider",
-    "//private/google-modules/amplifiers/drv2624:drv2624.slider",
-    "//private/google-modules/aoc:aoc.slider",
-    "//private/google-modules/aoc/alsa:alsa.slider",
-    "//private/google-modules/bluetooth/broadcom:broadcom.slider",
-    "//private/google-modules/bms:bms.slider",
+    # do not sort
+    "//private/google-modules/soc/gs:gs101_soc",
     "//private/google-modules/display:samsung.slider",
-    "//private/google-modules/edgetpu/abrolhos/drivers/edgetpu:edgetpu.slider",
+    "//private/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
     "//private/google-modules/gpu/mali_kbase:mali_kbase.slider",
     "//private/google-modules/gpu/mali_pixel:mali_pixel.slider",
     "//private/google-modules/lwis:lwis.slider",
-    "//private/google-modules/nfc:nfc.slider",
-    "//private/google-modules/power/reset:reset.slider",
-    "//private/google-modules/soc/gs:gs101_soc",
+    "//private/google-modules/edgetpu/abrolhos/drivers/edgetpu:edgetpu.slider",
+    "//private/google-modules/bms:bms.slider",
+    "//private/google-modules/amplifiers/drv2624:drv2624.slider",
+    "//private/google-modules/amplifiers/cs40l25:cs40l25.slider",
+    "//private/google-modules/amplifiers/cs35l41:cs35l41.slider",
+    "//private/google-modules/amplifiers/audiometrics:audiometrics.slider",
+    "//private/google-modules/aoc:aoc.slider",
+    "//private/google-modules/aoc/alsa:alsa.slider",
     "//private/google-modules/touch/common:common.slider",
     "//private/google-modules/touch/fts/ftm5:ftm5.slider",
     "//private/google-modules/touch/sec:sec.slider",
+    "//private/google-modules/power/reset:reset.slider",
+    "//private/google-modules/bluetooth/broadcom:broadcom.slider",
+    "//private/google-modules/nfc:nfc.slider",
     "//private/google-modules/uwb/kernel:kernel.slider",
-    "//private/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
 ]
 
 kernel_build(
