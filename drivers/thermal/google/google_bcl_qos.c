@@ -34,6 +34,8 @@ void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle)
 	bcl_enable_power();
 	exynos_pm_qos_update_request(&bcl_dev->bcl_qos[id]->tpu_qos_max,
 				     throttle ? bcl_dev->bcl_qos[id]->tpu_limit : INT_MAX);
+	exynos_pm_qos_update_request(&bcl_dev->bcl_qos[id]->gpu_qos_max,
+				     throttle ? bcl_dev->bcl_qos[id]->gpu_limit : INT_MAX);
 	trace_bcl_irq_trigger(id, throttle, throttle ? bcl_dev->bcl_qos[id]->cpu0_limit : INT_MAX,
 	                      throttle ? bcl_dev->bcl_qos[id]->cpu1_limit : INT_MAX,
 	                      throttle ? bcl_dev->bcl_qos[id]->cpu2_limit : INT_MAX,
@@ -98,6 +100,8 @@ int google_bcl_setup_qos(struct bcl_device *bcl_dev)
 		bcl_enable_power();
 		exynos_pm_qos_add_request(&bcl_dev->bcl_qos[i]->tpu_qos_max, PM_QOS_TPU_FREQ_MAX,
 					  INT_MAX);
+		exynos_pm_qos_add_request(&bcl_dev->bcl_qos[i]->gpu_qos_max, PM_QOS_GPU_FREQ_MAX,
+					  INT_MAX);
 	}
 	return 0;
 }
@@ -115,6 +119,7 @@ void google_bcl_remove_qos(struct bcl_device *bcl_dev)
 		freq_qos_remove_request(&bcl_dev->bcl_qos[i]->cpu2_max_qos_req);
 		bcl_enable_power();
 		exynos_pm_qos_remove_request(&bcl_dev->bcl_qos[i]->tpu_qos_max);
+		exynos_pm_qos_remove_request(&bcl_dev->bcl_qos[i]->gpu_qos_max);
 		bcl_dev->bcl_qos[i] = NULL;
 	}
 }
