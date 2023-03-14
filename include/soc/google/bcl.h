@@ -60,6 +60,8 @@
 #define CLUSTER0_BIG_MPMM (0x1410)
 #define CLUSTER0_MPMMEN (0x1414)
 #define CLUSTER0_PPM (0x140c)
+#define CLUSTER0_MID_DISPBLOCK (0x158c)
+#define CLUSTER0_BIG_DISPBLOCK (0x1588)
 #define MPMMEN_MASK (0xF << 21)
 #define PPMEN_MASK (0x3 << 8)
 #define PPMCTL_MASK (0xFF)
@@ -291,8 +293,10 @@ struct bcl_device {
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);
+extern int google_set_db(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index);
 extern int google_set_mpmm(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index);
 extern int google_set_ppm(struct bcl_device *data, unsigned int value);
+extern unsigned int google_get_db(struct bcl_device *data, enum MPMM_SOURCE index);
 extern unsigned int google_get_mpmm(struct bcl_device *data, enum MPMM_SOURCE index);
 extern unsigned int google_get_ppm(struct bcl_device *data);
 extern struct bcl_device *google_retrieve_bcl_handle(void);

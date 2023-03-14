@@ -551,6 +551,62 @@ static ssize_t soft_ocp_gpu_time_show(struct device *dev, struct device_attribut
 
 static DEVICE_ATTR_RO(soft_ocp_gpu_time);
 
+static ssize_t db_settings_store(struct device *dev, struct device_attribute *attr,
+				 const char *buf, size_t size, enum MPMM_SOURCE src)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	int value;
+
+	if (kstrtouint(buf, 16, &value) < 0)
+		return -EINVAL;
+
+	if (src != BIG && src != MID)
+		return -EINVAL;
+
+	google_set_db(bcl_dev, value, src);
+
+        return size;
+}
+
+static ssize_t db_settings_show(struct device *dev, struct device_attribute *attr,
+				char *buf, enum MPMM_SOURCE src)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	if ((!bcl_dev->sysreg_cpucl0) || (src == LITTLE) || (src == MPMMEN))
+		return -EIO;
+
+	return sysfs_emit(buf, "%#x\n", google_get_db(bcl_dev, src));
+}
+
+static ssize_t mid_db_settings_store(struct device *dev,
+				     struct device_attribute *attr, const char *buf, size_t size)
+{
+	return db_settings_store(dev, attr, buf, size, MID);
+}
+
+static ssize_t mid_db_settings_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return db_settings_show(dev, attr, buf, MID);
+}
+
+static DEVICE_ATTR_RW(mid_db_settings);
+
+static ssize_t big_db_settings_store(struct device *dev,
+				     struct device_attribute *attr, const char *buf, size_t size)
+{
+	return db_settings_store(dev, attr, buf, size, BIG);
+}
+
+static ssize_t big_db_settings_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return db_settings_show(dev, attr, buf, BIG);
+}
+
+static DEVICE_ATTR_RW(big_db_settings);
+
 static ssize_t mpmm_settings_store(struct device *dev, struct device_attribute *attr,
 				   const char *buf, size_t size, enum MPMM_SOURCE src)
 {
@@ -784,6 +840,8 @@ static struct attribute *instr_attrs[] = {
 	&dev_attr_mid_mpmm_settings.attr,
 	&dev_attr_big_mpmm_settings.attr,
 	&dev_attr_mpmm_enable.attr,
+	&dev_attr_mid_db_settings.attr,
+	&dev_attr_big_db_settings.attr,
 	&dev_attr_ppm_settings.attr,
 	&dev_attr_enable_mitigation.attr,
 	&dev_attr_main_offsrc1.attr,

@@ -822,6 +822,59 @@ int google_set_ppm(struct bcl_device *data, unsigned int value)
 }
 EXPORT_SYMBOL_GPL(google_set_ppm);
 
+unsigned int google_get_db(struct bcl_device *data, enum MPMM_SOURCE index)
+{
+	void __iomem *addr;
+	unsigned int reg;
+
+	if (!data)
+		return -ENOMEM;
+	if (!data->sysreg_cpucl0) {
+		dev_err(data->device, "Error in sysreg_cpucl0\n");
+		return -ENOMEM;
+	}
+
+	if (index == MID)
+		addr = data->sysreg_cpucl0 + CLUSTER0_MID_DISPBLOCK;
+	else if (index == BIG)
+		addr = data->sysreg_cpucl0 + CLUSTER0_BIG_DISPBLOCK;
+	else
+		return -EINVAL;
+
+	mutex_lock(&sysreg_lock);
+	reg = __raw_readl(addr);
+	mutex_unlock(&sysreg_lock);
+
+	return reg;
+}
+EXPORT_SYMBOL_GPL(google_get_db);
+
+int google_set_db(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index)
+{
+	void __iomem *addr;
+
+	if (!data)
+		return -ENOMEM;
+	if (!data->sysreg_cpucl0) {
+		dev_err(data->device, "Error in sysreg_cpucl0\n");
+		return -ENOMEM;
+	}
+
+	if (index == MID)
+		addr = data->sysreg_cpucl0 + CLUSTER0_MID_DISPBLOCK;
+	else if (index == BIG)
+		addr = data->sysreg_cpucl0 + CLUSTER0_BIG_DISPBLOCK;
+	else
+		return -EINVAL;
+
+	mutex_lock(&sysreg_lock);
+	__raw_writel(value, addr);
+	mutex_unlock(&sysreg_lock);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(google_set_db);
+
 int google_set_mpmm(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index)
 {
 	void __iomem *addr;
