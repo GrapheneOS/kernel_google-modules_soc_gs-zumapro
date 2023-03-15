@@ -567,11 +567,17 @@ unlock_out:
 static void devfreq_dsulat_boost_freq(struct exynos_devfreq_data *dsu_data)
 {
 	unsigned int max_freq, min_freq;
+	struct dsulat_node *node = dsu_data->governor_data;
+
 	/* get maximal frequency for DSU */
 	exynos_devfreq_get_boundary(DEVFREQ_DSU, &max_freq, &min_freq);
-
 	if (exynos_pm_qos_request_active(&dsu_data->sys_pm_qos_min))
 		exynos_pm_qos_update_request(&dsu_data->sys_pm_qos_min, max_freq);
+
+	/* get maximal frequency for BCI */
+	exynos_devfreq_get_boundary(DEVFREQ_BCI, &max_freq, &min_freq);
+	if (exynos_pm_qos_request_active(&node->dsu_bci_qos_req))
+		exynos_pm_qos_update_request(&node->dsu_bci_qos_req, max_freq);
 }
 
 static void stop_hwmon(struct memlat_hwmon *hw)
