@@ -216,24 +216,27 @@ irqreturn_t s2mpu_fault_handler(struct s2mpu_data *data, bool print_caches)
 	if (!print_caches)
 		return ret;
 
-	dev_err(dev, "================== MPTC ENTRIES ==================\n");
-	nr_sets = FIELD_GET(V9_READ_MPTC_INFO_NUM_MPTC_SET,
-			    readl_relaxed(data->base + REG_NS_V9_MPTC_INFO));
-	for (invalid = 0, set = 0; set < nr_sets; set++) {
-		for (way = 0; way < S2MPU_NR_WAYS; way++) {
-			mptc = read_mptc(data->base, set, way);
-			if (!mptc.valid) {
-				invalid++;
-				continue;
-			}
+	/* Instances with only stage-2, doesn't have MPTC, and STLB is used as MPTC b/269725512 */
+	if (data->has_sysmmu) {
+		dev_err(dev, "================== MPTC ENTRIES ==================\n");
+		nr_sets = FIELD_GET(V9_READ_MPTC_INFO_NUM_MPTC_SET,
+				    readl_relaxed(data->base + REG_NS_V9_MPTC_INFO));
+		for (invalid = 0, set = 0; set < nr_sets; set++) {
+			for (way = 0; way < S2MPU_NR_WAYS; way++) {
+				mptc = read_mptc(data->base, set, way);
+				if (!mptc.valid) {
+					invalid++;
+					continue;
+				}
 
-			dev_err(dev,
-				"  MPTC[set=%u, way=%u]={VID=%u, PPN=%#x, OTHERS=%#x, DATA=%#x}\n",
-				set, way, mptc.vid, mptc.ppn, mptc.others, mptc.data);
+				dev_err(dev,
+					"  MPTC[set=%u, way=%u]={VID=%u, PPN=%#x, OTHERS=%#x, DATA=%#x}\n",
+					set, way, mptc.vid, mptc.ppn, mptc.others, mptc.data);
+			}
 		}
+		dev_err(dev, "  invalid entries: %u\n", invalid);
+		dev_err(dev, "==================================================\n");
 	}
-	dev_err(dev, "  invalid entries: %u\n", invalid);
-	dev_err(dev, "==================================================\n");
 
 	dev_err(dev, "================ PRIVATE MMU =====================\n");
 	ptlb_num = FIELD_GET(V9_READ_PMMU_INFO_NUM_PTLB,
