@@ -33,7 +33,7 @@ cachefiles.ko
 #exynos-cpupm.ko
 #exynos-debug-test.ko
 #exynos-dm.ko
-#exynos-drm.ko
+exynos-drm.ko
 #exynos-ecc-handler.ko
 #exynos-pd-dbg.ko
 #exynos-pd.ko
@@ -81,8 +81,8 @@ netfs.ko
 #nitrous.ko
 #p9221.ko
 #page_pool.ko
-#panel-samsung-drv.ko
-#panel-samsung-emul.ko
+panel-samsung-drv.ko
+panel-samsung-emul.ko
 #panel-samsung-s6e3fc3-p10.ko
 #panel-samsung-s6e3fc3.ko
 #panel-samsung-s6e3hc2.ko
