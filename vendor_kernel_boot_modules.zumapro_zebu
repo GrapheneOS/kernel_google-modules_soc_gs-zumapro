@@ -132,6 +132,7 @@ netfs.ko
 #st54spi.ko
 #systrace.ko
 #tcpci_max77759.ko
+timeriomem-rng.ko
 #touch_bus_negotiator.ko
 #touch_offload.ko
 #trusty-core.ko
