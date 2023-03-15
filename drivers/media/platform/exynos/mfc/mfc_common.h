@@ -292,6 +292,7 @@
 #define ENC_SET_MV_SEARCH_MODE		(1 << 20)
 #define ENC_SET_GOP_CTRL		(1 << 21)
 #define ENC_SET_PRIORITY		(1 << 23)
+#define ENC_SET_CAPABILITY		(1 << 24)
 
 #define MFC_FEATURE_SUPPORT(dev, f)	((f).support && ((dev)->fw_date >= (f).version))
 

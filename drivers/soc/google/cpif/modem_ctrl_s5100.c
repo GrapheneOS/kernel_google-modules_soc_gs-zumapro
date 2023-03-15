@@ -1361,7 +1361,7 @@ static int s5100_poweroff_pcie(struct modem_ctl *mc, bool force_off)
 
 	mutex_lock(&mc->pcie_onoff_lock);
 	mutex_lock(&mc->pcie_check_lock);
-	mif_debug("+++\n");
+	mif_info("+++\n");
 
 	if (!mc->pcie_powered_on &&
 			(s51xx_check_pcie_link_status(mc->pcie_ch_num) == 0)) {
@@ -1417,7 +1417,7 @@ static int s5100_poweroff_pcie(struct modem_ctl *mc, bool force_off)
 		cpif_wake_unlock(mc->ws);
 
 exit:
-	mif_debug("---\n");
+	mif_info("---\n");
 	mutex_unlock(&mc->pcie_check_lock);
 	mutex_unlock(&mc->pcie_onoff_lock);
 
@@ -1512,7 +1512,7 @@ int s5100_poweron_pcie(struct modem_ctl *mc, bool boot_on)
 
 	if ((mc->s51xx_pdev != NULL) && mc->pcie_registered) {
 		/* DBG */
-		mif_info("DBG: doorbell: pcie_registered = %d\n", mc->pcie_registered);
+		mif_debug("DBG: doorbell: pcie_registered = %d\n", mc->pcie_registered);
 		if (s51xx_pcie_send_doorbell_int(mc->s51xx_pdev,
 						 mld->intval_ap2cp_pcie_link_ack) != 0) {
 			/* DBG */

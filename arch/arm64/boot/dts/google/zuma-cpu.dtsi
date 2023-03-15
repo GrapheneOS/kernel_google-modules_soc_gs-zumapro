@@ -270,10 +270,6 @@
 			tz-cooling-name = "LITTLE";
 			skip-boot-pmqos;
 			use-em-coeff;
-
-			dm-constraints {
-			  list = <&lit_dsu_perf &lit_bci_perf>;
-			};
 		};
 
 		cpufreq_domain1: domain@1 {
@@ -290,10 +286,6 @@
 			skip-boot-pmqos;
 			use-em-coeff;
 			need-awake;
-
-			dm-constraints {
-                          list = <&med_dsu_perf &med_bci_perf>;
-                        };
 		};
 
 		cpufreq_domain2: domain@2 {
@@ -310,55 +302,6 @@
 			skip-boot-pmqos;
 			use-em-coeff;
 			need-awake;
-
-			dm-constraints {
-                          list = <&big_dsu_perf &big_bci_perf>;
-                        };
-		};
-	};
-
-	dm-tables {
-		lit_dsu_perf: dm-table@0000 {
-			const-type = <CONSTRAINT_MIN>;
-			dm-constraint = <DM_DSU>;
-			driver-cal-id = <ACPM_DVFS_CPUCL0>;
-			constraint-cal-id = <ACPM_DVFS_DSU>;
-			// 'table' field defined in A0/B0 dtsi files
-		};
-		lit_bci_perf: dm-table@0001 {
-			const-type = <CONSTRAINT_MIN>;
-			dm-constraint = <DM_BCI>;
-			driver-cal-id = <ACPM_DVFS_CPUCL0>;
-			constraint-cal-id = <ACPM_DVFS_BCI>;
-			// 'table' field defined in A0/B0 dtsi files
-		};
-		med_dsu_perf: dm-table@0004 {
-			const-type = <CONSTRAINT_MIN>;
-			dm-constraint = <DM_DSU>;
-			driver-cal-id = <ACPM_DVFS_CPUCL1>;
-			constraint-cal-id = <ACPM_DVFS_DSU>;
-			// 'table' field defined in A0/B0 dtsi files
-		};
-		med_bci_perf: dm-table@0005 {
-			const-type = <CONSTRAINT_MIN>;
-			dm-constraint = <DM_BCI>;
-			driver-cal-id = <ACPM_DVFS_CPUCL1>;
-			constraint-cal-id = <ACPM_DVFS_BCI>;
-			// 'table' field defined in A0/B0 dtsi files
-		};
-		big_dsu_perf: dm-table@0008 {
-			const-type = <CONSTRAINT_MIN>;
-			dm-constraint = <DM_DSU>;
-			driver-cal-id = <ACPM_DVFS_CPUCL2>;
-			constraint-cal-id = <ACPM_DVFS_DSU>;
-			// 'table' field defined in A0/B0 dtsi files
-		};
-		big_bci_perf: dm-table@0009 {
-			const-type = <CONSTRAINT_MIN>;
-			dm-constraint = <DM_BCI>;
-			driver-cal-id = <ACPM_DVFS_CPUCL2>;
-			constraint-cal-id = <ACPM_DVFS_BCI>;
-			// 'table' field defined in A0/B0 dtsi files
 		};
 	};
 

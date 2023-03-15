@@ -551,6 +551,20 @@ void exynos_acpm_tmu_ipc_get_table(int tz, u8 index, int *val)
 	*val = (int)message.data[2];
 }
 
+void exynos_acpm_tmu_ipc_set_power_status(int tz, bool val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_POWER_STATUS;
+	message.req.tzid = tz;
+	message.req.rsvd = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+
 int exynos_acpm_tmu_init(void)
 {
 	struct device_node *np;

@@ -55,7 +55,13 @@
 #define G3D_CLKDIVSTEP_STAT (0x854)
 #define TPU_CLKDIVSTEP_STAT (0x850)
 #define CLUSTER0_MPMM (0x1408)
+#define CLUSTER0_LIT_MPMM (0x1408)
+#define CLUSTER0_MID_MPMM (0x140C)
+#define CLUSTER0_BIG_MPMM (0x1410)
+#define CLUSTER0_MPMMEN (0x1414)
 #define CLUSTER0_PPM (0x140c)
+#define CLUSTER0_MID_DISPBLOCK (0x158c)
+#define CLUSTER0_BIG_DISPBLOCK (0x1588)
 #define MPMMEN_MASK (0xF << 21)
 #define PPMEN_MASK (0x3 << 8)
 #define PPMCTL_MASK (0xFF)
@@ -144,6 +150,13 @@ enum RATIO_SOURCE {
 	CPU2_LIGHT,
 	TPU_LIGHT,
 	GPU_LIGHT
+};
+
+enum MPMM_SOURCE {
+	LITTLE,
+	MID,
+	BIG,
+	MPMMEN
 };
 
 typedef int (*pmic_set_uvlo_lvl_fn)(struct i2c_client *client, uint8_t mode, unsigned int lvl);
@@ -280,9 +293,11 @@ struct bcl_device {
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);
-extern int google_set_mpmm(struct bcl_device *data, unsigned int value);
+extern int google_set_db(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index);
+extern int google_set_mpmm(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index);
 extern int google_set_ppm(struct bcl_device *data, unsigned int value);
-extern unsigned int google_get_mpmm(struct bcl_device *data);
+extern unsigned int google_get_db(struct bcl_device *data, enum MPMM_SOURCE index);
+extern unsigned int google_get_mpmm(struct bcl_device *data, enum MPMM_SOURCE index);
 extern unsigned int google_get_ppm(struct bcl_device *data);
 extern struct bcl_device *google_retrieve_bcl_handle(void);
 extern int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,

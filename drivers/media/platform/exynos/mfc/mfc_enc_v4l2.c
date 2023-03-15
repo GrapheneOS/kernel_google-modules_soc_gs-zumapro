@@ -116,12 +116,14 @@ static int __mfc_enc_check_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ct
 	}
 
 	if (ctrl->value < c->minimum || ctrl->value > c->maximum
-	    || (c->step != 0 && ctrl->value % c->step != 0)) {
-		mfc_ctx_err("[CTRLS] Invalid control value for %#x (%#x)\n",
-				ctrl->id, ctrl->value);
+		|| (c->step != 0 && ctrl->value % c->step != 0)) {
+		mfc_ctx_err("[CTRLS][%s] id: %#x, invalid value (%d)\n",
+				c->name, ctrl->id, ctrl->value);
 		return -ERANGE;
 	}
 
+	mfc_debug(5, "[CTRLS][%s] id: %#x, value: %d (%#x)\n",
+			c->name, ctrl->id, ctrl->value, ctrl->value);
 	return 0;
 }
 
@@ -1064,6 +1066,9 @@ static int __mfc_enc_ext_info(struct mfc_ctx *ctx)
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->mv_search_mode))
 		val |= ENC_SET_MV_SEARCH_MODE;
 
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->enc_capability))
+		val |= ENC_SET_CAPABILITY;
+
 	mfc_debug(5, "[CTRLS] ext info val: %#x\n", val);
 
 	return val;
@@ -1097,6 +1102,9 @@ static int __mfc_enc_get_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_AVERAGE_QP:
+	case V4L2_CID_MPEG_VIDEO_SUM_SKIP_MB:
+	case V4L2_CID_MPEG_VIDEO_SUM_INTRA_MB:
+	case V4L2_CID_MPEG_VIDEO_SUM_ZERO_MV_MB:
 		list_for_each_entry(ctx_ctrl, &ctx->ctrls, list) {
 			if (!(ctx_ctrl->type & MFC_CTRL_TYPE_GET))
 				continue;
@@ -2038,6 +2046,24 @@ static int __mfc_enc_set_param(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 	case V4L2_CID_MPEG_VIDEO_MIN_QUALITY:
 		p->min_quality_mode = ctrl->value;
 		break;
+	case V4L2_CID_MPEG_VIDEO_WP_TWO_PASS_ENABLE:
+		p->wp_two_pass_enable = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_VIDEO_ADAPTIVE_GOP_ENABLE:
+		p->adaptive_gop_enable = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_VIDEO_MV_HOR_RANGE:
+		p->mv_hor_range = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_VIDEO_MV_VER_RANGE:
+		p->mv_ver_range = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_ENABLE:
+		p->codec.h264.sub_gop_enable = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_ENABLE:
+		p->codec.hevc.sub_gop_enable = ctrl->value;
+		break;
 	/* These are stored in specific variables */
 	case V4L2_CID_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_LAYER_CH:
 	case V4L2_CID_MPEG_VIDEO_VP9_HIERARCHICAL_CODING_LAYER_CH:
@@ -2049,6 +2075,8 @@ static int __mfc_enc_set_param(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 	case V4L2_CID_MPEG_MFC_H264_USE_LTR:
 	case V4L2_CID_MPEG_MFC_H264_MARK_LTR:
 	case V4L2_CID_MPEG_MFC51_VIDEO_FRAME_TAG:
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_TYPE:
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE:
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 		break;
@@ -2067,9 +2095,6 @@ static int __mfc_enc_set_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	struct mfc_ctx_ctrl *ctx_ctrl;
 	int ret = 0;
 	int found = 0;
-
-	mfc_debug(5, "[CTRLS] id: %#x, value: %d (%#x)\n",
-			ctrl->id, ctrl->value, ctrl->value);
 
 	/* update parameter value */
 	ret = __mfc_enc_set_param(ctx, ctrl);
@@ -2133,6 +2158,8 @@ static int __mfc_enc_set_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	case V4L2_CID_MPEG_VIDEO_MV_HOR_POSITION_L1:
 	case V4L2_CID_MPEG_VIDEO_MV_VER_POSITION_L0:
 	case V4L2_CID_MPEG_VIDEO_MV_VER_POSITION_L1:
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_TYPE:
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE:
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 		list_for_each_entry(ctx_ctrl, &ctx->ctrls, list) {
@@ -2258,6 +2285,8 @@ static int mfc_enc_s_ext_ctrls(struct file *file, void *priv,
 	int i;
 	int ret = 0;
 
+	mfc_debug_enter();
+
 	if (f->which != V4L2_CTRL_CLASS_CODEC)
 		return -EINVAL;
 
@@ -2278,10 +2307,9 @@ static int mfc_enc_s_ext_ctrls(struct file *file, void *priv,
 			f->error_idx = i;
 			break;
 		}
-
-		mfc_debug(5, "[CTRLS][%d] id: %#x, value: %d\n",
-				i, ext_ctrl->id, ext_ctrl->value);
 	}
+
+	mfc_debug_leave();
 
 	return ret;
 }
@@ -2294,6 +2322,8 @@ static int mfc_enc_try_ext_ctrls(struct file *file, void *priv,
 	struct v4l2_control ctrl;
 	int i;
 	int ret = 0;
+
+	mfc_debug_enter();
 
 	if (f->which != V4L2_CTRL_CLASS_CODEC)
 		return -EINVAL;
@@ -2309,9 +2339,9 @@ static int mfc_enc_try_ext_ctrls(struct file *file, void *priv,
 			f->error_idx = i;
 			break;
 		}
-
-		mfc_debug(2, "[%d] id: 0x%08x, value: %d\n", i, ext_ctrl->id, ext_ctrl->value);
 	}
+
+	mfc_debug_leave();
 
 	return ret;
 }

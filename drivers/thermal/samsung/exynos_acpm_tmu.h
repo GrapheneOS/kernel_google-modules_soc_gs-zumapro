@@ -50,6 +50,7 @@
 #define TMU_IPC_GET_PI_PARAM                    0x25
 #define TMU_IPC_SET_TABLE                       0x26
 #define TMU_IPC_GET_TABLE                       0x27
+#define TMU_IPC_SET_POWER_STATUS                0x28
 
 /* TMU register offset shift for IPC messages */
 #define TMU_REG_OFFSET_SHIFT_8	(8)
@@ -170,6 +171,7 @@ void exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val);
 void exynos_acpm_tmu_ipc_get_pi_param(int tz, u8 param, u32 *val);
 void exynos_acpm_tmu_ipc_set_table(int tz, u8 index, int val);
 void exynos_acpm_tmu_ipc_get_table(int tz, u8 index, int *val);
+void exynos_acpm_tmu_ipc_set_power_status(int tz, bool val);
 
 struct acpm_irq_callback {
 	void *fn;

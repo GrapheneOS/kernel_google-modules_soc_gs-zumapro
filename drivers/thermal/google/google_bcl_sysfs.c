@@ -551,24 +551,79 @@ static ssize_t soft_ocp_gpu_time_show(struct device *dev, struct device_attribut
 
 static DEVICE_ATTR_RO(soft_ocp_gpu_time);
 
-static ssize_t mpmm_settings_store(struct device *dev,
-				   struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t db_settings_store(struct device *dev, struct device_attribute *attr,
+				 const char *buf, size_t size, enum MPMM_SOURCE src)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	int value;
-	int ret;
 
-	ret = sscanf(buf, "0x%x", &value);
-	if (ret != 1)
+	if (kstrtouint(buf, 16, &value) < 0)
 		return -EINVAL;
 
-        google_set_mpmm(bcl_dev, value);
+	if (src != BIG && src != MID)
+		return -EINVAL;
 
-	return size;
+	google_set_db(bcl_dev, value, src);
+
+        return size;
 }
 
-static ssize_t mpmm_settings_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t db_settings_show(struct device *dev, struct device_attribute *attr,
+				char *buf, enum MPMM_SOURCE src)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	if ((!bcl_dev->sysreg_cpucl0) || (src == LITTLE) || (src == MPMMEN))
+		return -EIO;
+
+	return sysfs_emit(buf, "%#x\n", google_get_db(bcl_dev, src));
+}
+
+static ssize_t mid_db_settings_store(struct device *dev,
+				     struct device_attribute *attr, const char *buf, size_t size)
+{
+	return db_settings_store(dev, attr, buf, size, MID);
+}
+
+static ssize_t mid_db_settings_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return db_settings_show(dev, attr, buf, MID);
+}
+
+static DEVICE_ATTR_RW(mid_db_settings);
+
+static ssize_t big_db_settings_store(struct device *dev,
+				     struct device_attribute *attr, const char *buf, size_t size)
+{
+	return db_settings_store(dev, attr, buf, size, BIG);
+}
+
+static ssize_t big_db_settings_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return db_settings_show(dev, attr, buf, BIG);
+}
+
+static DEVICE_ATTR_RW(big_db_settings);
+
+static ssize_t mpmm_settings_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t size, enum MPMM_SOURCE src)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	int value;
+
+	if (kstrtouint(buf, 16, &value) < 0)
+		return -EINVAL;
+
+        google_set_mpmm(bcl_dev, value, src);
+
+        return size;
+}
+
+static ssize_t mpmm_settings_show(struct device *dev, struct device_attribute *attr,
+				  char *buf, enum MPMM_SOURCE src)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
@@ -576,10 +631,60 @@ static ssize_t mpmm_settings_show(struct device *dev, struct device_attribute *a
 	if (!bcl_dev->sysreg_cpucl0)
 		return -EIO;
 
-	return sysfs_emit(buf, "0x%x\n", google_get_mpmm(bcl_dev));
+	return sysfs_emit(buf, "%#x\n", google_get_mpmm(bcl_dev, src));
 }
 
-static DEVICE_ATTR_RW(mpmm_settings);
+static ssize_t lit_mpmm_settings_store(struct device *dev,
+				       struct device_attribute *attr, const char *buf, size_t size)
+{
+	return mpmm_settings_store(dev, attr, buf, size, LITTLE);
+}
+
+static ssize_t lit_mpmm_settings_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return mpmm_settings_show(dev, attr, buf, LITTLE);
+}
+
+static DEVICE_ATTR_RW(lit_mpmm_settings);
+
+static ssize_t mid_mpmm_settings_store(struct device *dev,
+				       struct device_attribute *attr, const char *buf, size_t size)
+{
+	return mpmm_settings_store(dev, attr, buf, size, MID);
+}
+
+static ssize_t mid_mpmm_settings_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return mpmm_settings_show(dev, attr, buf, MID);
+}
+
+static DEVICE_ATTR_RW(mid_mpmm_settings);
+
+static ssize_t big_mpmm_settings_store(struct device *dev,
+				       struct device_attribute *attr, const char *buf, size_t size)
+{
+	return mpmm_settings_store(dev, attr, buf, size, BIG);
+}
+
+static ssize_t big_mpmm_settings_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return mpmm_settings_show(dev, attr, buf, BIG);
+}
+
+static DEVICE_ATTR_RW(big_mpmm_settings);
+
+static ssize_t mpmm_enable_store(struct device *dev,
+				 struct device_attribute *attr, const char *buf, size_t size)
+{
+	return mpmm_settings_store(dev, attr, buf, size, MPMMEN);
+}
+
+static ssize_t mpmm_enable_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return mpmm_settings_show(dev, attr, buf, MPMMEN);
+}
+
+static DEVICE_ATTR_RW(mpmm_enable);
 
 static ssize_t ppm_settings_store(struct device *dev,
 				  struct device_attribute *attr, const char *buf, size_t size)
@@ -731,7 +836,12 @@ static ssize_t ready_show(struct device *dev, struct device_attribute *attr, cha
 static DEVICE_ATTR_RO(ready);
 
 static struct attribute *instr_attrs[] = {
-	&dev_attr_mpmm_settings.attr,
+	&dev_attr_lit_mpmm_settings.attr,
+	&dev_attr_mid_mpmm_settings.attr,
+	&dev_attr_big_mpmm_settings.attr,
+	&dev_attr_mpmm_enable.attr,
+	&dev_attr_mid_db_settings.attr,
+	&dev_attr_big_db_settings.attr,
 	&dev_attr_ppm_settings.attr,
 	&dev_attr_enable_mitigation.attr,
 	&dev_attr_main_offsrc1.attr,

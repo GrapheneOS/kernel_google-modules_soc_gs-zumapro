@@ -133,6 +133,16 @@ int mfc_core_nal_q_check_enable(struct mfc_core *core)
 					mfc_core_debug(2, "There is CBR_VT option(rc mode)\n");
 					return 0;
 				}
+				if (p->wp_two_pass_enable) {
+					core->nal_q_stop_cause |= (1 << NALQ_STOP_TWO_PASS_ENC);
+					mfc_core_debug(2, "There is two pass encoding\n");
+					return 0;
+				}
+				if (p->adaptive_gop_enable) {
+					core->nal_q_stop_cause |= (1 << NALQ_STOP_ADAPTIVE_GOP);
+					mfc_core_debug(2, "There is adaptive gop\n");
+					return 0;
+				}
 			}
 			mfc_core_debug(2, "There is a ctx in running state. index: %d\n", i);
 		}

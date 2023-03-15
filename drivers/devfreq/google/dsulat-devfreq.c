@@ -244,7 +244,7 @@ static int gs_dsulat_devfreq_probe(struct platform_device *pdev)
 		goto err_devfreq;
 	}
 
-	set_dsu_devfreq(dsu_data->devfreq);
+	set_dsu_data(dsu_data);
 	exynos_pm_qos_add_request(&dsu_data->sys_pm_qos_min,
 				  (int)dsu_data->pm_qos_class,
 				  dsu_data->min_freq);

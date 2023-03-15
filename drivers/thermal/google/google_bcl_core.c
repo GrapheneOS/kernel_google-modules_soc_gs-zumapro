@@ -774,7 +774,7 @@ unsigned int google_get_ppm(struct bcl_device *data)
 }
 EXPORT_SYMBOL_GPL(google_get_ppm);
 
-unsigned int google_get_mpmm(struct bcl_device *data)
+unsigned int google_get_mpmm(struct bcl_device *data, enum MPMM_SOURCE index)
 {
 	void __iomem *addr;
 	unsigned int reg;
@@ -786,8 +786,15 @@ unsigned int google_get_mpmm(struct bcl_device *data)
 		return -ENOMEM;
 	}
 
+	if (index == LITTLE)
+		addr = data->sysreg_cpucl0 + CLUSTER0_LIT_MPMM;
+	else if (index == MID)
+		addr = data->sysreg_cpucl0 + CLUSTER0_MID_MPMM;
+	else if (index == BIG)
+		addr = data->sysreg_cpucl0 + CLUSTER0_BIG_MPMM;
+	else
+		addr = data->sysreg_cpucl0 + CLUSTER0_MPMMEN;
 	mutex_lock(&sysreg_lock);
-	addr = data->sysreg_cpucl0 + CLUSTER0_MPMM;
 	reg = __raw_readl(addr);
 	mutex_unlock(&sysreg_lock);
 
@@ -815,7 +822,60 @@ int google_set_ppm(struct bcl_device *data, unsigned int value)
 }
 EXPORT_SYMBOL_GPL(google_set_ppm);
 
-int google_set_mpmm(struct bcl_device *data, unsigned int value)
+unsigned int google_get_db(struct bcl_device *data, enum MPMM_SOURCE index)
+{
+	void __iomem *addr;
+	unsigned int reg;
+
+	if (!data)
+		return -ENOMEM;
+	if (!data->sysreg_cpucl0) {
+		dev_err(data->device, "Error in sysreg_cpucl0\n");
+		return -ENOMEM;
+	}
+
+	if (index == MID)
+		addr = data->sysreg_cpucl0 + CLUSTER0_MID_DISPBLOCK;
+	else if (index == BIG)
+		addr = data->sysreg_cpucl0 + CLUSTER0_BIG_DISPBLOCK;
+	else
+		return -EINVAL;
+
+	mutex_lock(&sysreg_lock);
+	reg = __raw_readl(addr);
+	mutex_unlock(&sysreg_lock);
+
+	return reg;
+}
+EXPORT_SYMBOL_GPL(google_get_db);
+
+int google_set_db(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index)
+{
+	void __iomem *addr;
+
+	if (!data)
+		return -ENOMEM;
+	if (!data->sysreg_cpucl0) {
+		dev_err(data->device, "Error in sysreg_cpucl0\n");
+		return -ENOMEM;
+	}
+
+	if (index == MID)
+		addr = data->sysreg_cpucl0 + CLUSTER0_MID_DISPBLOCK;
+	else if (index == BIG)
+		addr = data->sysreg_cpucl0 + CLUSTER0_BIG_DISPBLOCK;
+	else
+		return -EINVAL;
+
+	mutex_lock(&sysreg_lock);
+	__raw_writel(value, addr);
+	mutex_unlock(&sysreg_lock);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(google_set_db);
+
+int google_set_mpmm(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index)
 {
 	void __iomem *addr;
 
@@ -826,8 +886,15 @@ int google_set_mpmm(struct bcl_device *data, unsigned int value)
 		return -ENOMEM;
 	}
 
+	if (index == LITTLE)
+		addr = data->sysreg_cpucl0 + CLUSTER0_LIT_MPMM;
+	else if (index == MID)
+		addr = data->sysreg_cpucl0 + CLUSTER0_MID_MPMM;
+	else if (index == BIG)
+		addr = data->sysreg_cpucl0 + CLUSTER0_BIG_MPMM;
+	else
+		addr = data->sysreg_cpucl0 + CLUSTER0_MPMMEN;
 	mutex_lock(&sysreg_lock);
-	addr = data->sysreg_cpucl0 + CLUSTER0_MPMM;
 	__raw_writel(value, addr);
 	mutex_unlock(&sysreg_lock);
 
@@ -1127,7 +1194,7 @@ static void google_set_throttling(struct bcl_device *bcl_dev)
 {
 	struct device_node *np = bcl_dev->device->of_node;
 	int ret;
-	u32 val, ppm_settings, mpmm_settings;
+	u32 val, ppm_settings, lit_mpmm_settings, mid_mpmm_settings, big_mpmm_settings, mpmm_en;
 	void __iomem *addr;
 
 	if (!bcl_dev->sysreg_cpucl0) {
@@ -1137,14 +1204,29 @@ static void google_set_throttling(struct bcl_device *bcl_dev)
 	ret = of_property_read_u32(np, "ppm_settings", &val);
 	ppm_settings = ret ? 0 : val;
 
-	ret = of_property_read_u32(np, "mpmm_settings", &val);
-	mpmm_settings = ret ? 0 : val;
+	ret = of_property_read_u32(np, "lit_mpmm_settings", &val);
+	lit_mpmm_settings = ret ? 0 : val;
+
+	ret = of_property_read_u32(np, "mid_mpmm_settings", &val);
+	mid_mpmm_settings = ret ? 0 : val;
+
+	ret = of_property_read_u32(np, "big_mpmm_settings", &val);
+	big_mpmm_settings = ret ? 0 : val;
+
+	ret = of_property_read_u32(np, "mpmm_en", &val);
+	mpmm_en = ret ? 0 : val;
 
 	mutex_lock(&sysreg_lock);
 	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_PPM;
 	__raw_writel(ppm_settings, addr);
-	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_MPMM;
-	__raw_writel(mpmm_settings, addr);
+	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_LIT_MPMM;
+	__raw_writel(lit_mpmm_settings, addr);
+	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_MID_MPMM;
+	__raw_writel(mid_mpmm_settings, addr);
+	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_BIG_MPMM;
+	__raw_writel(big_mpmm_settings, addr);
+	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_MPMMEN;
+	__raw_writel(mpmm_en, addr);
 	mutex_unlock(&sysreg_lock);
 
 }

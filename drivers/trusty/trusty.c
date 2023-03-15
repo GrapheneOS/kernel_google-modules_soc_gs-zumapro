@@ -20,6 +20,8 @@
 #include <linux/dma-mapping.h>
 
 #include "trusty-smc.h"
+#include "trusty-trace.h"
+#include "trusty-sched-share-api.h"
 
 struct trusty_state;
 static struct platform_driver trusty_driver;
@@ -45,6 +47,7 @@ struct trusty_state {
 	struct list_head nop_queue;
 	spinlock_t nop_lock; /* protects nop_queue */
 	struct device_dma_parameters dma_parms;
+	struct trusty_sched_share_state *trusty_sched_share_state;
 	void *ffa_tx;
 	void *ffa_rx;
 	u16 ffa_local_id;
@@ -55,7 +58,12 @@ struct trusty_state {
 static inline unsigned long smc(unsigned long r0, unsigned long r1,
 				unsigned long r2, unsigned long r3)
 {
-	return trusty_smc8(r0, r1, r2, r3, 0, 0, 0, 0).r0;
+	unsigned long ret;
+
+	trace_trusty_smc(r0, r1, r2, r3);
+	ret = trusty_smc8(r0, r1, r2, r3, 0, 0, 0, 0).r0;
+	trace_trusty_smc_done(ret);
+	return ret;
 }
 
 s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
@@ -203,6 +211,8 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 		return SM_ERR_PANIC;
 	}
 
+	trace_trusty_std_call32(smcnr, a0, a1, a2);
+
 	if (smcnr != SMC_SC_NOP) {
 		mutex_lock(&s->smc_lock);
 		reinit_completion(&s->cpu_idle_completion);
@@ -227,6 +237,8 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	else
 		mutex_unlock(&s->smc_lock);
 
+	trace_trusty_std_call32_done(ret);
+
 	return ret;
 }
 EXPORT_SYMBOL(trusty_std_call32);
@@ -250,7 +262,7 @@ int trusty_transfer_memory(struct device *dev, u64 *id,
 	struct scatterlist *sg;
 	size_t count;
 	size_t i;
-	size_t len;
+	size_t len = 0;
 	u64 ffa_handle = 0;
 	size_t total_len;
 	size_t endpoint_count = 1;
@@ -298,6 +310,8 @@ int trusty_transfer_memory(struct device *dev, u64 *id,
 	len = 0;
 	for_each_sg(sglist, sg, nents, i)
 		len += sg_dma_len(sg);
+
+	trace_trusty_share_memory(len, nents, lend);
 
 	mutex_lock(&s->share_memory_msg_lock);
 
@@ -399,13 +413,15 @@ int trusty_transfer_memory(struct device *dev, u64 *id,
 	if (!ret) {
 		*id = ffa_handle;
 		dev_dbg(s->dev, "%s: done\n", __func__);
-		return 0;
+		goto done;
 	}
 
 	dev_err(s->dev, "%s: failed %d", __func__, ret);
 
 err_encode_page_info:
 	dma_unmap_sg(dev, sglist, nents, DMA_BIDIRECTIONAL);
+done:
+	trace_trusty_share_memory_done(len, nents, lend, ffa_handle, ret);
 	return ret;
 }
 EXPORT_SYMBOL(trusty_transfer_memory);
@@ -457,6 +473,7 @@ int trusty_reclaim_memory(struct device *dev, u64 id,
 		return 0;
 	}
 
+	trace_trusty_reclaim_memory(id);
 	mutex_lock(&s->share_memory_msg_lock);
 
 	smc_ret = trusty_smc8(SMC_FC_FFA_MEM_RECLAIM, (u32)id, id >> 32, 0, 0,
@@ -474,12 +491,15 @@ int trusty_reclaim_memory(struct device *dev, u64 id,
 	mutex_unlock(&s->share_memory_msg_lock);
 
 	if (ret != 0)
-		return ret;
+		goto err_ffa_mem_reclaim;
 
 	dma_unmap_sg(dev, sglist, nents, DMA_BIDIRECTIONAL);
 
 	dev_dbg(s->dev, "%s: done\n", __func__);
-	return 0;
+
+err_ffa_mem_reclaim:
+	trace_trusty_reclaim_memory_done(id, ret);
+	return ret;
 }
 EXPORT_SYMBOL(trusty_reclaim_memory);
 
@@ -813,6 +833,7 @@ void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop)
 	struct trusty_work *tw;
 	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 
+	trace_trusty_enqueue_nop(nop);
 	preempt_disable();
 	tw = this_cpu_ptr(s->nop_works);
 	if (nop) {
@@ -916,6 +937,8 @@ static int trusty_probe(struct platform_device *pdev)
 		INIT_WORK(&tw->work, work_func);
 	}
 
+	s->trusty_sched_share_state = trusty_register_sched_share(&pdev->dev);
+
 	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to add children: %d\n", ret);
@@ -951,6 +974,8 @@ static int trusty_remove(struct platform_device *pdev)
 {
 	unsigned int cpu;
 	struct trusty_state *s = platform_get_drvdata(pdev);
+
+	trusty_unregister_sched_share(s->trusty_sched_share_state);
 
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
 
@@ -1000,6 +1025,9 @@ static void __exit trusty_driver_exit(void)
 
 subsys_initcall(trusty_driver_init);
 module_exit(trusty_driver_exit);
+
+#define CREATE_TRACE_POINTS
+#include "trusty-trace.h"
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Trusty core driver");

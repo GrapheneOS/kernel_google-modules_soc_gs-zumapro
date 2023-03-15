@@ -791,6 +791,10 @@ static void __mfc_handle_frame_error(struct mfc_core *core, struct mfc_ctx *ctx,
 	if (ctx->type == MFCINST_ENCODER) {
 		mfc_err("Encoder Interrupt Error (err: %d, warn: %d)\n",
 				mfc_get_err(err), mfc_get_warn(err));
+
+		if (mfc_get_err(err) == MFC_REG_ERR_UNDEFINED_EXCEPTION)
+			mfc_core_handle_error(core);
+
 		return;
 	}
 
@@ -1539,6 +1543,8 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				mfc_core_get_profile(),
 				mfc_core_get_luma_bit_depth_minus8() + 8,
 				mfc_core_get_chroma_bit_depth_minus8() + 8);
+		} else {
+			ctx->is_10bit = 0;
 		}
 	}
 
@@ -1970,6 +1976,7 @@ static int __mfc_irq_ctx(struct mfc_core *core, struct mfc_ctx *ctx,
 		break;
 	default:
 		mfc_err("Unknown int reason: %d\n", reason);
+		mfc_core_handle_error(core);
 	}
 
 	return 1;
