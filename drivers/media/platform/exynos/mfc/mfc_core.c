@@ -856,18 +856,20 @@ static int mfc_core_remove(struct platform_device *pdev)
 static void mfc_core_shutdown(struct platform_device *pdev)
 {
 	struct mfc_core *core = platform_get_drvdata(pdev);
+	struct mfc_dev *dev = core->dev;
 	int ret;
 
-	mfc_core_info("MFC core shutdown is called\n");
-
+	mfc_core_info("%s core shutdown is called\n", core->name);
 	if (core->shutdown) {
-		mfc_core_info("MFC core shutdown is already set\n");
+		mfc_core_info("%s core shutdown was already performed\n", core->name);
 		return;
 	}
 
+	mutex_lock(&dev->mfc_mutex);
 	if (!mfc_core_pm_get_pwr_ref_cnt(core)) {
 		core->shutdown = 1;
 		mfc_core_info("MFC is not running\n");
+		mutex_unlock(&dev->mfc_mutex);
 		return;
 	}
 
@@ -875,14 +877,14 @@ static void mfc_core_shutdown(struct platform_device *pdev)
 	if (ret < 0)
 		mfc_core_err("Failed to get hwlock\n");
 
-	if (!core->shutdown) {
-		mfc_core_risc_off(core);
-		mfc_clear_all_bits(&core->work_bits);
-	}
-
+	mfc_core_risc_off(core);
+	mfc_clear_all_bits(&core->work_bits);
 	mfc_core_release_hwlock_dev(core);
+
 	core->shutdown = 1;
-	mfc_core_info("core shutdown completed\n");
+	mutex_unlock(&dev->mfc_mutex);
+
+	mfc_core_info("%s core shutdown completed\n", core->name);
 }
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)

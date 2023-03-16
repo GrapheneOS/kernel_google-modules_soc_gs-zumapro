@@ -1209,9 +1209,10 @@ static int mfc_remove(struct platform_device *pdev)
 
 static void mfc_shutdown(struct platform_device *pdev)
 {
+	struct platform_driver *pcoredrv = &mfc_core_driver;
 	struct mfc_dev *dev = platform_get_drvdata(pdev);
 	struct mfc_core *core;
-	int i, ret;
+	int i;
 
 	for (i = 0; i < dev->num_core; i++) {
 		core = dev->core[i];
@@ -1221,19 +1222,8 @@ static void mfc_shutdown(struct platform_device *pdev)
 		}
 
 		if (!core->shutdown) {
-			ret = mfc_core_get_hwlock_dev(core);
-			if (ret < 0)
-				mfc_core_err("Failed to get hwlock\n");
-			if (!mfc_core_pm_get_pwr_ref_cnt(core)) {
-				core->shutdown = 1;
-				mfc_core_info("MFC is not running\n");
-			} else {
-				mfc_core_risc_off(core);
-				core->shutdown = 1;
-				mfc_clear_all_bits(&core->work_bits);
-				mfc_core_err("core forcibly shutdown\n");
-			}
-			mfc_core_release_hwlock_dev(core);
+			mfc_core_info("%s core shutdown was not performed\n", core->name);
+			pcoredrv->shutdown(to_platform_device(core->device));
 		}
 	}
 
