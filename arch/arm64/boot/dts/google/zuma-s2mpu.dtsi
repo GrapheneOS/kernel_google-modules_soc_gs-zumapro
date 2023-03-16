@@ -192,6 +192,5 @@
 		compatible = "google,s2mpu";
 		reg = <0x0 0x16470000 0x10000>;
 		interrupts = <GIC_SPI IRQ_SYSMMU_S0_GSA_S2_NS_GSA IRQ_TYPE_LEVEL_HIGH>;
-		always-on;
 	};
 };
