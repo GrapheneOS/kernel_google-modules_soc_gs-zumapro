@@ -47,6 +47,7 @@
 		i_max = <5>;
 		integral_cutoff = <10>;
 		sustainable_power = <2000>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
@@ -73,6 +74,7 @@
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <1000>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
@@ -99,6 +101,7 @@
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
@@ -125,6 +128,7 @@
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
@@ -162,6 +166,7 @@
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
