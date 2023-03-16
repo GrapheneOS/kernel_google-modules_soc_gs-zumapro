@@ -27,4 +27,13 @@
 #endif
 /* clang-format on */
 
+/*
+ * The following macro definition are used on test_device for userspace fake injection.
+ */
+#define TEST_EVENT_INJ 0
+#define TEST_EVENT_BASE (HW_EVENT_MASK + 0)
+
+#define LWIS_PLATFORM_EVENT_ID_TEST_EVENT_INJ \
+	EVENT_ID(TEST_EVENT_BASE, TEST_EVENT_INJ)
+
 #endif /* DT_BINDINGS_LWIS_PLATFORM_COMMON_H_ */
