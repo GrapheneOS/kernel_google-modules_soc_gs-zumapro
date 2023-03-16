@@ -354,7 +354,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	struct s2mpu_data *data;
-	bool off_at_boot, has_pd;
+	bool off_at_boot;
 	int ret, nr_devs;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -377,7 +377,6 @@ static int s2mpu_probe(struct platform_device *pdev)
 
 	data->always_on = !!of_get_property(np, "always-on", NULL);
 	off_at_boot = !!of_get_property(np, "off-at-boot", NULL);
-	has_pd = !!of_get_property(np, "power-domains", NULL);
 
 	/*
 	 * Try to parse IRQ information. This is optional as it only affects
@@ -418,8 +417,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	if (!off_at_boot)
 		WARN_ON(pkvm_s2mpu_suspend(dev));
 
-	if (has_pd || data->always_on)
-		pm_runtime_enable(dev);
+	pm_runtime_enable(dev);
 	if (data->always_on)
 		pm_runtime_get_sync(dev);
 
