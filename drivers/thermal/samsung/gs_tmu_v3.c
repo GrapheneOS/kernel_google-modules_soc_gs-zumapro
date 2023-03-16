@@ -1934,6 +1934,13 @@ static int gs_map_dt_data(struct platform_device *pdev)
 		data->use_pi_thermal = false;
 	}
 
+	ret = of_property_read_u32(pdev->dev.of_node, "control_temp_step",
+		&data->control_temp_step);
+	if (ret < 0) {
+		data->control_temp_step = 0;
+		dev_err(&pdev->dev, "No input control_temp_step\n");
+	}
+
 	data->acpm_gov_params.qword = 0;
 	if (of_property_read_bool(pdev->dev.of_node, "use-acpm-gov")) {
 		u32 temp;
@@ -2012,6 +2019,34 @@ cpu_hw_throttling_trigger_temp_store(struct device *dev, struct device_attribute
 
 	data->cpu_hw_throttling_trigger_threshold = cpu_hw_throttling_trigger;
 
+	mutex_unlock(&data->lock);
+
+	return count;
+}
+
+static ssize_t control_temp_step_show(struct device *dev, struct device_attribute *devattr,
+					       char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	return sysfs_emit(buf, "%d\n", data->control_temp_step);
+}
+
+static ssize_t control_temp_step_store(struct device *dev,
+				struct device_attribute *devattr, const char *buf,
+				size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	u32 control_temp_step = 0;
+
+	if (kstrtou32(buf, 10, &control_temp_step))
+		return -EINVAL;
+
+	mutex_lock(&data->lock);
+	data->control_temp_step = control_temp_step;
+	exynos_acpm_tmu_ipc_set_control_temp_step(data->id, data->control_temp_step);
 	mutex_unlock(&data->lock);
 
 	return count;
@@ -2319,14 +2354,17 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 	list_for_each_entry (gsdata, &dtm_dev_list, node) {
 		disable_irq_nosync(gsdata->irq);
 		if (gsdata->acpm_gov_params.fields.enable) {
+			int tzid = gsdata->id;
+			u32 control_temp_step = gsdata->control_temp_step;
+
 			gsdata->acpm_gov_params.fields.ctrl_temp_idx =
 				gsdata->trip_control_temp;
 			gsdata->acpm_gov_params.fields.switch_on_temp_idx =
 				gsdata->trip_switch_on;
 
-			//sending an IPC to setup GOV param
-			exynos_acpm_tmu_ipc_set_gov_config(gsdata->id,
-							   gsdata->acpm_gov_params.qword);
+			//sending an IPC to setup GOV param and control temperature step
+			exynos_acpm_tmu_ipc_set_gov_config(tzid, gsdata->acpm_gov_params.qword);
+			exynos_acpm_tmu_ipc_set_control_temp_step(tzid, control_temp_step);
 		}
 		thermal_zone_device_disable(gsdata->tzd);
 	}
@@ -3222,6 +3260,7 @@ static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
 static DEVICE_ATTR_RO(tj_cur_cdev_state);
+static DEVICE_ATTR_RW(control_temp_step);
 
 static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_pause_cpus_temp.attr,
@@ -3256,6 +3295,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
 	&dev_attr_tj_cur_cdev_state.attr,
+	&dev_attr_control_temp_step.attr,
 	NULL,
 };
 
@@ -4244,13 +4284,17 @@ static int gs_tmu_probe(struct platform_device *pdev)
 
 	if (acpm_gov_common.turn_on) {
 		if (data->acpm_gov_params.fields.enable) {
+			int tzid = data->id;
+			u32 control_temp_step = data->control_temp_step;
+
 			data->acpm_gov_params.fields.ctrl_temp_idx =
 				data->trip_control_temp;
 			data->acpm_gov_params.fields.switch_on_temp_idx =
 				data->trip_switch_on;
 
-			//sending an IPC to setup GOV param
-			exynos_acpm_tmu_ipc_set_gov_config(data->id, data->acpm_gov_params.qword);
+			//sending an IPC to setup GOV param and control temperature step
+			exynos_acpm_tmu_ipc_set_gov_config(tzid, data->acpm_gov_params.qword);
+			exynos_acpm_tmu_ipc_set_control_temp_step(tzid, control_temp_step);
 		}
 	} else {
 		thermal_zone_device_enable(data->tzd);
