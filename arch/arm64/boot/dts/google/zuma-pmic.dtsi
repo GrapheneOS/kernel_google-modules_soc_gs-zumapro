@@ -570,7 +570,7 @@
 					channel_enabled;
 				};
 				ch10: channel@9 {
-					rail-name = "VSEN_C1";
+					rail-name = "BUCK9M";
 					channel_enabled;
 				};
 				ch11: channel@10 {
