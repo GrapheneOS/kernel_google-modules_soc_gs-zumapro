@@ -54,3 +54,8 @@ config VH_SCHED_LIB
 	bool "Library with additional scheduler options"
 	depends on VH_SCHED
 	default n
+
+config USE_UPDATE_SINGLE
+	bool "Use sugov_update_single function for single-cpu cluster"
+	depends on VH_SCHED
+	default n
