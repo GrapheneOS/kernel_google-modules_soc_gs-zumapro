@@ -501,13 +501,6 @@ VENDOR_UTIL_GROUP_UCLAMP_ATTRIBUTE(vug_bg, uclamp_max, VUG_BG, UCLAMP_MAX);
 /// ******************************************************************************** ///
 /// ********************* From upstream code for uclamp **************************** ///
 /// ******************************************************************************** ///
-static inline unsigned int uclamp_none(enum uclamp_id clamp_id)
-{
-	if (clamp_id == UCLAMP_MIN)
-		return 0;
-	return SCHED_CAPACITY_SCALE;
-}
-
 static inline unsigned int
 uclamp_idle_value(struct rq *rq, enum uclamp_id clamp_id,
 		  unsigned int clamp_value)
