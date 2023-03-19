@@ -1552,10 +1552,10 @@
 			2600 2800 3200 3900 4300 3600 /* yuv2p rotated */
 			3600 2600 1400 900 1000 1000 /* sbwc non-rotated */
 			2600 2600 1400 900 1000 1000 /* sbwc rotated */
-			1600 3400 300 500 800 700 /* rgb afbc non-rotated */
-			1400 3600 300 800 900 900 /* rgb afbc rotated */
-			2900 2000 800 300 300 400 /* yuv afbc non-rotated */
-			2600 2000 800 300 300 400 /* yuv afbc rotated */
+			3000 3100 2800 2600 3000 3700 /* rgb afbc non-rotated */
+			3800 2100 3200 3200 3500 3400 /* rgb afbc rotated */
+			3300 3000 3300 3100 3200 3400 /* yuv afbc non-rotated */
+			2000 2200 3000 3400 3600 3600 /* yuv afbc rotated */
 			2800>; /* colorfill */
 
 		g2d_dvfs_table = <533000 711000
