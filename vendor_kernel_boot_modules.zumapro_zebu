@@ -80,7 +80,7 @@ net_failover.ko
 netfs.ko
 #nitrous.ko
 #p9221.ko
-#page_pool.ko
+page_pool.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
 #panel-samsung-s6e3fc3-p10.ko
@@ -115,7 +115,7 @@ panel-samsung-emul.ko
 #s2mpg15-regulator.ko
 #s3c2410_wdt.ko
 samsung-iommu-group.ko
-#samsung_dma_heap.ko
+samsung_dma_heap.ko
 samsung_iommu_v9.ko
 #shm_ipc.ko
 #slc_acpm.ko
