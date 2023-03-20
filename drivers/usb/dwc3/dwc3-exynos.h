@@ -115,6 +115,8 @@ struct dwc3_exynos {
 
 	struct delayed_work	usb_qos_lock_delayed_work;
 
+	int			force_speed;
+
 	/* Flag for setting current_dr_role peripheral */
 	int			need_dr_role;
 };

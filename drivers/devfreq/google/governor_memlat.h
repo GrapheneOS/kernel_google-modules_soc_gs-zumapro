@@ -12,6 +12,7 @@
 enum common_ev_idx {
 	STALL_IDX,
 	L2D_CACHE_REFILL_IDX,
+	STALL_BACKEND_MEM_IDX,
 	NUM_COMMON_EVS
 };
 

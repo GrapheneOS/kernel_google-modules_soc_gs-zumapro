@@ -40,18 +40,19 @@
 		pmu-status-base = <0x15462504>; /* PMU TPU_STATUS */
 		gsa-device=<&gsa>;
 		/* TODO(b/259344339): Check if below values are still vaild. */
-		gcip-dvfs-table-size = <6 2>; /*<row col>*/
+		gcip-dvfs-table-size = <7 2>; /*<row col>*/
 		gcip-dvfs-table = <
 		/* when updating gcip-dvfs-table, update gcip-dvfs-table-size as well
-		 *    freq    power(mW)
+		 *        freq  power(mW)
 		 *----------------------------------
 		 */
-			1024000   4819
-			 967000   4101
-			 836000   3085
-			 627000   1916
-			 455000   1213
-			 226000      0
+			1119000 128
+			 967000 131
+			 845000  95
+			 712000  91
+			 627000  73
+			 455000  73
+			 226000  59
 		>;
 	};
 

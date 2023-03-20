@@ -1437,6 +1437,7 @@
 	cpu8_memlat_cpugrp: cpu8-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu8>;
+		stall-backend-ev= <0x4005>;
 
 		cpu8_cpu_mif_latmon: cpu8-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
@@ -1503,6 +1504,7 @@
 		samsung,iommu-group = <&iommu_group_g2d>;
 		iommus = <&sysmmu_g2d>;
 		dma-coherent;
+		smfc,int_qos_minlock = <533000>;
 	};
 
 	acpm_tmu {

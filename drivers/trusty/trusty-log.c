@@ -8,6 +8,7 @@
 #include <linux/notifier.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/mm.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
@@ -89,20 +90,12 @@ static int log_to_dmesg_param = NEVER;
 
 static int trusty_log_mode_set(const char *val, const struct kernel_param *kp)
 {
-	const char *item;
-	int index;
+	int i = sysfs_match_string(log_to_dmesg_opt_names, val);
+	if (i < 0)
+		return i;
 
-	for (index = 0; index < ARRAY_SIZE(log_to_dmesg_opt_names); index++) {
-		item = log_to_dmesg_opt_names[index];
-		if (!item)
-			break;
-		if (sysfs_streq(item, val)) {
-			log_to_dmesg_param = index;
-			return 0;
-		}
-	}
-
-	return -EINVAL;
+	log_to_dmesg_param = i;
+	return 0;
 }
 
 static int trusty_log_mode_get(char *buffer, const struct kernel_param *kp)

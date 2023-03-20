@@ -2499,8 +2499,6 @@ void exynos_pcie_rc_resumed_phydown(struct pcie_port *pp)
 	exynos_pcie_rc_enable_interrupts(pp, 0);
 	exynos_pcie_phy_isolation(exynos_pcie, PCIE_PHY_BYPASS);
 
-	exynos_pcie_rc_assert_phy_reset(pp);
-
 	if (exynos_pcie->phy_ops.phy_all_pwrdn)
 		exynos_pcie->phy_ops.phy_all_pwrdn(exynos_pcie, exynos_pcie->ch_num);
 
@@ -3308,8 +3306,8 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		}
 
 		spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
-		exynos_pcie_rc_send_pme_turn_off(exynos_pcie);
 		exynos_pcie->state = STATE_LINK_DOWN;
+		exynos_pcie_rc_send_pme_turn_off(exynos_pcie);
 		power_stats_update_down(exynos_pcie);
 
 		/* Disable SysMMU */

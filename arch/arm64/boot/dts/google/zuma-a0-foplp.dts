@@ -147,7 +147,6 @@
 		ect_nouse;
 		#thermal-sensor-cells = <0>;
 
-		use-pi-thermal;
 		polling_delay_on = <50>;
 		polling_delay_off = <0>;
 		k_po = <60>;

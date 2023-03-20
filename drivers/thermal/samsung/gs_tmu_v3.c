@@ -846,10 +846,9 @@ static void start_pi_polling(struct gs_tmu_data *data, int delay)
 				 msecs_to_jiffies(delay));
 }
 
-static void reset_pi_trips(struct gs_tmu_data *data)
+static void get_control_trips(struct gs_tmu_data *data)
 {
 	struct thermal_zone_device *tz = data->tzd;
-	struct gs_pi_param *params = data->pi_param;
 	int i, last_active, last_passive;
 	bool found_first_passive;
 
@@ -871,7 +870,7 @@ static void reset_pi_trips(struct gs_tmu_data *data)
 
 		if (type == THERMAL_TRIP_PASSIVE) {
 			if (!found_first_passive) {
-				params->trip_switch_on = i;
+				data->trip_switch_on = i;
 				found_first_passive = true;
 				break;
 			}
@@ -885,13 +884,13 @@ static void reset_pi_trips(struct gs_tmu_data *data)
 	}
 
 	if (last_passive != INVALID_TRIP) {
-		params->trip_control_temp = last_passive;
+		data->trip_control_temp = last_passive;
 	} else if (found_first_passive) {
-		params->trip_control_temp = params->trip_switch_on;
-		params->trip_switch_on = last_active;
+		data->trip_control_temp = data->trip_switch_on;
+		data->trip_switch_on = last_active;
 	} else {
-		params->trip_switch_on = INVALID_TRIP;
-		params->trip_control_temp = last_active;
+		data->trip_switch_on = INVALID_TRIP;
+		data->trip_control_temp = last_active;
 	}
 }
 
@@ -906,7 +905,7 @@ static void allow_maximum_power(struct gs_tmu_data *data)
 {
 	struct thermal_instance *instance;
 	struct thermal_zone_device *tz = data->tzd;
-	int control_temp = data->pi_param->trip_control_temp;
+	int control_temp = data->trip_control_temp;
 
 	mutex_unlock(&data->lock);
 	mutex_lock(&tz->lock);
@@ -989,7 +988,6 @@ static u32 pi_calculate(struct gs_tmu_data *data, int control_temp,
 static int gs_pi_controller(struct gs_tmu_data *data, int control_temp)
 {
 	struct thermal_zone_device *tz = data->tzd;
-	struct gs_pi_param *params = data->pi_param;
 	struct thermal_instance *instance;
 	struct thermal_cooling_device *cdev;
 	int ret = 0;
@@ -1001,7 +999,7 @@ static int gs_pi_controller(struct gs_tmu_data *data, int control_temp)
 	mutex_unlock(&data->lock);
 	mutex_lock(&tz->lock);
 	list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
-		if (instance->trip == params->trip_control_temp &&
+		if (instance->trip == data->trip_control_temp &&
 		    cdev_is_power_actor(instance->cdev)) {
 			found_actor = true;
 			cdev = instance->cdev;
@@ -1067,7 +1065,7 @@ static void gs_pi_thermal(struct gs_tmu_data *data)
 
 	mutex_lock(&data->lock);
 
-	ret = tz->ops->get_trip_temp(tz, params->trip_switch_on,
+	ret = tz->ops->get_trip_temp(tz, data->trip_switch_on,
 				     &switch_on_temp);
 	if (!ret && tz->temperature < switch_on_temp) {
 		reset_pi_params(data);
@@ -1078,7 +1076,7 @@ static void gs_pi_thermal(struct gs_tmu_data *data)
 
 	params->switched_on = true;
 
-	ret = tz->ops->get_trip_temp(tz, params->trip_control_temp,
+	ret = tz->ops->get_trip_temp(tz, data->trip_control_temp,
 				     &control_temp);
 	if (ret) {
 		pr_warn("Failed to get the maximum desired temperature: %d\n",
@@ -2098,6 +2096,23 @@ static ssize_t acpm_gov_timer_stepwise_gain_store(struct device *dev,
 	return count;
 }
 
+static ssize_t tj_cur_cdev_state_show(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	struct curr_state curr_state;
+	u8 tj_cur_cdev_state_val;
+
+	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
+	    get_curr_state_from_acpm(acpm_gov_common.sm_base, data->id, &curr_state))
+		tj_cur_cdev_state_val = curr_state.cdev_state;
+	else
+		return -EIO;
+
+	return sysfs_emit(buf, "%u\n", tj_cur_cdev_state_val);
+}
+
 static int param_acpm_gov_kernel_ts_get(char *buf, const struct kernel_param *kp)
 {
 	return sysfs_emit(buf, "%llu\n", acpm_gov_common.kernel_ts);
@@ -2305,9 +2320,9 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 		disable_irq_nosync(gsdata->irq);
 		if (gsdata->acpm_gov_params.fields.enable) {
 			gsdata->acpm_gov_params.fields.ctrl_temp_idx =
-				gsdata->pi_param->trip_control_temp;
+				gsdata->trip_control_temp;
 			gsdata->acpm_gov_params.fields.switch_on_temp_idx =
-				gsdata->pi_param->trip_switch_on;
+				gsdata->trip_switch_on;
 
 			//sending an IPC to setup GOV param
 			exynos_acpm_tmu_ipc_set_gov_config(gsdata->id,
@@ -2334,13 +2349,12 @@ static int param_update_acpm_pi_table_set(const char *val, const struct kernel_p
 	list_for_each_entry (data, &dtm_dev_list, node) {
 		if (data->use_pi_thermal) {
 			struct thermal_zone_device *tz = data->tzd;
-			struct gs_pi_param *params = data->pi_param;
 			struct thermal_instance *instance;
 			struct thermal_cooling_device *cdev;
 			bool found_actor = false;
 
 			list_for_each_entry (instance, &tz->thermal_instances, tz_node) {
-				if (instance->trip == params->trip_control_temp &&
+				if (instance->trip == data->trip_control_temp &&
 				    cdev_is_power_actor(instance->cdev)) {
 					found_actor = true;
 					cdev = instance->cdev;
@@ -2751,7 +2765,7 @@ acpm_pi_table_show(struct device *dev, struct device_attribute *devattr,
 	params = data->pi_param;
 
 	list_for_each_entry (instance, &tz->thermal_instances, tz_node) {
-		if (instance->trip == params->trip_control_temp &&
+		if (instance->trip == data->trip_control_temp &&
 		    cdev_is_power_actor(instance->cdev)) {
 			found_actor = true;
 			cdev = instance->cdev;
@@ -2798,7 +2812,7 @@ acpm_pi_table_store(struct device *dev, struct device_attribute *devattr,
 	params = data->pi_param;
 
 	list_for_each_entry (instance, &tz->thermal_instances, tz_node) {
-		if (instance->trip == params->trip_control_temp &&
+		if (instance->trip == data->trip_control_temp &&
 		    cdev_is_power_actor(instance->cdev)) {
 			found_actor = true;
 			cdev = instance->cdev;
@@ -3207,6 +3221,7 @@ static DEVICE_ATTR_RW(acpm_pi_enable);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
+static DEVICE_ATTR_RO(tj_cur_cdev_state);
 
 static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_pause_cpus_temp.attr,
@@ -3240,6 +3255,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
+	&dev_attr_tj_cur_cdev_state.attr,
 	NULL,
 };
 
@@ -4218,8 +4234,9 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (data->hardlimit_enable)
 		hard_limit_stats_setup(data);
 
+	get_control_trips(data);
+
 	if (data->use_pi_thermal) {
-		reset_pi_trips(data);
 		reset_pi_params(data);
 		if (!acpm_gov_common.turn_on)
 			start_pi_polling(data, 0);
@@ -4228,9 +4245,9 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (acpm_gov_common.turn_on) {
 		if (data->acpm_gov_params.fields.enable) {
 			data->acpm_gov_params.fields.ctrl_temp_idx =
-				data->pi_param->trip_control_temp;
+				data->trip_control_temp;
 			data->acpm_gov_params.fields.switch_on_temp_idx =
-				data->pi_param->trip_switch_on;
+				data->trip_switch_on;
 
 			//sending an IPC to setup GOV param
 			exynos_acpm_tmu_ipc_set_gov_config(data->id, data->acpm_gov_params.qword);

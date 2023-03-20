@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Makefile for GCMA
+
+obj-$(CONFIG_GCMA) += gcma.o
+
+gcma-y                    := gcma_core.o

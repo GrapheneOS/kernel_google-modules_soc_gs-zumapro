@@ -375,12 +375,18 @@ static int __init samsung_dma_heap_init(void)
 	if (ret)
 		goto err_carveout;
 
+	ret = gcma_dma_heap_init();
+	if (ret)
+		goto err_gcma;
+
 	ret = system_dma_heap_init();
 	if (ret)
 		goto err_system;
 
 	return 0;
 err_system:
+	gcma_dma_heap_exit();
+err_gcma:
 	carveout_dma_heap_exit();
 err_carveout:
 	cma_dma_heap_exit();

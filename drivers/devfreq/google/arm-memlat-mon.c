@@ -199,7 +199,13 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 				cpu_data->amu_evs[CYCLE_IDX].last_delta;
 
 		cpu_data->freq = cpu_data->amu_evs[CYCLE_IDX].last_delta / delta;
-		cpu_data->stall_pct = mult_frac(10000,
+
+		if (cpu_grp->common_ev_ids[STALL_BACKEND_MEM_IDX] != UINT_MAX)
+			cpu_data->stall_pct = mult_frac(10000,
+				common_evs[STALL_BACKEND_MEM_IDX].last_delta,
+				cpu_data->amu_evs[CYCLE_IDX].last_delta);
+		else
+			cpu_data->stall_pct = mult_frac(10000,
 				cpu_data->amu_evs[MEM_STALL_IDX].last_delta,
 				cpu_data->amu_evs[CYCLE_IDX].last_delta);
 	}
@@ -288,7 +294,7 @@ static int set_event(struct event_data *ev, int cpu, unsigned int event_id,
 {
 	struct perf_event *pevent;
 
-	if (!event_id)
+	if (!event_id || event_id == UINT_MAX)
 		return 0;
 
 	attr->config = event_id;
@@ -726,6 +732,13 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 		event_id = STALL_EV;
 	}
 	cpu_grp->common_ev_ids[STALL_IDX] = event_id;
+
+	ret = of_property_read_u32(dev->of_node, "stall-backend-ev", &event_id);
+	if (ret) {
+		dev_dbg(dev, "Stall backend event not specified. Skipping.\n");
+		event_id = UINT_MAX;
+	}
+	cpu_grp->common_ev_ids[STALL_BACKEND_MEM_IDX] = event_id;
 
 	ret = of_property_read_u32(dev->of_node, "l2-cachemiss-ev", &event_id);
 	if (ret) {
