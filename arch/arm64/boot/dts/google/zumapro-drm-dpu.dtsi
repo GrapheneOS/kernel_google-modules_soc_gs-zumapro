@@ -513,9 +513,9 @@
 				IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "frame_start", "frame_done", "extra",
 				"dimming_start", "dimming_end", "cgc-dma";
-//		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
-//		samsung,iommu-group = <&iommu_group_dpu>;
-//		samsung,tzmp;
+		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
+		samsung,iommu-group = <&iommu_group_dpu>;
+		samsung,tzmp;
 
 		max_win = <14>;
 
@@ -589,9 +589,9 @@
 			     <GIC_SPI IRQ_DPUB_DECON1_EXTRA_DPUB IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI IRQ_DPUF1_DMA_CGCTRL0_DPUF1 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "frame_start", "frame_done", "extra", "cgc-dma";
-//		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
-//		samsung,iommu-group = <&iommu_group_dpu>;
-//		samsung,tzmp;
+		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
+		samsung,iommu-group = <&iommu_group_dpu>;
+		samsung,tzmp;
 
 		max_win = <14>;
 
@@ -660,9 +660,9 @@
 			     <GIC_SPI IRQ_DPUB_DECON2_EXTRA_DPUB
 				IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "frame_start", "frame_done", "extra";
-//		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
-//		samsung,iommu-group = <&iommu_group_dpu>;
-//		samsung,tzmp;
+		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
+		samsung,iommu-group = <&iommu_group_dpu>;
+		samsung,tzmp;
 
 		max_win = <14>;
 
