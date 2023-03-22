@@ -48,17 +48,17 @@ unsigned long dma_heap_inuse_pages(void)
 }
 EXPORT_SYMBOL_GPL(dma_heap_inuse_pages);
 
-unsigned long dma_heap_pool_pages(void)
+unsigned long dma_heap_pool_bytes(void)
 {
 	int i;
-	unsigned long pages = 0;
+	unsigned long bytes = 0;
 
 	for (i = 0; i < NUM_ORDERS; i++)
-		pages += (pools[i]->count[POOL_LOWPAGE] +
-			  pools[i]->count[POOL_HIGHPAGE]) << pools[i]->order;
-	return pages;
+		bytes += dmabuf_page_pool_get_size(pools[i]);
+
+	return bytes;
 }
-EXPORT_SYMBOL_GPL(dma_heap_pool_pages);
+EXPORT_SYMBOL_GPL(dma_heap_pool_bytes);
 
 static struct page *alloc_largest_available(unsigned long size,
 					    unsigned int max_order)
@@ -75,7 +75,7 @@ static struct page *alloc_largest_available(unsigned long size,
 		page = dmabuf_page_pool_alloc(pools[i]);
 		if (!page)
 			continue;
-		dma_heap_inc_inuse(1 << pools[i]->order);
+		dma_heap_inc_inuse(1 << orders[i]);
 		return page;
 	}
 	return NULL;
