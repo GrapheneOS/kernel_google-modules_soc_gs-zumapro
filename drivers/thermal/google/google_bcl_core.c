@@ -103,11 +103,11 @@ static int triggered_read_level(void *data, int *val, int id)
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 		bcl_dev->bcl_prev_lvl[id] = *val;
-		if (bcl_dev->bcl_qos[id])
-			google_bcl_qos_update(bcl_dev, id, false);
 		if (id >= UVLO1 && id <= BATOILO)
 			update_irq_end_times(bcl_dev, id);
 	}
+	if (bcl_dev->bcl_qos[id])
+		google_bcl_qos_update(bcl_dev, id, false);
 	return 0;
 }
 
@@ -310,6 +310,8 @@ static void update_tz(struct bcl_device *bcl_dev, int idx, bool triggered)
 		bcl_dev->bcl_tz[idx]->temperature = 0;
 		thermal_zone_device_update(bcl_dev->bcl_tz[idx], THERMAL_EVENT_UNSPECIFIED);
 	}
+	mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[idx],
+			 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 }
 
 static irqreturn_t irq_handler(int irq, void *data)
@@ -379,6 +381,8 @@ static void google_warn_work(struct work_struct *work, int idx)
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
 						  bcl_irq_work[idx].work);
 
+	if (bcl_dev->bcl_qos[idx])
+		google_bcl_qos_update(bcl_dev, idx, false);
 	if (bcl_dev->bcl_tz[idx])
 		thermal_zone_device_update(bcl_dev->bcl_tz[idx], THERMAL_EVENT_UNSPECIFIED);
 }
