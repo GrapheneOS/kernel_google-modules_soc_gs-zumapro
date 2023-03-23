@@ -1247,12 +1247,21 @@
 	cpu0_memlat_cpugrp: cpu0-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu0>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0xA2>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu0_cpu_mif_latmon: cpu0-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu0>;
 			target-dev = <&mif_cpu0_mem_lat>;
-			cachemiss-ev = <0xA2>;
 			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
@@ -1270,12 +1279,21 @@
 	cpu1_memlat_cpugrp: cpu1-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu1>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0xA2>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu1_cpu_mif_latmon: cpu1-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu1>;
 			target-dev = <&mif_cpu1_mem_lat>;
-			cachemiss-ev = <0xA2>;
 			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
@@ -1293,12 +1311,21 @@
 	cpu2_memlat_cpugrp: cpu2-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu2>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0xA2>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu2_cpu_mif_latmon: cpu2-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu2>;
 			target-dev = <&mif_cpu2_mem_lat>;
-			cachemiss-ev = <0xA2>;
 			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
@@ -1316,12 +1343,21 @@
 	cpu3_memlat_cpugrp: cpu3-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu3>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0xA2>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu3_cpu_mif_latmon: cpu3-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu3>;
 			target-dev = <&mif_cpu3_mem_lat>;
-			cachemiss-ev = <0xA2>;
 			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
@@ -1339,12 +1375,21 @@
 	cpu4_memlat_cpugrp: cpu4-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu4>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu4_cpu_mif_latmon: cpu4-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu4>;
 			target-dev = <&mif_cpu4_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
@@ -1363,12 +1408,21 @@
 	cpu5_memlat_cpugrp: cpu5-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu5>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu5_cpu_mif_latmon: cpu5-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu5>;
 			target-dev = <&mif_cpu5_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
@@ -1387,12 +1441,21 @@
 	cpu6_memlat_cpugrp: cpu6-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu6>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu6_cpu_mif_latmon: cpu6-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu6>;
 			target-dev = <&mif_cpu6_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
@@ -1411,12 +1474,21 @@
 	cpu7_memlat_cpugrp: cpu7-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu7>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu7_cpu_mif_latmon: cpu7-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu7>;
 			target-dev = <&mif_cpu7_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
@@ -1435,13 +1507,21 @@
 	cpu8_memlat_cpugrp: cpu8-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu8>;
-		stall-backend-ev= <0x4005>;
+		pmu {
+			stall-ev = <0x24>;
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+			stall-backend-mem-ev = <0x4005>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+		};
 
 		cpu8_cpu_mif_latmon: cpu8-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu8>;
 			target-dev = <&mif_cpu8_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  400000  421000 >,
