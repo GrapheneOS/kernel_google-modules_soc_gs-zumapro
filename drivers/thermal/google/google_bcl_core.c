@@ -380,9 +380,23 @@ static void google_warn_work(struct work_struct *work, int idx)
 {
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
 						  bcl_irq_work[idx].work);
+	int gpio_level;
+	int polarity;
+	polarity = (idx == SMPL_WARN) ? 0 : 1;
 
-	if (bcl_dev->bcl_qos[idx])
-		google_bcl_qos_update(bcl_dev, idx, false);
+	if (idx == UVLO1)
+		gpio_level = gpio_get_value(bcl_dev->vdroop1_pin);
+	else if (idx == UVLO2)
+		gpio_level = gpio_get_value(bcl_dev->vdroop2_pin);
+	else
+		gpio_level = gpio_get_value(bcl_dev->bcl_pin[idx]);
+	if (gpio_level != polarity) {
+		if (bcl_dev->bcl_qos[idx])
+			google_bcl_qos_update(bcl_dev, idx, false);
+	} else {
+		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[idx],
+				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
+	}
 	if (bcl_dev->bcl_tz[idx])
 		thermal_zone_device_update(bcl_dev->bcl_tz[idx], THERMAL_EVENT_UNSPECIFIED);
 }
