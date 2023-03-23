@@ -12,6 +12,7 @@ aoc_usb_driver.ko
 arm-cmn.ko
 arm-memlat-mon.ko
 at24.ko
+audiometrics.ko
 bc_max77759.ko
 bcm47765.ko
 bigwave.ko
