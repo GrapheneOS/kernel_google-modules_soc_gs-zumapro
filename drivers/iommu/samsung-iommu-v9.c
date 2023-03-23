@@ -573,6 +573,8 @@ static int samsung_sysmmu_attach_dev(struct iommu_domain *dom, struct device *de
 
 			if (pm_runtime_active(drvdata->dev))
 				__sysmmu_enable(drvdata);
+			else
+				dev_err(dev, "SysMMU not powered on\n");
 		} else if (drvdata->pgtable[0] != page_table) {
 			dev_err(dev, "%s is already attached to other domain\n",
 				dev_name(drvdata->dev));
