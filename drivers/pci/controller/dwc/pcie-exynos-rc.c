@@ -363,6 +363,24 @@ void exynos_pcie_set_perst_gpio(int ch_num, bool on)
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_set_perst_gpio);
 
+void exynos_pcie_set_ready_cto_recovery(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+	struct dw_pcie *pci = exynos_pcie->pci;
+	struct pcie_port *pp = &pci->pp;
+
+	pr_info("[%s] ch_num:%d\n", __func__, ch_num);
+
+	disable_irq(pp->irq);
+
+	exynos_pcie_set_perst_gpio(ch_num, 0);
+
+	/* LTSSM disable */
+	exynos_elbi_write(exynos_pcie, PCIE_ELBI_LTSSM_DISABLE,
+			PCIE_APP_LTSSM_ENABLE);
+}
+EXPORT_SYMBOL(exynos_pcie_set_ready_cto_recovery);
+
 static ssize_t exynos_pcie_rc_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int ret = 0;
@@ -2250,6 +2268,21 @@ void exynos_pcie_rc_dump_link_down_status(int ch_num)
 	/* } */
 }
 
+void exynos_pcie_rc_dump_all_status(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+	struct dw_pcie *pci = exynos_pcie->pci;
+	struct pcie_port *pp = &pci->pp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
+	exynos_pcie_rc_print_link_history(pp);
+	exynos_pcie_rc_dump_link_down_status(exynos_pcie->ch_num);
+	exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
+	spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
+}
+EXPORT_SYMBOL_GPL(exynos_pcie_rc_dump_all_status);
+
 void exynos_pcie_rc_dislink_work(struct work_struct *work)
 {
 	struct exynos_pcie *exynos_pcie = container_of(work, struct exynos_pcie, dislink_work.work);
@@ -2261,11 +2294,13 @@ void exynos_pcie_rc_dislink_work(struct work_struct *work)
 	if (exynos_pcie->state == STATE_LINK_DOWN)
 		return;
 
-	spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
-	exynos_pcie_rc_print_link_history(pp);
-	exynos_pcie_rc_dump_link_down_status(exynos_pcie->ch_num);
-	exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
-	spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
+	if (exynos_pcie->ep_device_type != EP_SAMSUNG_MODEM) {
+		spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
+		exynos_pcie_rc_print_link_history(pp);
+		exynos_pcie_rc_dump_link_down_status(exynos_pcie->ch_num);
+		exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
+		spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
+	}
 
 	exynos_pcie->linkdown_cnt++;
 	dev_info(dev, "link down and recovery cnt: %d\n", exynos_pcie->linkdown_cnt);
@@ -2289,11 +2324,13 @@ void exynos_pcie_rc_cpl_timeout_work(struct work_struct *work)
 	if (exynos_pcie->state == STATE_LINK_DOWN)
 		return;
 
-	spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
-	exynos_pcie_rc_print_link_history(pp);
-	exynos_pcie_rc_dump_link_down_status(exynos_pcie->ch_num);
-	exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
-	spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
+	if (exynos_pcie->ep_device_type != EP_SAMSUNG_MODEM) {
+		spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
+		exynos_pcie_rc_print_link_history(pp);
+		exynos_pcie_rc_dump_link_down_status(exynos_pcie->ch_num);
+		exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
+		spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
+	}
 
 	if (exynos_pcie->use_pcieon_sleep) {
 		dev_info(dev, "[%s] pcie_is_linkup = 0\n", __func__);
@@ -2687,6 +2724,11 @@ static irqreturn_t exynos_pcie_rc_irq_handler(int irq, void *arg)
 
 #if IS_ENABLED(CONFIG_PCI_MSI)
 	if (val_irq2 & IRQ_MSI_RISING_ASSERT && exynos_pcie->use_msi) {
+		if (exynos_pcie->separated_msi && exynos_pcie->use_pcieon_sleep) {
+			dev_info(dev, "MSI: separated msi & pcieonsleep\n");
+			return IRQ_HANDLED;
+		}
+
 		dw_handle_msi_irq(pp);
 
 		/* Mask & Clear MSI to pend MSI interrupt.
@@ -3409,6 +3451,40 @@ int exynos_pcie_pm_resume(int ch_num)
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_pm_resume);
 
+bool exynos_pcie_rc_get_sudden_linkdown_state(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+
+	return exynos_pcie->sudden_linkdown;
+}
+EXPORT_SYMBOL(exynos_pcie_rc_get_sudden_linkdown_state);
+
+void exynos_pcie_rc_set_sudden_linkdown_state(int ch_num, bool recovery)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+
+	pr_err("[%s] set sudden_linkdown_state to recovery_on\n", __func__);
+	exynos_pcie->sudden_linkdown = recovery;
+}
+EXPORT_SYMBOL(exynos_pcie_rc_set_sudden_linkdown_state);
+
+bool exynos_pcie_rc_get_cpl_timeout_state(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+
+	return exynos_pcie->cpl_timeout_recovery;
+}
+EXPORT_SYMBOL(exynos_pcie_rc_get_cpl_timeout_state);
+
+void exynos_pcie_rc_set_cpl_timeout_state(int ch_num, bool recovery)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+
+	pr_err("set cpl_timeout_recovery to %d for ch_num:%d\n", recovery, ch_num);
+	exynos_pcie->cpl_timeout_recovery = recovery;
+}
+EXPORT_SYMBOL(exynos_pcie_rc_set_cpl_timeout_state);
+
 /* get EP pci_dev structure of BUS */
 static struct pci_dev *exynos_pcie_get_pci_dev(struct pcie_port *pp)
 {
@@ -3846,6 +3922,7 @@ int exynos_pcie_rc_chk_link_status(int ch_num)
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci;
 	struct device *dev;
+	unsigned long flags;
 
 	u32 val;
 	int link_status;
@@ -3861,6 +3938,20 @@ int exynos_pcie_rc_chk_link_status(int ch_num)
 	if (exynos_pcie->state == STATE_LINK_DOWN)
 		return 0;
 
+	if (exynos_pcie->cpl_timeout_recovery) {
+		spin_lock_irqsave(&exynos_pcie->reg_lock, flags);
+		exynos_pcie->state = STATE_LINK_DOWN;
+		spin_unlock_irqrestore(&exynos_pcie->reg_lock, flags);
+		return 0;
+	}
+
+	if (exynos_pcie->sudden_linkdown) {
+		spin_lock_irqsave(&exynos_pcie->reg_lock, flags);
+		exynos_pcie->state = STATE_LINK_DOWN;
+		spin_unlock_irqrestore(&exynos_pcie->reg_lock, flags);
+		return 0;
+	}
+
 	if (exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
 		val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP)
 		      & PCIE_ELBI_LTSSM_STATE_MASK;
@@ -3869,6 +3960,12 @@ int exynos_pcie_rc_chk_link_status(int ch_num)
 		} else {
 			dev_err(dev, "Check unexpected state - H/W:0x%x, S/W:%d\n",
 				val, exynos_pcie->state);
+
+			exynos_pcie_rc_print_link_history(&pci->pp);
+
+			spin_lock_irqsave(&exynos_pcie->reg_lock, flags);
+			exynos_pcie->state = STATE_LINK_DOWN;
+			spin_unlock_irqrestore(&exynos_pcie->reg_lock, flags);
 			link_status = 0;
 		}
 
@@ -4080,6 +4177,8 @@ int exynos_pcie_rc_set_enable_wake(struct irq_data *data, unsigned int enable)
 {
 	int ret = 0;
 	struct pcie_port *pp = data->parent_data->domain->host_data;
+
+	pr_info("%s: enable = %d\n", __func__, enable);
 
 	if (pp == NULL) {
 		pr_err("Warning: exynos_pcie_rc_set_enable_wake: not exist pp\n");
@@ -4487,7 +4586,8 @@ skip_sep_request_irq:
 		msi_domain_info = (struct msi_domain_info *)msi_domain->host_data;
 		msi_domain_info->chip->irq_set_affinity = exynos_pcie_msi_set_affinity;
 		msi_domain_info->chip->irq_set_wake = exynos_pcie_rc_set_enable_wake;
-		if (exynos_pcie->ep_device_type == EP_QC_WIFI) {
+		if (exynos_pcie->ep_device_type == EP_QC_WIFI ||
+				exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
 			msi_domain_info->chip->irq_mask = pci_msi_mask_irq;
 			msi_domain_info->chip->irq_unmask = pci_msi_unmask_irq;
 		}
@@ -4887,11 +4987,47 @@ static int __exit exynos_pcie_rc_remove(struct platform_device *pdev)
 static int exynos_pcie_rc_suspend_noirq(struct device *dev)
 {
 	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
+	u32 val, val_irq0, val_irq1, val_irq2;
 
 	logbuffer_log(exynos_pcie->log, "pm_suspend_no_irq called");
 	if (exynos_pcie->state == STATE_LINK_DOWN) {
 		dev_dbg(dev, "PCIe PMU ISOLATION\n");
 		exynos_pcie_phy_isolation(exynos_pcie, PCIE_PHY_ISOLATION);
+
+		return 0;
+	} else if (exynos_pcie->separated_msi && exynos_pcie->use_pcieon_sleep) {
+		dev_info(dev, "PCIe on sleep... suspend\n");
+
+		/* handle IRQ0 interrupt */
+		val_irq0 = exynos_elbi_read(exynos_pcie, PCIE_IRQ0);
+		exynos_elbi_write(exynos_pcie, val_irq0, PCIE_IRQ0);
+		dev_info(dev, "IRQ0 0x%x\n", val_irq0);
+
+		/* handle IRQ1 interrupt */
+		val_irq1 = exynos_elbi_read(exynos_pcie, PCIE_IRQ1);
+		exynos_elbi_write(exynos_pcie, val_irq1, PCIE_IRQ1);
+		dev_info(dev, "IRQ1 0x%x\n", val_irq1);
+
+		/* handle IRQ2 interrupt */
+		val_irq2 = exynos_elbi_read(exynos_pcie, PCIE_IRQ2);
+		exynos_elbi_write(exynos_pcie, val_irq2, PCIE_IRQ2);
+		dev_info(dev, "IRQ2 0x%x\n", val_irq2);
+
+		val = exynos_elbi_read(exynos_pcie, PCIE_IRQ2_EN);
+		val |= IRQ_MSI_CTRL_EN_RISING_EDG;
+		exynos_elbi_write(exynos_pcie, val, PCIE_IRQ2_EN);
+	}
+
+	if (exynos_pcie->use_pcieon_sleep && exynos_pcie->ep_pci_dev) {
+		dev_info(dev, "Default must_resume value : %d\n",
+				exynos_pcie->ep_pci_dev->dev.power.must_resume);
+		exynos_pcie->pcie_must_resume = exynos_pcie->ep_pci_dev->dev.power.must_resume;
+		if (exynos_pcie->ep_pci_dev->dev.power.must_resume)
+			exynos_pcie->ep_pci_dev->dev.power.must_resume = false;
+
+		dev_info(dev, "restore enable cnt = %d\n", exynos_pcie->pcieon_sleep_enable_cnt);
+		atomic_set(&exynos_pcie->ep_pci_dev->enable_cnt,
+				exynos_pcie->pcieon_sleep_enable_cnt);
 	}
 
 	return 0;
@@ -4901,6 +5037,7 @@ static int exynos_pcie_rc_resume_noirq(struct device *dev)
 {
 	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
 	struct dw_pcie *pci = exynos_pcie->pci;
+	u32 val;
 
 	dev_dbg(dev, "## RESUME[%s] pcie_is_linkup: %d)\n", __func__, pcie_is_linkup);
 	logbuffer_log(exynos_pcie->log, "pm_resume_no_irq called");
@@ -4908,6 +5045,11 @@ static int exynos_pcie_rc_resume_noirq(struct device *dev)
 	if (exynos_pcie->state == STATE_LINK_DOWN) {
 		dev_dbg(dev, "[%s] dislink state after resume -> phy pwr off\n", __func__);
 		exynos_pcie_rc_resumed_phydown(&pci->pp);
+	} else if (exynos_pcie->separated_msi && exynos_pcie->use_pcieon_sleep) {
+		dev_info(dev, "PCIe on sleep resume...\n");
+		val = exynos_elbi_read(exynos_pcie, PCIE_IRQ2_EN);
+		val &= ~IRQ_MSI_CTRL_EN_RISING_EDG;
+		exynos_elbi_write(exynos_pcie, val, PCIE_IRQ2_EN);
 	}
 
 	return 0;
@@ -4921,6 +5063,14 @@ static int exynos_pcie_suspend_prepare(struct device *dev)
 	if (exynos_pcie->use_phy_isol_con)
 		exynos_pcie_phy_isolation(exynos_pcie, PCIE_PHY_BYPASS);
 
+	if (exynos_pcie->use_pcieon_sleep && exynos_pcie->ep_pci_dev) {
+		exynos_pcie->pcieon_sleep_enable_cnt =
+			atomic_read(&exynos_pcie->ep_pci_dev->enable_cnt);
+		dev_info(dev, "remove enable cnt to fake enable = %d\n",
+				exynos_pcie->pcieon_sleep_enable_cnt);
+		atomic_set(&exynos_pcie->ep_pci_dev->enable_cnt, 0);
+	}
+
 	return 0;
 }
 
@@ -4932,6 +5082,11 @@ static void exynos_pcie_resume_complete(struct device *dev)
 	if (exynos_pcie->use_phy_isol_con &&
 	    exynos_pcie->state == STATE_LINK_DOWN)
 		exynos_pcie_phy_isolation(exynos_pcie, PCIE_PHY_ISOLATION);
+	else if (exynos_pcie->use_pcieon_sleep && exynos_pcie->ep_pci_dev) {
+		exynos_pcie->ep_pci_dev->dev.power.must_resume = exynos_pcie->pcie_must_resume;
+		dev_info(dev, "Default must_resume value : %d\n",
+				exynos_pcie->ep_pci_dev->dev.power.must_resume);
+	}
 }
 
 #endif

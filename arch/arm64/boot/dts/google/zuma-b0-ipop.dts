@@ -15,6 +15,13 @@
 			minor = <0x0>;
 			pkg_mode = <0x1>;
 		};
+		B1_IPOP {
+			description = "B1,IPOP";
+			product_id = <0x09865>;
+			major = <0x1>;
+			minor = <0x1>;
+			pkg_mode = <0x1>;
+		};
 	};
 };
 
@@ -40,6 +47,7 @@
 		i_max = <5>;
 		integral_cutoff = <10>;
 		sustainable_power = <2000>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
@@ -66,6 +74,7 @@
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <1000>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
@@ -92,6 +101,7 @@
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
@@ -118,6 +128,7 @@
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 
@@ -155,6 +166,7 @@
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
+		control_temp_step = <1000>; // mC per second
 
 		tmu_work_affinity = "0-8";
 

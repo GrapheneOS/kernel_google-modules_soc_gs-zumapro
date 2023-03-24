@@ -564,6 +564,18 @@ void exynos_acpm_tmu_ipc_set_power_status(int tz, bool val)
 	exynos_acpm_tmu_ipc_send_data(&message);
 }
 
+void exynos_acpm_tmu_ipc_set_control_temp_step(int tz, u32 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_CONTROL_TEMP_STEP;
+	message.req.tzid = tz;
+	message.data[2] = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
 
 int exynos_acpm_tmu_init(void)
 {

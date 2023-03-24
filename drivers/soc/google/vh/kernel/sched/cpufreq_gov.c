@@ -709,6 +709,7 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	return max(boost, util);
 }
 
+#if IS_ENABLED(USE_UPDATE_SINGLE)
 #ifdef CONFIG_NO_HZ_COMMON
 static bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu)
 {
@@ -721,6 +722,7 @@ static bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu)
 #else
 static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
 #endif /* CONFIG_NO_HZ_COMMON */
+#endif
 
 /*
  * Make sugov_should_update_freq() ignore the rate limit when DL
@@ -732,6 +734,7 @@ static inline void ignore_dl_rate_limit(struct sugov_cpu *sg_cpu, struct sugov_p
 		sg_policy->limits_changed = true;
 }
 
+#if IS_ENABLED(USE_UPDATE_SINGLE)
 static void sugov_update_single(struct update_util_data *hook, u64 time,
 				unsigned int flags)
 {
@@ -790,6 +793,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		raw_spin_unlock(&sg_policy->update_lock);
 	}
 }
+#endif
 
 static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 {
@@ -1599,10 +1603,15 @@ static int sugov_start(struct cpufreq_policy *policy)
 
 	for_each_cpu(cpu, policy->cpus) {
 		struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
+
+#if IS_ENABLED(USE_UPDATE_SINGLE)
 		cpufreq_add_update_util_hook(cpu, &sg_cpu->update_util,
 					     policy_is_shared(policy) ?
 							sugov_update_shared :
 							sugov_update_single);
+#else
+		cpufreq_add_update_util_hook(cpu, &sg_cpu->update_util, sugov_update_shared);
+#endif
 	}
 
 	return 0;

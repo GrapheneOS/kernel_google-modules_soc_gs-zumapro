@@ -171,6 +171,7 @@ struct gs_tmu_data {
 	union acpm_gov_params_un acpm_gov_params;
 	u32 fvp_get_target_freq;
 	bool acpm_pi_enable;
+	u32 control_temp_step;
 };
 
 enum throttling_stats_type {
