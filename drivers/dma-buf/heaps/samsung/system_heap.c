@@ -43,23 +43,23 @@ static const unsigned int orders[] = {9, 8, 4, 0};
 #define NUM_ORDERS ARRAY_SIZE(orders)
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 
-unsigned long dma_heap_inuse_pages(void)
+unsigned long dma_heap_system_inuse_pages(void)
 {
 	return atomic64_read(&inuse_pages);
 }
-EXPORT_SYMBOL_GPL(dma_heap_inuse_pages);
+EXPORT_SYMBOL_GPL(dma_heap_system_inuse_pages);
 
-unsigned long dma_heap_pool_bytes(void)
+unsigned long dma_heap_system_pool_pages(void)
 {
 	int i;
-	unsigned long bytes = 0;
+	unsigned long pages = 0;
 
 	for (i = 0; i < NUM_ORDERS; i++)
-		bytes += dmabuf_page_pool_get_size(pools[i]);
+		pages += dmabuf_page_pool_get_size(pools[i]) / PAGE_SIZE;
 
-	return bytes;
+	return pages;
 }
-EXPORT_SYMBOL_GPL(dma_heap_pool_bytes);
+EXPORT_SYMBOL_GPL(dma_heap_system_pool_pages);
 
 static struct page *alloc_largest_available(unsigned long size,
 					    unsigned int max_order)
@@ -200,7 +200,7 @@ static long system_heap_get_pool_size(struct dma_heap *heap)
 	if (strcmp(dma_heap_get_name(heap), "system"))
 		return 0;
 
-	return dma_heap_pool_bytes();
+	return dma_heap_system_pool_pages() << PAGE_SHIFT;
 }
 
 static const struct dma_heap_ops system_heap_ops = {
