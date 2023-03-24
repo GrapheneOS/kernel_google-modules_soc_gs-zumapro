@@ -45,6 +45,11 @@ struct heap_pages {
   unsigned int count;
 };
 
+unsigned long dma_heap_gcma_inuse_pages(void)
+{
+	return atomic64_read(&inuse_pages);
+}
+
 static inline unsigned long gcma_get_size(struct page *page)
 {
     return page_private(page);
@@ -100,8 +105,11 @@ static void free_gcma_heap_page(struct gcma_heap *gcma_heap, struct page *page)
 
 	if (page_is_gcma(page))
 		gcma_free(gcma_heap->pool, page);
-	else
-		__free_pages(page, compound_order(page));
+	else {
+		unsigned int order = compound_order(page);
+		__free_pages(page, order);
+		dma_heap_dec_inuse(1 << order);
+	}
 }
 
 /*
@@ -140,6 +148,8 @@ static struct page *alloc_largest_available(struct gcma_heap *gcma_heap,
 
 	page = alloc_pages(HARD_EFFORT_GFP, 0);
 out:
+	if (page && !page_is_gcma(page))
+		dma_heap_inc_inuse(1 << compound_order(page));
 	return page;
 }
 
