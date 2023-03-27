@@ -1250,7 +1250,7 @@
 			cpulist = <&cpu0>;
 			target-dev = <&mif_cpu0_mem_lat>;
 			cachemiss-ev = <0xA2>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
 				<  324000  546000 >,
@@ -1273,7 +1273,7 @@
 			cpulist = <&cpu1>;
 			target-dev = <&mif_cpu1_mem_lat>;
 			cachemiss-ev = <0xA2>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
 				<  324000  546000 >,
@@ -1296,7 +1296,7 @@
 			cpulist = <&cpu2>;
 			target-dev = <&mif_cpu2_mem_lat>;
 			cachemiss-ev = <0xA2>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
 				<  324000  546000 >,
@@ -1319,7 +1319,7 @@
 			cpulist = <&cpu3>;
 			target-dev = <&mif_cpu3_mem_lat>;
 			cachemiss-ev = <0xA2>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
 				<  324000  546000 >,
@@ -1342,7 +1342,7 @@
 			cpulist = <&cpu4>;
 			target-dev = <&mif_cpu4_mem_lat>;
 			cachemiss-ev = <0x2A>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
 				<  402000  546000 >,
@@ -1366,7 +1366,7 @@
 			cpulist = <&cpu5>;
 			target-dev = <&mif_cpu5_mem_lat>;
 			cachemiss-ev = <0x2A>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
 				<  402000  546000 >,
@@ -1390,7 +1390,7 @@
 			cpulist = <&cpu6>;
 			target-dev = <&mif_cpu6_mem_lat>;
 			cachemiss-ev = <0x2A>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
 				<  402000  546000 >,
@@ -1414,7 +1414,7 @@
 			cpulist = <&cpu7>;
 			target-dev = <&mif_cpu7_mem_lat>;
 			cachemiss-ev = <0x2A>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
 				<  402000  546000 >,
@@ -1439,7 +1439,7 @@
 			cpulist = <&cpu8>;
 			target-dev = <&mif_cpu8_mem_lat>;
 			cachemiss-ev = <0x2A>;
-			governor-name = "dsu_latency";
+			update-dsu-df;
 			core-dev-table =
 				<  400000  421000 >,
 				<  500000  546000 >,

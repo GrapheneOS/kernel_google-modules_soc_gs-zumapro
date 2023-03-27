@@ -505,9 +505,9 @@ static void memlat_monitor_work(struct work_struct *work)
 		mutex_unlock(&df->lock);
 
 		// Add callback for DSU
-                if (!strncmp(mon->governor_name, "dsu_latency", DEVFREQ_NAME_LEN)) {
-			if (dsu_data) {
-                               struct devfreq *dsu_df = dsu_data->devfreq;
+		if (mon->update_dsu_df) {
+			if (dsu_data && dsu_data->devfreq) {
+				struct devfreq *dsu_df = dsu_data->devfreq;
 				mutex_lock(&dsu_df->lock);
 				err = update_devfreq(dsu_df);
 				if (err)
@@ -771,7 +771,6 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	struct memlat_hwmon *hw;
 	unsigned int event_id, num_cpus, cpu;
 	struct cpu_data *cpu_data;
-        const char *name;
 
 	if (!memlat_wq)
 		memlat_wq = alloc_workqueue("memlat_wq",
@@ -858,15 +857,7 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	}
 	mon->miss_ev_id = event_id;
 
-	ret = of_property_read_string(dev->of_node, "governor-name",
-		&name);
-	if (ret) {
-		dev_err(dev, "Cannot find request governor for mon: %d\n",
-				ret);
-		ret = -EINVAL;
-		goto unlock_out;
-	}
-	strncpy(mon->governor_name, name, DEVFREQ_NAME_LEN);
+	mon->update_dsu_df = of_property_read_bool(dev->of_node, "update-dsu-df");
 
 	ret = register_memlat(dev, hw);
 

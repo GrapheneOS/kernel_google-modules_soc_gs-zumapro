@@ -59,7 +59,7 @@ struct memlat_mon {
 	unsigned int            requested_update_ms;
 	struct event_data       *miss_ev;
 	struct memlat_hwmon     hw;
-	char                    governor_name[DEVFREQ_NAME_LEN];
+	bool                    update_dsu_df;
 
 	struct memlat_cpu_grp   *cpu_grp;
 };

@@ -135,10 +135,11 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 
 	if (of_property_read_u32(np, "governor", &data->gov_type))
 		return -ENODEV;
+
 	if (data->gov_type == DSU_LATENCY) {
 		data->governor_name = "dsu_latency";
 	} else {
-	dev_err(data->dev, "invalid governor name (%s)\n", data->governor_name);
+		dev_err(data->dev, "invalid governor name (%s)\n", data->governor_name);
 		return -EINVAL;
 	}
 
