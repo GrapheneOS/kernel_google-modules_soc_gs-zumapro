@@ -54,6 +54,7 @@
 #define CLKOUT (0x810)
 #define G3D_CLKDIVSTEP_STAT (0x854)
 #define TPU_CLKDIVSTEP_STAT (0x850)
+#define AUR_CLKDIVSTEP_STAT (0x838)
 #define CLUSTER0_MPMM (0x1408)
 #define CLUSTER0_LIT_MPMM (0x1408)
 #define CLUSTER0_MID_MPMM (0x140C)
@@ -89,9 +90,9 @@ enum SUBSYSTEM_SOURCE {
 	CPU0,
 	CPU1,
 	CPU2,
+	AUR,
 	TPU,
 	GPU,
-	AUR,
 	SUBSYSTEM_SOURCE_MAX,
 };
 
@@ -196,7 +197,7 @@ struct bcl_device {
 	struct device *mitigation_dev;
 	struct odpm_info *main_odpm;
 	struct odpm_info *sub_odpm;
-	void __iomem *base_mem[5];
+	void __iomem *base_mem[SUBSYSTEM_SOURCE_MAX];
 	void __iomem *sysreg_cpucl0;
 	struct power_supply *batt_psy;
 	const struct bcl_ifpmic_ops *pmic_ops;
@@ -235,11 +236,13 @@ struct bcl_device {
 	unsigned int gpu_con_light;
 	unsigned int tpu_clkdivstep;
 	unsigned int gpu_clkdivstep;
+	unsigned int aur_clkdivstep;
 	unsigned int cpu2_clkdivstep;
 	unsigned int cpu1_clkdivstep;
 	unsigned int cpu0_clkdivstep;
 	unsigned int gpu_clk_stats;
 	unsigned int tpu_clk_stats;
+	unsigned int aur_clk_stats;
 	unsigned int tpu_vdroop_flt;
 	unsigned int gpu_vdroop_flt;
 	unsigned int odpm_ratio;
@@ -264,6 +267,7 @@ struct bcl_device {
 	struct dentry *debug_entry;
 	unsigned int gpu_clk_out;
 	unsigned int tpu_clk_out;
+	unsigned int aur_clk_out;
 	u8 add_perph;
 	u64 add_addr;
 	u64 add_data;

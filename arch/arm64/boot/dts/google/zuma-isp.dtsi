@@ -153,6 +153,12 @@
 
 		/* Device node name */
 		node-name = "test";
+
+		/* Register space */
+		reg = <0x0 0x0 0x20>;
+		reg-names = "test";
+		interrupt-names = "test_event_inj";
+		interrupt-event-infos = <&test_event_inj>;
 	};
 
 	lwis_isp_fe: lwis_isp_fe@1C000000 {

@@ -15,6 +15,13 @@
 			minor = <0x0>;
 			pkg_mode = <0x0>;
 		};
+		B1_FOPLP {
+			description = "B1,FOPLP";
+			product_id = <0x09865>;
+			major = <0x1>;
+			minor = <0x1>;
+			pkg_mode = <0x0>;
+		};
 	};
 };
 

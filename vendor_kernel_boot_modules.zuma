@@ -12,6 +12,7 @@ aoc_usb_driver.ko
 arm-cmn.ko
 arm-memlat-mon.ko
 at24.ko
+audiometrics.ko
 bc_max77759.ko
 bcm47765.ko
 bigwave.ko
@@ -85,16 +86,17 @@ i2c-exynos5.ko
 itmon.ko
 keycombo.ko
 keydebug.ko
-ln8411_driver.ko
+ln8411.ko
 logbuffer.ko
 mali_kbase.ko
 mali_pixel.ko
 max1720x-battery.ko
 max20339.ko
 max77729-pmic.ko
-max77759_charger.ko
+max77759-charger.ko
 max77759_contaminant.ko
 max77759_helper.ko
+max77779-charger.ko
 memlat-devfreq.ko
 net_failover.ko
 netfs.ko

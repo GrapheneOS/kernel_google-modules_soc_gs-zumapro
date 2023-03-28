@@ -2487,10 +2487,14 @@ static void exynos_pcie_ch2_phy_disable(struct exynos_pcie *exynos_pcie)
 {
 	void __iomem *phy_base_regs = ioremap(0x131B0000, 0x2000);
 	void __iomem *udbg_base_regs = ioremap(0x131AC700, 0x10);
+	int ret;
 	u32 val;
 
-	regmap_update_bits(exynos_pcie->pmureg, 0x3ECC,
+	ret = rmw_priv_reg(exynos_pcie->pmu_alive_pa + 0x3ECC,
 			   PCIE_PHY_CONTROL_MASK, PCIE_PHY_BYPASS);
+	if (ret)
+		regmap_update_bits(exynos_pcie->pmureg, 0x3ECC,
+				   PCIE_PHY_CONTROL_MASK, PCIE_PHY_BYPASS);
 
 	val = readl(phy_base_regs + 0x204) & ~(0x3 << 2);
 	writel(val, phy_base_regs + 0x204);
@@ -2517,8 +2521,11 @@ static void exynos_pcie_ch2_phy_disable(struct exynos_pcie *exynos_pcie)
 	writel(val, udbg_base_regs);
 	udelay(10);
 
-	regmap_update_bits(exynos_pcie->pmureg, 0x3ECC,
+	ret = rmw_priv_reg(exynos_pcie->pmu_alive_pa + 0x3ECC,
 			   PCIE_PHY_CONTROL_MASK, PCIE_PHY_ISOLATION);
+	if (ret)
+		regmap_update_bits(exynos_pcie->pmureg, 0x3ECC,
+				   PCIE_PHY_CONTROL_MASK, PCIE_PHY_ISOLATION);
 }
 
 void exynos_pcie_rc_resumed_phydown(struct pcie_port *pp)

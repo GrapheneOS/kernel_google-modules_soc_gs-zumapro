@@ -771,6 +771,33 @@ int google_init_gpu_ratio(struct bcl_device *data)
 }
 EXPORT_SYMBOL_GPL(google_init_gpu_ratio);
 
+int google_init_aur_ratio(struct bcl_device *data)
+{
+	void __iomem *addr;
+
+	if (!data)
+		return -ENOMEM;
+
+	if (!data->sysreg_cpucl0)
+		return -ENOMEM;
+
+	if (!bcl_is_subsystem_on(subsystem_pmu[AUR]))
+		return -EIO;
+
+	mutex_lock(&data->ratio_lock);
+	bcl_disable_power();
+	addr = data->base_mem[AUR] + CLKDIVSTEP;
+	__raw_writel(data->aur_clkdivstep, addr);
+	addr = data->base_mem[AUR] + CLKOUT;
+	__raw_writel(data->aur_clk_out, addr);
+	data->aur_clk_stats = __raw_readl(data->base_mem[AUR] + clk_stats_offset[AUR]);
+	bcl_enable_power();
+	mutex_unlock(&data->ratio_lock);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(google_init_aur_ratio);
+
 unsigned int google_get_ppm(struct bcl_device *data)
 {
 	void __iomem *addr;
@@ -1902,6 +1929,11 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 		dev_err(bcl_dev->device, "gpu_mem ioremap failed\n");
 		return -EIO;
 	}
+	bcl_dev->base_mem[AUR] = devm_ioremap(bcl_dev->device, AUR_BASE, SZ_8K);
+	if (!bcl_dev->base_mem[AUR]) {
+		dev_err(bcl_dev->device, "aur_mem ioremap failed\n");
+		return -EIO;
+	}
 	bcl_dev->sysreg_cpucl0 = devm_ioremap(bcl_dev->device, SYSREG_CPUCL0_BASE, SZ_8K);
 	if (!bcl_dev->sysreg_cpucl0) {
 		dev_err(bcl_dev->device, "sysreg_cpucl0 ioremap failed\n");
@@ -2019,6 +2051,8 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	bcl_dev->gpu_clkdivstep = ret ? 0 : val;
 	ret = of_property_read_u32(np, "tpu_clkdivstep", &val);
 	bcl_dev->tpu_clkdivstep = ret ? 0 : val;
+	ret = of_property_read_u32(np, "aur_clkdivstep", &val);
+	bcl_dev->aur_clkdivstep = ret ? 0 : val;
 	ret = of_property_read_u32(np, "cpu2_clkdivstep", &val);
 	bcl_dev->cpu2_clkdivstep = ret ? 0 : val;
 	ret = of_property_read_u32(np, "cpu1_clkdivstep", &val);

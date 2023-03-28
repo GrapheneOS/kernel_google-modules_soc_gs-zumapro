@@ -39,8 +39,9 @@ const unsigned int clk_stats_offset[] = {
 	CPUCL0_CLKDIVSTEP_STAT,
 	CPUCL12_CLKDIVSTEP_STAT,
 	CPUCL12_CLKDIVSTEP_STAT,
+	AUR_CLKDIVSTEP_STAT,
 	TPU_CLKDIVSTEP_STAT,
-	G3D_CLKDIVSTEP_STAT
+	G3D_CLKDIVSTEP_STAT,
 };
 
 static const char * const clk_ratio_source[] = {
@@ -745,6 +746,7 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 	if (bcl_dev->enabled) {
 		bcl_dev->gpu_clkdivstep |= 0x1;
 		bcl_dev->tpu_clkdivstep |= 0x1;
+		bcl_dev->aur_clkdivstep |= 0x1;
 		for (i = 0; i < TPU; i++) {
 			addr = bcl_dev->base_mem[i] + CLKDIVSTEP;
 			mutex_lock(&bcl_dev->ratio_lock);
@@ -759,6 +761,7 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 	} else {
 		bcl_dev->gpu_clkdivstep &= ~(1 << 0);
 		bcl_dev->tpu_clkdivstep &= ~(1 << 0);
+		bcl_dev->aur_clkdivstep &= ~(1 << 0);
 		for (i = 0; i < TPU; i++) {
 			addr = bcl_dev->base_mem[i] + CLKDIVSTEP;
 			mutex_lock(&bcl_dev->ratio_lock);
@@ -1449,6 +1452,8 @@ static ssize_t clk_div_show(struct bcl_device *bcl_dev, int idx, char *buf)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_clkdivstep);
 	else if (idx == GPU)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->gpu_clkdivstep);
+	else if (idx == AUR)
+		return sysfs_emit(buf, "0x%x\n", bcl_dev->aur_clkdivstep);
 
 	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
 	if (addr == NULL)
@@ -1471,6 +1476,8 @@ static ssize_t clk_stats_show(struct bcl_device *bcl_dev, int idx, char *buf)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_clk_stats);
 	else if (idx == GPU)
 		return sysfs_emit(buf, "0x%x\n", bcl_dev->gpu_clk_stats);
+	else if (idx == AUR)
+		return sysfs_emit(buf, "0x%x\n", bcl_dev->aur_clk_stats);
 
 	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
 	if (addr == NULL)
@@ -1506,6 +1513,8 @@ static ssize_t clk_div_store(struct bcl_device *bcl_dev, int idx,
 		bcl_dev->tpu_clkdivstep = value;
 	else if (idx == GPU)
 		bcl_dev->gpu_clkdivstep = value;
+	else if (idx == AUR)
+		bcl_dev->aur_clkdivstep = value;
 	else {
 		if (idx == CPU2)
 			bcl_dev->cpu2_clkdivstep = value;
@@ -1597,6 +1606,25 @@ static ssize_t tpu_clk_div_store(struct device *dev, struct device_attribute *at
 
 static DEVICE_ATTR_RW(tpu_clk_div);
 
+static ssize_t aur_clk_div_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return clk_div_show(bcl_dev, AUR, buf);
+}
+
+static ssize_t aur_clk_div_store(struct device *dev, struct device_attribute *attr,
+				 const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return clk_div_store(bcl_dev, AUR, buf, size);
+}
+
+static DEVICE_ATTR_RW(aur_clk_div);
+
 static ssize_t gpu_clk_div_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
@@ -1622,6 +1650,7 @@ static struct attribute *clock_div_attrs[] = {
 	&dev_attr_cpu2_clk_div.attr,
 	&dev_attr_tpu_clk_div.attr,
 	&dev_attr_gpu_clk_div.attr,
+	&dev_attr_aur_clk_div.attr,
 	NULL,
 };
 
@@ -1930,6 +1959,16 @@ static ssize_t tpu_clk_stats_show(struct device *dev, struct device_attribute *a
 
 static DEVICE_ATTR_RO(tpu_clk_stats);
 
+static ssize_t aur_clk_stats_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return clk_stats_show(bcl_dev, AUR, buf);
+}
+
+static DEVICE_ATTR_RO(aur_clk_stats);
+
 static ssize_t gpu_clk_stats_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
@@ -1946,6 +1985,7 @@ static struct attribute *clock_stats_attrs[] = {
 	&dev_attr_cpu2_clk_stats.attr,
 	&dev_attr_tpu_clk_stats.attr,
 	&dev_attr_gpu_clk_stats.attr,
+	&dev_attr_aur_clk_stats.attr,
 	NULL,
 };
 
