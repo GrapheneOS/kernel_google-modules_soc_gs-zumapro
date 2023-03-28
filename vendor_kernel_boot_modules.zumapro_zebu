@@ -37,7 +37,7 @@ cachefiles.ko
 #exynos-ecc-handler.ko
 #exynos-pd-dbg.ko
 #exynos-pd.ko
-#exynos-pd_el3.ko
+exynos-pd_el3.ko
 #exynos-pmu-if.ko
 #exynos-reboot.ko
 #exynos_devfreq.ko
