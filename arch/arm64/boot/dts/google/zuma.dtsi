@@ -1546,12 +1546,12 @@
 		samsung,tzmp;
 		hw_ppc =
 			/* sc_up none x1 x1/4 x1/9 x1/16 */
-			<3800 3200 2100 2600 3300 3600 /* rgb32 non-rotated */
-			3500 3600 2100 2700 3300 3800 /* rgb32 rotated */
-			3700 3500 3600 4300 4300 3500 /* yuv2p non-rotated */
-			2600 2800 3200 3900 4300 3600 /* yuv2p rotated */
-			3600 2600 1400 900 1000 1000 /* sbwc non-rotated */
-			2600 2600 1400 900 1000 1000 /* sbwc rotated */
+			<3900 3600 2000 2900 2300 2900 /* rgb32 non-rotated */
+			3800 3500 3200 3500 3400 3800 /* rgb32 rotated */
+			3400 2200 2400 4300 5000 4500 /* yuv2p non-rotated */
+			2000 2200 3600 4200 4300 3600 /* yuv2p rotated */
+			3300 3200 2800 3000 3500 2900 /* sbwc non-rotated */
+			1900 2200 3100 3200 3200 2800 /* sbwc rotated */
 			3000 3100 2800 2600 3000 3700 /* rgb afbc non-rotated */
 			3800 2100 3200 3200 3500 3400 /* rgb afbc rotated */
 			3300 3000 3300 3100 3200 3400 /* yuv afbc non-rotated */
