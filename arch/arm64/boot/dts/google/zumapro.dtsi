@@ -13,6 +13,8 @@
 #include "zumapro-rmem.dtsi"
 #include "zumapro-pm-domains.dtsi"
 #include "zumapro-cpu.dtsi"
+#include "zumapro-pinctrl.dtsi"
+
 / {
 	compatible = "google,zumapro";
 	interrupt-parent = <&gic>;
@@ -21,6 +23,18 @@
 
 	aliases {
 		pinctrl0 = &pinctrl_0;
+		pinctrl1 = &pinctrl_1;
+		pinctrl2 = &pinctrl_2;
+		pinctrl3 = &pinctrl_3;
+		pinctrl4 = &pinctrl_4;
+		pinctrl5 = &pinctrl_5;
+		pinctrl6 = &pinctrl_6;
+		pinctrl7 = &pinctrl_7;
+		pinctrl8 = &pinctrl_8;
+		pinctrl9 = &pinctrl_9;
+		pinctrl10 = &pinctrl_10;
+		pinctrl11 = &pinctrl_11;
+		pinctrl12 = &pinctrl_12;
 		uart0 = &serial_0;
 	};
 
@@ -179,7 +193,7 @@
 
 	/* GPIO_ALIVE */
 	pinctrl_0: pinctrl@154D0000 {
-		compatible = "google,zuma-pinctrl";
+		compatible = "google,zumapro-pinctrl";
 		reg = <0x00000000 0x154D0000 0x00001000>;
 		interrupts = <GIC_SPI IRQ_ALIVE_EINT0 IRQ_TYPE_LEVEL_HIGH>,
 		     <GIC_SPI IRQ_ALIVE_EINT1 IRQ_TYPE_LEVEL_HIGH>,
@@ -230,7 +244,43 @@
 		     <GIC_SPI IRQ_ALIVE_EINT47 IRQ_TYPE_LEVEL_HIGH>,
 		     <GIC_SPI IRQ_ALIVE_EINT48 IRQ_TYPE_LEVEL_HIGH>,
 		     <GIC_SPI IRQ_ALIVE_EINT49 IRQ_TYPE_LEVEL_HIGH>;
+		wakeup-interrupt-controller {
+			compatible = "samsung,exynos7-wakeup-eint";
+		};
+	};
 
+	/* GPIO_CUSTOM_ALIVE */
+	pinctrl_1: pinctrl@15060000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x15060000 0x00001000>;
+		interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT0 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT2 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT3 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT4 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT5 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT6 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT7 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT8 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_CUSTOM_EINT9 IRQ_TYPE_LEVEL_HIGH>;
+
+			wakeup-interrupt-controller {
+				compatible = "samsung,exynos7-wakeup-eint";
+			};
+	};
+
+	/* GPIO_FAR_ALIVE */
+	pinctrl_2: pinctrl@154E0000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x154E0000 0x00001000>;
+		interrupts = <GIC_SPI IRQ_ALIVE_EINT50 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_EINT51 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_EINT52 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_EINT53 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_EINT54 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_EINT55 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_EINT56 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI IRQ_ALIVE_EINT57 IRQ_TYPE_LEVEL_HIGH>;
 
 		wakeup-interrupt-controller {
 			compatible = "samsung,exynos7-wakeup-eint";
@@ -276,4 +326,68 @@
 		timer-frequency-hz = <49152000>;
 	};
 
+	/* GPIO_GSACORE0 */
+	pinctrl_3: pinctrl@16280000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x16280000 0x00001000>;
+	};
+
+	/* GPIO_GSACORE1 */
+	pinctrl_4: pinctrl@16290000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x16290000 0x00001000>;
+	};
+
+	/* GPIO_GSACORE2 */
+	pinctrl_5: pinctrl@162A0000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x162A0000 0x00001000>;
+	};
+
+	/* GPIO_GSACORE3 */
+	pinctrl_6: pinctrl@162B0000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x162B0000 0x00001000>;
+	};
+
+	/* GPIO_GSACTRL */
+	pinctrl_7: pinctrl@16140000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x16140000 0x00001000>;
+	};
+
+	/* GPIO_HSI1 */
+	pinctrl_8: pinctrl@12040000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x12040000 0x00001000>;
+		interrupts = <GIC_SPI IRQ_GPIO_HSI1_HSI1 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	/* GPIO_HSI2 */
+	pinctrl_9: pinctrl@13040000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x13040000 0x00001000>;
+		interrupts = <GIC_SPI IRQ_GPIO_HSI2_HSI2 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	/* GPIO_HSI2UFS */
+	pinctrl_10: pinctrl@13060000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x13060000 0x00001000>;
+		interrupts = <GIC_SPI IRQ_GPIO_HSI2UFS_HSI2 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	/* GPIO_PERIC0 */
+	pinctrl_11: pinctrl@10840000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x10840000 0x00001000>;
+		interrupts = <GIC_SPI IRQ_GPIO_PERIC0_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	/* GPIO_PERIC1 */
+	pinctrl_12: pinctrl@10C40000 {
+		compatible = "google,zumapro-pinctrl";
+		reg = <0x00000000 0x10C40000 0x00001000>;
+		interrupts = <GIC_SPI IRQ_GPIO_PERIC1_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
+	};
 };
