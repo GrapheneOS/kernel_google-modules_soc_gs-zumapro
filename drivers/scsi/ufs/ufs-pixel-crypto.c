@@ -353,14 +353,14 @@ int pixel_ufs_crypto_init(struct ufs_hba *hba)
 	 * program/evict wrapped keys via the KDN, and secondly in order to
 	 * declare wrapped key support rather than standard key support.
 	 */
-	hba->quirks |= UFSHCD_QUIRK_CUSTOM_CRYPTO_PROFILE;
+	hba->android_quirks |= UFSHCD_ANDROID_QUIRK_CUSTOM_CRYPTO_PROFILE;
 
 	/*
 	 * This host controller doesn't support the standard
 	 * CRYPTO_GENERAL_ENABLE bit in REG_CONTROLLER_ENABLE.  Instead it just
 	 * always has crypto support enabled.
 	 */
-	hba->quirks |= UFSHCD_QUIRK_BROKEN_CRYPTO_ENABLE;
+	hba->android_quirks |= UFSHCD_ANDROID_QUIRK_BROKEN_CRYPTO_ENABLE;
 
 	/* Override the PRDT entry size to include the extra crypto fields. */
 	hba->sg_entry_size = sizeof(struct pixel_ufs_prdt_entry);
