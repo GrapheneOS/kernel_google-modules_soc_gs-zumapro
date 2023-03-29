@@ -9,7 +9,7 @@
 #include <dt-bindings/interrupt-controller/zumapro.h>
 #include "zumapro-drm-dpu.dtsi"
 #include "zumapro-sysmmu.dtsi"
-
+#include "zumapro-dma-heap.dtsi"
 / {
 	compatible = "google,zumapro";
 	interrupt-parent = <&gic>;
