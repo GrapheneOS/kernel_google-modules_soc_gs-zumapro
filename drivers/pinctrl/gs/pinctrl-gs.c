@@ -429,8 +429,8 @@ static __maybe_unused struct samsung_pin_bank_data zumapro_pin_alive[] = {
 	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 4, 0xe0, "gpa8", 0x1c, 0x28, 34),
 	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 7, 0x100, "gpa9", 0x20, 0x2c, 38),
 	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 5, 0x120, "gpa10", 0x24, 0x34, 45),
-	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 1, 0x140, "gpa11", 0x28, 0x3c, 50),
-	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 2, 0x160, "gpa12", 0x2c, 0x40, 51),
+	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 1, 0x140, "gpa11", 0x28, 0x3c, 0xD0),
+	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 2, 0x160, "gpa12", 0x2c, 0x40, 0xD1),
 };
 
 
@@ -451,7 +451,7 @@ static __maybe_unused struct samsung_pin_bank_data zumapro_pin_custom[] = {
 
 /* pin banks of zumapro pin-controller (GPIO_FAR_ALIVE=0x154E0000) */
 static __maybe_unused struct samsung_pin_bank_data zumapro_pin_far[] = {
-	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 8, 0x0, "gpa5", 0x00, 0x00 , 53),
+	EXYNOS9_PIN_BANK_EINTW(bank_type_7, 8, 0x0, "gpa5", 0x00, 0x00 , 50),
 };
 
 
