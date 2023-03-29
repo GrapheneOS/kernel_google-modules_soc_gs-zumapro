@@ -70,15 +70,19 @@ enum gsa_aoc_state {
 
 /**
  * enum gsa_aoc_cmd - AOC management commands
- * @GSA_AOC_GET_STATE: return current AOC state
- * @GSA_AOC_START:     take AOC out of reset and start executing loaded
- *                     firmware
- * @GSA_AOC_SHUTDOWN:  reset AOC
+ * @GSA_AOC_GET_STATE:     return current AOC state
+ * @GSA_AOC_START:         take AOC out of reset and start executing loaded
+ *                         firmware
+ * @GSA_AOC_SHUTDOWN:      put AOC into reset and return to loaded state
+ * @GSA_AOC_RELEASE_RESET: take AOC A32 out of reset
+ * @GSA_AOC_RESET:         put AOC into reset
  */
 enum gsa_aoc_cmd {
 	GSA_AOC_GET_STATE = 0,
-	GSA_AOC_START,
-	GSA_AOC_SHUTDOWN,
+	GSA_AOC_START = 1,
+	GSA_AOC_SHUTDOWN = 4,
+	GSA_AOC_RELEASE_RESET = 5,
+	GSA_AOC_RESET = 6,
 };
 
 /**
