@@ -110,3 +110,7 @@
 &log_arrdumppanic {
 	status = "disabled";
 };
+
+&log_bcm {
+	status = "disabled";
+};
