@@ -7,6 +7,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zumapro.h>
+#include "zumapro-drm-dpu.dtsi"
 
 / {
 	compatible = "google,zumapro";
