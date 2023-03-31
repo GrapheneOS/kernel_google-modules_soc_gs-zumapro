@@ -36,8 +36,9 @@
 #define DEFAULT_STREAM_NONE	~0U
 #define UNUSED_STREAM_INDEX	~0U
 
-#define MMU_STREAM_CFG_MASK(reg)		((reg) & (GENMASK(31, 16) | GENMASK(6, 0)))
-#define MMU_STREAM_MATCH_CFG_MASK(reg)		((reg) & (GENMASK(9, 8)))
+#define MMU_STREAM_CFG_MASK(reg)		((reg) & (GENMASK(31, 16) | GENMASK(8, 8) | \
+						 GENMASK(6, 0)))
+#define MMU_STREAM_MATCH_CFG_MASK(reg)		((reg) & (GENMASK(9, 8) | GENMASK(0, 0)))
 
 static struct iommu_ops samsung_sysmmu_ops;
 static struct platform_driver samsung_sysmmu_driver_v9;

@@ -181,12 +181,6 @@
 		status = "disabled";
 	};
 
-	xhci_dma: xhci_dma@97000000 {
-		compatible = "shared-dma-pool";
-		reg = <0x0 0x97000000 0x400000>;
-		no-map;
-	};
-
 	faceauth_tpu: faceauth_tpu {
 		compatible = "shared-dma-pool";
 		reusable;

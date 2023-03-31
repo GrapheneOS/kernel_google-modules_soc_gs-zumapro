@@ -67,6 +67,9 @@ struct sugov_policy {
 	cpumask_t		pmu_ignored_mask;
 	bool			under_pmu_throttle;
 	bool			relax_pmu_throttle;
+
+	int			block_updates;
+	bool			update_iowait;
 };
 
 struct sugov_cpu {
@@ -706,7 +709,10 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	 * into the same scale so we can compare.
 	 */
 	boost = (sg_cpu->iowait_boost * max) >> SCHED_CAPACITY_SHIFT;
-	return max(boost, util);
+	boost = max(boost, util);
+	boost = uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost, NULL);
+
+	return boost;
 }
 
 #if IS_ENABLED(USE_UPDATE_SINGLE)
@@ -828,10 +834,38 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 {
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
-	unsigned long util = sugov_get_util(sg_cpu);
 	unsigned int next_f;
+	unsigned long util;
 
 	raw_spin_lock(&sg_policy->update_lock);
+
+	if (flags & SCHED_PIXEL_BLOCK_UPDATES) {
+		if (flags & SCHED_CPUFREQ_IOWAIT)
+			sg_policy->update_iowait = true;
+
+		sg_policy->block_updates++;
+		raw_spin_unlock(&sg_policy->update_lock);
+		return;
+	}
+
+	if (flags & SCHED_PIXEL_RESUME_UPDATES) {
+		sg_policy->block_updates--;
+
+		if (WARN_ON(sg_policy->block_updates < 0))
+			sg_policy->block_updates = 0;
+
+		if (sg_policy->update_iowait) {
+			flags |= SCHED_CPUFREQ_IOWAIT;
+			sg_policy->update_iowait = false;
+		}
+	}
+
+	if (sg_policy->block_updates) {
+		raw_spin_unlock(&sg_policy->update_lock);
+		return;
+	}
+
+	util = sugov_get_util(sg_cpu);
 
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 	update_uclamp_stats(sg_cpu->cpu, time);
@@ -1590,6 +1624,8 @@ static int sugov_start(struct cpufreq_policy *policy)
 	sg_policy->need_freq_update		= false;
 	sg_policy->cached_raw_freq		= 0;
 	sg_policy->prev_cached_raw_freq		= 0;
+	sg_policy->block_updates		= 0;
+	sg_policy->update_iowait		= false;
 
 	for_each_cpu(cpu, policy->cpus) {
 		struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);

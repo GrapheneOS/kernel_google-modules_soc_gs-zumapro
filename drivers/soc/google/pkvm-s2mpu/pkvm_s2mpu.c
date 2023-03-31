@@ -19,6 +19,8 @@
 #include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
 
+#include <linux/delay.h>
+
 #define S2MPU_VERSION_9					0x90000000
 #define REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET	0x50
 
@@ -311,6 +313,14 @@ EXPORT_SYMBOL_GPL(pkvm_s2mpu_suspend);
 int pkvm_s2mpu_resume(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+
+	/* Workaround to add 500us delay after s2mpu_s0_g3d resume.
+	 * Should be reverted once b/270725014 is root-caused.
+	 */
+	if ((pdev != NULL) &&
+		(!strncmp(pdev->name, "1ee70000.s2mpu_s0_g3d", strlen(pdev->name))))
+		usleep_range(400, 500);
 
 	if (data->pkvm_registered)
 		return pkvm_iommu_resume(dev);
