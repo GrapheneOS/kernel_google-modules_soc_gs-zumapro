@@ -1289,11 +1289,11 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	/* set the initial value */
 	exynos->usb_data_enabled = true;
 
-	ret = pm_runtime_put(dev);
-	pm_runtime_allow(dev);
-
 	exynos_usbdrd_phy_tune(exynos->dwc->usb2_generic_phy, 0);
 	exynos_usbdrd_phy_tune(exynos->dwc->usb3_generic_phy, 0);
+
+	ret = pm_runtime_put(dev);
+	pm_runtime_allow(dev);
 
 	dwc3_exynos_otg_init(exynos->dwc, exynos);
 
