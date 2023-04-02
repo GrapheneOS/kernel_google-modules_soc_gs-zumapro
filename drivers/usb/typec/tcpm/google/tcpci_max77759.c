@@ -465,25 +465,29 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 
 	switch (val) {
 	case 0:
-		gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
 		break;
 	case 1:
-		gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
 		break;
 	case 2:
-		gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
 		break;
 	case 3:
-		gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
 	default:
 		break;
 	}
 
-	dev_err(chip->dev, "dp_debug: sbu_pullup_store: val:%d \n", val);
+	dev_info(chip->dev, "dp_debug: sbu_pullup_store: val:%d \n", val);
 	if (!ret)
 		chip->current_sbu_state = val;
 
@@ -2138,8 +2142,7 @@ static void dp_notification_work_item(struct kthread_work *work)
 	struct max77759_plat *chip = evt->chip;
 	int dp, hpd, ret;
 
-	dev_err(chip->dev, "dp wq %s: %lu\n", __func__, evt->mode);
-	logbuffer_log(chip->log, "dp wq %s: %lu\n", __func__, evt->mode);
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp wq %s: %lu", __func__, evt->mode);
 
 	switch (evt->mode) {
 	case TYPEC_DP_STATE_HPD:
@@ -2152,7 +2155,8 @@ static void dp_notification_work_item(struct kthread_work *work)
 		dp = 1;
 		hpd = 0;
 		chip->lanes = 4;
-		gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio,
 					chip->orientation == TYPEC_ORIENTATION_NORMAL ?
 					0 : 1);
@@ -2163,7 +2167,8 @@ static void dp_notification_work_item(struct kthread_work *work)
 		dp = 1;
 		hpd = 0;
 		chip->lanes = 2;
-		gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio,
 					chip->orientation == TYPEC_ORIENTATION_NORMAL ?
 					0 : 1);
@@ -2196,12 +2201,10 @@ static void dp_notification_work_item(struct kthread_work *work)
 	}
 
 	ret = extcon_set_state_sync(chip->extcon, EXTCON_DISP_DP, dp);
-	logbuffer_log(chip->log, "%s Singaling dp altmode: %s ret:%d", ret < 0 ?
+	logbuffer_log(chip->log, "%s Singalling dp altmode: %s ret:%d", ret < 0 ?
 		      "Failed" : "Succeeded", dp ? "on" : "off", ret);
 
-	printk(KERN_INFO "Dp altmode hpd:%d orientation:%d lanes:%d dp:%d",
-	       hpd, (int)chip->orientation, chip->lanes, dp);
-	logbuffer_log(chip->log, "Dp altmode hpd:%d orientation:%d lanes:%d dp:%d",
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp altmode hpd:%d orientation:%d lanes:%d dp:%d",
 		      hpd, (int)chip->orientation, chip->lanes, dp);
 
 	devm_kfree(chip->dev, evt);
@@ -2212,10 +2215,9 @@ static int max77759_usb_set_mode(struct typec_mux *mux, struct typec_mux_state *
 	struct max77759_plat *chip = typec_mux_get_drvdata(mux);
 	struct dp_notification_event *evt;
 
-	printk(KERN_INFO "dp notification %s: %lu\n", __func__, state->mode);
 	evt = devm_kzalloc(chip->dev, sizeof(*evt), GFP_KERNEL);
 	if (!evt) {
-		logbuffer_log(chip->log, "DP notification: Dropping event");
+		logbuffer_log(chip->log, "dp notification: Dropping event");
 		return 0;
 	}
 	kthread_init_work(&evt->dp_notification_work, dp_notification_work_item);
