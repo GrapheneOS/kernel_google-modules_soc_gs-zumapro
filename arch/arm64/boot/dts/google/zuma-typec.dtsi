@@ -20,7 +20,7 @@
 		compatible = "max77759tcpc";
 		reg = <0x25>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&usb_pd_irq &gpp12_2 &gpp12_3>;
+		pinctrl-0 = <&usb_pd_irq &gpa7_5>;
 		interrupt-parent = <&gpa8>;
 		usbpd,usbpd_int = <&gpa8 3 GPIO_ACTIVE_LOW>;
 		usb-psy-name = "usb";
@@ -29,8 +29,7 @@
 		/* Default OVP IC is SLG59H1313C. Config others in overlay if needed. */
 		ovp-present;
 		in-switch-gpio = <&max777x9_gpio 5 GPIO_ACTIVE_LOW>;
-		sbu-mux-en-gpio = <&gpp12 2 GPIO_ACTIVE_HIGH>;
-		sbu-mux-sel-gpio = <&gpp12 3 GPIO_ACTIVE_HIGH>;
+		sbu-mux-sel-gpio = <&gpa7 5 GPIO_ACTIVE_HIGH>;
 		conn = <&conn>;
 		orientation-switch;
 		mode-switch;
@@ -147,18 +146,9 @@
 		samsung,pin-pud = <EXYNOS_PIN_PULL_UP>;
 		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
 	};
-};
 
-&pinctrl_11 {
-	gpp12_2: gpp12-2 {
-		samsung,pins = "gpp12-2";
-		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
-		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
-	};
-
-	gpp12_3: gpp12-3 {
-		samsung,pins = "gpp12-3";
+	gpa7_5: gpa7-5 {
+		samsung,pins = "gpa7-5";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
 		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
