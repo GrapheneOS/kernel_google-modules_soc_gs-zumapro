@@ -278,12 +278,14 @@ static void xhci_exynos_set_port(struct usb_device *dev, bool on)
 	case PORT_EMPTY:
 		dev_dbg(ddev, "Port check empty\n");
 		xhci_exynos->is_otg_only = 1;
-		xhci_exynos_port_power_set(xhci_exynos, 1, 1);
+		if (xhci_exynos->port_ctrl_allowed)
+			xhci_exynos_port_power_set(xhci_exynos, 1, 1);
 		break;
 	case PORT_USB2:
 		dev_dbg(ddev, "Port check usb2\n");
 		xhci_exynos->is_otg_only = 0;
-		xhci_exynos_port_power_set(xhci_exynos, 0, 1);
+		if (xhci_exynos->port_ctrl_allowed)
+			xhci_exynos_port_power_set(xhci_exynos, 0, 1);
 		break;
 	case PORT_USB3:
 		xhci_exynos->is_otg_only = 0;
@@ -619,6 +621,9 @@ static int xhci_exynos_probe(struct platform_device *pdev)
 
 		if (device_property_read_bool(tmpdev, "quirk-broken-port-ped"))
 			xhci->quirks |= XHCI_BROKEN_PORT_PED;
+
+		if (device_property_read_bool(tmpdev, "port_ctrl_allowed"))
+			xhci_exynos->port_ctrl_allowed = true;
 
 		device_property_read_u32(tmpdev, "imod-interval-ns",
 					 &xhci->imod_interval);
