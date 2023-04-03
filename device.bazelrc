@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Copyright (C) 2023 Google LLC
+
+build:raviole --//private/google-modules/soc/gs:gs_kernel_build=//private/google-modules/soc/gs:slider
+build:raviole --//private/google-modules/soc/gs:gs_soc_module=//private/google-modules/soc/gs:gs101_soc
+
+build:pixel_debug_common --notrim
+build:pixel_debug_common --nokmi_symbol_list_strict_mode
+build:pixel_debug_common --nokmi_symbol_list_violations_check

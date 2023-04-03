@@ -9,6 +9,7 @@ load(
     "kernel_build",
     "kernel_images",
     "kernel_module",
+    "kernel_module_group",
     "kernel_modules_install",
     "kernel_unstripped_modules_archive",
     "merged_kernel_uapi_headers",
@@ -16,6 +17,22 @@ load(
 load("@kernel_toolchain_info//:dict.bzl", "CLANG_VERSION")
 load(":slider.bzl", "SLIDER_DTBOS")
 load(":tests.bzl", "define_slider_kleaf_tests")
+
+package(
+    default_visibility = [
+        "//private/google-modules:__subpackages__",
+    ],
+)
+
+label_flag(
+    name = "gs_kernel_build",
+    build_setting_default = ":slider",
+)
+
+label_flag(
+    name = "gs_soc_module",
+    build_setting_default = ":gs101_soc",
+)
 
 filegroup(
     name = "dt-bindings",
@@ -30,30 +47,33 @@ filegroup(
 
 # The list ordering matches EXT_MODULES in build.config.slider in order to
 # retain the very fragile module load ordering.
-_slider_modules = [
-    # do not sort
-    "//private/google-modules/soc/gs:gs101_soc",
-    "//private/google-modules/display:samsung.slider",
-    "//private/google-modules/wlan/bcmdhd4389:bcmdhd4389.slider",
-    "//private/google-modules/gpu/mali_kbase:mali_kbase.slider",
-    "//private/google-modules/gpu/mali_pixel:mali_pixel.slider",
-    "//private/google-modules/lwis:lwis.slider",
-    "//private/google-modules/edgetpu/abrolhos/drivers/edgetpu:edgetpu.slider",
-    "//private/google-modules/bms:bms.slider",
-    "//private/google-modules/amplifiers/drv2624:drv2624.slider",
-    "//private/google-modules/amplifiers/cs40l25:cs40l25.slider",
-    "//private/google-modules/amplifiers/cs35l41:cs35l41.slider",
-    "//private/google-modules/amplifiers/audiometrics:audiometrics.slider",
-    "//private/google-modules/aoc:aoc.slider",
-    "//private/google-modules/aoc/alsa:alsa.slider",
-    "//private/google-modules/touch/common:common.slider",
-    "//private/google-modules/touch/fts/ftm5:ftm5.slider",
-    "//private/google-modules/touch/sec:sec.slider",
-    "//private/google-modules/power/reset:reset.slider",
-    "//private/google-modules/bluetooth/broadcom:broadcom.slider",
-    "//private/google-modules/nfc:nfc.slider",
-    "//private/google-modules/uwb/kernel:kernel.slider",
-]
+kernel_module_group(
+    name = "slider_ext_modules",
+    srcs = [
+        # do not sort
+        "//private/google-modules/soc/gs:gs101_soc",
+        "//private/google-modules/display:samsung",
+        "//private/google-modules/wlan/bcmdhd4389",
+        "//private/google-modules/gpu/mali_kbase",
+        "//private/google-modules/gpu/mali_pixel",
+        "//private/google-modules/lwis",
+        "//private/google-modules/edgetpu/abrolhos/drivers/edgetpu:edgetpu.abrolhos",
+        "//private/google-modules/bms",
+        "//private/google-modules/amplifiers/drv2624",
+        "//private/google-modules/amplifiers/cs40l25",
+        "//private/google-modules/amplifiers/cs35l41",
+        "//private/google-modules/amplifiers/audiometrics",
+        "//private/google-modules/aoc",
+        "//private/google-modules/aoc/alsa",
+        "//private/google-modules/touch/common:touch.common",
+        "//private/google-modules/touch/fts/ftm5",
+        "//private/google-modules/touch/sec",
+        "//private/google-modules/power/reset",
+        "//private/google-modules/bluetooth/broadcom:bluetooth.broadcom",
+        "//private/google-modules/nfc",
+        "//private/google-modules/uwb/kernel:uwb.dw3000",
+    ],
+)
 
 kernel_build(
     name = "slider",
@@ -109,14 +129,14 @@ kernel_build(
 kernel_abi(
     name = "slider_abi",
     kernel_build = ":slider",
-    kernel_modules = _slider_modules,
+    kernel_modules = [":slider_ext_modules"],
     kmi_symbol_list_add_only = True,
     module_grouping = False,
     unstripped_modules_archive = ":slider_unstripped_modules_archive",
 )
 
 filegroup(
-    name = "gs101_soc_headers",
+    name = "gs_soc_headers",
     srcs = glob([
         # Standard pixel headers
         "include/**/*.h",
@@ -284,7 +304,7 @@ kernel_module(
         "drivers/usb/typec/tcpm/google/usbc_cooling_dev.ko",
         "drivers/watchdog/s3c2410_wdt.ko",
     ],
-    kernel_build = "//private/google-modules/soc/gs:slider",
+    kernel_build = "//private/google-modules/soc/gs:gs_kernel_build",
     visibility = [
         # keep sorted
         "//private/google-modules:__subpackages__",
@@ -294,19 +314,19 @@ kernel_module(
 kernel_modules_install(
     name = "slider_modules_install",
     kernel_build = ":slider",
-    kernel_modules = _slider_modules,
+    kernel_modules = [":slider_ext_modules"],
 )
 
 kernel_unstripped_modules_archive(
     name = "slider_unstripped_modules_archive",
     kernel_build = ":slider",
-    kernel_modules = _slider_modules,
+    kernel_modules = [":slider_ext_modules"],
 )
 
 merged_kernel_uapi_headers(
     name = "slider_merged_kernel_uapi_headers",
     kernel_build = ":slider",
-    kernel_modules = _slider_modules,
+    kernel_modules = [":slider_ext_modules"],
 )
 
 kernel_images(
@@ -390,11 +410,13 @@ exec_test(
 test_suite(
     name = "slider_tests",
     tests = [
-        "//common:kernel_aarch64_tests",
-        ":slider_test",
-        ":slider_modules_test",
         ":slider_images_test",
-    ] + [m + "_test" for m in _slider_modules],
+        ":slider_modules_test",
+        ":slider_test",
+        "//common:kernel_aarch64_tests",
+    ],
+    # TODO(b/236871190): re-add this with the kernel_module_group
+    #+ [m + "_test" for m in _slider_modules],
 )
 
 define_slider_kleaf_tests()
