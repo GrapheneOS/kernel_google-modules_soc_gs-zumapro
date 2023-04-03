@@ -257,6 +257,7 @@ static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_sta
 
 #define INVALID_TZID(tzid)          (((tzid) < 0) || ((tzid) >= TZ_END))
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 static int get_tr_handle_id(tr_handle instance)
 {
 	struct gs_tmu_data *data;
@@ -360,6 +361,7 @@ static int thermal_metrics_reset_stats(tr_handle instance)
 
 	return ret;
 }
+#endif /* IS_ENABLED(CONFIG_PIXEL_METRICS) */
 
 static u64 get_bulk_trace_buffer_timestamp(struct gov_trace_data_struct *bulk_trace_buffer, int idx)
 {
@@ -4273,15 +4275,17 @@ extern void register_tz_id_ignore_genl(int tz_id);
 static int gs_tmu_probe(struct platform_device *pdev)
 {
 	struct gs_tmu_data *data;
-	int ret, val;
+	int ret;
 	bool is_first = false;
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
+	int val;
 	struct temp_residency_stats_callbacks tr_cb_struct = {
 		.set_thresholds = thermal_metrics_set_tr_thresholds,
 		.get_thresholds = thermal_metrics_get_tr_thresholds,
 		.get_stats = thermal_metrics_get_tr_stats,
 		.reset_stats = thermal_metrics_reset_stats,
 	};
-
+#endif
 	data = devm_kzalloc(&pdev->dev, sizeof(struct gs_tmu_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -4412,12 +4416,15 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	} else {
 		thermal_zone_device_enable(data->tzd);
 	}
+
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 	/* compatibility check */
 	ret = exynos_acpm_tmu_ipc_get_tr_num_thresholds(data->id, &val);
 	if (!ret) {
 		data->tr_handle = register_temp_residency_stats(data->tmu_name, "tmu");
 		register_temp_residency_stats_callbacks(data->tr_handle, &tr_cb_struct);
 	}
+#endif
 
 	if (is_first) {
 		sync_kernel_acpm_timestamp();

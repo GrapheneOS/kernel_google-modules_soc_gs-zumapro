@@ -243,8 +243,10 @@ static int s2mpg15_spmic_thermal_get_temp(struct thermal_zone_device *tz, int *t
 	raw = data_buf[0] + ((data_buf[1] & 0xf) << 8);
 	*temp = s2mpg15_map_volt_temp(raw);
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 	if (s2mpg15_spmic_thermal->stats_en & (mask << s->adc_chan))
 		temp_residency_stats_update(s->tr_handle, *temp);
+#endif
 
 	mutex_unlock(&s2mpg15_spmic_thermal->adc_chan_lock);
 	return ret;
@@ -252,8 +254,10 @@ static int s2mpg15_spmic_thermal_get_temp(struct thermal_zone_device *tz, int *t
 emul_temp_exit:
 	*temp = s->emul_temperature;
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 	if (s2mpg15_spmic_thermal->stats_en & (mask << s->adc_chan))
 		temp_residency_stats_update(s->tr_handle, *temp);
+#endif
 
 err_exit:
 	mutex_unlock(&s2mpg15_spmic_thermal->adc_chan_lock);
@@ -673,10 +677,10 @@ static int s2mpg15_spmic_thermal_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct s2mpg15_dev *iodev = dev_get_drvdata(pdev->dev.parent);
 	struct s2mpg15_platform_data *pdata;
-	int irq_base, i;
+	int irq_base, i = 0;
 	int irq_count = 0;
 	u8 mask = 0x01;
-	char thermal_group[] = "spmic";
+	__maybe_unused char thermal_group[] = "spmic";
 	chip = devm_kzalloc(&pdev->dev, sizeof(struct s2mpg15_spmic_thermal_chip),
 			    GFP_KERNEL);
 	if (!chip)
@@ -726,10 +730,11 @@ static int s2mpg15_spmic_thermal_probe(struct platform_device *pdev)
 	/* Setup IRQ and register for residency stats */
 	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
 		int ret;
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 		struct thermal_zone_device *tzd = chip->sensor[i].tzd;
 		tr_handle tr_stats_handle;
 		int num_stats_thresholds =  ARRAY_SIZE(stats_thresholds);
-
+#endif
 		chip->sensor[i].ot_irq =
 			irq_base + S2MPG15_IRQ_NTC_WARN_OT_CH1_INT7 + i;
 
@@ -761,6 +766,7 @@ static int s2mpg15_spmic_thermal_probe(struct platform_device *pdev)
 		if (!(chip->stats_en & (mask << i)))
 			continue;
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 		tr_stats_handle = register_temp_residency_stats(tzd->type, thermal_group);
 		if (tr_stats_handle < 0) {
 			dev_err(&pdev->dev,
@@ -778,8 +784,8 @@ static int s2mpg15_spmic_thermal_probe(struct platform_device *pdev)
 		}
 
 		chip->sensor[i].tr_handle = tr_stats_handle;
+#endif
 	}
-
 	chip->wq = kthread_create_worker(0, "spmic-init");
 	if (IS_ERR_OR_NULL(chip->wq)) {
 		ret = PTR_ERR(chip->wq);
@@ -812,7 +818,7 @@ fail:
 static int s2mpg15_spmic_thermal_remove(struct platform_device *pdev)
 {
 	int i;
-	u8 mask = 0x01;
+	__maybe_unused u8 mask = 0x01;
 	struct s2mpg15_spmic_thermal_chip *chip = platform_get_drvdata(pdev);
 
 	mutex_lock(&chip->adc_chan_lock);
@@ -826,8 +832,10 @@ static int s2mpg15_spmic_thermal_remove(struct platform_device *pdev)
 		devm_free_irq(&pdev->dev, chip->sensor[i].ot_irq, chip);
 		devm_free_irq(&pdev->dev, chip->sensor[i].ut_irq, chip);
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 		if (chip->stats_en & (mask << i))
 			unregister_temp_residency_stats(chip->sensor[i].tr_handle);
+#endif
 	}
 	s2mpg15_spmic_thermal_unregister_tzd(chip);
 
