@@ -22,8 +22,17 @@
 	reg = <0x0 0x27F4F534 0x4>;
 };
 
+&cpufreq_domain0 {
+	resume-freq = <1425000>;
+};
+
 &cpufreq_domain1 {
 	soft-max-freq = <2367000>;
+	resume-freq = <1836000>;
+};
+
+&cpufreq_domain2 {
+	resume-freq = <1164000>;
 };
 
 &bigwave {
