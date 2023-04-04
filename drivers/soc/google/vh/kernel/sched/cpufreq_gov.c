@@ -1074,7 +1074,7 @@ static void pmu_limit_work(struct kthread_work *work)
 			}
 
 			lcpi = l3_cachemiss * 1000 / inst;
-			spc = stall * 100 / cyc;
+			spc = mem_stall * 100 / cyc;
 
 			if (trace_clock_set_rate_enabled()) {
 				char trace_name[32] = {0};
