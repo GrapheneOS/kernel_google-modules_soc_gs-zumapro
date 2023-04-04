@@ -2115,9 +2115,12 @@ void exynos_pcie_rc_print_msi_register(int ch_num)
 	struct dw_pcie_rp *pp = &pci->pp;
 	u32 val;
 	int ctrl;
+	unsigned long flags;
 
+	spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
 	if (exynos_pcie->state != STATE_LINK_UP) {
 		dev_err(pci->dev, "[%s] Link is not up\n", __func__);
+		spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
 		return;
 	}
 
@@ -2144,6 +2147,7 @@ void exynos_pcie_rc_print_msi_register(int ch_num)
 				(ctrl * MSI_REG_CTRL_BLOCK_SIZE), 4, &val);
 		dev_info(pci->dev, "PCIE_MSI_INTR0_STATUS: 0x%x\n", val);
 	}
+	spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_rc_print_msi_register);
 
