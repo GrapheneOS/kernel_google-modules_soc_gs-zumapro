@@ -2201,7 +2201,7 @@ static void dp_notification_work_item(struct kthread_work *work)
 	}
 
 	ret = extcon_set_state_sync(chip->extcon, EXTCON_DISP_DP, dp);
-	logbuffer_log(chip->log, "%s Singalling dp altmode: %s ret:%d", ret < 0 ?
+	logbuffer_log(chip->log, "%s Signaling dp altmode: %s ret:%d", ret < 0 ?
 		      "Failed" : "Succeeded", dp ? "on" : "off", ret);
 
 	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp altmode hpd:%d orientation:%d lanes:%d dp:%d",
