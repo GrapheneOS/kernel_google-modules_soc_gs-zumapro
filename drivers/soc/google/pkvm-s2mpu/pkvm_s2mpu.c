@@ -19,8 +19,6 @@
 #include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
 
-#include <linux/delay.h>
-
 #define S2MPU_VERSION_9					0x90000000
 #define REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET	0x50
 
@@ -313,14 +311,6 @@ EXPORT_SYMBOL_GPL(pkvm_s2mpu_suspend);
 int pkvm_s2mpu_resume(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
-	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
-
-	/* Workaround to add 500us delay after s2mpu_s0_g3d resume.
-	 * Should be reverted once b/270725014 is root-caused.
-	 */
-	if ((pdev != NULL) &&
-		(!strncmp(pdev->name, "1ee70000.s2mpu_s0_g3d", strlen(pdev->name))))
-		usleep_range(400, 500);
 
 	if (data->pkvm_registered)
 		return pkvm_iommu_resume(dev);
@@ -364,7 +354,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	struct s2mpu_data *data;
-	bool off_at_boot, has_pd;
+	bool off_at_boot;
 	int ret, nr_devs;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -387,7 +377,6 @@ static int s2mpu_probe(struct platform_device *pdev)
 
 	data->always_on = !!of_get_property(np, "always-on", NULL);
 	off_at_boot = !!of_get_property(np, "off-at-boot", NULL);
-	has_pd = !!of_get_property(np, "power-domains", NULL);
 
 	/*
 	 * Try to parse IRQ information. This is optional as it only affects
@@ -428,8 +417,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	if (!off_at_boot)
 		WARN_ON(pkvm_s2mpu_suspend(dev));
 
-	if (has_pd || data->always_on)
-		pm_runtime_enable(dev);
+	pm_runtime_enable(dev);
 	if (data->always_on)
 		pm_runtime_get_sync(dev);
 

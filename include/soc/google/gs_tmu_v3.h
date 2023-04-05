@@ -11,6 +11,7 @@
 #include <linux/kthread.h>
 #include <soc/google/exynos_pm_qos.h>
 #include <soc/google/exynos-cpuhp.h>
+#include <soc/google/thermal_metrics.h>
 
 #define MCELSIUS        1000
 
@@ -172,6 +173,7 @@ struct gs_tmu_data {
 	u32 fvp_get_target_freq;
 	bool acpm_pi_enable;
 	u32 control_temp_step;
+	tr_handle tr_handle;
 };
 
 enum throttling_stats_type {
@@ -324,6 +326,11 @@ int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on);
 #define BULK_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20
 #define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
+#define NS_PER_MS 1000000
+#define acpm_systick_to_ns(acpm_tick)     ((acpm_tick * ACPM_SYSTICK_NUMERATOR) +              \
+                                            (acpm_tick / ACPM_SYSTICK_FRACTIONAL_DENOMINATOR))
+#define acpm_systick_to_ms(acpm_tick)     (acpm_systick_to_ns(acpm_tick) / NS_PER_MS)
+
 struct gov_data {
 	u64 timestamp;
 	u32 freq_req;

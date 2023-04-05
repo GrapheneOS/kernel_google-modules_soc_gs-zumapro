@@ -255,6 +255,112 @@ static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_sta
 	}
 }
 
+#define INVALID_TZID(tzid)          (((tzid) < 0) || ((tzid) >= TZ_END))
+
+static int get_tr_handle_id(tr_handle instance)
+{
+	struct gs_tmu_data *data;
+
+	list_for_each_entry (data, &dtm_dev_list, node) {
+		if (data->tr_handle == instance)
+			return data->id;
+	}
+	return -EINVAL;
+}
+
+static int thermal_metrics_get_tr_stats(tr_handle instance, atomic64_t *stats)
+{
+	int i, num_thresholds, acpm_temp, ipc_stat;
+	int tzid = get_tr_handle_id(instance);
+	u64 single_stats;
+
+	if (!stats || INVALID_TZID(tzid))
+		return -EINVAL;
+
+	exynos_acpm_tmu_ipc_get_tr_num_thresholds(tzid, &num_thresholds);
+	/* force the acpm to update tr stats */
+	exynos_acpm_tmu_set_read_temp(tzid, &acpm_temp, &ipc_stat);
+	for (i = 0; i < num_thresholds + 1; ++i) {
+		exynos_acpm_tmu_ipc_get_tr_stats(tzid, i, &single_stats);
+		atomic64_set(&stats[i], acpm_systick_to_ms(single_stats));
+	}
+	return 0;
+}
+
+#define NUM_THRESHOLD_PER_IPC  8
+static int thermal_metrics_get_tr_thresholds(tr_handle instance, int *thresholds,
+                                                int *num_thresholds)
+{
+	int i, j, ipc_cnt;
+	int tzid = get_tr_handle_id(instance);
+	union {
+		u8 byte[8];
+		u64 qword;
+	} val;
+
+	if (!thresholds || !num_thresholds || INVALID_TZID(tzid))
+		return -EINVAL;
+
+	exynos_acpm_tmu_ipc_get_tr_num_thresholds(tzid, num_thresholds);
+	/* each ipc call sends 8 thresholds. determine num of ipc call*/
+	ipc_cnt = (*num_thresholds + NUM_THRESHOLD_PER_IPC - 1) / NUM_THRESHOLD_PER_IPC;
+	for (i = 0; i < ipc_cnt; ++i) {
+		exynos_acpm_tmu_ipc_get_tr_thresholds(tzid, (u8)i, &val.qword);
+		for (j = 0; j < NUM_THRESHOLD_PER_IPC; ++j) {
+			int thresholds_index = i * NUM_THRESHOLD_PER_IPC + j;
+			if (thresholds_index >= *num_thresholds)
+				break;
+			thresholds[thresholds_index] = val.byte[j] * MCELSIUS;
+		}
+	}
+	return 0;
+}
+
+static int thermal_metrics_set_tr_thresholds(tr_handle instance, const int *thresholds,
+                                             int num_thresholds)
+{
+	int i, j, ipc_cnt, acpm_temp, ipc_stat;
+	int tzid = get_tr_handle_id(instance);
+	union {
+		u8 byte[8];
+		u64 qword;
+	} val;
+
+	if (exynos_acpm_tmu_ipc_set_tr_num_thresholds(tzid, num_thresholds))
+		return -EINVAL;
+
+	/* each ipc call sends 8 thresholds. determine num of ipc call*/
+	ipc_cnt = (num_thresholds + NUM_THRESHOLD_PER_IPC - 1) / NUM_THRESHOLD_PER_IPC;
+	for (i = 0; i < ipc_cnt; ++i) {
+		val.qword = 0;
+		for (j = 0; j < NUM_THRESHOLD_PER_IPC; ++j) {
+			int thresholds_index = i * NUM_THRESHOLD_PER_IPC + j;
+			if (thresholds_index >= num_thresholds)
+				break;
+			val.byte[j] = (u8)(thresholds[thresholds_index] / MCELSIUS);
+		}
+		exynos_acpm_tmu_ipc_set_tr_thresholds(tzid, (u8)i, val.qword);
+	}
+	/* force the acpm to update tr stats */
+	exynos_acpm_tmu_set_read_temp(tzid, &acpm_temp, &ipc_stat);
+	return 0;
+}
+
+static int thermal_metrics_reset_stats(tr_handle instance)
+{
+	int tzid = get_tr_handle_id(instance);
+	int acpm_temp, ipc_stat, ret;
+
+	if (INVALID_TZID(tzid))
+		return -EINVAL;
+
+	ret = exynos_acpm_tmu_ipc_reset_tr_stats(tzid);
+	/* force the acpm to update tr stats */
+	exynos_acpm_tmu_set_read_temp(tzid, &acpm_temp, &ipc_stat);
+
+	return ret;
+}
+
 static u64 get_bulk_trace_buffer_timestamp(struct gov_trace_data_struct *bulk_trace_buffer, int idx)
 {
 	return bulk_trace_buffer->buffered_curr_state[idx].timestamp;
@@ -3190,6 +3296,7 @@ static ssize_t ipc_dump2_show(struct device *dev, struct device_attribute *attr,
 			data.val[1], data.val[2], data.val[3],
 			data.val[4], data.val[5], data.val[6], data.val[7]);
 }
+
 #define create_s32_param_attr(name, Name)                                                          \
 	static ssize_t name##_show(struct device *dev, struct device_attribute *devattr,           \
 				   char *buf)                                                      \
@@ -4166,8 +4273,14 @@ extern void register_tz_id_ignore_genl(int tz_id);
 static int gs_tmu_probe(struct platform_device *pdev)
 {
 	struct gs_tmu_data *data;
-	int ret;
+	int ret, val;
 	bool is_first = false;
+	struct temp_residency_stats_callbacks tr_cb_struct = {
+		.set_thresholds = thermal_metrics_set_tr_thresholds,
+		.get_thresholds = thermal_metrics_get_tr_thresholds,
+		.get_stats = thermal_metrics_get_tr_stats,
+		.reset_stats = thermal_metrics_reset_stats,
+	};
 
 	data = devm_kzalloc(&pdev->dev, sizeof(struct gs_tmu_data), GFP_KERNEL);
 	if (!data)
@@ -4298,6 +4411,12 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		}
 	} else {
 		thermal_zone_device_enable(data->tzd);
+	}
+	/* compatibility check */
+	ret = exynos_acpm_tmu_ipc_get_tr_num_thresholds(data->id, &val);
+	if (!ret) {
+		data->tr_handle = register_temp_residency_stats(data->tmu_name, "tmu");
+		register_temp_residency_stats_callbacks(data->tr_handle, &tr_cb_struct);
 	}
 
 	if (is_first) {
