@@ -124,7 +124,7 @@ pinctrl-exynos-gs.ko
 pixel-boot-metrics.ko
 pixel-debug-test.ko
 pixel_em.ko
-pkvm-s2mpu.ko
+pkvm-s2mpu-v9.ko
 pl330.ko
 pmic_class.ko
 power_stats.ko
