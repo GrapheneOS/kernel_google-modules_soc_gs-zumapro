@@ -70,5 +70,6 @@ private/google-modules/touch/sec
 private/google-modules/power/reset
 private/google-modules/bluetooth/broadcom
 private/google-modules/nfc
+private/google-modules/video/gchips
 ${UWB_MODULE}
 "

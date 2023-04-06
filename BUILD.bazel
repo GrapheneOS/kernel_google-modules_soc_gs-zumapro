@@ -71,6 +71,7 @@ kernel_module_group(
         "//private/google-modules/power/reset",
         "//private/google-modules/bluetooth/broadcom:bluetooth.broadcom",
         "//private/google-modules/nfc",
+        "//private/google-modules/video/gchips:video.gchips",
         "//private/google-modules/uwb/kernel:uwb.dw3000",
     ],
 )
@@ -93,6 +94,7 @@ kernel_build(
         "//private/google-modules/touch/common:common.kconfig",
         "//private/google-modules/touch/fts/ftm5:ftm5.kconfig",
         "//private/google-modules/touch/sec:sec.kconfig",
+        "//private/google-modules/video/gchips:video.gchips.kconfig",
     ],
     outs = [
         # Sync with build.config.slider
