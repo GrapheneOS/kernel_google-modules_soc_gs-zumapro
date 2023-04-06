@@ -38,7 +38,6 @@ extern void vh_arch_set_freq_scale_pixel_mod(void *data,
 extern struct pixel_em_profile **exynos_cpu_cooling_pixel_em_profile;
 #endif
 
-static int pixel_em_max_cpu;
 static int pixel_em_num_clusters;
 
 static struct mutex profile_list_lock;
@@ -87,8 +86,6 @@ static int pixel_em_init_cpu_layout(void)
 	if (num_clusters <= 0)
 		return num_clusters;
 	pixel_em_num_clusters = num_clusters;
-
-	pixel_em_max_cpu = cpumask_last(cpu_possible_mask);
 
 	return 0;
 }
@@ -221,6 +218,7 @@ static bool update_em_entry(struct pixel_em_profile *profile,
 	return false;
 }
 
+#if IS_ENABLED(CONFIG_VH_SCHED)
 static bool update_idle_em_entry(struct pixel_idle_em *idle_em,
 			    int cpu,
 			    unsigned int freq,
@@ -251,6 +249,7 @@ static bool update_idle_em_entry(struct pixel_idle_em *idle_em,
 
 	return false;
 }
+#endif
 
 static void update_profile(struct pixel_em_profile *dst, const struct pixel_em_profile *src)
 {
@@ -384,7 +383,7 @@ static int parse_profile(const char *profile_input, int profile_input_length)
 				res = -EINVAL;
 				goto early_return;
 			}
-			if (current_cpu_id < 0 || current_cpu_id > pixel_em_max_cpu) {
+			if (current_cpu_id < 0 || current_cpu_id >= CONFIG_VH_SCHED_CPU_NR) {
 				pr_err("Invalid CPU specified on line '%s'!\n", skipped_blanks);
 				res = -EINVAL;
 				goto early_return;
@@ -555,6 +554,7 @@ failed_res_allocation:
 	return NULL;
 }
 
+#if IS_ENABLED(CONFIG_VH_SCHED)
 static struct pixel_idle_em *generate_idle_em(void)
 {
 	struct pixel_idle_em *idle_em;
@@ -641,7 +641,7 @@ static bool parse_idle_em_body(struct pixel_idle_em *idle_em, const char *idle_e
 				ret = -EINVAL;
 				goto early_return;
 			}
-			if (current_cpu_id < 0 || current_cpu_id > pixel_em_max_cpu) {
+			if (current_cpu_id < 0 || current_cpu_id >= CONFIG_VH_SCHED_CPU_NR) {
 				pr_err("Invalid CPU specified on line '%s'!\n", skipped_blanks);
 				ret = -EINVAL;
 				goto early_return;
@@ -696,6 +696,7 @@ static int parse_idle_em(struct pixel_idle_em *idle_em, const struct device_node
 
 	return ret;
 }
+#endif
 
 static ssize_t sysfs_write_profile_store(struct kobject *kobj,
 					 struct kobj_attribute *attr,
@@ -877,6 +878,7 @@ static void pixel_em_free_profile(struct pixel_em_profile *profile)
 	kfree(profile);
 }
 
+#if IS_ENABLED(CONFIG_VH_SCHED)
 static void pixel_em_free_idle(struct pixel_idle_em *idle_em)
 {
 	int cluster_id;
@@ -891,6 +893,7 @@ static void pixel_em_free_idle(struct pixel_idle_em *idle_em)
 	kfree(idle_em->cpu_to_cluster);
 	kfree(idle_em);
 }
+#endif
 
 static void pixel_em_clean_up_sysfs_nodes(void)
 {
@@ -955,8 +958,10 @@ static void pixel_em_drv_undo_probe(void)
 	// happen (other than debugging).
 
 	pixel_em_clean_up_sysfs_nodes();
+#if IS_ENABLED(CONFIG_VH_SCHED)
 	pixel_em_free_idle(vendor_sched_pixel_idle_em);
 	vendor_sched_pixel_idle_em = NULL;
+#endif
 
 	if (!platform_dev) {
 		// 'platform_dev' gets set when probing is successful. When that point is reached,
@@ -992,6 +997,7 @@ static int pixel_em_drv_probe(struct platform_device *dev)
 		return -ENOMEM;
 	}
 
+#if IS_ENABLED(CONFIG_VH_SCHED)
 	vendor_sched_pixel_idle_em = generate_idle_em();
 	if (vendor_sched_pixel_idle_em == NULL)
 		pr_info("Pixel idle em not generated!\n");
@@ -1002,6 +1008,7 @@ static int pixel_em_drv_probe(struct platform_device *dev)
 		vendor_sched_pixel_idle_em = NULL;
 		pr_info("Pixel idle em not parsed!\n");
 	}
+#endif
 
 	res = pixel_em_initialize_sysfs_nodes();
 	if (res < 0) {
@@ -1041,7 +1048,7 @@ static int pixel_em_drv_probe(struct platform_device *dev)
 
 	active_profile = default_profile;
 
-	// Probe is successful => do not attempt to free pixel_em_max_cpu or cpu_to_em_pd.
+	// Probe is successful => do not attempt to free cpu_to_em_pd.
 	platform_dev = dev;
 
 	// Register EM table to all needed drivers here.
