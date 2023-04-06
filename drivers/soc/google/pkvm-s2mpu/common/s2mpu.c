@@ -93,13 +93,15 @@ int pkvm_iommu_s2mpu_init(u64 token)
 }
 EXPORT_SYMBOL_GPL(pkvm_iommu_s2mpu_init);
 
-int pkvm_iommu_s2mpu_register(struct device *dev, phys_addr_t addr)
+int pkvm_iommu_s2mpu_register(struct device *dev, phys_addr_t addr, bool has_sync)
 {
+	u8 flags = has_sync ? S2MPU_HAS_SYNC : 0;
+
 	if (!is_protected_kvm_enabled())
 		return -ENODEV;
 
 	return pkvm_iommu_register(dev, ksym_ref_addr_nvhe(pkvm_s2mpu_driver),
-				   addr, S2MPU_MMIO_SIZE, NULL, 0);
+				   addr, S2MPU_MMIO_SIZE, NULL, flags);
 }
 EXPORT_SYMBOL_GPL(pkvm_iommu_s2mpu_register);
 

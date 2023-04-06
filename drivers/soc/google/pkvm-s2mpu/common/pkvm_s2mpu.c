@@ -202,7 +202,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	struct s2mpu_data *data;
-	bool off_at_boot;
+	bool off_at_boot, has_sync;
 	int ret, nr_devs;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -225,7 +225,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 
 	data->always_on = !!of_get_property(np, "always-on", NULL);
 	off_at_boot = !!of_get_property(np, "off-at-boot", NULL);
-
+	has_sync = !!of_get_property(np, "built-in-sync", NULL);
 	/*
 	 * Try to parse IRQ information. This is optional as it only affects
 	 * runtime fault reporting, and therefore errors do not fail the whole
@@ -233,7 +233,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 */
 	s2mpu_probe_irq(pdev, data);
 
-	ret = pkvm_iommu_s2mpu_register(dev, res->start);
+	ret = pkvm_iommu_s2mpu_register(dev, res->start, has_sync);
 	if (ret && ret != -ENODEV) {
 		dev_err(dev, "could not register: %d\n", ret);
 		return ret;

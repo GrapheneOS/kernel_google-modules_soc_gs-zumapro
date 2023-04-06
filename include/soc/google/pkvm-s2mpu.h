@@ -44,7 +44,7 @@ int pkvm_s2mpu_resume_v9(struct device *dev);
 
 
 int pkvm_iommu_s2mpu_init(unsigned long token);
-int pkvm_iommu_s2mpu_register(struct device *dev, phys_addr_t pa);
+int pkvm_iommu_s2mpu_register(struct device *dev, phys_addr_t pa, bool has_sync);
 int pkvm_iommu_sysmmu_sync_register(struct device *dev, phys_addr_t pa,
 				    struct device *parent);
 
