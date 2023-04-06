@@ -52,6 +52,8 @@ enum pi_param {
 #define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT 100
 #define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MIN 0
 #define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MAX 1000
+#define ACPM_GOV_THERMAL_PRESS_POLLING_DELAY_ON 100
+#define ACPM_GOV_THERMAL_PRESS_POLLING_DELAY_OFF 0
 struct acpm_gov_params_st {
 	u8 ctrl_temp_idx;
 	u8 switch_on_temp_idx;
@@ -74,7 +76,31 @@ enum acpm_gov_debug_mode_enum {
 	ACPM_GOV_DEBUG_MODE_INVALID,
 };
 
-#define NR_CPU 3
+#define NR_PRESSURE_TZ 3
+#define CPU_TZ_MASK (0x7)
+struct thermal_state {
+	u8 switched_on;
+	u8 dfs_reserved;
+	u8 therm_press[NR_PRESSURE_TZ];
+	u8 reserved[3];
+};
+
+/* Callback for registering to thermal pressure update */
+typedef void (*thermal_pressure_cb)(struct cpumask *maskp, int cdev_index);
+void register_thermal_pressure_cb(thermal_pressure_cb cb);
+
+struct thermal_pressure {
+	struct kthread_worker worker;
+	struct kthread_work switch_on_work;
+	struct kthread_delayed_work polling_work;
+	int polling_delay_on;
+	int polling_delay_off;
+	struct thermal_state state;
+	struct cpumask work_affinity;
+	bool enabled;
+	spinlock_t lock;
+	thermal_pressure_cb cb;
+};
 
 struct acpm_gov_common {
 	u64 kernel_ts;
@@ -90,6 +116,7 @@ struct acpm_gov_common {
 	struct gov_trace_data_struct *bulk_trace_buffer;
 	spinlock_t lock;
 	u16 thermal_press_window;
+	struct thermal_pressure thermal_pressure;
 };
 
 #define TRIP_LEVEL_NUM 8
@@ -183,6 +210,8 @@ struct gs_tmu_data {
 	bool acpm_pi_enable;
 	u32 control_temp_step;
 	tr_handle tr_handle;
+	struct cpumask mapped_cpus;
+	int pressure_index;
 };
 
 enum throttling_stats_type {
@@ -367,13 +396,6 @@ struct buffered_curr_state {
 	u16 pid_power_range;
 	u16 pid_p;
 	u32 pid_i;
-};
-
-struct thermal_state {
-	u8 switched_on;
-	u8 dfs_reserved;
-	u8 therm_press[NR_CPU];
-	u8 reserved[3];
 };
 
 struct gov_trace_data_struct {
