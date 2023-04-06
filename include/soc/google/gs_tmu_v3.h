@@ -95,6 +95,7 @@ struct thermal_pressure {
 	struct kthread_delayed_work polling_work;
 	int polling_delay_on;
 	int polling_delay_off;
+	u16 time_window;
 	struct thermal_state state;
 	struct cpumask work_affinity;
 	bool enabled;
@@ -115,7 +116,6 @@ struct acpm_gov_common {
 	u64 buffer_version;
 	struct gov_trace_data_struct *bulk_trace_buffer;
 	spinlock_t lock;
-	u16 thermal_press_window;
 	struct thermal_pressure thermal_pressure;
 };
 

@@ -190,7 +190,6 @@ static struct acpm_gov_common acpm_gov_common = {
 	.tracing_buffer_flush_pending = false,
 	.tracing_mode = ACPM_GOV_DEBUG_MODE_DISABLED,
 	.timer_interval = ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT,
-	.thermal_press_window = ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT,
 	.buffer_version = -1,
 	.bulk_trace_buffer = NULL,
 };
@@ -2545,8 +2544,8 @@ static int param_acpm_gov_timer_interval_set(const char *val, const struct kerne
 		return -ERANGE;
 	}
 
-	if (exynos_acpm_tmu_ipc_set_gov_time_windows(timer_interval_val,
-						     acpm_gov_common.thermal_press_window)) {
+	if (exynos_acpm_tmu_ipc_set_gov_time_windows(
+		    timer_interval_val, acpm_gov_common.thermal_pressure.time_window)) {
 		pr_err("%s: timer interval and thermal pressure window values are incompatible", __func__);
 		return -EINVAL;
 	}
@@ -2565,7 +2564,7 @@ module_param_cb(acpm_gov_timer_interval, &param_ops_acpm_gov_timer_interval, NUL
 
 static int param_acpm_gov_thermal_press_window_get(char *buf, const struct kernel_param *kp)
 {
-	return sysfs_emit(buf, "%d\n", acpm_gov_common.thermal_press_window);
+	return sysfs_emit(buf, "%d\n", acpm_gov_common.thermal_pressure.time_window);
 }
 
 static int param_acpm_gov_thermal_press_window_set(const char *val, const struct kernel_param *kp)
@@ -2589,7 +2588,7 @@ static int param_acpm_gov_thermal_press_window_set(const char *val, const struct
 		return -EINVAL;
 	}
 
-	acpm_gov_common.thermal_press_window = thermal_press_window_val;
+	acpm_gov_common.thermal_pressure.time_window = thermal_press_window_val;
 
 	return 0;
 }
@@ -2641,8 +2640,8 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 		return -EINVAL;
 
 	exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(acpm_gov_common.tracing_mode);
-	if (exynos_acpm_tmu_ipc_set_gov_time_windows(acpm_gov_common.timer_interval,
-						     acpm_gov_common.thermal_press_window)) {
+	if (exynos_acpm_tmu_ipc_set_gov_time_windows(
+		    acpm_gov_common.timer_interval, acpm_gov_common.thermal_pressure.time_window)) {
 		pr_err("GOV: timer interval and thermal press window configuration error\n");
 		return -EINVAL;
 	}
@@ -4534,6 +4533,8 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			if (parse_acpm_gov_common_dt())
 				goto err_dtm_dev_list;
 
+			acpm_gov_common.thermal_pressure.time_window =
+				ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT;
 			acpm_gov_common.thermal_pressure.state.switched_on = 0;
 			for(i = 0; i < NR_PRESSURE_TZ; i++)
 				acpm_gov_common.thermal_pressure.state.therm_press[i] = 0;
@@ -4570,7 +4571,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 				acpm_gov_common.tracing_mode);
 			if (exynos_acpm_tmu_ipc_set_gov_time_windows(
 				    acpm_gov_common.timer_interval,
-				    acpm_gov_common.thermal_press_window)) {
+				    acpm_gov_common.thermal_pressure.time_window)) {
 				pr_err("GOV: timer interval and thermal press window configuration error\n");
 				goto err_dtm_dev_list;
 			}
