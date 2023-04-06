@@ -73,41 +73,9 @@ static void update_irq_end_times(struct bcl_device *bcl_dev, int id);
 static int triggered_read_level(void *data, int *val, int id)
 {
 	struct bcl_device *bcl_dev = data;
-	int polarity = (id == SMPL_WARN) ? 0 : 1;
-	int gpio_level;
-	u8 irq_val = 0;
 
-	if (id == UVLO1)
-		gpio_level = gpio_get_value(bcl_dev->vdroop1_pin);
-	else if ((id == UVLO2) || (id == BATOILO))
-		gpio_level = gpio_get_value(bcl_dev->vdroop2_pin);
-	else
-		gpio_level = gpio_get_value(bcl_dev->bcl_pin[id]);
-
-	/* Check polarity */
-	if ((gpio_level == polarity) && (bcl_dev->bcl_cur_lvl[id] != 0)) {
-		*val = bcl_dev->bcl_lvl[id] + THERMAL_HYST_LEVEL;
-		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
-				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
-		bcl_dev->bcl_prev_lvl[id] = *val;
-
-		/* Check for any additional IRQs if vdroop2 was held high */
-		if (id == UVLO2 || id == BATOILO)
-			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
-		return 0;
-	}
-
-	*val = 0;
-	bcl_dev->bcl_cur_lvl[id] = 0;
-	if (bcl_dev->bcl_prev_lvl[id] != *val) {
-		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[id],
-				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
-		bcl_dev->bcl_prev_lvl[id] = *val;
-		if (id >= UVLO1 && id <= BATOILO)
-			update_irq_end_times(bcl_dev, id);
-	}
-	if (bcl_dev->bcl_qos[id])
-		google_bcl_qos_update(bcl_dev, id, false);
+	*val = bcl_dev->bcl_cur_lvl[id];
+	bcl_dev->bcl_prev_lvl[id] = *val;
 	return 0;
 }
 
@@ -310,17 +278,203 @@ static void update_tz(struct bcl_device *bcl_dev, int idx, bool triggered)
 		bcl_dev->bcl_tz[idx]->temperature = 0;
 		thermal_zone_device_update(bcl_dev->bcl_tz[idx], THERMAL_EVENT_UNSPECIFIED);
 	}
+}
+
+static void irq_triggered_work(struct work_struct *work, int idx)
+{
+	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
+						  irq_triggered_worker[idx].work);
+
+	if (bcl_dev->bcl_qos[idx])
+		google_bcl_qos_update(bcl_dev, idx, true);
+	if (idx >= UVLO1 && idx <= BATOILO)
+		update_irq_start_times(bcl_dev, idx);
+
+	if (idx == BATOILO)
+		gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
+
+	if (bcl_dev->batt_psy_initialized) {
+		atomic_inc(&bcl_dev->bcl_cnt[idx]);
+		ocpsmpl_read_stats(bcl_dev, &bcl_dev->bcl_stats[idx], bcl_dev->batt_psy);
+		update_tz(bcl_dev, idx, true);
+	}
 	mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[idx],
 			 msecs_to_jiffies(THRESHOLD_DELAY_MS));
+}
+
+static void uvlo1_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, UVLO1);
+}
+
+static void uvlo2_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, UVLO2);
+}
+
+static void smpl_warn_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, SMPL_WARN);
+}
+
+static void batoilo_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, BATOILO);
+}
+
+static void ocp_cpu1_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, OCP_WARN_CPUCL1);
+}
+
+static void soft_ocp_cpu1_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, SOFT_OCP_WARN_CPUCL1);
+}
+
+static void ocp_cpu2_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, OCP_WARN_CPUCL2);
+}
+
+static void soft_ocp_cpu2_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, SOFT_OCP_WARN_CPUCL2);
+}
+
+static void ocp_tpu_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, OCP_WARN_TPU);
+}
+
+static void soft_ocp_tpu_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, SOFT_OCP_WARN_TPU);
+}
+
+static void ocp_gpu_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, OCP_WARN_GPU);
+}
+
+static void soft_ocp_gpu_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, SOFT_OCP_WARN_GPU);
+}
+
+static void pmic_120c_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, PMIC_120C);
+}
+
+static void pmic_140c_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, PMIC_140C);
+}
+
+static void tsd_overheat_triggered_work(struct work_struct *work)
+{
+	irq_triggered_work(work, PMIC_OVERHEAT);
+}
+
+static void irq_untriggered_work(struct work_struct *work, int idx)
+{
+	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
+						  irq_untriggered_worker[idx].work);
+
+	/* IRQ falling edge */
+	if (bcl_dev->bcl_qos[idx])
+		google_bcl_qos_update(bcl_dev, idx, false);
+	if (idx >= UVLO1 && idx <= BATOILO)
+		update_irq_end_times(bcl_dev, idx);
+	if (idx == BATOILO)
+		gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
+
+	update_tz(bcl_dev, idx, false);
+}
+
+static void uvlo1_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, UVLO1);
+}
+
+static void uvlo2_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, UVLO2);
+}
+
+static void smpl_warn_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, SMPL_WARN);
+}
+
+static void batoilo_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, BATOILO);
+}
+
+static void ocp_cpu1_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, OCP_WARN_CPUCL1);
+}
+
+static void soft_ocp_cpu1_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, SOFT_OCP_WARN_CPUCL1);
+}
+
+static void ocp_cpu2_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, OCP_WARN_CPUCL2);
+}
+
+static void soft_ocp_cpu2_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, SOFT_OCP_WARN_CPUCL2);
+}
+
+static void ocp_tpu_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, OCP_WARN_TPU);
+}
+
+static void soft_ocp_tpu_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, SOFT_OCP_WARN_TPU);
+}
+
+static void ocp_gpu_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, OCP_WARN_GPU);
+}
+
+static void soft_ocp_gpu_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, SOFT_OCP_WARN_GPU);
+}
+
+static void pmic_120c_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, PMIC_120C);
+}
+
+static void pmic_140c_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, PMIC_140C);
+}
+
+static void tsd_overheat_untriggered_work(struct work_struct *work)
+{
+	irq_untriggered_work(work, PMIC_OVERHEAT);
 }
 
 static irqreturn_t irq_handler(int irq, void *data)
 {
 	struct bcl_device *bcl_dev = data;
 	u8 idx;
-	u8 irq_val = 0;
 	int gpio_level;
 	int polarity;
+	u8 irq_val = 0;
 
 	if (!bcl_dev)
 		return IRQ_HANDLED;
@@ -331,46 +485,21 @@ static irqreturn_t irq_handler(int irq, void *data)
 
 	if (idx == UVLO1)
 		gpio_level = gpio_get_value(bcl_dev->vdroop1_pin);
-	else if (idx == UVLO2)
+	else if ((idx == UVLO2) || (idx == BATOILO))
 		gpio_level = gpio_get_value(bcl_dev->vdroop2_pin);
 	else
 		gpio_level = gpio_get_value(bcl_dev->bcl_pin[idx]);
 
-	if (gpio_level == polarity) {
-		/* IRQ is either UVLO1, UVLO2, or BATOILO */
-		if (idx >= UVLO1 && idx <= BATOILO) {
-			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
-			if (irq_val == 0)
-				goto exit;
-			idx = (idx != UVLO1) ? irq_val : idx;
-			update_irq_start_times(bcl_dev, idx);
-		}
-		if (idx == BATOILO)
-			gpio_set_value(bcl_dev->modem_gpio2_pin, 1);
-
-		if (bcl_dev->batt_psy_initialized) {
-			atomic_inc(&bcl_dev->bcl_cnt[idx]);
-			ocpsmpl_read_stats(bcl_dev, &bcl_dev->bcl_stats[idx], bcl_dev->batt_psy);
-			update_tz(bcl_dev, idx, true);
-		}
-		if (bcl_dev->bcl_qos[idx])
-			google_bcl_qos_update(bcl_dev, idx, true);
-	} else {
-		/* IRQ falling edge */
-		if (idx >= UVLO1 && idx <= BATOILO) {
-			bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
-			if (irq_val == 0)
-				goto exit;
-			idx = (idx != UVLO1) ? irq_val : idx;
-			update_irq_end_times(bcl_dev, irq_val);
-		}
-		if (idx == BATOILO)
-			gpio_set_value(bcl_dev->modem_gpio2_pin, 0);
-
-		update_tz(bcl_dev, idx, false);
-		if (bcl_dev->bcl_qos[idx])
-			google_bcl_qos_update(bcl_dev, idx, false);
+	if (idx >= UVLO1 && idx <= BATOILO) {
+		bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+		if (irq_val == 0)
+			goto exit;
+		idx = (idx != UVLO1) ? irq_val : idx;
 	}
+	if (gpio_level == polarity)
+		mod_delayed_work(system_highpri_wq, &bcl_dev->irq_triggered_worker[idx], 0);
+	else
+		mod_delayed_work(system_highpri_wq, &bcl_dev->irq_untriggered_worker[idx], 0);
 exit:
 	enable_irq(irq);
 	return IRQ_HANDLED;
@@ -382,23 +511,31 @@ static void google_warn_work(struct work_struct *work, int idx)
 						  bcl_irq_work[idx].work);
 	int gpio_level;
 	int polarity;
+	int irq = (idx == BATOILO) ? bcl_dev->bcl_irq[UVLO2] : bcl_dev->bcl_irq[idx];
+
 	polarity = (idx == SMPL_WARN) ? 0 : 1;
 
+	disable_irq(irq);
 	if (idx == UVLO1)
 		gpio_level = gpio_get_value(bcl_dev->vdroop1_pin);
-	else if (idx == UVLO2)
+	else if ((idx == UVLO2) || (idx == BATOILO))
 		gpio_level = gpio_get_value(bcl_dev->vdroop2_pin);
 	else
 		gpio_level = gpio_get_value(bcl_dev->bcl_pin[idx]);
 	if (gpio_level != polarity) {
+		bcl_dev->bcl_cur_lvl[idx] = 0;
 		if (bcl_dev->bcl_qos[idx])
 			google_bcl_qos_update(bcl_dev, idx, false);
+		if (idx >= UVLO1 && idx <= BATOILO)
+			update_irq_end_times(bcl_dev, idx);
 	} else {
+		bcl_dev->bcl_cur_lvl[idx] = bcl_dev->bcl_lvl[idx] + THERMAL_HYST_LEVEL;
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[idx],
 				 msecs_to_jiffies(THRESHOLD_DELAY_MS));
 	}
 	if (bcl_dev->bcl_tz[idx])
 		thermal_zone_device_update(bcl_dev->bcl_tz[idx], THERMAL_EVENT_UNSPECIFIED);
+	enable_irq(irq);
 }
 
 static void google_smpl_warn_work(struct work_struct *work)
@@ -652,6 +789,9 @@ static int google_bcl_remove_thermal(struct bcl_device *bcl_dev)
 			dev = bcl_dev->sub_dev;
 		if (bcl_dev->bcl_tz[i])
 			devm_thermal_of_zone_unregister(dev, bcl_dev->bcl_tz[i]);
+		cancel_delayed_work(&bcl_dev->bcl_irq_work[i]);
+		cancel_delayed_work(&bcl_dev->irq_triggered_worker[i]);
+		cancel_delayed_work(&bcl_dev->irq_untriggered_worker[i]);
 	}
 
 	return 0;
@@ -1427,6 +1567,11 @@ static int google_set_sub_pmic(struct bcl_device *bcl_dev)
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_GPU], google_gpu_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_GPU], google_soft_gpu_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->sub_pwr_irq_work, sub_pwrwarn_irq_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[OCP_WARN_GPU], ocp_gpu_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[SOFT_OCP_WARN_GPU], soft_ocp_gpu_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[OCP_WARN_GPU], ocp_gpu_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[SOFT_OCP_WARN_GPU],
+		  soft_ocp_gpu_untriggered_work);
 
 	p_np = of_parse_phandle(np, "google,sub-power", 0);
 	if (p_np) {
@@ -1681,6 +1826,20 @@ static int google_set_intf_pmic(struct bcl_device *bcl_dev)
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[UVLO1], google_bcl_uvlo1_irq_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[UVLO2], google_bcl_uvlo2_irq_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[BATOILO], google_bcl_batoilo_irq_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[PMIC_120C], pmic_120c_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[PMIC_140C], pmic_140c_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[PMIC_OVERHEAT],
+			  tsd_overheat_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[UVLO1], uvlo1_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[UVLO2], uvlo2_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[BATOILO], batoilo_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[PMIC_120C], pmic_120c_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[PMIC_140C], pmic_140c_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[PMIC_OVERHEAT],
+			  tsd_overheat_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[UVLO1], uvlo1_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[UVLO2], uvlo2_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[BATOILO], batoilo_untriggered_work);
 	bcl_dev->bcl_irq[PMIC_120C] = pdata_main->irq_base + INT3_120C;
 	bcl_dev->bcl_irq[PMIC_140C] = pdata_main->irq_base + INT3_140C;
 	bcl_dev->bcl_irq[PMIC_OVERHEAT] = pdata_main->irq_base + INT3_TSD;
@@ -1735,13 +1894,38 @@ static int google_set_main_pmic(struct bcl_device *bcl_dev)
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[OCP_WARN_CPUCL1], google_cpu1_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_CPUCL2], google_soft_cpu2_warn_work);
 	INIT_DELAYED_WORK(&bcl_dev->bcl_irq_work[SOFT_OCP_WARN_CPUCL1], google_soft_cpu1_warn_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[SMPL_WARN], smpl_warn_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[OCP_WARN_TPU], ocp_tpu_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[SOFT_OCP_WARN_TPU],
+			  soft_ocp_tpu_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[OCP_WARN_CPUCL2],
+			  ocp_cpu2_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[OCP_WARN_CPUCL1],
+			  ocp_cpu1_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[SOFT_OCP_WARN_CPUCL2],
+			  soft_ocp_cpu2_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_triggered_worker[SOFT_OCP_WARN_CPUCL1],
+			  soft_ocp_cpu1_triggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[SMPL_WARN],
+			  smpl_warn_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[OCP_WARN_TPU],
+			  ocp_tpu_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[SOFT_OCP_WARN_TPU],
+			  soft_ocp_tpu_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[OCP_WARN_CPUCL2],
+			  ocp_cpu2_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[OCP_WARN_CPUCL1],
+			  ocp_cpu1_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[SOFT_OCP_WARN_CPUCL2],
+			  soft_ocp_cpu2_untriggered_work);
+	INIT_DELAYED_WORK(&bcl_dev->irq_untriggered_worker[SOFT_OCP_WARN_CPUCL1],
+			  soft_ocp_cpu1_untriggered_work);
 	INIT_DELAYED_WORK(&bcl_dev->main_pwr_irq_work, main_pwrwarn_irq_work);
 
 	for (i = 0; i < TRIGGERED_SOURCE_MAX; i++) {
 		bcl_dev->bcl_cur_lvl[i] = 0;
 		bcl_dev->bcl_prev_lvl[i] = 0;
 		atomic_set(&bcl_dev->bcl_cnt[i], 0);
-		mutex_init(&bcl_dev->bcl_irq_lock[i]);
 	}
 	p_np = of_parse_phandle(np, "google,main-power", 0);
 	if (p_np) {
