@@ -278,7 +278,6 @@ kernel_module(
         "drivers/soc/google/pt/slc_pt.ko",
         "drivers/soc/google/s2mpu/s2mpu.ko",
         "drivers/soc/google/sysrq-hook.ko",
-        "drivers/soc/google/vh/kernel/metrics/pixel_metrics.ko",
         "drivers/soc/google/vh/kernel/systrace.ko",
         "drivers/spi/spi-s3c64xx.ko",
         "drivers/thermal/google/google_bcl.ko",
