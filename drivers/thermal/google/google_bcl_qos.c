@@ -20,8 +20,7 @@
 
 void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle)
 {
-	if (id > TRIGGERED_SOURCE_MAX || id < 0 || !bcl_dev->bcl_qos[id]
-	    || bcl_dev->bcl_qos[id]->throttle == throttle)
+	if (id > TRIGGERED_SOURCE_MAX || id < 0 || !bcl_dev->bcl_qos[id])
 		return;
 	bcl_dev->bcl_qos[id]->throttle = throttle;
 	bcl_disable_power();

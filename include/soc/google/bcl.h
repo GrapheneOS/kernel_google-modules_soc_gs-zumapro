@@ -76,7 +76,7 @@
 #define PMU_ALIVE_TPU_OUT (0x2920)
 #define PMU_ALIVE_GPU_OUT (0x1E20)
 #define PMU_CLK_OUT (0x3E80)
-#define THRESHOLD_DELAY_MS 50
+#define THRESHOLD_DELAY_MS 10
 #define PWRWARN_DELAY_MS 50
 #define LPF_CURRENT_SHIFT 4
 #define ADD_CPUCL0 (0x29ce0000)
@@ -211,8 +211,9 @@ struct bcl_device {
 	const struct bcl_ifpmic_ops *pmic_ops;
 
 	struct notifier_block psy_nb;
+	struct delayed_work irq_triggered_worker[TRIGGERED_SOURCE_MAX];
+	struct delayed_work irq_untriggered_worker[TRIGGERED_SOURCE_MAX];
 	struct delayed_work init_work;
-	struct delayed_work bcl_intf_work[TRIGGERED_SOURCE_MAX];
 	unsigned int bcl_lvl[TRIGGERED_SOURCE_MAX];
 	atomic_t bcl_cnt[TRIGGERED_SOURCE_MAX];
 	int bcl_prev_lvl[TRIGGERED_SOURCE_MAX];
@@ -223,7 +224,6 @@ struct bcl_device {
 	int trip_val;
 	struct mutex state_trans_lock;
 	struct thermal_zone_of_device_ops bcl_ops[TRIGGERED_SOURCE_MAX];
-	struct mutex bcl_irq_lock[TRIGGERED_SOURCE_MAX];
 	struct delayed_work bcl_irq_work[TRIGGERED_SOURCE_MAX];
 	struct thermal_zone_device *bcl_tz[TRIGGERED_SOURCE_MAX];
 

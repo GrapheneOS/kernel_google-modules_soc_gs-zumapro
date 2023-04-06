@@ -772,7 +772,7 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 		for (i = 0; i < TRIGGERED_SOURCE_MAX; i++)
-			disable_irq_nosync(bcl_dev->bcl_irq[i]);
+			disable_irq(bcl_dev->bcl_irq[i]);
 	}
 	return size;
 }
@@ -898,8 +898,11 @@ static ssize_t uvlo1_lvl_store(struct device *dev,
 	}
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EIO;
-	if (bcl_cb_uvlo1_write(bcl_dev, value) < 0)
+	disable_irq(bcl_dev->bcl_irq[UVLO1]);
+	if (bcl_cb_uvlo1_write(bcl_dev, value) < 0) {
+		enable_irq(bcl_dev->bcl_irq[UVLO1]);
 		return -EIO;
+	}
 	bcl_dev->bcl_lvl[UVLO1] = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
 	ret = bcl_dev->bcl_tz[UVLO1]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO1], 0,
 							 VD_BATTERY_VOLTAGE - value);
@@ -907,6 +910,7 @@ static ssize_t uvlo1_lvl_store(struct device *dev,
 		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO1], THERMAL_EVENT_UNSPECIFIED);
 	if (ret)
 		dev_err(bcl_dev->device, "Fail to set sys_uvlo1 trip temp\n");
+	enable_irq(bcl_dev->bcl_irq[UVLO1]);
 	return size;
 
 }
@@ -950,8 +954,11 @@ static ssize_t uvlo2_lvl_store(struct device *dev,
 	}
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EIO;
-	if (bcl_cb_uvlo2_write(bcl_dev, value) < 0)
+	disable_irq(bcl_dev->bcl_irq[UVLO2]);
+	if (bcl_cb_uvlo2_write(bcl_dev, value) < 0) {
+		enable_irq(bcl_dev->bcl_irq[UVLO2]);
 		return -EIO;
+	}
 	bcl_dev->bcl_lvl[UVLO2] = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
 	ret = bcl_dev->bcl_tz[UVLO2]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO2], 0,
 							 VD_BATTERY_VOLTAGE - value);
@@ -959,6 +966,7 @@ static ssize_t uvlo2_lvl_store(struct device *dev,
 		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO2], THERMAL_EVENT_UNSPECIFIED);
 	if (ret)
 		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
+	enable_irq(bcl_dev->bcl_irq[UVLO2]);
 	return size;
 }
 
@@ -999,14 +1007,18 @@ static ssize_t batoilo_lvl_store(struct device *dev,
 			BO_LOWER_LIMIT, BO_UPPER_LIMIT);
 		return -EINVAL;
 	}
-	if (bcl_cb_batoilo_write(bcl_dev, value) < 0)
+	disable_irq(bcl_dev->bcl_irq[BATOILO]);
+	if (bcl_cb_batoilo_write(bcl_dev, value) < 0) {
+		enable_irq(bcl_dev->bcl_irq[BATOILO]);
 		return -EIO;
+	}
 	bcl_dev->bcl_lvl[BATOILO] = value - THERMAL_HYST_LEVEL;
 	ret = bcl_dev->bcl_tz[BATOILO]->ops->set_trip_temp(bcl_dev->bcl_tz[BATOILO], 0, value);
 	if (bcl_dev->bcl_tz[BATOILO])
 		thermal_zone_device_update(bcl_dev->bcl_tz[BATOILO], THERMAL_EVENT_UNSPECIFIED);
 	if (ret)
 		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
+	enable_irq(bcl_dev->bcl_irq[BATOILO]);
 	return size;
 }
 
@@ -1059,10 +1071,12 @@ static ssize_t smpl_lvl_store(struct device *dev,
 		dev_err(bcl_dev->device, "S2MPG1415 read 0x%x failed.", SMPL_WARN_CTRL);
 		return -EBUSY;
 	}
+	disable_irq(bcl_dev->bcl_irq[SMPL_WARN]);
 	value &= ~SMPL_WARN_MASK;
 	value |= ((val - SMPL_LOWER_LIMIT) / 100) << SMPL_WARN_SHIFT;
 	if (pmic_write(MAIN, bcl_dev, SMPL_WARN_CTRL, value)) {
 		dev_err(bcl_dev->device, "i2c write error setting smpl_warn\n");
+		enable_irq(bcl_dev->bcl_irq[SMPL_WARN]);
 		return ret;
 	}
 	bcl_dev->bcl_lvl[SMPL_WARN] = SMPL_BATTERY_VOLTAGE - val - THERMAL_HYST_LEVEL;
@@ -1072,6 +1086,7 @@ static ssize_t smpl_lvl_store(struct device *dev,
 		dev_err(bcl_dev->device, "Fail to set smpl_warn trip temp\n");
 	if (bcl_dev->bcl_tz[SMPL_WARN])
 		thermal_zone_device_update(bcl_dev->bcl_tz[SMPL_WARN], THERMAL_EVENT_UNSPECIFIED);
+	enable_irq(bcl_dev->bcl_irq[SMPL_WARN]);
 
 	return size;
 
@@ -1110,12 +1125,11 @@ static int set_ocp_lvl(struct bcl_device *bcl_dev, u64 val, u8 addr, u8 pmic, u8
 		       llimit, ulimit);
 		return -EBUSY;
 	}
-	mutex_lock(&bcl_dev->bcl_irq_lock[id]);
 	if (pmic_read(pmic, bcl_dev, addr, &value)) {
 		dev_err(bcl_dev->device, "S2MPG1415 read 0x%x failed.", addr);
-		mutex_unlock(&bcl_dev->bcl_irq_lock[id]);
 		return -EBUSY;
 	}
+	disable_irq(bcl_dev->bcl_irq[id]);
 	value &= ~(OCP_WARN_MASK) << OCP_WARN_LVL_SHIFT;
 	value |= ((ulimit - val) / step) << OCP_WARN_LVL_SHIFT;
 	ret = pmic_write(pmic, bcl_dev, addr, value);
@@ -1125,9 +1139,9 @@ static int set_ocp_lvl(struct bcl_device *bcl_dev, u64 val, u8 addr, u8 pmic, u8
 		if (ret)
 			dev_err(bcl_dev->device, "Fail to set ocp_warn trip temp\n");
 	}
-	mutex_unlock(&bcl_dev->bcl_irq_lock[id]);
 	if (bcl_dev->bcl_tz[id])
 		thermal_zone_device_update(bcl_dev->bcl_tz[id], THERMAL_EVENT_UNSPECIFIED);
+	enable_irq(bcl_dev->bcl_irq[id]);
 
 	return ret;
 }
