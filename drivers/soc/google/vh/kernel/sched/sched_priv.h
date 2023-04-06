@@ -14,6 +14,7 @@
 #define DEF_UTIL_POST_INIT_SCALE  512
 #define C1_EXIT_LATENCY     1
 #define PREFER_IDLE_PRIO_HIGH 110
+#define PRIO_BACKGROUND     130
 /*
  * For cpu running normal tasks, its uclamp.min will be 0 and uclamp.max will be 1024,
  * and the sum will be 1024. We use this as index that cpu is not running important tasks.
