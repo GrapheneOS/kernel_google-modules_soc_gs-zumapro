@@ -57,7 +57,6 @@ private/google-modules/gpu/mali_kbase
 private/google-modules/lwis
 private/google-modules/edgetpu/abrolhos/drivers/edgetpu
 private/google-modules/bms
-private/google-modules/bms/misc
 private/google-modules/amplifiers/drv2624
 private/google-modules/amplifiers/cs40l25
 private/google-modules/amplifiers/cs35l41
