@@ -569,6 +569,13 @@
 			};
 		};
 	};
+
+	acpm_gov {
+		thermal_pressure_polling_delay_on = <100>;
+		thermal_pressure_polling_delay_off = <0>;
+
+		work_affinity = "0-8";
+	};
 };
 
 &pixel_em {
