@@ -32,6 +32,7 @@
 #include <trace/events/power.h>
 
 #include "exynos-acme.h"
+#include <soc/google/gs_tmu_v3.h>
 /*
  * list head of cpufreq domain
  */
@@ -184,6 +185,76 @@ fail_scale:
 }
 
 /*********************************************************************
+ *                         THERMAL PRESSURE                         *
+ *********************************************************************/
+/*
+ * TJ and TSKIN are the two actors that could apply thermal pressure independently
+ */
+static void apply_thermal_pressure(struct exynos_cpufreq_domain *domain,
+				   unsigned long thermal_pressure, int thermal_actor)
+{
+	cpumask_t *maskp;
+	unsigned long arch_thermal_pressure;
+
+	if (!domain || (domain->thermal_pressure[thermal_actor] == thermal_pressure))
+		return;
+
+	maskp = &domain->cpus;
+
+	spin_lock(&domain->thermal_update_lock);
+	domain->thermal_pressure[thermal_actor] = thermal_pressure;
+	arch_thermal_pressure = max(domain->thermal_pressure[TJ], domain->thermal_pressure[TSKIN]);
+	arch_set_thermal_pressure(maskp, arch_thermal_pressure);
+	spin_unlock(&domain->thermal_update_lock);
+
+	if (unlikely(trace_clock_set_rate_enabled()))
+		trace_clock_set_rate(domain->thermal_pressure_name[thermal_actor],
+				     domain->thermal_pressure[thermal_actor],
+				     raw_smp_processor_id());
+}
+
+/*
+ * ECT table is in ascending order of frequencies
+ * domain->freq_table is in descending order of frequencies
+ * domain->freq_table may have fewer number of frequencies compared to ECT table
+ */
+static int get_freq_table_index(struct exynos_cpufreq_domain *domain, int ECT_index)
+{
+	int freq_index_max = (int)(domain->table_size - 1);
+	int freq_index = (int)(freq_index_max - ECT_index + domain->ect_table_offset);
+
+	return max(0, min(freq_index, freq_index_max));
+}
+
+/*
+ * When device thermals throttle the CPUs, we notify the scheduler of
+ * capacity change using this callback function
+ */
+static void exynos_cpufreq_set_tj_pressure_cb(struct cpumask *maskp, int cdev_index)
+{
+	int first_cpu = cpumask_first(maskp);
+	struct exynos_cpufreq_domain *domain = find_domain(first_cpu);
+	struct cpufreq_policy *policy = cpufreq_cpu_get(first_cpu);
+	unsigned long max_capacity, capacity;
+	unsigned int tj_freq;
+	unsigned long thermal_pressure;
+	int freq_index;
+
+	if (!policy || !domain)
+		return;
+
+	max_capacity = arch_scale_cpu_capacity(first_cpu);
+	freq_index = get_freq_table_index(domain, cdev_index);
+	tj_freq = domain->freq_table[freq_index].frequency;
+	capacity = (tj_freq * max_capacity) / (policy->cpuinfo.max_freq);
+
+	cpufreq_cpu_put(policy);
+
+	thermal_pressure = (max_capacity <= capacity) ? 0 : max_capacity - capacity;
+	apply_thermal_pressure(domain, thermal_pressure, TJ);
+}
+
+/*********************************************************************
  *                   EXYNOS CPUFREQ DRIVER INTERFACE                 *
  *********************************************************************/
 static int exynos_cpufreq_init(struct cpufreq_policy *policy)
@@ -287,12 +358,12 @@ static int exynos_cpufreq_verify(struct cpufreq_policy_data *new_policy)
 
 	ret = cpufreq_frequency_table_verify(new_policy, domain->freq_table);
 	if (!ret) {
+		unsigned long thermal_pressure;
 		max_capacity = arch_scale_cpu_capacity(cpumask_first(&domain->cpus));
 		capacity = new_policy->max * max_capacity;
 		capacity /= new_policy->cpuinfo.max_freq;
-		arch_set_thermal_pressure(&domain->cpus, max_capacity - capacity);
-		pr_debug_ratelimited("thermal pressure: %lu, cpus: %*pbl\n",
-			max_capacity - capacity, cpumask_pr_args(&domain->cpus));
+		thermal_pressure = max_capacity - capacity;
+		apply_thermal_pressure(domain, thermal_pressure, TSKIN);
 	}
 	return ret;
 }
@@ -1148,9 +1219,12 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	 * Set frequency table size.
 	 */
 	domain->table_size = 0;
+	domain->ect_table_offset = 0;
 	for (index = 0; index < orig_table_size; index++) {
-		if (freq_table[index] > domain->max_freq)
+		if (freq_table[index] > domain->max_freq) {
+			domain->ect_table_offset++;
 			continue;
+		}
 		if (freq_table[index] < domain->min_freq)
 			continue;
 
@@ -1249,6 +1323,14 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 		enable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
 
 	mutex_init(&domain->lock);
+
+	spin_lock_init(&domain->thermal_update_lock);
+	domain->thermal_pressure[TJ] = 0;
+	domain->thermal_pressure[TSKIN] = 0;
+	scnprintf(domain->thermal_pressure_name[TJ], (THERMAL_PRESSURE_STR_LEN), "TJ_THERMAL_PRESSURE_%d",
+		  domain->id);
+	scnprintf(domain->thermal_pressure_name[TSKIN], (THERMAL_PRESSURE_STR_LEN), "TSKIN_THERMAL_PRESSURE_%d",
+		  domain->id);
 
 	/*
 	 * Initialize CPUFreq DVFS Manager
@@ -1378,6 +1460,7 @@ static int exynos_cpufreq_probe(struct platform_device *pdev)
 	}
 
 	register_pm_notifier(&exynos_cpufreq_pm);
+	register_thermal_pressure_cb(exynos_cpufreq_set_tj_pressure_cb);
 
 	pr_info("Initialized Exynos cpufreq driver\n");
 
