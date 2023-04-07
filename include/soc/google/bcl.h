@@ -308,6 +308,7 @@ extern int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,
 				      const struct bcl_ifpmic_ops *pmic_ops);
 extern int google_init_gpu_ratio(struct bcl_device *data);
 extern int google_init_tpu_ratio(struct bcl_device *data);
+extern int google_init_aur_ratio(struct bcl_device *data);
 bool bcl_is_subsystem_on(unsigned int addr);
 void bcl_disable_power(void);
 void bcl_enable_power(void);
@@ -396,6 +397,10 @@ static inline int google_init_gpu_ratio(struct bcl_device *data)
 	return 0;
 }
 static inline int google_init_tpu_ratio(struct bcl_device *data)
+{
+	return 0;
+}
+static inline int google_init_aur_ratio(struct bcl_device *data)
 {
 	return 0;
 }

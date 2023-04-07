@@ -7,12 +7,12 @@
  */
 
 #include <linux/sched.h>
-#if IS_ENABLED(CONFIG_PIXEL_EM)
+#if IS_ENABLED(CONFIG_VH_SCHED) && IS_ENABLED(CONFIG_PIXEL_EM)
 #include "../../include/pixel_em.h"
 extern struct pixel_em_profile **vendor_sched_pixel_em_profile;
 #endif
 
-#if IS_ENABLED(CONFIG_PIXEL_EM)
+#if IS_ENABLED(CONFIG_VH_SCHED) && IS_ENABLED(CONFIG_PIXEL_EM)
 void vh_arch_set_freq_scale_pixel_mod(void *data, const struct cpumask *cpus,
                                       unsigned long freq,
                                       unsigned long max, unsigned long *scale)
