@@ -12,4 +12,10 @@
 		compatible = "samsung,dma-heap-system";
 		dma-heap,name = "system";
 	};
+
+	video_system_dma_heap {
+		compatible = "samsung,dma-heap-system";
+		dma-heap,name = "video_system";
+		dma-heap,video_aligned;
+	};
 };
