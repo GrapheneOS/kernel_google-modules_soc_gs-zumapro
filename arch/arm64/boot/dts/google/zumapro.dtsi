@@ -120,6 +120,38 @@
 		};
 	};
 
+	mct_v3: mct-v3@100D0000 {
+		compatible = "samsung,exynos-mct-v3";
+		reg = <0x0 0x100D0000 0x800>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		interrupt-parent = <&mct_v3_map>;
+		interrupts =    <0>, <1>, <2>, <3>,
+				<4>, <5>, <6>, <7>,
+				<8>, <9>, <10>, <11>;
+		clocks = <&ext_24_5m>, <&ext_24_5m>;
+		clock-names = "fin_pll", "mct";
+		div = <1>;
+		use-clockevent-only;
+
+		mct_v3_map: mct-v3-map {
+			#interrupt-cells = <1>;
+			#address-cells = <0>;
+			#size-cells = <0>;
+
+			interrupt-map = <0 &gic 0 IRQ_MCT_L0_MISC IRQ_TYPE_LEVEL_HIGH>,
+					<1 &gic 0 IRQ_MCT_L1_MISC IRQ_TYPE_LEVEL_HIGH>,
+					<2 &gic 0 IRQ_MCT_L2_MISC IRQ_TYPE_LEVEL_HIGH>,
+					<3 &gic 0 IRQ_MCT_L3_MISC IRQ_TYPE_LEVEL_HIGH>,
+					<4 &gic 0 IRQ_MCT_L4_MISC IRQ_TYPE_LEVEL_HIGH>,
+					<5 &gic 0 IRQ_MCT_L5_MISC IRQ_TYPE_LEVEL_HIGH>,
+					<6 &gic 0 IRQ_MCT_L6_MISC IRQ_TYPE_LEVEL_HIGH>,
+					<7 &gic 0 IRQ_MCT_L7_MISC IRQ_TYPE_LEVEL_HIGH>,
+					<8 &gic 0 IRQ_MCT_L8_MISC IRQ_TYPE_LEVEL_HIGH>;
+
+		};
+	};
+
 	serial_0: uart@10870000 {
 		compatible = "samsung,exynos-uart";
 		samsung,separate-uart-clk;
