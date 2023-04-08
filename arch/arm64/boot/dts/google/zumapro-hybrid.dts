@@ -63,9 +63,9 @@
 	fragment@hwrng {
 		target-path = "/";
 		__overlay__ {
-			rng: hwrng@100d0110 {
+			rng: hwrng@10050100 {
 				compatible = "timeriomem_rng";
-				reg = <0x0 0x100D0110 0x4>;
+				reg = <0x0 0x10050100 0x4>;
 				period = <1>;
 				quality = <100>;
 				status = "okay";
