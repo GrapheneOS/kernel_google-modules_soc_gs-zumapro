@@ -15,6 +15,7 @@
 #include <linux/gpio/driver.h>
 #include <linux/usb/role.h>
 #include <linux/usb/typec_mux.h>
+#include <linux/usb/tcpci.h>
 
 #include "usb_psy.h"
 
@@ -198,7 +199,7 @@ int __attribute__((weak)) maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1
 
 struct max77759_contaminant *max77759_contaminant_init(struct max77759_plat *plat, bool enable);
 int process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path,
-			      bool tcpm_toggling, bool *cc_update_handled);
+			      bool tcpm_toggling, bool *cc_status_handled, bool *port_clean);
 int enable_contaminant_detection(struct max77759_plat *chip, bool maxq);
 int disable_contaminant_detection(struct max77759_plat *chip);
 bool is_contaminant_detected(struct max77759_plat *chip);

@@ -1401,8 +1401,8 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		~(TCPC_ALERT_RX_STATUS | TCPC_ALERT_RX_BUF_OVF) :
 		status & ~TCPC_ALERT_RX_STATUS;
 	u8 reg_status;
-	bool contaminant_cc_update_handled = false;
-	bool invoke_tcpm_for_cc_update = false;
+	bool contaminant_cc_update_handled = false, invoke_tcpm_for_cc_update = false,
+		port_clean = false;
 	unsigned int pwr_status;
 
 	pm_wakeup_event(chip->dev, PD_ACTIVITY_TIMEOUT_MS);
@@ -1508,24 +1508,37 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		mutex_lock(&chip->rc_lock);
 		if (chip->contaminant_detection && tcpm_port_is_toggling(tcpci->port)) {
 			ret = process_contaminant_alert(chip->contaminant, false, true,
-							&contaminant_cc_update_handled);
+							&contaminant_cc_update_handled,
+							&port_clean);
 			if (ret < 0) {
 				mutex_unlock(&chip->rc_lock);
 				goto reschedule;
-			}
-			/*
-			 * Invoke TCPM when CC update not related to contaminant
-			 * detection.
-			 */
-			invoke_tcpm_for_cc_update = !contaminant_cc_update_handled;
-			/*
-			 * CC status change handled by contaminant algorithm.
-			 * Handle floating cable if detected.
-			 */
-			if (contaminant_cc_update_handled) {
-				logbuffer_log(log, "CC update: Contaminant algorithm responded");
-				if (is_floating_cable_or_sink_detected(chip))
-					floating_cable_sink_detected_handler_locked(chip);
+			} else if (chip->check_contaminant) {
+				/*
+				 * Taken in debounce path when the port is dry.
+				 * Move TCPM back to TOGGLING.
+				 */
+				if (port_clean) {
+					chip->check_contaminant = false;
+					tcpm_port_clean(chip->port);
+				}
+				/* tcpm_cc_change does not have to be invoked. */
+				invoke_tcpm_for_cc_update = false;
+			} else {
+				/*
+				 * Invoke TCPM when CC update not related to contaminant detection.
+				 */
+				invoke_tcpm_for_cc_update = !contaminant_cc_update_handled;
+				/*
+				 * CC status change handled by contaminant algorithm.
+				 * Handle floating cable if detected.
+				 */
+				if (contaminant_cc_update_handled) {
+					logbuffer_log(log,
+						      "CC update: Contaminant algorithm responded");
+					if (is_floating_cable_or_sink_detected(chip))
+						floating_cable_sink_detected_handler_locked(chip);
+				}
 			}
 		} else {
 			invoke_tcpm_for_cc_update = true;
