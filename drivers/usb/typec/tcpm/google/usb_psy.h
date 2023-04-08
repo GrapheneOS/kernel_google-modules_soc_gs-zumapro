@@ -10,8 +10,6 @@
 #include <misc/logbuffer.h>
 #include <linux/power_supply.h>
 
-#include "../tcpci.h"
-
 struct max77759_plat;
 
 struct usb_psy_ops {

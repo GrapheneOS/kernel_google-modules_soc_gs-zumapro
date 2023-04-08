@@ -15,6 +15,7 @@
 #include <linux/gpio/driver.h>
 #include <linux/usb/role.h>
 #include <linux/usb/typec_mux.h>
+#include <tcpm/tcpci.h>
 
 #include "usb_psy.h"
 
@@ -113,6 +114,11 @@ struct max77759_plat {
 	struct alarm reenable_auto_ultra_low_power_mode_alarm;
 	/* Bottom half for alarm */
 	struct kthread_work reenable_auto_ultra_low_power_mode_work;
+	/*
+	 * Set in debounce path from TCPM when contaminant is detected.
+	 * Cleared after exiting dry detection. Needed to move TCPM back into TOGGLING state.
+	 */
+	bool check_contaminant;
 
 	/* Protects contaminant_detection variable and role_control */
 	struct mutex rc_lock;
@@ -194,7 +200,7 @@ int __attribute__((weak)) maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1
 
 struct max77759_contaminant *max77759_contaminant_init(struct max77759_plat *plat, bool enable);
 int process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path,
-			      bool tcpm_toggling, bool *cc_status_handled);
+			      bool tcpm_toggling, bool *cc_status_handled, bool *port_clean);
 int enable_contaminant_detection(struct max77759_plat *chip, bool maxq);
 int disable_contaminant_detection(struct max77759_plat *chip);
 bool is_contaminant_detected(struct max77759_plat *chip);

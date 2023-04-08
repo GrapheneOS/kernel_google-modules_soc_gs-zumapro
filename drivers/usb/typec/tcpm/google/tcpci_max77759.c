@@ -235,9 +235,6 @@ static ssize_t contaminant_detection_show(struct device *dev, struct device_attr
 static void update_contaminant_detection_locked(struct max77759_plat *chip, int val)
 {
 
-	/* TODO: Revert while enabling contaminant detection */
-	return;
-
 	chip->contaminant_detection = val;
 
 	if (chip->contaminant_detection)
@@ -1275,6 +1272,19 @@ static int max77759_get_vbus_voltage_mv(struct i2c_client *tcpc_client)
 	return ret ? 0 : ((raw & TCPC_VBUS_VOLTAGE_MASK) * TCPC_VBUS_VOLTAGE_LSB_MV);
 }
 
+/* Acquire rc lock before calling */
+static void floating_cable_sink_detected_handler_locked(struct max77759_plat *chip)
+{
+	chip->floating_cable_or_sink_detected++;
+	logbuffer_log(chip->log, "floating_cable_or_sink_detected count: %d",
+		      chip->floating_cable_or_sink_detected);
+	if (chip->floating_cable_or_sink_detected >= FLOATING_CABLE_OR_SINK_INSTANCE_THRESHOLD) {
+		disable_auto_ultra_low_power_mode(chip, true);
+		alarm_start_relative(&chip->reenable_auto_ultra_low_power_mode_alarm,
+				     ms_to_ktime(AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS));
+	}
+}
+
 static void reset_ovp_work(struct kthread_work *work)
 {
 	struct max77759_plat *chip  =
@@ -1319,10 +1329,10 @@ static enum typec_cc_status tcpci_to_typec_cc(unsigned int cc, bool sink)
 	}
 }
 
-static void max77759_cache_cc(struct max77759_plat *chip)
+static void max77759_get_cc(struct max77759_plat *chip, enum typec_cc_status *cc1,
+			    enum typec_cc_status *cc2)
 {
 	struct tcpci *tcpci = chip->tcpci;
-	enum typec_cc_status cc1, cc2;
 	u8 reg, role_control;
 	int ret;
 
@@ -1334,15 +1344,21 @@ static void max77759_cache_cc(struct max77759_plat *chip)
 	if (ret < 0)
 		return;
 
-	cc1 = tcpci_to_typec_cc((reg >> TCPC_CC_STATUS_CC1_SHIFT) &
+	*cc1 = tcpci_to_typec_cc((reg >> TCPC_CC_STATUS_CC1_SHIFT) &
 				TCPC_CC_STATUS_CC1_MASK,
 				reg & TCPC_CC_STATUS_TERM ||
 				tcpc_presenting_rd(role_control, CC1));
-	cc2 = tcpci_to_typec_cc((reg >> TCPC_CC_STATUS_CC2_SHIFT) &
+	*cc2 = tcpci_to_typec_cc((reg >> TCPC_CC_STATUS_CC2_SHIFT) &
 				TCPC_CC_STATUS_CC2_MASK,
 				reg & TCPC_CC_STATUS_TERM ||
 				tcpc_presenting_rd(role_control, CC2));
+}
 
+static void max77759_cache_cc(struct max77759_plat *chip)
+{
+	enum typec_cc_status cc1, cc2;
+
+	max77759_get_cc(chip, &cc1, &cc2);
 	/*
 	 * If the Vbus OVP is restricted to quick ramp-up time for incoming Vbus to work properly,
 	 * queue a delayed work to check the Vbus status later. Cancel the delayed work once the CC
@@ -1363,19 +1379,6 @@ static void max77759_cache_cc(struct max77759_plat *chip)
 	chip->cc2 = cc2;
 }
 
-/* Acquire rc lock before calling */
-static void floating_cable_sink_detected_handler_locked(struct max77759_plat *chip)
-{
-	chip->floating_cable_or_sink_detected++;
-	logbuffer_log(chip->log, "floating_cable_or_sink_detected count: %d",
-		      chip->floating_cable_or_sink_detected);
-	if (chip->floating_cable_or_sink_detected >= FLOATING_CABLE_OR_SINK_INSTANCE_THRESHOLD) {
-		disable_auto_ultra_low_power_mode(chip, true);
-		alarm_start_relative(&chip->reenable_auto_ultra_low_power_mode_alarm,
-				     ms_to_ktime(AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS));
-	}
-}
-
 /* hold irq_status_lock before calling */
 static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 					struct logbuffer *log)
@@ -1387,8 +1390,8 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		~(TCPC_ALERT_RX_STATUS | TCPC_ALERT_RX_BUF_OVF) :
 		status & ~TCPC_ALERT_RX_STATUS;
 	u8 reg_status;
-	bool contaminant_cc_update_handled = false;
-	bool invoke_tcpm_for_cc_update = false;
+	bool contaminant_cc_update_handled = false, invoke_tcpm_for_cc_update = false,
+		port_clean = false;
 	unsigned int pwr_status;
 
 	pm_wakeup_event(chip->dev, PD_ACTIVITY_TIMEOUT_MS);
@@ -1492,26 +1495,39 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		 * contaminant detection.
 		 */
 		mutex_lock(&chip->rc_lock);
-		if (chip->contaminant_detection && tcpm_is_toggling(tcpci->port)) {
+		if (chip->contaminant_detection && tcpm_port_is_toggling(tcpci->port)) {
 			ret = process_contaminant_alert(chip->contaminant, false, true,
-							&contaminant_cc_update_handled);
+							&contaminant_cc_update_handled,
+							&port_clean);
 			if (ret < 0) {
 				mutex_unlock(&chip->rc_lock);
 				goto reschedule;
-			}
-			/*
-			 * Invoke TCPM when CC update not related to contaminant
-			 * detection.
-			 */
-			invoke_tcpm_for_cc_update = !contaminant_cc_update_handled;
-			/*
-			 * CC status change handled by contaminant algorithm.
-			 * Handle floating cable if detected.
-			 */
-			if (contaminant_cc_update_handled) {
-				logbuffer_log(log, "CC update: Contaminant algorithm responded");
-				if (is_floating_cable_or_sink_detected(chip))
-					floating_cable_sink_detected_handler_locked(chip);
+			} else if (chip->check_contaminant) {
+				/*
+				 * Taken in debounce path when the port is dry.
+				 * Move TCPM back to TOGGLING.
+				 */
+				if (port_clean) {
+					chip->check_contaminant = false;
+					tcpm_port_clean(chip->port);
+				}
+				/* tcpm_cc_change does not have to be invoked. */
+				invoke_tcpm_for_cc_update = false;
+			} else {
+				/*
+				 * Invoke TCPM when CC update not related to contaminant detection.
+				 */
+				invoke_tcpm_for_cc_update = !contaminant_cc_update_handled;
+				/*
+				 * CC status change handled by contaminant algorithm.
+				 * Handle floating cable if detected.
+				 */
+				if (contaminant_cc_update_handled) {
+					logbuffer_log(log,
+						      "CC update: Contaminant algorithm responded");
+					if (is_floating_cable_or_sink_detected(chip))
+						floating_cable_sink_detected_handler_locked(chip);
+				}
 			}
 		} else {
 			invoke_tcpm_for_cc_update = true;
@@ -1525,7 +1541,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES),
 						 chip->cc1, chip->cc2);
 			/* TCPM has detected valid CC terminations */
-			if (!tcpm_is_toggling(tcpci->port)) {
+			if (!tcpm_port_is_toggling(tcpci->port)) {
 				chip->floating_cable_or_sink_detected = 0;
 				/*
 				 * Only re-enable auto ultra low power mode only
@@ -1847,30 +1863,6 @@ unlock:
 	mutex_unlock(&chip->rc_lock);
 
 	return 0;
-}
-
-static void max77759_check_contaminant(void *unused, struct tcpci *tcpci, struct tcpci_data *tdata,
-				       int *restart_toggling)
-{
-	struct max77759_plat *chip = tdata_to_max77759(tdata);
-	bool contaminant_cc_status_handled = false;
-	int ret = 0;
-
-	logbuffer_log(chip->log, "%s: debounce path", __func__);
-	mutex_lock(&chip->rc_lock);
-	if (chip->contaminant_detection) {
-		/*
-		 * contaminant_cc_status_handled unused as contaminant detection
-		 * is expected to restart toggling as needed unless EIO.
-		 */
-		ret = process_contaminant_alert(chip->contaminant, true, false,
-						&contaminant_cc_status_handled);
-		*restart_toggling = ret < 0 ? TCPM_RESTART_TOGGLING : CONTAMINANT_HANDLES_TOGGLING;
-	} else {
-		*restart_toggling = TCPM_RESTART_TOGGLING;
-	}
-
-	mutex_unlock(&chip->rc_lock);
 }
 
 static void max77759_set_partner_usb_comm_capable(struct tcpci *tcpci, struct tcpci_data *data,
@@ -2482,6 +2474,31 @@ exit:
 	return ALARMTIMER_NORESTART;
 }
 
+static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *tdata)
+{
+	struct max77759_plat *chip = tdata_to_max77759(tdata);
+	bool contaminant_cc_status_handled = false, port_clean = false;
+	int ret = 0;
+
+	mutex_lock(&chip->rc_lock);
+	if (chip->contaminant_detection)
+		ret = process_contaminant_alert(chip->contaminant, true, false,
+						&contaminant_cc_status_handled,
+						&port_clean);
+	mutex_unlock(&chip->rc_lock);
+	if (ret < 0) {
+		logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
+		/* Assume clean port */
+		tcpm_port_clean(chip->port);
+	} else if (port_clean) {
+		logbuffer_log(chip->log, "port clean");
+		tcpm_port_clean(chip->port);
+	} else {
+		logbuffer_log(chip->log, "port dirty");
+		chip->check_contaminant = true;
+	}
+}
+
 static int max77759_probe(struct i2c_client *client,
 			  const struct i2c_device_id *i2c_id)
 {
@@ -2590,6 +2607,7 @@ static int max77759_probe(struct i2c_client *client,
 	chip->data.set_partner_usb_comm_capable = max77759_set_partner_usb_comm_capable;
 	chip->data.init = tcpci_init;
 	chip->data.frs_sourcing_vbus = max77759_frs_sourcing_vbus;
+	chip->data.check_contaminant = max_tcpci_check_contaminant;
 
 	chip->compliance_warnings = init_compliance_warnings(chip);
 	if (IS_ERR_OR_NULL(chip->compliance_warnings)) {

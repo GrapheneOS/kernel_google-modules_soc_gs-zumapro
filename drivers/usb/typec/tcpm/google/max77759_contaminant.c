@@ -503,7 +503,7 @@ static void update_contaminant_state(struct max77759_contaminant *contaminant,
  * to forward progress.
  */
 int process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path,
-			      bool tcpm_toggling, bool *cc_update_handled)
+			      bool tcpm_toggling, bool *cc_update_handled, bool *port_clean)
 {
 	u8 cc_status, pwr_cntl;
 	struct regmap *regmap = contaminant->chip->data.regmap;
@@ -538,6 +538,8 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 				return ret;
 		}
 		*cc_update_handled = false;
+		/* Assuming port is clean */
+		*port_clean = true;
 		return 0;
 	}
 
@@ -573,6 +575,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 			if (ret == -EIO)
 				return ret;
 			*cc_update_handled = true;
+			*port_clean = true;
 			return 0;
 		} else {
 			/* Need to check again after tCCDebounce */
@@ -632,6 +635,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 									   contaminant_detect_maxq);
 					if (ret == -EIO)
 						return ret;
+					*port_clean = true;
 				}
 			}
 		}
@@ -642,6 +646,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 							   contaminant_detect_maxq);
 			if (ret == -EIO)
 				return ret;
+			*port_clean = true;
 		}
 		*cc_update_handled = false;
 		return 0;
@@ -671,6 +676,7 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 			if (ret == -EIO)
 				return ret;
 			*cc_update_handled = true;
+			*port_clean = true;
 			return 0;
 		}
 		/* TCPM does not manage ports in dry detection phase. */
