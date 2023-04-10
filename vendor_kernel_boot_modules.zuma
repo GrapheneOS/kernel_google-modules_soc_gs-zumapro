@@ -97,6 +97,7 @@ max77759-charger.ko
 max77759_contaminant.ko
 max77759_helper.ko
 max77779-charger.ko
+max77779-sp.ko
 memlat-devfreq.ko
 net_failover.ko
 netfs.ko
