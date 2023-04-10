@@ -10,6 +10,7 @@
 #include "zumapro-drm-dpu.dtsi"
 #include "zumapro-sysmmu.dtsi"
 #include "zumapro-dma-heap.dtsi"
+#include "zumapro-rmem.dtsi"
 / {
 	compatible = "google,zumapro";
 	interrupt-parent = <&gic>;
