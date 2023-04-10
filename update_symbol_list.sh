@@ -269,7 +269,7 @@ verify_aosp_tree
 
 if [ "${CONTINUE_AFTER_REBASE}" = "0" ]; then
   # Update the symbol list now
-  tools/bazel run --config=${TARGET} --config=fast --make_jobs=150 --jobs=150 //private/devices/google/${TARGET}:zuma_${TARGET}_abi_update_symbol_list
+  tools/bazel run --config=${TARGET} --config=fast //private/devices/google/${TARGET}:zuma_${TARGET}_abi_update_symbol_list
   exit_if_error $? "Failed to update the ${TARGET} symbol list"
 
   if [ -z "${BUG}" ]; then
