@@ -84,7 +84,7 @@ if [[ -z "${TARGET}" ]] || [[ ! -d "private/devices/google/${TARGET}" ]]; then
   usage 1
 fi
 
-BASE_KERNEL=$(bazel query 'labels(srcs, //private/devices/google/${TARGET}:zuma_${TARGET})' 2>/dev/null | grep kernel_aarch64_sources)
+BASE_KERNEL=$(tools/bazel query 'labels(srcs, //private/devices/google/${TARGET}:zuma_${TARGET})' 2>/dev/null | grep kernel_aarch64_sources)
 if [[ "${BASE_KERNEL}" =~ aosp-staging ]]; then
   KERNEL_DIR="aosp-staging/"
 else
@@ -269,7 +269,7 @@ verify_aosp_tree
 
 if [ "${CONTINUE_AFTER_REBASE}" = "0" ]; then
   # Update the symbol list now
-  bazel run --config=${TARGET} --config=fast --make_jobs=150 --jobs=150 //private/devices/google/${TARGET}:zuma_${TARGET}_abi_update_symbol_list
+  tools/bazel run --config=${TARGET} --config=fast --make_jobs=150 --jobs=150 //private/devices/google/${TARGET}:zuma_${TARGET}_abi_update_symbol_list
   exit_if_error $? "Failed to update the ${TARGET} symbol list"
 
   if [ -z "${BUG}" ]; then
