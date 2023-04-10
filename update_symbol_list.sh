@@ -84,7 +84,7 @@ if [[ -z "${TARGET}" ]] || [[ ! -d "private/devices/google/${TARGET}" ]]; then
   usage 1
 fi
 
-BASE_KERNEL=$(tools/bazel query 'labels(srcs, //private/devices/google/${TARGET}:zuma_${TARGET})' 2>/dev/null | grep kernel_aarch64_sources)
+BASE_KERNEL=$(tools/bazel query labels\(srcs, //private/devices/google/${TARGET}:zuma_${TARGET}\) 2>/dev/null | grep kernel_aarch64_sources)
 if [[ "${BASE_KERNEL}" =~ aosp-staging ]]; then
   KERNEL_DIR="aosp-staging/"
 else
