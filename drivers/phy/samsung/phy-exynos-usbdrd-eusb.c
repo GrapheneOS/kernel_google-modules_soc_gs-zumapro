@@ -1547,6 +1547,12 @@ static int exynos_usbdrd_utmi_vendor_set(struct exynos_usbdrd_phy *phy_drd,
 			if (phy_drd->is_irq_enabled == 1) {
 				dev_info(phy_drd->dev, "[%s] REWA CANCEL\n", __func__);
 				exynos_usbcon_rewa_cancel(&phy_drd->usbphy_blkcon_info);
+
+				dev_info(phy_drd->dev, "REWA wakeup/conn IRQ disable\n");
+
+				disable_irq_nosync(phy_drd->irq_wakeup);
+				disable_irq_nosync(phy_drd->irq_conn);
+				phy_drd->is_irq_enabled = 0;
 			} else {
 				dev_dbg(phy_drd->dev, "Vendor set by interrupt, Do not REWA cancel\n");
 			}
@@ -1562,7 +1568,7 @@ static int exynos_usbdrd_utmi_vendor_set(struct exynos_usbdrd_phy *phy_drd,
 			/* inform what USB state is idle to IDLE_IP */
 			//exynos_update_ip_idle_status(phy_drd->idle_ip_idx, 1);
 
-			dev_dbg(phy_drd->dev, "REWA ENABLE Complete\n");
+			dev_info(phy_drd->dev, "REWA ENABLE Complete\n");
 
 			if (phy_drd->is_irq_enabled == 0) {
 				enable_irq(phy_drd->irq_wakeup);
