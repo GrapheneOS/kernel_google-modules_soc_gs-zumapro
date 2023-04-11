@@ -543,6 +543,42 @@ static struct cpufreq_driver exynos_driver = {
 /*********************************************************************
  *                       CPUFREQ SYSFS			             *
  *********************************************************************/
+static ssize_t resume_freq_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	ssize_t count = 0;
+	struct exynos_cpufreq_domain *domain;
+
+	list_for_each_entry(domain, &domains, list)
+		count += sysfs_emit_at(buf, count, "cpu%d: resume_freq: %d\n",
+				  cpumask_first(&domain->cpus),
+				  domain->resume_freq);
+	return count;
+}
+
+static ssize_t resume_freq_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	int freq, cpu, ret;
+	struct exynos_cpufreq_domain *domain;
+
+	ret = sscanf(buf, "%d %8d", &cpu, &freq);
+	if (ret!=2)
+		return -EINVAL;
+
+	if (cpu < 0 || cpu >= num_possible_cpus() || freq < 0)
+		return -EINVAL;
+
+	domain = find_domain(cpu);
+	if (!domain)
+		return -EINVAL;
+
+	domain->resume_freq = freq;
+
+	return count;
+}
+
 static ssize_t freq_qos_min_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
@@ -564,7 +600,7 @@ static ssize_t freq_qos_min_store(struct device *dev,
 	struct exynos_cpufreq_domain *domain;
 
 	ret = sscanf(buf, "%d %8d", &cpu, &freq);
-	if (!ret)
+	if (ret!=2)
 		return -EINVAL;
 
 	if (cpu < 0 || cpu >= num_possible_cpus() || freq < 0)
@@ -600,7 +636,7 @@ static ssize_t freq_qos_max_store(struct device *dev,
 	struct exynos_cpufreq_domain *domain;
 
 	ret = sscanf(buf, "%d %8d", &cpu, &freq);
-	if (!ret)
+	if (ret!=2)
 		return -EINVAL;
 
 	if (cpu < 0 || cpu >= num_possible_cpus() || freq < 0)
@@ -674,6 +710,7 @@ static ssize_t fw_freq_show(struct device *dev,
 	return len;
 }
 
+static DEVICE_ATTR_RW(resume_freq);
 static DEVICE_ATTR_RW(freq_qos_max);
 static DEVICE_ATTR_RW(freq_qos_min);
 static DEVICE_ATTR_RO(min_freq_qos_list);
@@ -1397,6 +1434,13 @@ static int exynos_cpufreq_probe(struct platform_device *pdev)
 	 * 3. initialize freq qos of each domain
 	 * 4. register notifier bloack
 	 */
+
+	ret = sysfs_create_file(&pdev->dev.kobj, &dev_attr_resume_freq.attr);
+	if (ret) {
+		pr_err("failed to create resume_freq node\n");
+		return ret;
+	}
+
 	ret = sysfs_create_file(&pdev->dev.kobj, &dev_attr_freq_qos_max.attr);
 	if (ret) {
 		pr_err("failed to create user_max node\n");
