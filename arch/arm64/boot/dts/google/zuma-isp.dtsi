@@ -153,6 +153,12 @@
 
 		/* Device node name */
 		node-name = "test";
+
+		/* Register space */
+		reg = <0x0 0x0 0x20>;
+		reg-names = "test";
+		interrupt-names = "test_event_inj";
+		interrupt-event-infos = <&test_event_inj>;
 	};
 
 	lwis_isp_fe: lwis_isp_fe@1C000000 {
@@ -167,13 +173,15 @@
 			<0x0 0x1C040000 0xD0000>,  /* CSIS LINK & PHY*/
 			<0x0 0x1C020000 0x10000>,  /* SYSREG_ISPFE */
 			<0x0 0x1C390000 0x5000>,   /* PDMA */
-			<0x0 0x1C395000 0x1000>;   /* PDMA WRAP */
+			<0x0 0x1C395000 0x1000>,   /* PDMA WRAP */
+			<0x0 0x26040000 0x10000>;  /* CMU TOP */
 		reg-names =
 			"isp-fe",
 			"csis-link-phy",
 			"isp-fe-sysreg",
 			"pdma",
-			"pdma-wrap";
+			"pdma-wrap",
+			"cmu-top";
 
 		clocks = <&clock UMUX_CLKCMU_ISPFE>;
 		clock-names = "UMUX_CLKCMU_ISPFE";
@@ -1418,17 +1426,17 @@
 
 		/* SLC partitions */
 		pt_id =
-			"CAMERA1WAY",
+			"CAMERA1WAY0",
+			"CAMERA1WAY1",
 			"CAMERA2WAY0",
 			"CAMERA2WAY1",
-			"CAMERA2WAY2",
 			"CAMERA3WAY0",
 			"CAMERA3WAY1",
 			"CAMERA3WAY2",
 			"CAMERA4WAY0",
 			"CAMERA6WAY0";
 
-		pt_size = <512 1024 1024 1024 1536 1536 1536 2048 3072>;
+		pt_size = <512 512 1024 1024 1536 1536 1536 2048 3072>;
 	};
 
 };

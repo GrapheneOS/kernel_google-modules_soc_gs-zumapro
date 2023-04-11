@@ -33,6 +33,7 @@
 
 static void __iomem *reg_base;
 static unsigned long osc_clk_rate;
+static int div;
 static int mct_irqs[MCT_NR_COMPS];
 
 static void exynos_mct_set_compensation(unsigned long osc, unsigned long rtc)
@@ -63,8 +64,10 @@ static void exynos_mct_set_compensation(unsigned long osc, unsigned long rtc)
 }
 
 /* Clocksource handling */
-static void exynos_mct_frc_start(void)
+static void exynos_mct_frc_start(int div)
 {
+	writel_relaxed(BIT(MCT_DIV_REQ_BIT) + ((div - 1) & 0xffUL),
+			reg_base + EXYNOS_MCT_MCT_CFG);
 	writel_relaxed(MCT_FRC_ENABLE, reg_base + EXYNOS_MCT_MCT_FRC_ENABLE);
 }
 
@@ -85,10 +88,16 @@ static u64 exynos_frc_read(struct clocksource *cs)
 	return exynos_read_count_32();
 }
 
+static void exynos_frc_resume(struct clocksource *cs)
+{
+	exynos_mct_frc_start(div);
+}
+
 static struct clocksource mct_frc = {
 	.name		= "mct-frc",
 	.rating		= MCT_CLKSOURCE_RATING,
 	.read		= exynos_frc_read,
+	.resume		= exynos_frc_resume,
 	.mask		= CLOCKSOURCE_MASK(32),
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
@@ -279,7 +288,6 @@ static int exynos_timer_resources(struct device_node *np)
 
 	struct clk *mct_clk, *tick_clk,  *rtc_clk;
 	unsigned long rtc_clk_rate;
-	int div;
 	int ret;
 
 	ret = of_property_read_u32(np, "div", &div);
@@ -305,7 +313,7 @@ static int exynos_timer_resources(struct device_node *np)
 	}
 
 	exynos_mct_set_compensation(osc_clk_rate, rtc_clk_rate);
-	exynos_mct_frc_start();
+	exynos_mct_frc_start(div);
 
 	for_each_possible_cpu(cpu) {
 		int mct_irq;

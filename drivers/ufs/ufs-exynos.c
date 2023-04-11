@@ -537,6 +537,7 @@ static void exynos_ufs_set_features(struct ufs_hba *hba)
 			UFSHCI_QUIRK_BROKEN_REQ_LIST_CLR |
 			UFSHCD_QUIRK_BROKEN_OCS_FATAL_ERROR |
 			UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL |
+			UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8 |
 			UFSHCD_QUIRK_SKIP_DEF_UNIPRO_TIMEOUT_SETTING;
 
 	if (of_find_property(np, "fixed-prdt-req_list-ocs", NULL))
@@ -674,6 +675,24 @@ static void exynos_ufs_override_hba_params(struct ufs_hba *hba)
 	hba->spm_lvl = UFS_PM_LVL_5;
 }
 
+static void exynos_ufs_update_clkgate_delay_ms(struct ufs_hba *hba)
+{
+	int timer, scale;
+
+	if (!hba->ahit)
+		return;
+
+	timer = FIELD_GET(UFSHCI_AHIBERN8_TIMER_MASK, hba->ahit);
+	scale = FIELD_GET(UFSHCI_AHIBERN8_SCALE_MASK, hba->ahit);
+	for (; scale > 0; --scale)
+		timer *= UFSHCI_AHIBERN8_SCALE_FACTOR;
+	timer /= 1000;
+
+	/* Let's use 2x delay_ms */
+	if (timer)
+		hba->clk_gating.delay_ms = timer << 1;
+}
+
 static int exynos_ufs_hce_enable_notify(struct ufs_hba *hba,
 					enum ufs_notify_change_status notify)
 {
@@ -688,6 +707,14 @@ static int exynos_ufs_hce_enable_notify(struct ufs_hba *hba,
 	switch (notify) {
 	case PRE_CHANGE:
 		/*
+		 * The maximum segment size must be set after scsi_host_alloc()
+		 * has been called and before LUN scanning starts
+		 * (ufshcd_async_scan()). Note: this callback may also be called
+		 * from other functions than ufshcd_init().
+		 */
+		hba->host->max_segment_size = 4096;
+
+		/*
 		 * This function is called in ufshcd_hba_enable,
 		 * maybe boot, wake-up or link start-up failure cases.
 		 * To start safely, reset of entire logics of host
@@ -700,6 +727,9 @@ static int exynos_ufs_hce_enable_notify(struct ufs_hba *hba,
 
 		/* deliver ah8 timer and counter values */
 		hba->ahit = ufs->ah8_ahit;
+
+		/* adjust clkgate_delay */
+		exynos_ufs_update_clkgate_delay_ms(hba);
 		break;
 	case POST_CHANGE:
 		exynos_ufs_ctrl_clk(ufs, true);

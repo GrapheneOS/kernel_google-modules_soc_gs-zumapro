@@ -36,6 +36,7 @@
 
 #define TCPCI_MODE_VOTER	"TCPCI"
 #define LIMIT_SINK_VOTER	"LIMIT_SINK_CURRENT_VOTER"
+#define LIMIT_ACCESSORY_VOTER	"LIMIT_ACCESSORY_CURRENT_VOTER"
 
 #define TCPC_RECEIVE_BUFFER_COUNT_OFFSET                0
 #define TCPC_RECEIVE_BUFFER_FRAME_TYPE_OFFSET           1
@@ -361,6 +362,75 @@ static ssize_t usb_limit_sink_current_store(struct device *dev, struct device_at
 }
 static DEVICE_ATTR_RW(usb_limit_sink_current);
 
+static ssize_t usb_limit_accessory_enable_show(struct device *dev, struct device_attribute *attr,
+					  char *buf)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+
+	return sysfs_emit(buf, "%u\n", chip->limit_accessory_enable);
+};
+
+/* usb_limit_accessory_current has to be set before usb_limit_accessory_enable is invoked */
+static ssize_t usb_limit_accessory_enable_store(struct device *dev, struct device_attribute *attr,
+						const char *buf, size_t count)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+	bool enable;
+	int ret;
+
+	if (kstrtobool(buf, &enable) < 0)
+		return -EINVAL;
+
+	if (enable) {
+		ret = gvotable_cast_vote(chip->usb_icl_el, LIMIT_ACCESSORY_VOTER,
+					 (void *)(long)chip->limit_accessory_current, true);
+		if (ret < 0) {
+			dev_err(chip->dev, "Cannot set accessory current %d uA (%d)\n",
+				chip->limit_accessory_current, ret);
+			goto exit;
+		}
+	} else {
+		ret = gvotable_cast_vote(chip->usb_icl_el, LIMIT_ACCESSORY_VOTER, 0, false);
+		if (ret < 0) {
+			dev_err(chip->dev, "Cannot unvote for accessory current (%d)\n", ret);
+			goto exit;
+		}
+	}
+
+	chip->limit_accessory_enable = enable;
+
+exit:
+	return count;
+}
+static DEVICE_ATTR_RW(usb_limit_accessory_enable);
+
+static ssize_t usb_limit_accessory_current_show(struct device *dev, struct device_attribute *attr,
+						char *buf)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+
+	return sysfs_emit(buf, "%u\n", chip->limit_accessory_current);
+};
+
+static ssize_t usb_limit_accessory_current_store(struct device *dev, struct device_attribute *attr,
+						 const char *buf, size_t count)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+	unsigned int val;
+
+	if (kstrtouint(buf, 0, &val) < 0)
+		return -EINVAL;
+
+	/* Never accept current over 3A */
+	if (val > 3000000)
+		return -EINVAL;
+
+	chip->limit_accessory_current = val;
+
+	return count;
+}
+static DEVICE_ATTR_RW(usb_limit_accessory_current);
+
 static struct device_attribute *max77759_device_attrs[] = {
 	&dev_attr_frs,
 	&dev_attr_bc12_enabled,
@@ -371,6 +441,8 @@ static struct device_attribute *max77759_device_attrs[] = {
 	&dev_attr_cc_toggle_enable,
 	&dev_attr_usb_limit_sink_enable,
 	&dev_attr_usb_limit_sink_current,
+	&dev_attr_usb_limit_accessory_enable,
+	&dev_attr_usb_limit_accessory_current,
 	NULL
 };
 
@@ -1178,15 +1250,12 @@ static irqreturn_t _max77759_irq(struct max77759_plat *chip, u16 status,
 	}
 
 	if (status & TCPC_ALERT_CC_STATUS) {
-		bool is_debouncing = tcpci && tcpci->port ?
-			tcpm_is_debouncing(tcpci->port) : false;
-
 		/**
 		 * Process generic CC updates if it doesn't belong to
 		 * contaminant detection.
 		 */
 		mutex_lock(&chip->rc_lock);
-		if (!chip->contaminant_detection || is_debouncing ||
+		if (!chip->contaminant_detection ||
 		    !process_contaminant_alert(chip->contaminant, false)) {
 			tcpm_cc_change(tcpci->port);
 			max77759_cache_cc(chip);
@@ -1928,6 +1997,94 @@ static void max77759_teardown_data_notifier(struct max77759_plat *chip)
 		typec_switch_unregister(chip->typec_sw);
 	if (!IS_ERR_OR_NULL(chip->usb_sw))
 		usb_role_switch_unregister(chip->usb_sw);
+}
+
+static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *tcpci,
+						   struct tcpci_data *data,
+						   int *override_toggling)
+{
+	*override_toggling = 1;
+}
+
+static void max77759_get_timer_value(void *unused, const char *state, enum typec_timer timer,
+				     unsigned int *val)
+{
+	switch (timer) {
+	case SINK_DISCOVERY_BC12:
+		*val = sink_discovery_delay_ms;
+		break;
+	case SINK_WAIT_CAP:
+		*val = 450;
+		break;
+	case SOURCE_OFF:
+		*val = 870;
+		break;
+	case CC_DEBOUNCE:
+		*val = 170;
+		break;
+	default:
+		break;
+	}
+}
+
+static void max77759_tcpm_log(void *unused, const char *log, bool *bypass)
+{
+	if (tcpm_log)
+		logbuffer_log(tcpm_log, "%s", log);
+
+	*bypass = true;
+}
+
+static int max77759_register_vendor_hooks(struct i2c_client *client)
+{
+	int ret;
+
+	if (hooks_installed)
+		return 0;
+
+	ret = register_trace_android_vh_typec_tcpci_override_toggling(
+			max77759_typec_tcpci_override_toggling, NULL);
+
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpci_override_toggling failed ret:%d",
+			ret);
+		return ret;
+	}
+
+	ret = register_trace_android_rvh_typec_tcpci_get_vbus(max77759_get_vbus, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_rvh_typec_tcpci_get_vbus failed ret:%d\n", ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_store_partner_src_caps(
+			max77759_store_partner_src_caps, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
+			ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_tcpm_get_timer(max77759_get_timer_value, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_get_timer failed ret:%d\n", ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_tcpm_log(max77759_tcpm_log, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_log failed ret:%d\n", ret);
+		return ret;
+	}
+
+	hooks_installed = true;
+
+	return ret;
 }
 
 static int max77759_probe(struct i2c_client *client,

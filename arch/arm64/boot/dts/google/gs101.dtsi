@@ -36,6 +36,7 @@
 #include "gs101-sysmmu.dtsi"
 #include "gs101-tpu.dtsi"
 #include "gs101-ufs.dtsi"
+#include "gs101-usb.dtsi"
 #include "gs101-usi.dtsi"
 #include "gs101-isp.dtsi"
 #include "gs101-debug.dtsi"
@@ -529,9 +530,53 @@
 			/* vptid 2, size 0, priority 0 (highest), pbha 2 */
 			id_size_priority = < 0x2 0xffffffff 0x0 0x2 >;
 		};
-		GPU {
-			/* vptid 2, all size, priority 0 (highest), pbha 5 */
-			id_size_priority = < 0x2 0xffffffff 0x0 0x5 >;
+		/* vptid 40 breakdown:
+		 *     bit[0-2] default                            (0)
+		 *     bit[3]   force write allocate               (1)
+		 *     bit[4]   prevent read allocate              (0)
+		 *     bit[5]   special vptid                      (1)
+		 *     bit[6]   don't force optimal fetch on read  (0)
+		 *     bit[7]   don't force optimal fetch on write (0)
+		 */
+		gpu_g0_p0 {
+			/* vptid 40, max size 256KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x00001001 0x0 0x5>;
+		};
+		gpu_g0_p1 {
+			/* vptid 40, max size 512KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x00005001 0x0 0x5>;
+		};
+		gpu_g0_p2 {
+			/* vptid 40, max size 768KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x0000d001 0x0 0x5>;
+		};
+		gpu_g0_p3 {
+			/* vptid 40, max size 1024KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x0001d001 0x0 0x5>;
+		};
+		gpu_g0_p4 {
+			/* vptid 40, max size 1536KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x0003d001 0x0 0x5>;
+		};
+		gpu_g0_p5 {
+			/* vptid 40, max size 2048KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x0007d001 0x0 0x5>;
+		};
+		gpu_g0_p6 {
+			/* vptid 40, max size 3072KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x000fd001 0x0 0x5>;
+		};
+		gpu_g0_p7 {
+			/* vptid 40, max size 4096KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x001fd001 0x0 0x5>;
+		};
+		gpu_g0_p8 {
+			/* vptid 40, max size 6144KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x003fd001 0x0 0x5>;
+		};
+		gpu_g0_p9 {
+			/* vptid 40, max size 8192KB, priority 0, pbha 5 */
+			id_size_priority = <0x28 0x007fd001 0x0 0x5>;
 		};
 		CAMERA2WAY {
 			/* vptid 3, size 512KB, priority 0 (highest), pbha 0 */
@@ -590,7 +635,7 @@
 	};
 
 	smfc: smfc@1C700000 {
-		compatible = "samsung,exynos-jpeg";
+		compatible = "samsung,exynos8890-jpeg";
 		reg = <0x0 0x1C700000 0x1000>;
 		interrupts = <0 IRQ_JPEG_G2D IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clock GATE_JPEG>;
@@ -599,6 +644,7 @@
 		samsung,iommu-group = <&iommu_group_smfc>;
 		iommus = <&sysmmu_g2d2>;
 		dma-coherent;
+		smfc,int_qos_minlock = <533000>;
 	};
 
 	udc: usb@11110000 {

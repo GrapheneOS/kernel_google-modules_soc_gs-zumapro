@@ -11,6 +11,7 @@ Description:
 
 		The valid strings are defined in driver/usb/common/common.c.
 
+		'full-speed'
 		'high-speed'
 		'super-speed'
 		'super-speed-plus'

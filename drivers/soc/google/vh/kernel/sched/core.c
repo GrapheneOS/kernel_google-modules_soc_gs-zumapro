@@ -31,13 +31,6 @@ extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
 #define for_each_clamp_id(clamp_id) \
 	for ((clamp_id) = 0; (clamp_id) < UCLAMP_CNT; (clamp_id)++)
 
-static inline unsigned int uclamp_none(enum uclamp_id clamp_id)
-{
-	if (clamp_id == UCLAMP_MIN)
-		return 0;
-	return SCHED_CAPACITY_SCALE;
-}
-
 static inline void uclamp_se_set(struct uclamp_se *uc_se,
 				 unsigned int value, bool user_defined)
 {
@@ -162,4 +155,47 @@ void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction 
 		vbinder->prefer_idle = false;
 		vbinder->active = false;
 	}
+}
+
+void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
+	struct task_struct *pi_task)
+{
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+
+	if (pi_task) {
+		unsigned long p_util = task_util(p);
+		unsigned long p_uclamp_min = uclamp_eff_value(p, UCLAMP_MIN);
+		unsigned long p_uclamp_max = uclamp_eff_value(p, UCLAMP_MAX);
+		unsigned long pi_util = task_util(pi_task);
+		unsigned long pi_uclamp_min = uclamp_eff_value(pi_task, UCLAMP_MIN);
+		unsigned long pi_uclamp_max = uclamp_eff_value(pi_task, UCLAMP_MAX);
+
+		/*
+		 * Take task's util into consideration first to do full
+		 * performance inheritance.
+		 *
+		 * If pi_uclamp_min = 612 but pi_util is 812, then setting
+		 * p_uclamp_min to 612 is not enough as the task will still run
+		 * slower.
+		 *
+		 * Or if pi_uclamp_min is 0 but pi_util is 800 while p_util is
+		 * 100, then pi_task could wait for longer to acquire the lock
+		 * because the performance of p is too low.
+		 */
+		p_uclamp_min = clamp(p_util, p_uclamp_min, p_uclamp_max);
+		pi_uclamp_min = clamp(pi_util, pi_uclamp_min, pi_uclamp_max);
+
+		/* Inherit unclamp_min/max if they're inverted */
+
+		if (p_uclamp_min < pi_uclamp_min)
+			vp->uclamp_pi[UCLAMP_MIN] = pi_uclamp_min;
+
+		if (p_uclamp_max < pi_uclamp_max || pi_uclamp_min > p_uclamp_max)
+			vp->uclamp_pi[UCLAMP_MAX] = pi_uclamp_max;
+
+		return;
+	}
+
+	vp->uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
+	vp->uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
 }

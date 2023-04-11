@@ -30,12 +30,12 @@
 		};
 
 		gsa_reserved_protected: gsa@0x90200000 {
-			reg = <0x0 0x90200000 0x400000>;
+			reg = <0x0 0x90200000 0x3FF000>;
 			no-map;
 		};
 
-		gxp_fw_reserved: gxp_fw@91000000 {
-			reg = <0x0 0x91000000 0x00300000>;
+		gsa_reserved_log: gsa@0x905FF000 {
+			reg = <0x0 0x905FF000 0x1000>;
 			no-map;
 		};
 
@@ -45,7 +45,12 @@
 		};
 
 		gxp_secure_data_reserved: gxp_secure_data@91400000 {
-			reg = <0x0 0x91400000 0x00c00000>;
+			reg = <0x0 0x91400000 0x00900000>;
+			no-map;
+		};
+
+		gxp_fw_reserved: gxp_fw@91D00000 {
+			reg = <0x0 0x91D00000 0x00300000>;
 			no-map;
 		};
 
@@ -103,7 +108,7 @@
 
 		cp_rmem: cp_rmem {
 			compatible = "exynos,modem_if";
-			reg = <0x0 0xEA400000 0x00800000>;
+			reg = <0x0 0xEA400000 0x00C00000>;
 			rmem_index = <0>;
 		};
 

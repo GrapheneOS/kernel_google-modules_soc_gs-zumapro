@@ -67,6 +67,9 @@ struct sugov_policy {
 	cpumask_t		pmu_ignored_mask;
 	bool			under_pmu_throttle;
 	bool			relax_pmu_throttle;
+
+	int			block_updates;
+	bool			update_iowait;
 };
 
 struct sugov_cpu {
@@ -91,10 +94,16 @@ static cpumask_t pixel_sched_governor_mask = CPU_MASK_NONE;
 static DEFINE_PER_CPU(struct sugov_cpu, sugov_cpu);
 DEFINE_PER_CPU(struct uclamp_stats, uclamp_stats);
 static struct kthread_worker pmu_worker;
-static struct kthread_delayed_work pmu_work;
-static DEFINE_MUTEX(pmu_poll_enable_lock);
+static struct kthread_work pmu_work;
+static struct irq_work pmu_irq_work;
+static DEFINE_SPINLOCK(pmu_poll_enable_lock);
+static u64 pmu_poll_last_update;
+static bool pmu_poll_cancelling;
+static bool pmu_poll_in_progress;
 extern bool pmu_poll_enabled;
 extern unsigned int pmu_poll_time_ms;
+
+static void pmu_poll_defer_work(u64 time);
 
 #if defined(CONFIG_UCLAMP_TASK) && defined(CONFIG_FAIR_GROUP_SCHED)
 extern unsigned long cpu_util_cfs_group_mod(int cpu);
@@ -700,9 +709,13 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	 * into the same scale so we can compare.
 	 */
 	boost = (sg_cpu->iowait_boost * max) >> SCHED_CAPACITY_SHIFT;
-	return max(boost, util);
+	boost = max(boost, util);
+	boost = uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost, NULL);
+
+	return boost;
 }
 
+#if IS_ENABLED(USE_UPDATE_SINGLE)
 #ifdef CONFIG_NO_HZ_COMMON
 static bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu)
 {
@@ -715,6 +728,7 @@ static bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu)
 #else
 static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
 #endif /* CONFIG_NO_HZ_COMMON */
+#endif
 
 /*
  * Make sugov_should_update_freq() ignore the rate limit when DL
@@ -726,6 +740,7 @@ static inline void ignore_dl_rate_limit(struct sugov_cpu *sg_cpu, struct sugov_p
 		sg_policy->limits_changed = true;
 }
 
+#if IS_ENABLED(USE_UPDATE_SINGLE)
 static void sugov_update_single(struct update_util_data *hook, u64 time,
 				unsigned int flags)
 {
@@ -741,6 +756,8 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 
 	sugov_iowait_boost(sg_cpu, time, flags);
 	sg_cpu->last_update = time;
+
+	pmu_poll_defer_work(time);
 
 	ignore_dl_rate_limit(sg_cpu, sg_policy);
 
@@ -782,6 +799,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		raw_spin_unlock(&sg_policy->update_lock);
 	}
 }
+#endif
 
 static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 {
@@ -816,10 +834,38 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 {
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
-	unsigned long util = sugov_get_util(sg_cpu);
 	unsigned int next_f;
+	unsigned long util;
 
 	raw_spin_lock(&sg_policy->update_lock);
+
+	if (flags & SCHED_PIXEL_BLOCK_UPDATES) {
+		if (flags & SCHED_CPUFREQ_IOWAIT)
+			sg_policy->update_iowait = true;
+
+		sg_policy->block_updates++;
+		raw_spin_unlock(&sg_policy->update_lock);
+		return;
+	}
+
+	if (flags & SCHED_PIXEL_RESUME_UPDATES) {
+		sg_policy->block_updates--;
+
+		if (WARN_ON(sg_policy->block_updates < 0))
+			sg_policy->block_updates = 0;
+
+		if (sg_policy->update_iowait) {
+			flags |= SCHED_CPUFREQ_IOWAIT;
+			sg_policy->update_iowait = false;
+		}
+	}
+
+	if (sg_policy->block_updates) {
+		raw_spin_unlock(&sg_policy->update_lock);
+		return;
+	}
+
+	util = sugov_get_util(sg_cpu);
 
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 	update_uclamp_stats(sg_cpu->cpu, time);
@@ -827,6 +873,8 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 
 	sugov_iowait_boost(sg_cpu, time, flags);
 	sg_cpu->last_update = time;
+
+	pmu_poll_defer_work(time);
 
 	ignore_dl_rate_limit(sg_cpu, sg_policy);
 
@@ -891,24 +939,38 @@ static void sugov_irq_work(struct irq_work *irq_work)
 	kthread_queue_work(&sg_policy->worker, &sg_policy->work);
 }
 
-void pmu_poll_enable(void)
+int pmu_poll_enable(void)
 {
 	// Check pmu_poll_init finish successfully
-	if (!pmu_work.work.func || !pmu_worker.task)
-		return;
+	if (!pmu_work.func || !pmu_worker.task)
+		return -EBUSY;
 
 	// Check sg_policy for whole clusters are initialized correctly
 	if (!check_sg_policy_initialized())
-		return;
+		return -EBUSY;
 
-	mutex_lock(&pmu_poll_enable_lock);
+	spin_lock(&pmu_poll_enable_lock);
 
-	if (!pmu_poll_enabled) {
-		pmu_poll_enabled = true;
-		kthread_mod_delayed_work(&pmu_worker, &pmu_work, msecs_to_jiffies(0));
+	if (pmu_poll_cancelling) {
+		spin_unlock(&pmu_poll_enable_lock);
+		return -EBUSY;
 	}
 
-	mutex_unlock(&pmu_poll_enable_lock);
+	if (!pmu_poll_enabled) {
+		/*
+		 * If we initialize and clean up properly, this should never
+		 * happen.
+		 */
+		if (WARN_ON(pmu_poll_in_progress))
+			pmu_poll_in_progress = false;
+
+		pmu_poll_enabled = true;
+		pmu_poll_last_update = 0;
+	}
+
+	spin_unlock(&pmu_poll_enable_lock);
+
+	return 0;
 }
 
 void pmu_poll_disable(void)
@@ -917,12 +979,26 @@ void pmu_poll_disable(void)
 	struct cpufreq_policy *policy = NULL;
 	struct sugov_policy *sg_policy = NULL;
 
-	mutex_lock(&pmu_poll_enable_lock);
+	spin_lock(&pmu_poll_enable_lock);
 
 	if (pmu_poll_enabled) {
 		pmu_poll_enabled = false;
 
-		kthread_cancel_delayed_work_sync(&pmu_work);
+		irq_work_sync(&pmu_irq_work);
+
+		/*
+		 * We must temporarily drop the lock to cancel the pmu_work.
+		 * pmu_poll_cancelling should block any potential attempt to
+		 * enable pmu_poll while the lock is dropped.
+		 *
+		 * pmu_defer_work() should see pmu_poll_enabled === false and
+		 * continue to be blocked/NOP.
+		 */
+		pmu_poll_cancelling = true;
+		spin_unlock(&pmu_poll_enable_lock);
+		kthread_cancel_work_sync(&pmu_work);
+		spin_lock(&pmu_poll_enable_lock);
+		pmu_poll_cancelling = false;
 
 		while (cpu < CPU_NUM) {
 			policy = cpufreq_cpu_get(cpu);
@@ -939,7 +1015,7 @@ void pmu_poll_disable(void)
 		}
 	}
 
-	mutex_unlock(&pmu_poll_enable_lock);
+	spin_unlock(&pmu_poll_enable_lock);
 }
 
 static void pmu_limit_work(struct kthread_work *work)
@@ -998,7 +1074,7 @@ static void pmu_limit_work(struct kthread_work *work)
 			}
 
 			lcpi = l3_cachemiss * 1000 / inst;
-			spc = stall * 100 / cyc;
+			spc = mem_stall * 100 / cyc;
 
 			if (trace_clock_set_rate_enabled()) {
 				char trace_name[32] = {0};
@@ -1039,8 +1115,34 @@ update_next_max_freq:
 		cpufreq_cpu_put(policy);
 	}
 
-	kthread_mod_delayed_work(&pmu_worker, &pmu_work, msecs_to_jiffies(pmu_poll_time_ms));
+	pmu_poll_in_progress = false;
+
 	return;
+}
+
+static void pmu_poll_defer_work(u64 time)
+{
+	u64 delta_ms;
+
+	if (!spin_trylock(&pmu_poll_enable_lock))
+		return;
+
+	if (!pmu_poll_enabled)
+		goto unlock;
+
+	if (pmu_poll_in_progress)
+		goto unlock;
+
+	delta_ms = (time - pmu_poll_last_update) / NSEC_PER_MSEC;
+
+	if (delta_ms > pmu_poll_time_ms) {
+		pmu_poll_last_update = time;
+		pmu_poll_in_progress = true;
+		irq_work_queue(&pmu_irq_work);
+	}
+
+unlock:
+	spin_unlock(&pmu_poll_enable_lock);
 }
 
 /************************** sysfs interface ************************/
@@ -1283,6 +1385,12 @@ static void sugov_policy_free(struct sugov_policy *sg_policy)
 	kfree(sg_policy);
 }
 
+
+static void pmu_poll_irq_work(struct irq_work *irq_work)
+{
+	kthread_queue_work(&pmu_worker, &pmu_work);
+}
+
 int pmu_poll_init(void)
 {
 	int ret = 0;
@@ -1292,7 +1400,8 @@ int pmu_poll_init(void)
 	attr.sched_policy = SCHED_FIFO;
 	attr.sched_priority = MAX_RT_PRIO / 2;
 
-	kthread_init_delayed_work(&pmu_work, pmu_limit_work);
+	init_irq_work(&pmu_irq_work, pmu_poll_irq_work);
+	kthread_init_work(&pmu_work, pmu_limit_work);
 	kthread_init_worker(&pmu_worker);
 	thread = kthread_create(kthread_worker_fn, &pmu_worker, "sched_pmu_wq");
 	if (IS_ERR(thread)) {
@@ -1515,6 +1624,8 @@ static int sugov_start(struct cpufreq_policy *policy)
 	sg_policy->need_freq_update		= false;
 	sg_policy->cached_raw_freq		= 0;
 	sg_policy->prev_cached_raw_freq		= 0;
+	sg_policy->block_updates		= 0;
+	sg_policy->update_iowait		= false;
 
 	for_each_cpu(cpu, policy->cpus) {
 		struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
@@ -1528,10 +1639,15 @@ static int sugov_start(struct cpufreq_policy *policy)
 
 	for_each_cpu(cpu, policy->cpus) {
 		struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
+
+#if IS_ENABLED(USE_UPDATE_SINGLE)
 		cpufreq_add_update_util_hook(cpu, &sg_cpu->update_util,
 					     policy_is_shared(policy) ?
 							sugov_update_shared :
 							sugov_update_single);
+#else
+		cpufreq_add_update_util_hook(cpu, &sg_cpu->update_util, sugov_update_shared);
+#endif
 	}
 
 	return 0;

@@ -227,7 +227,13 @@ source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/debug/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/gnssif_spi/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/debug/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/eh/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/gcma/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/s2mpu/Kconfig"
 
@@ -259,6 +265,12 @@ config SYSRQ_HOOK
 
 config PKVM_S2MPU
 	tristate "S2MPU driver compatible with pKVM"
+	default n
+	help
+	This module is a driver for the stage-2 IOMMU controlled by hypervisor.
+
+config PKVM_S2MPU_V9
+	tristate "S2MPU V9 driver compatible with pKVM"
 	default n
 	help
 	This module is a driver for the stage-2 IOMMU controlled by hypervisor.

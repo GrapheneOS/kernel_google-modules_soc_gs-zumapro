@@ -536,10 +536,10 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 			goto err1;
 		}
 
-		ret = usb_gadget_activate(dwc->gadget);
-		if (ret < 0)
-			dev_err(dev, "USB gadget activate failed with %d\n", ret);
+		/* connect gadget */
+		usb_udc_vbus_handler(dwc->gadget, true);
 
+		exynos->gadget_state = true;
 		dwc3_otg_set_peripheral_mode(dotg);
 
 		/*
@@ -552,9 +552,8 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		exynos->vbus_state = false;
 		/* del_timer_sync(&exynos->usb_connect_timer); */
 
-		ret = usb_gadget_deactivate(dwc->gadget);
-		if (ret < 0)
-			dev_err(dev, "USB gadget deactivate failed with %d\n", ret);
+		/* disconnect gadget */
+		usb_udc_vbus_handler(dwc->gadget, false);
 
 		if (exynos->config.is_not_vbus_pad && exynos_usbdrd_get_ldo_status() &&
 				!dotg->in_shutdown)
@@ -563,7 +562,13 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		if (exynos->extra_delay)
 			msleep(100);
 
+
+		if (!dwc3_otg_check_usb_activity(exynos))
+			dev_err(dev, "too long to suspend after cable plug-out\n");
+
 		ret = dwc3_otg_phy_enable(fsm, 0, on);
+
+		exynos->gadget_state = false;
 err1:
 		__pm_relax(dotg->wakelock);
 	}
@@ -859,6 +864,21 @@ bool dwc3_otg_check_usb_suspend(struct dwc3_exynos *exynos)
 	} while (wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT);
 
 	return wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT;
+}
+
+bool dwc3_otg_check_usb_activity(struct dwc3_exynos *exynos)
+{
+	int wait_counter = 0;
+
+	do {
+		if ((atomic_read(&exynos->dwc->dev->power.usage_count)) < 2)
+			break;
+
+		wait_counter++;
+		msleep(20);
+	} while (wait_counter < DWC3_EXYNOS_DISCONNECT_COUNT);
+
+	return wait_counter < DWC3_EXYNOS_DISCONNECT_COUNT;
 }
 
 static int dwc3_otg_reboot_notify(struct notifier_block *nb, unsigned long event, void *buf)

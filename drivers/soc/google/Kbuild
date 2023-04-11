@@ -35,10 +35,16 @@ obj-$(CONFIG_EXYNOS_BCM_DBG_DUMP)	+= exynos-bcm_dbg-dump.o
 # CPIF
 obj-$(CONFIG_EXYNOS_MODEM_IF) += cpif/
 
+# GNSSIF
+obj-$(CONFIG_EXYNOS_GNSS_IF_SPI) += gnssif_spi/
+
 obj-y				    	+= debug/
 
 # Emerald Hill
 obj-$(CONFIG_GOOGLE_EH) += eh/
+
+# GCMA
+obj-$(CONFIG_GCMA) += gcma/
 
 # S2MPU
 obj-$(CONFIG_GS_S2MPU)			+= s2mpu/
@@ -58,4 +64,6 @@ obj-$(CONFIG_DBGCORE_DUMP)		+= dbgcore-dump.o
 
 obj-$(CONFIG_EXYNOS_SECURE_LOG) 	+= exynos-seclog.o
 
-obj-$(CONFIG_PKVM_S2MPU) 		+= pkvm-s2mpu/
+obj-$(CONFIG_PKVM_S2MPU)		+= pkvm-s2mpu/pkvm-s2mpu/
+
+obj-$(CONFIG_PKVM_S2MPU_V9) 		+= pkvm-s2mpu/pkvm-s2mpu-v9/

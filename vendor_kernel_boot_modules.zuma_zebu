@@ -99,7 +99,7 @@ phy-exynos-usbdrd-super.ko
 pinctrl-exynos-gs.ko
 pixel-boot-metrics.ko
 pixel-debug-test.ko
-pkvm-s2mpu.ko
+pkvm-s2mpu-v9.ko
 pmic_class.ko
 power_stats.ko
 rfkill.ko

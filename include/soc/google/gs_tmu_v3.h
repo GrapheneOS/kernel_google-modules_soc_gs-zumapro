@@ -9,15 +9,15 @@
 #ifndef _GS_TMU_V3_H
 #define _GS_TMU_V3_H
 #include <linux/kthread.h>
+#include <linux/thermal.h>
 #include <soc/google/exynos_pm_qos.h>
 #include <soc/google/exynos-cpuhp.h>
+#include <soc/google/thermal_metrics.h>
 
 #define MCELSIUS        1000
 
 struct gs_pi_param {
 	s64 err_integral;
-	int trip_switch_on;
-	int trip_control_temp;
 
 	u32 sustainable_power;
 	s32 k_po;
@@ -43,7 +43,7 @@ enum pi_param {
 };
 
 #define STEPWISE_GAIN_MIN 0
-#define STEPWISE_GAIN_MAX 5
+#define STEPWISE_GAIN_MAX 31
 #define ACPM_GOV_TIMER_INTERVAL_MS 50
 #define INTEGRAL_THRESH_MIN 0
 #define INTEGRAL_THRESH_MAX 255
@@ -80,6 +80,8 @@ struct acpm_gov_common {
 	bool tracing_buffer_flush_pending;
 	bool turn_on;
 	u64 buffer_version;
+	struct gov_trace_data_struct *bulk_trace_buffer;
+	spinlock_t lock;
 };
 
 #define TRIP_LEVEL_NUM 8
@@ -127,6 +129,8 @@ struct gs_tmu_data {
 	int limited_frequency;
 	int limited_threshold;
 	int limited_threshold_release;
+	int trip_switch_on;
+	int trip_control_temp;
 	struct exynos_pm_qos_request thermal_limit_request;
 	bool limited;
 	void __iomem *base;
@@ -169,6 +173,8 @@ struct gs_tmu_data {
 	union acpm_gov_params_un acpm_gov_params;
 	u32 fvp_get_target_freq;
 	bool acpm_pi_enable;
+	u32 control_temp_step;
+	tr_handle tr_handle;
 };
 
 enum throttling_stats_type {
@@ -232,63 +238,7 @@ enum tmu_sensor_t {
 #define TMU_P14_SENSOR_MASK (1 << TMU_P14_SENSOR)
 #define TMU_P15_SENSOR_MASK (1 << TMU_P15_SENSOR)
 
-#if defined(CONFIG_SOC_GS101)
-#define TMU_REG_TRIMINFO_CONFIG			(0)
-#define TMU_REG_TRIMINFO_0			(0x0010)
-#define TMU_REG_TRIMINFO(p)			((p) * 4 + TMU_REG_TRIMINFO_0)
-#define TMU_REG_CONTROL				(0x0050)
-#define TMU_REG_CONTROL1			(0x0054)
-#define TMU_REG_AVG_CONTROL			(0x0058)
-#define TMU_REG_TMU_TRIM0			(0x005C)
-#define TMU_REG_PROBE_EN_CON			(0x0060)
-#define TMU_REG_CPU_PROBE_REMAP			(0x0068)
-#define TMU_REG_SAMPLING_INTERVAL		(0x0070)
-#define TMU_REG_COUNTER_VALUE0			(0x0074)
-#define TMU_REG_COUNTER_VALUE1			(0x0078)
-#define TMU_REG_COUNTER_VALUE2			(0x007C)
-#define TMU_REG_TMU_STATUS			(0x0080)
-#define TMU_REG_CURRENT_TEMP1_0			(0x0084)
-#define TMU_REG_CURRENT_TEMP(p)			((p / 2) * 0x4 + TMU_REG_CURRENT_TEMP1_0)
-#define TMU_REG_EMUL_CON			(0x00B0)
-#define TMU_REG_P0_THRESHOLD_TEMP_RISE7_6	(0x00D0)
-#define TMU_REG_THRESHOLD_TEMP_RISE7_6(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_RISE7_6)
-#define TMU_REG_P0_THRESHOLD_TEMP_RISE5_4	(0x00D4)
-#define TMU_REG_THRESHOLD_TEMP_RISE5_4(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_RISE5_4)
-#define TMU_REG_P0_THRESHOLD_TEMP_RISE3_2	(0x00D8)
-#define TMU_REG_THRESHOLD_TEMP_RISE3_2(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_RISE3_2)
-#define TMU_REG_P0_THRESHOLD_TEMP_RISE1_0	(0x00DC)
-#define TMU_REG_THRESHOLD_TEMP_RISE1_0(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_RISE1_0)
-#define TMU_REG_P0_THRESHOLD_TEMP_FALL7_6	(0x00E0)
-#define TMU_REG_THRESHOLD_TEMP_FALL7_6(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_FALL7_6)
-#define TMU_REG_P0_THRESHOLD_TEMP_FALL5_4	(0x00E4)
-#define TMU_REG_THRESHOLD_TEMP_FALL5_4(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_FALL5_4)
-#define TMU_REG_P0_THRESHOLD_TEMP_FALL3_2	(0x00E8)
-#define TMU_REG_THRESHOLD_TEMP_FALL3_2(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_FALL3_2)
-#define TMU_REG_P0_THRESHOLD_TEMP_FALL1_0	(0x00EC)
-#define TMU_REG_THRESHOLD_TEMP_FALL1_0(p)	((p) * 0x50 + TMU_REG_P0_THRESHOLD_TEMP_FALL1_0)
-#define TMU_REG_P0_INTEN			(0x00F0)
-#define TMU_REG_INTEN(p)			((p) * 0x50 + TMU_REG_P0_INTEN)
-#define TMU_REG_P0_INTPEND			(0x00F8)
-#define TMU_REG_INTPEND(p)			((p) * 0x50 + TMU_REG_P0_INTPEND)
-#define TMU_REG_INTPEND_RISE_MASK(l)		(1 << (l))
-#define TMU_REG_P0_PAST_TEMP1_0			(0x0100)
-#define TMU_REG_PAST_TEMP1_0(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP1_0)
-#define TMU_REG_P0_PAST_TEMP3_2			(0x0104)
-#define TMU_REG_PAST_TEMP3_2(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP3_2)
-#define TMU_REG_P0_PAST_TEMP5_4			(0x0108)
-#define TMU_REG_PAST_TEMP5_4(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP5_4)
-#define TMU_REG_P0_PAST_TEMP7_6			(0x010C)
-#define TMU_REG_PAST_TEMP7_6(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP7_6)
-#define TMU_REG_P0_PAST_TEMP9_8			(0x0110)
-#define TMU_REG_PAST_TEMP9_8(p)			((p) * 0x50 + TMU_REG_P0_PAST_TEMP9_8)
-#define TMU_REG_P0_PAST_TEMP11_10		(0x0114)
-#define TMU_REG_PAST_TEMP11_10(p)		((p) * 0x50 + TMU_REG_P0_PAST_TEMP11_10)
-#define TMU_REG_P0_PAST_TEMP13_12		(0x0118)
-#define TMU_REG_PAST_TEMP13_12(p)		((p) * 0x50 + TMU_REG_P0_PAST_TEMP13_12)
-#define TMU_REG_P0_PAST_TEMP15_14		(0x011C)
-#define TMU_REG_PAST_TEMP15_14(p)		((p) * 0x50 + TMU_REG_P0_PAST_TEMP15_14)
 
-#elif defined(CONFIG_SOC_ZUMA)
 #define TMU_REG_TRIMINFO_CONFIG			(0)
 #define TMU_REG_TRIMINFO_0			(0x0010)
 #define TMU_REG_TRIMINFO(p)			((p) * 4 + TMU_REG_TRIMINFO_0)
@@ -332,7 +282,6 @@ enum tmu_sensor_t {
 #define TMU_REG_PAST_TEMP5_4(p)			((p) * 0x40 + TMU_REG_P0_PAST_TEMP5_4)
 #define TMU_REG_P0_PAST_TEMP7_6			(0x013C)
 #define TMU_REG_PAST_TEMP7_6(p)			((p) * 0x40 + TMU_REG_P0_PAST_TEMP7_6)
-#endif
 
 enum thermal_feature {
 	CPU_THROTTLE = 0,
@@ -361,10 +310,28 @@ typedef int (*tpu_pause_cb)(enum thermal_pause_state action, void *data);
 
 void register_tpu_thermal_pause_cb(tpu_pause_cb tpu_cb, void *data);
 
+enum tmu_grp_idx_t {
+	TZ_BIG,
+	TZ_MID,
+	TZ_LIT,
+	TZ_GPU,
+	TZ_ISP,
+	TZ_TPU,
+	TZ_AUR,
+	TZ_END,
+};
+
+int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on);
+
 #define ACPM_SM_BUFFER_VERSION_UPPER_32b 0x5A554D41ULL
-#define GOV_TRACE_DATA_LEN 240
+#define BULK_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20
 #define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
+#define NS_PER_MS 1000000
+#define acpm_systick_to_ns(acpm_tick)     ((acpm_tick * ACPM_SYSTICK_NUMERATOR) +              \
+                                            (acpm_tick / ACPM_SYSTICK_FRACTIONAL_DENOMINATOR))
+#define acpm_systick_to_ms(acpm_tick)     (acpm_systick_to_ns(acpm_tick) / NS_PER_MS)
+
 struct gov_data {
 	u64 timestamp;
 	u32 freq_req;
@@ -376,7 +343,7 @@ struct curr_state {
 	u8 temperature;
 	u8 ctrl_temp;
 	u8 reserved;
-	u32 err_integral;
+	u32 pid_err_integral;
 };
 
 struct buffered_curr_state {
@@ -385,11 +352,14 @@ struct buffered_curr_state {
 	u8 cdev_state;
 	u8 temperature;
 	u8 ctrl_temp;
-	u32 err_integral;
+	u32 pid_err_integral;
+	u16 pid_power_range;
+	u16 pid_p;
+	u32 pid_i;
 };
 
 struct gov_trace_data_struct {
-	struct buffered_curr_state buffered_curr_state[GOV_TRACE_DATA_LEN];
+	struct buffered_curr_state buffered_curr_state[BULK_TRACE_DATA_LEN];
 	struct curr_state curr_state[7];
 };
 

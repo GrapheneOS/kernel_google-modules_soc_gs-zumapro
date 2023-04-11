@@ -26,7 +26,6 @@ unsigned int __read_mostly vendor_sched_util_post_init_scale = DEF_UTIL_POST_INI
 bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
 bool __read_mostly vendor_sched_reduce_prefer_idle = true;
 struct proc_dir_entry *vendor_sched;
-extern unsigned int sched_capacity_margin[CPU_NUM];
 extern struct vendor_group_list vendor_group_list[VG_MAX];
 
 extern void initialize_vendor_group_property(void);
@@ -35,13 +34,23 @@ extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum
 					 int *ret);
 
 extern struct vendor_group_property *get_vendor_group_property(enum vendor_group group);
+
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+extern void migrate_vendor_group_util(struct task_struct *p, unsigned int old, unsigned int new);
+extern struct vendor_util_group_property *get_vendor_util_group_property(
+	enum vendor_util_group group);
+#endif
+
 static void apply_uclamp_change(enum vendor_group group, enum uclamp_id clamp_id);
 
-static struct uclamp_se uclamp_default[UCLAMP_CNT];
+struct uclamp_se uclamp_default[UCLAMP_CNT];
 unsigned int pmu_poll_time_ms = 10;
 bool pmu_poll_enabled;
-extern void pmu_poll_enable(void);
+extern int pmu_poll_enable(void);
 extern void pmu_poll_disable(void);
+
+extern unsigned int sysctl_sched_uclamp_min_filter_us;
+extern unsigned int sysctl_sched_uclamp_max_filter_divider;
 
 #define MAX_PROC_SIZE 128
 
@@ -268,6 +277,67 @@ static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "b
 		}									      \
 		PROC_OPS_WO(__attr##_clear);
 
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+#define VENDOR_UTIL_GROUP_UINT_ATTRIBUTE(__grp, __attr, __vug)				      \
+		static int __grp##_##__attr##_show(struct seq_file *m, void *v) 	\
+		{									      \
+			struct vendor_util_group_property *gp = \
+				get_vendor_util_group_property(__vug);   \
+			seq_printf(m, "%u\n", gp->__attr);	      \
+			return 0;	      \
+		}									      \
+		static ssize_t __grp##_##__attr##_store(struct file *filp,			\
+			const char __user *ubuf, \
+			size_t count, loff_t *pos) \
+		{									      \
+			unsigned int val;					              \
+			struct vendor_util_group_property *gp = \
+				get_vendor_util_group_property(__vug);   \
+			char buf[MAX_PROC_SIZE];	\
+			if (count >= sizeof(buf))	\
+				return -EINVAL;	\
+			if (copy_from_user(buf, ubuf, count))	\
+				return -EFAULT;	\
+			buf[count] = '\0';	\
+			if (kstrtouint(buf, 10, &val))					      \
+				return -EINVAL;						      \
+			gp->__attr = val;						      \
+			return count;							      \
+		}									      \
+		PROC_OPS_RW(__grp##_##__attr);
+
+
+#define VENDOR_UTIL_GROUP_UCLAMP_ATTRIBUTE(__grp, __attr, __vug, __cid)			      \
+		static int __grp##_##__attr##_show(struct seq_file *m, void *v) 	\
+		{									      \
+			struct vendor_util_group_property *gp = \
+				get_vendor_util_group_property(__vug);   \
+			seq_printf(m, "%u\n", gp->uc_req[__cid].value);		      \
+			return 0;	\
+		}									      \
+		static ssize_t __grp##_##__attr##_store(struct file *filp,			\
+			const char __user *ubuf, \
+			size_t count, loff_t *pos) \
+		{									      \
+			unsigned int val;						      \
+			struct vendor_util_group_property *gp = \
+				get_vendor_util_group_property(__vug);   \
+			char buf[MAX_PROC_SIZE];	\
+			if (count >= sizeof(buf))	\
+				return -EINVAL;	\
+			if (copy_from_user(buf, ubuf, count))	\
+				return -EFAULT;	\
+			buf[count] = '\0';	\
+			if (kstrtouint(buf, 0, &val))					      \
+				return -EINVAL;						      \
+			if (val > 1024)							      \
+				return -EINVAL;						      \
+			gp->uc_req[__cid].value = val;					      \
+			return count;							      \
+		}									      \
+		PROC_OPS_RW(__grp##_##__attr);
+#endif
+
 /// ******************************************************************************** ///
 /// ********************* Create vendor group procfs nodes*************************** ///
 /// ******************************************************************************** ///
@@ -275,7 +345,9 @@ static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "b
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, prefer_idle, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, prefer_high_cap, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, task_spreading, VG_TOPAPP);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(ta, group_throttle, VG_TOPAPP);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ta, preferred_idle_mask_low, VG_TOPAPP);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ta, preferred_idle_mask_mid, VG_TOPAPP);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ta, preferred_idle_mask_high, VG_TOPAPP);
@@ -285,7 +357,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(ta, uclamp_max, VG_TOPAPP, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, prefer_idle, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, prefer_high_cap, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, task_spreading, VG_FOREGROUND);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(fg, group_throttle, VG_FOREGROUND);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(fg, preferred_idle_mask_low, VG_FOREGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(fg, preferred_idle_mask_mid, VG_FOREGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(fg, preferred_idle_mask_high, VG_FOREGROUND);
@@ -295,7 +369,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(fg, uclamp_max, VG_FOREGROUND, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, prefer_idle, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, prefer_high_cap, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, task_spreading, VG_SYSTEM);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(sys, group_throttle, VG_SYSTEM);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sys, preferred_idle_mask_low, VG_SYSTEM);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sys, preferred_idle_mask_mid, VG_SYSTEM);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sys, preferred_idle_mask_high, VG_SYSTEM);
@@ -305,7 +381,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(sys, uclamp_max, VG_SYSTEM, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, prefer_idle, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, prefer_high_cap, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, task_spreading, VG_CAMERA);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(cam, group_throttle, VG_CAMERA);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam, preferred_idle_mask_low, VG_CAMERA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam, preferred_idle_mask_mid, VG_CAMERA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam, preferred_idle_mask_high, VG_CAMERA);
@@ -315,7 +393,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(cam, uclamp_max, VG_CAMERA, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, prefer_idle, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, prefer_high_cap, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, task_spreading, VG_CAMERA_POWER);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(cam_power, group_throttle, VG_CAMERA_POWER);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam_power, preferred_idle_mask_low, VG_CAMERA_POWER);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam_power, preferred_idle_mask_mid, VG_CAMERA_POWER);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam_power, preferred_idle_mask_high, VG_CAMERA_POWER);
@@ -325,7 +405,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(cam_power, uclamp_max, VG_CAMERA_POWER, UCLAMP_MAX
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, prefer_idle, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, prefer_high_cap, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, task_spreading, VG_BACKGROUND);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(bg, group_throttle, VG_BACKGROUND);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(bg, preferred_idle_mask_low, VG_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(bg, preferred_idle_mask_mid, VG_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(bg, preferred_idle_mask_high, VG_BACKGROUND);
@@ -335,7 +417,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(bg, uclamp_max, VG_BACKGROUND, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, prefer_idle, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, prefer_high_cap, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, task_spreading, VG_SYSTEM_BACKGROUND);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(sysbg, group_throttle, VG_SYSTEM_BACKGROUND);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sysbg, preferred_idle_mask_low, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sysbg, preferred_idle_mask_mid, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sysbg, preferred_idle_mask_high, VG_SYSTEM_BACKGROUND);
@@ -345,7 +429,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(sysbg, uclamp_max, VG_SYSTEM_BACKGROUND, UCLAMP_MA
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, prefer_idle, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, prefer_high_cap, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, task_spreading, VG_NNAPI_HAL);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(nnapi, group_throttle, VG_NNAPI_HAL);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(nnapi, preferred_idle_mask_low, VG_NNAPI_HAL);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(nnapi, preferred_idle_mask_mid, VG_NNAPI_HAL);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(nnapi, preferred_idle_mask_high, VG_NNAPI_HAL);
@@ -355,7 +441,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(nnapi, uclamp_max, VG_NNAPI_HAL, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, prefer_idle, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, prefer_high_cap, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, task_spreading, VG_RT);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(rt, group_throttle, VG_RT);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(rt, preferred_idle_mask_low, VG_RT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(rt, preferred_idle_mask_mid, VG_RT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(rt, preferred_idle_mask_high, VG_RT);
@@ -365,7 +453,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(rt, uclamp_max, VG_RT, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, prefer_idle, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, prefer_high_cap, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, task_spreading, VG_DEX2OAT);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(dex2oat, group_throttle, VG_DEX2OAT);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(dex2oat, preferred_idle_mask_low, VG_DEX2OAT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(dex2oat, preferred_idle_mask_mid, VG_DEX2OAT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(dex2oat, preferred_idle_mask_high, VG_DEX2OAT);
@@ -375,7 +465,9 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(dex2oat, uclamp_max, VG_DEX2OAT, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, prefer_idle, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, prefer_high_cap, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, task_spreading, VG_OTA);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(ota, group_throttle, VG_OTA);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ota, preferred_idle_mask_low, VG_OTA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ota, preferred_idle_mask_mid, VG_OTA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ota, preferred_idle_mask_high, VG_OTA);
@@ -385,251 +477,40 @@ VENDOR_GROUP_UCLAMP_ATTRIBUTE(ota, uclamp_max, VG_OTA, UCLAMP_MAX);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, prefer_idle, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, prefer_high_cap, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, task_spreading, VG_SF);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(sf, group_throttle, VG_SF);
+#endif
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sf, preferred_idle_mask_low, VG_SF);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sf, preferred_idle_mask_mid, VG_SF);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sf, preferred_idle_mask_high, VG_SF);
 VENDOR_GROUP_UCLAMP_ATTRIBUTE(sf, uclamp_min, VG_SF, UCLAMP_MIN);
 VENDOR_GROUP_UCLAMP_ATTRIBUTE(sf, uclamp_max, VG_SF, UCLAMP_MAX);
 
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+#if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
+VENDOR_UTIL_GROUP_UINT_ATTRIBUTE(vug_fg, group_throttle, VUG_FG);
+#endif
+VENDOR_UTIL_GROUP_UCLAMP_ATTRIBUTE(vug_fg, uclamp_min, VUG_FG, UCLAMP_MIN);
+VENDOR_UTIL_GROUP_UCLAMP_ATTRIBUTE(vug_fg, uclamp_max, VUG_FG, UCLAMP_MAX);
+
+#if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
+VENDOR_UTIL_GROUP_UINT_ATTRIBUTE(vug_bg, group_throttle, VUG_BG);
+#endif
+VENDOR_UTIL_GROUP_UCLAMP_ATTRIBUTE(vug_bg, uclamp_min, VUG_BG, UCLAMP_MIN);
+VENDOR_UTIL_GROUP_UCLAMP_ATTRIBUTE(vug_bg, uclamp_max, VUG_BG, UCLAMP_MAX);
+#endif
+
 /// ******************************************************************************** ///
 /// ********************* From upstream code for uclamp **************************** ///
 /// ******************************************************************************** ///
-static inline unsigned int uclamp_none(enum uclamp_id clamp_id)
-{
-	if (clamp_id == UCLAMP_MIN)
-		return 0;
-	return SCHED_CAPACITY_SCALE;
-}
-
-static inline unsigned int
-uclamp_idle_value(struct rq *rq, enum uclamp_id clamp_id,
-		  unsigned int clamp_value)
-{
-	/*
-	 * Avoid blocked utilization pushing up the frequency when we go
-	 * idle (which drops the max-clamp) by retaining the last known
-	 * max-clamp.
-	 */
-	if (clamp_id == UCLAMP_MAX) {
-		rq->uclamp_flags |= UCLAMP_FLAG_IDLE;
-		return clamp_value;
-	}
-
-	return uclamp_none(UCLAMP_MIN);
-}
-
-static inline void uclamp_idle_reset(struct rq *rq, enum uclamp_id clamp_id,
-				     unsigned int clamp_value)
-{
-	/* Reset max-clamp retention only on idle exit */
-	if (!(rq->uclamp_flags & UCLAMP_FLAG_IDLE))
-		return;
-
-	WRITE_ONCE(rq->uclamp[clamp_id].value, clamp_value);
-}
-
-static inline
-unsigned int uclamp_rq_max_value(struct rq *rq, enum uclamp_id clamp_id,
-				   unsigned int clamp_value)
-{
-	struct uclamp_bucket *bucket = rq->uclamp[clamp_id].bucket;
-	int bucket_id = UCLAMP_BUCKETS - 1;
-
-	/*
-	 * Since both min and max clamps are max aggregated, find the
-	 * top most bucket with tasks in.
-	 */
-	for ( ; bucket_id >= 0; bucket_id--) {
-		if (!bucket[bucket_id].tasks)
-			continue;
-		return bucket[bucket_id].value;
-	}
-
-	/* No tasks -- default clamp values */
-	return uclamp_idle_value(rq, clamp_id, clamp_value);
-}
-
-/*
- * The effective clamp bucket index of a task depends on, by increasing
- * priority:
- * - the task specific clamp value, when explicitly requested from userspace
- * - the task group effective clamp value, for tasks not either in the root
- *   group or in an autogroup
- * - the system default clamp value, defined by the sysadmin
- */
-
-static inline struct uclamp_se
-uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
-{
-	struct uclamp_se uc_req = p->uclamp_req[clamp_id];
-#ifdef CONFIG_UCLAMP_TASK_GROUP
-	struct uclamp_se uc_max;
-
-	/*
-	 * Tasks in autogroups or root task group will be
-	 * restricted by system defaults.
-	 */
-	if (task_group_is_autogroup(task_group(p)))
-		return uc_req;
-	if (task_group(p) == &root_task_group)
-		return uc_req;
-
-	uc_max = task_group(p)->uclamp[clamp_id];
-	if (uc_req.value > uc_max.value || !uc_req.user_defined)
-		return uc_max;
-#endif
-
-	return uc_req;
-}
-
-/*
- * The effective clamp bucket index of a task depends on, by increasing
- * priority:
- * - the task specific clamp value, when explicitly requested from userspace
- * - the task group effective clamp value, for tasks not either in the root
- *   group or in an autogroup
- * - the system default clamp value, defined by the sysadmin
- */
-static inline struct uclamp_se
-uclamp_eff_get(struct task_struct *p, enum uclamp_id clamp_id)
-{
-	struct uclamp_se uc_req = uclamp_tg_restrict(p, clamp_id);
-	struct uclamp_se uc_max = uclamp_default[clamp_id];
-	struct uclamp_se uc_eff;
-	int ret = 0;
-
-	// Instead of calling trace_android_*, call vendor func directly
-	rvh_uclamp_eff_get_pixel_mod(NULL, p, clamp_id, &uc_max, &uc_eff, &ret);
-	if (ret)
-		return uc_eff;
-
-	/* System default restrictions always apply */
-	if (unlikely(uc_req.value > uc_max.value))
-		return uc_max;
-
-	return uc_req;
-}
-
-/*
- * When a task is enqueued on a rq, the clamp bucket currently defined by the
- * task's uclamp::bucket_id is refcounted on that rq. This also immediately
- * updates the rq's clamp value if required.
- *
- * Tasks can have a task-specific value requested from user-space, track
- * within each bucket the maximum value for tasks refcounted in it.
- * This "local max aggregation" allows to track the exact "requested" value
- * for each bucket when all its RUNNABLE tasks require the same clamp.
- */
-static inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
-				    enum uclamp_id clamp_id)
-{
-	struct uclamp_rq *uc_rq = &rq->uclamp[clamp_id];
-	struct uclamp_se *uc_se = &p->uclamp[clamp_id];
-	struct uclamp_bucket *bucket;
-
-	lockdep_assert_rq_held(rq);
-
-	/* Update task effective clamp */
-	p->uclamp[clamp_id] = uclamp_eff_get(p, clamp_id);
-
-	bucket = &uc_rq->bucket[uc_se->bucket_id];
-	bucket->tasks++;
-	uc_se->active = true;
-
-	uclamp_idle_reset(rq, clamp_id, uc_se->value);
-
-	/*
-	 * Local max aggregation: rq buckets always track the max
-	 * "requested" clamp value of its RUNNABLE tasks.
-	 */
-	if (bucket->tasks == 1 || uc_se->value > bucket->value)
-		bucket->value = uc_se->value;
-
-	if (uc_se->value > READ_ONCE(uc_rq->value))
-		WRITE_ONCE(uc_rq->value, uc_se->value);
-}
-
-/*
- * When a task is dequeued from a rq, the clamp bucket refcounted by the task
- * is released. If this is the last task reference counting the rq's max
- * active clamp value, then the rq's clamp value is updated.
- *
- * Both refcounted tasks and rq's cached clamp values are expected to be
- * always valid. If it's detected they are not, as defensive programming,
- * enforce the expected state and warn.
- */
-static inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
-				    enum uclamp_id clamp_id)
-{
-	struct uclamp_rq *uc_rq = &rq->uclamp[clamp_id];
-	struct uclamp_se *uc_se = &p->uclamp[clamp_id];
-	struct uclamp_bucket *bucket;
-	unsigned int bkt_clamp;
-	unsigned int rq_clamp;
-
-	lockdep_assert_rq_held(rq);
-
-	/*
-	 * If sched_uclamp_used was enabled after task @p was enqueued,
-	 * we could end up with unbalanced call to uclamp_rq_dec_id().
-	 *
-	 * In this case the uc_se->active flag should be false since no uclamp
-	 * accounting was performed at enqueue time and we can just return
-	 * here.
-	 *
-	 * Need to be careful of the following enqeueue/dequeue ordering
-	 * problem too
-	 *
-	 *	enqueue(taskA)
-	 *	// sched_uclamp_used gets enabled
-	 *	enqueue(taskB)
-	 *	dequeue(taskA)
-	 *	// Must not decrement bukcet->tasks here
-	 *	dequeue(taskB)
-	 *
-	 * where we could end up with stale data in uc_se and
-	 * bucket[uc_se->bucket_id].
-	 *
-	 * The following check here eliminates the possibility of such race.
-	 */
-	if (unlikely(!uc_se->active))
-		return;
-
-	bucket = &uc_rq->bucket[uc_se->bucket_id];
-
-	SCHED_WARN_ON(!bucket->tasks);
-	if (likely(bucket->tasks))
-		bucket->tasks--;
-
-	uc_se->active = false;
-
-	/*
-	 * Keep "local max aggregation" simple and accept to (possibly)
-	 * overboost some RUNNABLE tasks in the same bucket.
-	 * The rq clamp bucket value is reset to its base value whenever
-	 * there are no more RUNNABLE tasks refcounting it.
-	 */
-	if (likely(bucket->tasks))
-		return;
-
-	rq_clamp = READ_ONCE(uc_rq->value);
-	/*
-	 * Defensive programming: this should never happen. If it happens,
-	 * e.g. due to future modification, warn and fixup the expected value.
-	 */
-	SCHED_WARN_ON(bucket->value > rq_clamp);
-	if (bucket->value >= rq_clamp) {
-		bkt_clamp = uclamp_rq_max_value(rq, clamp_id, uc_se->value);
-		WRITE_ONCE(uc_rq->value, bkt_clamp);
-	}
-}
-
 static inline void
 uclamp_update_active(struct task_struct *p, enum uclamp_id clamp_id)
 {
 	struct rq_flags rf;
 	struct rq *rq;
+
+	if (!uclamp_is_used())
+		return;
 
 	/*
 	 * Lock the task and the rq where the task is (or was) queued.
@@ -900,6 +781,10 @@ static int update_vendor_group_attribute(const char *buf, enum vendor_group_attr
 		vp = get_vendor_task_struct(p);
 		old = vp->group;
 		raw_spin_lock_irqsave(&vp->lock, flags);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+		if (p->prio >= MAX_RT_PRIO)
+			migrate_vendor_group_util(p, old, new);
+#endif
 		if (vp->queued_to_list) {
 			remove_from_vendor_group_list(&vp->node, old);
 			add_to_vendor_group_list(&vp->node, new);
@@ -921,6 +806,10 @@ static int update_vendor_group_attribute(const char *buf, enum vendor_group_attr
 			}
 			vp->group = new;
 			raw_spin_unlock_irqrestore(&vp->lock, flags);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+			if (p->prio >= MAX_RT_PRIO)
+				migrate_vendor_group_util(t, old, new);
+#endif
 			for (clamp_id = 0; clamp_id < UCLAMP_CNT; clamp_id++)
 				uclamp_update_active(t, clamp_id);
 			put_task_struct(t);
@@ -1182,6 +1071,127 @@ static int uclamp_util_diff_stats_show(struct seq_file *m, void *v)
 
 PROC_OPS_RO(uclamp_util_diff_stats);
 
+/* uclamp filters controls */
+static int uclamp_min_filter_enable_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", static_branch_likely(&uclamp_min_filter_enable) ? 1 : 0);
+	return 0;
+}
+static ssize_t uclamp_min_filter_enable_store(struct file *filp,
+					      const char __user *ubuf,
+					      size_t count, loff_t *pos)
+{
+	int enable = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &enable))
+		return -EINVAL;
+
+	if (enable)
+		static_branch_enable(&uclamp_min_filter_enable);
+	else
+		static_branch_disable(&uclamp_min_filter_enable);
+
+	return count;
+}
+PROC_OPS_RW(uclamp_min_filter_enable);
+
+static int uclamp_min_filter_us_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_uclamp_min_filter_us);
+	return 0;
+}
+static ssize_t uclamp_min_filter_us_store(struct file *filp,
+					  const char __user *ubuf,
+					  size_t count, loff_t *pos)
+{
+	int val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	sysctl_sched_uclamp_min_filter_us = val;
+	return count;
+}
+PROC_OPS_RW(uclamp_min_filter_us);
+
+static int uclamp_max_filter_enable_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", static_branch_likely(&uclamp_max_filter_enable) ? 1 : 0);
+	return 0;
+}
+static ssize_t uclamp_max_filter_enable_store(struct file *filp,
+					      const char __user *ubuf,
+					      size_t count, loff_t *pos)
+{
+	int enable = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &enable))
+		return -EINVAL;
+
+	if (enable)
+		static_branch_enable(&uclamp_max_filter_enable);
+	else
+		static_branch_disable(&uclamp_max_filter_enable);
+
+	return count;
+}
+PROC_OPS_RW(uclamp_max_filter_enable);
+
+static int uclamp_max_filter_divider_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_uclamp_max_filter_divider);
+	return 0;
+}
+static ssize_t uclamp_max_filter_divider_store(struct file *filp,
+					       const char __user *ubuf,
+					       size_t count, loff_t *pos)
+{
+	int val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	sysctl_sched_uclamp_max_filter_divider = val;
+	return count;
+}
+PROC_OPS_RW(uclamp_max_filter_divider);
+
 
 static ssize_t reset_uclamp_stats_store(struct file *filp,
 							const char __user *ubuf,
@@ -1290,6 +1300,7 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 {
 	bool enable;
 	char buf[MAX_PROC_SIZE];
+	int ret = 0;
 
 	if (count >= sizeof(buf))
 		return -EINVAL;
@@ -1302,20 +1313,20 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 	if (kstrtobool(buf, &enable))
 		return -EINVAL;
 
-	if (pmu_poll_enabled == enable)
-		return count;
-
 	if (enable)
-		pmu_poll_enable();
+		ret = pmu_poll_enable();
 	else
 		pmu_poll_disable();
+
+	if (ret)
+		return ret;
 
 	return count;
 }
 
 PROC_OPS_RW(pmu_poll_enable);
 
-
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 extern unsigned int sched_lib_cpu_freq_cached_val;
 
 static int sched_lib_cpu_freq_cached_show(struct seq_file *m, void *v)
@@ -1416,9 +1427,8 @@ extern ssize_t sched_lib_name_store(struct file *filp,
 				loff_t *ppos);
 extern int sched_lib_name_show(struct seq_file *m, void *v);
 
-
 PROC_OPS_RW(sched_lib_name);
-
+#endif /* CONFIG_SCHED_LIB */
 
 
 struct pentry {
@@ -1430,7 +1440,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(ta_prefer_idle),
 	PROC_ENTRY(ta_prefer_high_cap),
 	PROC_ENTRY(ta_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(ta_group_throttle),
+#endif
 	PROC_ENTRY(ta_preferred_idle_mask_low),
 	PROC_ENTRY(ta_preferred_idle_mask_mid),
 	PROC_ENTRY(ta_preferred_idle_mask_high),
@@ -1440,7 +1452,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(fg_prefer_idle),
 	PROC_ENTRY(fg_prefer_high_cap),
 	PROC_ENTRY(fg_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(fg_group_throttle),
+#endif
 	PROC_ENTRY(fg_preferred_idle_mask_low),
 	PROC_ENTRY(fg_preferred_idle_mask_mid),
 	PROC_ENTRY(fg_preferred_idle_mask_high),
@@ -1450,7 +1464,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(sys_prefer_idle),
 	PROC_ENTRY(sys_prefer_high_cap),
 	PROC_ENTRY(sys_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(sys_group_throttle),
+#endif
 	PROC_ENTRY(sys_preferred_idle_mask_low),
 	PROC_ENTRY(sys_preferred_idle_mask_mid),
 	PROC_ENTRY(sys_preferred_idle_mask_high),
@@ -1460,7 +1476,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(cam_prefer_idle),
 	PROC_ENTRY(cam_prefer_high_cap),
 	PROC_ENTRY(cam_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(cam_group_throttle),
+#endif
 	PROC_ENTRY(cam_preferred_idle_mask_low),
 	PROC_ENTRY(cam_preferred_idle_mask_mid),
 	PROC_ENTRY(cam_preferred_idle_mask_high),
@@ -1470,7 +1488,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(cam_power_prefer_idle),
 	PROC_ENTRY(cam_power_prefer_high_cap),
 	PROC_ENTRY(cam_power_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(cam_power_group_throttle),
+#endif
 	PROC_ENTRY(cam_power_preferred_idle_mask_low),
 	PROC_ENTRY(cam_power_preferred_idle_mask_mid),
 	PROC_ENTRY(cam_power_preferred_idle_mask_high),
@@ -1480,7 +1500,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(bg_prefer_idle),
 	PROC_ENTRY(bg_prefer_high_cap),
 	PROC_ENTRY(bg_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(bg_group_throttle),
+#endif
 	PROC_ENTRY(bg_preferred_idle_mask_low),
 	PROC_ENTRY(bg_preferred_idle_mask_mid),
 	PROC_ENTRY(bg_preferred_idle_mask_high),
@@ -1490,7 +1512,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(sysbg_prefer_idle),
 	PROC_ENTRY(sysbg_prefer_high_cap),
 	PROC_ENTRY(sysbg_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(sysbg_group_throttle),
+#endif
 	PROC_ENTRY(sysbg_preferred_idle_mask_low),
 	PROC_ENTRY(sysbg_preferred_idle_mask_mid),
 	PROC_ENTRY(sysbg_preferred_idle_mask_high),
@@ -1500,7 +1524,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(nnapi_prefer_idle),
 	PROC_ENTRY(nnapi_prefer_high_cap),
 	PROC_ENTRY(nnapi_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(nnapi_group_throttle),
+#endif
 	PROC_ENTRY(nnapi_preferred_idle_mask_low),
 	PROC_ENTRY(nnapi_preferred_idle_mask_mid),
 	PROC_ENTRY(nnapi_preferred_idle_mask_high),
@@ -1510,7 +1536,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(rt_prefer_idle),
 	PROC_ENTRY(rt_prefer_high_cap),
 	PROC_ENTRY(rt_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(rt_group_throttle),
+#endif
 	PROC_ENTRY(rt_preferred_idle_mask_low),
 	PROC_ENTRY(rt_preferred_idle_mask_mid),
 	PROC_ENTRY(rt_preferred_idle_mask_high),
@@ -1520,7 +1548,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(dex2oat_prefer_idle),
 	PROC_ENTRY(dex2oat_prefer_high_cap),
 	PROC_ENTRY(dex2oat_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(dex2oat_group_throttle),
+#endif
 	PROC_ENTRY(dex2oat_preferred_idle_mask_low),
 	PROC_ENTRY(dex2oat_preferred_idle_mask_mid),
 	PROC_ENTRY(dex2oat_preferred_idle_mask_high),
@@ -1530,7 +1560,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(ota_prefer_idle),
 	PROC_ENTRY(ota_prefer_high_cap),
 	PROC_ENTRY(ota_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(ota_group_throttle),
+#endif
 	PROC_ENTRY(ota_preferred_idle_mask_low),
 	PROC_ENTRY(ota_preferred_idle_mask_mid),
 	PROC_ENTRY(ota_preferred_idle_mask_high),
@@ -1540,12 +1572,28 @@ static struct pentry entries[] = {
 	PROC_ENTRY(sf_prefer_idle),
 	PROC_ENTRY(sf_prefer_high_cap),
 	PROC_ENTRY(sf_task_spreading),
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(sf_group_throttle),
+#endif
 	PROC_ENTRY(sf_preferred_idle_mask_low),
 	PROC_ENTRY(sf_preferred_idle_mask_mid),
 	PROC_ENTRY(sf_preferred_idle_mask_high),
 	PROC_ENTRY(sf_uclamp_min),
 	PROC_ENTRY(sf_uclamp_max),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+	// FG util group attributes
+#if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
+	PROC_ENTRY(vug_fg_group_throttle),
+#endif
+	PROC_ENTRY(vug_fg_uclamp_min),
+	PROC_ENTRY(vug_fg_uclamp_max),
+	// BG util group attributes
+#if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
+	PROC_ENTRY(vug_bg_group_throttle),
+#endif
+	PROC_ENTRY(vug_bg_uclamp_min),
+	PROC_ENTRY(vug_bg_uclamp_max),
+#endif
 	// Vendor group attributes
 	PROC_ENTRY(set_task_group_ta),
 	PROC_ENTRY(set_task_group_fg),
@@ -1591,11 +1639,18 @@ static struct pentry entries[] = {
 	PROC_ENTRY(prefer_idle_clear),
 	PROC_ENTRY(uclamp_fork_reset_set),
 	PROC_ENTRY(uclamp_fork_reset_clear),
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 	// sched lib
 	PROC_ENTRY(sched_lib_cpu_freq_cached),
 	PROC_ENTRY(sched_lib_freq),
 	PROC_ENTRY(sched_lib_affinity),
 	PROC_ENTRY(sched_lib_name),
+#endif /* CONFIG_SCHED_LIB */
+	// uclamp filter
+	PROC_ENTRY(uclamp_min_filter_enable),
+	PROC_ENTRY(uclamp_min_filter_us),
+	PROC_ENTRY(uclamp_max_filter_enable),
+	PROC_ENTRY(uclamp_max_filter_divider),
 };
 
 

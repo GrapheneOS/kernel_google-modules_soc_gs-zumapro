@@ -551,6 +551,134 @@ void exynos_acpm_tmu_ipc_get_table(int tz, u8 index, int *val)
 	*val = (int)message.data[2];
 }
 
+void exynos_acpm_tmu_ipc_set_power_status(int tz, bool val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_POWER_STATUS;
+	message.req.tzid = tz;
+	message.req.rsvd = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+void exynos_acpm_tmu_ipc_set_control_temp_step(int tz, u32 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_CONTROL_TEMP_STEP;
+	message.req.tzid = tz;
+	message.data[2] = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+int exynos_acpm_tmu_ipc_reset_tr_stats(int tz)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+	message.req.type = TMU_IPC_RESET_TR_STATS;
+	message.req.tzid = tz;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_tr_num_thresholds(int tz, int num_of_threshold)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_TR_NUM_THRESHOLD;
+	message.req.tzid = tz;
+	message.data[2] = num_of_threshold;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_num_thresholds(int tz, int *num_of_threshold)
+{
+	union tmu_ipc_message message;
+
+	if (!num_of_threshold)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_NUM_THRESHOLD;
+	message.req.tzid = tz;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*num_of_threshold = (int)message.data[2];
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_tr_thresholds(int tz, u8 qword_index, u64 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_TR_THRESHOLD;
+	message.req.tzid = tz;
+	message.req.rsvd = qword_index;
+	message.data_64b[1] = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_thresholds(int tz, u8 qword_index, u64 *val)
+{
+	union tmu_ipc_message message;
+
+	if (!val)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_THRESHOLD;
+	message.req.tzid = tz;
+	message.req.rsvd = qword_index;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*val = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats(int tz, int bucket_idx, u64 *bucket_stats)
+{
+	union tmu_ipc_message message;
+
+	if (!bucket_stats)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd = (u8)bucket_idx;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*bucket_stats = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
 int exynos_acpm_tmu_init(void)
 {
 	struct device_node *np;

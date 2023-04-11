@@ -7,8 +7,10 @@
 #include <linux/i2c.h>
 #include <linux/mutex.h>
 #include <linux/power_supply.h>
+#include <linux/pm_qos.h>
 #include <linux/thermal.h>
 #include <linux/workqueue.h>
+#include <soc/google/exynos_pm_qos.h>
 #include <dt-bindings/power/s2mpg1x-power.h>
 #include <dt-bindings/soc/google/zuma-bcl.h>
 
@@ -39,6 +41,7 @@
 #define CPUCL2_BASE (0x29d80000)
 #define G3D_BASE (0x1EE00000)
 #define TPU_BASE (0x1A300000)
+#define AUR_BASE (0x20A00000)
 #define SYSREG_CPUCL0_BASE (0x29c20000)
 #define CLUSTER0_GENERAL_CTRL_64 (0x1404)
 #define CLKDIVSTEP (0x830)
@@ -51,8 +54,15 @@
 #define CLKOUT (0x810)
 #define G3D_CLKDIVSTEP_STAT (0x854)
 #define TPU_CLKDIVSTEP_STAT (0x850)
+#define AUR_CLKDIVSTEP_STAT (0x838)
 #define CLUSTER0_MPMM (0x1408)
+#define CLUSTER0_LIT_MPMM (0x1408)
+#define CLUSTER0_MID_MPMM (0x140C)
+#define CLUSTER0_BIG_MPMM (0x1410)
+#define CLUSTER0_MPMMEN (0x1414)
 #define CLUSTER0_PPM (0x140c)
+#define CLUSTER0_MID_DISPBLOCK (0x158c)
+#define CLUSTER0_BIG_DISPBLOCK (0x1588)
 #define MPMMEN_MASK (0xF << 21)
 #define PPMEN_MASK (0x3 << 8)
 #define PPMCTL_MASK (0xFF)
@@ -69,14 +79,56 @@
 #define THRESHOLD_DELAY_MS 50
 #define PWRWARN_DELAY_MS 50
 #define LPF_CURRENT_SHIFT 4
+#define ADD_CPUCL0 (0x29ce0000)
+#define ADD_CPUCL1 (0x29d10000)
+#define ADD_CPUCL2 (0x29d90000)
+#define ADD_G3D (0x1EE60000)
+#define ADD_TPU (0x1A3A0000)
+#define ADD_AUR (0x20AF0000)
+
+
+enum CPU_CLUSTER {
+	LITTLE_CLUSTER,
+	MID_CLUSTER,
+	BIG_CLUSTER,
+	CPU_CLUSTER_MAX,
+};
 
 enum SUBSYSTEM_SOURCE {
-	CPU0,
-	CPU1,
-	CPU2,
-	TPU,
-	GPU,
+	SUBSYSTEM_CPU0,
+	SUBSYSTEM_CPU1,
+	SUBSYSTEM_CPU2,
+	SUBSYSTEM_AUR,
+	SUBSYSTEM_TPU,
+	SUBSYSTEM_GPU,
 	SUBSYSTEM_SOURCE_MAX,
+};
+
+enum CONCURRENT_PWRWARN_IRQ {
+	NONE_BCL_BIN,
+	MMWAVE_BCL_BIN,
+	RFFE_BCL_BIN,
+	MAX_CONCURRENT_PWRWARN_IRQ,
+};
+
+enum BCL_BATT_IRQ {
+	UVLO1_IRQ_BIN,
+	UVLO2_IRQ_BIN,
+	BATOILO_IRQ_BIN,
+	MAX_BCL_BATT_IRQ,
+};
+
+enum IRQ_DURATION_BIN {
+	LT_5MS,
+	BT_5MS_10MS,
+	GT_10MS,
+};
+
+struct irq_duration_stats {
+	atomic_t lt_5ms_count;
+	atomic_t bt_5ms_10ms_count;
+	atomic_t gt_10ms_count;
+	ktime_t start_time;
 };
 
 extern const unsigned int subsystem_pmu[];
@@ -109,6 +161,13 @@ enum RATIO_SOURCE {
 	GPU_LIGHT
 };
 
+enum MPMM_SOURCE {
+	LITTLE,
+	MID,
+	BIG,
+	MPMMEN
+};
+
 typedef int (*pmic_set_uvlo_lvl_fn)(struct i2c_client *client, uint8_t mode, unsigned int lvl);
 typedef int (*pmic_get_uvlo_lvl_fn)(struct i2c_client *client, uint8_t mode, unsigned int *lvl);
 typedef int (*pmic_set_batoilo_lvl_fn)(struct i2c_client *client, unsigned int lvl);
@@ -117,12 +176,26 @@ typedef int (*pmic_get_vdroop_ok_fn)(struct i2c_client *client, bool *state);
 typedef int (*pmic_get_and_clr_irq_fn)(struct i2c_client *client, u8 *irq_val);
 
 struct bcl_ifpmic_ops {
-	pmic_get_vdroop_ok_fn	cb_get_vdroop_ok;
-	pmic_set_uvlo_lvl_fn	cb_uvlo_write;
-	pmic_get_uvlo_lvl_fn	cb_uvlo_read;
-	pmic_set_batoilo_lvl_fn	cb_batoilo_write;
+	pmic_get_vdroop_ok_fn cb_get_vdroop_ok;
+	pmic_set_uvlo_lvl_fn cb_uvlo_write;
+	pmic_get_uvlo_lvl_fn cb_uvlo_read;
+	pmic_set_batoilo_lvl_fn cb_batoilo_write;
 	pmic_get_batoilo_lvl_fn cb_batoilo_read;
 	pmic_get_and_clr_irq_fn cb_get_and_clr_irq;
+};
+
+struct qos_throttle_limit {
+	struct freq_qos_request cpu0_max_qos_req;
+	struct freq_qos_request cpu1_max_qos_req;
+	struct freq_qos_request cpu2_max_qos_req;
+	struct exynos_pm_qos_request gpu_qos_max;
+	struct exynos_pm_qos_request tpu_qos_max;
+	int cpu0_limit;
+	int cpu1_limit;
+	int cpu2_limit;
+	int gpu_limit;
+	int tpu_limit;
+	bool throttle;
 };
 
 struct bcl_device {
@@ -132,7 +205,7 @@ struct bcl_device {
 	struct device *mitigation_dev;
 	struct odpm_info *main_odpm;
 	struct odpm_info *sub_odpm;
-	void __iomem *base_mem[5];
+	void __iomem *base_mem[SUBSYSTEM_SOURCE_MAX];
 	void __iomem *sysreg_cpucl0;
 	struct power_supply *batt_psy;
 	const struct bcl_ifpmic_ops *pmic_ops;
@@ -143,6 +216,7 @@ struct bcl_device {
 	unsigned int bcl_lvl[TRIGGERED_SOURCE_MAX];
 	atomic_t bcl_cnt[TRIGGERED_SOURCE_MAX];
 	int bcl_prev_lvl[TRIGGERED_SOURCE_MAX];
+	int bcl_cur_lvl[TRIGGERED_SOURCE_MAX];
 
 	int trip_high_temp;
 	int trip_low_temp;
@@ -154,7 +228,6 @@ struct bcl_device {
 	struct thermal_zone_device *bcl_tz[TRIGGERED_SOURCE_MAX];
 
 	unsigned int bcl_irq[TRIGGERED_SOURCE_MAX];
-	int bcl_tz_cnt[TRIGGERED_SOURCE_MAX];
 	int bcl_pin[TRIGGERED_SOURCE_MAX];
 	struct ocpsmpl_stats bcl_stats[TRIGGERED_SOURCE_MAX];
 
@@ -171,11 +244,13 @@ struct bcl_device {
 	unsigned int gpu_con_light;
 	unsigned int tpu_clkdivstep;
 	unsigned int gpu_clkdivstep;
+	unsigned int aur_clkdivstep;
 	unsigned int cpu2_clkdivstep;
 	unsigned int cpu1_clkdivstep;
 	unsigned int cpu0_clkdivstep;
 	unsigned int gpu_clk_stats;
 	unsigned int tpu_clk_stats;
+	unsigned int aur_clk_stats;
 	unsigned int tpu_vdroop_flt;
 	unsigned int gpu_vdroop_flt;
 	unsigned int odpm_ratio;
@@ -200,6 +275,11 @@ struct bcl_device {
 	struct dentry *debug_entry;
 	unsigned int gpu_clk_out;
 	unsigned int tpu_clk_out;
+	unsigned int aur_clk_out;
+	u8 add_perph;
+	u64 add_addr;
+	u64 add_data;
+	void __iomem *base_add_mem[SUBSYSTEM_SOURCE_MAX];
 
 	int main_irq_base, sub_irq_base;
 	u8 main_setting[METER_CHANNEL_MAX];
@@ -212,18 +292,31 @@ struct bcl_device {
 	bool sub_pwr_warn_triggered[METER_CHANNEL_MAX];
 	struct delayed_work main_pwr_irq_work;
 	struct delayed_work sub_pwr_irq_work;
+	struct irq_duration_stats ifpmic_irq_bins[MAX_BCL_BATT_IRQ][MAX_CONCURRENT_PWRWARN_IRQ];
+	struct irq_duration_stats pwrwarn_main_irq_bins[METER_CHANNEL_MAX];
+	struct irq_duration_stats pwrwarn_sub_irq_bins[METER_CHANNEL_MAX];
+	const char *main_rail_names[METER_CHANNEL_MAX];
+	const char *sub_rail_names[METER_CHANNEL_MAX];
+
+	struct qos_throttle_limit *bcl_qos[TRIGGERED_SOURCE_MAX];
+	int cpu0_cluster;
+	int cpu1_cluster;
+	int cpu2_cluster;
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);
-extern int google_set_mpmm(struct bcl_device *data, unsigned int value);
+extern int google_set_db(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index);
+extern int google_set_mpmm(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index);
 extern int google_set_ppm(struct bcl_device *data, unsigned int value);
-extern unsigned int google_get_mpmm(struct bcl_device *data);
+extern unsigned int google_get_db(struct bcl_device *data, enum MPMM_SOURCE index);
+extern unsigned int google_get_mpmm(struct bcl_device *data, enum MPMM_SOURCE index);
 extern unsigned int google_get_ppm(struct bcl_device *data);
 extern struct bcl_device *google_retrieve_bcl_handle(void);
 extern int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,
 				      const struct bcl_ifpmic_ops *pmic_ops);
 extern int google_init_gpu_ratio(struct bcl_device *data);
 extern int google_init_tpu_ratio(struct bcl_device *data);
+extern int google_init_aur_ratio(struct bcl_device *data);
 bool bcl_is_subsystem_on(unsigned int addr);
 void bcl_disable_power(void);
 void bcl_enable_power(void);
@@ -233,6 +326,9 @@ int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
 int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
 int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
 u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting);
+void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle);
+int google_bcl_setup_qos(struct bcl_device *bcl_dev);
+void google_bcl_remove_qos(struct bcl_device *bcl_dev);
 #else
 struct bcl_device;
 
@@ -309,6 +405,10 @@ static inline int google_init_gpu_ratio(struct bcl_device *data)
 	return 0;
 }
 static inline int google_init_tpu_ratio(struct bcl_device *data)
+{
+	return 0;
+}
+static inline int google_init_aur_ratio(struct bcl_device *data)
 {
 	return 0;
 }

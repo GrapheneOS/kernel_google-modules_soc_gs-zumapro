@@ -52,7 +52,6 @@
 typedef u64 sysmmu_iova_t;
 typedef u32 sysmmu_pte_t;
 
-#define CFG_USE_AP			BIT(2)
 #define CFG_QOS_OVRRIDE			BIT(11)
 #define CFG_QOS(n)			(((n) & 0xF) << 7)
 #define CFG_PT_CACHEABLE_SHIFT		16
@@ -140,20 +139,6 @@ enum sysmmu_event_type {
 	SYSMMU_EVENT_UNMAP,
 };
 
-struct sysmmu_log {
-	unsigned long long time;
-	enum sysmmu_event_type type;
-	unsigned int vid;
-	u64 start;
-	u64 end;
-};
-
-struct samsung_iommu_log {
-	atomic_t index;
-	u32 len;
-	struct sysmmu_log *log;
-};
-
 struct stream_config {
 	unsigned int index;
 	u32 cfg;
@@ -190,7 +175,6 @@ struct sysmmu_drvdata {
 	bool hide_page_fault;
 	bool leave_enabled_on_suspend;
 	struct stream_props *props;
-	struct samsung_iommu_log log;
 };
 
 struct sysmmu_clientdata {

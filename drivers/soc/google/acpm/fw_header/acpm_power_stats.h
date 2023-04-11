@@ -17,7 +17,9 @@
 #endif // CONFIG_EXYNOS_ACPM
 
 enum {
-	MAX_NUM_FREQS = 16,
+	/* The histogram will be truncated automatically we ever exceed this number.
+	 * Must update header on both acpm and kernel sides if this ever changes. */
+	MAX_NUM_FREQS = 20,
 };
 
 // Must be the same as sys_powermode in flexpmu_cal_system_<arch>.h
@@ -73,6 +75,7 @@ enum fvp_domains {
 	DOMAIN_CPUCL2,
 	DOMAIN_AUR,
 	NUM_DOMAINS,
+	INVALID_DOMAIN,
 };
 
 struct lpm_stat {

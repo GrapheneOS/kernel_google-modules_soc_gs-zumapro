@@ -144,4 +144,5 @@ bool zram_test_flag(struct zram *zram, u32 index, enum zram_pageflags flag);
 struct bio;
 void zram_bio_endio(struct zram *zram, struct bio *bio, bool is_write, int err);
 void zram_page_write_endio(struct zram *zram, struct page *page, int err);
+unsigned long zram_stat_read(struct zram *zram, enum zram_stat_item item);
 #endif

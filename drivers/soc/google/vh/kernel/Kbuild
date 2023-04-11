@@ -24,3 +24,6 @@ obj-$(CONFIG_PIXEL_EM)   += pixel_em/
 
 # vh/kernel/thermal
 obj-$(CONFIG_VH_THERMAL)   += thermal/
+
+# pixel metrics
+obj-$(CONFIG_PIXEL_METRICS)	+= metrics/

@@ -350,6 +350,20 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_ENC_OPTIONS);
 
+	if (p->mv_hor_range) {
+		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_HOR_RANGE);
+		mfc_clear_set_bits(reg, 0x3fff, 0, p->mv_hor_range);
+		MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_MV_HOR_RANGE);
+		mfc_debug(2, "MV HOR Range: %d\n", p->mv_hor_range);
+	}
+
+	if (p->mv_ver_range) {
+		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_VER_RANGE);
+		mfc_clear_set_bits(reg, 0x3fff, 0, p->mv_ver_range);
+		MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_MV_VER_RANGE);
+		mfc_debug(2, "MV VER Range: %d\n", p->mv_ver_range);
+	}
+
 	if (p->mv_search_mode == 2) {
 		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_HOR_RANGE);
 		mfc_clear_set_bits(reg, 0xff, 16, p->mv_hor_pos_l0);
@@ -448,6 +462,18 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_RC_MODE);
+
+	/* high quality mode */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_HIGH_QUALITY_MODE);
+	if (p->wp_two_pass_enable) {
+		mfc_clear_set_bits(reg, 0x1, 0, p->wp_two_pass_enable);
+		mfc_debug(2, "WP two pass encoding is enabled\n");
+	}
+	if (p->adaptive_gop_enable) {
+		mfc_clear_set_bits(reg, 0x1, 4, p->adaptive_gop_enable);
+		mfc_debug(2, "Adaptive gop is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_HIGH_QUALITY_MODE);
 
 	/* extended encoder ctrl */
 	/** vbv buffer size */
@@ -656,6 +682,8 @@ static void __mfc_set_enc_params_h264(struct mfc_core *core,
 	mfc_clear_set_bits(reg, 0x1, 8, p_264->hier_qp_enable);
 	/* Weighted Prediction enable */
 	mfc_clear_set_bits(reg, 0x3, 9, p->weighted_enable);
+	if (p->weighted_enable)
+		mfc_debug(2, "WP mode is %d\n", p->weighted_enable);
 	/* 8x8 transform enable [12]: INTER_8x8_TRANS_ENABLE */
 	mfc_clear_set_bits(reg, 0x1, 12, p_264->_8x8_transform);
 	/* 8x8 transform enable [13]: INTRA_8x8_TRANS_ENABLE */
@@ -755,6 +783,15 @@ static void __mfc_set_enc_params_h264(struct mfc_core *core,
 	if (p_264->open_gop)
 		mfc_set_bits(reg, 0xFFFF, 0, p_264->open_gop_size);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_H264_REFRESH_PERIOD);
+
+	/* Sub GOP selection enable */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_H264_OPTIONS_2);
+	mfc_clear_bits(reg, 0x1, 9);
+	if (MFC_FEATURE_SUPPORT(ctx->dev, ctx->dev->pdata->enc_sub_gop) && p_264->sub_gop_enable) {
+		mfc_set_bits(reg, 0x1, 9, 0x1);
+		mfc_debug(2, "[GOP] H264 Sub GOP selection is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_H264_OPTIONS_2);
 
 	/* Temporal SVC */
 	__mfc_set_temporal_svc_h264(core, ctx, p_264);
@@ -1368,6 +1405,15 @@ static void __mfc_set_enc_params_hevc(struct mfc_core *core,
 	mfc_clear_set_bits(reg, 0x1, 0, p->roi_enable);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_RC_ROI_CTRL);
 	mfc_debug(3, "[ROI] HEVC ROI enable\n");
+
+	/* Sub GOP selection enable */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_HEVC_OPTIONS_2);
+	mfc_clear_bits(reg, 0x1, 7);
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->enc_sub_gop) && p_hevc->sub_gop_enable) {
+		mfc_set_bits(reg, 0x1, 7, 0x1);
+		mfc_debug(2, "[GOP] HEVC Sub GOP selection is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_HEVC_OPTIONS_2);
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->static_info_enc) &&
 			p->static_info_enable && ctx->is_10bit) {

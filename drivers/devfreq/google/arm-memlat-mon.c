@@ -31,11 +31,13 @@
 #include <linux/mutex.h>
 #include <trace/hooks/cpuidle.h>
 #include <linux/spinlock.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 
-static struct devfreq *dsu_df;
+static struct exynos_devfreq_data *dsu_data;
 
 static DEFINE_PER_CPU(bool, is_idle);
 static DEFINE_PER_CPU(bool, is_on);
+static DEFINE_PER_CPU(int, cpu_idle_state);
 
 static struct workqueue_struct *memlat_wq;
 static LIST_HEAD(cpu_grp_list);
@@ -77,10 +79,10 @@ int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 }
 EXPORT_SYMBOL(get_ev_data);
 
-void set_dsu_devfreq(struct devfreq *dsu_devfreq) {
-	dsu_df = dsu_devfreq;
+void set_dsu_data(struct exynos_devfreq_data *dsu_data_drv) {
+	dsu_data = dsu_data_drv;
 }
-EXPORT_SYMBOL(set_dsu_devfreq);
+EXPORT_SYMBOL(set_dsu_data);
 
 static inline void read_event(struct event_data *event)
 {
@@ -124,9 +126,9 @@ static inline void read_event_local(struct event_data *event)
 
 }
 
-static void read_amu_mem_stall(struct memlat_cpu_grp *cpu_grp)
+static void read_amu_counters(struct memlat_cpu_grp *cpu_grp)
 {
-	unsigned long mem_stall, delta;
+	unsigned long mem_stall, cpu_inst, cpu_cycle, delta;
 	struct cpu_data *cpu_data;
 	unsigned int cpu;
 
@@ -134,63 +136,29 @@ static void read_amu_mem_stall(struct memlat_cpu_grp *cpu_grp)
 		cpu_data = to_cpu_data(cpu_grp, cpu);
 
 		mem_stall = read_sysreg_s(SYS_AMEVCNTR0_MEM_STALL);
-		delta = mem_stall - cpu_data->amu_evs.prev_count;
-		cpu_data->amu_evs.prev_count = mem_stall;
-		cpu_data->amu_evs.last_delta = delta;
+		delta = mem_stall - cpu_data->amu_evs[MEM_STALL_IDX].prev_count;
+		cpu_data->amu_evs[MEM_STALL_IDX].prev_count = mem_stall;
+		cpu_data->amu_evs[MEM_STALL_IDX].last_delta = delta;
+
+		cpu_inst = read_sysreg_s(SYS_AMEVCNTR0_INST_RET_EL0);
+		delta = cpu_inst - cpu_data->amu_evs[INST_IDX].prev_count;
+		cpu_data->amu_evs[INST_IDX].prev_count = cpu_inst;
+		cpu_data->amu_evs[INST_IDX].last_delta = delta;
+
+		cpu_cycle = read_sysreg_s(SYS_AMEVCNTR0_CORE_EL0);
+		delta = cpu_cycle - cpu_data->amu_evs[CYCLE_IDX].prev_count;
+		cpu_data->amu_evs[CYCLE_IDX].prev_count = cpu_cycle;
+		cpu_data->amu_evs[CYCLE_IDX].last_delta = delta;
 	}
 }
-
-static void update_counts_idle_core(struct memlat_cpu_grp *cpu_grp, int cpu)
-{
-	unsigned int i;
-	struct memlat_mon *mon;
-	unsigned int mon_idx;
-	struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
-	struct event_data *common_evs = cpu_data->common_evs;
-
-	for (i = 0; i < NUM_COMMON_EVS; i++)
-		read_event_local(&common_evs[i]);
-
-	for (i = 0; i < cpu_grp->num_mons; i++) {
-		mon = &cpu_grp->mons[i];
-
-		if (!mon->is_active || !mon->miss_ev)
-			continue;
-
-		mon_idx = cpu - cpumask_first(&mon->cpus);
-		read_event_local(&mon->miss_ev[mon_idx]);
-	}
-	read_amu_mem_stall(cpu_grp);
-
-	spin_lock(&cpu_data->pmu_lock);
-	cpu_data->inst = common_evs[INST_IDX].last_delta;
-	cpu_data->cyc = common_evs[CYC_IDX].last_delta;
-	cpu_data->stall = common_evs[STALL_IDX].last_delta;
-	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
-	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
-	cpu_data->l2_cache_wb = common_evs[L2_WB_IDX].last_delta;
-	cpu_data->l3_cache_access = common_evs[L3_ACCESS_IDX].last_delta;
-	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
-	spin_unlock(&cpu_data->pmu_lock);
-}
-
 
 static void vendor_update_event_cpu_idle_enter(void *data, int *state, struct cpuidle_device *dev)
 {
-	struct memlat_cpu_grp *cpu_grp;
-
 	if (!__this_cpu_read(is_on))
 		return;
 
-	list_for_each_entry(cpu_grp, &cpu_grp_list, node) {
-		if (!cpu_grp->initialized)
-			continue;
-		if (cpumask_test_cpu(dev->cpu, &cpu_grp->cpus)) {
-			update_counts_idle_core(cpu_grp, dev->cpu);
-			break;
-		}
-	}
 	__this_cpu_write(is_idle, true);
+	__this_cpu_write(cpu_idle_state, *state);
 }
 
 static void vendor_update_event_cpu_idle_exit(void *data, int state, struct cpuidle_device *dev)
@@ -198,7 +166,14 @@ static void vendor_update_event_cpu_idle_exit(void *data, int state, struct cpui
 	if (!__this_cpu_read(is_on))
 		return;
 	__this_cpu_write(is_idle, false);
+	__this_cpu_write(cpu_idle_state, state);
 }
+
+int get_cpu_idle_state(unsigned int cpu)
+{
+	return per_cpu(is_idle, cpu) ? per_cpu(cpu_idle_state, cpu) : -1;
+}
+EXPORT_SYMBOL(get_cpu_idle_state);
 
 static void update_counts(struct memlat_cpu_grp *cpu_grp)
 {
@@ -221,12 +196,18 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 
 		if (!common_evs[STALL_IDX].pevent)
 			common_evs[STALL_IDX].last_delta =
-				common_evs[CYC_IDX].last_delta;
+				cpu_data->amu_evs[CYCLE_IDX].last_delta;
 
-		cpu_data->freq = common_evs[CYC_IDX].last_delta / delta;
-		cpu_data->stall_pct = mult_frac(100,
-				common_evs[STALL_IDX].last_delta,
-				common_evs[CYC_IDX].last_delta);
+		cpu_data->freq = cpu_data->amu_evs[CYCLE_IDX].last_delta / delta;
+
+		if (cpu_grp->common_ev_ids[STALL_BACKEND_MEM_IDX] != UINT_MAX)
+			cpu_data->stall_pct = mult_frac(10000,
+				common_evs[STALL_BACKEND_MEM_IDX].last_delta,
+				cpu_data->amu_evs[CYCLE_IDX].last_delta);
+		else
+			cpu_data->stall_pct = mult_frac(10000,
+				cpu_data->amu_evs[MEM_STALL_IDX].last_delta,
+				cpu_data->amu_evs[CYCLE_IDX].last_delta);
 	}
 
 	for (i = 0; i < cpu_grp->num_mons; i++) {
@@ -241,16 +222,16 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 		}
 	}
 
-	read_amu_mem_stall(cpu_grp);
+	read_amu_counters(cpu_grp);
 	spin_lock(&cpu_data->pmu_lock);
-	cpu_data->inst = common_evs[INST_IDX].last_delta;
-	cpu_data->cyc = common_evs[CYC_IDX].last_delta;
+	cpu_data->cyc = cpu_data->amu_evs[CYCLE_IDX].last_delta;
 	cpu_data->stall = common_evs[STALL_IDX].last_delta;
 	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
 	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
-	cpu_data->l2_cache_wb = common_evs[L2_WB_IDX].last_delta;
-	cpu_data->l3_cache_access = common_evs[L3_ACCESS_IDX].last_delta;
-	cpu_data->mem_stall = cpu_data->amu_evs.last_delta;
+	cpu_data->mem_stall = cpu_data->amu_evs[MEM_STALL_IDX].last_delta;
+	cpu_data->inst = cpu_data->amu_evs[INST_IDX].last_delta;
+	cpu_data->l2_cache_wb = 0;
+	cpu_data->l3_cache_access = 0;
 	spin_unlock(&cpu_data->pmu_lock);
 }
 
@@ -262,14 +243,13 @@ static unsigned long get_cnt(struct memlat_hwmon *hw)
 
 	for_each_cpu(cpu, &mon->cpus) {
 		struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
-		struct event_data *common_evs = cpu_data->common_evs;
 		unsigned int mon_idx =
 			cpu - cpumask_first(&mon->cpus);
 		struct dev_stats *devstats = to_devstats(mon, cpu);
 
 		devstats->freq = cpu_data->freq;
 		devstats->stall_pct = cpu_data->stall_pct;
-		devstats->inst_count = common_evs[INST_IDX].last_delta;
+		devstats->inst_count = cpu_data->inst;
 		devstats->mem_stall_count = cpu_data->mem_stall;
 		devstats->l2_cachemiss_count = cpu_data->l2_cachemiss;
 
@@ -314,7 +294,7 @@ static int set_event(struct event_data *ev, int cpu, unsigned int event_id,
 {
 	struct perf_event *pevent;
 
-	if (!event_id)
+	if (!event_id || event_id == UINT_MAX)
 		return 0;
 
 	attr->config = event_id;
@@ -525,8 +505,9 @@ static void memlat_monitor_work(struct work_struct *work)
 		mutex_unlock(&df->lock);
 
 		// Add callback for DSU
-                if (!strncmp(mon->governor_name, "dsu_latency", DEVFREQ_NAME_LEN)) {
-			if (dsu_df) {
+		if (mon->update_dsu_df) {
+			if (dsu_data && dsu_data->devfreq) {
+				struct devfreq *dsu_df = dsu_data->devfreq;
 				mutex_lock(&dsu_df->lock);
 				err = update_devfreq(dsu_df);
 				if (err)
@@ -582,12 +563,27 @@ static int start_hwmon(struct memlat_hwmon *hw)
 	if (should_init_cpu_grp)
 		queue_cpugrp_work(cpu_grp);
 
-
 unlock_out:
 	mutex_unlock(&cpu_grp->mons_lock);
 	kfree(attr);
 
 	return ret;
+}
+
+static void devfreq_dsulat_boost_freq(struct exynos_devfreq_data *dsu_data)
+{
+	unsigned int max_freq, min_freq;
+	struct dsulat_node *node = dsu_data->governor_data;
+
+	/* get maximal frequency for DSU */
+	exynos_devfreq_get_boundary(DEVFREQ_DSU, &max_freq, &min_freq);
+	if (exynos_pm_qos_request_active(&dsu_data->sys_pm_qos_min))
+		exynos_pm_qos_update_request(&dsu_data->sys_pm_qos_min, max_freq);
+
+	/* get maximal frequency for BCI */
+	exynos_devfreq_get_boundary(DEVFREQ_BCI, &max_freq, &min_freq);
+	if (exynos_pm_qos_request_active(&node->dsu_bci_qos_req))
+		exynos_pm_qos_update_request(&node->dsu_bci_qos_req, max_freq);
 }
 
 static void stop_hwmon(struct memlat_hwmon *hw)
@@ -620,6 +616,9 @@ static void stop_hwmon(struct memlat_hwmon *hw)
 		list_del(&cpu_grp->node);
 	}
 	mutex_unlock(&cpu_grp->mons_lock);
+
+	/* boost DSU freqeuncy to max for simpleperf */
+	devfreq_dsulat_boost_freq(dsu_data);
 }
 
 /**
@@ -727,22 +726,6 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 	if (!cpu_grp->mons)
 		return -ENOMEM;
 
-	ret = of_property_read_u32(dev->of_node, "inst-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "Inst event not specified. Using def:0x%x\n",
-			INST_EV);
-		event_id = INST_EV;
-	}
-	cpu_grp->common_ev_ids[INST_IDX] = event_id;
-
-	ret = of_property_read_u32(dev->of_node, "cyc-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "Cyc event not specified. Using def:0x%x\n",
-			CYC_EV);
-		event_id = CYC_EV;
-	}
-	cpu_grp->common_ev_ids[CYC_IDX] = event_id;
-
 	ret = of_property_read_u32(dev->of_node, "stall-ev", &event_id);
 	if (ret) {
 		dev_dbg(dev, "Stall event not specified. Skipping.\n");
@@ -750,26 +733,19 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 	}
 	cpu_grp->common_ev_ids[STALL_IDX] = event_id;
 
+	ret = of_property_read_u32(dev->of_node, "stall-backend-ev", &event_id);
+	if (ret) {
+		dev_dbg(dev, "Stall backend event not specified. Skipping.\n");
+		event_id = UINT_MAX;
+	}
+	cpu_grp->common_ev_ids[STALL_BACKEND_MEM_IDX] = event_id;
+
 	ret = of_property_read_u32(dev->of_node, "l2-cachemiss-ev", &event_id);
 	if (ret) {
 		dev_dbg(dev, "L2 cachemiss event not specified. Skipping.\n");
 		event_id = L2D_CACHE_REFILL_EV;
 	}
 	cpu_grp->common_ev_ids[L2D_CACHE_REFILL_IDX] = event_id;
-
-	ret = of_property_read_u32(dev->of_node, "l2-wb-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "L2 cache wb event not specified. Skipping.\n");
-		event_id = L2_WB_EV;
-	}
-	cpu_grp->common_ev_ids[L2_WB_IDX] = event_id;
-
-	ret = of_property_read_u32(dev->of_node, "l3-access-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "L3 access event not specified. Skipping.\n");
-		event_id = L3_ACCESS_EV;
-	}
-	cpu_grp->common_ev_ids[L3_ACCESS_IDX] = event_id;
 
 	num_cpus = cpumask_weight(&cpu_grp->cpus);
 	cpu_grp->cpus_data =
@@ -795,7 +771,6 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	struct memlat_hwmon *hw;
 	unsigned int event_id, num_cpus, cpu;
 	struct cpu_data *cpu_data;
-        const char *name;
 
 	if (!memlat_wq)
 		memlat_wq = alloc_workqueue("memlat_wq",
@@ -861,6 +836,7 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	hw->start_hwmon = &start_hwmon;
 	hw->stop_hwmon = &stop_hwmon;
 	hw->get_cnt = &get_cnt;
+	hw->get_cpu_idle_state = &get_cpu_idle_state;
 	hw->request_update_ms = &request_update_ms;
 
 	mon->miss_ev =
@@ -881,15 +857,7 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	}
 	mon->miss_ev_id = event_id;
 
-	ret = of_property_read_string(dev->of_node, "governor-name",
-		&name);
-	if (ret) {
-		dev_err(dev, "Cannot find request governor for mon: %d\n",
-				ret);
-		ret = -EINVAL;
-		goto unlock_out;
-	}
-	strncpy(mon->governor_name, name, DEVFREQ_NAME_LEN);
+	mon->update_dsu_df = of_property_read_bool(dev->of_node, "update-dsu-df");
 
 	ret = register_memlat(dev, hw);
 

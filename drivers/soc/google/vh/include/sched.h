@@ -15,9 +15,17 @@
 			       __stringify(_new) );
 
 // Maximum size: u64[2] for ANDROID_VENDOR_DATA_ARRAY(1, 2) in task_struct
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+enum vendor_util_group {
+	VUG_BG = 0,
+	// VUG_FG must be the last one so that we could skip it.
+	VUG_FG,
+	VUG_MAX,
+};
+#endif
 
 enum vendor_group {
-	VG_SYSTEM=0,
+	VG_SYSTEM = 0,
 	VG_TOPAPP,
 	VG_FOREGROUND,
 	VG_CAMERA,
@@ -37,6 +45,16 @@ struct vendor_binder_task_struct {
 	bool active;
 };
 
+struct uclamp_filter {
+	unsigned int uclamp_min_ignored : 1;
+	unsigned int uclamp_max_ignored : 1;
+};
+
+/*
+ * Always remember to initialize any new fields added here in
+ * vh_dup_task_struct_pixel_mod() or you'll find newly forked tasks inheriting
+ * random states from the parent.
+ */
 struct vendor_task_struct {
 	raw_spinlock_t lock;
 	enum vendor_group group;
@@ -45,9 +63,12 @@ struct vendor_task_struct {
 	bool queued_to_list;
 	bool uclamp_fork_reset;
 	bool prefer_idle;
+	struct uclamp_filter uclamp_filter;
 
 	/* parameters for binder inheritance */
 	struct vendor_binder_task_struct binder_task;
+	/* parameters for RT inheritance */
+	unsigned int uclamp_pi[UCLAMP_CNT];
 };
 
 ANDROID_VENDOR_CHECK_SIZE_ALIGN(u64 android_vendor_data1[64], struct vendor_task_struct t);

@@ -20,7 +20,7 @@ extern struct pkvm_iommu_driver kvm_nvhe_sym(pkvm_sysmmu_sync_driver);
 extern struct pkvm_iommu_driver kvm_nvhe_sym(pkvm_s2mpu_driver);
 extern char __kvm_nvhe___hypmod_text_start[];
 
-static int init_s2mpu_driver(u32 version, u64 tok)
+static int init_s2mpu_driver(u64 tok)
 {
 	static DEFINE_MUTEX(lock);
 	static bool init_done;
@@ -29,7 +29,7 @@ static int init_s2mpu_driver(u32 version, u64 tok)
 	unsigned long addr;
 	u64 pfn;
 	int ret = 0;
-	const int smpt_order = smpt_order_from_version(version);
+	const int smpt_order = SMPT_ORDER(MPT_PROT_BITS);
 
 	mutex_lock(&lock);
 	if (init_done)
@@ -55,7 +55,6 @@ static int init_s2mpu_driver(u32 version, u64 tok)
 		}
 		mpt->fmpt[gb].smpt = (u32 *)addr;
 	}
-	mpt->version = version;
 
 	/* Share MPT descriptor with hyp. */
 	pfn = __pa(mpt) >> PAGE_SHIFT;
@@ -84,12 +83,13 @@ out:
 	mutex_unlock(&lock);
 	return ret;
 }
-int pkvm_iommu_s2mpu_init(u32 version, u64 token)
+
+int pkvm_iommu_s2mpu_init(u64 token)
 {
 	if (!is_protected_kvm_enabled())
 		return -ENODEV;
 
-	return init_s2mpu_driver(version, token);
+	return init_s2mpu_driver(token);
 }
 EXPORT_SYMBOL_GPL(pkvm_iommu_s2mpu_init);
 

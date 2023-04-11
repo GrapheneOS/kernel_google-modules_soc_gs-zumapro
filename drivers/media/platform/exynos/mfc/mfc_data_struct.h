@@ -80,6 +80,7 @@
 #define HDR_MAX_SCL			3
 #define HDR_MAX_DISTRIBUTION		15
 #define HDR_MAX_BEZIER_CURVES		15
+#define HDR10_PLUS_DATA_SIZE		1024
 
 /* AV1 Film Grain */
 #define AV1_FG_LUM_POS_SIZE 14
@@ -312,6 +313,8 @@ enum mfc_nal_q_stop_cause {
 	NALQ_STOP_RC_MODE		= 11,
 	NALQ_STOP_NO_STRUCTURE		= 12,
 	NALQ_STOP_2CORE			= 13,
+	NALQ_STOP_TWO_PASS_ENC		= 14,
+	NALQ_STOP_ADAPTIVE_GOP		= 15,
 	/* nal_q exception cause */
 	NALQ_EXCEPTION_DRC		= 25,
 	NALQ_EXCEPTION_NEED_DPB		= 26,
@@ -836,6 +839,10 @@ struct mfc_platdata {
 	struct mfc_feature enc_idr_flag;
 	struct mfc_feature min_quality_mode;
 	struct mfc_feature hevc_pic_output_flag;
+	struct mfc_feature metadata_interface;
+	struct mfc_feature hdr10_plus_full;
+	struct mfc_feature enc_capability;
+	struct mfc_feature enc_sub_gop;
 
 	/* AV1 Decoder */
 	unsigned int support_av1_dec;
@@ -1044,9 +1051,21 @@ typedef struct __DecoderOutputStr {
 	unsigned int MfcProcessingCycle;
 	unsigned int DpbStrideSize[3];
 	unsigned int Dpb2bitStrideSize[2];
+	int MetadataStatus;
+	unsigned int MetadataAddrConcealedMb;
+	int MetadataSizeConcealedMb;
+	unsigned int MetadataAddrVc1Mb;
+	int MetadataSizeVc1Mb;
+	unsigned int MetadataAddrSeiMb;
+	int MetadataSizeSeiMb;
+	unsigned int MetadataAddrVuiMb;
+	int MetadataSizeVuiMb;
+	unsigned int MetadataAddrMvcMb;
+	int MetadataSizeMvcMb;
+	/* Below is not used */
 	int AV1Info;
 	int FilmGrain[44];
-} DecoderOutputStr; /* 147*4 = 588 bytes */
+} DecoderOutputStr; /* 113*4 = 452 bytes */
 
 typedef struct __EncoderOutputStr {
 	int StartCode; /* NAL_Q_ENCODER_MARKER */
@@ -1063,7 +1082,12 @@ typedef struct __EncoderOutputStr {
 	unsigned int ReconLumaDpbAddr;
 	unsigned int ReconChromaDpbAddr;
 	int EncCnt;
-} EncoderOutputStr; /* 16*4 = 64 bytes */
+	unsigned int MfcHwCycle;
+	unsigned int MfcProcessingCycle;
+	unsigned int SumSkipMb;
+	unsigned int SumIntraMb;
+	unsigned int SumZeroMvMb;
+} EncoderOutputStr; /* 21*4 = 84 bytes */
 
 /**
  * enum nal_queue_state - The state for nal queue operation.
@@ -1525,6 +1549,7 @@ struct mfc_h264_enc_params {
 
 	u32 prepend_sps_pps_to_idr;
 	u32 vui_enable;
+	u8 sub_gop_enable;
 };
 
 /**
@@ -1648,6 +1673,7 @@ struct mfc_hevc_enc_params {
 	u8 user_ref;
 	u8 store_ref;
 	u8 prepend_sps_pps_to_idr;
+	u8 sub_gop_enable;
 };
 
 /**
@@ -1705,6 +1731,8 @@ struct mfc_enc_params {
 	u8 ivf_header_disable;	/* VP8, VP9 */
 	u8 fixed_target_bit;
 	u8 min_quality_mode;	/* H.264, HEVC when RC_MODE is 2(VBR) */
+	u8 wp_two_pass_enable;
+	u8 adaptive_gop_enable;
 
 	u32 check_color_range;
 	u32 color_range;
@@ -1729,6 +1757,8 @@ struct mfc_enc_params {
 	u32 mv_hor_pos_l1;
 	u32 mv_ver_pos_l0;
 	u32 mv_ver_pos_l1;
+	u32 mv_hor_range;
+	u32 mv_ver_range;
 
 	union {
 		struct mfc_h264_enc_params h264;
@@ -1854,6 +1884,7 @@ struct mfc_user_shared_handle {
 	int fd;
 	struct dma_buf *dma_buf;
 	void *vaddr;
+	size_t data_size;
 };
 
 struct mfc_raw_info {
@@ -2070,6 +2101,7 @@ struct mfc_dec {
 	/* for HDR10+ */
 	struct mfc_user_shared_handle sh_handle_hdr;
 	struct hdr10_plus_meta *hdr10_plus_info;
+	void *hdr10_plus_full;
 
 	/* for AV1 Film Grain meta */
 	struct mfc_user_shared_handle sh_handle_av1_film_grain;
@@ -2227,8 +2259,11 @@ struct mfc_ctx {
 	struct mutex drc_wait_mutex;
 	int clear_work_bit;
 
+	/* Extra Buffers */
 	int mv_buffer_allocated;
+	int metadata_buffer_allocated;
 	struct mfc_special_buf mv_buf;
+	struct mfc_special_buf metadata_buf;
 
 	unsigned long framerate;
 	unsigned long last_framerate;
