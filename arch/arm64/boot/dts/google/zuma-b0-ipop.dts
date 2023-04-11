@@ -230,7 +230,7 @@
 					type = "active";
 				};
 				big_hot: big-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -285,7 +285,7 @@
 					type = "active";
 				};
 				mid_hot: mid-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -340,7 +340,7 @@
 					type = "active";
 				};
 				little_hot: little-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -395,7 +395,7 @@
 					type = "active";
 				};
 				gpu_hot: gpu-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -452,7 +452,7 @@
 					type = "active";
 				};
 				isp_hot: isp-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -501,7 +501,7 @@
 					type = "active";
 				};
 				tpu_hot: tpu-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -556,7 +556,7 @@
 					type = "active";
 				};
 				aur_hot: aur-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
