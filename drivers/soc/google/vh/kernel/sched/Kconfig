@@ -3,7 +3,7 @@
 config VH_SCHED
 	tristate "Vendor hooks for kernel scheduler"
 	depends on VH_KERNEL
-	default m
+	default n
 
 config VH_SCHED_CPU_NR
 	int "CPU number on this platform"

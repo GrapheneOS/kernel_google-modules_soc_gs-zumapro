@@ -35,7 +35,7 @@ config VH_FS
 config VH_MM
 	tristate "Vendor hooks for Memory Management"
 	depends on VH_KERNEL
-	default m
+	default n
 
 config VH_CGROUP
 	tristate "Vendor hooks for cgroup"
