@@ -69,20 +69,8 @@ ${@}
 find private/google-modules -name .git |
   while read gitdir; do
     dir=${gitdir%/.git}
-    case ${dir} in
-      */aoc) ;&
-      */edgetpu/abrolhos) ;&
-      */gpu)
-        do_merge ${dir} partner/android13-gs-pixel-5.10-gs101
-        ;;
-      */soc/gs)
-        # Note: this project doesn't have an android13 upstream branch
-        ;;
-      *)
-        do_merge ${dir} partner/android13-gs-pixel-5.10
-        ;;
-    esac ||
-      echo ERROR: merge ${dir} failed
+    do_merge ${dir} partner/android14-gs-pixel-5.15 || 
+	    echo ERROR: merge ${dir} failed
   done 2>&1 |
   tee /dev/stderr |
   grep 'Failed merge of ' |
