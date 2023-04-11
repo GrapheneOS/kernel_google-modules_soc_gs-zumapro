@@ -900,7 +900,7 @@ static void gs_pi_thermal(struct gs_tmu_data *data)
 		return;
 
 	if (tz) {
-		if (!thermal_zone_device_is_enabled(tz)) {
+		if (READ_ONCE(tz->mode) == THERMAL_DEVICE_DISABLED) {
 			mutex_lock(&data->lock);
 			reset_pi_params(data);
 			allow_maximum_power(data);
@@ -3282,7 +3282,9 @@ static int gs_tmu_parse_ect(struct gs_tmu_data *data)
 struct gs_tmu_data *gpu_thermal_data;
 #endif
 
+#if IS_ENABLED(CONFIG_VH_THERMAL)
 extern void register_tz_id_ignore_genl(int tz_id);
+#endif
 
 static int gs_tmu_probe(struct platform_device *pdev)
 {
@@ -3388,7 +3390,9 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (!strncmp(data->tmu_name, "ISP", 3))
 		exynos_isp_cooling_init();
 #endif
+#if IS_ENABLED(CONFIG_VH_THERMAL)
 	register_tz_id_ignore_genl(data->tzd->id);
+#endif
 
 	return 0;
 
