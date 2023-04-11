@@ -127,6 +127,8 @@ static unsigned int sink_discovery_delay_ms;
 void (*data_active_callback)(void *data_active_payload);
 void *data_active_payload;
 
+static bool hooks_installed;
+
 struct tcpci {
 	struct device *dev;
 	struct tcpm_port *port;
@@ -1666,6 +1668,24 @@ static int max77759_set_vbus_voltage_max_mv(struct i2c_client *tcpc_client,
 	return 0;
 }
 
+static void max77759_get_vbus(void *unused, struct tcpci *tcpci, struct tcpci_data *data, int *vbus,
+			      int *bypass)
+{
+	struct max77759_plat *chip = tdata_to_max77759(data);
+	u8 pwr_status;
+	int ret;
+
+	ret = max77759_read8(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status);
+	if (!ret && !chip->vbus_present && (pwr_status & TCPC_POWER_STATUS_VBUS_PRES)) {
+		logbuffer_log(chip->log, "[%s]: syncing vbus_present", __func__);
+		chip->vbus_present = 1;
+	}
+
+	logbuffer_log(chip->log, "[%s]: vbus_present %d", __func__, chip->vbus_present);
+	*vbus = chip->vbus_present;
+	*bypass = 1;
+}
+
 static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 {
 	struct max77759_plat *chip = usb_role_switch_get_drvdata(sw);
@@ -1726,6 +1746,23 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 		bc12_enable(chip->bc12, true);
 
 	return 0;
+}
+
+static void max77759_store_partner_src_caps(void *unused, struct tcpm_port *port,
+					    unsigned int *nr_source_caps,
+					    u32 (*source_caps)[PDO_MAX_OBJECTS])
+{
+	int i;
+
+	spin_lock(&g_caps_lock);
+
+	nr_partner_src_caps = *nr_source_caps > PDO_MAX_OBJECTS ?
+			      PDO_MAX_OBJECTS : *nr_source_caps;
+
+	for (i = 0; i < nr_partner_src_caps; i++)
+		partner_src_caps[i] = (*source_caps)[i];
+
+	spin_unlock(&g_caps_lock);
 }
 
 /*
@@ -2099,6 +2136,10 @@ static int max77759_probe(struct i2c_client *client,
 	u32 ovp_handle;
 	const char *ovp_status;
 	enum of_gpio_flags flags;
+
+	ret = max77759_register_vendor_hooks(client);
+	if (ret)
+		return ret;
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
