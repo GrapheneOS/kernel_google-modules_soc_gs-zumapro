@@ -103,7 +103,6 @@ pkvm-s2mpu-v9.ko
 pmic_class.ko
 power_stats.ko
 rfkill.ko
-rio.ko
 rtc-s2mpg14.ko
 s2mpg14-key.ko
 s2mpg14-mfd.ko
