@@ -26,7 +26,6 @@ struct vb2_mem_ops *mfc_mem_ops(void)
 int mfc_mem_get_user_shared_handle(struct mfc_ctx *ctx,
 	struct mfc_user_shared_handle *handle)
 {
-	struct iosys_map map;
 	int ret = 0;
 
 	handle->dma_buf = dma_buf_get(handle->fd);
@@ -36,12 +35,12 @@ int mfc_mem_get_user_shared_handle(struct mfc_ctx *ctx,
 		goto import_dma_fail;
 	}
 
-	ret = dma_buf_vmap(handle->dma_buf, &map);
-	if (ret) {
+	handle->vaddr = dma_buf_vmap(handle->dma_buf);
+	if (handle->vaddr == NULL) {
 		mfc_ctx_err("Failed to get kernel virtual address\n");
+		ret = -EINVAL;
 		goto map_kernel_fail;
 	}
-	handle->vaddr = map.vaddr;
 
 	return 0;
 
@@ -58,10 +57,8 @@ import_dma_fail:
 void mfc_mem_cleanup_user_shared_handle(struct mfc_ctx *ctx,
 		struct mfc_user_shared_handle *handle)
 {
-	struct iosys_map map = IOSYS_MAP_INIT_VADDR(handle->vaddr);
-
 	if (handle->vaddr)
-		dma_buf_vunmap(handle->dma_buf, &map);
+		dma_buf_vunmap(handle->dma_buf, handle->vaddr);
 	if (handle->dma_buf)
 		dma_buf_put(handle->dma_buf);
 
@@ -133,16 +130,12 @@ static int mfc_mem_dma_heap_alloc(struct mfc_dev *dev,
 	/* Can't map secure memory */
 	if ((special_buf->buftype != MFCBUF_DRM) &&
 	    (special_buf->buftype != MFCBUF_DRM_FW)) {
-		struct iosys_map map;
-		int ret;
-
-		ret = dma_buf_vmap(special_buf->dma_buf, &map);
-		if (ret) {
+		special_buf->vaddr = dma_buf_vmap(special_buf->dma_buf);
+		if (IS_ERR(special_buf->vaddr)) {
 			mfc_dev_err("Failed to get vaddr (err 0x%p)\n",
 					&special_buf->vaddr);
 			goto err_vaddr;
 		}
-		special_buf->vaddr = map.vaddr;
 	}
 
 	special_buf->paddr = page_to_phys(sg_page(special_buf->sgt->sgl));
@@ -171,10 +164,8 @@ err_dma_heap_find:
 
 void mfc_mem_dma_heap_free(struct mfc_special_buf *special_buf)
 {
-	struct iosys_map map = IOSYS_MAP_INIT_VADDR(special_buf->vaddr);
-
 	if (special_buf->vaddr)
-		dma_buf_vunmap(special_buf->dma_buf, &map);
+		dma_buf_vunmap(special_buf->dma_buf, special_buf->vaddr);
 	if (special_buf->sgt)
 		dma_buf_unmap_attachment(special_buf->attachment,
 					 special_buf->sgt, DMA_BIDIRECTIONAL);

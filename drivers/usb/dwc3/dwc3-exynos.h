@@ -20,6 +20,7 @@
 #ifndef __LINUX_USB_DWC3_EXYNOS_H
 #define __LINUX_USB_DWC3_EXYNOS_H
 
+#include <linux/usb/gadget.h>
 #include <dwc3/core.h> /* $(srctree)/drivers/usb/dwc3/core.h */
 
 /* Exynos Specific Register Definition */
@@ -143,5 +144,6 @@ int dwc3_exynos_host_init(struct dwc3_exynos *exynos);
 void dwc3_exynos_host_exit(struct dwc3_exynos *exynos);
 void dwc3_exynos_gadget_disconnect_proc(struct dwc3 *dwc);
 int dwc3_core_susphy_set(struct dwc3 *dwc, int on);
+int dwc3_gadget_ep_custom_transfer(struct usb_ep *ep, dma_addr_t trb_dma);
 #endif /* __LINUX_USB_DWC3_EXYNOS_H */
 

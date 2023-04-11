@@ -23,7 +23,7 @@ repo_sync_rebase_prune() {
   return 0
 }
 
-repo_sync_rebase_prune || exit
+#repo_sync_rebase_prune || exit
 
 [ "USAGE: do_merge <directory> <repo> <branch>
 
@@ -42,8 +42,9 @@ do_merge() {
   shift
   (
     cd ${dir} || exit 1
-    branch=`git branch -r 2>&1 | sed -n 's/ *m\/.* -> //p'`
-    [ -n "${branch}" ] || branch=partner/android-gs-pixel-mainline
+    #branch=`git branch -r 2>&1 | sed -n 's/ *m\/.* -> //p'`
+    #[ -n "${branch}" ] || branch=partner/android-gs-pixel-mainline
+    branch=partner/android14-gs-pixel-6.1
     repo start ${BRANCH} . || exit 1
     commits="`git cherry -v ${branch} ${from_repo}/${from_branch} |
                 sed -n 's/^[+] //p'`"
@@ -73,16 +74,11 @@ find private/google-modules -name .git |
   while read gitdir; do
     dir=${gitdir%/.git}
     case ${dir} in
-      */aoc) ;&
-      */edgetpu/abrolhos) ;&
-      */gpu)
-        do_merge ${dir} partner android13-gs-pixel-5.10-gs101-tm-qpr1
-        ;;
       */soc/gs)
         # Note: this project doesn't have an android13 upstream branch
         ;;
       *)
-        do_merge ${dir} partner android13-gs-pixel-5.10-tm-qpr1
+        do_merge ${dir} partner android13-gs-pixel-5.10-tm-qpr2
         ;;
     esac ||
       echo ERROR: merge ${dir} failed

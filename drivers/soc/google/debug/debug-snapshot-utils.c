@@ -184,12 +184,25 @@ unsigned int dbg_snapshot_get_core_ehld_stat(unsigned int cpu)
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_get_core_ehld_stat);
 
+static void dbg_snapshot_set_abl_dump_stat(unsigned int val)
+{
+	void __iomem *header = dbg_snapshot_get_header_vaddr();
+
+	if (header)
+		__raw_writel(val, header + DSS_OFFSET_ABL_DUMP_STAT);
+}
+
 static void dbg_snapshot_report_reason(unsigned int val)
 {
 	void __iomem *header = dbg_snapshot_get_header_vaddr();
 
 	if (header)
 		__raw_writel(val, header + DSS_OFFSET_EMERGENCY_REASON);
+}
+
+static void dbg_snapshot_set_reboot_mode(enum reboot_mode mode)
+{
+	reboot_mode = mode;
 }
 
 static void dbg_snapshot_set_wdt_caller(unsigned long addr)
@@ -589,6 +602,7 @@ static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 	dbg_snapshot_set_item_enable("log_kevents", false);
 	dbg_snapshot_dump_panic(kernel_panic_msg, strlen(kernel_panic_msg));
 	dbg_snapshot_report_reason(DSS_SIGN_PANIC);
+	dbg_snapshot_set_reboot_mode(REBOOT_WARM);
 	for_each_possible_cpu(cpu) {
 		if (cpu_is_offline(cpu))
 			dbg_snapshot_set_core_power_stat(DSS_SIGN_DEAD, cpu);
@@ -653,6 +667,7 @@ static int dbg_snapshot_restart_handler(struct notifier_block *nb,
 	if (dss_desc.in_warm) {
 		dev_emerg(dss_desc.dev, "warm reset\n");
 		dbg_snapshot_report_reason(DSS_SIGN_WARM_REBOOT);
+		dbg_snapshot_set_reboot_mode(REBOOT_WARM);
 		dbg_snapshot_dump_task_info();
 	} else if (dss_desc.in_reboot) {
 		dev_emerg(dss_desc.dev, "normal reboot starting\n");
@@ -660,6 +675,7 @@ static int dbg_snapshot_restart_handler(struct notifier_block *nb,
 	} else {
 		dev_emerg(dss_desc.dev, "emergency restart\n");
 		dbg_snapshot_report_reason(DSS_SIGN_EMERGENCY_REBOOT);
+		dbg_snapshot_set_reboot_mode(REBOOT_WARM);
 		dbg_snapshot_dump_task_info();
 	}
 
@@ -732,39 +748,14 @@ EXPORT_SYMBOL_GPL(dbg_snapshot_register_debug_ops);
 
 static void dbg_snapshot_ipi_stop(void *ignore, struct pt_regs *regs)
 {
-	if (!dss_desc.in_reboot)
+	if (!dss_desc.in_reboot || tombstone)
 		dbg_snapshot_save_context(regs, true);
 }
-
-static ssize_t in_warm_store(struct kobject *kobj,
-				struct kobj_attribute *attr,
-				const char *buf, size_t count)
-{
-	unsigned long val;
-	int ret;
-
-	ret = kstrtoul(buf, 10, &val);
-
-	if (!ret)
-		dss_desc.in_warm = !!val;
-
-	return count;
-}
-
-static ssize_t in_warm_show(struct kobject *kobj,
-				struct kobj_attribute *attr, char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE, "%sable\n",
-			dss_desc.in_warm ? "en" : "dis");
-}
-
-static struct kobj_attribute in_warm_attr = __ATTR_RW_MODE(in_warm, 0660);
 
 void dbg_snapshot_init_utils(void)
 {
 	size_t vaddr;
 	uintptr_t i;
-	struct kobject *dbg_snapshot_kobj;
 
 	vaddr = dss_items[DSS_ITEM_HEADER_ID].entry.vaddr;
 
@@ -781,6 +772,12 @@ void dbg_snapshot_init_utils(void)
 	/* write default reboot reason as unknown reboot */
 	dbg_snapshot_report_reason(DSS_SIGN_UNKNOWN_REBOOT);
 
+	/* Cancel the "Early Reboot" inform bit set by ABL */
+	exynos_pmu_update(PMU_GSA_INFORM0_OFFS, PMU_GSA_INFORM0_APC_EARLY_WD, 0);
+
+	/* write reset value to skip abl dump as debug boot */
+	dbg_snapshot_set_abl_dump_stat(DSS_SIGN_RESET);
+
 	register_die_notifier(&nb_die_block);
 	register_restart_handler(&nb_restart_block);
 	register_reboot_notifier(&nb_reboot_block);
@@ -789,17 +786,6 @@ void dbg_snapshot_init_utils(void)
 
 	smp_call_function(dbg_snapshot_save_system, NULL, 1);
 	dbg_snapshot_save_system(NULL);
-
-	dbg_snapshot_kobj = kobject_create_and_add("dbg_snapshot", kernel_kobj);
-	if (!dbg_snapshot_kobj) {
-		dev_emerg(dss_desc.dev, "cannot create kobj for dbg_snapshot!\n");
-		return;
-	}
-
-	if (sysfs_create_file(dbg_snapshot_kobj, &in_warm_attr.attr)) {
-		dev_emerg(dss_desc.dev, "cannot create file in ../dbg_snapshot!\n");
-		kobject_put(dbg_snapshot_kobj);
-	}
 }
 
 int dbg_snapshot_stop_all_cpus(void)

@@ -20,7 +20,35 @@ gs101_raviole_overlays := \
 	gs101-raven-proto1.dtbo \
 	gs101-raven-proto1_1.dtbo
 
+gs201_pantah_overlays := \
+        gs201-cloudripper-dev.dtbo \
+        gs201-ravenclaw-dev1_0.dtbo \
+        gs201-ravenclaw-dev1_1.dtbo \
+        gs201-cheetah-proto1.dtbo \
+        gs201-cheetah-proto1_1.dtbo \
+        gs201-cheetah-proto1_1-wingboard.dtbo \
+        gs201-cheetah-evt1.dtbo \
+        gs201-cheetah-evt1-wingboard.dtbo \
+        gs201-cheetah-evt1-nfc.dtbo \
+        gs201-cheetah-evt1_1.dtbo \
+        gs201-cheetah-evt1_1-wingboard.dtbo \
+        gs201-cheetah-dvt1.dtbo \
+        gs201-cheetah-pvt1.dtbo \
+        gs201-cheetah-mp.dtbo \
+        gs201-panther-proto1.dtbo \
+        gs201-panther-proto1_1.dtbo \
+        gs201-panther-proto1_1-wingboard.dtbo \
+        gs201-panther-evt1.dtbo \
+        gs201-panther-evt1-wingboard.dtbo \
+        gs201-panther-evt1_1.dtbo \
+        gs201-panther-evt1_1-wingboard.dtbo \
+        gs201-panther-dvt1.dtbo \
+        gs201-panther-pvt1.dtbo \
+        gs201-panther-mp.dtbo
+
 gs101_raviole_dtbs := gs101-a0.dtb gs101-b0.dtb
+
+gs201_pantah_dtbs := gs201-a0.dtb gs201-b0.dtb
 
 # Usage:
 #   $(call DTBS_overlay_template, overlay, base_dtb, suffix)
@@ -60,3 +88,4 @@ endef
 # overlays. Additionally, kbuild will statically apply the overlay to the base
 # dtb which could be used to verify the overlay applies cleanly.
 $(call multi_dtbs_overlay, $(gs101_raviole_dtbs), $(gs101_raviole_overlays), $(CONFIG_SOC_GS101))
+$(call multi_dtbs_overlay, $(gs201_pantah_dtbs), $(gs201_pantah_overlays), $(CONFIG_SOC_GS201))

@@ -14,4 +14,3 @@ config HW_RANDOM_EXYNOS_SWD
 	  module will be called exynos-rng.
 
 	  If unsure, say Y.
-

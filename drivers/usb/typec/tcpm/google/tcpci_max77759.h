@@ -7,6 +7,7 @@
 #ifndef __TCPCI_MAX77759_H
 #define __TCPCI_MAX77759_H
 
+#include <linux/alarmtimer.h>
 #include <linux/interrupt.h>
 #include <linux/kthread.h>
 #include <linux/usb/tcpm.h>
@@ -21,6 +22,7 @@ struct gvotable_election;
 struct logbuffer;
 struct max77759_contaminant;
 struct tcpci_data;
+struct max77759_io_error;
 
 struct max77759_plat {
 	struct tcpci_data data;
@@ -76,6 +78,10 @@ struct max77759_plat {
 	/* Indicate that the Vbus OVP is restricted to quick ramp-up time for incoming voltage. */
 	bool quick_ramp_vbus_ovp;
 	int reset_ovp_retry;
+	/* Set true to vote "limit_accessory_current" on USB ICL */
+	bool limit_accessory_enable;
+	/* uA */
+	unsigned int limit_accessory_current;
 
 	/* True when TCPC is in SINK DEBUG ACCESSORY CONNECTED state */
 	u8 debug_acc_connected:1;
@@ -100,6 +106,12 @@ struct max77759_plat {
 	int contaminant_detection;
 	/* Userspace status */
 	bool contaminant_detection_userspace;
+	/* Consecutive floating cable instances */
+	unsigned int floating_cable_or_sink_detected;
+	/* Timer to re-enable auto ultra lower mode for contaminant detection */
+	struct alarm reenable_auto_ultra_low_power_mode_alarm;
+	/* Bottom half for alarm */
+	struct kthread_work reenable_auto_ultra_low_power_mode_work;
 
 	/* Protects contaminant_detection variable and role_control */
 	struct mutex rc_lock;
@@ -128,6 +140,12 @@ struct max77759_plat {
 
 	/* Reflects whether BC1.2 is still running */
 	bool bc12_running;
+
+	/* To handle io error - Last cached IRQ status*/
+	u16 irq_status;
+	struct kthread_delayed_work max77759_io_error_work;
+	/* Hold before calling _max77759_irq */
+	struct mutex irq_status_lock;
 
 	/* EXT_BST_EN exposed as GPIO */
 #ifdef CONFIG_GPIOLIB
@@ -164,10 +182,13 @@ int __attribute__((weak)) maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1
 }
 
 struct max77759_contaminant *max77759_contaminant_init(struct max77759_plat *plat, bool enable);
-bool process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path);
+int process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path,
+			      bool tcpm_toggling, bool *cc_status_handled);
 int enable_contaminant_detection(struct max77759_plat *chip, bool maxq);
-void disable_contaminant_detection(struct max77759_plat *chip);
+int disable_contaminant_detection(struct max77759_plat *chip);
 bool is_contaminant_detected(struct max77759_plat *chip);
+bool is_floating_cable_or_sink_detected(struct max77759_plat *chip);
+void disable_auto_ultra_low_power_mode(struct max77759_plat *chip, bool disable);
 
 #define VBUS_VOLTAGE_MASK		0x3ff
 #define VBUS_VOLTAGE_LSB_MV		25

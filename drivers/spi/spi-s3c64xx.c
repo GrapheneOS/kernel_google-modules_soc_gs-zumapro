@@ -14,7 +14,6 @@
 #include <linux/dmaengine.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
-#include <linux/seq_file.h>
 #include <linux/spi/spi.h>
 #include <linux/gpio.h>
 #include <linux/of.h>
@@ -30,8 +29,6 @@
 #ifdef CONFIG_CPU_IDLE
 #include <soc/google/exynos-cpupm.h>
 #endif
-
-#include <linux/pinctrl/consumer.h>
 
 static LIST_HEAD(drvdata_list);
 
@@ -1532,7 +1529,8 @@ static inline struct s3c64xx_spi_port_config *s3c64xx_spi_get_port_config(
 		return (struct s3c64xx_spi_port_config *)match->data;
 	}
 #endif
-	return (struct s3c64xx_spi_port_config *)platform_get_device_id(pdev)->driver_data;
+	return (struct s3c64xx_spi_port_config *)
+			platform_get_device_id(pdev)->driver_data;
 }
 
 static int s3c64xx_spi_probe(struct platform_device *pdev)

@@ -21,7 +21,9 @@
 #include <linux/device.h>
 #include <linux/of.h>
 #include <linux/devfreq.h>
-#include "governor.h"
+
+// Note: this header comes from $KERNEL_SRC/drivers/devfreq
+#include <governor.h>
 #include "governor_memlat.h"
 
 #define CREATE_TRACE_POINTS

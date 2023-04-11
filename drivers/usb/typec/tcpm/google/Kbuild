@@ -8,3 +8,6 @@ obj-$(CONFIG_TYPEC_MAX77759)            += tcpci_max77759.o max77759_helper.o
 obj-$(CONFIG_TYPEC_MAX77759)            += bc_max77759.o
 obj-$(CONFIG_TYPEC_MAX77759)            += max77759_contaminant.o
 obj-$(CONFIG_TYPEC_COOLING_DEV)         += usbc_cooling_dev.o
+
+# This gives the drivers access to the tcpci.h header
+ccflags-y := -I$(srctree)/drivers/usb/typec

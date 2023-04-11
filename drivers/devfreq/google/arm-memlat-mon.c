@@ -22,13 +22,15 @@
 #include <linux/cpu_pm.h>
 #include <linux/cpu.h>
 #include <linux/of_fdt.h>
-#include "governor.h"
-#include "governor_memlat.h"
 #include <linux/perf_event.h>
 #include <linux/of_device.h>
 #include <linux/mutex.h>
 #include <trace/hooks/cpuidle.h>
 #include <linux/spinlock.h>
+
+// Note: This header comes from $KERNEL_SRC/drivers/devfreq
+#include <governor.h>
+#include "governor_memlat.h"
 
 static DEFINE_PER_CPU(bool, is_idle);
 static DEFINE_PER_CPU(bool, is_on);

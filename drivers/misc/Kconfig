@@ -35,7 +35,6 @@ config GOOGLE_VOTABLE
 	  To compile this driver as a module, choose M here: the module will be
 	  called gvotable.
 
-
 config ACCESS_RAMOOPS
 	tristate "Driver to allow access for decrypting encrypted ramoops"
 	depends on PSTORE_CONSOLE

@@ -23,6 +23,8 @@
 #include <linux/vmalloc.h>
 #include <linux/of.h>
 
+#include "../deferred-free-helper.h"
+#include "../page_pool.h"
 #include "samsung-dma-heap.h"
 /* This header is in ACK under drivers/dma-buf/heaps. */
 #include <heaps/page_pool.h>

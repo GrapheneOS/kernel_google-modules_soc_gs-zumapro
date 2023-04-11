@@ -29,7 +29,7 @@ perrfndev(dev,										   \
 
 static int g2d_prepare_buffer(struct g2d_device *g2d_dev,
 			      struct g2d_layer *layer,
-			      struct g2d_layer_data *data)
+			      struct g2d_layer_data *data, bool dst)
 {
 	const struct g2d_fmt *fmt = NULL;
 	struct g2d_reg *cmd = layer->commands;
@@ -58,7 +58,7 @@ static int g2d_prepare_buffer(struct g2d_device *g2d_dev,
 	if (data->num_buffers > 1) {
 		for (i = 0; i < data->num_buffers; i++) {
 			payload = g2d_get_payload_index(cmd, fmt, i, data->num_buffers,
-							g2d_dev->caps, layer->flags);
+							g2d_dev->caps, layer->flags, dst);
 			if (data->buffer[i].length < payload) {
 				buferr_show(g2d_dev, i, payload,
 					    cmd[G2DSFR_IMG_WIDTH].value,
@@ -73,7 +73,7 @@ static int g2d_prepare_buffer(struct g2d_device *g2d_dev,
 		}
 	} else {
 		payload = (unsigned int)g2d_get_payload(cmd, fmt, layer->flags,
-							g2d_dev->caps);
+							g2d_dev->caps, dst);
 		if (data->buffer[0].length < payload) {
 			buferr_show(g2d_dev, 0, payload,
 				    cmd[G2DSFR_IMG_WIDTH].value,
@@ -205,10 +205,14 @@ static int g2d_get_userptr(struct g2d_task *task,
 	unsigned long end = PFN_UP(data->userptr + data->length);
 	unsigned long page_off = data->userptr & ~PAGE_MASK;
 	unsigned int nr_pages = (unsigned int)(end - begin);
+	unsigned int flags = FOLL_FORCE;
 	struct sg_table *sgt;
 	struct frame_vector *vec;
 	struct page **pages;
 	int ret = -ENOMEM;
+
+	if (dir != DMA_TO_DEVICE)
+		flags |= FOLL_WRITE;
 
 	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
 	if (!sgt)
@@ -218,7 +222,7 @@ static int g2d_get_userptr(struct g2d_task *task,
 	if (!vec)
 		goto err_vector;
 
-	ret = get_vaddr_frames(begin << PAGE_SHIFT, nr_pages, vec);
+	ret = get_vaddr_frames(begin << PAGE_SHIFT, nr_pages, flags, vec);
 	if (ret < 0)
 		goto err_get_frames;
 	if (ret != (int)nr_pages) {
@@ -399,7 +403,7 @@ static int g2d_get_source(struct g2d_device *g2d_dev, struct g2d_task *task,
 		return -EINVAL;
 	}
 
-	ret = g2d_prepare_buffer(g2d_dev, layer, data);
+	ret = g2d_prepare_buffer(g2d_dev, layer, data, false);
 	if (ret)
 		return ret;
 
@@ -546,7 +550,7 @@ static int g2d_get_target(struct g2d_device *g2d_dev, struct g2d_context *ctx,
 	if (!g2d_validate_target_commands(g2d_dev, task))
 		return -EINVAL;
 
-	ret = g2d_prepare_buffer(g2d_dev, target, data);
+	ret = g2d_prepare_buffer(g2d_dev, target, data, true);
 	if (ret)
 		return ret;
 

@@ -6,3 +6,4 @@
 ccflags-$(CONFIG_RTC_DEBUG)	:= -DDEBUG
 
 obj-$(CONFIG_RTC_DRV_S2MPG10)	+= rtc-s2mpg10.o
+obj-$(CONFIG_RTC_DRV_S2MPG12)   += rtc-s2mpg12.o

@@ -43,6 +43,7 @@
 #include <linux/of_device.h>
 
 #include <soc/google/exynos-cpupm.h>
+#include <soc/google/pkvm-s2mpu.h>
 
 static const struct of_device_id exynos_dwc3_match[] = {
 	{
@@ -820,8 +821,12 @@ static int dwc3_exynos_vbus_notifier(struct notifier_block *nb,
 {
 	struct dwc3_exynos *exynos = container_of(nb, struct dwc3_exynos, vbus_nb);
 
-	if (!exynos->usb_data_enabled)
+	dev_info(exynos->dev, "turn %s USB gadget\n", action ? "on" : "off");
+
+	if (!exynos->usb_data_enabled) {
+		dev_info(exynos->dev, "skip the notification due to USB enumeration disabled\n");
 		return NOTIFY_OK;
+	}
 
 	dwc3_exynos_vbus_event(exynos->dev, action);
 
@@ -833,8 +838,12 @@ static int dwc3_exynos_id_notifier(struct notifier_block *nb,
 {
 	struct dwc3_exynos *exynos = container_of(nb, struct dwc3_exynos, id_nb);
 
-	if (!exynos->usb_data_enabled)
+	dev_info(exynos->dev, "turn %s USB host\n", action ? "on" : "off");
+
+	if (!exynos->usb_data_enabled) {
+		dev_info(exynos->dev, "skip the notification due to USB enumeration disabled\n");
 		return NOTIFY_OK;
+	}
 
 	dwc3_exynos_id_event(exynos->dev, !action);
 
@@ -1069,6 +1078,8 @@ static ssize_t force_speed_store(struct device *dev, struct device_attribute *at
 		force_speed = USB_SPEED_SUPER;
 	} else if (sysfs_streq(buf, "high-speed")) {
 		force_speed = USB_SPEED_HIGH;
+	} else if (sysfs_streq(buf, "full-speed")) {
+		force_speed = USB_SPEED_FULL;
 	} else {
 		return -EINVAL;
 	}
@@ -1114,6 +1125,14 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	if (IS_ERR(temp_usb_phy)) {
 		dev_dbg(dev, "USB phy is not probed - defered return!\n");
 		return  -EPROBE_DEFER;
+	}
+
+	if (IS_ENABLED(CONFIG_PKVM_S2MPU)) {
+		ret = pkvm_s2mpu_of_link(dev);
+		if (ret == -EAGAIN)
+			return -EPROBE_DEFER;
+		else if (ret)
+			return ret;
 	}
 
 	exynos = devm_kzalloc(dev, sizeof(*exynos), GFP_KERNEL);
@@ -1182,6 +1201,7 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 
 	exynos_usbdrd_vdd_hsi_manual_control(1);
 	exynos_usbdrd_ldo_manual_control(1);
+	exynos_usbdrd_s2mpu_manual_control(1);
 
 	if (node) {
 		ret = of_platform_populate(node, NULL, NULL, dev);
@@ -1197,7 +1217,7 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 
 	dwc3_pdev = of_find_device_by_node(dwc3_np);
 	exynos->dwc = platform_get_drvdata(dwc3_pdev);
-	if (exynos->dwc == NULL)
+	if (exynos->dwc == NULL || exynos->dwc->dev == NULL || exynos->dwc->gadget == NULL)
 		goto populate_err;
 
 	/* dwc3 core configurations */

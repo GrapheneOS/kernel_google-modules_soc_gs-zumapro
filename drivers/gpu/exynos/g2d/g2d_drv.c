@@ -747,6 +747,9 @@ static const struct of_device_id of_g2d_match[] __refconst = {
 	}, {
 		.compatible = "samsung,gs101-g2d",
 		.data = &g2d_gs101_data,
+	}, {
+		.compatible = "samsung,gs201-g2d",
+		.data = &g2d_gs201_data,
 	},
 	{},
 };
@@ -784,6 +787,8 @@ static int g2d_probe(struct platform_device *pdev)
 		perrdev(g2d_dev, "Failed to install IRQ handler");
 		return ret;
 	}
+
+	dma_set_mask(&pdev->dev, DMA_BIT_MASK(32));
 
 	g2d_dev->clock = devm_clk_get(&pdev->dev, "gate");
 	if (PTR_ERR(g2d_dev->clock) == -ENOENT) {

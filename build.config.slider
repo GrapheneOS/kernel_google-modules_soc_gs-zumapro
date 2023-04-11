@@ -2,7 +2,7 @@ DEVICE_MODULES_DIR=${KERNEL_DIR}
 # Compile these modules with the GKI kernel
 KERNEL_DIR="common"
 # Compute the path of this project relative to KERNEL_DIR
-DEVICE_MODULES_REL_DIR=$(realpath ${DEVICE_MODULES_DIR} --relative-to ${KERNEL_DIR})
+DEVICE_MODULES_REL_DIR=$(rel_path ${DEVICE_MODULES_DIR} ${KERNEL_DIR})
 KCONFIG_EXT_PREFIX=${DEVICE_MODULES_DIR}
 
 . ${ROOT_DIR}/${DEVICE_MODULES_DIR}/build.config.gs101
@@ -37,7 +37,17 @@ function modify_vendor_ramdisk() {
   ln -f init.recovery.gs101.rc init.recovery.raven.rc
 }
 
-KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
+# TODO(b/231473697): use realpath --relative-to
+# rel_path does not work with Kleaf --config=local builds because
+# rel_path is not simplified enough (e.g. the following evaluates to
+# ../../__main__ in Kleaf, which does not work in non-sandbox builds).
+# Hence use rel_path2 so it evaluates to a simpler path ../
+KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
+
+if [ -d "${ROOT_DIR}/${UWB_MODULE}" ]; then
+UWB_MODULE="private/google-modules/uwb/kernel"
+fi
+
 EXT_MODULES+="
 private/google-modules/soc/gs
 private/google-modules/display
@@ -47,6 +57,7 @@ private/google-modules/gpu/mali_kbase
 private/google-modules/lwis
 private/google-modules/edgetpu/abrolhos/drivers/edgetpu
 private/google-modules/bms
+private/google-modules/bms/misc
 private/google-modules/amplifiers/drv2624
 private/google-modules/amplifiers/cs40l25
 private/google-modules/amplifiers/cs35l41
@@ -59,5 +70,5 @@ private/google-modules/touch/sec
 private/google-modules/power/reset
 private/google-modules/bluetooth/broadcom
 private/google-modules/nfc
-private/google-modules/uwb/kernel
+${UWB_MODULE}
 "

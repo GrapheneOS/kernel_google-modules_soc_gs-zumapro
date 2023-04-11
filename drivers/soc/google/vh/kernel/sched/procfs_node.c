@@ -54,7 +54,7 @@ static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "b
 			struct inode *inode, struct file *file) \
 		{ \
 			return single_open(file,\
-			__name##_show, PDE_DATA(inode));\
+			__name##_show, pde_data(inode));\
 		} \
 		static const struct proc_ops  __name##_proc_ops = { \
 			.proc_open	=  __name##_proc_open, \
@@ -69,7 +69,7 @@ static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "b
 			struct inode *inode, struct file *file) \
 		{ \
 			return single_open(file,\
-			__name##_show, PDE_DATA(inode));\
+			__name##_show, pde_data(inode));\
 		} \
 		static const struct proc_ops __name##_proc_ops = { \
 			.proc_open	= __name##_proc_open, \
@@ -467,7 +467,7 @@ static inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
 	struct uclamp_se *uc_se = &p->uclamp[clamp_id];
 	struct uclamp_bucket *bucket;
 
-	lockdep_assert_rq_held(rq);
+	lockdep_assert_held(&rq->lock);
 
 	/* Update task effective clamp */
 	p->uclamp[clamp_id] = uclamp_eff_get(p, clamp_id);
@@ -507,7 +507,7 @@ static inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
 	unsigned int bkt_clamp;
 	unsigned int rq_clamp;
 
-	lockdep_assert_rq_held(rq);
+	lockdep_assert_held(&rq->lock);
 
 	/*
 	 * If sched_uclamp_used was enabled after task @p was enqueued,
@@ -1288,6 +1288,112 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 
 PROC_OPS_RW(pmu_poll_enable);
 
+
+extern unsigned int sched_lib_cpu_freq_cached_val;
+
+static sched_lib_cpu_freq_cached_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%u\n", sched_lib_cpu_freq_cached_val);
+	return 0;
+}
+
+static ssize_t sched_lib_cpu_freq_cached_store(struct file *filp,
+					const char __user *ubuf,
+					size_t count, loff_t *pos)
+{
+	int dup_sched_lib_cpu_freq_cached_val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &dup_sched_lib_cpu_freq_cached_val))
+		return -EINVAL;
+
+	sched_lib_cpu_freq_cached_val = dup_sched_lib_cpu_freq_cached_val;
+	return count;
+
+}
+
+PROC_OPS_RW(sched_lib_cpu_freq_cached);
+
+extern unsigned int sched_lib_freq_cpumask;
+static sched_lib_freq_cpumask_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sched_lib_freq_cpumask);
+	return 0;
+}
+
+static ssize_t sched_lib_freq_cpumask_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	int dup_sched_lib_freq_cpumask = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &dup_sched_lib_freq_cpumask))
+		return -EINVAL;
+
+	sched_lib_freq_cpumask = dup_sched_lib_freq_cpumask;
+	return count;
+}
+
+PROC_OPS_RW(sched_lib_freq_cpumask);
+
+extern unsigned int sched_lib_affinity_val;
+static sched_lib_affinity_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sched_lib_affinity_val);
+	return 0;
+}
+
+static ssize_t sched_lib_affinity_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	int dup_sched_lib_affinity_val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &dup_sched_lib_affinity_val))
+		return -EINVAL;
+
+	sched_lib_affinity_val = dup_sched_lib_affinity_val;
+	return count;
+}
+
+PROC_OPS_RW(sched_lib_affinity);
+
+extern ssize_t sched_lib_name_store(struct file *filp,
+				const char __user *ubuffer, size_t count,
+				loff_t *ppos);
+extern sched_lib_name_show(struct seq_file *m, void *v);
+
+
+PROC_OPS_RW(sched_lib_name);
+
+
+
 struct pentry {
 	const char *name;
 	const struct proc_ops *fops;
@@ -1423,6 +1529,11 @@ static struct pentry entries[] = {
 	PROC_ENTRY(prefer_idle_clear),
 	PROC_ENTRY(uclamp_fork_reset_set),
 	PROC_ENTRY(uclamp_fork_reset_clear),
+	// sched lib
+	PROC_ENTRY(sched_lib_cpu_freq_cached),
+	PROC_ENTRY(sched_lib_freq_cpumask),
+	PROC_ENTRY(sched_lib_affinity),
+	PROC_ENTRY(sched_lib_name),
 };
 
 

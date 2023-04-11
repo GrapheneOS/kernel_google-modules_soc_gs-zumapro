@@ -12,28 +12,29 @@
 
 #include "sched_priv.h"
 #include "sched_events.h"
+#include "../systrace.h"
 
 #if IS_ENABLED(CONFIG_PIXEL_EM)
-struct em_perf_domain **vendor_sched_cpu_to_em_pd;
-EXPORT_SYMBOL_GPL(vendor_sched_cpu_to_em_pd);
+#include "../../include/pixel_em.h"
+struct pixel_em_profile **vendor_sched_pixel_em_profile;
+EXPORT_SYMBOL_GPL(vendor_sched_pixel_em_profile);
 #endif
 
 extern unsigned int vendor_sched_uclamp_threshold;
 extern unsigned int vendor_sched_util_post_init_scale;
 extern bool vendor_sched_npi_packing;
-extern bool vendor_sched_reduce_prefer_idle;
-
-static struct vendor_group_property vg[VG_MAX];
 
 unsigned int sched_capacity_margin[CPU_NUM] = {
 			[0 ... CPU_NUM-1] = DEF_UTIL_THRESHOLD };
-static unsigned long scale_freq[CPU_NUM] = {
-			[0 ... CPU_NUM-1] = SCHED_CAPACITY_SCALE };
 
 extern struct vendor_group_list vendor_group_list[VG_MAX];
 
+extern struct vendor_group_list vendor_group_list[VG_MAX];
+
+extern inline unsigned int uclamp_none(enum uclamp_id clamp_id);
+
 unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
-				 unsigned long max, enum cpu_util_type type,
+				 unsigned long max, enum schedutil_type type,
 				 struct task_struct *p);
 unsigned int map_scaling_freq(int cpu, unsigned int freq);
 
@@ -92,23 +93,6 @@ static inline u64 cfs_rq_last_update_time(struct cfs_rq *cfs_rq)
 }
 #endif
 
-unsigned long task_util(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_avg);
-}
-
-static inline unsigned long _task_util_est(struct task_struct *p)
-{
-	struct util_est ue = READ_ONCE(p->se.avg.util_est);
-
-	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
-}
-
-static inline unsigned long task_util_est(struct task_struct *p)
-{
-	return max(task_util(p), _task_util_est(p));
-}
-
 #if IS_ENABLED(CONFIG_UCLAMP_TASK)
 static inline unsigned long uclamp_task_util(struct task_struct *p)
 {
@@ -132,7 +116,7 @@ static unsigned long capacity_curr_of(int cpu)
 {
 	unsigned long max_cap = cpu_rq(cpu)->cpu_capacity_orig;
 
-	return cap_scale(max_cap, scale_freq[cpu]);
+	return cap_scale(max_cap, per_cpu(freq_scale, cpu));
 }
 
 /* Runqueue only has SCHED_IDLE tasks enqueued */
@@ -254,23 +238,6 @@ static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
 /*
  * This part of code is new for this kernel, which are mostly helper functions.
  */
-
-static inline bool get_prefer_idle(struct task_struct *p)
-{
-	// For group based prefer_idle vote, filter our smaller or low prio or
-	// have throttled uclamp.max settings
-	// Ignore all checks, if the prefer_idle is from per-task API.
-	if (vendor_sched_reduce_prefer_idle)
-		return (vg[get_vendor_group(p)].prefer_idle &&
-			task_util_est(p) >= vendor_sched_uclamp_threshold &&
-			p->prio <= DEFAULT_PRIO &&
-			uclamp_eff_value(p, UCLAMP_MAX) == SCHED_CAPACITY_SCALE) ||
-			get_vendor_task_struct(p)->prefer_idle;
-	else
-		return vg[get_vendor_task_struct(p)->group].prefer_idle ||
-		       get_vendor_task_struct(p)->prefer_idle;
-}
-
 bool get_prefer_high_cap(struct task_struct *p)
 {
 	return vg[get_vendor_group(p)].prefer_high_cap;
@@ -578,9 +545,32 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 
 #if IS_ENABLED(CONFIG_PIXEL_EM)
 	{
-		struct em_perf_domain **cpu_to_em_pd = READ_ONCE(vendor_sched_cpu_to_em_pd);
-		if (cpu_to_em_pd)
-			pd = cpu_to_em_pd[cpu];
+		struct pixel_em_profile **profile_ptr_snapshot;
+		profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
+		if (profile_ptr_snapshot) {
+			struct pixel_em_profile *profile = READ_ONCE(*profile_ptr_snapshot);
+			if (profile) {
+				struct pixel_em_cluster *cluster = profile->cpu_to_cluster[cpu];
+				struct pixel_em_opp *max_opp;
+				struct pixel_em_opp *opp;
+
+				max_opp = &cluster->opps[cluster->num_opps - 1];
+
+				freq = map_util_freq_pixel_mod(max_util,
+							       max_opp->freq,
+							       max_opp->capacity,
+							       cpu);
+				freq = map_scaling_freq(cpu, freq);
+
+				for (i = 0; i < cluster->num_opps; i++) {
+					opp = &cluster->opps[i];
+					if (opp->freq >= freq)
+						break;
+				}
+
+				return opp->cost * sum_util / max_opp->capacity;
+			}
+		}
 	}
 #endif
 
@@ -703,7 +693,8 @@ static u64 __sched_period(unsigned long nr_running)
 		return sysctl_sched_latency;
 }
 
-static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost)
+static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost,
+		cpumask_t *valid_mask)
 {
 	struct root_domain *rd;
 	struct perf_domain *pd;
@@ -750,7 +741,7 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
 		pd_most_unimportant_cpu = -1;
 		pd_best_packing_cpu = -1;
 
-		for_each_cpu_and(i, perf_domain_span(pd), p->cpus_ptr) {
+		for_each_cpu_and(i, perf_domain_span(pd), valid_mask ? valid_mask : p->cpus_ptr) {
 			if (i >= CPU_NUM)
 				break;
 
@@ -793,9 +784,6 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
 						 spare_cap, task_fits, false);
 #endif
 
-			if (prefer_fit && !task_fits)
-				continue;
-
 			if (prefer_idle) {
 				/*
 				 * For a cluster, the energy computation result will be the same for
@@ -836,14 +824,19 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
 				if (importance_target_found)
 					continue;
 
-				if (prefer_high_cap && i < HIGH_CAPACITY_CPU)
+				if ((prefer_high_cap || prefer_fit) && i < HIGH_CAPACITY_CPU)
 					continue;
 
+				/*
+				 * Make srue prefer_fit task could find a candidate in high capacity
+				 * clusters.
+				 */
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
-				if (group_overutilize || cpu_overutilized(util, capacity, i))
+				if (!prefer_fit &&
+				    (group_overutilize || cpu_overutilized(util, capacity, i)))
 					continue;
 #else
-				if (cpu_overutilized(util, capacity, i))
+				if (!prefer_fit && cpu_overutilized(util, capacity, i))
 					continue;
 #endif
 
@@ -853,7 +846,13 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
 					cpumask_clear(&max_spare_cap);
 					cpumask_set_cpu(i, &max_spare_cap);
 				} else if (spare_cap == target_max_spare_cap) {
-					cpumask_set_cpu(i, &max_spare_cap);
+					/* If spare capacity is the same, random select a cpu */
+					if (cpumask_weight(&max_spare_cap) && this_cpu % 2) {
+						cpumask_clear(&max_spare_cap);
+						cpumask_set_cpu(i, &max_spare_cap);
+					} else {
+						cpumask_set_cpu(i, &max_spare_cap);
+					}
 				}
 			} else {/* Below path is for non-prefer idle case*/
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
@@ -953,18 +952,36 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
 	}
 
 	/* Assign candidates based on search order. */
-	if (!cpumask_empty(&idle_fit)) {
-		cpumask_copy(&candidates, &idle_fit);
-	} else if (!cpumask_empty(&idle_unfit)) {
-		cpumask_copy(&candidates, &idle_unfit);
-	} else if (!cpumask_empty(&unimportant_fit)) {
-		cpumask_copy(&candidates, &unimportant_fit);
-	} else if (!cpumask_empty(&unimportant_unfit)) {
-		cpumask_copy(&candidates, &unimportant_unfit);
-	} else if (!cpumask_empty(&packing)) {
-		cpumask_copy(&candidates, &packing);
-	} else if (!cpumask_empty(&max_spare_cap)) {
-		cpumask_copy(&candidates, &max_spare_cap);
+	if (prefer_fit) {
+		if (!cpumask_empty(&idle_fit)) {
+			cpumask_copy(&candidates, &idle_fit);
+		} else if (!cpumask_empty(&unimportant_fit)) {
+			cpumask_copy(&candidates, &unimportant_fit);
+		} else if (!cpumask_empty(&idle_unfit)) {
+			/* Assign biggest cpu core found for unfit case. */
+			cpumask_set_cpu(cpumask_last(&idle_unfit), &candidates);
+		} else if (!cpumask_empty(&unimportant_unfit)) {
+			/* Assign biggest cpu core found for unfit case. */
+			cpumask_set_cpu(cpumask_last(&unimportant_unfit), &candidates);
+		} else if (!cpumask_empty(&max_spare_cap)) {
+			cpumask_copy(&candidates, &max_spare_cap);
+		}
+	} else {
+		if (!cpumask_empty(&idle_fit)) {
+			cpumask_copy(&candidates, &idle_fit);
+		} else if (!cpumask_empty(&idle_unfit)) {
+			/* Assign biggest cpu core found for unfit case. */
+			cpumask_set_cpu(cpumask_last(&idle_unfit), &candidates);
+		} else if (!cpumask_empty(&unimportant_fit)) {
+			cpumask_copy(&candidates, &unimportant_fit);
+		} else if (!cpumask_empty(&unimportant_unfit)) {
+			/* Assign biggest cpu core found for unfit case. */
+			cpumask_set_cpu(cpumask_last(&unimportant_unfit), &candidates);
+		} else if (!cpumask_empty(&packing)) {
+			cpumask_copy(&candidates, &packing);
+		} else if (!cpumask_empty(&max_spare_cap)) {
+			cpumask_copy(&candidates, &max_spare_cap);
+		}
 	}
 
 	weight = cpumask_weight(&candidates);
@@ -1020,18 +1037,39 @@ out:
 	return best_energy_cpu;
 }
 
+#if IS_ENABLED(CONFIG_PIXEL_EM)
 void vh_arch_set_freq_scale_pixel_mod(void *data, const struct cpumask *cpus,
 				      unsigned long freq,
 				      unsigned long max, unsigned long *scale)
 {
 	int i;
+	struct pixel_em_profile **profile_ptr_snapshot;
+	profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
+	if (profile_ptr_snapshot) {
+		struct pixel_em_profile *profile = READ_ONCE(*profile_ptr_snapshot);
+		if (profile) {
+			struct pixel_em_cluster *cluster;
+			struct pixel_em_opp *max_opp;
+			struct pixel_em_opp *opp;
 
-	for_each_cpu(i, cpus)
-		scale_freq[i] = *scale;
+			cluster = profile->cpu_to_cluster[cpumask_first(cpus)];
+			max_opp = &cluster->opps[cluster->num_opps - 1];
+
+			for (i = 0; i < cluster->num_opps; i++) {
+				opp = &cluster->opps[i];
+				if (opp->freq >= freq)
+					break;
+			}
+
+			*scale = (opp->capacity << SCHED_CAPACITY_SHIFT) /
+				  max_opp->capacity;
+		}
+	}
 }
+EXPORT_SYMBOL_GPL(vh_arch_set_freq_scale_pixel_mod);
+#endif
 
-void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
-			      int *should_iowait_boost)
+void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, int *should_iowait_boost)
 {
 	*should_iowait_boost = p->in_iowait && uclamp_boosted(p);
 }
@@ -1050,6 +1088,7 @@ unsigned long map_util_freq_pixel_mod(unsigned long util, unsigned long freq,
 static inline bool check_uclamp_threshold(struct task_struct *p, enum uclamp_id clamp_id)
 {
 	if (clamp_id == UCLAMP_MIN && !rt_task(p) &&
+	    !get_vendor_task_struct(p)->uclamp_fork_reset &&
 	    task_util_est(p) < vendor_sched_uclamp_threshold) {
 		return true;
 	}
@@ -1061,7 +1100,7 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 {
 	struct uclamp_se uc_req = p->uclamp_req[clamp_id];
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
-
+	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
 
 #ifdef CONFIG_UCLAMP_TASK_GROUP
 	unsigned int tg_min, tg_max, vnd_min, vnd_max, value;
@@ -1075,6 +1114,10 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 
 	value = uc_req.value;
 	value = clamp(value, max(tg_min, vnd_min),  min(tg_max, vnd_max));
+
+	// Inherited uclamp restriction
+	if (vbinder->active)
+		value = clamp(value, vbinder->uclamp[UCLAMP_MIN], vbinder->uclamp[UCLAMP_MAX]);
 
 	// For uclamp min, if task has a valid per-task setting that is lower than or equal to its
 	// group value, increase the final uclamp value by 1. This would have effect only on
@@ -1331,14 +1374,45 @@ void vh_sched_setscheduler_uclamp_pixel_mod(void *data, struct task_struct *tsk,
 void vh_dup_task_struct_pixel_mod(void *data, struct task_struct *tsk, struct task_struct *orig)
 {
 	struct vendor_task_struct *v_tsk, *v_orig;
+	struct vendor_binder_task_struct *vbinder;
 
 	v_tsk = get_vendor_task_struct(tsk);
 	v_orig = get_vendor_task_struct(orig);
+	vbinder = get_vendor_binder_task_struct(tsk);
 	v_tsk->group = v_orig->group;
 	v_tsk->prefer_idle = false;
 	INIT_LIST_HEAD(&v_tsk->node);
 	raw_spin_lock_init(&v_tsk->lock);
 	v_tsk->queued_to_list = false;
+
+	vbinder->uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
+	vbinder->uclamp[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
+	vbinder->prefer_idle = false;
+	vbinder->active = false;
+}
+
+void rvh_cpumask_any_and_distribute(void *data, struct task_struct *p,
+	const struct cpumask *cpu_valid_mask,
+	const struct cpumask *new_mask, int *dest_cpu)
+{
+	cpumask_t valid_mask;
+
+	cpumask_and(&valid_mask, cpu_valid_mask, new_mask);
+
+	/* find a cpu again for the running/runnable/waking tasks if their
+	 * current cpu are not allowed
+	 */
+	if ((p->on_cpu || p->state == TASK_WAKING || task_on_rq_queued(p)) &&
+		!cpumask_test_cpu(task_cpu(p), new_mask)) {
+		*dest_cpu = find_energy_efficient_cpu(p, task_cpu(p), false, &valid_mask);
+
+		if (*dest_cpu == -1)
+			*dest_cpu = nr_cpu_ids;
+	}
+
+	trace_cpumask_any_and_distribute(p, &valid_mask, *dest_cpu);
+
+	return;
 }
 
 void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int prev_cpu, int sd_flag,
@@ -1384,7 +1458,7 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 	}
 
 	if (sd_flag & SD_BALANCE_WAKE) {
-		*target_cpu = find_energy_efficient_cpu(p, prev_cpu, sync_boost);
+		*target_cpu = find_energy_efficient_cpu(p, prev_cpu, sync_boost, NULL);
 	}
 
 out:
