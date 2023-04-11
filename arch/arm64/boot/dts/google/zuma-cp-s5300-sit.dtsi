@@ -197,14 +197,14 @@
 						boost_name = "RPS";
 						target = <TPMON_TARGET_RPS>;
 						extra_idx = <0>;
-						level = <0x03 0x30 0xC0>;
+						level = <0xC0 0xC0>;
 
 						boost0 {
 							enable = <1>;
 							measure = <TPMON_MEASURE_TP>;
 							proto = <TPMON_PROTO_ALL>;
-							boost_threshold = <500 1600>;
-							unboost_threshold_mbps = <200 600>;
+							boost_threshold = <6000>;
+							unboost_threshold_mbps = <5000>;
 						};
 					};
 
@@ -287,14 +287,14 @@
 						boost_name = "IRQ_0";
 						target = <TPMON_TARGET_IRQ_PCIE>;
 						extra_idx = <3>;
-						level = <0x0C 0x30>;
+						level = <0x30 0x30>;
 
 						boost0 {
 							enable = <1>;
 							measure = <TPMON_MEASURE_TP>;
 							proto = <TPMON_PROTO_ALL>;
-							boost_threshold = <500>;
-							unboost_threshold_mbps = <200>;
+							boost_threshold = <6000>;
+							unboost_threshold_mbps = <5000>;
 						};
 					};
 
