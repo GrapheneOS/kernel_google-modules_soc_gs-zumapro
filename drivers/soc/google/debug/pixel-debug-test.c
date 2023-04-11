@@ -571,6 +571,7 @@ static void simulate_suspend_hang(char *arg)
 	suspend_set_ops(&suspend_ops);
 }
 
+#if IS_ENABLED(CONFIG_PIXEL_TEST_HYP_PANIC)
 static void simulate_hyp_panic(char *arg)
 {
 	u64 esr, spsr;
@@ -585,6 +586,7 @@ static void simulate_hyp_panic(char *arg)
 
 	nvhe_hyp_panic_handler(esr, spsr, -1, 0, 0, 0, 0, 0);
 }
+#endif /* CONFIG_PIXEL_TEST_HYP_PANIC */
 
 /*
  * Error trigger definitions
@@ -627,7 +629,9 @@ static const struct force_error_item force_error_vector[] = {
 	{ "arraydump",		&simulate_arraydump },
 	{ "scandump",		&simulate_scandump },
 	{ "suspend_hang",	&simulate_suspend_hang },
+#if IS_ENABLED(CONFIG_PIXEL_TEST_HYP_PANIC)
 	{ "hyp_panic",		&simulate_hyp_panic },
+#endif /* CONFIG_PIXEL_TEST_HYP_PANIC */
 };
 
 static void parse_and_trigger(const char *buf)
