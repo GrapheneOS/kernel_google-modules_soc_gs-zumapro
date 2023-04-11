@@ -78,7 +78,7 @@ find private/google-modules -name .git |
         # Note: this project doesn't have an android13 upstream branch
         ;;
       *)
-        do_merge ${dir} partner android13-gs-pixel-5.10-tm-qpr2
+        do_merge ${dir} partner android13-gs-pixel-5.10-udc
         ;;
     esac ||
       echo ERROR: merge ${dir} failed
