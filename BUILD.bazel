@@ -134,7 +134,6 @@ kernel_abi(
     kernel_modules = [":slider_ext_modules"],
     kmi_symbol_list_add_only = True,
     module_grouping = False,
-    unstripped_modules_archive = ":slider_unstripped_modules_archive",
 )
 
 filegroup(
@@ -390,15 +389,6 @@ copy_to_dist_dir(
     data = slider_dist_targets,
     dist_dir = "out/slider/dist",
     flat = True,
-    log = "info",
-)
-
-kernel_abi_dist(
-    name = "slider_abi_dist",
-    data = slider_dist_targets,
-    dist_dir = "out/slider/dist",
-    flat = True,
-    kernel_abi = ":slider_abi",
     log = "info",
 )
 
