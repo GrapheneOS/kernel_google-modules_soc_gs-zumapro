@@ -7,7 +7,7 @@
 #include <dt-bindings/pci/pci.h>
 
 &pcie_0 {       /* pcie ch0 used for the connection with CP */
-	status = "disabled"; /* Disable for 6.1 bringup */
+	status = "okay";
 	use-cache-coherency = "true";
 	use-msi = "true";
 	use-sicd = "true";
@@ -26,7 +26,7 @@
 };
 
 &pcie_1 {       /* pcie ch1 used for the connection with WiFi */
-	status = "disabled"; /* Disable for 6.1 bringup */
+	status = "okay";
 	num-lanes = <1>;
 	use-sicd = "true";
 	use-ia = "false";
