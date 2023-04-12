@@ -133,3 +133,104 @@
 		2024000       1401000
 		2120000       1401000>;
 };
+
+/* S2MPUs in B0 has sync device which is not discoverable from IP version. */
+&s2mpu_s0_aur {
+	built-in-sync;
+};
+
+&s2mpu_s0_bw {
+	built-in-sync;
+};
+
+&s2mpu_s0_cpucl0 {
+	built-in-sync;
+};
+
+&s2mpu_s0_eh {
+	built-in-sync;
+};
+
+&s2mpu_s0_g2d {
+	built-in-sync;
+};
+
+&s2mpu_s0_g3d {
+	built-in-sync;
+};
+
+&s2mpu_s0_gdc {
+	built-in-sync;
+};
+
+&s2mpu_s0_gse {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi0 {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi1 {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi2 {
+	built-in-sync;
+};
+
+&s2mpu_s0_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s1_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s2_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s0_mcsc {
+	built-in-sync;
+};
+
+&s2mpu_s0_mfc {
+	built-in-sync;
+};
+
+&s2mpu_s0_misc {
+	built-in-sync;
+};
+
+&s2mpu_s0_rgbp {
+	built-in-sync;
+};
+
+&s2mpu_s1_rgbp {
+	built-in-sync;
+};
+
+&s2mpu_s0_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s1_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s2_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s0_tpu {
+	built-in-sync;
+};
+
+&s2mpu_s0_yuvp {
+	built-in-sync;
+};
+
+&s2mpu_s0_gsa {
+	built-in-sync;
+};
