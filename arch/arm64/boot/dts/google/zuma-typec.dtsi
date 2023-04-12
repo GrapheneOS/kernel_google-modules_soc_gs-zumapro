@@ -34,6 +34,7 @@
 		orientation-switch;
 		mode-switch;
 		svid = <0xff01>;
+		pullup-supply = <&m_ldo19_reg>;
 
 		conn: connector {
 			compatible = "usb-c-connector";
