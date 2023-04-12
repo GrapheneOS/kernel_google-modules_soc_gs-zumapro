@@ -19,19 +19,18 @@
 #include <linux/mfd/samsung/s2mpg13.h>
 #include <linux/mfd/samsung/s2mpg13-register.h>
 
-#if IS_ENABLED(CONFIG_PIXEL_METRICS)
-#include <soc/google/thermal_metrics.h>
-#endif
-
-#include "../thermal_core.h"
+#include <thermal_core.h>
 
 #define GTHERM_CHAN_NUM 8
 #define SENSOR_WAIT_SLEEP_MS 50
 #define NTC_UPDATE_MIN_DELAY_US 100
 #define NTC_UPDATE_MAX_DELAY_US 10000
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
+#include <soc/google/thermal_metrics.h>
 static const int stats_thresholds[MAX_SUPPORTED_THRESHOLDS] = {
 			0, 39000, 43000, 45000, 46500, 52000, 55000, 70000};
+#endif
 
 struct s2mpg13_spmic_thermal_sensor {
 	struct s2mpg13_spmic_thermal_chip *chip;
@@ -265,8 +264,10 @@ static int s2mpg13_spmic_thermal_get_temp(void *data, int *temp)
 	raw = data_buf[0] + ((data_buf[1] & 0xf) << 8);
 	*temp = s2mpg13_map_volt_temp(raw);
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 	if (s2mpg13_spmic_thermal->stats_en & (mask << s->adc_chan))
 		temp_residency_stats_update(s->tr_handle, *temp);
+#endif
 
 	mutex_unlock(&s2mpg13_spmic_thermal->adc_chan_lock);
 	return ret;
@@ -274,8 +275,10 @@ static int s2mpg13_spmic_thermal_get_temp(void *data, int *temp)
 emul_temp_exit:
 	*temp = s->emul_temperature;
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
 	if (s2mpg13_spmic_thermal->stats_en & (mask << s->adc_chan))
 		temp_residency_stats_update(s->tr_handle, *temp);
+#endif
 
 err_exit:
 	mutex_unlock(&s2mpg13_spmic_thermal->adc_chan_lock);
@@ -698,7 +701,7 @@ static int s2mpg13_spmic_thermal_probe(struct platform_device *pdev)
 	int irq_base, i;
 	int irq_count = 0;
 	u8 mask = 0x01;
-	char thermal_group[] = "spmic";
+	char __maybe_unused thermal_group[] = "spmic";
 	chip = devm_kzalloc(&pdev->dev, sizeof(struct s2mpg13_spmic_thermal_chip),
 			    GFP_KERNEL);
 	if (!chip)
@@ -748,11 +751,11 @@ static int s2mpg13_spmic_thermal_probe(struct platform_device *pdev)
 	/* Setup IRQ and register for residency stats */
 	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
 		int ret;
-		struct thermal_zone_device *tzd = chip->sensor[i].tzd;
 #if IS_ENABLED(CONFIG_PIXEL_METRICS)
+		struct thermal_zone_device *tzd = chip->sensor[i].tzd;
 		tr_handle tr_stats_handle;
-#endif
 		int num_stats_thresholds =  ARRAY_SIZE(stats_thresholds);
+#endif
 
 		chip->sensor[i].ot_irq =
 			irq_base + S2MPG13_IRQ_NTC_WARN_OT_CH1_INT7 + i;
@@ -838,8 +841,8 @@ fail:
 static int s2mpg13_spmic_thermal_remove(struct platform_device *pdev)
 {
 	int i;
-	u8 mask = 0x01;
 	struct s2mpg13_spmic_thermal_chip *chip = platform_get_drvdata(pdev);
+	u8 __maybe_unused mask = 0x01;
 
 	mutex_lock(&chip->adc_chan_lock);
 	s2mpg13_spmic_set_ntc_channels(chip, 0x00);
