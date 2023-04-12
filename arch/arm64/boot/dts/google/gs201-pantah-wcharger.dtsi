@@ -5,8 +5,8 @@
  * Copyright 2022 Google Inc.
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
-#include <dt-bindings/pinctrl/gs101.h>
+#include <arm64/exynos/exynos-pinctrl.h>
+#include "gs101-pinctrl.h"
 #include <dt-bindings/interrupt-controller/irq.h>
 
 / {

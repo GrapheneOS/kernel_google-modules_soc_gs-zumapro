@@ -6,8 +6,8 @@
  *
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
-#include <dt-bindings/pinctrl/gs101.h>
+#include <arm64/exynos/exynos-pinctrl.h>
+#include "gs101-pinctrl.h"
 
 &m_ldo25_reg {
 	/delete-property/ regulator-always-on;

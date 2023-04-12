@@ -6,8 +6,8 @@
  */
 #include <dt-bindings/usb/pd.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pinctrl/samsung.h>
-#include <dt-bindings/pinctrl/gs101.h>
+#include <arm64/exynos/exynos-pinctrl.h>
+#include "gs101-pinctrl.h"
 
 &hsi2c_13{
 	#address-cells = <1>;
