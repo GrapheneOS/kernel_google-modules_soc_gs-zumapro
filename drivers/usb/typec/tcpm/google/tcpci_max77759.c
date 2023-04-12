@@ -2669,8 +2669,7 @@ static int max77759_probe(struct i2c_client *client,
 
 	logbuffer_log(chip->log, "TCPC DEVICE id:%d", device_id);
 	/* Default enable on A1 or higher */
-	/* TODO: Revert while enabling contaminant detection */
-	chip->contaminant_detection = CONTAMINANT_DETECT_DISABLE;
+	chip->contaminant_detection = device_id >= MAX77759_DEVICE_ID_A1;
 	chip->contaminant_detection_userspace = chip->contaminant_detection;
 	chip->contaminant = max77759_contaminant_init(chip, chip->contaminant_detection);
 
