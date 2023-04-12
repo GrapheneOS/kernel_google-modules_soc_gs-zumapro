@@ -4444,7 +4444,7 @@ static void __maybe_unused exynos_pcie_rc_set_tpoweron(struct dw_pcie_rp *pp, in
 static int exynos_pcie_msi_set_affinity(struct irq_data *irq_data, const struct cpumask *mask,
 					bool force)
 {
-	struct pcie_port *pp;
+	struct dw_pcie_rp *pp;
 	struct irq_data *idata = irq_data->parent_data;
 	struct dw_pcie *pci;
 	struct exynos_pcie *exynos_pcie;
@@ -4453,7 +4453,7 @@ static int exynos_pcie_msi_set_affinity(struct irq_data *irq_data, const struct 
 		return -ENODEV;
 
 	/* set affinity for PCIe IRQ */
-	pp = (struct pcie_port *) idata->chip_data;
+	pp = (struct dw_pcie_rp *) idata->chip_data;
 	if (!pp)
 		return -ENODEV;
 
