@@ -1730,14 +1730,14 @@ static void itmon_collect_errnode(struct itmon_dev *itmon,
 	switch (offset) {
 	case OFFSET_REQ_R:
 		read = TRANS_TYPE_READ;
-		/* fall down */
+		fallthrough;
 	case OFFSET_REQ_W:
 		req = true;
 		/* Only S-Node is able to make log to registers */
 		break;
 	case OFFSET_RESP_R:
 		read = TRANS_TYPE_READ;
-		/* fall down */
+		fallthrough;
 	case OFFSET_RESP_W:
 		req = false;
 		/* Only NOT S-Node is able to make log to registers */
