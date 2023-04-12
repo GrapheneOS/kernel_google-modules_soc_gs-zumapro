@@ -618,7 +618,7 @@ static int gs101_spmic_thermal_probe(struct platform_device *pdev)
 	struct s2mpg11_platform_data *pdata;
 	int irq_base, i;
 	u8 mask = 0x01;
-	char thermal_group[] = "spmic";
+	char __maybe_unused thermal_group[] = "spmic";
 	chip = devm_kzalloc(&pdev->dev, sizeof(struct gs101_spmic_thermal_chip),
 			    GFP_KERNEL);
 	if (!chip)

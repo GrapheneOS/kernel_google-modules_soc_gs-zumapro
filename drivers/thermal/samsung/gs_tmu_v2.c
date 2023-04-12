@@ -3290,7 +3290,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 {
 	struct gs_tmu_data *data;
 	int ret;
-	char thermal_group[] = "tmu";
+	char __maybe_unused thermal_group[] = "tmu";
 	data = devm_kzalloc(&pdev->dev, sizeof(struct gs_tmu_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
