@@ -375,7 +375,7 @@ err:
 	return ret;
 }
 
-static int s2mpg13_i2c_remove(struct i2c_client *i2c)
+static void s2mpg13_i2c_remove(struct i2c_client *i2c)
 {
 	struct s2mpg13_dev *s2mpg13 = i2c_get_clientdata(i2c);
 
@@ -384,8 +384,6 @@ static int s2mpg13_i2c_remove(struct i2c_client *i2c)
 	mfd_remove_devices(s2mpg13->dev);
 	i2c_unregister_device(s2mpg13->i2c);
 	kfree(s2mpg13);
-
-	return 0;
 }
 
 static const struct i2c_device_id s2mpg13_i2c_id[] = {
