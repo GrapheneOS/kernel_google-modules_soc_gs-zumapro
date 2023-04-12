@@ -755,7 +755,7 @@ out:
 	return ret;
 }
 
-static int slg51002_i2c_remove(struct i2c_client *client)
+static void slg51002_i2c_remove(struct i2c_client *client)
 {
 	struct slg51002_dev *slg51002 = i2c_get_clientdata(client);
 	struct gpio_desc *desc;
@@ -788,7 +788,8 @@ static int slg51002_i2c_remove(struct i2c_client *client)
 		usleep_range(1000, 1020);
 	}
 
-	return ret ? -EIO : 0;
+	if (ret)
+		pr_err("Failed to update the gpiod direction on remove\n");
 }
 
 static const struct i2c_device_id slg51002_i2c_id[] = {
