@@ -2527,6 +2527,15 @@ static void dp_notification_work_item(struct kthread_work *work)
 		dp = 0;
 	}
 
+	if ((dp && !chip->dp_regulator_enabled) || (!dp && chip->dp_regulator_enabled)) {
+		ret = dp ? regulator_enable(chip->dp_regulator) : \
+			   regulator_disable(chip->dp_regulator);
+		if (ret >= 0)
+			chip->dp_regulator_enabled = dp;
+		logbuffer_log(chip->log, "dp regulator_%s %s ret:%d", dp ? "enable" : "disable",
+		      	      ret < 0 ? "fail" : "success", ret);
+	}
+
 	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ? SBUSW_PATH_1 : 0);
 	logbuffer_log(chip->log, "SBU dp switch %s %s ret:%d", dp ? "enable" : "disable",
 		      ret < 0 ? "fail" : "success", ret);
@@ -2807,9 +2816,15 @@ static int max77759_probe(struct i2c_client *client,
 		goto teardown_bc12;
 	}
 
+	chip->dp_regulator = devm_regulator_get(chip->dev, "pullup");
+	if (IS_ERR_OR_NULL(chip->dp_regulator) ) {
+		dev_err(&client->dev, "devm_regulator_get failed\n");
+		goto psy_put;
+	}
+
 	ret = max77759_read16(chip->data.regmap, TCPC_BCD_DEV, &device_id);
 	if (ret < 0)
-		goto psy_put;
+		goto dp_regulator_put;
 
 	logbuffer_log(chip->log, "TCPC DEVICE id:%d", device_id);
 	/* Default enable on A1 or higher */
@@ -2819,7 +2834,7 @@ static int max77759_probe(struct i2c_client *client,
 
 	ret = max77759_setup_data_notifier(chip);
 	if (ret < 0)
-		goto psy_put;
+		goto dp_regulator_put;
 	max77759_init_regs(chip->data.regmap, chip->log);
 
 	/* Default enable on A1 or higher */
@@ -2939,6 +2954,8 @@ destroy_worker:
 	kthread_destroy_worker(chip->wq);
 teardown_data:
 	max77759_teardown_data_notifier(chip);
+dp_regulator_put:
+	devm_regulator_put(chip->dp_regulator);
 psy_put:
 	power_supply_put(chip->usb_psy);
 teardown_bc12:
@@ -2963,6 +2980,8 @@ static int max77759_remove(struct i2c_client *client)
 		device_remove_file(&client->dev, max77759_device_attrs[i]);
 	if (!IS_ERR_OR_NULL(chip->tcpci))
 		tcpci_unregister_port(chip->tcpci);
+	if (!IS_ERR_OR_NULL(chip->dp_regulator))
+		devm_regulator_put(chip->dp_regulator);
 	if (!IS_ERR_OR_NULL(chip->usb_psy))
 		power_supply_put(chip->usb_psy);
 	if (!IS_ERR_OR_NULL(chip->usb_psy_data))

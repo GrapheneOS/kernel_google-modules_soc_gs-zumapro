@@ -13,6 +13,7 @@
 #include <linux/usb/tcpm.h>
 #include <linux/gpio.h>
 #include <linux/gpio/driver.h>
+#include <linux/regulator/consumer.h>
 #include <linux/usb/role.h>
 #include <linux/usb/typec_mux.h>
 #include <tcpm/tcpci.h>
@@ -154,6 +155,9 @@ struct max77759_plat {
 	enum typec_orientation orientation;
 	/* Cache the number of lanes */
 	int lanes;
+	/* DisplayPort Regulator */
+	struct regulator *dp_regulator;
+	bool dp_regulator_enabled;
 
 	/* Reflects whether BC1.2 is still running */
 	bool bc12_running;
