@@ -506,6 +506,7 @@
 	};
 
 	drmdp_adma_pb: drmdp-adma-pb {
+		status = "disabled";
 		#sound-dai-cells = <0>;
 		compatible = "samsung,dp-dma";
 		id = <0>; /* 0: playback, 1: capture */
