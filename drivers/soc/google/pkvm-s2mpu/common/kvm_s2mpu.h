@@ -28,6 +28,7 @@
  * to avoid any confusion all names are prefixed with V9.
  */
 #define REG_NS_V9_CTRL_PROT_EN_PER_VID_SET	0x50
+#define REG_NS_V9_CTRL_PROT_EN_PER_VID_CLR	0x54
 #define REG_NS_V9_CTRL_ERR_RESP_T_PER_VID_SET	0x70
 #define REG_NS_V9_CFG_MPTW_ATTRIBUTE		0x10
 
@@ -139,8 +140,8 @@
 
 #define V9_READ_STLB_SET_MASK_TYPEA		GENMASK(7, 0)
 #define V9_READ_STLB_WAY_MASK_TYPEA		GENMASK(15, 8)
-#define V9_READ_STLB_SUBLINE_MASK_TYPEA		GENMASK(31, 20)
-#define V9_READ_STLB_STLBID_MASK_TYPEA		GENMASK(17, 16)
+#define V9_READ_STLB_SUBLINE_MASK_TYPEA		GENMASK(17, 16)
+#define V9_READ_STLB_STLBID_MASK_TYPEA		GENMASK(31, 20)
 #define V9_READ_STLB_MASK_TYPEA			(V9_READ_STLB_SET_MASK_TYPEA | \
 						 V9_READ_STLB_WAY_MASK_TYPEA | \
 						 V9_READ_STLB_SUBLINE_MASK_TYPEA | \
@@ -210,19 +211,6 @@
 						 V9_CTRL0_ENF_FLT_MODE_S1_NONSEC_MASK | \
 						 V9_CTRL0_FAULT_MODE_MASK)
 
-/*
- * S2MPU V9 specific values (some new and some different from old versions)
- * to avoid any confusion all names are prefixed with V9.
- */
-#define V9_L1ENTRY_ATTR_GRAN_MASK		BIT(3)
-#define V9_MPT_PROT_BITS			4
-#define V9_MPT_ACCESS_SHIFT			2
-
-/* V1,V2 variants. */
-#define MPT_ACCESS_SHIFT			0
-#define L1ENTRY_ATTR_GRAN_MASK			GENMASK(5, 4)
-#define MPT_PROT_BITS				2
-
 #define REG_NS_CTRL0				0x0
 #define REG_NS_CTRL1				0x4
 #define REG_NS_CFG				0x10
@@ -241,6 +229,9 @@
 #define REG_NS_FAULT_PA_LOW(vid)		(0x2004 + ((vid) * 0x20))
 #define REG_NS_FAULT_PA_HIGH(vid)		(0x2008 + ((vid) * 0x20))
 #define REG_NS_FAULT_INFO(vid)			(0x2010 + ((vid) * 0x20))
+#define REG_NS_FAULT_INFO1(vid)			(0x2014 + ((vid) * 0x20))
+#define REG_NS_FAULT_INFO2(vid)			(0x2018 + ((vid) * 0x20))
+
 #define REG_NS_READ_MPTC			0x3000
 #define REG_NS_READ_MPTC_TAG_PPN		0x3004
 #define REG_NS_READ_MPTC_TAG_OTHERS		0x3008
@@ -316,6 +307,8 @@
 #define FAULT_INFO_RW_BIT			BIT(20)
 #define FAULT_INFO_LEN_MASK			GENMASK(19, 16)
 #define FAULT_INFO_ID_MASK			GENMASK(15, 0)
+#define FAULT2_PMMU_ID_MASK			GENMASK(31, 24)
+#define FAULT2_STREAM_ID_MASK			GENMASK(23, 0)
 
 #define L1ENTRY_L2TABLE_ADDR_SHIFT		4
 #define L1ENTRY_L2TABLE_ADDR(pa)		((pa) >> L1ENTRY_L2TABLE_ADDR_SHIFT)
@@ -399,15 +392,6 @@ enum s2mpu_version {
 	S2MPU_VERSION_9 = 0x90000000,
 };
 
-static inline int smpt_order_from_version(enum s2mpu_version version)
-{
-	if (version == S2MPU_VERSION_9)
-		return SMPT_ORDER(V9_MPT_PROT_BITS);
-	else if ((version == S2MPU_VERSION_1) || (version == S2MPU_VERSION_2))
-		return SMPT_ORDER(MPT_PROT_BITS);
-	BUG();
-}
-
 enum mpt_prot {
 	MPT_PROT_NONE	= 0,
 	MPT_PROT_R	= BIT(0),
@@ -430,7 +414,48 @@ struct fmpt {
 
 struct mpt {
 	struct fmpt fmpt[NR_GIGABYTES];
-	enum s2mpu_version version;
 };
+
+/* Compile time configuration for S2MPU. */
+
+#define GRAN_BYTE(gran)			(((gran) << MPT_PROT_BITS) | (gran))
+#define GRAN_HWORD(gran)		((GRAN_BYTE(gran) << 8) | (GRAN_BYTE(gran)))
+#define GRAN_WORD(gran)			(((u32)(GRAN_HWORD(gran) << 16) | (GRAN_HWORD(gran))))
+#define GRAN_DWORD(gran)		((u64)((u64)GRAN_WORD(gran) << 32) | (u64)(GRAN_WORD(gran)))
+
+#if defined(S2MPU_V9) && defined(S2MPU_V1)
+#error "Both S2MPU defined at same time!"
+#endif
+
+#if defined(S2MPU_V9)
+#define S2MPU_VERSION				0x90000000
+#define L1ENTRY_ATTR_GRAN_MASK			BIT(3)
+#define MPT_PROT_BITS				4
+#define MPT_ACCESS_SHIFT			2
+#define S2MPU_NAME				"s2mpu-v9"
+#define PER_DRIVER_FN(x)			x##_v9
+static const u64 mpt_prot_doubleword[] = {
+	[MPT_PROT_NONE] = 0x0000000000000000 | GRAN_DWORD(SMPT_GRAN_ATTR),
+	[MPT_PROT_R]    = 0x4444444444444444 | GRAN_DWORD(SMPT_GRAN_ATTR),
+	[MPT_PROT_W]	= 0x8888888888888888 | GRAN_DWORD(SMPT_GRAN_ATTR),
+	[MPT_PROT_RW]   = 0xcccccccccccccccc | GRAN_DWORD(SMPT_GRAN_ATTR),
+};
+#elif defined(S2MPU_V1)
+/* V1,V2 variants, we use V1 to represent both. */
+#define S2MPU_VERSION				0x10000000
+#define MPT_ACCESS_SHIFT			0
+#define L1ENTRY_ATTR_GRAN_MASK			GENMASK(5, 4)
+#define MPT_PROT_BITS				2
+#define S2MPU_NAME				"s2mpu"
+#define PER_DRIVER_FN(x)			x##_v1
+static const u64 mpt_prot_doubleword[] = {
+	[MPT_PROT_NONE] = 0x0000000000000000,
+	[MPT_PROT_R]    = 0x5555555555555555,
+	[MPT_PROT_W]	= 0xaaaaaaaaaaaaaaaa,
+	[MPT_PROT_RW]   = 0xffffffffffffffff,
+};
+#else
+#error "Unknown S2MPU version"
+#endif
 
 #endif /* __ARM64_KVM_S2MPU_H__ */

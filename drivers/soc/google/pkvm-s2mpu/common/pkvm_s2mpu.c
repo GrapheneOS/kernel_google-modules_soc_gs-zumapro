@@ -9,35 +9,18 @@
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
-#include <linux/platform_device.h>
 
-#include <linux/io-64-nonatomic-hi-lo.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
+#include <linux/moduleparam.h>
 
 #include <linux/kvm_host.h>
 #include "kvm_s2mpu.h"
 #include <soc/google/pkvm-s2mpu.h>
 
-#define S2MPU_VERSION_9					0x90000000
-#define REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET	0x50
-
-#define S2MPU_NR_WAYS	4
-
-struct s2mpu_data {
-	struct device *dev;
-	void __iomem *base;
-	bool pkvm_registered;
-	bool always_on;
-};
-
-struct s2mpu_mptc_entry {
-	bool valid;
-	u32 vid;
-	u32 ppn;
-	u32 others;
-	u32 data;
-};
+/* Print caches in s2mpu faults. */
+static bool print_caches;
+module_param(print_caches, bool, 0);
 
 /* Declare EL2 module init function as it is needed by pkvm_load_el2_module. */
 int __kvm_nvhe_s2mpu_hyp_init(const struct pkvm_module_ops *ops);
@@ -46,7 +29,7 @@ static unsigned long token;
 
 /* Number of s2mpu devices. */
 static int nr_devs_total;
-static atomic_t nr_devs_registered = ATOMIC_INIT(0);
+static int nr_devs_registered;
 
 static struct platform_device *__of_get_phandle_pdev(struct device *parent,
 						     const char *prop, int index)
@@ -66,10 +49,16 @@ static struct platform_device *__of_get_phandle_pdev(struct device *parent,
 	return pdev;
 }
 
+static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
+{
+	return platform_get_drvdata(to_platform_device(dev));
+}
+
 int pkvm_s2mpu_of_link(struct device *parent)
 {
 	struct platform_device *pdev;
 	struct device_link *link;
+	struct s2mpu_data *data;
 	int i;
 
 	/* Check that all S2MPUs have been initialized. */
@@ -88,13 +77,22 @@ int pkvm_s2mpu_of_link(struct device *parent)
 
 		link = device_link_add(/*consumer=*/parent, /*supplier=*/&pdev->dev,
 				       DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_PM_RUNTIME);
+
+		/*
+		 * If device has an SysMMU, it has typeA STLB.
+		 * This relies on SysMMU nodes not being disabled so the at probe this function
+		 * would be called.
+		 */
+		data  = s2mpu_dev_data(&pdev->dev);
+		if (data && of_device_is_compatible(parent->of_node, "samsung,sysmmu-v9"))
+			data->has_sysmmu = true;
+
 		if (!link)
 			return -EINVAL;
 	}
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(pkvm_s2mpu_of_link);
 
 struct device *pkvm_s2mpu_of_parse(struct device *parent)
 {
@@ -106,139 +104,10 @@ struct device *pkvm_s2mpu_of_parse(struct device *parent)
 
 	return &pdev->dev;
 }
-EXPORT_SYMBOL_GPL(pkvm_s2mpu_of_parse);
-
-static const char *str_fault_direction(u32 fault_info)
-{
-	return (fault_info & FAULT_INFO_RW_BIT) ? "write" : "read";
-}
-
-static const char *str_fault_type(u32 fault_info)
-{
-	switch (FIELD_GET(FAULT_INFO_TYPE_MASK, fault_info)) {
-	case FAULT_INFO_TYPE_MPTW:
-		return "MPTW fault";
-	case FAULT_INFO_TYPE_AP:
-		return "access permission fault";
-	case FAULT_INFO_TYPE_CONTEXT:
-		return "context fault";
-	default:
-		return "unknown fault";
-	}
-}
-
-static const char *str_l1entry_gran(u32 l1attr)
-{
-	if (!(l1attr & L1ENTRY_ATTR_L2TABLE_EN))
-		return "1G";
-
-	switch (FIELD_GET(V9_L1ENTRY_ATTR_GRAN_MASK, l1attr)) {
-	case L1ENTRY_ATTR_GRAN_4K:
-		return "4K";
-	case L1ENTRY_ATTR_GRAN_64K:
-		return "64K";
-	default:
-		return "invalid";
-	}
-}
-
-static const char *str_l1entry_prot(u32 l1attr)
-{
-	if (l1attr & L1ENTRY_ATTR_L2TABLE_EN)
-		return "??";
-
-	switch (FIELD_GET(L1ENTRY_ATTR_PROT_MASK, l1attr)) {
-	case MPT_PROT_NONE:
-		return "0";
-	case MPT_PROT_R:
-		return "R";
-	case MPT_PROT_W:
-		return "W";
-	case MPT_PROT_RW:
-		return "RW";
-	default:
-		return "invalid";
-	}
-}
-
-static struct s2mpu_mptc_entry read_mptc(void __iomem *base, u32 set, u32 way)
-{
-	struct s2mpu_mptc_entry entry;
-
-	writel_relaxed(V9_READ_MPTC(set, way), base + REG_NS_V9_READ_MPTC);
-
-	entry.ppn = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_PPN),
-	entry.others = readl_relaxed(base + REG_NS_V9_READ_MPTC_TAG_OTHERS),
-	entry.data = readl_relaxed(base + REG_NS_V9_READ_MPTC_DATA),
-
-	entry.valid = FIELD_GET(V9_READ_MPTC_TAG_PPN_VALID_MASK, entry.ppn);
-	entry.vid = FIELD_GET(V9_READ_MPTC_TAG_OTHERS_VID_MASK, entry.others);
-	return entry;
-}
 
 static irqreturn_t s2mpu_irq_handler(int irq, void *ptr)
 {
-	struct s2mpu_data *data = ptr;
-	struct device *dev = data->dev;
-	unsigned int vid, gb;
-	u32 vid_bmap, fault_info, fmpt, smpt, nr_sets, set, way, invalid;
-	phys_addr_t fault_pa;
-	struct s2mpu_mptc_entry mptc;
-	irqreturn_t ret = IRQ_NONE;
-
-	while ((vid_bmap = readl_relaxed(data->base + REG_NS_FAULT_STATUS))) {
-		WARN_ON_ONCE(vid_bmap & (~ALL_VIDS_BITMAP));
-		vid = __ffs(vid_bmap);
-
-		fault_pa = hi_lo_readq_relaxed(data->base + REG_NS_FAULT_PA_HIGH_LOW(vid));
-		fault_info = readl_relaxed(data->base + REG_NS_FAULT_INFO(vid));
-		WARN_ON(FIELD_GET(FAULT_INFO_VID_MASK, fault_info) != vid);
-
-		dev_err(dev, "============== S2MPU FAULT DETECTED ==============\n");
-		dev_err(dev, "  PA=%pap, FAULT_INFO=0x%08x\n",
-			&fault_pa, fault_info);
-		dev_err(dev, "  DIRECTION: %s, TYPE: %s\n",
-			str_fault_direction(fault_info),
-			str_fault_type(fault_info));
-		dev_err(dev, "  VID=%u, REQ_LENGTH=%lu, REQ_AXI_ID=%lu\n",
-			vid,
-			FIELD_GET(FAULT_INFO_LEN_MASK, fault_info),
-			FIELD_GET(FAULT_INFO_ID_MASK, fault_info));
-
-		for_each_gb(gb) {
-			fmpt = readl_relaxed(data->base + REG_NS_L1ENTRY_ATTR(vid, gb));
-			smpt = readl_relaxed(data->base + REG_NS_L1ENTRY_L2TABLE_ADDR(vid, gb));
-			dev_err(dev, "  %uG: FMPT=%#x (%s, %s), SMPT=%#x\n",
-				gb, fmpt, str_l1entry_gran(fmpt),
-				str_l1entry_prot(fmpt), smpt);
-		}
-
-		dev_err(dev, "==================================================\n");
-
-		writel_relaxed(BIT(vid), data->base + REG_NS_INTERRUPT_CLEAR);
-		ret = IRQ_HANDLED;
-	}
-
-	dev_err(dev, "================== MPTC ENTRIES ==================\n");
-	nr_sets = FIELD_GET(V9_READ_MPTC_INFO_NUM_MPTC_SET,
-			    readl_relaxed(data->base + REG_NS_V9_MPTC_INFO));
-	for (invalid = 0, set = 0; set < nr_sets; set++) {
-		for (way = 0; way < S2MPU_NR_WAYS; way++) {
-			mptc = read_mptc(data->base, set, way);
-			if (!mptc.valid) {
-				invalid++;
-				continue;
-			}
-
-			dev_err(dev,
-				"  MPTC[set=%u, way=%u]={VID=%u, PPN=%#x, OTHERS=%#x, DATA=%#x}\n",
-				set, way, mptc.vid, mptc.ppn, mptc.others, mptc.data);
-		}
-	}
-	dev_err(dev, "  invalid entries: %u\n", invalid);
-	dev_err(dev, "==================================================\n");
-
-	return ret;
+	return s2mpu_fault_handler((struct s2mpu_data *)ptr, print_caches);
 }
 
 /*
@@ -269,31 +138,6 @@ static void s2mpu_probe_irq(struct platform_device *pdev, struct s2mpu_data *dat
 	}
 }
 
-static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
-{
-	return platform_get_drvdata(to_platform_device(dev));
-}
-
-/*
- * Configure Zuma S2MPU to a given set of protection bits across all GBs.
- * This is used during bring-up, until pKVM can be updated and take control.
- */
-static int pkvm_s2mpu_zuma_config(struct device *dev, enum mpt_prot prot)
-{
-	struct s2mpu_data *data = s2mpu_dev_data(dev);
-	unsigned int gb, vid;
-
-	for_each_gb_and_vid(gb, vid) {
-		writel_relaxed(L1ENTRY_ATTR_1G(prot),
-			       data->base + REG_NS_L1ENTRY_ATTR(vid, gb));
-	}
-	writel_relaxed(INVALIDATION_INVALIDATE,
-		       data->base + REG_NS_ALL_INVALIDATION);
-	writel_relaxed(ALL_VIDS_BITMAP,
-		       data->base + REG_NS_CTRL_PROTECTION_ENABLE_PER_VID_SET);
-	return 0;
-}
-
 int pkvm_s2mpu_suspend(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
@@ -304,9 +148,8 @@ int pkvm_s2mpu_suspend(struct device *dev)
 	if (data->pkvm_registered)
 		return pkvm_iommu_suspend(dev);
 
-	return pkvm_s2mpu_zuma_config(dev, MPT_PROT_NONE);
+	return 0;
 }
-EXPORT_SYMBOL_GPL(pkvm_s2mpu_suspend);
 
 int pkvm_s2mpu_resume(struct device *dev)
 {
@@ -315,9 +158,14 @@ int pkvm_s2mpu_resume(struct device *dev)
 	if (data->pkvm_registered)
 		return pkvm_iommu_resume(dev);
 
-	return pkvm_s2mpu_zuma_config(dev, MPT_PROT_RW);
+	/* Need to bypass S2MPU if pKVM is not there (ex: in userspace fastboot). */
+#ifdef S2MPU_V9
+	writel_relaxed(0xFF, data->base + REG_NS_V9_CTRL_PROT_EN_PER_VID_CLR);
+#else
+	writel_relaxed(0, data->base + REG_NS_CTRL0);
+#endif
+	return 0;
 }
-EXPORT_SYMBOL_GPL(pkvm_s2mpu_resume);
 
 static int s2mpu_late_suspend(struct device *dev)
 {
@@ -395,20 +243,13 @@ static int s2mpu_probe(struct platform_device *pdev)
 	if (!data->pkvm_registered)
 		dev_warn(dev, "pKVM disabled, control from kernel\n");
 	else {
-		nr_devs = atomic_inc_return(&nr_devs_registered);
+		nr_devs = nr_devs_registered++;
 		dev_info(dev, "registered with hypervisor [%d/%d]\n", nr_devs, nr_devs_total);
 	}
 
 	platform_set_drvdata(pdev, data);
 
-	if (data->pkvm_registered && nr_devs == nr_devs_total) {
-		ret = pkvm_iommu_finalize(0);
-		if (!ret)
-			pr_info("List of devices successfully finalized for pkvm s2mpu\n");
-		else
-			pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
-	}
-
+	data->has_sysmmu = false;
 	/*
 	 * Most S2MPUs are in an allow-all state at boot. Call the hypervisor
 	 * to initialize the S2MPU to a blocking state. This corresponds to
@@ -430,14 +271,14 @@ static const struct dev_pm_ops s2mpu_pm_ops = {
 };
 
 static const struct of_device_id s2mpu_of_match[] = {
-	{ .compatible = "google,s2mpu" },
+	{ .compatible = "google," S2MPU_NAME },
 	{},
 };
 
 static struct platform_driver s2mpu_driver = {
 	.probe = s2mpu_probe,
 	.driver = {
-		.name = "pkvm-s2mpu",
+		.name = "pkvm-" S2MPU_NAME,
 		.of_match_table = s2mpu_of_match,
 		.pm = &s2mpu_pm_ops,
 	},
@@ -460,14 +301,26 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 			return ret;
 		}
 
-		ret = pkvm_iommu_s2mpu_init(S2MPU_VERSION_9, token);
+		ret = pkvm_iommu_s2mpu_init(token);
 		if (ret) {
 			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
 			return ret;
 		}
 	}
 
-	return platform_driver_register(driver);
+	ret = platform_driver_probe(&s2mpu_driver, s2mpu_probe);
+
+	if (!is_protected_kvm_enabled())
+		return ret;
+
+	/* If one device is not probed it will not be controlled by the hypervisor. */
+	ret = pkvm_iommu_finalize(WARN_ON(nr_devs_total != nr_devs_registered) ? -ENXIO : 0);
+	if (!ret)
+		pr_info("List of devices successfully finalized for pkvm s2mpu\n");
+	else
+		pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
+
+	return ret;
 }
 
 module_driver(s2mpu_driver, s2mpu_driver_register, platform_driver_unregister);

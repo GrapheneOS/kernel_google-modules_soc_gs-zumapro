@@ -193,37 +193,37 @@
 					type = "active";
 				};
 				big_switch_on: big-switch-on {
-					temperature = <80000>; /* millicelsius */
+					temperature = <65000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				big_control_temp: big-control-temp {
-					temperature = <100000>; /* millicelsius */
+					temperature = <85000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				big_alert1: big-alert1 {
-					temperature = <104000>; /* millicelsius */
+					temperature = <88000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				big_alert2: big-alert2 {
-					temperature = <105000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <1000>; /* millicelsius */
 					type = "active";
 				};
 				big_alert3: big-alert3 {
-					temperature = <108000>; /* millicelsius */
+					temperature = <92000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				big_dfs: big-dfs {
-					temperature = <110000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				big_hot: big-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -248,37 +248,37 @@
 					type = "active";
 				};
 				mid_switch_on: mid-switch-on {
-					temperature = <80000>; /* millicelsius */
+					temperature = <65000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				mid_control_temp: mid-control-temp {
-					temperature = <100000>; /* millicelsius */
+					temperature = <85000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				mid_alert1: mid-alert1 {
-					temperature = <104000>; /* millicelsius */
+					temperature = <88000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				mid_alert2: mid-alert2 {
-					temperature = <105000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <1000>; /* millicelsius */
 					type = "active";
 				};
 				mid_alert3: mid-alert3 {
-					temperature = <108000>; /* millicelsius */
+					temperature = <92000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				mid_dfs: mid-dfs {
-					temperature = <110000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				mid_hot: mid-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -303,37 +303,37 @@
 					type = "active";
 				};
 				little_switch_on: little-switch-on {
-					temperature = <80000>; /* millicelsius */
+					temperature = <65000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				little_control_temp: little-control-temp {
-					temperature = <100000>; /* millicelsius */
+					temperature = <85000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				little_alert1: little-alert1 {
-					temperature = <104000>; /* millicelsius */
+					temperature = <88000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				little_alert2: little-alert2 {
-					temperature = <105000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <1000>; /* millicelsius */
 					type = "active";
 				};
 				little_alert3: little-alert3 {
-					temperature = <108000>; /* millicelsius */
+					temperature = <92000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				little_dfs: little-dfs {
-					temperature = <110000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				little_hot: little-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -358,37 +358,37 @@
 					type = "active";
 				};
 				gpu_switch_on: gpu-switch-on {
-					temperature = <80000>; /* millicelsius */
+					temperature = <65000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				gpu_control_temp: gpu-control-temp {
-					temperature = <100000>; /* millicelsius */
+					temperature = <85000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				gpu_alert1: gpu-alert1 {
-					temperature = <104000>; /* millicelsius */
+					temperature = <88000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				gpu_alert2: gpu-alert2 {
-					temperature = <105000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <1000>; /* millicelsius */
 					type = "active";
 				};
 				gpu_alert3: gpu-alert3 {
-					temperature = <108000>; /* millicelsius */
+					temperature = <92000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				gpu_dfs: gpu-dfs {
-					temperature = <110000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				gpu_hot: gpu-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -415,37 +415,37 @@
 					type = "active";
 				};
 				isp_alert1: isp-alert1 {
-					temperature = <80000>; /* millicelsius */
+					temperature = <70000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				isp_alert2: isp-alert2 {
-					temperature = <100000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				isp_alert3: isp-alert3 {
-					temperature = <104000>; /* millicelsius */
+					temperature = <94000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				isp_alert4: isp-alert4 {
-					temperature = <105000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
 					hysteresis = <1000>; /* millicelsius */
 					type = "active";
 				};
 				isp_alert5: isp-alert5 {
-					temperature = <108000>; /* millicelsius */
+					temperature = <98000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				isp_alert6: isp-alert6 {
-					temperature = <110000>; /* millicelsius */
+					temperature = <103000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				isp_hot: isp-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -464,37 +464,37 @@
 					type = "active";
 				};
 				tpu_switch_on: tpu-switch-on {
-					temperature = <80000>; /* millicelsius */
+					temperature = <65000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				tpu_control_temp: tpu-control-temp {
-					temperature = <100000>; /* millicelsius */
+					temperature = <85000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				tpu_alert1: tpu-alert1 {
-					temperature = <104000>; /* millicelsius */
+					temperature = <88000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				tpu_alert2: tpu-alert2 {
-					temperature = <105000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <1000>; /* millicelsius */
 					type = "active";
 				};
 				tpu_alert3: tpu-alert3 {
-					temperature = <108000>; /* millicelsius */
+					temperature = <92000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				tpu_dfs: tpu-dfs {
-					temperature = <110000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				tpu_hot: tpu-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};
@@ -519,37 +519,37 @@
 					type = "active";
 				};
 				aur_switch_on: aur-switch-on {
-					temperature = <80000>; /* millicelsius */
+					temperature = <65000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				aur_control_temp: aur-control-temp {
-					temperature = <100000>; /* millicelsius */
+					temperature = <85000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				aur_alert1: aur-alert1 {
-					temperature = <104000>; /* millicelsius */
+					temperature = <88000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				aur_alert2: aur-alert2 {
-					temperature = <105000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <1000>; /* millicelsius */
 					type = "active";
 				};
 				aur_alert3: aur-alert3 {
-					temperature = <108000>; /* millicelsius */
+					temperature = <92000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				aur_dfs: aur-dfs {
-					temperature = <110000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				aur_hot: aur-hot {
-					temperature = <120000>; /* millicelsius */
+					temperature = <115000>; /* millicelsius */
 					hysteresis = <3000>; /* millicelsius */
 					type = "hot";
 				};

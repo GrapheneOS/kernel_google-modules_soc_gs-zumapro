@@ -715,22 +715,23 @@ int google_init_tpu_ratio(struct bcl_device *data)
 	if (!data->sysreg_cpucl0)
 		return -ENOMEM;
 
-	if (!bcl_is_subsystem_on(subsystem_pmu[TPU]))
+	if (!bcl_is_subsystem_on(subsystem_pmu[SUBSYSTEM_TPU]))
 		return -EIO;
 
 	mutex_lock(&data->ratio_lock);
 	bcl_disable_power();
-	addr = data->base_mem[TPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
+	addr = data->base_mem[SUBSYSTEM_TPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
 	__raw_writel(data->tpu_con_heavy, addr);
-	addr = data->base_mem[TPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
+	addr = data->base_mem[SUBSYSTEM_TPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
 	__raw_writel(data->tpu_con_light, addr);
-	addr = data->base_mem[TPU] + CLKDIVSTEP;
+	addr = data->base_mem[SUBSYSTEM_TPU] + CLKDIVSTEP;
 	__raw_writel(data->tpu_clkdivstep, addr);
-	addr = data->base_mem[TPU] + VDROOP_FLT;
+	addr = data->base_mem[SUBSYSTEM_TPU] + VDROOP_FLT;
 	__raw_writel(data->tpu_vdroop_flt, addr);
-	addr = data->base_mem[TPU] + CLKOUT;
+	addr = data->base_mem[SUBSYSTEM_TPU] + CLKOUT;
 	__raw_writel(data->tpu_clk_out, addr);
-	data->tpu_clk_stats = __raw_readl(data->base_mem[TPU] + clk_stats_offset[TPU]);
+	data->tpu_clk_stats = __raw_readl(data->base_mem[SUBSYSTEM_TPU] +
+	                                  clk_stats_offset[SUBSYSTEM_TPU]);
 	bcl_enable_power();
 	mutex_unlock(&data->ratio_lock);
 
@@ -748,22 +749,23 @@ int google_init_gpu_ratio(struct bcl_device *data)
 	if (!data->sysreg_cpucl0)
 		return -ENOMEM;
 
-	if (!bcl_is_subsystem_on(subsystem_pmu[GPU]))
+	if (!bcl_is_subsystem_on(subsystem_pmu[SUBSYSTEM_GPU]))
 		return -EIO;
 
 	mutex_lock(&data->ratio_lock);
 	bcl_disable_power();
-	addr = data->base_mem[GPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
+	addr = data->base_mem[SUBSYSTEM_GPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
 	__raw_writel(data->gpu_con_heavy, addr);
-	addr = data->base_mem[GPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
+	addr = data->base_mem[SUBSYSTEM_GPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
 	__raw_writel(data->gpu_con_light, addr);
-	addr = data->base_mem[GPU] + CLKDIVSTEP;
+	addr = data->base_mem[SUBSYSTEM_GPU] + CLKDIVSTEP;
 	__raw_writel(data->gpu_clkdivstep, addr);
-	addr = data->base_mem[GPU] + VDROOP_FLT;
+	addr = data->base_mem[SUBSYSTEM_GPU] + VDROOP_FLT;
 	__raw_writel(data->gpu_vdroop_flt, addr);
-	addr = data->base_mem[GPU] + CLKOUT;
+	addr = data->base_mem[SUBSYSTEM_GPU] + CLKOUT;
 	__raw_writel(data->gpu_clk_out, addr);
-	data->gpu_clk_stats = __raw_readl(data->base_mem[GPU] + clk_stats_offset[GPU]);
+	data->gpu_clk_stats = __raw_readl(data->base_mem[SUBSYSTEM_GPU] +
+	                                  clk_stats_offset[SUBSYSTEM_GPU]);
 	bcl_enable_power();
 	mutex_unlock(&data->ratio_lock);
 
@@ -781,16 +783,17 @@ int google_init_aur_ratio(struct bcl_device *data)
 	if (!data->sysreg_cpucl0)
 		return -ENOMEM;
 
-	if (!bcl_is_subsystem_on(subsystem_pmu[AUR]))
+	if (!bcl_is_subsystem_on(subsystem_pmu[SUBSYSTEM_AUR]))
 		return -EIO;
 
 	mutex_lock(&data->ratio_lock);
 	bcl_disable_power();
-	addr = data->base_mem[AUR] + CLKDIVSTEP;
+	addr = data->base_mem[SUBSYSTEM_AUR] + CLKDIVSTEP;
 	__raw_writel(data->aur_clkdivstep, addr);
-	addr = data->base_mem[AUR] + CLKOUT;
+	addr = data->base_mem[SUBSYSTEM_AUR] + CLKOUT;
 	__raw_writel(data->aur_clk_out, addr);
-	data->aur_clk_stats = __raw_readl(data->base_mem[AUR] + clk_stats_offset[AUR]);
+	data->aur_clk_stats = __raw_readl(data->base_mem[SUBSYSTEM_AUR] +
+					  clk_stats_offset[SUBSYSTEM_AUR]);
 	bcl_enable_power();
 	mutex_unlock(&data->ratio_lock);
 
@@ -979,7 +982,7 @@ static int get_cpu0clk(void *data, u64 *val)
 	unsigned int value;
 
 	bcl_disable_power();
-	addr = bcl_dev->base_mem[CPU0] + CLKOUT;
+	addr = bcl_dev->base_mem[SUBSYSTEM_CPU0] + CLKOUT;
 	*val = __raw_readl(addr);
 	bcl_enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
@@ -992,7 +995,7 @@ static int set_cpu0clk(void *data, u64 val)
 	void __iomem *addr;
 
 	bcl_disable_power();
-	addr = bcl_dev->base_mem[CPU0] + CLKOUT;
+	addr = bcl_dev->base_mem[SUBSYSTEM_CPU0] + CLKOUT;
 	__raw_writel(val, addr);
 	bcl_enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x3001 : 0);
@@ -1006,7 +1009,7 @@ static int get_cpu1clk(void *data, u64 *val)
 	unsigned int value;
 
 	bcl_disable_power();
-	addr = bcl_dev->base_mem[CPU1] + CLKOUT;
+	addr = bcl_dev->base_mem[SUBSYSTEM_CPU1] + CLKOUT;
 	*val = __raw_readl(addr);
 	bcl_enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
@@ -1019,7 +1022,7 @@ static int set_cpu1clk(void *data, u64 val)
 	void __iomem *addr;
 
 	bcl_disable_power();
-	addr = bcl_dev->base_mem[CPU1] + CLKOUT;
+	addr = bcl_dev->base_mem[SUBSYSTEM_CPU1] + CLKOUT;
 	__raw_writel(val, addr);
 	bcl_enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1101 : 0);
@@ -1033,7 +1036,7 @@ static int get_cpu2clk(void *data, u64 *val)
 	unsigned int value;
 
 	bcl_disable_power();
-	addr = bcl_dev->base_mem[CPU2] + CLKOUT;
+	addr = bcl_dev->base_mem[SUBSYSTEM_CPU2] + CLKOUT;
 	*val = __raw_readl(addr);
 	bcl_enable_power();
 	exynos_pmu_read(PMU_CLK_OUT, &value);
@@ -1046,7 +1049,7 @@ static int set_cpu2clk(void *data, u64 val)
 	void __iomem *addr;
 
 	bcl_disable_power();
-	addr = bcl_dev->base_mem[CPU2] + CLKOUT;
+	addr = bcl_dev->base_mem[SUBSYSTEM_CPU2] + CLKOUT;
 	__raw_writel(val, addr);
 	bcl_enable_power();
 	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1201 : 0);
@@ -1904,33 +1907,33 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 	if (!bcl_dev)
 		return -EIO;
 
-	bcl_dev->base_mem[CPU0] = devm_ioremap(bcl_dev->device, CPUCL0_BASE, SZ_8K);
-	if (!bcl_dev->base_mem[CPU0]) {
+	bcl_dev->base_mem[SUBSYSTEM_CPU0] = devm_ioremap(bcl_dev->device, CPUCL0_BASE, SZ_8K);
+	if (!bcl_dev->base_mem[SUBSYSTEM_CPU0]) {
 		dev_err(bcl_dev->device, "cpu0_mem ioremap failed\n");
 		return -EIO;
 	}
-	bcl_dev->base_mem[CPU1] = devm_ioremap(bcl_dev->device, CPUCL1_BASE, SZ_8K);
-	if (!bcl_dev->base_mem[CPU1]) {
+	bcl_dev->base_mem[SUBSYSTEM_CPU1] = devm_ioremap(bcl_dev->device, CPUCL1_BASE, SZ_8K);
+	if (!bcl_dev->base_mem[SUBSYSTEM_CPU1]) {
 		dev_err(bcl_dev->device, "cpu1_mem ioremap failed\n");
 		return -EIO;
 	}
-	bcl_dev->base_mem[CPU2] = devm_ioremap(bcl_dev->device, CPUCL2_BASE, SZ_8K);
-	if (!bcl_dev->base_mem[CPU2]) {
+	bcl_dev->base_mem[SUBSYSTEM_CPU2] = devm_ioremap(bcl_dev->device, CPUCL2_BASE, SZ_8K);
+	if (!bcl_dev->base_mem[SUBSYSTEM_CPU2]) {
 		dev_err(bcl_dev->device, "cpu2_mem ioremap failed\n");
 		return -EIO;
 	}
-	bcl_dev->base_mem[TPU] = devm_ioremap(bcl_dev->device, TPU_BASE, SZ_8K);
-	if (!bcl_dev->base_mem[TPU]) {
+	bcl_dev->base_mem[SUBSYSTEM_TPU] = devm_ioremap(bcl_dev->device, TPU_BASE, SZ_8K);
+	if (!bcl_dev->base_mem[SUBSYSTEM_TPU]) {
 		dev_err(bcl_dev->device, "tpu_mem ioremap failed\n");
 		return -EIO;
 	}
-	bcl_dev->base_mem[GPU] = devm_ioremap(bcl_dev->device, G3D_BASE, SZ_8K);
-	if (!bcl_dev->base_mem[GPU]) {
+	bcl_dev->base_mem[SUBSYSTEM_GPU] = devm_ioremap(bcl_dev->device, G3D_BASE, SZ_8K);
+	if (!bcl_dev->base_mem[SUBSYSTEM_GPU]) {
 		dev_err(bcl_dev->device, "gpu_mem ioremap failed\n");
 		return -EIO;
 	}
-	bcl_dev->base_mem[AUR] = devm_ioremap(bcl_dev->device, AUR_BASE, SZ_8K);
-	if (!bcl_dev->base_mem[AUR]) {
+	bcl_dev->base_mem[SUBSYSTEM_AUR] = devm_ioremap(bcl_dev->device, AUR_BASE, SZ_8K);
+	if (!bcl_dev->base_mem[SUBSYSTEM_AUR]) {
 		dev_err(bcl_dev->device, "aur_mem ioremap failed\n");
 		return -EIO;
 	}
@@ -1953,38 +1956,38 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 	mutex_init(&bcl_dev->ratio_lock);
 	google_bcl_enable_vdroop_irq(bcl_dev);
 
-	bcl_dev->base_add_mem[CPU0] = devm_ioremap(bcl_dev->device, ADD_CPUCL0, SZ_128);
-	if (!bcl_dev->base_add_mem[CPU0]) {
+	bcl_dev->base_add_mem[SUBSYSTEM_CPU0] = devm_ioremap(bcl_dev->device, ADD_CPUCL0, SZ_128);
+	if (!bcl_dev->base_add_mem[SUBSYSTEM_CPU0]) {
 		dev_err(bcl_dev->device, "cpu0_add_mem ioremap failed\n");
 		return -EIO;
 	}
 
-	bcl_dev->base_add_mem[CPU1] = devm_ioremap(bcl_dev->device, ADD_CPUCL1, SZ_128);
-	if (!bcl_dev->base_add_mem[CPU1]) {
+	bcl_dev->base_add_mem[SUBSYSTEM_CPU1] = devm_ioremap(bcl_dev->device, ADD_CPUCL1, SZ_128);
+	if (!bcl_dev->base_add_mem[SUBSYSTEM_CPU1]) {
 		dev_err(bcl_dev->device, "cpu1_add_mem ioremap failed\n");
 		return -EIO;
 	}
 
-	bcl_dev->base_add_mem[CPU2] = devm_ioremap(bcl_dev->device, ADD_CPUCL2, SZ_128);
-	if (!bcl_dev->base_add_mem[CPU2]) {
+	bcl_dev->base_add_mem[SUBSYSTEM_CPU2] = devm_ioremap(bcl_dev->device, ADD_CPUCL2, SZ_128);
+	if (!bcl_dev->base_add_mem[SUBSYSTEM_CPU2]) {
 		dev_err(bcl_dev->device, "cpu2_add_mem ioremap failed\n");
 		return -EIO;
 	}
 
-	bcl_dev->base_add_mem[TPU] = devm_ioremap(bcl_dev->device, ADD_TPU, SZ_128);
-	if (!bcl_dev->base_add_mem[TPU]) {
+	bcl_dev->base_add_mem[SUBSYSTEM_TPU] = devm_ioremap(bcl_dev->device, ADD_TPU, SZ_128);
+	if (!bcl_dev->base_add_mem[SUBSYSTEM_TPU]) {
 		dev_err(bcl_dev->device, "tpu_add_mem ioremap failed\n");
 		return -EIO;
 	}
 
-	bcl_dev->base_add_mem[GPU] = devm_ioremap(bcl_dev->device, ADD_G3D, SZ_128);
-	if (!bcl_dev->base_add_mem[GPU]) {
+	bcl_dev->base_add_mem[SUBSYSTEM_GPU] = devm_ioremap(bcl_dev->device, ADD_G3D, SZ_128);
+	if (!bcl_dev->base_add_mem[SUBSYSTEM_GPU]) {
 		dev_err(bcl_dev->device, "gpu_add_mem ioremap failed\n");
 		return -EIO;
 	}
 
-	bcl_dev->base_add_mem[AUR] = devm_ioremap(bcl_dev->device, ADD_AUR, SZ_128);
-	if (!bcl_dev->base_add_mem[AUR]) {
+	bcl_dev->base_add_mem[SUBSYSTEM_AUR] = devm_ioremap(bcl_dev->device, ADD_AUR, SZ_128);
+	if (!bcl_dev->base_add_mem[SUBSYSTEM_AUR]) {
 		dev_err(bcl_dev->device, "aur_add_mem ioremap failed\n");
 		return -EIO;
 	}
@@ -2106,11 +2109,11 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 	}
 
 	bcl_disable_power();
-	if (google_bcl_init_clk_div(bcl_dev, CPU2, bcl_dev->cpu2_clkdivstep) != 0)
+	if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU2, bcl_dev->cpu2_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU2 Address is NULL\n");
-	if (google_bcl_init_clk_div(bcl_dev, CPU1, bcl_dev->cpu1_clkdivstep) != 0)
+	if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU1, bcl_dev->cpu1_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU1 Address is NULL\n");
-	if (google_bcl_init_clk_div(bcl_dev, CPU0, bcl_dev->cpu0_clkdivstep) != 0)
+	if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU0, bcl_dev->cpu0_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU0 Address is NULL\n");
 	bcl_enable_power();
 }

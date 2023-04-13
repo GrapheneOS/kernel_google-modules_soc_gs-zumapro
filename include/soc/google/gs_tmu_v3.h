@@ -9,6 +9,7 @@
 #ifndef _GS_TMU_V3_H
 #define _GS_TMU_V3_H
 #include <linux/kthread.h>
+#include <linux/thermal.h>
 #include <soc/google/exynos_pm_qos.h>
 #include <soc/google/exynos-cpuhp.h>
 #include <soc/google/thermal_metrics.h>

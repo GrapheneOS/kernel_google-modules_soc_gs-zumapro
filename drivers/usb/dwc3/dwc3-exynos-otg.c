@@ -433,12 +433,13 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		exynos->need_dr_role = 0;
 		mutex_unlock(&dotg->lock);
 
-		ret = usb_gadget_activate(dwc->gadget);
-		if (ret < 0)
-			dev_err(dev, "USB gadget activate failed with %d\n", ret);
-
 		dwc3_otg_phy_tune(fsm);
 		dwc3_exynos_core_init(dwc, exynos);
+
+		/* connect gadget */
+		usb_udc_vbus_handler(dwc->gadget, true);
+
+		exynos->gadget_state = true;
 		dwc3_otg_set_peripheral_mode(dotg);
 
 		/*
@@ -471,9 +472,8 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		dev_dbg(dev, "%s, evt compl wait cnt = %d\n",
 			 __func__, wait_counter);
 
-		ret = usb_gadget_deactivate(dwc->gadget);
-		if (ret < 0)
-			dev_err(dev, "USB gadget deactivate failed with %d\n", ret);
+		/* disconnect gadget */
+		usb_udc_vbus_handler(dwc->gadget, false);
 
 		if (exynos->config.is_not_vbus_pad && exynos_usbdrd_get_ldo_status() &&
 				!dotg->in_shutdown)
@@ -482,9 +482,14 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		if (exynos->extra_delay)
 			msleep(100);
 
+		if (!dwc3_otg_check_usb_activity(exynos))
+			dev_err(dev, "too long to suspend after cable plug-out\n");
+
 		mutex_lock(&dotg->lock);
 		pm_runtime_put_sync_suspend(dev);
 		mutex_unlock(&dotg->lock);
+
+		exynos->gadget_state = false;
 
 		__pm_relax(dotg->wakelock);
 	}
@@ -782,6 +787,21 @@ bool dwc3_otg_check_usb_suspend(struct dwc3_exynos *exynos)
 	return wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT;
 }
 
+bool dwc3_otg_check_usb_activity(struct dwc3_exynos *exynos)
+{
+	int wait_counter = 0;
+
+	do {
+		if ((atomic_read(&exynos->dwc->dev->power.usage_count)) < 2)
+			break;
+
+		wait_counter++;
+		msleep(20);
+	} while (wait_counter < DWC3_EXYNOS_DISCONNECT_COUNT);
+
+	return wait_counter < DWC3_EXYNOS_DISCONNECT_COUNT;
+}
+
 static int dwc3_otg_reboot_notify(struct notifier_block *nb, unsigned long event, void *buf)
 {
 	struct dwc3_exynos *exynos;
@@ -932,14 +952,14 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		dotg->usb_charged = true;
 		if (dotg->dwc->speed >= DWC3_DSTS_SUPERSPEED) {
 			if (dotg->pm_qos_int_usb3_val) {
-				dev_info(dotg->dwc->dev, "pm_qos set value = %d\n",
+				dev_dbg(dotg->dwc->dev, "pm_qos set value = %d\n",
 					dotg->pm_qos_int_usb3_val);
 				exynos_pm_qos_update_request(&dotg->pm_qos_int_req,
 							     dotg->pm_qos_int_usb3_val);
 			}
 		} else {
 			if (dotg->pm_qos_int_usb2_val) {
-				dev_info(dotg->dwc->dev, "pm_qos set value = %d\n",
+				dev_dbg(dotg->dwc->dev, "pm_qos set value = %d\n",
 					dotg->pm_qos_int_usb2_val);
 				exynos_pm_qos_update_request(&dotg->pm_qos_int_req,
 							     dotg->pm_qos_int_usb2_val);
@@ -947,7 +967,7 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		}
 	} else if (dotg->dwc->gadget->state != USB_STATE_CONFIGURED && dotg->usb_charged) {
 		dotg->usb_charged = false;
-		dev_info(dotg->dwc->dev, "clear pm_qos value\n");
+		dev_dbg(dotg->dwc->dev, "clear pm_qos value\n");
 		if (dotg->pm_qos_int_usb2_val || dotg->pm_qos_int_usb3_val)
 			exynos_pm_qos_update_request(&dotg->pm_qos_int_req, 0);
 	}

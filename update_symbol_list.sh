@@ -4,6 +4,10 @@
 # Copyright (C) Google LLC, 2022
 # Author: Will McVicker (willmcvicker@google.com)
 
+GKI_REMOTE="aosp"
+GKI_BRANCH="android14-5.15"
+GKI_STAGING_REMOTE="partner-common"
+GKI_STAGING_BRANCH="android14-5.15-pixel-staging"
 TARGET=
 FOR_AOSP_PUSH_BRANCH="update_symbol_list-delete-after-push"
 CONTINUE_AFTER_REBASE=0
@@ -84,7 +88,7 @@ if [[ -z "${TARGET}" ]] || [[ ! -d "private/devices/google/${TARGET}" ]]; then
   usage 1
 fi
 
-BASE_KERNEL=$(bazel query 'labels(srcs, //private/devices/google/${TARGET}:zuma_${TARGET})' 2>/dev/null | grep kernel_aarch64_sources)
+BASE_KERNEL=$(tools/bazel query labels\(srcs, //private/devices/google/${TARGET}:zuma_${TARGET}\) 2>/dev/null | grep kernel_aarch64_sources)
 if [[ "${BASE_KERNEL}" =~ aosp-staging ]]; then
   KERNEL_DIR="aosp-staging/"
 else
@@ -121,14 +125,14 @@ function verify_aosp_tree {
 
 function print_final_message {
   echo "========================================================"
-  if ! git -C aosp diff --quiet aosp/android14-5.15..HEAD; then
+  if ! git -C aosp diff --quiet ${GKI_REMOTE}/${GKI_BRANCH}..HEAD; then
     echo " A symbol list commit in aosp/ was created for you."
     echo
     echo " Please verify your commit(s) before pushing. Here are the steps to perform:"
     echo
     echo "   cd aosp"
     echo "   git log --oneline ${FOR_AOSP_PUSH_BRANCH}"
-    echo "   git push aosp ${FOR_AOSP_PUSH_BRANCH:-HEAD}:refs/for/android14-5.15"
+    echo "   git push ${GKI_REMOTE} ${FOR_AOSP_PUSH_BRANCH:-HEAD}:refs/for/${GKI_BRANCH}"
     echo
     if [ -n "${FOR_AOSP_PUSH_BRANCH}" ]; then
       echo " After pushing your changes to aosp/, you can delete the temporary"
@@ -157,7 +161,7 @@ function apply_to_aosp_symbol_list {
 
   # Only apply the new symbol additions. This makes sure that we don't copy
   # over any symbols that are only found in the aosp-staging branch.
-  git -C $1 show | grep "^+  " >> ${TMP_LIST}
+  git -C $1 diff ${GKI_STAGING_REMOTE}/${GKI_STAGING_BRANCH}..HEAD | grep "^+  " >> ${TMP_LIST}
 
   # Remove leading plus signs from the `git show`
   sed -i 's:^+  \(.\+\):  \1:g' ${TMP_LIST}
@@ -218,12 +222,12 @@ function commit_the_symbol_list {
 function update_aosp_to_tot {
   local pixel_symbol_list="android/abi_gki_aarch64_pixel"
 
-  # Rebase to aosp/android14-5.15 ToT before copying over the symbol list
+  # Rebase to ${GKI_REMOTE}/${GKI_BRANCH} ToT before copying over the symbol list
   pushd aosp/ >/dev/null
     if [ "${CONTINUE_AFTER_REBASE}" = "0" ]; then
       git checkout --quiet -b ${FOR_AOSP_PUSH_BRANCH}
     fi
-    git fetch --quiet aosp android14-5.15 && git rebase --quiet FETCH_HEAD
+    git fetch --quiet ${GKI_REMOTE} ${GKI_BRANCH} && git rebase --quiet FETCH_HEAD
     err=$?
     if [ "${err}" != "0" ]; then
       echo "ERROR: Failed to rebase your aosp/ change(s) to the AOSP ToT." >&2
@@ -254,7 +258,7 @@ function update_aosp_to_tot {
     # Note: we are NOT copying over the aosp-staging/ symbol list to the aosp/
     # symbol list in order to avoid pulling in symbols that only exist on the
     # aosp-staging branch.
-    git -C aosp show --quiet aosp/android14-5.15:"${pixel_symbol_list}" \
+    git -C aosp show --quiet ${GKI_REMOTE}/${GKI_BRANCH}:"${pixel_symbol_list}" \
       > aosp/"${pixel_symbol_list}"
     apply_to_aosp_symbol_list ${KERNEL_DIR} "aosp/${pixel_symbol_list}"
 
@@ -269,7 +273,7 @@ verify_aosp_tree
 
 if [ "${CONTINUE_AFTER_REBASE}" = "0" ]; then
   # Update the symbol list now
-  bazel run --config=${TARGET} --config=fast --make_jobs=150 --jobs=150 //private/devices/google/${TARGET}:zuma_${TARGET}_abi_update_symbol_list
+  tools/bazel run --config=${TARGET} --config=fast //private/devices/google/${TARGET}:zuma_${TARGET}_abi_update_symbol_list
   exit_if_error $? "Failed to update the ${TARGET} symbol list"
 
   if [ -z "${BUG}" ]; then

@@ -108,8 +108,7 @@
 		#size-cells = <1>;
 		ranges;
 		status = "okay";
-		/* TODO - waiting power domain SW is ready */
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		samsung,sysreg-hsi0 = <&sysreg_hsi0>;
 
 		interrupts = <GIC_SPI IRQ_USB32DRD_GIC_0_HSI0 IRQ_TYPE_LEVEL_HIGH>;
@@ -177,7 +176,7 @@
 		clocks = <&clock MUX_HSI0_USB20_REF>, <&clock GATE_USB32DRD_LINK>;
 		clock-names = "phy_ref", "aclk";
 		samsung,pmu-syscon = <&pmu_system_controller>;
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		pmu_mask = <0x0>;
 		pmu_offset = <0x3EB0>;
 		pmu_offset_dp = <0x3EB4>;
@@ -225,11 +224,6 @@
 		//hs_tune_param = <&usb_hs_tune>;
 		ss_tune_param = <&usb_ss_tune>;
 		//extcon = <&max77759tcpc>;
-
-		//vdd_hsi-supply = <&m_ldo7_reg>;
-		//vdd085-supply = <&m_ldo8_reg>;
-		//vdd18-supply = <&m_ldo9_reg>;
-		//vdd30-supply = <&m_ldo10_reg>;
 
 		#phy-cells = <1>;
 		ranges;

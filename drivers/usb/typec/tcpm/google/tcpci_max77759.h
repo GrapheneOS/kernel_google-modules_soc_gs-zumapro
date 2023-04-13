@@ -7,6 +7,7 @@
 #ifndef __TCPCI_MAX77759_H
 #define __TCPCI_MAX77759_H
 
+#include <linux/alarmtimer.h>
 #include <linux/interrupt.h>
 #include <linux/kthread.h>
 #include <linux/usb/tcpm.h>
@@ -14,13 +15,16 @@
 #include <linux/gpio/driver.h>
 #include <linux/usb/role.h>
 #include <linux/usb/typec_mux.h>
+#include <tcpm/tcpci.h>
 
 #include "usb_psy.h"
 
 struct gvotable_election;
 struct logbuffer;
 struct max77759_contaminant;
+struct max77759_compliance_warnings;
 struct tcpci_data;
+struct max77759_io_error;
 
 struct max77759_plat {
 	struct tcpci_data data;
@@ -77,6 +81,7 @@ struct max77759_plat {
 	unsigned int limit_sink_current;
 	/* Indicate that the Vbus OVP is restricted to quick ramp-up time for incoming voltage. */
 	bool quick_ramp_vbus_ovp;
+	int reset_ovp_retry;
 	/* Set true to vote "limit_accessory_current" on USB ICL */
 	bool limit_accessory_enable;
 	/* uA */
@@ -105,6 +110,17 @@ struct max77759_plat {
 	int contaminant_detection;
 	/* Userspace status */
 	bool contaminant_detection_userspace;
+	/* Consecutive floating cable instances */
+	unsigned int floating_cable_or_sink_detected;
+	/* Timer to re-enable auto ultra lower mode for contaminant detection */
+	struct alarm reenable_auto_ultra_low_power_mode_alarm;
+	/* Bottom half for alarm */
+	struct kthread_work reenable_auto_ultra_low_power_mode_work;
+	/*
+	 * Set in debounce path from TCPM when contaminant is detected.
+	 * Cleared after exiting dry detection. Needed to move TCPM back into TOGGLING state.
+	 */
+	bool check_contaminant;
 
 	/* Protects contaminant_detection variable and role_control */
 	struct mutex rc_lock;
@@ -126,6 +142,7 @@ struct max77759_plat {
 	struct kthread_delayed_work enable_vbus_work;
 	struct kthread_delayed_work vsafe0v_work;
 	struct kthread_delayed_work reset_ovp_work;
+	struct kthread_delayed_work check_missing_rp_work;
 
 	/* Notifier for data role */
 	struct usb_role_switch *usb_sw;
@@ -140,6 +157,21 @@ struct max77759_plat {
 
 	/* Reflects whether BC1.2 is still running */
 	bool bc12_running;
+
+	/* To handle io error - Last cached IRQ status*/
+	u16 irq_status;
+	struct kthread_delayed_work max77759_io_error_work;
+	/* Hold before calling _max77759_irq */
+	struct mutex irq_status_lock;
+
+	/* non compliant reasons */
+	struct max77759_compliance_warnings *compliance_warnings;
+
+	/*
+	 * When set missing Rp detection has a longer delay to overcome
+	 * additional delay during boot.
+	 */
+	bool first_rp_missing_timeout;
 
 	/* GPIO state for SBU pin pull up/down */
 	int current_sbu_state;
@@ -168,6 +200,9 @@ void register_tcpc(struct max77759_usb *usb, struct max77759_plat *chip);
 #define MAXQ_DETECT_TYPE_CC_AND_SBU	0x10
 #define MAXQ_DETECT_TYPE_SBU_ONLY	0x30
 
+int maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1_raw, u8 sbu2_raw,
+			   u8 cc1_rd, u8 cc2_rd, u8 type, u8 cc_adc_skipped,
+			   u8 *response, u8 length);
 int __attribute__((weak)) maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1_raw, u8 sbu2_raw,
 						 u8 cc1_rd, u8 cc2_rd, u8 type, u8 cc_adc_skipped,
 						 u8 *response, u8 length)
@@ -176,10 +211,13 @@ int __attribute__((weak)) maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1
 }
 
 struct max77759_contaminant *max77759_contaminant_init(struct max77759_plat *plat, bool enable);
-bool process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path);
+int process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path,
+			      bool tcpm_toggling, bool *cc_status_handled, bool *port_clean);
 int enable_contaminant_detection(struct max77759_plat *chip, bool maxq);
-void disable_contaminant_detection(struct max77759_plat *chip);
+int disable_contaminant_detection(struct max77759_plat *chip);
 bool is_contaminant_detected(struct max77759_plat *chip);
+bool is_floating_cable_or_sink_detected(struct max77759_plat *chip);
+void disable_auto_ultra_low_power_mode(struct max77759_plat *chip, bool disable);
 
 #define VBUS_VOLTAGE_MASK		0x3ff
 #define VBUS_VOLTAGE_LSB_MV		25
@@ -195,4 +233,22 @@ enum tcpm_psy_online_states {
 void enable_data_path_locked(struct max77759_plat *chip);
 void data_alt_path_active(struct max77759_plat *chip, bool active);
 void register_data_active_callback(void (*callback)(void *data_active_payload), void *data);
+
+#define COMPLIANCE_WARNING_OTHER 0
+#define COMPLIANCE_WARNING_DEBUG_ACCESSORY 1
+#define COMPLIANCE_WARNING_BC12 2
+#define COMPLIANCE_WARNING_MISSING_RP 3
+
+struct max77759_compliance_warnings {
+	struct max77759_plat *chip;
+	bool other;
+	bool debug_accessory;
+	bool bc12;
+	bool missing_rp;
+};
+
+ssize_t compliance_warnings_to_buffer(struct max77759_compliance_warnings *compliance_warnings,
+				      char *buf);
+void update_compliance_warnings(struct max77759_plat *chip, int warning, bool value);
+
 #endif /* __TCPCI_MAX77759_H */
