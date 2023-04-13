@@ -192,6 +192,9 @@ typedef enum {
 #define EXT_METER_CHANNEL_EN_MASK (0x7 << EXT_METER_CHANNEL_EN_OFFSET)
 #define EXT_SAMP_RATE_MASK (0x7 << 0)
 
+/* S2MPG1415_METER_CTRL5 */
+#define SOFT_RST_MASK BIT(6)
+
 #define _IQX(_pow, _type, _val) ((_type)((_val) * (1 << (_pow))))
 #define _IQX_to_int(_pow, _iqval) ((_iqval) >> (_pow))
 // Note: powx > powy
