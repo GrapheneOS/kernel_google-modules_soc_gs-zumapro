@@ -44,7 +44,7 @@ enum pi_param {
 
 #define STEPWISE_GAIN_MIN 0
 #define STEPWISE_GAIN_MAX 31
-#define ACPM_GOV_TIMER_INTERVAL_MS 50
+#define ACPM_GOV_TIMER_INTERVAL_MS 25
 #define INTEGRAL_THRESH_MIN 0
 #define INTEGRAL_THRESH_MAX 255
 struct acpm_gov_params_st {
