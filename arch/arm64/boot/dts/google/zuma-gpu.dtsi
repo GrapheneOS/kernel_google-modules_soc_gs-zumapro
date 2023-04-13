@@ -113,5 +113,8 @@
 
 		/* S2MPU */
 		s2mpus = <&s2mpu_s0_g3d>;
+
+		/* Features mask */
+		gpu_features_mask = <0 4>;
 	};
 };
