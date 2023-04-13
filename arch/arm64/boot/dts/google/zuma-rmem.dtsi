@@ -69,11 +69,6 @@
 			no-map;
 		};
 
-		tpu_fw_ctx_reserved: tpu_ctx@0x98000000 {
-			reg = <0x0 0x98000000 0x03600000>;
-			no-map;
-		};
-
 		abl_reserved: abl@f8800000 {
 			reg = <0x0 0xf8800000 0x02000000>;
 			no-map;
