@@ -1036,14 +1036,14 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		dotg->usb_charged = true;
 		if (dotg->dwc->speed >= DWC3_DSTS_SUPERSPEED) {
 			if (dotg->pm_qos_int_usb3_val) {
-				dev_info(dotg->dwc->dev, "pm_qos set value = %d\n",
+				dev_dbg(dotg->dwc->dev, "pm_qos set value = %d\n",
 					dotg->pm_qos_int_usb3_val);
 				exynos_pm_qos_update_request(&dotg->pm_qos_int_req,
 							     dotg->pm_qos_int_usb3_val);
 			}
 		} else {
 			if (dotg->pm_qos_int_usb2_val) {
-				dev_info(dotg->dwc->dev, "pm_qos set value = %d\n",
+				dev_dbg(dotg->dwc->dev, "pm_qos set value = %d\n",
 					dotg->pm_qos_int_usb2_val);
 				exynos_pm_qos_update_request(&dotg->pm_qos_int_req,
 							     dotg->pm_qos_int_usb2_val);
@@ -1051,7 +1051,7 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		}
 	} else if (dotg->dwc->gadget->state != USB_STATE_CONFIGURED && dotg->usb_charged) {
 		dotg->usb_charged = false;
-		dev_info(dotg->dwc->dev, "clear pm_qos value\n");
+		dev_dbg(dotg->dwc->dev, "clear pm_qos value\n");
 		if (dotg->pm_qos_int_usb2_val || dotg->pm_qos_int_usb3_val)
 			exynos_pm_qos_update_request(&dotg->pm_qos_int_req, 0);
 	}
