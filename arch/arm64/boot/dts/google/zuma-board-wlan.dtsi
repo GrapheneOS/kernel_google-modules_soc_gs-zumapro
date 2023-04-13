@@ -27,7 +27,7 @@
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
 		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
 		samsung,pin-con-pdn = <EXYNOS_PIN_PDN_PREV>;
-		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_UP>;
+		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_NONE>;
 	};
 
 	wlan_dev_wake: wlan_dev_wake {
