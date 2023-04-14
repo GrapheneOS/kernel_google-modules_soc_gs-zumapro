@@ -47,6 +47,9 @@
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
 		timer_stepwise_gain = <1>;
+
+		mapped_cpus = "8";
+		pressure_index = <0>;
 	};
 
 	tmuctrl_1: MID@100A0000 {
@@ -74,6 +77,9 @@
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
 		timer_stepwise_gain = <1>;
+
+		mapped_cpus = "4-7";
+		pressure_index = <1>;
 	};
 
 	tmuctrl_2: LITTLE@100A0000 {
@@ -101,6 +107,9 @@
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
 		timer_stepwise_gain = <1>;
+
+		mapped_cpus = "0-3";
+		pressure_index = <2>;
 	};
 
 	tmuctrl_3: G3D@100B0000 {
