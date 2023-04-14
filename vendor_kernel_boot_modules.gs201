@@ -19,7 +19,7 @@ bc_max77759.ko
 bcm47765.ko
 boot_device_spi.ko
 bts.ko
-clk_exynos.ko
+clk_exynos_gs.ko
 cmupmucal.ko
 cp_thermal_zone.ko
 cpif.ko
@@ -111,7 +111,7 @@ pcie-exynos-gs201-rc-cal.ko
 phy-exynos-mipi-dsim.ko
 phy-exynos-mipi.ko
 phy-exynos-usbdrd-super.ko
-pinctrl-samsung-core.ko
+pinctrl-exynos-gs.ko
 pixel-boot-metrics.ko
 pixel-debug-test.ko
 pixel-em.ko
@@ -128,7 +128,7 @@ s2mpg13-mfd.ko
 s2mpg13-powermeter.ko
 s2mpg13-regulator.ko
 s2mpg13_spmic_thermal.ko
-s2mpg1x-gpio-gs201.ko
+s2mpg1x-gpio.ko
 s3c2410_wdt.ko
 samsung-dma.ko
 samsung-iommu-group.ko
@@ -167,7 +167,7 @@ trusty-irq.ko
 trusty-log.ko
 trusty-test.ko
 trusty-virtio.ko
-ufs-exynos-core.ko
+ufs-exynos-gs.ko
 ufs-pixel-fips140.ko
 usb_f_dm.ko
 usb_f_dm1.ko
