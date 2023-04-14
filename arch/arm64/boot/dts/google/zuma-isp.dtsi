@@ -1180,7 +1180,8 @@
 		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
 		bts-block-names =
 			"rgbp",
-			"yuvp";
+			"yuvp",
+			"gdc";
 
 		iommus =
 			<&sysmmu_yuvp>,
