@@ -2216,6 +2216,59 @@ void exynos_pcie_rc_register_dump(int ch_num)
 	pr_err("PHY 0x760 : %#08x, 0x764 : %#08x\n",
 				exynos_phy_read(exynos_pcie, 0x760),
 				exynos_phy_read(exynos_pcie, 0x764));
+
+	pr_err("[-------- Print additional PHY Register --------]\n");
+	/* internal state monitor */
+	for (i = 0x1E4; i < 0x200; i += 0x10) {
+		pr_err("PHY 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
+				i,
+				exynos_phy_read(exynos_pcie, i + 0x0),
+				exynos_phy_read(exynos_pcie, i + 0x4),
+				exynos_phy_read(exynos_pcie, i + 0x8),
+				exynos_phy_read(exynos_pcie, i + 0xC));
+	}
+
+	/* lock state */
+	for (i = 0x260; i < 0x280; i += 0x10) {
+		pr_err("PHY 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
+				i,
+				exynos_phy_read(exynos_pcie, i + 0x0),
+				exynos_phy_read(exynos_pcie, i + 0x4),
+				exynos_phy_read(exynos_pcie, i + 0x8),
+				exynos_phy_read(exynos_pcie, i + 0xC));
+	}
+
+	/* about PLL afc */
+	for (i = 0xA80; i < 0xA90; i += 0x10) {
+		pr_err("PHY 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
+				i,
+				exynos_phy_read(exynos_pcie, i + 0x0),
+				exynos_phy_read(exynos_pcie, i + 0x4),
+				exynos_phy_read(exynos_pcie, i + 0x8),
+				exynos_phy_read(exynos_pcie, i + 0xC));
+	}
+
+	/* about Analog OC setting */
+	for (i = 0x11F4; i < 0x1254; i += 0x10) {
+		pr_err("PHY 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
+				i,
+				exynos_phy_read(exynos_pcie, i + 0x0),
+				exynos_phy_read(exynos_pcie, i + 0x4),
+				exynos_phy_read(exynos_pcie, i + 0x8),
+				exynos_phy_read(exynos_pcie, i + 0xC));
+	}
+
+	/* RX,TX monitor */
+	for (i = 0x1328; i < 0x1434; i += 0x10) {
+		pr_err("PHY 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
+				i,
+				exynos_phy_read(exynos_pcie, i + 0x0),
+				exynos_phy_read(exynos_pcie, i + 0x4),
+				exynos_phy_read(exynos_pcie, i + 0x8),
+				exynos_phy_read(exynos_pcie, i + 0xC));
+	}
+
+
 	pr_err("\n");
 
 	/* ---------------------- */
