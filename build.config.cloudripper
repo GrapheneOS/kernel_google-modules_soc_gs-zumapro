@@ -62,4 +62,15 @@ KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
 
 EXT_MODULES="
 private/google-modules/soc/gs
+private/google-modules/display
+private/google-modules/bms
+private/google-modules/amplifiers/audiometrics
+private/google-modules/amplifiers/cs35l41
+private/google-modules/amplifiers/cs35l45
+private/google-modules/amplifiers/cs40l26
+private/google-modules/amplifiers/drv2624
+private/google-modules/aoc
+private/google-modules/aoc/alsa
+private/google-modules/power/reset
+private/google-modules/nfc
 "
