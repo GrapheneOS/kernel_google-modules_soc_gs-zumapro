@@ -284,7 +284,6 @@ static void irq_triggered_work(struct work_struct *work, int idx)
 {
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
 						  irq_triggered_worker[idx].work);
-
 	if (bcl_dev->bcl_qos[idx])
 		google_bcl_qos_update(bcl_dev, idx, true);
 	if (idx >= UVLO1 && idx <= BATOILO)
@@ -300,6 +299,8 @@ static void irq_triggered_work(struct work_struct *work, int idx)
 	}
 	mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[idx],
 			 msecs_to_jiffies(THRESHOLD_DELAY_MS));
+	if (idx >= UVLO1 && idx <= BATOILO)
+		bcl_cb_clr_irq(bcl_dev);
 }
 
 static void uvlo1_triggered_work(struct work_struct *work)
@@ -381,8 +382,9 @@ static void irq_untriggered_work(struct work_struct *work, int idx)
 {
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device,
 						  irq_untriggered_worker[idx].work);
-
 	/* IRQ falling edge */
+	if (idx >= UVLO1 && idx <= BATOILO)
+		bcl_cb_clr_irq(bcl_dev);
 	if (bcl_dev->bcl_qos[idx])
 		google_bcl_qos_update(bcl_dev, idx, false);
 	if (idx >= UVLO1 && idx <= BATOILO)
@@ -491,7 +493,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 		gpio_level = gpio_get_value(bcl_dev->bcl_pin[idx]);
 
 	if (idx >= UVLO1 && idx <= BATOILO) {
-		bcl_cb_get_and_clr_irq(bcl_dev, &irq_val);
+		bcl_cb_get_irq(bcl_dev, &irq_val);
 		if (irq_val == 0)
 			goto exit;
 		idx = (idx != UVLO1) ? irq_val : idx;
@@ -526,8 +528,10 @@ static void google_warn_work(struct work_struct *work, int idx)
 		bcl_dev->bcl_cur_lvl[idx] = 0;
 		if (bcl_dev->bcl_qos[idx])
 			google_bcl_qos_update(bcl_dev, idx, false);
-		if (idx >= UVLO1 && idx <= BATOILO)
+		if (idx >= UVLO1 && idx <= BATOILO) {
+			bcl_cb_clr_irq(bcl_dev);
 			update_irq_end_times(bcl_dev, idx);
+		}
 	} else {
 		bcl_dev->bcl_cur_lvl[idx] = bcl_dev->bcl_lvl[idx] + THERMAL_HYST_LEVEL;
 		mod_delayed_work(system_unbound_wq, &bcl_dev->bcl_irq_work[idx],
@@ -823,7 +827,7 @@ int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,
 	if (!pmic_ops || !pmic_ops->cb_get_vdroop_ok ||
 	    !pmic_ops->cb_uvlo_read || !pmic_ops->cb_uvlo_write ||
 	    !pmic_ops->cb_batoilo_read || !pmic_ops->cb_batoilo_write ||
-	    !pmic_ops->cb_get_and_clr_irq)
+	    !pmic_ops->cb_get_irq || !pmic_ops->cb_clr_irq)
 		return -EINVAL;
 
 	bcl_dev->pmic_ops = pmic_ops;
