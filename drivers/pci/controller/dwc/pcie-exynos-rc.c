@@ -604,7 +604,8 @@ static ssize_t l12_state_show(struct device *dev,
 
 	ret = scnprintf(buf, PAGE_SIZE, "l1ss_ctrl_id_state = 0x%08x\n",
 			exynos_pcie->l1ss_ctrl_id_state);
-	ret += scnprintf(buf, PAGE_SIZE, "LTSSM: 0x%08x, PM_STATE = 0x%08x\n",
+	ret += scnprintf(buf + ret, PAGE_SIZE - ret,
+			 "LTSSM: 0x%08x, PM_STATE = 0x%08x\n",
 			 exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP),
 			 exynos_phy_pcs_read(exynos_pcie, PM_POWER_STATE));
 	return ret;
