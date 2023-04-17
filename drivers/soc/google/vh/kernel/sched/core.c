@@ -20,18 +20,32 @@ extern void update_uclamp_stats(int cpu, u64 time);
 extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost,
 		cpumask_t *valid_mask);
 /*
- * Ignore uclamp_min for tasks if
+ * Ignore uclamp_min for CFS tasks if
  *
  *	runtime >= sysctl_sched_uclamp_min_filter_us
  */
 unsigned int sysctl_sched_uclamp_min_filter_us = 2000;
 
 /*
- * Ignore uclamp_max for tasks if
+ * Ignore uclamp_max for CFS tasks if
  *
  *	runtime < sched_slice() / divider
  */
 unsigned int sysctl_sched_uclamp_max_filter_divider = 4;
+
+/*
+ * Ignore uclamp_min for RT tasks if
+ *
+ *	task_util(p) < sysctl_sched_uclamp_min_filter_rt
+ */
+unsigned int sysctl_sched_uclamp_min_filter_rt = 100;
+
+/*
+ * Ignore uclamp_max for RT tasks if
+ *
+ *	task_util(p) < sysctl_sched_uclamp_max_filter_rt
+ */
+unsigned int sysctl_sched_uclamp_max_filter_rt = 100;
 
 /*
  * Enable and disable uclamp min/max filters at runtime
@@ -154,6 +168,25 @@ void rvh_enqueue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p
 		vp->queued_to_list = true;
 	}
 	raw_spin_unlock(&vp->lock);
+
+	/*
+	 * uclamp filter for RT tasks. CFS tasks are handled in
+	 * enqueue_task_fair() where we need cfs_rqs to be updated before we
+	 * can read sched_slice()
+	 */
+	if (uclamp_is_used() && rt_task(p)) {
+		if (uclamp_can_ignore_uclamp_max(rq, p)) {
+			uclamp_set_ignore_uclamp_max(p);
+			/* GKI has incremented it already, undo that */
+			uclamp_rq_dec_id(rq, p, UCLAMP_MAX);
+		}
+
+		if (uclamp_can_ignore_uclamp_min(rq, p)) {
+			uclamp_set_ignore_uclamp_min(p);
+			/* GKI has incremented it already, undo that */
+			uclamp_rq_dec_id(rq, p, UCLAMP_MIN);
+		}
+	}
 }
 
 void rvh_dequeue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
@@ -173,6 +206,19 @@ void rvh_dequeue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p
 		vp->queued_to_list = false;
 	}
 	raw_spin_unlock(&vp->lock);
+
+	/*
+	 * uclamp filter for RT tasks. CFS tasks are handled in
+	 * denqueue_task_fair() where we need cfs_rqs to be updated before we
+	 * can read sched_slice()
+	 */
+	if (uclamp_is_used() && rt_task(p)) {
+		if (uclamp_is_ignore_uclamp_max(p))
+			uclamp_reset_ignore_uclamp_max(p);
+
+		if (uclamp_is_ignore_uclamp_min(p))
+			uclamp_reset_ignore_uclamp_min(p);
+	}
 }
 
 void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
