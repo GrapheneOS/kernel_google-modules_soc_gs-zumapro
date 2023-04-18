@@ -20,7 +20,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/spinlock.h>
 #include <linux/usb/pd.h>
-#include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <misc/logbuffer.h>
@@ -2082,8 +2081,7 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 	return 0;
 }
 
-static void max77759_store_partner_src_caps(void *unused, struct tcpm_port *port,
-					    unsigned int *nr_source_caps,
+static void max77759_store_partner_src_caps(void *unused, unsigned int *nr_source_caps,
 					    u32 (*source_caps)[PDO_MAX_OBJECTS])
 {
 	int i;
@@ -2517,7 +2515,7 @@ static int max77759_probe(struct i2c_client *client,
 {
 	int ret, i;
 	struct max77759_plat *chip;
-	char *usb_psy_name, *chg_psy_name;
+	char *usb_psy_name;
 	struct device_node *dn, *ovp_dn, *conn;
 	u8 power_status;
 	u16 device_id;
@@ -2544,8 +2542,7 @@ static int max77759_probe(struct i2c_client *client,
 
 	chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
 	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
-		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed",
-			PTR_ERR(chip->charger_mode_votable));
+		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed");
 		if (!of_property_read_bool(dn, "gvotable-lazy-probe"))
 			return -EPROBE_DEFER;
 	}
@@ -2626,7 +2623,7 @@ static int max77759_probe(struct i2c_client *client,
 	chip->compliance_warnings = init_compliance_warnings(chip);
 	if (IS_ERR_OR_NULL(chip->compliance_warnings)) {
 		ret = PTR_ERR(chip->compliance_warnings);
-		dev_err(&client->dev, "init_compliance_warnings failed, ptr: %ld", ret);
+		dev_err(&client->dev, "init_compliance_warnings failed, ptr: %d", ret);
 		return ret;
 	}
 
