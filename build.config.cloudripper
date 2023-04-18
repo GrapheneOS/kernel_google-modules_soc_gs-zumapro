@@ -1,12 +1,12 @@
-DEVICE_MODULES_DIR=${KERNEL_DIR}
+SOC_DIR=${KERNEL_DIR}
 # Compile these modules with the GKI kernel
 KERNEL_DIR="common"
 # Compute the path of this project relative to KERNEL_DIR
-DEVICE_MODULES_REL_DIR=$(realpath ${DEVICE_MODULES_DIR} --relative-to ${KERNEL_DIR})
-KCONFIG_EXT_PREFIX=${DEVICE_MODULES_DIR}
+SOC_REL_DIR=$(realpath ${SOC_DIR} --relative-to ${KERNEL_DIR})
+KCONFIG_EXT_PREFIX=${SOC_DIR}
 
-GKI_FRAGMENT_DEFCONFIG=cloudripper_gki.fragment
-. ${ROOT_DIR}/${DEVICE_MODULES_DIR}/build.config.gs101
+GKI_FRAGMENT_DEFCONFIG=${SOC_DIR}/arch/arm64/configs/cloudripper_gki.fragment
+. ${ROOT_DIR}/${SOC_DIR}/build.config.gs101
 
 # Set BUILD_VENDOR_KERNEL_BOOT to 1 to build vendor_kernel_boot and remove vendor_boot
 # artifacts and arguments since we don't need to update vendor_boot anymore.
@@ -24,21 +24,21 @@ modules
 dtbs
 "
 
-DTS_EXT_DIR="${DEVICE_MODULES_DIR}/arch/arm64/boot/dts"
-DTC_INCLUDE=${ROOT_DIR}/${DEVICE_MODULES_DIR}/include/dtc
+DTS_EXT_DIR="${SOC_DIR}/arch/arm64/boot/dts"
+DTC_INCLUDE=${ROOT_DIR}/${SOC_DIR}/include/dtc
 MKDTIMG_FLAGS="--page_size=4096 --id=/:board_id --rev=/:board_rev"
 # These paths need to be relative to KERNEL_DIR.
 MKDTIMG_DTBOS="
-${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/*.dtbo
+${SOC_REL_DIR}/arch/arm64/boot/dts/google/*.dtbo
 "
 
 FILES="
-${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/gs201-a0.dtb
-${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/gs201-b0.dtb
-${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/dtbo.img
-${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/gs201-dpm-eng.dtbo
-${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/gs201-dpm-user.dtbo
-${DEVICE_MODULES_REL_DIR}/arch/arm64/boot/dts/google/gs201-dpm-userdebug.dtbo
+${SOC_REL_DIR}/arch/arm64/boot/dts/google/gs201-a0.dtb
+${SOC_REL_DIR}/arch/arm64/boot/dts/google/gs201-b0.dtb
+${SOC_REL_DIR}/arch/arm64/boot/dts/google/dtbo.img
+${SOC_REL_DIR}/arch/arm64/boot/dts/google/gs201-dpm-eng.dtbo
+${SOC_REL_DIR}/arch/arm64/boot/dts/google/gs201-dpm-user.dtbo
+${SOC_REL_DIR}/arch/arm64/boot/dts/google/gs201-dpm-userdebug.dtbo
 "
 
 if [ -z "$MIXED_BUILD" ]; then
@@ -50,13 +50,13 @@ fi
 # Concatenate vendor_kernel_boot_modules.gs201 (platform common) and vendor_kernel_boot_modules.cloudripper (device specified) into one file
 POST_KERNEL_BUILD_CMDS="concat_vendor_boot_modules"
 function concat_vendor_boot_modules() {
-  cat ${DEVICE_MODULES_DIR}/vendor_kernel_boot_modules.gs201 \
+  cat ${SOC_DIR}/vendor_kernel_boot_modules.gs201 \
     private/google-modules/soc/gs/vendor_kernel_boot_modules.cloudripper > \
     ${OUT_DIR}/vendor_kernel_boot_modules.concat
   MODULES_LIST=${OUT_DIR}/vendor_kernel_boot_modules.concat
 }
 
-VENDOR_DLKM_MODULES_BLOCKLIST=${DEVICE_MODULES_DIR}/vendor_dlkm.blocklist.cloudripper
+VENDOR_DLKM_MODULES_BLOCKLIST=${SOC_DIR}/vendor_dlkm.blocklist.cloudripper
 
 KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
 
