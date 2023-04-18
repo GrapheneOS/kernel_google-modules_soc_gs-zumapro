@@ -485,7 +485,7 @@ static void capture_bulk_trace(void)
 
 	acpm_gov_common.last_ts = get_bulk_trace_buffer_timestamp(bulk_trace_buffer, end_idx);
 
-	if (start_idx < end_idx)
+	if (start_idx <= end_idx)
 		len = end_idx - start_idx + 1;
 	else
 		len = BULK_TRACE_DATA_LEN - (start_idx - end_idx) + 1;
