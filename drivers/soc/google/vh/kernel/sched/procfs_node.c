@@ -1071,6 +1071,33 @@ static int uclamp_util_diff_stats_show(struct seq_file *m, void *v)
 
 PROC_OPS_RO(uclamp_util_diff_stats);
 
+static ssize_t reset_uclamp_stats_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	bool reset;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtobool(buf, &reset))
+		return -EINVAL;
+
+	if (reset)
+		reset_uclamp_stats();
+
+	return count;
+}
+
+PROC_OPS_WO(reset_uclamp_stats);
+#endif
+
 /* uclamp filters controls */
 static int uclamp_min_filter_enable_show(struct seq_file *m, void *v)
 {
@@ -1191,34 +1218,6 @@ static ssize_t uclamp_max_filter_divider_store(struct file *filp,
 	return count;
 }
 PROC_OPS_RW(uclamp_max_filter_divider);
-
-
-static ssize_t reset_uclamp_stats_store(struct file *filp,
-							const char __user *ubuf,
-							size_t count, loff_t *pos)
-{
-	bool reset;
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtobool(buf, &reset))
-		return -EINVAL;
-
-	if (reset)
-		reset_uclamp_stats();
-
-	return count;
-}
-
-PROC_OPS_WO(reset_uclamp_stats);
-#endif
 
 static int util_post_init_scale_show(struct seq_file *m, void *v)
 {

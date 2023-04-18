@@ -594,6 +594,7 @@ void init_vendor_group_data(void)
 	struct rq *rq;
 	int group;
 	struct rq_flags rf;
+	struct task_struct *p;
 #endif
 
 	for (i = 0; i < VG_MAX; i++) {
@@ -952,7 +953,7 @@ static inline unsigned long get_group_util(int cpu, struct task_struct *p, unsig
 					   bool subtract)
 {
 	int group = get_vendor_util_group(p);
-	unsigned long util;
+	unsigned long util = cpu_rq(cpu)->cfs.avg.util_avg;;
 
 	if (group == VUG_BG) {
 		util = vendor_cfs_util[VUG_BG][cpu].avg.util_avg;
