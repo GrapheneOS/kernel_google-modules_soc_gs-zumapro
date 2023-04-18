@@ -21,7 +21,7 @@ config SAMSUNG_SECURE_IOVA
 
 config EXYNOS_PCIE_IOMMU
 	tristate "Enable Exynos PCIe IOMMU"
-	depends on PCI_EXYNOS
+	depends on PCI_EXYNOS || PCI_EXYNOS_GS
 	help
 	  Support for IOMMU feature for Exynos PCIe. Memory shared between the
 	  PCIe Root Complex and the Endpoints is susceptible to attacks by
