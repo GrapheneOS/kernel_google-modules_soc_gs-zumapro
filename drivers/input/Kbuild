@@ -10,3 +10,5 @@ obj-$(CONFIG_INPUT_KEYCOMBO)	+= keycombo.o
 obj-$(CONFIG_INPUT_KEYDEBUG)    += keydebug.o
 keydebug-y := keydebug-core.o
 
+obj-$(CONFIG_INPUT_KEYBOARD)	+= keyboard/
+

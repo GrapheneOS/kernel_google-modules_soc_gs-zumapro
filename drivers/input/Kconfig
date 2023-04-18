@@ -24,6 +24,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/input/misc/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/input/fingerprint/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/input/keyboard/Kconfig"
+
 endif
 
 
