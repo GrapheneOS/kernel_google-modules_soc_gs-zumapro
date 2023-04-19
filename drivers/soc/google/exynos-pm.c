@@ -33,25 +33,6 @@ static void inline exynos_update_eint_wakeup_mask(void)
 	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[2], &exynos_eint_wake_mask_array[2]);
 }
 
-static void exynos_show_wakeup_registers(unsigned int wakeup_stat)
-{
-	int i, size;
-
-	pr_info("WAKEUP_STAT:\n");
-	for (i = 0; i < pm_info->num_wakeup_stat; i++) {
-		exynos_pmu_read(pm_info->wakeup_stat_offset[i], &wakeup_stat);
-		pr_info("0x%08x\n", wakeup_stat);
-	}
-
-	pr_info("EINT_PEND: ");
-	for (i = 0, size = 8; i < pm_info->num_eint; i += size)
-		pr_info("0x%02x ", __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_base, i)));
-
-	pr_info("EINT_FAR_PEND: ");
-	for (i = 0, size = 8; i < pm_info->num_eint_far; i += size)
-		pr_info("0x%02x ", __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_far_base, i)));
-}
-
 static void exynos_show_wakeup_reason_sysint(unsigned int stat,
 					     struct wakeup_stat_name *ws_names,
 					     int wakeup_stat_id)
@@ -119,18 +100,10 @@ static void exynos_show_wakeup_reason_detail(unsigned int wakeup_stat)
 static void exynos_show_wakeup_reason(bool sleep_abort)
 {
 	unsigned int wakeup_stat;
-	int i, size;
+	int i;
 
 	if (sleep_abort) {
 		pr_info("%s early wakeup! Dumping pending registers...\n", EXYNOS_PM_PREFIX);
-
-		pr_info("EINT_PEND:\n");
-		for (i = 0, size = 8; i < pm_info->num_eint; i += size)
-			pr_info("0x%x\n", __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_base, i)));
-
-		pr_info("EINT_FAR_PEND:\n");
-		for (i = 0, size = 8; i < pm_info->num_eint_far; i += size)
-			pr_info("0x%x\n", __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_far_base, i)));
 
 		pr_info("GIC_PEND:\n");
 		for (i = 0; i < pm_info->num_gic; i++)
@@ -145,7 +118,6 @@ static void exynos_show_wakeup_reason(bool sleep_abort)
 		return;
 
 	exynos_pmu_read(pm_info->wakeup_stat_offset[0], &wakeup_stat);
-	exynos_show_wakeup_registers(wakeup_stat);
 
 	exynos_show_wakeup_reason_detail(wakeup_stat);
 
@@ -462,27 +434,6 @@ static int exynos_pm_drvinit(struct platform_device *pdev)
 	pm_info->mbox_aoc = devm_ioremap_resource(dev, res);
 	if (IS_ERR(pm_info->mbox_aoc))
 		return PTR_ERR(pm_info->mbox_aoc);
-
-	ret = of_property_read_u32(np, "num-eint", &pm_info->num_eint);
-	if (ret) {
-		dev_err(dev, "drvinit: unabled to get the number of eint from DT\n");
-		WARN_ON(1);
-	}
-
-	ret = of_property_read_u32(np, "num-eint-far", &pm_info->num_eint_far);
-	if (ret) {
-		dev_err(dev, "drvinit: unabled to get the number of eint-far from DT\n");
-		WARN_ON(1);
-	}
-
-	ret = of_property_count_u32_elems(np, "gpa-use");
-	if (!ret) {
-		dev_err(dev, "drvinit: unabled to get num-gpa-use from DT\n");
-	} else if (ret > 0) {
-		pm_info->num_gpa = ret;
-		pm_info->gpa_use = devm_kcalloc(dev, ret, sizeof(unsigned int), GFP_KERNEL);
-		of_property_read_u32_array(np, "gpa-use", pm_info->gpa_use, ret);
-	}
 
 	ret = of_property_read_u32(np, "num-gic", &pm_info->num_gic);
 	if (ret) {
