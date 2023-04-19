@@ -38,10 +38,6 @@ extern void vh_arch_set_freq_scale_pixel_mod(void *data,
 extern struct pixel_em_profile **exynos_cpu_cooling_pixel_em_profile;
 #endif
 
-#if IS_ENABLED(CONFIG_ARM_EXYNOS_ACME)
-extern struct pixel_em_profile **exynos_acme_pixel_em_profile;
-#endif
-
 static int pixel_em_num_clusters;
 
 static struct mutex profile_list_lock;
@@ -1065,11 +1061,6 @@ static int pixel_em_drv_probe(struct platform_device *dev)
 #if IS_ENABLED(CONFIG_EXYNOS_CPU_THERMAL)
 	pr_info("Publishing EM profile to exynos_cpu_cooling!\n");
 	WRITE_ONCE(exynos_cpu_cooling_pixel_em_profile, &active_profile);
-#endif
-
-#if IS_ENABLED(CONFIG_ARM_EXYNOS_ACME)
-	pr_info("Publishing EM profile to exynos acme!\n");
-	WRITE_ONCE(exynos_acme_pixel_em_profile, &active_profile);
 #endif
 
 	return 0;
