@@ -333,7 +333,7 @@ static int exynos_bcm_dbg_pd_sync_init(struct exynos_bcm_dbg_data *data)
 		}
 	}
 
-	exynos_cal_pd_bcm_sync = exynos_bcm_dbg_pd_sync;
+	set_exynos_cal_pd_bcm_sync(exynos_bcm_dbg_pd_sync);
 	pd_sync_init = true;
 
 	return ret;
@@ -370,6 +370,7 @@ static int exynos_bcm_dbg_pd_sync_exit(struct exynos_bcm_dbg_data *data)
 		}
 	}
 
+	clear_exynos_cal_pd_bcm_sync();
 	pd_sync_init = false;
 
 	return ret;
@@ -3776,6 +3777,7 @@ err_initial_run:
 #if IS_ENABLED(CONFIG_DEBUG_SNAPSHOT)
 err_dump_config:
 #endif
+	exynos_bcm_dbg_pd_sync_exit(data);
 err_pd_sync_init:
 err_early_init:
 	exynos_bcm_dbg_ipc_channel_release(data);
