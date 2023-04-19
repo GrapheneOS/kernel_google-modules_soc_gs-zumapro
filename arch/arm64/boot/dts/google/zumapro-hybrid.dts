@@ -28,6 +28,10 @@
 };
 
 &mct {
+	status = "disabled";
+};
+
+&mct_v3 {
 	status = "okay";
 };
 
