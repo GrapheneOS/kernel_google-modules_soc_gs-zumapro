@@ -26,62 +26,11 @@
 static struct exynos_pm_info *pm_info;
 static struct exynos_pm_dbg *pm_dbg;
 
-static void exynos_show_wakeup_reason_eint(void)
+static void inline exynos_update_eint_wakeup_mask(void)
 {
-	int bit;
-	int i;
-	unsigned long ext_int_pend;
-	u32 eint_wakeup_mask[3];
-	bool found = 0;
-	unsigned long gpa_mask[3] = {0, 0, 0};
-	unsigned int gpa_cnt = 0, shift_cnt = 0, gpa_idx = 0;
-
-	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[0], &eint_wakeup_mask[0]);
-	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[1], &eint_wakeup_mask[1]);
-	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[2], &eint_wakeup_mask[2]);
-
-	for (i = 0; i < pm_info->num_gpa; i++) {
-		if (i * 8 < pm_info->num_eint)
-			ext_int_pend = __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_base, i * 8));
-		else
-			ext_int_pend = __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_far_base,
-								    i * 8 - pm_info->num_eint));
-
-		shift_cnt = pm_info->gpa_use[i];
-		ext_int_pend = ext_int_pend << (32 - shift_cnt);
-		ext_int_pend = ext_int_pend >> (32 - shift_cnt);
-
-		gpa_mask[gpa_idx] |= ext_int_pend << gpa_cnt;
-		gpa_cnt += shift_cnt;
-
-		if (gpa_cnt > 32) {
-			shift_cnt = gpa_cnt - 32 + 1;
-			ext_int_pend = ext_int_pend << (32 - pm_info->gpa_use[i]);
-			ext_int_pend = ext_int_pend >> (32 - pm_info->gpa_use[i] + shift_cnt);
-			gpa_mask[++gpa_idx] |= ext_int_pend;
-			gpa_cnt = pm_info->gpa_use[i] - shift_cnt;
-		}
-	}
-
-	for (i = 0; i < gpa_idx; i++) {
-		for_each_set_bit(bit, &gpa_mask[i], 32) {
-			u32 gpio;
-			int irq;
-
-			if (eint_wakeup_mask[i] & (1 << bit))
-				continue;
-
-			gpio = exynos_eint_to_pin_num(i * 32 + bit);
-			irq = gpio_to_irq(gpio);
-
-			pr_info("%s Resume caused by EINT num: %d\n", EXYNOS_PM_PREFIX, irq);
-
-			found = 1;
-		}
-	}
-
-	if (!found)
-		pr_info("%s Resume caused by unknown EINT\n", EXYNOS_PM_PREFIX);
+	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[0], &exynos_eint_wake_mask_array[0]);
+	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[1], &exynos_eint_wake_mask_array[1]);
+	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[2], &exynos_eint_wake_mask_array[2]);
 }
 
 static void exynos_show_wakeup_registers(unsigned int wakeup_stat)
@@ -150,7 +99,7 @@ static void exynos_show_wakeup_reason_detail(unsigned int wakeup_stat)
 	unsigned int wss;
 
 	if ((wakeup_stat & pm_info->wakeup_stat_eint))
-		exynos_show_wakeup_reason_eint();
+		exynos_update_eint_wakeup_mask();
 
 	if (unlikely(!pm_info->ws_names))
 		return;
