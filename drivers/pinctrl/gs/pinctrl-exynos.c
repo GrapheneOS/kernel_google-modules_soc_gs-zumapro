@@ -25,6 +25,7 @@
 #include <linux/spinlock.h>
 #include <linux/regmap.h>
 #include <linux/err.h>
+#include <linux/gpio.h>
 #include <soc/google/exynos-pmu-if.h>
 #include <soc/google/exynos-pm.h>
 #include <linux/soc/samsung/exynos-regs-pmu.h>
@@ -819,23 +820,46 @@ static void exynos_pinctrl_resume_bank(
 						+ bank->eint_offset);
 }
 
+static inline void exynos_pinctrl_show_wkup_reason(struct samsung_pin_bank *bank, int pin_base) {
+	int pin, shift_cnt;
+	unsigned long pmu_mask, pend_reg;
+	int irq;
+
+	pmu_mask = exynos_eint_wake_mask_array[bank->eint_num / 32];
+	pend_reg = readl(bank->eint_base + bank->irq_chip->eint_pend + bank->eint_offset);
+	pr_debug("[%s] PEND_REG: 0x%02x", bank->name, pend_reg);
+	for_each_set_bit(pin, &pend_reg, 32) {
+		shift_cnt = (bank->eint_num % 32) + pin;
+		if (pmu_mask & (1 << shift_cnt))
+			continue;
+
+		irq = gpio_to_irq(pin_base + pin);
+		pr_debug("Resume caused by irq %d\n", irq);
+	}
+}
+
 void exynos_pinctrl_resume(struct samsung_pinctrl_drv_data *drvdata)
 {
 	struct samsung_pin_bank *bank = drvdata->pin_banks;
 	struct samsung_pinctrl_drv_data *d = bank->drvdata;
 	int i;
+	int pin_base = d->pin_base;
 
 	for (i = 0; i < drvdata->nr_banks; ++i, ++bank) {
 		if (bank->eint_type == EINT_TYPE_GPIO) {
 			exynos_pinctrl_resume_bank(drvdata, bank);
 		} else if (bank->eint_type == EINT_TYPE_WKUP ||
 			bank->eint_type == EINT_TYPE_WKUP_MUX) {
+			if (bank->eint_num < BITMAP_SIZE)
+				exynos_pinctrl_show_wkup_reason(bank, pin_base);
+
 			/* Only alive block has filter selection register. */
 			/* Setting Digital Filter */
 			exynos_eint_flt_config(EXYNOS_EINT_FLTCON_EN,
 					       EXYNOS_EINT_FLTCON_SEL, 0, d,
 					       bank);
 		}
+		pin_base += bank->nr_pins;
 	}
 }
 
