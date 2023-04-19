@@ -1609,9 +1609,7 @@
 			"gpio_far_alive_base",
 			"gicd_ispendrn_base",
 			"mailbox_ap_aoc_host";
-		num-eint = <64>;	/* EINT_0 ~ 44 */
-		num-eint-far = <32>;	/* EINT_45 ~ 66 */
-		gpa-use = <8>, <7>, <5>, <4>, <4>, <7>, <8>, <2>, <8>, <4>, <8>, <2>;
+
 		num-gic = <30>;
 		suspend_mode_idx = <8>;
 
