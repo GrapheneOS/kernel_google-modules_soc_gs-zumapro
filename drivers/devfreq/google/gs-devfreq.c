@@ -32,7 +32,7 @@
 #include <linux/of_platform.h>
 #include <trace/events/power.h>
 #include <trace/hooks/systrace.h>
-#include <dt-bindings/soc/google/gs101-devfreq.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 #include "../../soc/google/cal-if/acpm_dvfs.h"
 #include <soc/google/exynos-pd.h>
 

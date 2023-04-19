@@ -22,7 +22,7 @@
 #include <linux/of.h>
 #include <linux/devfreq.h>
 #include <soc/google/exynos_pm_qos.h>
-#include <dt-bindings/soc/google/gs101-devfreq.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 #include <trace/events/power.h>
 #include "governor.h"
 #include "governor_memlat.h"

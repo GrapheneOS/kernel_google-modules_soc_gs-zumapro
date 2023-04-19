@@ -15,7 +15,7 @@
 #include <soc/google/cal-if.h>
 #include <soc/google/exynos-devfreq.h>
 #include <soc/google/ect_parser.h>
-#include <dt-bindings/soc/google/gs101-devfreq.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 #include <trace/events/power.h>
 #include "governor.h"
 #include "governor_memlat.h"
