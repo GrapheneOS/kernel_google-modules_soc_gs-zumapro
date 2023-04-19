@@ -96,6 +96,10 @@ extern void rvh_remove_entity_load_avg_pixel_mod(void *data, struct cfs_rq *cfs_
 extern void rvh_update_blocked_fair_pixel_mod(void *data, struct rq *rq);
 #endif
 extern void android_vh_use_amu_fie_pixel_mod(void* data, bool *use_amu_fie);
+extern void rvh_set_user_nice_pixel_mod(void *data, struct task_struct *p, long *nice,
+					bool *allowed);
+extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
+extern void rvh_prepare_prio_fork_pixel_mod(void *data, struct task_struct *p);
 
 extern struct cpufreq_governor sched_pixel_gov;
 
@@ -110,6 +114,7 @@ static int init_vendor_task_data(void *data)
 		get_task_struct(t);
 		v_tsk = get_vendor_task_struct(t);
 		init_vendor_task_struct(v_tsk);
+		v_tsk->orig_prio = t->static_prio;
 		put_task_struct(t);
 	}
 
@@ -307,6 +312,18 @@ static int vh_sched_init(void)
 		return ret;
 
 	ret = register_trace_android_vh_use_amu_fie(android_vh_use_amu_fie_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_set_user_nice(rvh_set_user_nice_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_setscheduler(rvh_setscheduler_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_prepare_prio_fork(rvh_prepare_prio_fork_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
