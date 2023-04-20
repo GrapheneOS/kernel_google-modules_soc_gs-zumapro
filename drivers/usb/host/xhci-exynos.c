@@ -217,8 +217,11 @@ static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_dev
 							(udev->config->desc.bmAttributes &
 								USB_CONFIG_ATT_WAKEUP) ? 1 : 0;
 						if (udev->do_remote_wakeup == 1) {
+							dev_info(ddev, "%s: enable auto-suspend",
+								 __func__);
 							device_init_wakeup(ddev, 1);
 							usb_enable_autosuspend(dev);
+							xhci_exynos->rewa_supported = true;
 						}
 						dev_dbg(ddev, "%s, remote_wakeup = %d\n",
 							__func__, udev->do_remote_wakeup);
@@ -275,6 +278,11 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 	} else
 		udev->dev.platform_data  = xhci_exynos;
 
+	/* hold wakelock before port setup */
+	xhci_exynos->rewa_supported = false;
+	__pm_stay_awake(xhci_exynos->main_wakelock);
+	__pm_stay_awake(xhci_exynos->shared_wakelock);
+
 	check_port = xhci_exynos_check_port(xhci_exynos, udev, on);
 	if (check_port < 0)
 		return;
@@ -306,6 +314,12 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 		break;
 	default:
 		break;
+	}
+
+	if (xhci_exynos->rewa_supported) {
+		/* release wakelock for platform suspend */
+		__pm_relax(xhci_exynos->main_wakelock);
+		__pm_relax(xhci_exynos->shared_wakelock);
 	}
 }
 
@@ -783,13 +797,20 @@ static void xhci_exynos_shutdown(struct platform_device *dev)
 	platform_set_drvdata(dev, xhci_exynos);
 }
 
-extern u32 dwc3_otg_is_connect(void);
 static int __maybe_unused xhci_exynos_suspend(struct device *dev)
 {
 	struct xhci_hcd_exynos *xhci_exynos = dev_get_drvdata(dev);
 	struct usb_hcd	*hcd = xhci_exynos->hcd;
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	int ret;
+	int ret_phy;
+
+	if (xhci_exynos->port_state == PORT_USB2) {
+		ret_phy = exynos_usbdrd_phy_vendor_set(xhci_exynos->phy_usb2, 1, 0);
+		if (ret_phy)
+			dev_info(xhci_exynos->dev, "%s: phy vendor set fail, ret:%d\n",
+				 __func__, ret_phy);
+	}
 
 	/*
 	 * xhci_suspend() needs `do_wakeup` to know whether host is allowed
@@ -813,12 +834,26 @@ static int __maybe_unused xhci_exynos_resume(struct device *dev)
 	struct usb_hcd	*hcd = xhci_exynos->hcd;
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	int ret;
+	int ret_phy;
 
 	ret = xhci_priv_resume_quirk(hcd);
 	if (ret)
 		return ret;
 
-	return xhci_resume(xhci, 0);
+	ret = xhci_resume(xhci, 0);
+	if (ret) {
+		dev_err(xhci_exynos->dev, "%s: xhci resume failed, ret = %d\n", __func__, ret);
+		return ret;
+	}
+
+	if (xhci_exynos->port_state == PORT_USB2) {
+		ret_phy = exynos_usbdrd_phy_vendor_set(xhci_exynos->phy_usb2, 1, 1);
+		if (ret_phy)
+			dev_info(xhci_exynos->dev, "%s: phy vendor set fail, ret:%d\n",
+				 __func__, ret_phy);
+	}
+
+	return ret;
 }
 
 static const struct dev_pm_ops xhci_exynos_pm_ops = {
