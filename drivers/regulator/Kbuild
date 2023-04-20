@@ -11,5 +11,6 @@ obj-$(CONFIG_REGULATOR_S2MPG14) += s2mpg14-regulator.o s2mpg14-powermeter.o
 obj-$(CONFIG_REGULATOR_S2MPG15) += s2mpg15-regulator.o s2mpg15-powermeter.o
 obj-$(CONFIG_REGULATOR_SLG51000_GS) += slg51000-regulator.o
 obj-$(CONFIG_REGULATOR_SLG51002) += slg51002-regulator.o
+obj-$(CONFIG_REGULATOR_RT6160_GS) += rt6160-regulator.o
 
 ccflags-$(CONFIG_REGULATOR_DEBUG) += -DDEBUG
