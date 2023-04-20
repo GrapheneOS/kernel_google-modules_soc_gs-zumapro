@@ -59,6 +59,7 @@ kernel_module_group(
         "//private/google-modules/lwis",
         "//private/google-modules/edgetpu/abrolhos/drivers/edgetpu:edgetpu.abrolhos",
         "//private/google-modules/bms",
+        "//private/google-modules/amplifiers/snd_soc_wm_adsp:snd-soc-wm-adsp",
         "//private/google-modules/amplifiers/drv2624",
         "//private/google-modules/amplifiers/cs40l25",
         "//private/google-modules/amplifiers/cs35l41",
