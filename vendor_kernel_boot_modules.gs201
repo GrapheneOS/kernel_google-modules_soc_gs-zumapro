@@ -124,6 +124,7 @@ pixel-debug-test.ko
 pixel_em.ko
 pixel_stat_mm.ko
 pixel_stat_sysfs.ko
+pixel-suspend-diag.ko
 pl330.ko
 pmic_class.ko
 power_stats.ko
