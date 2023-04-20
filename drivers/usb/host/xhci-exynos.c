@@ -261,16 +261,21 @@ skip:
 	return -EINVAL;
 }
 
-static void xhci_exynos_set_port(struct usb_device *dev, bool on)
+static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 {
-	struct xhci_hcd_exynos *xhci_exynos = dev_get_platdata(&dev->dev);
-	struct device *ddev = &dev->dev;
+	struct usb_hcd *hcd = container_of(udev->bus, struct usb_hcd, self);
+	struct xhci_exynos_priv *priv = hcd_to_xhci_exynos_priv(hcd);
+	struct xhci_hcd_exynos *xhci_exynos = priv->xhci_exynos;
+	struct device *ddev = &udev->dev;
 	int check_port;
 
-	/* TODO: wait for power management ready for USB2 phy and xhci-exynos module */
-	return;
+	if (!xhci_exynos) {
+		dev_err(ddev, "Couldn't get exynos xhci!\n");
+		return;
+	} else
+		udev->dev.platform_data  = xhci_exynos;
 
-	check_port = xhci_exynos_check_port(xhci_exynos, dev, on);
+	check_port = xhci_exynos_check_port(xhci_exynos, udev, on);
 	if (check_port < 0)
 		return;
 
