@@ -20,6 +20,7 @@ load(":tests.bzl", "define_slider_kleaf_tests")
 
 package(
     default_visibility = [
+        "//private/devices/google:__subpackages__",
         "//private/google-modules:__subpackages__",
     ],
 )
@@ -35,14 +36,50 @@ label_flag(
 )
 
 filegroup(
-    name = "dt-bindings",
+    name = "gs_soc.kconfig",
+    srcs = glob([
+        "**/Kconfig",
+    ]) + [
+        "Kconfig.ext",
+        "Kconfig.ext_modules",
+    ],
+)
+
+filegroup(
+    name = "gs.dt-bindings",
     srcs = glob([
         "include/dt-bindings/**",
         "include/dtc/**",
     ]),
-    visibility = [
-        "//private/google-modules/soc/gs/arch/arm64/boot/dts:__pkg__",
-    ],
+)
+
+filegroup(
+    name = "gs_soc_sources",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            ".*",
+            ".*/**",
+            "BUILD.bazel",
+            "**/*.bzl",
+            "build.config.*",
+        ],
+    ),
+)
+
+filegroup(
+    name = "gs_soc_headers",
+    srcs = glob([
+        # Standard pixel headers
+        "include/**/*.h",
+        "include/**/uapi/*.h",
+    ] + [
+        # List of headers needed by external modules
+        "drivers/dma-buf/heaps/samsung/samsung-dma-heap.h",
+
+        # Needed for external modules to include in their makefiles
+        "Makefile.include",
+    ]),
 )
 
 # The list ordering matches EXT_MODULES in build.config.slider in order to
@@ -123,10 +160,6 @@ kernel_build(
     strip_modules = True,
     # Keep in sync with build.config.common
     toolchain_version = CLANG_VERSION,
-    visibility = [
-        # keep sorted
-        "//private/google-modules:__subpackages__",
-    ],
 )
 
 kernel_abi(
@@ -137,37 +170,11 @@ kernel_abi(
     module_grouping = False,
 )
 
-filegroup(
-    name = "gs_soc_headers",
-    srcs = glob([
-        # Standard pixel headers
-        "include/**/*.h",
-        "include/**/uapi/*.h",
-    ] + [
-        # List of headers needed by external modules
-        "drivers/dma-buf/heaps/samsung/samsung-dma-heap.h",
-
-        # Needed for external modules to include in their makefiles
-        "Makefile.include",
-    ]),
-    visibility = [
-        # keep sorted
-        "//private/google-modules:__subpackages__",
-    ],
-)
-
 kernel_module(
     name = "gs101_soc",
-    srcs = glob(
-        ["**"],
-        exclude = [
-            ".*",
-            ".*/**",
-            "BUILD.bazel",
-            "**/*.bzl",
-            "build.config.*",
-        ],
-    ),
+    srcs = [
+        "//private/google-modules/soc/gs:gs_soc_sources",
+    ],
     outs = [
         # keep sorted
         "drivers/bts/bts.ko",
@@ -307,10 +314,6 @@ kernel_module(
         "drivers/watchdog/s3c2410_wdt.ko",
     ],
     kernel_build = "//private/google-modules/soc/gs:gs_kernel_build",
-    visibility = [
-        # keep sorted
-        "//private/google-modules:__subpackages__",
-    ],
 )
 
 kernel_modules_install(
@@ -414,3 +417,11 @@ test_suite(
 )
 
 define_slider_kleaf_tests()
+
+exports_files([
+    # keep sorted
+    "vendor_dlkm.blocklist.cloudripper",
+    "vendor_dlkm.props.slider",
+    "vendor_dlkm_modules.slider",
+    "vendor_kernel_boot_modules.gs201",
+])

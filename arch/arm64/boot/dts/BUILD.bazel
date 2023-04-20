@@ -20,9 +20,10 @@ kernel_dtstree(
         # keep sorted
         "Makefile",
         "google/Makefile",
-        "//private/google-modules/soc/gs:dt-bindings",
+        "//private/google-modules/soc/gs:gs.dt-bindings",
     ],
     visibility = [
+        "//private/devices/google:__subpackages__",
         "//private/google-modules/soc/gs:__pkg__",
     ],
 )
