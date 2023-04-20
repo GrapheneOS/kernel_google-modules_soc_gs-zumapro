@@ -11,6 +11,7 @@
 #include "zumapro-sysmmu.dtsi"
 #include "zumapro-dma-heap.dtsi"
 #include "zumapro-rmem.dtsi"
+#include "zumapro-pm-domains.dtsi"
 / {
 	compatible = "google,zumapro";
 	interrupt-parent = <&gic>;
@@ -59,6 +60,13 @@
 			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>;
 		clock-frequency = <10000000>;
+	};
+
+	clock: clock-controller@0x26040000 {
+		compatible = "samsung,zuma-clock";
+		reg = <0x0 0x26040000 0x8000>;
+		#clock-cells = <1>;
+		acpm-ipc-channel = <0>;
 	};
 
 	ext_24_5m: ext_24_5m {
@@ -227,4 +235,44 @@
 			compatible = "samsung,exynos7-wakeup-eint";
 		};
 	};
+
+	cal_if: cal_if {
+		compatible = "samsung,exynos_cal_if";
+		reg = <0x0 0x26040000 0x8000>;
+		acpm-ipc-channel = <0>;
+	};
+
+	acpm {
+		compatible = "google,gs-acpm";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		acpm-ipc-channel = <4>;
+		reg = <0x0 0x15440000 0x1000>;  /* TIMER_APM */
+		reg-names = "timer_apm";
+		peritimer-cnt = <0xFFFF>;
+	};
+
+	acpm_ipc {
+		compatible = "google,gs-acpm-ipc";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		interrupts = <GIC_SPI IRQ_MAILBOX_APM2AP_ALIVE IRQ_TYPE_LEVEL_HIGH>;
+		reg = <0x0 0x15110000 0x01000>, /* AP2APM MAILBOX */
+		      <0x0 0x15700000 0x58000>, /* APM SRAM region from AP view */
+		      <0x0 0x1542048C 0x00014>; /* SYSREG_APM.ALIVE_FRC_CTRL0 */
+		initdata-base = <0xA000>;
+		debug-log-level = <0>;
+		logging-period = <500>;
+		dump-base = <0x15705000>;       /* Non-secure world base addr */
+		dump-size = <0x53000>;          /* Non-secure SRAM size: 332KB(352-20) */
+		acpm-ipc-channel = <12>;
+		fvmap_addr = <0x31000>;
+		/* panic-action = <GO_PANIC_ID>;*/
+	};
+
+	acpm_stats {
+		compatible = "google,power-stats";
+		timer-frequency-hz = <49152000>;
+	};
+
 };
