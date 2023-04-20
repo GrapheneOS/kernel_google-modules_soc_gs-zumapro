@@ -253,7 +253,13 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 	 * suspend and a vote for df->prev_freq during resume.
 	 */
 	if (!node->mon_started) {
+		/*
+		 * Since the resume_freq is 0 during suspend and is previous_freq
+		 * during resume, update_bci_freq vote to 0 during suspend and
+		 * restore the previouse vote during resume.
+		 */
 		*target_freq = node->resume_freq;
+		update_bci_freq(node, *target_freq);
 		return 0;
 	}
 
