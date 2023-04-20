@@ -10,28 +10,28 @@
  * Copyright (c) 2021 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  */
+#include <host/xhci.h> /* $(srctree)/drivers/usb/host/xhci.h */
+#include <host/xhci-mvebu.h> /* $(srctree)/drivers/usb/host/xhci-mvebu.h */
+#include <host/xhci-plat.h> /* $(srctree)/drivers/usb/host/xhci-plat.h */
+#include <host/xhci-rcar.h> /* $(srctree)/drivers/usb/host/xhci-rcar.h */
 
+#include <linux/acpi.h>
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
-#include <linux/pci.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
-#include <linux/platform_device.h>
-#include <linux/usb/phy.h>
-#include <linux/slab.h>
+#include <linux/pci.h>
 #include <linux/phy/phy.h>
-#include <linux/acpi.h>
+#include <linux/platform_device.h>
+#include <linux/slab.h>
+#include <linux/usb/dwc3-exynos.h>
 #include <linux/usb/of.h>
+#include <linux/usb/phy.h>
 
-#include <core/phy.h> /* $(srctree)/drivers/usb/core/phy.h */
-#include <host/xhci.h> /* $(srctree)/drivers/usb/host/xhci.h */
-#include <host/xhci-plat.h> /* $(srctree)/drivers/usb/host/xhci-plat.h */
-#include <host/xhci-mvebu.h> /* $(srctree)/drivers/usb/host/xhci-mvebu.h */
-#include <host/xhci-rcar.h> /* $(srctree)/drivers/usb/host/xhci-rcar.h */
-#include "xhci-exynos.h"
-#include "../dwc3/dwc3-exynos.h"
 #include <soc/google/exynos-cpupm.h>
+
+#include "xhci-exynos.h"
 
 static struct hc_driver xhci_exynos_hc_driver;
 

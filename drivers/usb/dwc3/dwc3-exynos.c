@@ -4,42 +4,38 @@
  *
  * Copyright (C) 2022 Samsung Electronics Co., Ltd.
  */
-
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/slab.h>
-#include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
-#include <linux/mutex.h>
-#include <linux/clk.h>
-#include <linux/usb/otg.h>
-#include <linux/usb/usb_phy_generic.h>
-#include <linux/dma-mapping.h>
-#include <linux/of.h>
-#include <linux/of_platform.h>
-#include <linux/pinctrl/consumer.h>
-#include <linux/workqueue.h>
-#include <linux/usb/gadget.h>
-
-#include <linux/usb/of.h>
-
 #include <dwc3/core.h> /* $(srctree)/drivers/usb/dwc3/core.h */
-#include "core-exynos.h"
-#include "dwc3-exynos.h"
-#include "dwc3-exynos-ldo.h"
 #include <dwc3/io.h> /* $(srctree)/drivers/usb/dwc3/io.h */
 #include <dwc3/gadget.h> /* $(srctree)/drivers/usb/dwc3/gadget.h */
 
-#include <linux/io.h>
-#include <linux/usb/otg-fsm.h>
+#include <linux/clk.h>
+#include <linux/dma-mapping.h>
 #include <linux/extcon.h>
-
-#include <linux/suspend.h>
-
-#include "exynos-otg.h"
+#include <linux/io.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/mutex.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
+#include <linux/slab.h>
+#include <linux/suspend.h>
+#include <linux/usb/dwc3-exynos.h>
+#include <linux/usb/gadget.h>
+#include <linux/usb/of.h>
+#include <linux/usb/otg.h>
+#include <linux/usb/otg-fsm.h>
+#include <linux/usb/usb_phy_generic.h>
+#include <linux/workqueue.h>
 
 #include <soc/google/exynos-cpupm.h>
+
+#include "core-exynos.h"
+#include "dwc3-exynos-ldo.h"
+#include "exynos-otg.h"
 
 static const struct of_device_id exynos_dwc3_match[] = {
 	{

@@ -7,21 +7,22 @@
  *		http://www.samsung.com
  */
 
-#include <linux/mutex.h>
-#include <linux/platform_device.h>
-#include <linux/regulator/consumer.h>
-#include <linux/pm_runtime.h>
-#include <linux/workqueue.h>
-#include <linux/suspend.h>
-
 #include <dwc3/core.h> /* $(srctree)/drivers/usb/dwc3/core.h */
+#include <dwc3/io.h> /* $(srctree)/drivers/usb/dwc3/io.h */
+
+#include <linux/mutex.h>
+#include <linux/of_device.h>
+#include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
+#include <linux/regulator/consumer.h>
+#include <linux/usb/composite.h>
+#include <linux/usb/dwc3-exynos.h>
+#include <linux/reboot.h>
+#include <linux/suspend.h>
+#include <linux/workqueue.h>
+
 #include "core-exynos.h"
 #include "exynos-otg.h"
-#include <dwc3/io.h> /* $(srctree)/drivers/usb/dwc3/io.h */
-#include <linux/of_device.h>
-#include <linux/usb/composite.h>
-#include <linux/reboot.h>
-#include "dwc3-exynos.h"
 #include "dwc3-exynos-ldo.h"
 
 #define OTG_NO_CONNECT		0
