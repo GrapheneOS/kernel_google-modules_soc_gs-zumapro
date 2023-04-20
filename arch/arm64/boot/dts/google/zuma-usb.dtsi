@@ -108,7 +108,7 @@
 		#size-cells = <1>;
 		ranges;
 		status = "okay";
-		power-domains = <&pd_hsi0>;
+		//power-domains = <&pd_hsi0>;
 		samsung,sysreg-hsi0 = <&sysreg_hsi0>;
 
 		interrupts = <GIC_SPI IRQ_USB32DRD_GIC_0_HSI0 IRQ_TYPE_LEVEL_HIGH>;
@@ -176,7 +176,7 @@
 		clocks = <&clock MUX_HSI0_USB20_REF>, <&clock GATE_USB32DRD_LINK>;
 		clock-names = "phy_ref", "aclk";
 		samsung,pmu-syscon = <&pmu_system_controller>;
-		power-domains = <&pd_hsi0>;
+		//power-domains = <&pd_hsi0>;
 		pmu_mask = <0x0>;
 		pmu_offset = <0x3EB0>;
 		pmu_offset_dp = <0x3EB4>;
