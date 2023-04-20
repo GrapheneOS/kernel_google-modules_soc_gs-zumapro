@@ -171,10 +171,10 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A880000>;
-#if 0
+
 		power-domains = <&pd_g2d>;
-		s2mpus = <&s2mpu_s0_g2d>;
-#endif
+		/*s2mpus = <&s2mpu_s0_g2d>;*/
+
 		port-name = "G2D";
 		#iommu-cells = <0>;
 
@@ -299,10 +299,8 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x19850000>;
-#if 0
 		power-domains = <&pd_dpuf0>;
-		s2mpus = <&s2mpu_s0_dpuf0>;
-#endif
+		/*s2mpus = <&s2mpu_s0_dpuf0>;*/
 		port-name = "DPU F0";
 		#iommu-cells = <0>;
 
@@ -398,10 +396,10 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x19C50000>;
-#if 0
+
 		power-domains = <&pd_dpuf1>;
-		s2mpus = <&s2mpu_s0_dpuf1>;
-#endif
+		/*s2mpus = <&s2mpu_s0_dpuf1>;*/
+
 		port-name = "DPU F1";
 		#iommu-cells = <0>;
 
