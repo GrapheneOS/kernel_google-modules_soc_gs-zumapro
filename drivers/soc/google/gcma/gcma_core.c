@@ -13,6 +13,7 @@
 #include <linux/idr.h>
 #include <linux/hashtable.h>
 #include <linux/xarray.h>
+#include <trace/hooks/mm.h>
 
 /*
  * page->units : area id
@@ -44,6 +45,7 @@ static atomic64_t gcma_loaded_page = ATOMIC64_INIT(0);
 static atomic64_t gcma_evicted_page = ATOMIC64_INIT(0);
 static atomic64_t gcma_cached_page = ATOMIC64_INIT(0);
 static atomic64_t gcma_discarded_page = ATOMIC64_INIT(0);
+static atomic64_t total_gcma_pages = ATOMIC64_INIT(0);
 
 /* represent reserved memory range */
 struct gcma_area {
@@ -253,6 +255,7 @@ int register_gcma_area(const char *name, phys_addr_t base, phys_addr_t size)
 
 	area->start_pfn = pfn;
 	area->end_pfn = pfn + page_count - 1;
+	atomic64_add(page_count, &total_gcma_pages);
 
 	pr_info("Reserved memory: created GCMA memory pool at %pa, size %ld MiB for %s\n",
 		 &base, size / SZ_1M, name ? : "none");
@@ -904,6 +907,11 @@ static int gcma_cc_init_shared_fs(uuid_t *uuid, size_t pagesize)
 	return -1;
 }
 
+static void vh_gcma_si_meminfo_fixup(void *data, struct sysinfo *val)
+{
+	val->totalram += (u64)atomic64_read(&total_gcma_pages);
+}
+
 struct cleancache_ops gcma_cleancache_ops = {
 	.init_fs = gcma_cc_init_fs,
 	.init_shared_fs = gcma_cc_init_shared_fs,
@@ -992,6 +1000,10 @@ int __init gcma_init(void)
 #endif
 
 	cleancache_register_ops(&gcma_cleancache_ops);
+
+	err = register_trace_android_vh_si_meminfo(vh_gcma_si_meminfo_fixup, NULL);
+	if (err)
+		goto out;
 
 	return 0;
 out:
