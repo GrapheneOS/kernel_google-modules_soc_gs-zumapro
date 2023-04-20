@@ -1803,7 +1803,7 @@ static int gs_tmu_pm_notify(struct notifier_block *nb,
 				if (data->use_pi_thermal)
 					start_pi_polling(data, 0);
 			}
-		else
+		else if (acpm_gov_common.thermal_pressure.enabled)
 			start_thermal_pressure_polling(0);
 		break;
 	default:
