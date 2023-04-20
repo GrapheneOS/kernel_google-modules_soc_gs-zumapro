@@ -372,9 +372,23 @@ _gki_modules = [
     "//common:kernel_aarch64/net/wireless/cfg80211.ko",
 ]
 
+filegroup(
+    name = "gki_aarch64_boot_lz4",
+    srcs = ["//common:kernel_aarch64_gki_artifacts"],
+    output_group = "boot_lz4",
+)
+
+genrule(
+    name = "gki_aarch64_boot",
+    srcs = [":gki_aarch64_boot_lz4"],
+    outs = ["boot.img"],
+    cmd = "mv $< $@",
+)
+
 slider_dist_targets = [
     ":slider",
     ":slider_images",
+    ":gki_aarch64_boot",
     # At the time of writing (2022-02-04), this intentionally diverges from
     # the behavior of build.sh-style mixed builds by also incorporating
     # UAPI headers of external modules, while build.sh-style mixed builds
@@ -385,8 +399,8 @@ slider_dist_targets = [
     ":slider_merged_kernel_uapi_headers",
     ":slider_modules_install",
     ":slider_unstripped_modules_archive",
+    "//common:android/abi_gki_aarch64_pixel",
     "//common:kernel_aarch64_download_or_build",
-    "//common:kernel_aarch64_additional_artifacts_download_or_build",
 ] + _gki_modules
 
 copy_to_dist_dir(
