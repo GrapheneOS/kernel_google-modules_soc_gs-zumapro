@@ -40,10 +40,12 @@
 #define RT6160_I2CRDY_TIMEUS	100
 
 struct rt6160_priv {
+	struct device *dev;
 	struct regulator_desc desc;
 	struct gpio_desc *enable_gpio;
 	struct regmap *regmap;
 	bool enable_state;
+	int devid;
 };
 
 static const unsigned int rt6160_ramp_tables[] = {
@@ -214,6 +216,29 @@ static bool rt6160_is_volatile_reg(struct device *dev, unsigned int reg)
 	return false;
 }
 
+static ssize_t devid_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct rt6160_priv *priv;
+
+	priv = dev_get_drvdata(dev);
+	if (priv == NULL)
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE, "0x%02x\n", priv->devid);
+}
+
+static DEVICE_ATTR_RO(devid);
+
+static struct attribute *attrs[] = {
+	&dev_attr_devid.attr,
+	NULL,
+};
+
+static struct attribute_group attr_group = {
+	.attrs = attrs,
+};
+
 static const struct regmap_config rt6160_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
@@ -262,7 +287,11 @@ static int rt6160_probe(struct i2c_client *i2c)
 	if (ret)
 		return ret;
 
+	/* Use for get driver data */
+	i2c_set_clientdata(i2c, priv);
 	dev_info(&i2c->dev, "VID = [0x%02x]\n", devid);
+	priv->devid = devid;
+	priv->dev = &i2c->dev;
 
 	priv->desc.name = "rt6160-buckboost";
 	priv->desc.type = REGULATOR_VOLTAGE;
@@ -288,6 +317,10 @@ static int rt6160_probe(struct i2c_client *i2c)
 	regulator_cfg.driver_data = priv;
 	regulator_cfg.init_data = of_get_regulator_init_data(&i2c->dev, i2c->dev.of_node,
 							     &priv->desc);
+
+	ret = sysfs_create_group(&priv->dev->kobj, &attr_group);
+	if (ret)
+		dev_err(&i2c->dev, "Failed to create attribute group: %d\n", ret);
 
 	rdev = devm_regulator_register(&i2c->dev, &priv->desc, &regulator_cfg);
 	if (IS_ERR(rdev)) {
