@@ -89,10 +89,13 @@ static int __mfc_dec_check_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ct
 
 	if (ctrl->value < c->minimum || ctrl->value > c->maximum
 		|| (c->step != 0 && ctrl->value % c->step != 0)) {
-		mfc_ctx_err("[CTRLS] Invalid control id (%#x) value (%d)\n", ctrl->id, ctrl->value);
+		mfc_ctx_err("[CTRLS][%s] id: %#x, invalid value (%d)\n",
+				c->name, ctrl->id, ctrl->value);
 		return -ERANGE;
 	}
 
+	mfc_debug(5, "[CTRLS][%s] id: %#x, value: %d (%#x)\n",
+			c->name, ctrl->id, ctrl->value, ctrl->value);
 	return 0;
 }
 
@@ -1014,6 +1017,7 @@ static int mfc_dec_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	struct dec_dpb_ref_info *dstBuf, *srcBuf;
 	struct hdr10_plus_meta *dst_sei_meta, *src_sei_meta;
 	struct av1_film_grain_meta *dst_av1_sei_meta, *src_av1_sei_meta;
+	unsigned int *dst_sei_full, *src_sei_full;
 	int ret;
 	int ncount = 0;
 
@@ -1060,7 +1064,19 @@ static int mfc_dec_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 		}
 
 		/* Memcpy from dec->hdr10_plus_info to shared memory */
-		if (dec->hdr10_plus_info) {
+		if (dec->hdr10_plus_full) {
+			src_sei_full = HDR10_PLUS_ADDR(dec->hdr10_plus_full, buf->index);
+			if (dec->sh_handle_hdr.vaddr != NULL) {
+				dst_sei_full = HDR10_PLUS_ADDR(dec->sh_handle_hdr.vaddr, buf->index);
+				memcpy(dst_sei_full, src_sei_full, HDR10_PLUS_DATA_SIZE);
+				if (hdr_dump == 1) {
+					mfc_ctx_err("[HDR+][DUMP] SH_HANDLE data (idx %d)....\n",
+							buf->index);
+					print_hex_dump(KERN_ERR, "", DUMP_PREFIX_OFFSET, 32, 4,
+							dst_sei_full, 68, false);
+				}
+			}
+		} else if (dec->hdr10_plus_info) {
 			src_sei_meta = &dec->hdr10_plus_info[buf->index];
 			if (dec->sh_handle_hdr.vaddr != NULL) {
 				dst_sei_meta = (struct hdr10_plus_meta *)
@@ -1176,6 +1192,9 @@ static int __mfc_dec_ext_info(struct mfc_ctx *ctx)
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus))
 		val |= DEC_SET_HDR10_PLUS;
+
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus_full))
+		val |= DEC_SET_HDR10_PLUS_FULL;
 
 	mfc_debug(5, "[CTRLS] ext info val: %#x\n", val);
 
@@ -1367,9 +1386,6 @@ static int mfc_dec_s_ctrl(struct file *file, void *priv,
 	if (ret)
 		return ret;
 
-	mfc_debug(5, "[CTRLS] set id: %#x, value: %d (%#x)\n",
-			ctrl->id, ctrl->value, ctrl->value);
-
 	switch (ctrl->id) {
 	case V4L2_CID_MPEG_VIDEO_DECODER_MPEG4_DEBLOCK_FILTER:
 		dec->loop_filter_mpeg4 = ctrl->value;
@@ -1421,10 +1437,8 @@ static int mfc_dec_s_ctrl(struct file *file, void *priv,
 	case V4L2_CID_MPEG_MFC_SET_USER_SHARED_HANDLE:
 		if (dec->sh_handle_dpb.fd == -1) {
 			dec->sh_handle_dpb.fd = ctrl->value;
-			if (mfc_mem_get_user_shared_handle(ctx, &dec->sh_handle_dpb))
+			if (mfc_mem_get_user_shared_handle(ctx, &dec->sh_handle_dpb, "DPB"))
 				return -EINVAL;
-			mfc_debug(2, "[MEMINFO][DPB] shared handle fd: %d, vaddr: 0x%p\n",
-					dec->sh_handle_dpb.fd, dec->sh_handle_dpb.vaddr);
 		}
 		break;
 	case V4L2_CID_MPEG_MFC_SET_BUF_PROCESS_TYPE:
@@ -1439,22 +1453,21 @@ static int mfc_dec_s_ctrl(struct file *file, void *priv,
 		break;
 	case V4L2_CID_MPEG_MFC_HDR_USER_SHARED_HANDLE:
 		dec->sh_handle_hdr.fd = ctrl->value;
-		if (mfc_mem_get_user_shared_handle(ctx, &dec->sh_handle_hdr)) {
+		if (MFC_FEATURE_SUPPORT(ctx->dev, ctx->dev->pdata->hdr10_plus_full))
+			dec->sh_handle_hdr.data_size =
+				HDR10_PLUS_DATA_SIZE * MFC_MAX_BUFFERS;
+		else
+			dec->sh_handle_hdr.data_size =
+				sizeof(struct hdr10_plus_meta) * MFC_MAX_BUFFERS;
+		if (mfc_mem_get_user_shared_handle(ctx, &dec->sh_handle_hdr, "HDR10+"))
 			dec->sh_handle_hdr.fd = -1;
-			return -EINVAL;
-		}
-		mfc_debug(2, "[MEMINFO][HDR+] shared handle fd: %d, vaddr: 0x%p\n",
-				dec->sh_handle_hdr.fd, dec->sh_handle_hdr.vaddr);
 		break;
 	case V4L2_CID_MPEG_MFC_AV1_FILM_GRAIN_USER_SHARED_HANDLE:
 		dec->sh_handle_av1_film_grain.fd = ctrl->value;
-		if (mfc_mem_get_user_shared_handle(ctx, &dec->sh_handle_av1_film_grain)) {
+		dec->sh_handle_av1_film_grain.data_size =
+			sizeof(struct av1_film_grain_meta) * MFC_MAX_BUFFERS;
+		if (mfc_mem_get_user_shared_handle(ctx, &dec->sh_handle_av1_film_grain, "FILM_G"))
 			dec->sh_handle_av1_film_grain.fd = -1;
-			return -EINVAL;
-		}
-		mfc_debug(2, "[MEMINFO][FILMGR] shared handle fd: %d, vaddr: 0x%p\n",
-				dec->sh_handle_av1_film_grain.fd,
-				dec->sh_handle_av1_film_grain.vaddr);
 		break;
 	case V4L2_CID_MPEG_VIDEO_DECODING_ORDER:
 		dec->decoding_order = ctrl->value;

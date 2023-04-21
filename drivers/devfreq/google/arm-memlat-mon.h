@@ -18,7 +18,7 @@ struct event_data {
 
 struct cpu_data {
 	struct event_data common_evs[NUM_COMMON_EVS];
-	struct event_data amu_evs;
+	struct event_data amu_evs[NUM_AMU_EVS];
 	unsigned long freq;
 	unsigned long stall_pct;
 	spinlock_t    pmu_lock;
@@ -59,7 +59,7 @@ struct memlat_mon {
 	unsigned int            requested_update_ms;
 	struct event_data       *miss_ev;
 	struct memlat_hwmon     hw;
-	char                    governor_name[DEVFREQ_NAME_LEN];
+	bool                    update_dsu_df;
 
 	struct memlat_cpu_grp   *cpu_grp;
 };

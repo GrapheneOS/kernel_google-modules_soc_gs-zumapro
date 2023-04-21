@@ -35,6 +35,10 @@
 #include <linux/part_stat.h>
 
 #include "zram_drv.h"
+
+#undef CREATE_TRACE_POINTS
+#include <trace/events/zram.h>
+
 #include "zcomp.h"
 
 static DEFINE_IDR(zram_index_idr);
@@ -821,6 +825,7 @@ static int read_from_bdev(struct zram *zram, struct bio_vec *bvec,
 			unsigned long entry, struct bio *parent, bool sync)
 {
 	this_cpu_inc(zram->pcp_stats->items[NR_BD_READ]);
+	trace_zram_read_from_bdev(zram, entry);
 	if (sync)
 		return read_from_bdev_sync(zram, bvec, entry, parent);
 	else

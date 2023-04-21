@@ -19,7 +19,7 @@
 
 extern void init_uclamp_stats(void);
 extern int create_procfs_node(void);
-#if IS_ENABLED(CONFIG_PIXEL_EM)
+#if IS_ENABLED(CONFIG_VH_SCHED) && IS_ENABLED(CONFIG_PIXEL_EM)
 extern void vh_arch_set_freq_scale_pixel_mod(void *data,
 					     const struct cpumask *cpus,
 					     unsigned long freq,
@@ -31,17 +31,21 @@ extern void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct r
 				     int *should_iowait_boost);
 extern void rvh_select_task_rq_rt_pixel_mod(void *data, struct task_struct *p, int prev_cpu,
 					    int sd_flag, int wake_flags, int *new_cpu);
+extern void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p,
+					       struct rq *rq, bool *need_update);
 extern void rvh_cpu_overutilized_pixel_mod(void *data, int cpu, int *overutilized);
 extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p,
 					 enum uclamp_id clamp_id, struct uclamp_se *uclamp_max,
 					 struct uclamp_se *uclamp_eff, int *ret);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 extern void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct task_struct *p,
 					   bool task_sleep, int *ret);
+extern void rvh_cpu_cgroup_online_pixel_mod(void *data, struct cgroup_subsys_state *css);
+#endif
 extern void rvh_post_init_entity_util_avg_pixel_mod(void *data, struct sched_entity *se);
 extern void rvh_check_preempt_wakeup_pixel_mod(void *data, struct rq *rq, struct task_struct *p,
 			bool *preempt, bool *nopreempt, int wake_flags, struct sched_entity *se,
 			struct sched_entity *pse, int next_buddy_marked, unsigned int granularity);
-extern void rvh_cpu_cgroup_online_pixel_mod(void *data, struct cgroup_subsys_state *css);
 extern void vh_sched_setscheduler_uclamp_pixel_mod(void *data, struct task_struct *tsk,
 						   int clamp_id, unsigned int value);
 extern void init_uclamp_stats(void);
@@ -57,18 +61,42 @@ extern void rvh_update_rt_rq_load_avg_pixel_mod(void *data, u64 now, struct rq *
 extern void rvh_set_task_cpu_pixel_mod(void *data, struct task_struct *p, unsigned int new_cpu);
 extern void rvh_enqueue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags);
 extern void rvh_dequeue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags);
+extern void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p,
+					    int flags);
+extern void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p,
+					    int flags);
 extern void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
 	struct task_struct *task);
 extern void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction *t,
 	struct task_struct *task);
+extern void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
+	struct task_struct *pi_task);
 extern void vh_dump_throttled_rt_tasks_mod(void *data, int cpu, u64 clock, ktime_t rt_period,
 					   u64 rt_runtime, s64 rt_period_timer_expires);
+
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 extern void android_rvh_show_max_freq(void *unused, struct cpufreq_policy *policy,
 						unsigned int *max_freq);
 extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
 					const struct cpumask *in_mask, int *skip);
+#endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
+
 extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
 	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
+void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_flags *rf,
+		int *pulled_task, int *done);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+extern void rvh_attach_entity_load_avg_pixel_mod(void *data, struct cfs_rq *cfs_rq,
+						 struct sched_entity *se);
+extern void rvh_detach_entity_load_avg_pixel_mod(void *data, struct cfs_rq *cfs_rq,
+						 struct sched_entity *se);
+extern void rvh_update_load_avg_pixel_mod(void *data, u64 now, struct cfs_rq *cfs_rq,
+					  struct sched_entity *se);
+extern void rvh_remove_entity_load_avg_pixel_mod(void *data, struct cfs_rq *cfs_rq,
+						 struct sched_entity *se);
+extern void rvh_update_blocked_fair_pixel_mod(void *data, struct rq *rq);
+#endif
+extern void android_vh_use_amu_fie_pixel_mod(void* data, bool *use_amu_fie);
 
 extern struct cpufreq_governor sched_pixel_gov;
 
@@ -92,11 +120,15 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-	init_vendor_group_data();
-
 	init_vendor_rt_rq();
 
+	init_vendor_group_data();
+
 	ret = register_trace_android_vh_dup_task_struct(vh_dup_task_struct_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_sched_fork(rvh_sched_fork_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
@@ -105,6 +137,45 @@ static int vh_sched_init(void)
 		return ret;
 
 	ret = register_trace_android_rvh_dequeue_task(rvh_dequeue_task_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_enqueue_task_fair(rvh_enqueue_task_fair_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_dequeue_task_fair(rvh_dequeue_task_fair_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+	ret = register_trace_android_rvh_attach_entity_load_avg(
+		rvh_attach_entity_load_avg_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_detach_entity_load_avg(
+		rvh_detach_entity_load_avg_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_update_load_avg(rvh_update_load_avg_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_remove_entity_load_avg(
+		rvh_remove_entity_load_avg_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_update_blocked_fair(
+		rvh_update_blocked_fair_pixel_mod, NULL);
+	if (ret)
+		return ret;
+#endif
+
+	ret = register_trace_android_rvh_rtmutex_prepare_setprio(
+		rvh_rtmutex_prepare_setprio_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
@@ -125,6 +196,10 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
+	ret = register_trace_android_rvh_update_misfit_status(rvh_update_misfit_status_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
 	ret = register_trace_android_rvh_cpu_overutilized(rvh_cpu_overutilized_pixel_mod, NULL);
 	if (ret)
 		return ret;
@@ -133,7 +208,19 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	ret = register_trace_android_rvh_util_est_update(rvh_util_est_update_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_cpu_cgroup_online(
+		rvh_cpu_cgroup_online_pixel_mod, NULL);
+	if (ret)
+		return ret;
+#endif
+
+	ret = register_trace_android_rvh_sched_newidle_balance(
+		sched_newidle_balance_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
@@ -147,15 +234,6 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_rvh_cpu_cgroup_online(
-		rvh_cpu_cgroup_online_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
-	ret = register_trace_android_rvh_sched_fork(rvh_sched_fork_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
 	ret = register_trace_android_rvh_select_task_rq_fair(rvh_select_task_rq_fair_pixel_mod,
 							     NULL);
 	if (ret)
@@ -166,7 +244,7 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-#if IS_ENABLED(CONFIG_PIXEL_EM)
+#if IS_ENABLED(CONFIG_VH_SCHED) && IS_ENABLED(CONFIG_PIXEL_EM)
 	ret = register_trace_android_vh_arch_set_freq_scale(vh_arch_set_freq_scale_pixel_mod, NULL);
 	if (ret)
 		return ret;
@@ -181,15 +259,12 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_rvh_sched_fork(rvh_sched_fork_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
 	ret = register_trace_android_vh_dump_throttled_rt_tasks(vh_dump_throttled_rt_tasks_mod,
 								NULL);
 	if (ret)
 		return ret;
 
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 	ret = register_trace_android_rvh_show_max_freq(android_rvh_show_max_freq, NULL);
 	if (ret)
 		return ret;
@@ -197,6 +272,7 @@ static int vh_sched_init(void)
 	ret = register_trace_android_vh_sched_setaffinity_early(vh_sched_setaffinity_mod, NULL);
 	if (ret)
 		return ret;
+#endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
 
 	ret = register_trace_android_vh_binder_set_priority(
 		vh_binder_set_priority_pixel_mod, NULL);
@@ -205,6 +281,10 @@ static int vh_sched_init(void)
 
 	ret = register_trace_android_vh_binder_restore_priority(
 		vh_binder_restore_priority_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_vh_use_amu_fie(android_vh_use_amu_fie_pixel_mod, NULL);
 	if (ret)
 		return ret;
 

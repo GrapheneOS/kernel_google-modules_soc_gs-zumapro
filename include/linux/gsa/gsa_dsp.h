@@ -56,13 +56,15 @@ int gsa_unload_dsp_fw_image(struct device *gsa);
 
 /**
  * enum gsa_dsp_state - DSP state
- * @GSA_DSP_STATE_INACTIVE:  DSP firmware is not loaded and DSP is in reset
- * @GSA_DSP_STATE_LOADED:    DSP firmware image is loaded but DSP is in reset
+ * @GSA_DSP_STATE_INACTIVE:  All DSP firmware images are not loaded
+ * @GSA_DSP_STATE_LOADING:   DSP firmware images are loading
+ * @GSA_DSP_STATE_LOADED:    All DSP firmware images are loaded
  * @GSA_DSP_STATE_RUNNING:   DSP is running
  * @GSA_DSP_STATE_SUSPENDED: DSP is suspended
  */
 enum gsa_dsp_state {
 	GSA_DSP_STATE_INACTIVE = 0,
+	GSA_DSP_STATE_LOADING,
 	GSA_DSP_STATE_LOADED,
 	GSA_DSP_STATE_RUNNING,
 	GSA_DSP_STATE_SUSPENDED,

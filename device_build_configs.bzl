@@ -2,7 +2,11 @@
 
 """Defines helper functions for creating debug and staging build configs."""
 
-load("//build/kernel/kleaf:kernel.bzl", "kernel_build_config")
+load(
+    "//build/kernel/kleaf:kernel.bzl",
+    "kernel_build_config",
+    "kernel_module",
+)
 
 def staging_build_config(name, base_build_config, device_name, gki_build_config_fragment):
     """Creates a staging kernel build config.
@@ -227,4 +231,58 @@ def device_build_configs(
     native.filegroup(
         name = "gki_build_config",
         srcs = select(debug_gki_configs_mapping),
+    )
+
+def lto_dependant_kernel_module(
+        name,
+        outs,
+        lto_outs,
+        srcs = None,
+        kernel_build = None,
+        makefile = None,
+        deps = None,
+        **kwargs):
+    """Wrapper over kernel_module to conditionally modify outs when LTO is set differently.
+
+    Args:
+        name: name of the module
+        outs: See kernel_module.outs
+        lto_outs: Like outs, but only appended to outs when LTO is not set to none
+        kernel_build: See kernel_module.kernel_build
+        makefile: See kernel_module.makefile
+        deps: See kernel_module.deps
+        **kwargs: common kwargs for all rules
+    """
+    kwargs_with_private_visibility = dict(
+        kwargs,
+        visibility = ["//visibility:private"],
+    )
+
+    kernel_module(
+        name = name + "_internal",
+        srcs = srcs,
+        outs = outs + lto_outs,
+        kernel_build = kernel_build,
+        makefile = makefile,
+        deps = deps,
+        **kwargs_with_private_visibility
+    )
+
+    kernel_module(
+        name = name + "_lto_none",
+        srcs = srcs,
+        outs = outs,
+        kernel_build = kernel_build,
+        makefile = makefile,
+        deps = deps,
+        **kwargs_with_private_visibility
+    )
+
+    native.alias(
+        name = name,
+        actual = select({
+            "//private/google-modules/soc/gs:lto_none": name + "_lto_none",
+            "//conditions:default": name + "_internal",
+        }),
+        **kwargs
     )

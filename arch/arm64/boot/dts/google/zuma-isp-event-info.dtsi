@@ -5,6 +5,7 @@
  * Copyright 2022 Google LLC.
  */
 
+#include <dt-bindings/lwis/platform/common.h>
 #include <dt-bindings/lwis/platform/zuma/be_core.h>
 #include <dt-bindings/lwis/platform/zuma/gdc.h>
 #include <dt-bindings/lwis/platform/zuma/gse.h>
@@ -15,6 +16,19 @@
 #include <dt-bindings/lwis/platform/zuma/gtnr_align.h>
 
 / {
+	/* lwis test device Fake Event Injection definitions */
+	test_event_inj: test-event-info@0 {
+		irq-reg-space = "test";
+		irq-src-reg = <0x0 0x20>;
+		irq-reset-reg = <0x0 0x20>;
+		irq-mask-reg = <0x0 0x2c>;
+		irq-type = "injection";
+
+		irq-events =
+			<LWIS_PLATFORM_EVENT_ID_TEST_EVENT_INJ>;
+		int-reg-bits =
+			<TEST_EVENT_INJ>;
+	};
 	/* FC bayer pipeline interrupt event definitions */
 	isp_fe_ctx0_fc_bayer: isp_fe-event-info@0 {
 		irq-reg-space = "isp-fe";

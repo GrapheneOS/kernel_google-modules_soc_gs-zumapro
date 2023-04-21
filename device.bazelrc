@@ -9,12 +9,16 @@ try-import %workspace%/.d3.bazelrc
 try-import %workspace%/.d4.bazelrc
 try-import %workspace%/.d5.bazelrc
 
-build:blktest --//private/google-modules/soc/gs:debug_fragment=blktest
-build:debug_api --//private/google-modules/soc/gs:debug_fragment=debug_api
-build:debug_kmemleak --//private/google-modules/soc/gs:debug_fragment=debug_kmemleak
-build:debug_locking--//private/google-modules/soc/gs:debug_fragment=debug_locking
-build:debug_memory --//private/google-modules/soc/gs:debug_fragment=debug_memory
-build:debug_memory_accounting --//private/google-modules/soc/gs:debug_fragment=debug_memory_accounting
-build:kasan --//private/google-modules/soc/gs:debug_fragment=kasan
-build:khwasan--//private/google-modules/soc/gs:debug_fragment=khwasan
+build:pixel_debug_common --notrim
+build:pixel_debug_common --nokmi_symbol_list_strict_mode
+build:pixel_debug_common --nokmi_symbol_list_violations_check
+
+build:blktest --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=blktest
+build:debug_api --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=debug_api
+build:debug_kmemleak --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=debug_kmemleak
+build:debug_locking --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=debug_locking
+build:debug_memory --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=debug_memory
+build:debug_memory_accounting --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=debug_memory_accounting
+build:kasan --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=kasan
+build:khwasan --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=khwasan
 

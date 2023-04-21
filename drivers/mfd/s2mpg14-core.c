@@ -564,6 +564,7 @@ static void __exit s2mpg14_i2c_exit(void)
 
 module_exit(s2mpg14_i2c_exit);
 
+MODULE_SOFTDEP("pre: s2mpg15-mfd");
 MODULE_DESCRIPTION("s2mpg14 multi-function core driver");
 MODULE_AUTHOR("Samsung Electronics");
 MODULE_LICENSE("GPL");

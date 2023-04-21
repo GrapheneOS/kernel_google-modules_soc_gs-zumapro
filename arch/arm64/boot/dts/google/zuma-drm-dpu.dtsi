@@ -516,6 +516,7 @@
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
+		power-domains = <&pd_dpuf0>, <&pd_dpuf1>;
 
 		max_win = <14>;
 
@@ -533,7 +534,7 @@
 
 		/* dpu dvfs */
 		dfs_lv_cnt = <7>;
-		dfs_lv = <664000 533000 465000 400000 332000 267000 166000>;
+		dfs_lv = <664000 533000 465000 400000 332000 267000 143000>;
 
 		/* Urgent */
 		rd_en = <1>;
@@ -592,6 +593,7 @@
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
+		power-domains = <&pd_dpuf0>, <&pd_dpuf1>;
 
 		max_win = <14>;
 
@@ -609,7 +611,7 @@
 
 		/* dpu dvfs */
 		dfs_lv_cnt = <7>;
-		dfs_lv = <664000 533000 465000 400000 332000 267000 166000>;
+		dfs_lv = <664000 533000 465000 400000 332000 267000 143000>;
 
 		/* Urgent */
 		rd_en = <1>;
@@ -663,6 +665,7 @@
 		iommus = <&sysmmu_dpuf0>, <&sysmmu_dpuf1>;
 		samsung,iommu-group = <&iommu_group_dpu>;
 		samsung,tzmp;
+		power-domains = <&pd_dpuf0>, <&pd_dpuf1>;
 
 		max_win = <14>;
 
@@ -680,7 +683,7 @@
 
 		/* dpu dvfs */
 		dfs_lv_cnt = <7>;
-		dfs_lv = <664000 533000 465000 400000 332000 267000 166000>;
+		dfs_lv = <664000 533000 465000 400000 332000 267000 143000>;
 
 		dpps = <&drmdpp0 &drmdpp1 &drmdpp2 &drmdpp3 &drmdpp4 &drmdpp5
 			&drmdpp6 &drmdpp7 &drmdpp8 &drmdpp9 &drmdpp10 &drmdpp11

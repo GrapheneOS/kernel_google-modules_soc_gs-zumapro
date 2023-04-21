@@ -4,6 +4,7 @@
  *
  */
 
+#include <linux/arm-smccc.h>
 #include <linux/bitops.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -37,6 +38,11 @@
 #define ERRFLAG_CE_BIT		24
 #define ERRFLAG_OF_BIT		27
 #define ERRFLAG_UE_BIT		29
+
+/* For accessing privileged registers */
+#define SMC_CMD_PRIV_REG	(0x82000504)
+#define PRIV_REG_OPTION_READ	0
+#define PRIV_REG_OPTION_WRITE	1
 
 
 enum node_type {
@@ -308,17 +314,38 @@ static enum node_type errgsr_to_type_map[] = {
 
 static u64 read_bci_reg(phys_addr_t reg)
 {
-	u64 res = get_priv_reg(reg + 4);
+	struct arm_smccc_res smc_res;
+	u64 res;
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG,
+		      reg + 4,
+		      PRIV_REG_OPTION_READ,
+		      0, 0, 0, 0, 0, &smc_res);
+	res = smc_res.a0;
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG,
+		      reg,
+		      PRIV_REG_OPTION_READ,
+		      0, 0, 0, 0, 0, &smc_res);
 
 	res <<= 32;
-	res |= get_priv_reg(reg);
+	res |= smc_res.a0;
 	return res;
 }
 
 static void write_bci_reg(phys_addr_t reg, u64 val)
 {
-	set_priv_reg(reg, val);
-	set_priv_reg(reg + 4, val >> 32);
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG,
+		      reg,
+		      PRIV_REG_OPTION_WRITE,
+		      val, 0, 0, 0, 0, &res);
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG,
+		      reg + 4,
+		      PRIV_REG_OPTION_WRITE,
+		      val >> 32, 0, 0, 0, 0, &res);
 }
 
 static int dump_regs_show(struct seq_file *s, void *p)

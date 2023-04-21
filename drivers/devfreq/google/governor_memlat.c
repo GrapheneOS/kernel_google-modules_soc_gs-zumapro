@@ -21,24 +21,15 @@
 #include <linux/device.h>
 #include <linux/of.h>
 #include <linux/devfreq.h>
+#include <soc/google/exynos_pm_qos.h>
+#include <dt-bindings/soc/google/gs101-devfreq.h>
+#include <trace/events/power.h>
 #include "governor.h"
 #include "governor_memlat.h"
+#include "arm-memlat-mon.h"
 
 #define CREATE_TRACE_POINTS
 #include "governor_memlat_trace.h"
-
-struct memlat_node {
-	unsigned int ratio_ceil;
-	unsigned int stall_floor;
-	bool mon_started;
-	bool already_zero;
-	struct list_head list;
-	void *orig_data;
-	struct memlat_hwmon *hw;
-	struct devfreq_governor *gov;
-	struct attribute_group *attr_grp;
-	unsigned long resume_freq;
-};
 
 static LIST_HEAD(memlat_list);
 static DEFINE_MUTEX(list_lock);
@@ -253,6 +244,41 @@ static void gov_stop(struct devfreq *df)
 	hw->df = NULL;
 }
 
+static int devfreq_memlat_set_idle_cpu_freq(struct devfreq *df)
+{
+	int *memlat_cpuidle_state_aware = get_memlat_cpuidle_state_aware();
+	struct device  **memlat_dev_array = get_memlat_dev_array();
+	struct exynos_pm_qos_request **memlat_cpu_qos_array =
+					get_memlat_cpu_qos_array();
+	struct memlat_node *node = df->data;
+	struct memlat_hwmon *hw = node->hw;
+	struct memlat_mon *mon = to_mon(hw);
+	unsigned int active_cpu, cpu;
+	unsigned int min_freq, max_freq;
+
+	active_cpu = cpumask_first(&mon->cpus);
+
+	/* get minimal frequency for MIF */
+	exynos_devfreq_get_boundary(DEVFREQ_MIF, &max_freq, &min_freq);
+
+	for_each_online_cpu(cpu) {
+		if (active_cpu!= cpu) {
+			if ((memlat_cpuidle_state_aware[cpu] ==
+				DEEP_MEMLAT_CPUIDLE_STATE_AWARE
+				&& hw->get_cpu_idle_state(cpu) > 0)
+				|| memlat_cpuidle_state_aware[cpu] ==
+				ALL_MEMLAT_CPUIDLE_STATE_AWARE) {
+				exynos_pm_qos_update_request(
+					memlat_cpu_qos_array[cpu], min_freq);
+				trace_clock_set_rate(dev_name(memlat_dev_array[cpu]),
+					min_freq, cpu);
+			}
+		}
+	}
+
+	return 0;
+}
+
 static int devfreq_memlat_get_freq(struct devfreq *df,
 					unsigned long *freq)
 {
@@ -319,6 +345,9 @@ static int devfreq_memlat_get_freq(struct devfreq *df,
 	node->already_zero = !max_freq;
 
 	*freq = max_freq;
+
+	/* reset MIF frequency for idle CPU */
+	devfreq_memlat_set_idle_cpu_freq(df);
 	return 0;
 }
 
@@ -327,7 +356,7 @@ store_attr(ratio_ceil, 1U, 20000U)
 static DEVICE_ATTR(ratio_ceil, 0644, show_ratio_ceil, store_ratio_ceil);
 
 show_attr(stall_floor)
-store_attr(stall_floor, 0U, 100U)
+store_attr(stall_floor, 0U, 10000U)
 static DEVICE_ATTR(stall_floor, 0644, show_stall_floor, store_stall_floor);
 
 static struct attribute *memlat_dev_attr[] = {

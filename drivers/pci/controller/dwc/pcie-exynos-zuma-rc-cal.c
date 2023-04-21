@@ -20,6 +20,7 @@
 #include "pcie-exynos-common.h"
 #include "pcie-exynos-rc.h"
 #include <dt-bindings/pci/pci.h>
+#include <misc/logbuffer.h>
 
 #if IS_ENABLED(CONFIG_EXYNOS_OTP)
 #include <linux/exynos_otp.h>
@@ -216,13 +217,15 @@ static int check_exynos_pcie_reg_status(struct exynos_pcie *exynos_pcie,
 	if (cnt)
 		*cnt = i;
 	dev_dbg(exynos_pcie->pci->dev, "elapsed time: %lld uS\n", ktime_to_us(timestamp));
+	logbuffer_log(exynos_pcie->log, "elapsed time: %lld uS", ktime_to_us(timestamp));
 
 	if (status == 0)
-		dev_err(exynos_pcie->pci->dev, "status 0x%x failed\n",
-			offset);
-	else
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR, "status 0x%x failed", offset);
+	else {
 		dev_dbg(exynos_pcie->pci->dev, "status 0x%x passed cnt=%d\n",
 			offset, i);
+		logbuffer_log(exynos_pcie->log, "status 0x%x passed cnt=%d", offset, i);
+	}
 
 	return status;
 }
@@ -236,6 +239,7 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 	void __iomem *phy_pcs_base_regs = exynos_pcie->phy_pcs_base;
 	int num_lanes = exynos_pcie->num_lanes;
 	int lock_cnt;
+	u32 ext_pll_lock, pll_lock, cdr_lock, oc_done;
 	u32 val;
 	u32 i;
 
@@ -263,8 +267,9 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(val, udbg_base_regs + 0xC700);        //Release External PLL init
 
 		/* check external pll lock */
-		check_exynos_pcie_reg_status(exynos_pcie, udbg_base_regs,
-					     0xC734, 2, &lock_cnt);
+		ext_pll_lock = check_exynos_pcie_reg_status(exynos_pcie, udbg_base_regs,
+							    0xC734, 2, &lock_cnt);
+		logbuffer_log(exynos_pcie->log, "EXT_PLL_LOCK : 0x%x", ext_pll_lock);
 
 		/* soc_ctrl setting */
 		val = readl(soc_base_regs + 0x4004) & ~(1 << 2);
@@ -447,16 +452,21 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x1, elbi_base_regs + 0x1400);
 
 		/* check pll lock */
-		check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
-					     0x0A80, 0, &lock_cnt);
+		pll_lock = check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+							0x0A80, 0, &lock_cnt);
 		/* check cdr lock */
-		if (check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
-						 0x15C0, 4, &lock_cnt))
+		cdr_lock = check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+							0x15C0, 4, &lock_cnt);
+		if (cdr_lock)
 			link_stats_log_pll_lock(exynos_pcie, lock_cnt);
 
 		/* check offset calibration */
-		check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
-					     0x140C, 7, &lock_cnt);
+		oc_done = check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+						       0x140C, 7, &lock_cnt);
+
+		logbuffer_log(exynos_pcie->log,
+			      "PLL_LOCK : 0x%x, CDR_LOCK : 0x%x, OC_DONE : 0x%x",
+			      pll_lock, cdr_lock, oc_done);
 
 		//L1 exit off by DBI
 		writel(0x1, elbi_base_regs + 0x1078);
@@ -478,8 +488,9 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(val, udbg_base_regs + 0xC700);        //Override External PLL RESETB
 
 		/* check external pll lock */
-		check_exynos_pcie_reg_status(exynos_pcie, udbg_base_regs,
-					     0xC704, 3, &lock_cnt);
+		ext_pll_lock = check_exynos_pcie_reg_status(exynos_pcie, udbg_base_regs,
+							    0xC704, 3, &lock_cnt);
+		logbuffer_log(exynos_pcie->log, "EXT_PLL_LOCK : 0x%x", ext_pll_lock);
 
 		/* soc_ctrl setting */
 		val = readl(soc_base_regs + 0x4004) & ~(1 << 2);
@@ -619,16 +630,21 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x1, elbi_base_regs + 0x1400);
 
 		/* check pll lock */
-		check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
-					     0x0A80, 0, &lock_cnt);
+		pll_lock = check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+							0x0A80, 0, &lock_cnt);
 		/* check cdr lock */
-		if (check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
-						 0x15C0, 4, &lock_cnt))
+		cdr_lock = check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+							0x15C0, 4, &lock_cnt);
+		if (cdr_lock)
 			link_stats_log_pll_lock(exynos_pcie, lock_cnt);
 
 		/* check offset calibration */
-		check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
-					     0x140C, 7, &lock_cnt);
+		oc_done = check_exynos_pcie_reg_status(exynos_pcie, phy_base_regs,
+						       0x140C, 7, &lock_cnt);
+
+		logbuffer_log(exynos_pcie->log,
+			      "PLL_LOCK : 0x%x, CDR_LOCK : 0x%x, OC_DONE : 0x%x",
+			      pll_lock, cdr_lock, oc_done);
 
 		/* udbg setting */
 		//need to udbg base SFR

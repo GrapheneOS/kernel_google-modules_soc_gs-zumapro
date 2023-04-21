@@ -570,7 +570,7 @@
 					channel_enabled;
 				};
 				ch10: channel@9 {
-					rail-name = "VSEN_C1";
+					rail-name = "BUCK9M";
 					channel_enabled;
 				};
 				ch11: channel@10 {
@@ -947,7 +947,7 @@
 				regulator-name = "S2MPG15_LDO5";
 				regulator-min-microvolt = <2500000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
+				regulator-boot-on;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x25>;
 				schematic-name = "L5S_PROX";
@@ -968,7 +968,7 @@
 				regulator-name = "S2MPG15_LDO7";
 				regulator-min-microvolt = <1600000>;
 				regulator-max-microvolt = <1950000>;
-				regulator-always-on;
+				regulator-boot-on;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x27>;
 				schematic-name = "L7S_SENSORS_FPS";

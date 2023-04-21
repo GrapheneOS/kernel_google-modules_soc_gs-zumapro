@@ -10,10 +10,6 @@
 #include <asm/kvm_mmu.h>
 #include "kvm_s2mpu.h"
 
-struct s2mpu_mpt_cfg {
-	enum s2mpu_version version;
-};
-
 struct s2mpu_mpt_ops {
 	u32 (*smpt_size)(void);
 	void (*init_with_prot)(void *dev_va, enum mpt_prot prot);
@@ -24,7 +20,6 @@ struct s2mpu_mpt_ops {
 	int (*pte_from_addr_smpt)(u32 *smpt, u64 addr);
 };
 
-const struct s2mpu_mpt_ops *s2mpu_get_mpt_ops(struct s2mpu_mpt_cfg cfg,
-					      const struct pkvm_module_ops *in_mod_ops);
+const struct s2mpu_mpt_ops *s2mpu_get_mpt_ops(const struct pkvm_module_ops *in_mod_ops);
 
 #endif /* __IO_MPT_S2MPU_H__ */

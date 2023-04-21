@@ -119,7 +119,7 @@ static struct dma_iovm_map *dma_find_iovm_map(struct dma_buf_attachment *a,
 		if ((iommu_get_domain_for_dev(iovm_map->dev) ==
 		    iommu_get_domain_for_dev(a->dev)) &&
 		    (DMA_MAP_ATTRS(iovm_map->attrs) == attrs) &&
-		    (iovm_map->dir == dir || iovm_map->dir == DMA_BIDIRECTIONAL)) {
+		    (iovm_map->dir == dir)) {
 			return iovm_map;
 		}
 	}

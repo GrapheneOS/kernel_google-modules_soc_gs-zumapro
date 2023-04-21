@@ -21,6 +21,8 @@
 #include <linux/device.h>
 #include <linux/of.h>
 #include <linux/devfreq.h>
+#include <soc/google/exynos_pm_qos.h>
+#include <trace/events/power.h>
 #include "governor.h"
 #include "governor_memlat.h"
 #include "governor_dsulat.h"
@@ -135,7 +137,6 @@ static void stop_monitor(struct devfreq *df)
 	node->mon_started = false;
 }
 
-
 static int gov_start(struct devfreq *df)
 {
 	int ret = 0;
@@ -197,6 +198,37 @@ static void gov_stop(struct devfreq *df)
 	node->orig_data = NULL;
 }
 
+static unsigned long dsu_to_bci_freq(struct dsulat_node *node,
+				     unsigned long dsuf)
+{
+	struct core_dev_map *map;
+	unsigned long freq = 0;
+
+	map = node->freq_map_dsu_bci;
+	if (!map)
+		goto out;
+
+	dsuf = dsuf / 1000;
+	while (map->core_mhz && map->core_mhz < dsuf)
+		map++;
+	if (!map->core_mhz)
+		map--;
+	freq = map->target_freq;
+
+out:
+	pr_debug("dsuf: %lu -> bcif: %lu\n", dsuf, freq);
+	return freq;
+}
+
+static void update_bci_freq(struct dsulat_node *node, unsigned long dsu_freq)
+{
+	unsigned long bci_freq = 0;
+	bci_freq = dsu_to_bci_freq(node, dsu_freq);
+
+	exynos_pm_qos_update_request(&node->dsu_bci_qos_req, bci_freq);
+	trace_clock_set_rate("dsu2bci", bci_freq, raw_smp_processor_id());
+}
+
 extern int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 		unsigned long *stall, unsigned long *l2_cachemiss, unsigned long *l3_cachemiss,
 		unsigned long *mem_stall, unsigned long *l2_cache_wb, unsigned long *l3_cache_access,
@@ -207,10 +239,10 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 {
 	int cpu;
 	unsigned long inst, cyc, stall, l2_cachemiss, l3_cachemiss, freq, mem_stall, mem_count;
-	unsigned long l2_cache_wb, l3_cache_access;
+	unsigned long l2_cache_wb, l3_cache_access, wb_pct;
 	struct dsulat_node *node = df->data;
 	unsigned long max_freq = 0, dsu_freq = 0;
-	unsigned int ratio, ratio_ceil;
+	unsigned int ratio, ratio_ceil, wb_pct_thres, wb_filter_ratio;
 	int ret;
 
 	/*
@@ -227,6 +259,10 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 
 	for (cpu = 0; cpu < CONFIG_VH_SCHED_CPU_NR; cpu++)
 	{
+		/* ignore idle cpu for DSU frequency boosting */
+		if (get_cpu_idle_state(cpu) == DEEP_MEMLAT_CPUIDLE_STATE_AWARE)
+			continue;
+
 		ret = get_ev_data(cpu, &inst, &cyc,
 				  &stall, &l2_cachemiss, &l3_cachemiss, &mem_stall,
 				  &l2_cache_wb, &l3_cache_access, &mem_count, &freq);
@@ -241,6 +277,8 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 		else
 			ratio = inst;
 
+		wb_pct = mult_frac(100, l2_cache_wb, l3_cache_access);
+
 		if (!freq)
 			continue;
 		trace_dsulat_dev_meas(dev_name(df->dev.parent),
@@ -249,17 +287,29 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 					l2_cachemiss,
 					freq,
 					stall,
+					l2_cache_wb,
+					l3_cache_access,
+					wb_pct,
 					mem_stall, ratio);
 
-		if (cpu < CONFIG_VH_MID_CAPACITY_CPU)
+		if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
 			ratio_ceil = node->ratio_ceil_cl0;
-		else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU)
+			wb_pct_thres = node->wb_pct_thres_cl0;
+			wb_filter_ratio = node->wb_filter_ratio_cl0;
+		} else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
 			ratio_ceil = node->ratio_ceil_cl1;
-		else
+			wb_pct_thres = node->wb_pct_thres_cl1;
+			wb_filter_ratio = node->wb_filter_ratio_cl1;
+		} else {
 			ratio_ceil = node->ratio_ceil_cl2;
+			wb_pct_thres = node->wb_pct_thres_cl2;
+			wb_filter_ratio = node->wb_filter_ratio_cl2;
+		}
 
-		if (ratio <= ratio_ceil
-			&& stall >= node->stall_floor) {
+		if ((ratio <= ratio_ceil
+			&& stall >= node->stall_floor) ||
+			(wb_pct >= wb_pct_thres
+			 && ratio <= wb_filter_ratio)) {
 			dsu_freq = core_to_dev_freq(cpu, node, freq);
 			if (!max_freq || dsu_freq > max_freq) {
 				max_freq = dsu_freq;
@@ -269,6 +319,9 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 							l2_cachemiss,
 							freq,
 							stall,
+							l2_cache_wb,
+							l3_cache_access,
+							wb_pct,
 							mem_stall,
 							max_freq);
 			}
@@ -276,8 +329,11 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 
 	}
 
-	if (max_freq)
+	if (max_freq) {
 		*target_freq = max_freq;
+		/* Update BCI freq based on modified DSU freq */
+		update_bci_freq(node, max_freq);
+	}
 
 	return 0;
 }
@@ -294,6 +350,30 @@ show_attr(ratio_ceil_cl2)
 store_attr(ratio_ceil_cl2, 1U, 20000U)
 static DEVICE_ATTR(ratio_ceil_cl2, 0644, show_ratio_ceil_cl2, store_ratio_ceil_cl2);
 
+show_attr(wb_pct_thres_cl0)
+store_attr(wb_pct_thres_cl0, 1U, 100U)
+static DEVICE_ATTR(wb_pct_thres_cl0, 0644, show_wb_pct_thres_cl0, store_wb_pct_thres_cl0);
+
+show_attr(wb_pct_thres_cl1)
+store_attr(wb_pct_thres_cl1, 1U, 100U)
+static DEVICE_ATTR(wb_pct_thres_cl1, 0644, show_wb_pct_thres_cl1, store_wb_pct_thres_cl1);
+
+show_attr(wb_pct_thres_cl2)
+store_attr(wb_pct_thres_cl2, 1U, 100U)
+static DEVICE_ATTR(wb_pct_thres_cl2, 0644, show_wb_pct_thres_cl2, store_wb_pct_thres_cl2);
+
+show_attr(wb_filter_ratio_cl0)
+store_attr(wb_filter_ratio_cl0, 1U, 50000U)
+static DEVICE_ATTR(wb_filter_ratio_cl0, 0644, show_wb_filter_ratio_cl0, store_wb_filter_ratio_cl0);
+
+show_attr(wb_filter_ratio_cl1)
+store_attr(wb_filter_ratio_cl1, 1U, 50000U)
+static DEVICE_ATTR(wb_filter_ratio_cl1, 0644, show_wb_filter_ratio_cl1, store_wb_filter_ratio_cl1);
+
+show_attr(wb_filter_ratio_cl2)
+store_attr(wb_filter_ratio_cl2, 1U, 50000U)
+static DEVICE_ATTR(wb_filter_ratio_cl2, 0644, show_wb_filter_ratio_cl2, store_wb_filter_ratio_cl2);
+
 show_attr(stall_floor)
 store_attr(stall_floor, 0U, 100U)
 static DEVICE_ATTR(stall_floor, 0644, show_stall_floor, store_stall_floor);
@@ -302,6 +382,12 @@ static struct attribute *dsulat_dev_attr[] = {
 	&dev_attr_ratio_ceil_cl0.attr,
 	&dev_attr_ratio_ceil_cl1.attr,
 	&dev_attr_ratio_ceil_cl2.attr,
+	&dev_attr_wb_pct_thres_cl0.attr,
+	&dev_attr_wb_pct_thres_cl1.attr,
+	&dev_attr_wb_pct_thres_cl2.attr,
+	&dev_attr_wb_filter_ratio_cl0.attr,
+	&dev_attr_wb_filter_ratio_cl1.attr,
+	&dev_attr_wb_filter_ratio_cl2.attr,
 	&dev_attr_stall_floor.attr,
 	&dev_attr_freq_map.attr,
 	NULL,
@@ -408,7 +494,7 @@ static struct core_dev_map *init_core_dev_map(struct device *dev,
 		if (ret)
 			return NULL;
 		tbl[i].target_freq = data;
-		pr_debug("Entry%d CPU:%u, Dev:%u\n", i, tbl[i].core_mhz,
+		pr_debug("Entry%d Src_freq:%u, Target_freq:%u\n", i, tbl[i].core_mhz,
 			tbl[i].target_freq);
 	}
 	tbl[i].core_mhz = 0;
@@ -424,26 +510,36 @@ static struct dsulat_node *register_common(struct device *dev)
 	if (!node)
 		return ERR_PTR(-ENOMEM);
 
-	node->freq_map_cl0 = init_core_dev_map(dev, NULL,
-			"core-dev-table-cl0");
+	node->ratio_ceil_cl0 = 700;
+	node->ratio_ceil_cl1 = 1000;
+	node->ratio_ceil_cl2 = 3000;
+
+	node->freq_map_cl0 = init_core_dev_map(dev, NULL, "core-dev-table-cl0");
 	if (!node->freq_map_cl0) {
 		dev_err(dev, "Couldn't find the core-dev freq table for cl0!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl1 = init_core_dev_map(dev, NULL,
-			"core-dev-table-cl1");
+	node->freq_map_cl1 = init_core_dev_map(dev, NULL, "core-dev-table-cl1");
 	if (!node->freq_map_cl1) {
 		dev_err(dev, "Couldn't find the core-dev freq table for cl1!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl2 = init_core_dev_map(dev, NULL,
-                                        "core-dev-table-cl2");
+	node->freq_map_cl2 = init_core_dev_map(dev, NULL, "core-dev-table-cl2");
 	if (!node->freq_map_cl2) {
 		dev_err(dev, "Couldn't find the core-dev freq table for cl2!\n");
 		return ERR_PTR(-EINVAL);
 	}
+
+	node->freq_map_dsu_bci = init_core_dev_map(dev, NULL, "dsu-bci-table");
+	if (!node->freq_map_dsu_bci) {
+		dev_err(dev, "Couldn't find the dsu-bci freq table!\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	/* Add dsu->bci pm_qos request */
+	exynos_pm_qos_add_request(&node->dsu_bci_qos_req, PM_QOS_BCI_THROUGHPUT, 0);
 
 	return node;
 }

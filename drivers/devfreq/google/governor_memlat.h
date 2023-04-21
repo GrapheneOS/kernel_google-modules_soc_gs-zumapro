@@ -10,22 +10,31 @@
 #include <linux/devfreq.h>
 
 enum common_ev_idx {
-	INST_IDX,
-	CYC_IDX,
 	STALL_IDX,
 	L2D_CACHE_REFILL_IDX,
-	L2_WB_IDX,
-	L3_ACCESS_IDX,
+	STALL_BACKEND_MEM_IDX,
 	NUM_COMMON_EVS
 };
 
-#define INST_EV	0x08
-#define CYC_EV	0x11
+enum amu_ev_idx {
+	INST_IDX,
+	CYCLE_IDX,
+	MEM_STALL_IDX,
+	NUM_AMU_EVS
+};
+
 #define STALL_EV 0x24
 #define L2D_CACHE_REFILL_EV 0x17
-#define L2_WB_EV 0x18
-#define L3_ACCESS_EV 0x2B
 #define L3D_CACHE_REFILL_EV 0x2A
+
+/**
+ * memlat cpuidle awareness state
+ */
+enum memlat_cpuidle_state_aware_state {
+	NO_MEMLAT_CPUIDLE_STATE_AWARE,
+	ALL_MEMLAT_CPUIDLE_STATE_AWARE,
+	DEEP_MEMLAT_CPUIDLE_STATE_AWARE,
+};
 
 /**
  * struct dev_stats - Device stats
@@ -48,6 +57,19 @@ struct dev_stats {
 struct core_dev_map {
 	unsigned int core_mhz;
 	unsigned int target_freq;
+};
+
+struct memlat_node {
+	unsigned int ratio_ceil;
+	unsigned int stall_floor;
+	bool mon_started;
+	bool already_zero;
+	struct list_head list;
+	void *orig_data;
+	struct memlat_hwmon *hw;
+	struct devfreq_governor *gov;
+	struct attribute_group *attr_grp;
+	unsigned long resume_freq;
 };
 
 /**
@@ -78,6 +100,7 @@ struct memlat_hwmon {
 	struct device_node *(*get_child_of_node)(struct device *dev);
 	void (*request_update_ms)(struct memlat_hwmon *hw,
 				  unsigned int update_ms);
+	int (*get_cpu_idle_state)(unsigned int cpu);
 	struct device *dev;
 	struct device_node *of_node;
 
@@ -93,6 +116,12 @@ struct memlat_hwmon {
 int register_memlat(struct device *dev, struct memlat_hwmon *hw);
 int register_compute(struct device *dev, struct memlat_hwmon *hw);
 int update_memlat(struct memlat_hwmon *hw);
+int exynos_devfreq_get_boundary(unsigned int devfreq_type,
+				unsigned int *max_freq, unsigned int *min_freq);
+struct device **get_memlat_dev_array(void);
+struct exynos_pm_qos_request **get_memlat_cpu_qos_array(void);
+int *get_memlat_cpuidle_state_aware(void);
+int get_cpu_idle_state(unsigned int cpu);
 #else
 static inline int register_memlat(struct device *dev,
 				  struct memlat_hwmon *hw)
@@ -105,6 +134,27 @@ static inline int register_compute(struct device *dev,
 	return 0;
 }
 static inline int update_memlat(struct memlat_hwmon *hw)
+{
+	return 0;
+}
+static int exynos_devfreq_get_boundary(unsigned int devfreq_type,
+				       unsigned int *max_freq, unsigned int *min_freq)
+{
+	return 0;
+}
+static struct device **get_memlat_dev_array(void)
+{
+	return NULL;
+}
+static struct exynos_pm_qos_request **get_memlat_cpu_qos_array(void)
+{
+	return NULL;
+}
+static int *get_memlat_cpuidle_state_aware(void)
+{
+	return NULL;
+}
+static int get_cpu_idle_state(unsigned int cpu)
 {
 	return 0;
 }

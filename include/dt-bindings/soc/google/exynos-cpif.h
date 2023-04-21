@@ -94,7 +94,8 @@
 #define SHMEM_C2C		10
 #define SHMEM_MSI		11
 #define SHMEM_DDM		12
-#define MAX_CP_SHMEM		13
+#define SHMEM_GNSS_FW		13
+#define MAX_CP_SHMEM		14
 
 /* TPMON measure */
 #define TPMON_MEASURE_TP		0
@@ -142,6 +143,7 @@
 #define LINK_ATTR_XMIT_BTDLR		(0x1 << 10) /* Used to download CP bootloader */
 #define LINK_ATTR_XMIT_BTDLR_SPI	(0x1 << 11) /* Download CP bootloader by SPI */
 #define LINK_ATTR_XMIT_BTDLR_PCIE	(0x1 << 12) /* CP ROM booting via PCIe */
+#define LINK_ATTR_XMIT_BTDLR_GNSS	(0x1 << 13) /* GNSS FW on DRAM */
 
 /* IO device attr */
 #define IO_ATTR_SIPC4			(0x1 << 0)
@@ -310,6 +312,9 @@
 #define EXYNOS_CH_EX_ID_PDP_0	181
 #define EXYNOS_CH_EX_ID_PDP_30	(EXYNOS_CH_EX_ID_PDP_0 + 30)
 #define EXYNOS_CH_EX_ID_PDP_MAX	EXYNOS_CH_EX_ID_PDP_30
+
+#define EXYNOS_CH_ID_GNSS_DUMP	239
+#define EXYNOS_CH_ID_GNSS_BOOT	240
 
 #define EXYNOS_CH_ID_BOOT	241
 #define EXYNOS_CH_ID_DUMP	242

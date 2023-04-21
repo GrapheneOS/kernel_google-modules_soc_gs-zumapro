@@ -3,6 +3,7 @@
  * Copyright (c) 2022 Samsung Electronics Co., Ltd.
  */
 
+/* Making sure margin_id and acpm_dvfs_id are sync'ed */
 enum acpm_dvfs_id {
 	MIF = ACPM_VCLK_TYPE,
 	INT,
@@ -21,9 +22,6 @@ enum acpm_dvfs_id {
 	DISP,
 	AOC,
 	BW,
-	SPARE,
-	LPM,
-	AUR,
 };
 
 struct vclk acpm_vclk_list[] = {

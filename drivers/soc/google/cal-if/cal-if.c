@@ -129,6 +129,14 @@ unsigned long cal_dfs_get_rate(unsigned int id)
 }
 EXPORT_SYMBOL_GPL(cal_dfs_get_rate);
 
+long cal_dfs_get_rate_acpm(unsigned int id)
+{
+	if (!IS_ACPM_VCLK(id)|| irqs_disabled())
+		return -EINVAL;
+	return exynos_acpm_get_rate(GET_IDX(id), 0);
+}
+EXPORT_SYMBOL_GPL(cal_dfs_get_rate_acpm);
+
 int cal_dfs_get_rate_table(unsigned int id, unsigned long *table)
 {
 	int ret;

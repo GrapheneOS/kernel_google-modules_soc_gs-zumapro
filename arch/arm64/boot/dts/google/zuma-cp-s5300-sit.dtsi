@@ -16,10 +16,15 @@
 			#address-cells = <2>;
 			#size-cells = <1>;
 
+			cp_tm1: cp-tm1 {
+				compatible = "google,gs101-cp-thermal";
+				#thermal-sensor-cells = <1>;
+			};
+
 			/* Modem interface information */
 			cpif {
 				compatible = "samsung,exynos-cp";
-				status = "disabled";
+				status = "okay";
 
 				pci_ch_num = <0>;
 				pci_db_addr = <0x14E60000>;
@@ -36,6 +41,7 @@
 				mif,link_attrs = <(
 					LINK_ATTR_XMIT_BTDLR_PCIE |
 					LINK_ATTR_XMIT_BTDLR |
+					LINK_ATTR_XMIT_BTDLR_GNSS |
 					LINK_ATTR_DUMP_ALIGNED |
 					LINK_ATTR_BOOT_ALIGNED |
 					LINK_ATTR_MEM_DUMP |
@@ -449,6 +455,22 @@
 						iod,link_type = <LINKDEV_PCIE>;
 						iod,attrs = <(0x0)>;
 					};
+					io_device_15 {
+						iod,name = "gnss_boot";
+						iod,ch = <EXYNOS_CH_ID_GNSS_BOOT>;
+						iod,format = <IPC_RAW>;
+						iod,io_type = <IODEV_BOOTDUMP>;
+						iod,link_type = <LINKDEV_PCIE>;
+						iod,attrs = <(IO_ATTR_NO_CHECK_MAXQ)>;
+					};
+					io_device_16 {
+						iod,name = "gnss_dump";
+						iod,ch = <EXYNOS_CH_ID_GNSS_DUMP>;
+						iod,format = <IPC_RAW>;
+						iod,io_type = <IODEV_BOOTDUMP>;
+						iod,link_type = <LINKDEV_PCIE>;
+						iod,attrs = <(IO_ATTR_NO_CHECK_MAXQ)>;
+					};
 				};
 			};
 
@@ -505,6 +527,14 @@
 						region,offset = <0x00000000>;
 						region,size = <0x00003000>;
 						region,cached = <0>;
+					};
+					gnss_fw {
+						region,name = "GNSS_FW";
+						region,index = <SHMEM_GNSS_FW>;
+						region,rmem = <0>;
+						region,offset = <0x00800000>;
+						region,size = <0x00400000>;
+						region,cached = <1>;
 					};
 				};
 			};

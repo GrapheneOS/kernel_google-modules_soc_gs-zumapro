@@ -234,8 +234,9 @@ static void slc_acpm_check(struct slc_acpm_driver_data *driver_data)
 			 "ptid %d size %dK\n",
 			 ptid, 4 * size4kB);
 		if (!driver_data->ptids[ptid].resize) {
-			WARN_ONCE(1, "unallocated ptid %d size %dK\n",
-				  ptid, 4 * size4kB);
+			/*
+			 * ptid was freed
+			 */
 			continue;
 		}
 		spin_lock_irqsave(&driver_data->sl, flags);
@@ -374,16 +375,20 @@ static ptid_t slc_acpm_mutate(void *data, ptid_t ptid, void *resize_data,
 		return PT_PTID_INVALID;
 
 	if (pt_driver_get_property_value(driver_data->driver,
-		new_property_index, 0, &vptid) < 0)
+		new_property_index, PT_PROPERTY_INDEX_VPTID,
+		&vptid) < 0)
 		return PT_PTID_INVALID;
 	if (pt_driver_get_property_value(driver_data->driver,
-		new_property_index, 1, &size_bits) < 0)
+		new_property_index, PT_PROPERTY_INDEX_SIZE_BITS,
+		&size_bits) < 0)
 		return PT_PTID_INVALID;
 	if (pt_driver_get_property_value(driver_data->driver,
-		new_property_index, 2, &priority) < 0)
+		new_property_index, PT_PROPERTY_INDEX_PRIORITY,
+		&priority) < 0)
 		return PT_PTID_INVALID;
 	if (pt_driver_get_property_value(driver_data->driver,
-		new_property_index, 3, &pbha) < 0)
+		new_property_index, PT_PROPERTY_INDEX_PBHA,
+		&pbha) < 0)
 		pbha = 0;
 	if (driver_data->ptids[ptid].pbha != (pbha & PT_PBHA_MASK))
 		return PT_PTID_INVALID;

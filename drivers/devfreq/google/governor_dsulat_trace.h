@@ -16,9 +16,10 @@ TRACE_EVENT(dsulat_dev_meas,
 
 	TP_PROTO(const char *name, unsigned int dev_id, unsigned long inst,
 		 unsigned long l2_cachemiss, unsigned long freq, unsigned int stall,
-		 unsigned long mem_stall, unsigned int ratio),
+		 unsigned long l2_cache_wb, unsigned long l3_cache_access,
+		 unsigned long wb_pct, unsigned long mem_stall, unsigned int ratio),
 
-	TP_ARGS(name, dev_id, inst, l2_cachemiss, freq, stall, mem_stall, ratio),
+	TP_ARGS(name, dev_id, inst, l2_cachemiss, freq, stall, l2_cache_wb, l3_cache_access, wb_pct, mem_stall, ratio),
 
 	TP_STRUCT__entry(
 		__string(name, name)
@@ -27,6 +28,9 @@ TRACE_EVENT(dsulat_dev_meas,
 		__field(unsigned long, l2_cachemiss)
 		__field(unsigned long, freq)
 		__field(unsigned int, stall)
+		__field(unsigned long, l2_cache_wb)
+		__field(unsigned long, l3_cache_access)
+		__field(unsigned long, wb_pct)
 		__field(unsigned long, mem_stall)
 		__field(unsigned int, ratio)
 	),
@@ -38,17 +42,23 @@ TRACE_EVENT(dsulat_dev_meas,
 		__entry->l2_cachemiss = l2_cachemiss;
 		__entry->freq = freq;
 		__entry->stall = stall;
+		__entry->l2_cache_wb = l2_cache_wb;
+		__entry->l3_cache_access = l3_cache_access;
+		__entry->wb_pct = wb_pct;
 		__entry->mem_stall = mem_stall;
 		__entry->ratio = ratio;
 	),
 
-	TP_printk("dev: %s, id=%u, inst=%lu, l2_cachemiss=%lu, freq=%lu, stall=%u, mem_stall=%lu, ratio=%u",
+	TP_printk("dev: %s, id=%u, inst=%lu, l2_cachemiss=%lu, freq=%lu, stall=%u, l2_cache_wb=%lu, l3_cache_access=%lu, wb_pct=%lu, mem_stall=%lu, ratio=%u",
 		__get_str(name),
 		__entry->dev_id,
 		__entry->inst,
 		__entry->l2_cachemiss,
 		__entry->freq,
 		__entry->stall,
+		__entry->l2_cache_wb,
+		__entry->l3_cache_access,
+		__entry->wb_pct,
 		__entry->mem_stall,
 		__entry->ratio)
 );
@@ -57,9 +67,10 @@ TRACE_EVENT(dsulat_dev_update,
 
 	TP_PROTO(const char *name, unsigned int dev_id, unsigned long inst,
 		 unsigned long l2_cachemiss, unsigned long freq, unsigned long stall,
-		 unsigned long mem_stall, unsigned long vote),
+		 unsigned long l2_cache_wb, unsigned long l3_cache_access,
+		 unsigned long wb_pct, unsigned long mem_stall, unsigned long vote),
 
-	TP_ARGS(name, dev_id, inst, l2_cachemiss, freq, stall, mem_stall, vote),
+	TP_ARGS(name, dev_id, inst, l2_cachemiss, freq, stall, l2_cache_wb, l3_cache_access, wb_pct, mem_stall, vote),
 
 	TP_STRUCT__entry(
 		__string(name, name)
@@ -68,6 +79,9 @@ TRACE_EVENT(dsulat_dev_update,
 		__field(unsigned long, l2_cachemiss)
 		__field(unsigned long, freq)
 		__field(unsigned long, stall)
+		__field(unsigned long, l2_cache_wb)
+		__field(unsigned long, l3_cache_access)
+		__field(unsigned long, wb_pct)
 		__field(unsigned long, mem_stall)
 		__field(unsigned long, vote)
 	),
@@ -79,17 +93,23 @@ TRACE_EVENT(dsulat_dev_update,
 		__entry->l2_cachemiss = l2_cachemiss;
 		__entry->freq = freq;
 		__entry->stall = stall;
+		__entry->l2_cache_wb = l2_cache_wb;
+		__entry->l3_cache_access = l3_cache_access;
+		__entry->wb_pct = wb_pct;
 		__entry->mem_stall = mem_stall;
 		__entry->vote = vote;
 	),
 
-	TP_printk("dev: %s, id=%u, inst=%lu, l2_cachemiss=%lu, freq=%lu, stall=%lu, mem_stall=%lu, vote=%lu",
+	TP_printk("dev: %s, id=%u, inst=%lu, l2_cachemiss=%lu, freq=%lu, stall=%lu, l2_cache_wb=%lu, l3_cache_access=%lu, wb_pct=%lu, mem_stall=%lu, vote=%lu",
 		__get_str(name),
 		__entry->dev_id,
 		__entry->inst,
 		__entry->l2_cachemiss,
 		__entry->freq,
 		__entry->stall,
+		__entry->l2_cache_wb,
+		__entry->l3_cache_access,
+		__entry->wb_pct,
 		__entry->mem_stall,
 		__entry->vote)
 );

@@ -271,6 +271,7 @@ struct exynos_pcie {
 	int			idle_ip_index;
 	int			separated_msi;
 	bool			use_msi;
+	bool			support_msi64_addressing;
 	bool			use_cache_coherency;
 	bool			use_sicd;
 	bool			use_pcieon_sleep;
@@ -335,6 +336,9 @@ struct exynos_pcie {
 	bool use_phy_isol_con;
 	int phy_control;
 	struct logbuffer *log;
+
+	bool pcie_must_resume;
+	int pcieon_sleep_enable_cnt;
 };
 
 #define PCIE_MAX_MSI_NUM	(8)
