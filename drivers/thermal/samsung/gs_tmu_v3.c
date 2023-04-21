@@ -255,6 +255,23 @@ static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_sta
 	}
 }
 
+static bool get_all_curr_state_from_acpm(void __iomem *base, struct curr_state *curr_state[])
+{
+	if (base) {
+		int cdev_state_offset = 0;
+		if (ACPM_BUF_VER > 0) {
+			/* offset for u64 buffer_version field */
+			cdev_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
+		}
+		cdev_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN;
+		memcpy_fromio(*curr_state, base + cdev_state_offset,
+			      sizeof(struct curr_state) * NR_TZ);
+		return true;
+	} else {
+		return false;
+	}
+}
+
 #define INVALID_TZID(tzid)          (((tzid) < 0) || ((tzid) >= TZ_END))
 
 static int get_tr_handle_id(tr_handle instance)
@@ -525,11 +542,22 @@ static bool cpu_switch_on_status_changed(struct thermal_state thermal_state)
 	return prev_switch_on_state != curr_switch_on_state;
 }
 
+static u8 get_dfs_status_changed(struct thermal_state thermal_state)
+{
+	u8 prev_dfs_on_state = acpm_gov_common.thermal_pressure.state.dfs_on;
+	u8 curr_dfs_on_state = thermal_state.dfs_on;
+
+	return prev_dfs_on_state ^ curr_dfs_on_state;
+}
+
 static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 {
 	struct thermal_state thermal_state;
+	struct curr_state curr_state_all[NR_TZ];
+	struct curr_state *curr_state_ptr = curr_state_all;
+	bool curr_state_read = false;
 
-	if(ACPM_BUF_VER != EXPECT_BUF_VER)
+	if (ACPM_BUF_VER != EXPECT_BUF_VER)
 		return;
 
 	switch (acpm_gov_common.tracing_mode) {
@@ -539,11 +567,11 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 	case ACPM_GOV_DEBUG_MODE_HIGH_OVERHEAD: {
 		struct gs_tmu_data *data;
 
-		list_for_each_entry (data, &dtm_dev_list, node) {
-			struct curr_state curr_state;
+		if (get_all_curr_state_from_acpm(acpm_gov_common.sm_base, &curr_state_ptr)) {
+			curr_state_read = true;
+			list_for_each_entry (data, &dtm_dev_list, node) {
+				struct curr_state curr_state = curr_state_all[data->id];
 
-			if (get_curr_state_from_acpm(acpm_gov_common.sm_base, data->id,
-						     &curr_state)) {
 				int k_p = 0, k_i = 0;
 				if (data->acpm_pi_enable) {
 					k_p = (curr_state.ctrl_temp - curr_state.temperature) < 0 ?
@@ -566,16 +594,35 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 	}
 
 	if (get_thermal_state_from_acpm(acpm_gov_common.sm_base, &thermal_state)) {
+		u8 dfs_status_changed;
 		bool switch_on_work_needed = false;
+		struct gs_tmu_data *data;
 
 		spin_lock(&acpm_gov_common.thermal_pressure.lock);
 		switch_on_work_needed = cpu_switch_on_status_changed(thermal_state);
+		dfs_status_changed = get_dfs_status_changed(thermal_state);
 		acpm_gov_common.thermal_pressure.state = thermal_state;
 		spin_unlock(&acpm_gov_common.thermal_pressure.lock);
 
 		if (switch_on_work_needed)
 			kthread_queue_work(&acpm_gov_common.thermal_pressure.worker,
 					   &acpm_gov_common.thermal_pressure.switch_on_work);
+
+		if (!dfs_status_changed)
+			return;
+
+		if (!curr_state_read)
+			get_all_curr_state_from_acpm(acpm_gov_common.sm_base, &curr_state_ptr);
+
+		list_for_each_entry (data, &dtm_dev_list, node) {
+			struct curr_state curr_state = curr_state_all[data->id];
+			if ((!(dfs_status_changed & (1 << data->id))) ||
+			    (!(thermal_state.dfs_on & (1 << data->id))))
+				continue;
+			pr_info_ratelimited("%s DFS on: temperature = %dC, cdev_state = %d\n",
+					    data->tmu_name, curr_state.temperature,
+					    curr_state.cdev_state);
+		}
 	}
 }
 
@@ -2512,9 +2559,11 @@ static int param_acpm_gov_thermal_state_get(char *buf, const struct kernel_param
 
 	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
 	    get_thermal_state_from_acpm(acpm_gov_common.sm_base, &therm_state)) {
-		return sysfs_emit(buf, "switch_on=%x, pressure: [0]=%d, [1]=%d, [2]=%d\n",
-				  therm_state.switched_on, therm_state.therm_press[0],
-				  therm_state.therm_press[1], therm_state.therm_press[2]);
+		return sysfs_emit(buf,
+				  "switch_on=%x, dfs_on=%x, pressure: [0]=%d, [1]=%d, [2]=%d\n",
+				  therm_state.switched_on, therm_state.dfs_on,
+				  therm_state.therm_press[0], therm_state.therm_press[1],
+				  therm_state.therm_press[2]);
 	}
 
 	return -EIO;

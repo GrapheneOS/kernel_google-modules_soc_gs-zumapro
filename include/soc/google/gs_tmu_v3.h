@@ -80,7 +80,7 @@ enum acpm_gov_debug_mode_enum {
 #define CPU_TZ_MASK (0x7)
 struct thermal_state {
 	u8 switched_on;
-	u8 dfs_reserved;
+	u8 dfs_on;
 	u8 therm_press[NR_PRESSURE_TZ];
 	u8 reserved[3];
 };
