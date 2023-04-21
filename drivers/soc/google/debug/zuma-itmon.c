@@ -2282,6 +2282,12 @@ void itmon_notifier_chain_register(struct notifier_block *block)
 }
 EXPORT_SYMBOL(itmon_notifier_chain_register);
 
+void itmon_notifier_chain_unregister(struct notifier_block *block)
+{
+	atomic_notifier_chain_unregister(&itmon_notifier_list, block);
+}
+EXPORT_SYMBOL(itmon_notifier_chain_unregister);
+
 static int itmon_logging_panic_handler(struct notifier_block *nb,
 				       unsigned long l, void *buf)
 {
