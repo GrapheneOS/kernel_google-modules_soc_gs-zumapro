@@ -56,6 +56,12 @@
 			DECON0 {
 				bus-width = <32>;
 			};
+			DECON1 {
+				bus-width = <32>;
+			};
+			DECON2 {
+				bus-width = <32>;
+			};
 			isp-fe {
 				bus-width = <32>;
 			};
