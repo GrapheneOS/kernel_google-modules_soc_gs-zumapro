@@ -187,6 +187,7 @@
 		clock-names = "UMUX_CLKCMU_ISPFE";
 		clock-rates = <0>;
 		clock-family = <CAMERA_CLOCK_FAMILY_CAM>;
+		bts-scenario = "camera_default";
 
 		interrupts =
 			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>,
