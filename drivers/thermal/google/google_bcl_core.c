@@ -37,36 +37,12 @@
 #include <linux/seq_file.h>
 #endif
 
-#define SMPL_WARN_CTRL		S2MPG14_PM_SMPL_WARN_CTRL
-#define SMPL_WARN_SHIFT		S2MPG14_SMPL_WARN_LVL_SHIFT
-#define OCP_WARN_LVL_SHIFT	S2MPG14_OCP_WARN_LVL_SHIFT
-#define B3M_OCP_WARN		S2MPG14_PM_B3M_OCP_WARN
-#define B3M_SOFT_OCP_WARN	S2MPG14_PM_B3M_SOFT_OCP_WARN
-#define B2M_OCP_WARN		S2MPG14_PM_B2M_OCP_WARN
-#define B2M_SOFT_OCP_WARN	S2MPG14_PM_B2M_SOFT_OCP_WARN
-#define B7M_OCP_WARN		S2MPG14_PM_B7M_OCP_WARN
-#define B7M_SOFT_OCP_WARN	S2MPG14_PM_B7M_SOFT_OCP_WARN
-#define B2S_OCP_WARN		S2MPG15_PM_B2S_OCP_WARN
-#define B2S_SOFT_OCP_WARN	S2MPG15_PM_B2S_SOFT_OCP_WARN
-#define MAIN_CHIPID		S2MPG14_COMMON_CHIPID
-#define SUB_CHIPID		S2MPG15_COMMON_CHIPID
-#define INT3_120C		S2MPG14_IRQ_120C_INT3;
-#define INT3_140C		S2MPG14_IRQ_140C_INT3;
-#define INT3_TSD		S2MPG14_IRQ_TSD_INT3;
-#define GPIO_ALIVE_BASE		(0x154d0000)
-#define GPA9_CON		(0x100)
-#define DELTA_10MS		(10 * NSEC_PER_MSEC)
-#define DELTA_50MS		(50 * NSEC_PER_MSEC)
-#define VSHUNT_MULTIPLIER	10000
-#define MILLI_TO_MICRO		1000
-
 static const struct platform_device_id google_id_table[] = {
 	{.name = "google_mitigation",},
 	{},
 };
 
 DEFINE_MUTEX(sysreg_lock);
-
 
 static void update_irq_end_times(struct bcl_device *bcl_dev, int id);
 
