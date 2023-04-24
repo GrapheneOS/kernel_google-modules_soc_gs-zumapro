@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * USB device tree source code for Zuma Pro SoC
+ *
+ * Copyright 2023 Google LLC.
+ */
+
+/ {
+	sysreg_hsi0: sysreg_hsi0@11020000 {
+		compatible = "samsung,sysreg-hsi0", "syscon";
+		reg = <0x0 0x11020000 0x10000>;
+	};
+};

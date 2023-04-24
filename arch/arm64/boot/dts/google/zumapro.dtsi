@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright 2022 Google LLC.
+ * Copyright 2023 Google LLC.
  *
  */
 
@@ -14,6 +14,8 @@
 #include "zumapro-pm-domains.dtsi"
 #include "zumapro-cpu.dtsi"
 #include "zumapro-pinctrl.dtsi"
+#include "zumapro-usi.dtsi"
+#include "zumapro-usb.dtsi"
 
 / {
 	compatible = "google,zumapro";
@@ -389,5 +391,10 @@
 		compatible = "google,zumapro-pinctrl";
 		reg = <0x00000000 0x10C40000 0x00001000>;
 		interrupts = <GIC_SPI IRQ_GPIO_PERIC1_PERIC1 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	pmu_system_controller: system-controller@15460000 {
+		compatible = "samsung,gs101-pmu", "syscon";
+		reg = <0x0 0x15460000 0x10000>;
 	};
 };
