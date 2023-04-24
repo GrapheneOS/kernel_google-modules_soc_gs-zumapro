@@ -2517,11 +2517,5 @@ void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 	}
 #endif
 
-	if (uclamp_is_used()) {
-		if (uclamp_is_ignore_uclamp_max(p))
-			uclamp_reset_ignore_uclamp_max(p);
-
-		if (uclamp_is_ignore_uclamp_min(p))
-			uclamp_reset_ignore_uclamp_min(p);
-	}
+	/* Resetting uclamp filter is handled in dequeue_task() */
 }
