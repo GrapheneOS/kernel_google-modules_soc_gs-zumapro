@@ -4,4 +4,4 @@
 
 obj-$(CONFIG_GCMA) += gcma.o
 
-gcma-y                    := gcma_core.o
+gcma-y                    := gcma_core.o gcma_sysfs.o
