@@ -15,7 +15,9 @@ struct dsulat_node {
 	unsigned int wb_filter_ratio_cl0;
 	unsigned int wb_filter_ratio_cl1;
 	unsigned int wb_filter_ratio_cl2;
-	unsigned int stall_floor;
+	unsigned int mem_stall_floor_cl0;
+	unsigned int mem_stall_floor_cl1;
+	unsigned int mem_stall_floor_cl2;
 	bool mon_started;
 	bool already_zero;
 	struct list_head list;
