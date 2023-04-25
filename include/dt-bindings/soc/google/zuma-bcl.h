@@ -137,5 +137,8 @@
 #define ADD_TPU (0x1A3A0000)
 #define ADD_AUR (0x20AF0000)
 
+#define CORE_PMIC_MAIN 0
+#define CORE_PMIC_SUB 1
+
 #endif /* _DT_BINDINGS_ZUMA_BCL_H */
 

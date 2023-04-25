@@ -91,14 +91,6 @@ extern const unsigned int subsystem_pmu[];
 extern const unsigned int clk_stats_offset[];
 extern const char * const clk_stats_source[];
 
-enum PMIC_REG {
-	S2MPG14,
-	S2MPG15
-};
-
-#define MAIN 			S2MPG14
-#define SUB 			S2MPG15
-
 struct ocpsmpl_stats {
 	ktime_t _time;
 	int capacity;
@@ -156,6 +148,26 @@ struct qos_throttle_limit {
 	bool throttle;
 };
 
+struct bcl_zone {
+	struct device *device;
+	struct delayed_work irq_triggered_work;
+	struct delayed_work irq_untriggered_work;
+	struct delayed_work irq_work;
+	struct delayed_work enable_irq_work;
+	struct thermal_zone_device *tz;
+	struct thermal_zone_of_device_ops tz_ops;
+	struct qos_throttle_limit *bcl_qos;
+	struct ocpsmpl_stats bcl_stats;
+	atomic_t bcl_cnt;
+	int bcl_prev_lvl;
+	int bcl_cur_lvl;
+	int bcl_lvl;
+	int bcl_pin;
+	int bcl_irq;
+	void *parent;
+	int idx;
+};
+
 struct bcl_device {
 	struct device *device;
 	struct device *main_dev;
@@ -169,25 +181,16 @@ struct bcl_device {
 	const struct bcl_ifpmic_ops *pmic_ops;
 
 	struct notifier_block psy_nb;
-	struct delayed_work irq_triggered_worker[TRIGGERED_SOURCE_MAX];
-	struct delayed_work irq_untriggered_worker[TRIGGERED_SOURCE_MAX];
+	struct bcl_zone *zone[TRIGGERED_SOURCE_MAX];
 	struct delayed_work init_work;
-	unsigned int bcl_lvl[TRIGGERED_SOURCE_MAX];
-	atomic_t bcl_cnt[TRIGGERED_SOURCE_MAX];
-	int bcl_prev_lvl[TRIGGERED_SOURCE_MAX];
-	int bcl_cur_lvl[TRIGGERED_SOURCE_MAX];
+	struct delayed_work soc_work;
+	struct thermal_zone_device *soc_tz;
+	struct thermal_zone_of_device_ops soc_tz_ops;
 
 	int trip_high_temp;
 	int trip_low_temp;
 	int trip_val;
 	struct mutex state_trans_lock;
-	struct thermal_zone_of_device_ops bcl_ops[TRIGGERED_SOURCE_MAX];
-	struct delayed_work bcl_irq_work[TRIGGERED_SOURCE_MAX];
-	struct thermal_zone_device *bcl_tz[TRIGGERED_SOURCE_MAX];
-
-	unsigned int bcl_irq[TRIGGERED_SOURCE_MAX];
-	int bcl_pin[TRIGGERED_SOURCE_MAX];
-	struct ocpsmpl_stats bcl_stats[TRIGGERED_SOURCE_MAX];
 
 	struct i2c_client *main_pmic_i2c;
 	struct i2c_client *sub_pmic_i2c;
@@ -256,7 +259,6 @@ struct bcl_device {
 	const char *main_rail_names[METER_CHANNEL_MAX];
 	const char *sub_rail_names[METER_CHANNEL_MAX];
 
-	struct qos_throttle_limit *bcl_qos[TRIGGERED_SOURCE_MAX];
 	int cpu0_cluster;
 	int cpu1_cluster;
 	int cpu2_cluster;
@@ -284,7 +286,7 @@ int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
 int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
 int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
 u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setting);
-void google_bcl_qos_update(struct bcl_device *bcl_dev, int id, bool throttle);
+void google_bcl_qos_update(struct bcl_zone *zone, bool throttle);
 int google_bcl_setup_qos(struct bcl_device *bcl_dev);
 void google_bcl_remove_qos(struct bcl_device *bcl_dev);
 #else

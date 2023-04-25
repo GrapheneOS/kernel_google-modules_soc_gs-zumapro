@@ -35,9 +35,9 @@ const unsigned int subsystem_pmu[] = {
 int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 {
 	switch (pmic) {
-		case SUB:
+		case CORE_PMIC_SUB:
 			return s2mpg15_write_reg((bcl_dev)->sub_meter_i2c, reg, value);
-		case MAIN:
+		case CORE_PMIC_MAIN:
 			return s2mpg14_write_reg((bcl_dev)->main_meter_i2c, reg, value);
 	}
 	return 0;
@@ -46,9 +46,9 @@ int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
 {
 	switch (pmic) {
-		case SUB:
+		case CORE_PMIC_SUB:
 			return s2mpg15_read_reg((bcl_dev)->sub_meter_i2c, reg, value);
-		case MAIN:
+		case CORE_PMIC_MAIN:
 			return s2mpg14_read_reg((bcl_dev)->main_meter_i2c, reg, value);
 	}
 	return 0;
@@ -57,9 +57,9 @@ int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
 int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 {
 	switch (pmic) {
-		case SUB:
+		case CORE_PMIC_SUB:
 			return s2mpg15_write_reg((bcl_dev)->sub_pmic_i2c, reg, value);
-		case MAIN:
+		case CORE_PMIC_MAIN:
 			return s2mpg14_write_reg((bcl_dev)->main_pmic_i2c, reg, value);
 	}
 	return 0;
@@ -68,9 +68,9 @@ int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
 {
 	switch (pmic) {
-		case SUB:
+		case CORE_PMIC_SUB:
 			return s2mpg15_read_reg((bcl_dev)->sub_pmic_i2c, reg, value);
-		case MAIN:
+		case CORE_PMIC_MAIN:
 			return s2mpg14_read_reg((bcl_dev)->main_pmic_i2c, reg, value);
 	}
 	return 0;

@@ -23,18 +23,6 @@
 #include <linux/mfd/samsung/s2mpg14-register.h>
 #include <linux/mfd/samsung/s2mpg15-register.h>
 
-#define SMPL_WARN_CTRL		S2MPG14_PM_SMPL_WARN_CTRL
-#define SMPL_WARN_SHIFT		S2MPG14_SMPL_WARN_LVL_SHIFT
-#define OCP_WARN_LVL_SHIFT	S2MPG14_OCP_WARN_LVL_SHIFT
-#define B3M_OCP_WARN		S2MPG14_PM_B3M_OCP_WARN
-#define B3M_SOFT_OCP_WARN	S2MPG14_PM_B3M_SOFT_OCP_WARN
-#define B2M_OCP_WARN		S2MPG14_PM_B2M_OCP_WARN
-#define B2M_SOFT_OCP_WARN	S2MPG14_PM_B2M_SOFT_OCP_WARN
-#define B7M_OCP_WARN		S2MPG14_PM_B7M_OCP_WARN
-#define B7M_SOFT_OCP_WARN	S2MPG14_PM_B7M_SOFT_OCP_WARN
-#define B2S_OCP_WARN		S2MPG15_PM_B2S_OCP_WARN
-#define B2S_SOFT_OCP_WARN	S2MPG15_PM_B2S_SOFT_OCP_WARN
-
 const unsigned int clk_stats_offset[] = {
 	CPUCL0_CLKDIVSTEP_STAT,
 	CPUCL12_CLKDIVSTEP_STAT,
@@ -62,7 +50,7 @@ static ssize_t batoilo_count_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[BATOILO]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[BATOILO]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(batoilo_count);
@@ -72,7 +60,7 @@ static ssize_t vdroop2_count_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[UVLO2]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[UVLO2]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(vdroop2_count);
@@ -82,7 +70,7 @@ static ssize_t vdroop1_count_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[UVLO1]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[UVLO1]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(vdroop1_count);
@@ -92,7 +80,7 @@ static ssize_t smpl_warn_count_show(struct device *dev, struct device_attribute 
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SMPL_WARN]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[SMPL_WARN]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(smpl_warn_count);
@@ -102,7 +90,7 @@ static ssize_t ocp_cpu1_count_show(struct device *dev, struct device_attribute *
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[OCP_WARN_CPUCL1]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[OCP_WARN_CPUCL1]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(ocp_cpu1_count);
@@ -112,7 +100,7 @@ static ssize_t ocp_cpu2_count_show(struct device *dev, struct device_attribute *
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[OCP_WARN_CPUCL2]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[OCP_WARN_CPUCL2]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(ocp_cpu2_count);
@@ -122,7 +110,7 @@ static ssize_t ocp_tpu_count_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[OCP_WARN_TPU]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[OCP_WARN_TPU]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(ocp_tpu_count);
@@ -132,7 +120,7 @@ static ssize_t ocp_gpu_count_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[OCP_WARN_GPU]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[OCP_WARN_GPU]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(ocp_gpu_count);
@@ -143,7 +131,7 @@ static ssize_t soft_ocp_cpu1_count_show(struct device *dev, struct device_attrib
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SOFT_OCP_WARN_CPUCL1]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[SOFT_OCP_WARN_CPUCL1]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(soft_ocp_cpu1_count);
@@ -154,7 +142,7 @@ static ssize_t soft_ocp_cpu2_count_show(struct device *dev, struct device_attrib
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SOFT_OCP_WARN_CPUCL2]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[SOFT_OCP_WARN_CPUCL2]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(soft_ocp_cpu2_count);
@@ -165,7 +153,7 @@ static ssize_t soft_ocp_tpu_count_show(struct device *dev, struct device_attribu
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SOFT_OCP_WARN_TPU]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[SOFT_OCP_WARN_TPU]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(soft_ocp_tpu_count);
@@ -176,7 +164,7 @@ static ssize_t soft_ocp_gpu_count_show(struct device *dev,
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->bcl_cnt[SOFT_OCP_WARN_GPU]));
+	return sysfs_emit(buf, "%d\n", atomic_read(&bcl_dev->zone[SOFT_OCP_WARN_GPU]->bcl_cnt));
 }
 
 static DEVICE_ATTR_RO(soft_ocp_gpu_count);
@@ -186,7 +174,7 @@ static ssize_t batoilo_cap_show(struct device *dev, struct device_attribute *att
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[BATOILO].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[BATOILO]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(batoilo_cap);
@@ -196,7 +184,7 @@ static ssize_t vdroop2_cap_show(struct device *dev, struct device_attribute *att
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[UVLO2].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[UVLO2]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(vdroop2_cap);
@@ -206,7 +194,7 @@ static ssize_t vdroop1_cap_show(struct device *dev, struct device_attribute *att
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[UVLO1].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[UVLO1]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(vdroop1_cap);
@@ -216,7 +204,7 @@ static ssize_t smpl_warn_cap_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SMPL_WARN].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SMPL_WARN]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(smpl_warn_cap);
@@ -226,7 +214,7 @@ static ssize_t ocp_cpu1_cap_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL1].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[OCP_WARN_CPUCL1]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(ocp_cpu1_cap);
@@ -236,7 +224,7 @@ static ssize_t ocp_cpu2_cap_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL2].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[OCP_WARN_CPUCL2]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(ocp_cpu2_cap);
@@ -246,7 +234,7 @@ static ssize_t ocp_tpu_cap_show(struct device *dev, struct device_attribute *att
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_TPU].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[OCP_WARN_TPU]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(ocp_tpu_cap);
@@ -256,7 +244,7 @@ static ssize_t ocp_gpu_cap_show(struct device *dev, struct device_attribute *att
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_GPU].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[OCP_WARN_GPU]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(ocp_gpu_cap);
@@ -267,7 +255,7 @@ static ssize_t soft_ocp_cpu1_cap_show(struct device *dev, struct device_attribut
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL1].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SOFT_OCP_WARN_CPUCL1]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_cpu1_cap);
@@ -278,7 +266,7 @@ static ssize_t soft_ocp_cpu2_cap_show(struct device *dev, struct device_attribut
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL2].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SOFT_OCP_WARN_CPUCL2]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_cpu2_cap);
@@ -289,7 +277,7 @@ static ssize_t soft_ocp_tpu_cap_show(struct device *dev, struct device_attribute
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_TPU].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SOFT_OCP_WARN_TPU]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_tpu_cap);
@@ -299,7 +287,7 @@ static ssize_t soft_ocp_gpu_cap_show(struct device *dev, struct device_attribute
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_GPU].capacity);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SOFT_OCP_WARN_GPU]->bcl_stats.capacity);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_gpu_cap);
@@ -310,7 +298,7 @@ static ssize_t batoilo_volt_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[BATOILO].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[BATOILO]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(batoilo_volt);
@@ -320,7 +308,7 @@ static ssize_t vdroop2_volt_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[UVLO2].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[UVLO2]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(vdroop2_volt);
@@ -330,7 +318,7 @@ static ssize_t vdroop1_volt_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[UVLO1].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[UVLO1]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(vdroop1_volt);
@@ -340,7 +328,7 @@ static ssize_t smpl_warn_volt_show(struct device *dev, struct device_attribute *
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SMPL_WARN].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SMPL_WARN]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(smpl_warn_volt);
@@ -350,7 +338,7 @@ static ssize_t ocp_cpu1_volt_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL1].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[OCP_WARN_CPUCL1]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(ocp_cpu1_volt);
@@ -360,7 +348,7 @@ static ssize_t ocp_cpu2_volt_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL2].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[OCP_WARN_CPUCL2]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(ocp_cpu2_volt);
@@ -370,7 +358,7 @@ static ssize_t ocp_tpu_volt_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_TPU].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[OCP_WARN_TPU]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(ocp_tpu_volt);
@@ -380,7 +368,7 @@ static ssize_t ocp_gpu_volt_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[OCP_WARN_GPU].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[OCP_WARN_GPU]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(ocp_gpu_volt);
@@ -391,7 +379,7 @@ static ssize_t soft_ocp_cpu1_volt_show(struct device *dev, struct device_attribu
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL1].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SOFT_OCP_WARN_CPUCL1]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_cpu1_volt);
@@ -402,7 +390,7 @@ static ssize_t soft_ocp_cpu2_volt_show(struct device *dev, struct device_attribu
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL2].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SOFT_OCP_WARN_CPUCL2]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_cpu2_volt);
@@ -413,7 +401,7 @@ static ssize_t soft_ocp_tpu_volt_show(struct device *dev, struct device_attribut
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_TPU].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SOFT_OCP_WARN_TPU]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_tpu_volt);
@@ -423,7 +411,7 @@ static ssize_t soft_ocp_gpu_volt_show(struct device *dev, struct device_attribut
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%d\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_GPU].voltage);
+	return sysfs_emit(buf, "%d\n", bcl_dev->zone[SOFT_OCP_WARN_GPU]->bcl_stats.voltage);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_gpu_volt);
@@ -434,7 +422,7 @@ static ssize_t batoilo_time_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[BATOILO]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[BATOILO]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(batoilo_time);
@@ -444,7 +432,7 @@ static ssize_t vdroop2_time_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[UVLO2]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[UVLO2]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(vdroop2_time);
@@ -454,7 +442,7 @@ static ssize_t vdroop1_time_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[UVLO1]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[UVLO1]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(vdroop1_time);
@@ -464,7 +452,7 @@ static ssize_t smpl_warn_time_show(struct device *dev, struct device_attribute *
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SMPL_WARN]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[SMPL_WARN]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(smpl_warn_time);
@@ -474,7 +462,7 @@ static ssize_t ocp_cpu1_time_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL1]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[OCP_WARN_CPUCL1]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(ocp_cpu1_time);
@@ -484,7 +472,7 @@ static ssize_t ocp_cpu2_time_show(struct device *dev, struct device_attribute *a
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[OCP_WARN_CPUCL2]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[OCP_WARN_CPUCL2]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(ocp_cpu2_time);
@@ -494,7 +482,7 @@ static ssize_t ocp_tpu_time_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[OCP_WARN_TPU]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[OCP_WARN_TPU]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(ocp_tpu_time);
@@ -504,7 +492,7 @@ static ssize_t ocp_gpu_time_show(struct device *dev, struct device_attribute *at
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[OCP_WARN_GPU]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[OCP_WARN_GPU]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(ocp_gpu_time);
@@ -515,7 +503,7 @@ static ssize_t soft_ocp_cpu1_time_show(struct device *dev, struct device_attribu
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL1]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[SOFT_OCP_WARN_CPUCL1]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_cpu1_time);
@@ -526,7 +514,7 @@ static ssize_t soft_ocp_cpu2_time_show(struct device *dev, struct device_attribu
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_CPUCL2]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[SOFT_OCP_WARN_CPUCL2]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_cpu2_time);
@@ -537,7 +525,7 @@ static ssize_t soft_ocp_tpu_time_show(struct device *dev, struct device_attribut
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_TPU]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[SOFT_OCP_WARN_TPU]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_tpu_time);
@@ -547,7 +535,7 @@ static ssize_t soft_ocp_gpu_time_show(struct device *dev, struct device_attribut
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%lld\n", bcl_dev->bcl_stats[SOFT_OCP_WARN_GPU]._time);
+	return sysfs_emit(buf, "%lld\n", bcl_dev->zone[SOFT_OCP_WARN_GPU]->bcl_stats._time);
 }
 
 static DEVICE_ATTR_RO(soft_ocp_gpu_time);
@@ -757,7 +745,7 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 		for (i = 0; i < TRIGGERED_SOURCE_MAX; i++)
-			enable_irq(bcl_dev->bcl_irq[i]);
+			enable_irq(bcl_dev->zone[i]->bcl_irq);
 	} else {
 		bcl_dev->gpu_clkdivstep &= ~(1 << 0);
 		bcl_dev->tpu_clkdivstep &= ~(1 << 0);
@@ -772,7 +760,7 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 		for (i = 0; i < TRIGGERED_SOURCE_MAX; i++)
-			disable_irq(bcl_dev->bcl_irq[i]);
+			disable_irq(bcl_dev->zone[i]->bcl_irq);
 	}
 	return size;
 }
@@ -869,11 +857,13 @@ static ssize_t uvlo1_lvl_show(struct device *dev, struct device_attribute *attr,
 
 	if (!bcl_dev)
 		return -EIO;
+	if (!bcl_dev->zone[UVLO1])
+		return -EIO;
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
 	if (bcl_cb_uvlo1_read(bcl_dev, &uvlo1_lvl) < 0)
 		return -EINVAL;
-	bcl_dev->bcl_lvl[UVLO1] = VD_BATTERY_VOLTAGE - uvlo1_lvl - THERMAL_HYST_LEVEL;
+	bcl_dev->zone[UVLO1]->bcl_lvl = VD_BATTERY_VOLTAGE - uvlo1_lvl - THERMAL_HYST_LEVEL;
 	return sysfs_emit(buf, "%dmV\n", uvlo1_lvl);
 }
 
@@ -891,6 +881,8 @@ static ssize_t uvlo1_lvl_store(struct device *dev,
 
 	if (!bcl_dev)
 		return -EIO;
+	if (!bcl_dev->zone[UVLO1])
+		return -EIO;
 	if (value < VD_LOWER_LIMIT || value > VD_UPPER_LIMIT) {
 		dev_err(bcl_dev->device, "UVLO1 %d outside of range %d - %d mV.", value,
 			VD_LOWER_LIMIT, VD_UPPER_LIMIT);
@@ -898,19 +890,19 @@ static ssize_t uvlo1_lvl_store(struct device *dev,
 	}
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EIO;
-	disable_irq(bcl_dev->bcl_irq[UVLO1]);
+	disable_irq(bcl_dev->zone[UVLO1]->bcl_irq);
 	if (bcl_cb_uvlo1_write(bcl_dev, value) < 0) {
-		enable_irq(bcl_dev->bcl_irq[UVLO1]);
+		enable_irq(bcl_dev->zone[UVLO1]->bcl_irq);
 		return -EIO;
 	}
-	bcl_dev->bcl_lvl[UVLO1] = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[UVLO1]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO1], 0,
-							 VD_BATTERY_VOLTAGE - value);
-	if (bcl_dev->bcl_tz[UVLO1])
-		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO1], THERMAL_EVENT_UNSPECIFIED);
+	bcl_dev->zone[UVLO1]->bcl_lvl = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
+	ret = bcl_dev->zone[UVLO1]->tz->ops->set_trip_temp(bcl_dev->zone[UVLO1]->tz, 0,
+							   VD_BATTERY_VOLTAGE - value);
+	if (bcl_dev->zone[UVLO1]->tz)
+		thermal_zone_device_update(bcl_dev->zone[UVLO1]->tz, THERMAL_EVENT_UNSPECIFIED);
 	if (ret)
 		dev_err(bcl_dev->device, "Fail to set sys_uvlo1 trip temp\n");
-	enable_irq(bcl_dev->bcl_irq[UVLO1]);
+	enable_irq(bcl_dev->zone[UVLO1]->bcl_irq);
 	return size;
 
 }
@@ -925,11 +917,13 @@ static ssize_t uvlo2_lvl_show(struct device *dev, struct device_attribute *attr,
 
 	if (!bcl_dev)
 		return -EIO;
+	if (!bcl_dev->zone[UVLO2])
+		return -EIO;
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
 	if (bcl_cb_uvlo2_read(bcl_dev, &uvlo2_lvl) < 0)
 		return -EINVAL;
-	bcl_dev->bcl_lvl[UVLO2] = VD_BATTERY_VOLTAGE - uvlo2_lvl - THERMAL_HYST_LEVEL;
+	bcl_dev->zone[UVLO2]->bcl_lvl = VD_BATTERY_VOLTAGE - uvlo2_lvl - THERMAL_HYST_LEVEL;
 	return sysfs_emit(buf, "%umV\n", uvlo2_lvl);
 }
 
@@ -947,6 +941,8 @@ static ssize_t uvlo2_lvl_store(struct device *dev,
 
 	if (!bcl_dev)
 		return -EIO;
+	if (!bcl_dev->zone[UVLO2])
+		return -EIO;
 	if (value < VD_LOWER_LIMIT || value > VD_UPPER_LIMIT) {
 		dev_err(bcl_dev->device, "UVLO2 %d outside of range %d - %d mV.", value,
 			VD_LOWER_LIMIT, VD_UPPER_LIMIT);
@@ -954,19 +950,19 @@ static ssize_t uvlo2_lvl_store(struct device *dev,
 	}
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EIO;
-	disable_irq(bcl_dev->bcl_irq[UVLO2]);
+	disable_irq(bcl_dev->zone[UVLO2]->bcl_irq);
 	if (bcl_cb_uvlo2_write(bcl_dev, value) < 0) {
-		enable_irq(bcl_dev->bcl_irq[UVLO2]);
+		enable_irq(bcl_dev->zone[UVLO2]->bcl_irq);
 		return -EIO;
 	}
-	bcl_dev->bcl_lvl[UVLO2] = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[UVLO2]->ops->set_trip_temp(bcl_dev->bcl_tz[UVLO2], 0,
-							 VD_BATTERY_VOLTAGE - value);
-	if (bcl_dev->bcl_tz[UVLO2])
-		thermal_zone_device_update(bcl_dev->bcl_tz[UVLO2], THERMAL_EVENT_UNSPECIFIED);
+	bcl_dev->zone[UVLO2]->bcl_lvl = VD_BATTERY_VOLTAGE - value - THERMAL_HYST_LEVEL;
+	ret = bcl_dev->zone[UVLO2]->tz->ops->set_trip_temp(bcl_dev->zone[UVLO2]->tz, 0,
+							   VD_BATTERY_VOLTAGE - value);
+	if (bcl_dev->zone[UVLO2]->tz)
+		thermal_zone_device_update(bcl_dev->zone[UVLO2]->tz, THERMAL_EVENT_UNSPECIFIED);
 	if (ret)
 		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
-	enable_irq(bcl_dev->bcl_irq[UVLO2]);
+	enable_irq(bcl_dev->zone[UVLO2]->bcl_irq);
 	return size;
 }
 
@@ -980,11 +976,13 @@ static ssize_t batoilo_lvl_show(struct device *dev, struct device_attribute *att
 
 	if (!bcl_dev)
 		return -EIO;
+	if (!bcl_dev->zone[BATOILO])
+		return -EIO;
 	if (!bcl_dev->intf_pmic_i2c)
 		return -EBUSY;
 	if (bcl_cb_batoilo_read(bcl_dev, &batoilo_lvl) < 0)
 		return -EINVAL;
-	bcl_dev->bcl_lvl[BATOILO] = batoilo_lvl;
+	bcl_dev->zone[BATOILO]->bcl_lvl = batoilo_lvl;
 	return sysfs_emit(buf, "%umA\n", batoilo_lvl);
 }
 
@@ -1002,23 +1000,25 @@ static ssize_t batoilo_lvl_store(struct device *dev,
 
 	if (!bcl_dev)
 		return -EIO;
+	if (!bcl_dev->zone[BATOILO])
+		return -EIO;
 	if (value < BO_LOWER_LIMIT || value > BO_UPPER_LIMIT) {
 		dev_err(bcl_dev->device, "BATOILO %d outside of range %d - %d mA.", value,
 			BO_LOWER_LIMIT, BO_UPPER_LIMIT);
 		return -EINVAL;
 	}
-	disable_irq(bcl_dev->bcl_irq[BATOILO]);
+	disable_irq(bcl_dev->zone[BATOILO]->bcl_irq);
 	if (bcl_cb_batoilo_write(bcl_dev, value) < 0) {
-		enable_irq(bcl_dev->bcl_irq[BATOILO]);
+		enable_irq(bcl_dev->zone[BATOILO]->bcl_irq);
 		return -EIO;
 	}
-	bcl_dev->bcl_lvl[BATOILO] = value - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[BATOILO]->ops->set_trip_temp(bcl_dev->bcl_tz[BATOILO], 0, value);
-	if (bcl_dev->bcl_tz[BATOILO])
-		thermal_zone_device_update(bcl_dev->bcl_tz[BATOILO], THERMAL_EVENT_UNSPECIFIED);
+	bcl_dev->zone[BATOILO]->bcl_lvl = value - THERMAL_HYST_LEVEL;
+	ret = bcl_dev->zone[BATOILO]->tz->ops->set_trip_temp(bcl_dev->zone[BATOILO]->tz, 0, value);
+	if (bcl_dev->zone[BATOILO]->tz)
+		thermal_zone_device_update(bcl_dev->zone[BATOILO]->tz, THERMAL_EVENT_UNSPECIFIED);
 	if (ret)
 		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
-	enable_irq(bcl_dev->bcl_irq[BATOILO]);
+	enable_irq(bcl_dev->zone[BATOILO]->bcl_irq);
 	return size;
 }
 
@@ -1036,7 +1036,7 @@ static ssize_t smpl_lvl_show(struct device *dev, struct device_attribute *attr, 
 	if (!bcl_dev->main_pmic_i2c) {
 		return -EBUSY;
 	}
-	pmic_read(MAIN, bcl_dev, SMPL_WARN_CTRL, &value);
+	pmic_read(CORE_PMIC_MAIN, bcl_dev, SMPL_WARN_CTRL, &value);
 	value >>= SMPL_WARN_SHIFT;
 
 	smpl_warn_lvl = value * 100 + SMPL_LOWER_LIMIT;
@@ -1067,26 +1067,26 @@ static ssize_t smpl_lvl_store(struct device *dev,
 		dev_err(bcl_dev->device, "MAIN I2C not found\n");
 		return -EIO;
 	}
-	if (pmic_read(MAIN, bcl_dev, SMPL_WARN_CTRL, &value)) {
+	if (pmic_read(CORE_PMIC_MAIN, bcl_dev, SMPL_WARN_CTRL, &value)) {
 		dev_err(bcl_dev->device, "S2MPG1415 read 0x%x failed.", SMPL_WARN_CTRL);
 		return -EBUSY;
 	}
-	disable_irq(bcl_dev->bcl_irq[SMPL_WARN]);
+	disable_irq(bcl_dev->zone[SMPL_WARN]->bcl_irq);
 	value &= ~SMPL_WARN_MASK;
 	value |= ((val - SMPL_LOWER_LIMIT) / 100) << SMPL_WARN_SHIFT;
-	if (pmic_write(MAIN, bcl_dev, SMPL_WARN_CTRL, value)) {
+	if (pmic_write(CORE_PMIC_MAIN, bcl_dev, SMPL_WARN_CTRL, value)) {
 		dev_err(bcl_dev->device, "i2c write error setting smpl_warn\n");
-		enable_irq(bcl_dev->bcl_irq[SMPL_WARN]);
+		enable_irq(bcl_dev->zone[SMPL_WARN]->bcl_irq);
 		return ret;
 	}
-	bcl_dev->bcl_lvl[SMPL_WARN] = SMPL_BATTERY_VOLTAGE - val - THERMAL_HYST_LEVEL;
-	ret = bcl_dev->bcl_tz[SMPL_WARN]->ops->set_trip_temp(bcl_dev->bcl_tz[SMPL_WARN], 0,
-							     SMPL_BATTERY_VOLTAGE - val);
+	bcl_dev->zone[SMPL_WARN]->bcl_lvl = SMPL_BATTERY_VOLTAGE - val - THERMAL_HYST_LEVEL;
+	ret = bcl_dev->zone[SMPL_WARN]->tz->ops->set_trip_temp(bcl_dev->zone[SMPL_WARN]->tz, 0,
+							       SMPL_BATTERY_VOLTAGE - val);
 	if (ret)
 		dev_err(bcl_dev->device, "Fail to set smpl_warn trip temp\n");
-	if (bcl_dev->bcl_tz[SMPL_WARN])
-		thermal_zone_device_update(bcl_dev->bcl_tz[SMPL_WARN], THERMAL_EVENT_UNSPECIFIED);
-	enable_irq(bcl_dev->bcl_irq[SMPL_WARN]);
+	if (bcl_dev->zone[SMPL_WARN]->tz)
+		thermal_zone_device_update(bcl_dev->zone[SMPL_WARN]->tz, THERMAL_EVENT_UNSPECIFIED);
+	enable_irq(bcl_dev->zone[SMPL_WARN]->bcl_irq);
 
 	return size;
 
@@ -1129,19 +1129,19 @@ static int set_ocp_lvl(struct bcl_device *bcl_dev, u64 val, u8 addr, u8 pmic, u8
 		dev_err(bcl_dev->device, "S2MPG1415 read 0x%x failed.", addr);
 		return -EBUSY;
 	}
-	disable_irq(bcl_dev->bcl_irq[id]);
+	disable_irq(bcl_dev->zone[id]->bcl_irq);
 	value &= ~(OCP_WARN_MASK) << OCP_WARN_LVL_SHIFT;
 	value |= ((ulimit - val) / step) << OCP_WARN_LVL_SHIFT;
 	ret = pmic_write(pmic, bcl_dev, addr, value);
 	if (!ret) {
-		bcl_dev->bcl_lvl[id] = val - THERMAL_HYST_LEVEL;
-		ret = bcl_dev->bcl_tz[id]->ops->set_trip_temp(bcl_dev->bcl_tz[id], 0, val);
+		bcl_dev->zone[id]->bcl_lvl = val - THERMAL_HYST_LEVEL;
+		ret = bcl_dev->zone[id]->tz->ops->set_trip_temp(bcl_dev->zone[id]->tz, 0, val);
 		if (ret)
 			dev_err(bcl_dev->device, "Fail to set ocp_warn trip temp\n");
 	}
-	if (bcl_dev->bcl_tz[id])
-		thermal_zone_device_update(bcl_dev->bcl_tz[id], THERMAL_EVENT_UNSPECIFIED);
-	enable_irq(bcl_dev->bcl_irq[id]);
+	if (bcl_dev->zone[id]->tz)
+		thermal_zone_device_update(bcl_dev->zone[id]->tz, THERMAL_EVENT_UNSPECIFIED);
+	enable_irq(bcl_dev->zone[id]->bcl_irq);
 
 	return ret;
 }
@@ -1152,8 +1152,8 @@ static ssize_t ocp_cpu1_lvl_show(struct device *dev, struct device_attribute *at
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, B3M_OCP_WARN, MAIN, OCP_WARN_MASK, B3M_UPPER_LIMIT,
-			B3M_STEP) < 0)
+	if (get_ocp_lvl(bcl_dev, &val, CPU1_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B3M_UPPER_LIMIT, B3M_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1171,8 +1171,8 @@ static ssize_t ocp_cpu1_lvl_store(struct device *dev,
 	if (ret)
 		return ret;
 
-	if (set_ocp_lvl(bcl_dev, value, B3M_OCP_WARN, MAIN, OCP_WARN_MASK, B3M_LOWER_LIMIT,
-			B3M_UPPER_LIMIT, B3M_STEP, OCP_WARN_CPUCL1) < 0)
+	if (set_ocp_lvl(bcl_dev, value, CPU1_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B3M_LOWER_LIMIT, B3M_UPPER_LIMIT, B3M_STEP, OCP_WARN_CPUCL1) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1185,8 +1185,8 @@ static ssize_t ocp_cpu2_lvl_show(struct device *dev, struct device_attribute *at
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, B2M_OCP_WARN, MAIN, OCP_WARN_MASK, B2M_UPPER_LIMIT,
-			B2M_STEP) < 0)
+	if (get_ocp_lvl(bcl_dev, &val, CPU2_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B2M_UPPER_LIMIT, B2M_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1204,8 +1204,8 @@ static ssize_t ocp_cpu2_lvl_store(struct device *dev,
 	if (ret)
 		return ret;
 
-	if (set_ocp_lvl(bcl_dev, value, B2M_OCP_WARN, MAIN, OCP_WARN_MASK, B2M_LOWER_LIMIT,
-			B2M_UPPER_LIMIT, B2M_STEP, OCP_WARN_CPUCL2) < 0)
+	if (set_ocp_lvl(bcl_dev, value, CPU2_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B2M_LOWER_LIMIT, B2M_UPPER_LIMIT, B2M_STEP, OCP_WARN_CPUCL2) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1218,8 +1218,8 @@ static ssize_t ocp_tpu_lvl_show(struct device *dev, struct device_attribute *att
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, B7M_OCP_WARN, MAIN, OCP_WARN_MASK, B7M_UPPER_LIMIT,
-			B7M_STEP) < 0)
+	if (get_ocp_lvl(bcl_dev, &val, TPU_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B7M_UPPER_LIMIT, B7M_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1237,8 +1237,8 @@ static ssize_t ocp_tpu_lvl_store(struct device *dev, struct device_attribute *at
 	if (ret)
 		return ret;
 
-	if (set_ocp_lvl(bcl_dev, value, B7M_OCP_WARN, MAIN, OCP_WARN_MASK, B7M_LOWER_LIMIT,
-			B7M_UPPER_LIMIT, B7M_STEP, OCP_WARN_TPU) < 0)
+	if (set_ocp_lvl(bcl_dev, value, TPU_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B7M_LOWER_LIMIT, B7M_UPPER_LIMIT, B7M_STEP, OCP_WARN_TPU) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1251,7 +1251,7 @@ static ssize_t ocp_gpu_lvl_show(struct device *dev, struct device_attribute *att
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, B2S_OCP_WARN, SUB, OCP_WARN_MASK, B2S_UPPER_LIMIT,
+	if (get_ocp_lvl(bcl_dev, &val, GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK, B2S_UPPER_LIMIT,
 			B2S_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
@@ -1270,8 +1270,8 @@ static ssize_t ocp_gpu_lvl_store(struct device *dev, struct device_attribute *at
 	if (ret)
 		return ret;
 
-	if (set_ocp_lvl(bcl_dev, value, B2S_OCP_WARN, SUB, OCP_WARN_MASK, B2S_LOWER_LIMIT,
-			B2S_UPPER_LIMIT, B2S_STEP, OCP_WARN_GPU) < 0)
+	if (set_ocp_lvl(bcl_dev, value, GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK,
+	                B2S_LOWER_LIMIT, B2S_UPPER_LIMIT, B2S_STEP, OCP_WARN_GPU) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1284,8 +1284,8 @@ static ssize_t soft_ocp_cpu1_lvl_show(struct device *dev, struct device_attribut
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, B3M_SOFT_OCP_WARN, MAIN, OCP_WARN_MASK, B3M_UPPER_LIMIT,
-			B3M_STEP) < 0)
+	if (get_ocp_lvl(bcl_dev, &val, SOFT_CPU1_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B3M_UPPER_LIMIT, B3M_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1303,8 +1303,8 @@ static ssize_t soft_ocp_cpu1_lvl_store(struct device *dev, struct device_attribu
 	if (ret)
 		return ret;
 
-	if (set_ocp_lvl(bcl_dev, value, B3M_SOFT_OCP_WARN, MAIN, OCP_WARN_MASK, B3M_LOWER_LIMIT,
-			B3M_UPPER_LIMIT, B3M_STEP, SOFT_OCP_WARN_CPUCL1) < 0)
+	if (set_ocp_lvl(bcl_dev, value, SOFT_CPU1_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B3M_LOWER_LIMIT, B3M_UPPER_LIMIT, B3M_STEP, SOFT_OCP_WARN_CPUCL1) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1317,8 +1317,8 @@ static ssize_t soft_ocp_cpu2_lvl_show(struct device *dev, struct device_attribut
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, B2M_SOFT_OCP_WARN, MAIN, OCP_WARN_MASK, B2M_UPPER_LIMIT,
-			B2M_STEP) < 0)
+	if (get_ocp_lvl(bcl_dev, &val, SOFT_CPU2_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B2M_UPPER_LIMIT, B2M_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1336,8 +1336,8 @@ static ssize_t soft_ocp_cpu2_lvl_store(struct device *dev, struct device_attribu
 	if (ret)
 		return ret;
 
-	if (set_ocp_lvl(bcl_dev, value, B2M_SOFT_OCP_WARN, MAIN, OCP_WARN_MASK, B2M_LOWER_LIMIT,
-			B2M_UPPER_LIMIT, B2M_STEP, SOFT_OCP_WARN_CPUCL2) < 0)
+	if (set_ocp_lvl(bcl_dev, value, SOFT_CPU2_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B2M_LOWER_LIMIT, B2M_UPPER_LIMIT, B2M_STEP, SOFT_OCP_WARN_CPUCL2) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1350,8 +1350,8 @@ static ssize_t soft_ocp_tpu_lvl_show(struct device *dev, struct device_attribute
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, B7M_SOFT_OCP_WARN, MAIN, OCP_WARN_MASK, B7M_UPPER_LIMIT,
-			B7M_STEP) < 0)
+	if (get_ocp_lvl(bcl_dev, &val, SOFT_TPU_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B7M_UPPER_LIMIT, B7M_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1369,8 +1369,8 @@ static ssize_t soft_ocp_tpu_lvl_store(struct device *dev, struct device_attribut
 	if (ret)
 		return ret;
 
-	if (set_ocp_lvl(bcl_dev, value, B7M_SOFT_OCP_WARN, MAIN, OCP_WARN_MASK, B7M_LOWER_LIMIT,
-			B7M_UPPER_LIMIT, B7M_STEP, SOFT_OCP_WARN_TPU) < 0)
+	if (set_ocp_lvl(bcl_dev, value, SOFT_TPU_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
+	                B7M_LOWER_LIMIT, B7M_UPPER_LIMIT, B7M_STEP, SOFT_OCP_WARN_TPU) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1383,8 +1383,8 @@ static ssize_t soft_ocp_gpu_lvl_show(struct device *dev, struct device_attribute
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, B2S_SOFT_OCP_WARN, SUB, OCP_WARN_MASK, B2S_UPPER_LIMIT,
-			B2S_STEP) < 0)
+	if (get_ocp_lvl(bcl_dev, &val, SOFT_GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK,
+	                B2S_UPPER_LIMIT, B2S_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1402,8 +1402,8 @@ static ssize_t soft_ocp_gpu_lvl_store(struct device *dev, struct device_attribut
 	if (ret)
 		return ret;
 
-	if (set_ocp_lvl(bcl_dev, value, B2S_SOFT_OCP_WARN, SUB, OCP_WARN_MASK, B2S_LOWER_LIMIT,
-			B2S_UPPER_LIMIT, B2S_STEP, SOFT_OCP_WARN_GPU) < 0)
+	if (set_ocp_lvl(bcl_dev, value, SOFT_GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK,
+	                B2S_LOWER_LIMIT, B2S_UPPER_LIMIT, B2S_STEP, SOFT_OCP_WARN_GPU) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -2264,9 +2264,9 @@ static ssize_t main_pwrwarn_threshold_store(struct device *dev, struct device_at
 		return -EINVAL;
 
 	bcl_dev->main_setting[idx] = value;
-	bcl_dev->main_limit[idx] = settings_to_current(bcl_dev, MAIN, idx,
+	bcl_dev->main_limit[idx] = settings_to_current(bcl_dev, CORE_PMIC_MAIN, idx,
 	                                               value << LPF_CURRENT_SHIFT);
-	meter_write(MAIN, bcl_dev, S2MPG14_METER_PWR_WARN0 + idx, value);
+	meter_write(CORE_PMIC_MAIN, bcl_dev, S2MPG14_METER_PWR_WARN0 + idx, value);
 
 	return size;
 }
@@ -2304,9 +2304,9 @@ static ssize_t sub_pwrwarn_threshold_store(struct device *dev, struct device_att
 		return -EINVAL;
 
 	bcl_dev->sub_setting[idx] = value;
-	bcl_dev->sub_limit[idx] = settings_to_current(bcl_dev, SUB, idx,
+	bcl_dev->sub_limit[idx] = settings_to_current(bcl_dev, CORE_PMIC_SUB, idx,
 	                                              value << LPF_CURRENT_SHIFT);
-	meter_write(SUB, bcl_dev, S2MPG15_METER_PWR_WARN0 + idx, value);
+	meter_write(CORE_PMIC_SUB, bcl_dev, S2MPG15_METER_PWR_WARN0 + idx, value);
 
 	return size;
 }
@@ -2375,33 +2375,39 @@ static struct attribute *sub_pwrwarn_attrs[] = {
 
 static ssize_t qos_show(struct bcl_device *bcl_dev, int idx, char *buf)
 {
+	struct bcl_zone *zone;
+
 	if (!bcl_dev)
 		return -EIO;
-	if (!bcl_dev->bcl_qos[idx])
+	zone = bcl_dev->zone[idx];
+	if ((!zone) || (!zone->bcl_qos))
 		return -EIO;
+
 	return sysfs_emit(buf, "CPU0,CPU1,CPU2,GPU,TPU\n%d,%d,%d,%d,%d\n",
-			  bcl_dev->bcl_qos[idx]->cpu0_limit,
-			  bcl_dev->bcl_qos[idx]->cpu1_limit,
-			  bcl_dev->bcl_qos[idx]->cpu2_limit,
-			  bcl_dev->bcl_qos[idx]->gpu_limit,
-			  bcl_dev->bcl_qos[idx]->tpu_limit);
+			  zone->bcl_qos->cpu0_limit,
+			  zone->bcl_qos->cpu1_limit,
+			  zone->bcl_qos->cpu2_limit,
+			  zone->bcl_qos->gpu_limit,
+			  zone->bcl_qos->tpu_limit);
 }
 
 static ssize_t qos_store(struct bcl_device *bcl_dev, int idx, const char *buf, size_t size)
 {
 	unsigned int cpu0, cpu1, cpu2, gpu, tpu;
+	struct bcl_zone *zone;
 
 	if (sscanf(buf, "%d,%d,%d,%d,%d", &cpu0, &cpu1, &cpu2, &gpu, &tpu) != 5)
 		return -EINVAL;
 	if (!bcl_dev)
 		return -EIO;
-	if (!bcl_dev->bcl_qos[idx])
+	zone = bcl_dev->zone[idx];
+	if ((!zone) || (!zone->bcl_qos))
 		return -EIO;
-	bcl_dev->bcl_qos[idx]->cpu0_limit = cpu0;
-	bcl_dev->bcl_qos[idx]->cpu1_limit = cpu1;
-	bcl_dev->bcl_qos[idx]->cpu2_limit = cpu2;
-	bcl_dev->bcl_qos[idx]->gpu_limit = gpu;
-	bcl_dev->bcl_qos[idx]->tpu_limit = tpu;
+	zone->bcl_qos->cpu0_limit = cpu0;
+	zone->bcl_qos->cpu1_limit = cpu1;
+	zone->bcl_qos->cpu2_limit = cpu2;
+	zone->bcl_qos->gpu_limit = gpu;
+	zone->bcl_qos->tpu_limit = tpu;
 
 	return size;
 }
