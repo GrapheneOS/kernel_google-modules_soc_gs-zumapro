@@ -158,6 +158,8 @@ struct max77759_plat {
 	/* DisplayPort Regulator */
 	struct regulator *dp_regulator;
 	bool dp_regulator_enabled;
+	unsigned int dp_regulator_min_uv;
+	unsigned int dp_regulator_max_uv;
 
 	/* Reflects whether BC1.2 is still running */
 	bool bc12_running;

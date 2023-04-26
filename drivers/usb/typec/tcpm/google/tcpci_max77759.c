@@ -126,6 +126,8 @@ enum gbms_charger_modes {
 #define FLOATING_CABLE_INSTANCE_THRESHOLD	5
 #define AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS	600000
 
+#define VOLTAGE_DP_AUX_DEFAULT_UV	3300000
+
 static struct logbuffer *tcpm_log;
 
 static bool modparam_conf_sbu;
@@ -2533,7 +2535,13 @@ static void dp_notification_work_item(struct kthread_work *work)
 		if (ret >= 0)
 			chip->dp_regulator_enabled = dp;
 		logbuffer_log(chip->log, "dp regulator_%s %s ret:%d", dp ? "enable" : "disable",
-		      	      ret < 0 ? "fail" : "success", ret);
+			      ret < 0 ? "fail" : "success", ret);
+		ret = dp ? regulator_set_voltage(chip->dp_regulator, VOLTAGE_DP_AUX_DEFAULT_UV,
+						 VOLTAGE_DP_AUX_DEFAULT_UV) : \
+			   regulator_set_voltage(chip->dp_regulator, chip->dp_regulator_min_uv,
+						 chip->dp_regulator_max_uv);
+		logbuffer_log(chip->log, "dp regulator_set_voltage %s ret:%d",
+			      ret < 0 ? "fail" : "success", ret);
 	}
 
 	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ? SBUSW_PATH_1 : 0);
@@ -2650,10 +2658,10 @@ static int max77759_probe(struct i2c_client *client,
 	int ret, i;
 	struct max77759_plat *chip;
 	char *usb_psy_name;
-	struct device_node *dn, *ovp_dn;
+	struct device_node *dn, *ovp_dn, *regulator_dn;
 	u8 power_status;
 	u16 device_id;
-	u32 ovp_handle;
+	u32 ovp_handle, regulator_handle;
 	const char *ovp_status;
 	enum of_gpio_flags flags;
 
@@ -2820,6 +2828,21 @@ static int max77759_probe(struct i2c_client *client,
 	if (IS_ERR_OR_NULL(chip->dp_regulator) ) {
 		dev_err(&client->dev, "devm_regulator_get failed\n");
 		goto psy_put;
+	}
+	if (!of_property_read_u32(dn, "pullup-supply", &regulator_handle)) {
+		regulator_dn = of_find_node_by_phandle(regulator_handle);
+		if (!IS_ERR_OR_NULL(regulator_dn)) {
+			if (of_property_read_u32(regulator_dn, "regulator-min-microvolt",
+						 &chip->dp_regulator_min_uv)) {
+				dev_err(&client->dev, "failed to read regulator-min-microvolt\n");
+				goto psy_put;
+			}
+			if (of_property_read_u32(regulator_dn, "regulator-max-microvolt",
+						 &chip->dp_regulator_max_uv)) {
+				dev_err(&client->dev, "failed to read regulator-max-microvolt\n");
+				goto psy_put;
+			}
+		}
 	}
 
 	ret = max77759_read16(chip->data.regmap, TCPC_BCD_DEV, &device_id);
