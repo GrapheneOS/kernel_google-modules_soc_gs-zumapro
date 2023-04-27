@@ -33,7 +33,7 @@ config VH_PREEMPTIRQ_TRACEPOINTS
 config UCLAMP_STATS
 	bool "Uclamp stats"
 	depends on VH_SCHED
-	default y
+	default n
 
 config USE_VENDOR_GROUP_UTIL
         bool "Use cpu util based on vendor groups"
