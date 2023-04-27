@@ -833,7 +833,7 @@ u32 dwc3_otg_is_connect(void)
 	struct dwc3_otg *dotg;
 
 	exynos = exynos_dwusb_get_struct();
-	if (!exynos) {
+	if (!exynos || !exynos->dotg) {
 		pr_err("[%s] error\n", __func__);
 		return -ENODEV;
 	}
