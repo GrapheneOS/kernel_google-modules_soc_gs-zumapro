@@ -1173,11 +1173,23 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	struct device_node	*node = dev->of_node, *dwc3_np;
 	int			ret;
 	struct phy		*temp_usb_phy;
+	struct device_node	*s2mpu_np;
+	struct platform_device	*s2mpu_pdev;
 
 	temp_usb_phy = devm_phy_get(dev, "usb2-phy");
 	if (IS_ERR(temp_usb_phy)) {
 		dev_dbg(dev, "USB phy is not probed - defered return!\n");
 		return  -EPROBE_DEFER;
+	}
+
+	s2mpu_np = of_parse_phandle(dev->of_node, "s2mpus", 0);
+	if (s2mpu_np) {
+		s2mpu_pdev = of_find_device_by_node(s2mpu_np);
+		of_node_put(s2mpu_np);
+		if (s2mpu_pdev) {
+			device_link_add(dev, &s2mpu_pdev->dev,
+					DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_PM_RUNTIME);
+		}
 	}
 
 	exynos = devm_kzalloc(dev, sizeof(*exynos), GFP_KERNEL);
