@@ -467,8 +467,6 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x1, elbi_base_regs + 0x1078);
 	}
 	else {
-		num_lanes = 2;
-
 		/* soc_ctrl setting */
 		//need to update soc_ctrl SFR
 		writel(0x16, soc_base_regs + 0x4000);   //ELBI & Link clock switch TCXO to PCLK
