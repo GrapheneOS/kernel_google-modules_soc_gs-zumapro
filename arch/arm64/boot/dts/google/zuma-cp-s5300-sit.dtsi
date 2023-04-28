@@ -27,7 +27,9 @@
 				status = "okay";
 
 				pci_ch_num = <0>;
+				/*  If CP's ATU works good, it isn't needed!
 				pci_db_addr = <0x14E60000>;
+				*/
 				cpboot_spi_bus_num = <15>;
 
 				/* */
