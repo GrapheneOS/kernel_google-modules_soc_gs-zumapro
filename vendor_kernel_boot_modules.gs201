@@ -106,7 +106,7 @@ p9221.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
 pca9468.ko
-pcie-exynos-core.ko
+pcie-exynos-gs.ko
 pcie-exynos-gs201-rc-cal.ko
 phy-exynos-mipi-dsim.ko
 phy-exynos-mipi.ko
