@@ -1413,9 +1413,14 @@ static int exynos_pcie_rc_link_up(struct dw_pcie *pci)
 static int exynos_pcie_rc_rd_other_conf(struct dw_pcie_rp *pp, struct pci_bus *bus, u32 devfn,
 					int where, int size, u32 *val)
 {
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
+	struct device *dev = pci->dev;
+	struct pci_dev *pdev = exynos_pcie->ep_pci_dev;
 	u32 busdev, cfg_size;
 	u64 cpu_addr;
 	void __iomem *va_cfg_base;
+	int ret;
 
 	busdev = EXYNOS_PCIE_ATU_BUS(bus->number) | EXYNOS_PCIE_ATU_DEV(PCI_SLOT(devfn)) |
 		 EXYNOS_PCIE_ATU_FUNC(PCI_FUNC(devfn));
@@ -1426,7 +1431,29 @@ static int exynos_pcie_rc_rd_other_conf(struct dw_pcie_rp *pp, struct pci_bus *b
 	/* setup ATU for cfg/mem outbound */
 	exynos_pcie_rc_prog_viewport_cfg0(pp, busdev);
 
-	return dw_pcie_read(va_cfg_base + where, size, val);
+	ret = dw_pcie_read(va_cfg_base + where, size, val);
+
+	// Fake code for Samsung Modem.
+	if (exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
+
+		// Fake class code return (class code set as network device)
+		if (where == PCI_CLASS_REVISION && (*val >> 8) == 0x0) {
+			dev_dbg(dev, "Fake return as a Network device...\n");
+			*val |= (PCI_CLASS_NETWORK_OTHER << 16);
+		}
+
+		// It should be skipped before EP scan
+		if (pdev == NULL)
+			return ret;
+
+		// Set MSI multiple message capable to a fake value of 16
+		if (where == pdev->msi_cap + PCI_MSI_FLAGS &&
+					(*val & PCI_MSI_FLAGS_QMASK) == 0x0) {
+			dev_dbg(dev, "Fake return as supporting 16 MSI...\n");
+			*val |= (0x4 << 1);
+		}
+	}
+	return ret;
 }
 
 static int exynos_pcie_rc_wr_other_conf(struct dw_pcie_rp *pp, struct pci_bus *bus, u32 devfn,
