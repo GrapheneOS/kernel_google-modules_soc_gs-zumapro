@@ -22,6 +22,9 @@
 #undef CREATE_TRACE_POINTS
 #include <trace/hooks/ufshcd.h>
 
+static void pixel_ufs_crypto_restore_keys(void *unused, struct ufs_hba *hba,
+					  int *err);
+
 static int pixel_ufs_register_fill_prdt(void);
 static int pixel_ufs_register_fips_self_test(void);
 
@@ -172,7 +175,7 @@ static int pixel_ufs_derive_sw_secret(struct blk_crypto_profile *profile,
 	int ret;
 
 	dev_info(ufs->dev,
-		 "kdn: deriving %u-byte raw secret from %u-byte wrapped key\n",
+		 "kdn: deriving %u-byte raw secret from %zu-byte wrapped key\n",
 		 BLK_CRYPTO_SW_SECRET_SIZE, eph_key_size);
 
 	ret = gsa_kdn_derive_raw_secret(ufs->gsa_dev, sw_secret,
@@ -344,6 +347,11 @@ int pixel_ufs_crypto_init(struct ufs_hba *hba)
 	if (err)
 		return err;
 
+	err = register_trace_android_rvh_ufs_reprogram_all_keys(
+				pixel_ufs_crypto_restore_keys, NULL);
+	if (err)
+		return err;
+
 	err = pixel_ufs_register_fips_self_test();
 	if (err)
 		return err;
@@ -404,11 +412,30 @@ disable:
 	return 0;
 }
 
+static void pixel_ufs_crypto_restore_keys(void *unused, struct ufs_hba *hba,
+					  int *err)
+{
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+
+	/*
+	 * GSA provides a function to restore all keys which is faster than
+	 * programming all keys individually, so use it in order to avoid
+	 * unnecessary resume latency.
+	 *
+	 * GSA also relies on this function being called in order to configure
+	 * some hardening against power analysis attacks.
+	 */
+	dev_info(ufs->dev, "kdn: restoring keys\n");
+	*err = gsa_kdn_restore_keys(ufs->gsa_dev);
+	if (*err)
+		dev_err(ufs->dev, "kdn: failed to restore keys; err=%d\n",
+			*err);
+}
+
 void pixel_ufs_crypto_resume(struct ufs_hba *hba)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	unsigned long ret;
-	int err;
 
 	if (!(hba->caps & UFSHCD_CAP_CRYPTO))
 		return;
@@ -423,11 +450,6 @@ void pixel_ufs_crypto_resume(struct ufs_hba *hba)
 	if (ret)
 		dev_err(ufs->dev, "SMC_CMD_FMP_SMU_RESUME failed; ret=%lu\n",
 			ret);
-
-	dev_info(ufs->dev, "kdn: restoring keys\n");
-	err = gsa_kdn_restore_keys(ufs->gsa_dev);
-	if (err)
-		dev_err(ufs->dev, "kdn: failed to restore keys; err=%d\n", err);
 }
 
 #if !IS_ENABLED(CONFIG_SCSI_UFS_PIXEL_FIPS140)
