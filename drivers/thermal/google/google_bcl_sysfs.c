@@ -675,6 +675,33 @@ static ssize_t mpmm_enable_show(struct device *dev, struct device_attribute *att
 
 static DEVICE_ATTR_RW(mpmm_enable);
 
+static ssize_t irq_delay_store(struct device *dev,
+                               struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	unsigned int value;
+	int ret;
+
+	ret = sscanf(buf, "%d", &value);
+	if (ret != 1)
+		return -EINVAL;
+
+        bcl_dev->irq_delay = value;
+
+	return size;
+}
+
+static ssize_t irq_delay_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return sysfs_emit(buf, "%d\n", bcl_dev->irq_delay);
+}
+
+static DEVICE_ATTR_RW(irq_delay);
+
 static ssize_t ppm_settings_store(struct device *dev,
 				  struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -841,6 +868,7 @@ static struct attribute *instr_attrs[] = {
 	&dev_attr_sub_offsrc2.attr,
 	&dev_attr_pwronsrc.attr,
 	&dev_attr_ready.attr,
+	&dev_attr_irq_delay.attr,
 	NULL,
 };
 

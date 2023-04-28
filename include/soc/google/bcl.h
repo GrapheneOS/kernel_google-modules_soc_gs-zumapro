@@ -42,6 +42,7 @@
 #define DELTA_50MS		(50 * NSEC_PER_MSEC)
 #define VSHUNT_MULTIPLIER	10000
 #define MILLI_TO_MICRO		1000
+#define IRQ_ENABLE_DELAY_MS	50
 
 enum CPU_CLUSTER {
 	LITTLE_CLUSTER,
@@ -78,6 +79,12 @@ enum IRQ_DURATION_BIN {
 	LT_5MS,
 	BT_5MS_10MS,
 	GT_10MS,
+};
+
+enum IRQ_TYPE {
+	CORE_MAIN_PMIC,
+	CORE_SUB_PMIC,
+	IF_PMIC,
 };
 
 struct irq_duration_stats {
@@ -154,6 +161,7 @@ struct bcl_zone {
 	struct delayed_work irq_untriggered_work;
 	struct delayed_work irq_work;
 	struct delayed_work enable_irq_work;
+	struct delayed_work reset_batoilo_work;
 	struct thermal_zone_device *tz;
 	struct thermal_zone_of_device_ops tz_ops;
 	struct qos_throttle_limit *bcl_qos;
@@ -164,6 +172,8 @@ struct bcl_zone {
 	int bcl_lvl;
 	int bcl_pin;
 	int bcl_irq;
+	int irq_type;
+	int polarity;
 	void *parent;
 	int idx;
 };
@@ -225,6 +235,7 @@ struct bcl_device {
 	unsigned int sub_offsrc1;
 	unsigned int sub_offsrc2;
 	unsigned int pwronsrc;
+	unsigned int irq_delay;
 
 	unsigned int vdroop1_pin;
 	unsigned int vdroop2_pin;
