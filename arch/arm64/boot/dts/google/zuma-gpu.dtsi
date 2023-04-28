@@ -73,29 +73,29 @@
 		gpu1_cmu_cal_id = <ACPM_DVFS_G3D>;
 
 		/* DVFS */
-		gpu_dvfs_governor = "quickstep";
+		gpu_dvfs_governor = "quickstep_use_mcu";
 		gpu_dvfs_clockdown_hysteresis = <50>;
 
 		/* DVFS operating points */
-		gpu_dvfs_table_size_v1 = <12 10>; /*<row col>*/
+		gpu_dvfs_table_size_v1 = <12 12>; /*<row col>*/
 		gpu_dvfs_table_v1 = <
 			/*
-			 *gpu0    gpu1   down     up    hys      int      mif   little  middle   big
-			 * clk     clk   util   util  ticks      min      min      min     min   max
-			 *--------------------------------------------------------------------------
+			 *gpu0    gpu1   down     up    hys      int      mif   little  middle   big         mcu       mcu
+			 * clk     clk   util   util  ticks      min      min      min     min   max   down_util   up_util
+			 *------------------------------------------------------------------------------------------------
 			 */
-			900000  890000     85    100      1        0        0        0       0     0
-			900000  807000     81     97      1        0        0        0       0     0
-			900000  723000     76     94      1        0        0        0       0     0
-			749000  649000     85     96      2        0        0        0       0     0
-			749000  580000     83     97      3        0        0        0       0     0
-			659000  521000     78     95      3        0        0        0       0     0
-			659000  467000     80     96      3        0        0        0       0     0
-			531000  419000     76     95      3        0        0        0       0     0
-			531000  376000     72     94      3        0        0        0       0     0
-			430000  337000     67     94      2        0        0        0       0     0
-			386000  302000     50     92      1        0        0        0       0     0
-			160000  150000      0     90      1        0        0        0       0     0
+			900000  890000     85    100      1        0        0        0       0     0         40        100
+			900000  807000     81     97      1        0        0        0       0     0         40        60
+			900000  723000     76     94      1        0        0        0       0     0         30        60
+			749000  649000     85     96      2        0        0        0       0     0         30        40
+			749000  580000     83     97      3        0        0        0       0     0         25        40
+			659000  521000     78     95      3        0        0        0       0     0         25        30
+			659000  467000     80     96      3        0        0        0       0     0         20        30
+			531000  419000     76     95      3        0        0        0       0     0         20        25
+			531000  376000     72     94      3        0        0        0       0     0         15        25
+			430000  337000     67     94      2        0        0        0       0     0         15        20
+			386000  302000     50     92      1        0        0        0       0     0         8         20
+			160000  150000      0     90      1        0        0        0       0     0         0         20
 		>;
 		/* DVFS step up value */
 		gpu_dvfs_step_up_val = <3>;
@@ -107,6 +107,8 @@
 		/* QOS */
 		gpu_dvfs_qos_bts_scenario = "g3d_performance";
 		gpu_dvfs_qos_bts_threshold = <400000>;
+		mcu_protm_scale = <3 10>;
+		mcu_down_util_scale = <5 4>;
 
 		/* Thermal */
 		#cooling-cells = <2>;
