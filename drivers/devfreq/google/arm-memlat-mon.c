@@ -119,6 +119,44 @@ static inline void read_event_local(struct event_data *event)
 
 }
 
+int read_perf_event_local(int cpu, unsigned int event_id, u64 *count)
+{
+	struct memlat_cpu_grp *cpu_grp;
+	struct cpu_data *cpu_data;
+	struct event_data *pmu_evs;
+
+	if (cpu != raw_smp_processor_id())
+		return -EINVAL;
+
+	list_for_each_entry(cpu_grp, &cpu_grp_list, node) {
+		if (!cpu_grp->initialized)
+			continue;
+
+		if (cpumask_test_cpu(cpu, &cpu_grp->cpus))
+			break;
+	}
+
+	if (!cpu_grp || event_id >= NUM_COMMON_EVS)
+		return -EINVAL;
+
+	cpu_data = to_cpu_data(cpu_grp, cpu);
+	if (cpu_grp->num_active_mons > 0 && cpu_grp->pmu_ev_ids[event_id] != UINT_MAX) {
+		pmu_evs = cpu_data->pmu_evs;
+		read_event_local(&pmu_evs[event_id]);
+		*count = pmu_evs[event_id].total;
+	} else if (event_id == CYCLE_IDX && cpu_grp->amu_ev_ids[CYCLE_IDX] != UINT_MAX) {
+		*count = read_sysreg_s(SYS_AMEVCNTR0_CORE_EL0);
+	} else if (event_id == INST_IDX && cpu_grp->amu_ev_ids[INST_IDX] != UINT_MAX) {
+		*count = read_sysreg_s(SYS_AMEVCNTR0_INST_RET_EL0);
+	} else if (event_id == STALL_BACKEND_MEM_IDX &&
+			   cpu_grp->amu_ev_ids[STALL_BACKEND_MEM_IDX] != UINT_MAX) {
+		*count = read_sysreg_s(SYS_AMEVCNTR0_MEM_STALL);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(read_perf_event_local);
+
 static void read_amu_counters(struct memlat_cpu_grp *cpu_grp)
 {
 	unsigned long mem_stall, cpu_inst, cpu_cycle, delta;

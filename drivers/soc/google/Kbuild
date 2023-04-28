@@ -67,3 +67,6 @@ obj-$(CONFIG_EXYNOS_SECURE_LOG) 	+= exynos-seclog.o
 obj-$(CONFIG_PKVM_S2MPU)		+= pkvm-s2mpu/pkvm-s2mpu/
 
 obj-$(CONFIG_PKVM_S2MPU_V9) 		+= pkvm-s2mpu/pkvm-s2mpu-v9/
+
+# perf_trace_counters
+obj-$(CONFIG_PERF_TRACE_CTRS)		+= perf_trace_counters.o
