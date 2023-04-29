@@ -22,6 +22,8 @@
 #include <linux/usb/pd.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
+#include <linux/usb/typec_dp.h>
+#include <linux/usb/typec_mux.h>
 #include <misc/logbuffer.h>
 #include <trace/hooks/typec.h>
 
@@ -124,6 +126,8 @@ enum gbms_charger_modes {
 #define FLOATING_CABLE_INSTANCE_THRESHOLD	5
 #define AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS	600000
 
+#define VOLTAGE_DP_AUX_DEFAULT_UV	3300000
+
 static struct logbuffer *tcpm_log;
 
 static bool modparam_conf_sbu;
@@ -154,6 +158,12 @@ struct tcpci {
 
 	struct tcpc_dev tcpc;
 	struct tcpci_data *data;
+};
+
+struct dp_notification_event {
+	struct max77759_plat *chip;
+	unsigned long mode;
+	struct kthread_work dp_notification_work;
 };
 
 static const struct regmap_range max77759_tcpci_range[] = {
@@ -457,6 +467,54 @@ static ssize_t usb_limit_accessory_current_store(struct device *dev, struct devi
 }
 static DEVICE_ATTR_RW(usb_limit_accessory_current);
 
+static ssize_t sbu_pullup_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+
+	return sysfs_emit(buf, "%u\n", chip->current_sbu_state);
+}
+
+static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *attr, const char *buf,
+				size_t count)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+	int val, ret = 0;
+
+	if (kstrtoint(buf, 0, &val) < 0)
+		return -EINVAL;
+
+	switch (val) {
+	case 0:
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
+		break;
+	case 1:
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
+		break;
+	case 2:
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
+		break;
+	case 3:
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
+	default:
+		break;
+	}
+
+	dev_info(chip->dev, "dp_debug: sbu_pullup_store: val:%d \n", val);
+	if (!ret)
+		chip->current_sbu_state = val;
+
+	return count;
+}
+static DEVICE_ATTR_RW(sbu_pullup);
+
 static struct device_attribute *max77759_device_attrs[] = {
 	&dev_attr_frs,
 	&dev_attr_bc12_enabled,
@@ -470,6 +528,7 @@ static struct device_attribute *max77759_device_attrs[] = {
 	&dev_attr_usb_limit_sink_current,
 	&dev_attr_usb_limit_accessory_enable,
 	&dev_attr_usb_limit_accessory_current,
+	&dev_attr_sbu_pullup,
 	NULL
 };
 
@@ -1883,6 +1942,7 @@ static int max77759_usb_set_orientation(struct typec_switch *sw, enum typec_orie
 		TYPEC_POLARITY_CC2 : TYPEC_POLARITY_CC1;
 	int ret;
 
+	chip->orientation = orientation;
 	ret = extcon_set_property(chip->extcon, EXTCON_USB, EXTCON_PROP_USB_TYPEC_POLARITY,
 				  (union extcon_property_value)(int)polarity);
 	logbuffer_log(chip->log, "%s setting polarity USB %d", ret < 0 ? "Failed" : "Succeeded",
@@ -2168,7 +2228,6 @@ static void max77759_set_port_data_capable(struct i2c_client *tcpc_client,
 static const unsigned int usbpd_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
-	EXTCON_DISP_DP,
 	EXTCON_MECHANICAL,
 	EXTCON_NONE,
 };
@@ -2292,71 +2351,6 @@ static const struct file_operations force_device_mode_on_fops = {
 	.llseek = default_llseek,
 };
 #endif
-
-static int max77759_setup_data_notifier(struct max77759_plat *chip)
-{
-	struct usb_role_switch_desc desc = { };
-	struct typec_switch_desc sw_desc = { };
-	u32 conn_handle;
-	int ret;
-
-	chip->extcon = devm_extcon_dev_allocate(chip->dev, usbpd_extcon_cable);
-	if (IS_ERR(chip->extcon)) {
-		dev_err(chip->dev, "Error allocating extcon: %ld\n",
-			PTR_ERR(chip->extcon));
-		return PTR_ERR(chip->extcon);
-	}
-
-	ret = devm_extcon_dev_register(chip->dev, chip->extcon);
-	if (ret < 0) {
-		dev_err(chip->dev, "failed to register extcon device:%d\n", ret);
-		return ret;
-	}
-
-	extcon_set_property_capability(chip->extcon, EXTCON_USB,
-				       EXTCON_PROP_USB_TYPEC_POLARITY);
-	extcon_set_property_capability(chip->extcon, EXTCON_USB_HOST,
-				       EXTCON_PROP_USB_TYPEC_POLARITY);
-
-	of_property_read_u32(dev_of_node(chip->dev), "conn", &conn_handle);
-	desc.fwnode = &of_find_node_by_phandle(conn_handle)->fwnode;
-	desc.driver_data = chip;
-	desc.name = fwnode_get_name(dev_fwnode(chip->dev));
-	desc.set = max77759_usb_set_role;
-
-	chip->usb_sw = usb_role_switch_register(chip->dev, &desc);
-	if (IS_ERR(chip->usb_sw)) {
-		ret = PTR_ERR(chip->usb_sw);
-		dev_err(chip->dev, "Error while registering role switch:%d\n", ret);
-		return ret;
-	}
-
-	sw_desc.fwnode = dev_fwnode(chip->dev);
-	sw_desc.drvdata = chip;
-	sw_desc.name = fwnode_get_name(dev_fwnode(chip->dev));
-	sw_desc.set = max77759_usb_set_orientation;
-
-	chip->typec_sw = typec_switch_register(chip->dev, &sw_desc);
-	if (IS_ERR(chip->typec_sw)) {
-		ret = PTR_ERR(chip->typec_sw);
-		dev_err(chip->dev, "Error while registering orientation switch:%d\n", ret);
-		goto usb_sw_free;
-	}
-
-	return 0;
-
-usb_sw_free:
-	usb_role_switch_unregister(chip->usb_sw);
-	return ret;
-}
-
-static void max77759_teardown_data_notifier(struct max77759_plat *chip)
-{
-	if (!IS_ERR_OR_NULL(chip->typec_sw))
-		typec_switch_unregister(chip->typec_sw);
-	if (!IS_ERR_OR_NULL(chip->usb_sw))
-		usb_role_switch_unregister(chip->usb_sw);
-}
 
 static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *tcpci,
 						   struct tcpci_data *data,
@@ -2499,16 +2493,175 @@ static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *
 	}
 }
 
+static void dp_notification_work_item(struct kthread_work *work)
+{
+	struct dp_notification_event *evt = container_of(work, struct dp_notification_event,
+							 dp_notification_work);
+	struct max77759_plat *chip = evt->chip;
+	int dp, ret;
+
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp wq %s: %lu", __func__, evt->mode);
+
+	switch (evt->mode) {
+	case TYPEC_DP_STATE_A:
+	case TYPEC_DP_STATE_C:
+	case TYPEC_DP_STATE_E:
+		dp = 1;
+		chip->lanes = 4;
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio,
+					chip->orientation == TYPEC_ORIENTATION_NORMAL ?
+					0 : 1);
+		break;
+	case TYPEC_DP_STATE_B:
+	case TYPEC_DP_STATE_D:
+	case TYPEC_DP_STATE_F:
+		dp = 1;
+		chip->lanes = 2;
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio,
+					chip->orientation == TYPEC_ORIENTATION_NORMAL ?
+					0 : 1);
+		break;
+	default:
+		dp = 0;
+	}
+
+	if ((dp && !chip->dp_regulator_enabled) || (!dp && chip->dp_regulator_enabled)) {
+		ret = dp ? regulator_enable(chip->dp_regulator) : \
+			   regulator_disable(chip->dp_regulator);
+		if (ret >= 0)
+			chip->dp_regulator_enabled = dp;
+		logbuffer_log(chip->log, "dp regulator_%s %s ret:%d", dp ? "enable" : "disable",
+			      ret < 0 ? "fail" : "success", ret);
+		ret = dp ? regulator_set_voltage(chip->dp_regulator, VOLTAGE_DP_AUX_DEFAULT_UV,
+						 VOLTAGE_DP_AUX_DEFAULT_UV) : \
+			   regulator_set_voltage(chip->dp_regulator, chip->dp_regulator_min_uv,
+						 chip->dp_regulator_max_uv);
+		logbuffer_log(chip->log, "dp regulator_set_voltage %s ret:%d",
+			      ret < 0 ? "fail" : "success", ret);
+	}
+
+	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ? SBUSW_PATH_1 : 0);
+	logbuffer_log(chip->log, "SBU dp switch %s %s ret:%d", dp ? "enable" : "disable",
+		      ret < 0 ? "fail" : "success", ret);
+
+	logbuffer_log(chip->log, "%s Signaling dp altmode: %s ret:%d", ret < 0 ?
+		      "Failed" : "Succeeded", dp ? "on" : "off", ret);
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp altmode orientation:%d lanes:%d dp:%d",
+		      (int)chip->orientation, chip->lanes, dp);
+
+	devm_kfree(chip->dev, evt);
+}
+
+static int max77759_usb_set_mode(struct typec_mux *mux, struct typec_mux_state *state)
+{
+	struct max77759_plat *chip = typec_mux_get_drvdata(mux);
+	struct dp_notification_event *evt;
+
+	evt = devm_kzalloc(chip->dev, sizeof(*evt), GFP_KERNEL);
+	if (!evt) {
+		logbuffer_log(chip->log, "dp notification: Dropping event");
+		return 0;
+	}
+	kthread_init_work(&evt->dp_notification_work, dp_notification_work_item);
+	evt->chip = chip;
+	evt->mode = state->mode;
+	kthread_queue_work(chip->dp_notification_wq, &evt->dp_notification_work);
+	pm_wakeup_event(chip->dev, PD_ACTIVITY_TIMEOUT_MS);
+	return 0;
+}
+
+static int max77759_setup_data_notifier(struct max77759_plat *chip)
+{
+	struct usb_role_switch_desc desc = { };
+	struct typec_switch_desc sw_desc = { };
+	struct typec_mux_desc mux_desc = {};
+	u32 conn_handle;
+	int ret;
+
+	chip->extcon = devm_extcon_dev_allocate(chip->dev, usbpd_extcon_cable);
+	if (IS_ERR(chip->extcon)) {
+		dev_err(chip->dev, "Error allocating extcon: %ld\n",
+			PTR_ERR(chip->extcon));
+		return PTR_ERR(chip->extcon);
+	}
+
+	ret = devm_extcon_dev_register(chip->dev, chip->extcon);
+	if (ret < 0) {
+		dev_err(chip->dev, "failed to register extcon device:%d\n", ret);
+		return ret;
+	}
+
+	extcon_set_property_capability(chip->extcon, EXTCON_USB,
+				       EXTCON_PROP_USB_TYPEC_POLARITY);
+	extcon_set_property_capability(chip->extcon, EXTCON_USB_HOST,
+				       EXTCON_PROP_USB_TYPEC_POLARITY);
+
+	of_property_read_u32(dev_of_node(chip->dev), "conn", &conn_handle);
+	desc.fwnode = &of_find_node_by_phandle(conn_handle)->fwnode;
+	desc.driver_data = chip;
+	desc.name = fwnode_get_name(dev_fwnode(chip->dev));
+	desc.set = max77759_usb_set_role;
+
+	chip->usb_sw = usb_role_switch_register(chip->dev, &desc);
+	if (IS_ERR(chip->usb_sw)) {
+		ret = PTR_ERR(chip->usb_sw);
+		dev_err(chip->dev, "Error while registering role switch:%d\n", ret);
+		return ret;
+	}
+
+	sw_desc.fwnode = dev_fwnode(chip->dev);
+	sw_desc.drvdata = chip;
+	sw_desc.name = fwnode_get_name(dev_fwnode(chip->dev));
+	sw_desc.set = max77759_usb_set_orientation;
+
+	chip->typec_sw = typec_switch_register(chip->dev, &sw_desc);
+	if (IS_ERR(chip->typec_sw)) {
+		ret = PTR_ERR(chip->typec_sw);
+		dev_err(chip->dev, "Error while registering orientation switch:%d\n", ret);
+		goto usb_sw_free;
+	}
+
+	mux_desc.fwnode = dev_fwnode(chip->dev);
+	mux_desc.drvdata = chip;
+	mux_desc.name = fwnode_get_name(dev_fwnode(chip->dev));
+	mux_desc.set = max77759_usb_set_mode;
+
+	chip->mode_mux = typec_mux_register(chip->dev, &mux_desc);
+	if (IS_ERR(chip->mode_mux)) {
+		ret = PTR_ERR(chip->mode_mux);
+		dev_err(chip->dev, "Error while registering mode mux:%d\n", ret);
+		goto usb_sw_free;
+	}
+
+	return 0;
+
+usb_sw_free:
+	usb_role_switch_unregister(chip->usb_sw);
+	return ret;
+}
+
+static void max77759_teardown_data_notifier(struct max77759_plat *chip)
+{
+	if (!IS_ERR_OR_NULL(chip->typec_sw))
+		typec_switch_unregister(chip->typec_sw);
+	if (!IS_ERR_OR_NULL(chip->usb_sw))
+		usb_role_switch_unregister(chip->usb_sw);
+}
+
 static int max77759_probe(struct i2c_client *client,
 			  const struct i2c_device_id *i2c_id)
 {
 	int ret, i;
 	struct max77759_plat *chip;
 	char *usb_psy_name;
-	struct device_node *dn, *ovp_dn;
+	struct device_node *dn, *ovp_dn, *regulator_dn;
 	u8 power_status;
 	u16 device_id;
-	u32 ovp_handle;
+	u32 ovp_handle, regulator_handle;
 	const char *ovp_status;
 	enum of_gpio_flags flags;
 
@@ -2569,6 +2722,14 @@ static int max77759_probe(struct i2c_client *client,
 		}
 	}
 
+	chip->sbu_mux_en_gpio = of_get_named_gpio_flags(dn, "sbu-mux-en-gpio", 0, &flags);
+	if (chip->sbu_mux_en_gpio < 0) {
+		dev_err(&client->dev, "sbu-mux-en-gpio not found\n");
+	}
+	chip->sbu_mux_sel_gpio = of_get_named_gpio_flags(dn, "sbu-mux-sel-gpio", 0, &flags);
+	if (chip->sbu_mux_sel_gpio < 0) {
+		dev_err(&client->dev, "sbu-mux-sel-gpio not found\n");
+	}
 	chip->dev = &client->dev;
 	i2c_set_clientdata(client, chip);
 	mutex_init(&chip->icl_proto_el_lock);
@@ -2663,9 +2824,30 @@ static int max77759_probe(struct i2c_client *client,
 		goto teardown_bc12;
 	}
 
+	chip->dp_regulator = devm_regulator_get(chip->dev, "pullup");
+	if (IS_ERR_OR_NULL(chip->dp_regulator) ) {
+		dev_err(&client->dev, "devm_regulator_get failed\n");
+		goto psy_put;
+	}
+	if (!of_property_read_u32(dn, "pullup-supply", &regulator_handle)) {
+		regulator_dn = of_find_node_by_phandle(regulator_handle);
+		if (!IS_ERR_OR_NULL(regulator_dn)) {
+			if (of_property_read_u32(regulator_dn, "regulator-min-microvolt",
+						 &chip->dp_regulator_min_uv)) {
+				dev_err(&client->dev, "failed to read regulator-min-microvolt\n");
+				goto psy_put;
+			}
+			if (of_property_read_u32(regulator_dn, "regulator-max-microvolt",
+						 &chip->dp_regulator_max_uv)) {
+				dev_err(&client->dev, "failed to read regulator-max-microvolt\n");
+				goto psy_put;
+			}
+		}
+	}
+
 	ret = max77759_read16(chip->data.regmap, TCPC_BCD_DEV, &device_id);
 	if (ret < 0)
-		goto psy_put;
+		goto dp_regulator_put;
 
 	logbuffer_log(chip->log, "TCPC DEVICE id:%d", device_id);
 	/* Default enable on A1 or higher */
@@ -2675,7 +2857,7 @@ static int max77759_probe(struct i2c_client *client,
 
 	ret = max77759_setup_data_notifier(chip);
 	if (ret < 0)
-		goto psy_put;
+		goto dp_regulator_put;
 	max77759_init_regs(chip->data.regmap, chip->log);
 
 	/* Default enable on A1 or higher */
@@ -2688,6 +2870,12 @@ static int max77759_probe(struct i2c_client *client,
 	if (IS_ERR_OR_NULL(chip->wq)) {
 		ret = PTR_ERR(chip->wq);
 		goto teardown_data;
+	}
+
+	chip->dp_notification_wq = kthread_create_worker(0, "wq-tcpc-dp-notification");
+	if (IS_ERR_OR_NULL(chip->dp_notification_wq)) {
+		ret = PTR_ERR(chip->dp_notification_wq);
+		goto destroy_worker;
 	}
 
 	kthread_init_delayed_work(&chip->icl_work, icl_work_item);
@@ -2709,7 +2897,7 @@ static int max77759_probe(struct i2c_client *client,
 	ret = power_supply_reg_notifier(&chip->psy_notifier);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to register power supply callback\n");
-		goto destroy_worker;
+		goto destroy_dp_worker;
 	}
 
 	chip->usb_icl_proto_el = gvotable_election_get_handle(USB_ICL_PROTO_EL);
@@ -2783,10 +2971,14 @@ unreg_port:
 	tcpci_unregister_port(chip->tcpci);
 unreg_notifier:
 	power_supply_unreg_notifier(&chip->psy_notifier);
+destroy_dp_worker:
+	kthread_destroy_worker(chip->dp_notification_wq);
 destroy_worker:
 	kthread_destroy_worker(chip->wq);
 teardown_data:
 	max77759_teardown_data_notifier(chip);
+dp_regulator_put:
+	devm_regulator_put(chip->dp_regulator);
 psy_put:
 	power_supply_put(chip->usb_psy);
 teardown_bc12:
@@ -2811,6 +3003,8 @@ static int max77759_remove(struct i2c_client *client)
 		device_remove_file(&client->dev, max77759_device_attrs[i]);
 	if (!IS_ERR_OR_NULL(chip->tcpci))
 		tcpci_unregister_port(chip->tcpci);
+	if (!IS_ERR_OR_NULL(chip->dp_regulator))
+		devm_regulator_put(chip->dp_regulator);
 	if (!IS_ERR_OR_NULL(chip->usb_psy))
 		power_supply_put(chip->usb_psy);
 	if (!IS_ERR_OR_NULL(chip->usb_psy_data))
@@ -2819,6 +3013,8 @@ static int max77759_remove(struct i2c_client *client)
 		bc12_teardown(chip->bc12);
 	if (!IS_ERR_OR_NULL(chip->log))
 		logbuffer_unregister(chip->log);
+	if (!IS_ERR_OR_NULL(chip->dp_notification_wq))
+		kthread_destroy_worker(chip->dp_notification_wq);
 	if (!IS_ERR_OR_NULL(chip->wq))
 		kthread_destroy_worker(chip->wq);
 	power_supply_unreg_notifier(&chip->psy_notifier);
