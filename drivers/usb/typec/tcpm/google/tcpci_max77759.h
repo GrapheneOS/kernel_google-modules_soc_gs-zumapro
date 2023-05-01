@@ -13,6 +13,7 @@
 #include <linux/usb/tcpm.h>
 #include <linux/gpio.h>
 #include <linux/gpio/driver.h>
+#include <linux/regulator/consumer.h>
 #include <linux/usb/role.h>
 #include <linux/usb/typec_mux.h>
 #include <tcpm/tcpci.h>
@@ -70,6 +71,8 @@ struct max77759_plat {
 	struct usb_psy_ops psy_ops;
 	/* toggle in_switch to kick debug accessory statemachine when already connected */
 	int in_switch_gpio;
+	int sbu_mux_en_gpio;
+	int sbu_mux_sel_gpio;
 	/* 0:active_low 1:active_high */
 	bool in_switch_gpio_active_high;
 	bool first_toggle;
@@ -135,6 +138,7 @@ struct max77759_plat {
 	int usb_type;
 	int typec_current_max;
 	struct kthread_worker *wq;
+	struct kthread_worker *dp_notification_wq;
 	struct kthread_delayed_work icl_work;
 	struct kthread_delayed_work enable_vbus_work;
 	struct kthread_delayed_work vsafe0v_work;
@@ -145,6 +149,17 @@ struct max77759_plat {
 	struct usb_role_switch *usb_sw;
 	/* Notifier for orientation */
 	struct typec_switch *typec_sw;
+	/* mode mux */
+	struct typec_mux *mode_mux;
+	/* Cache orientation for dp */
+	enum typec_orientation orientation;
+	/* Cache the number of lanes */
+	int lanes;
+	/* DisplayPort Regulator */
+	struct regulator *dp_regulator;
+	bool dp_regulator_enabled;
+	unsigned int dp_regulator_min_uv;
+	unsigned int dp_regulator_max_uv;
 
 	/* Reflects whether BC1.2 is still running */
 	bool bc12_running;
@@ -163,6 +178,9 @@ struct max77759_plat {
 	 * additional delay during boot.
 	 */
 	bool first_rp_missing_timeout;
+
+	/* GPIO state for SBU pin pull up/down */
+	int current_sbu_state;
 
 	/* EXT_BST_EN exposed as GPIO */
 #ifdef CONFIG_GPIOLIB
