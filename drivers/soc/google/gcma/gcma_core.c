@@ -509,10 +509,13 @@ again:
 
 void gcma_alloc_range(unsigned long start_pfn, unsigned long end_pfn)
 {
+	s64 start_time;
 	int i;
 	struct gcma_area *area;
 	int nr_area = atomic_read(&nr_gcma_area);
+	unsigned long latency, count = end_pfn - start_pfn + 1;
 
+	start_time = ktime_to_ns(ktime_get());
 	for (i = 0; i < nr_area; i++) {
 		unsigned long s_pfn, e_pfn;
 
@@ -528,6 +531,9 @@ void gcma_alloc_range(unsigned long start_pfn, unsigned long end_pfn)
 
 		__gcma_discard_range(area, s_pfn, e_pfn);
 	}
+
+	latency = ktime_to_ns(ktime_get()) - start_time;
+	account_gcma_per_page_alloc_latency(count, latency);
 }
 EXPORT_SYMBOL_GPL(gcma_alloc_range);
 
