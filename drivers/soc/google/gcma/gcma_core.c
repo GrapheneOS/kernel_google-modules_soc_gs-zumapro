@@ -14,7 +14,10 @@
 #include <linux/hashtable.h>
 #include <linux/xarray.h>
 #include <trace/hooks/mm.h>
+
 #include "gcma_sysfs.h"
+#define CREATE_TRACE_POINTS
+#include "gcma_trace.h"
 
 /*
  * page->units : area id
@@ -402,13 +405,14 @@ static void isolate_gcma_page(struct gcma_inode *inode, struct page *page)
  * where doesn't allow preemption. Thus,retrial in this logic would make
  * forward progress with just retrial.
  */
-static void __gcma_discard_range(struct gcma_area *area,
-				unsigned long start_pfn,
-				unsigned long end_pfn)
+static unsigned long __gcma_discard_range(struct gcma_area *area,
+					  unsigned long start_pfn,
+					  unsigned long end_pfn)
 {
 	unsigned long pfn;
 	struct page *page;
 	unsigned long scanned = 0;
+	unsigned long discard = 0;
 
 	local_irq_disable();
 
@@ -502,9 +506,12 @@ again:
 		xa_unlock(&inode->pages);
 		isolate_gcma_page(inode, page);
 		inc_gcma_stat(DISCARDED_PAGE);
+		discard++;
 
 	}
 	local_irq_enable();
+
+	return discard;
 }
 
 void gcma_alloc_range(unsigned long start_pfn, unsigned long end_pfn)
@@ -514,7 +521,9 @@ void gcma_alloc_range(unsigned long start_pfn, unsigned long end_pfn)
 	struct gcma_area *area;
 	int nr_area = atomic_read(&nr_gcma_area);
 	unsigned long latency, count = end_pfn - start_pfn + 1;
+	unsigned long discarded = 0;
 
+	trace_gcma_alloc_start(start_pfn, count);
 	start_time = ktime_to_ns(ktime_get());
 	for (i = 0; i < nr_area; i++) {
 		unsigned long s_pfn, e_pfn;
@@ -529,9 +538,9 @@ void gcma_alloc_range(unsigned long start_pfn, unsigned long end_pfn)
 		s_pfn = max(start_pfn, area->start_pfn);
 		e_pfn = min(end_pfn, area->end_pfn);
 
-		__gcma_discard_range(area, s_pfn, e_pfn);
+		discarded += __gcma_discard_range(area, s_pfn, e_pfn);
 	}
-
+	trace_gcma_alloc_finish(count, discarded);
 	latency = ktime_to_ns(ktime_get()) - start_time;
 	account_gcma_per_page_alloc_latency(count, latency);
 }
