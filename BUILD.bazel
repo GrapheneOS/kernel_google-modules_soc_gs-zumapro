@@ -297,7 +297,6 @@ kernel_module(
         "drivers/thermal/samsung/gs_thermal.ko",
         "drivers/trusty/trusty-core.ko",
         "drivers/trusty/trusty-ipc.ko",
-        "drivers/trusty/trusty-irq.ko",
         "drivers/trusty/trusty-log.ko",
         "drivers/trusty/trusty-test.ko",
         "drivers/trusty/trusty-virtio.ko",
