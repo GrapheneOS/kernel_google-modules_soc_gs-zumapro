@@ -24,31 +24,19 @@ def staging_build_config(name, base_build_config, device_name, gki_build_config_
 
     native.genrule(
         name = "{}.gen".format(name),
-        srcs = [
-            gki_build_config_fragment,
-        ],
         outs = ["{}.gen.generated".format(name)],
         cmd = """
             echo KERNEL_DIR=private/devices/google/{device_name} > $@
             echo GKI_KERNEL_DIR="aosp-staging" >> $@
-            echo GKI_BUILD_CONFIG_FRAGMENT=$(location {gki_build_config_fragment}) >> $@
-            """.format(
-            device_name = device_name,
-            gki_build_config_fragment = gki_build_config_fragment,
-        ),
+            """.format(device_name = device_name),
     )
+
     native.genrule(
         name = "{}.gki.gen".format(name),
-        srcs = [
-            gki_build_config_fragment,
-        ],
         outs = ["{}.gki.gen.generated".format(name)],
         cmd = """
             echo KERNEL_DIR="aosp-staging" > $@
-            echo GKI_BUILD_CONFIG_FRAGMENT=$(location {gki_build_config_fragment}) >> $@
-            """.format(
-            gki_build_config_fragment = gki_build_config_fragment,
-        ),
+            """,
     )
 
     kernel_build_config(
@@ -57,7 +45,7 @@ def staging_build_config(name, base_build_config, device_name, gki_build_config_
             # do not sort
             ":{}.gen".format(name),
             base_build_config,
-        ],
+        ] + ([gki_build_config_fragment] if gki_build_config_fragment else []),
     )
 
     kernel_build_config(
@@ -66,7 +54,7 @@ def staging_build_config(name, base_build_config, device_name, gki_build_config_
             # do not sort
             ":{}.gki.gen".format(name),
             "//aosp-staging:build.config.gki.aarch64",
-        ],
+        ] + ([gki_build_config_fragment] if gki_build_config_fragment else []),
     )
 
 def create_debug_fragment(
@@ -128,11 +116,7 @@ def create_debug_fragment(
             # do not sort
             ":{}.gen".format(name),
             base_build_config,
-        ] + [
-            # Since we can't source two fragments, we can just append this to
-            # the end.
-            gki_build_config_fragment,
-        ] if gki_build_config_fragment else [],
+        ] + ([gki_build_config_fragment] if gki_build_config_fragment else []),
     )
 
     kernel_build_config(
@@ -141,11 +125,7 @@ def create_debug_fragment(
             # do not sort
             ":{}.gki.gen".format(name),
             "//{}:build.config.gki.aarch64".format(gki_kernel_dir),
-        ] + [
-            # Since we can't source two fragments, we can just append this to
-            # the end.
-            gki_build_config_fragment,
-        ] if gki_build_config_fragment else [],
+        ] + ([gki_build_config_fragment] if gki_build_config_fragment else []),
     )
 
 def device_build_configs(
