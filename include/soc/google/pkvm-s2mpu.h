@@ -22,24 +22,24 @@ struct s2mpu_data {
  * Parse the 's2mpus' DT property of 'parent' and create a device link
  * to all referenced S2MPU devices.
  */
+int __pkvm_s2mpu_of_link(struct device *parent);
 int pkvm_s2mpu_of_link(struct device *parent);
-int pkvm_s2mpu_of_link_v1(struct device *parent);
 int pkvm_s2mpu_of_link_v9(struct device *parent);
 
 /*
  * Parse the 's2mpu' DT property of 'parent' and return a pointer to
  * the referenced S2MPU device, or NULL if the property does not exist.
  */
+struct device *__pkvm_s2mpu_of_parse(struct device *parent);
 struct device *pkvm_s2mpu_of_parse(struct device *parent);
-struct device *pkvm_s2mpu_of_parse_v1(struct device *parent);
 struct device *pkvm_s2mpu_of_parse_v9(struct device *parent);
 
+int __pkvm_s2mpu_suspend(struct device *dev);
 int pkvm_s2mpu_suspend(struct device *dev);
-int pkvm_s2mpu_suspend_v1(struct device *dev);
 int pkvm_s2mpu_suspend_v9(struct device *dev);
 
+int __pkvm_s2mpu_resume(struct device *dev);
 int pkvm_s2mpu_resume(struct device *dev);
-int pkvm_s2mpu_resume_v1(struct device *dev);
 int pkvm_s2mpu_resume_v9(struct device *dev);
 
 

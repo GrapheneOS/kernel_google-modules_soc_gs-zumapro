@@ -460,7 +460,7 @@ static const u64 mpt_prot_doubleword[] = {
 #define L1ENTRY_ATTR_GRAN_MASK			GENMASK(5, 4)
 #define MPT_PROT_BITS				2
 #define S2MPU_NAME				"s2mpu"
-#define PER_DRIVER_FN(x)			x##_v1
+#define PER_DRIVER_FN(x)			x
 static const u64 mpt_prot_doubleword[] = {
 	[MPT_PROT_NONE] = 0x0000000000000000,
 	[MPT_PROT_R]    = 0x5555555555555555,
