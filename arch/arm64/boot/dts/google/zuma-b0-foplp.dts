@@ -49,11 +49,9 @@
 		sustainable_power = <2000>;
 		control_temp_step = <1000>; // mC per second
 
-		use-temp-lut-thermal;
-		temp_state_table =
-			//temp level
-			<  85    2
-			   255   4 >;
+		early_throttle_enable;
+		early_throttle_k_p = <50>;
+		early_throttle_offset = <10>; // in Celsius
 
 		tmu_work_affinity = "0-8";
 
