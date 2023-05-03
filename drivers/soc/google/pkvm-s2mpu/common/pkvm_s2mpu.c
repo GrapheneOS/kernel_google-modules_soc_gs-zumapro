@@ -293,25 +293,24 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 		if (of_device_is_available(np))
 			nr_devs_total++;
 
-	/* Only try to register the driver with pKVM if pKVM is enabled. */
-	if (is_protected_kvm_enabled()) {
-		ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
-		if (ret) {
-			pr_err("Failed to load s2mpu el2 module: %d\n", ret);
-			return ret;
-		}
+	/* No need to force probe devices if pKVM is not enabled. */
+	if (!is_protected_kvm_enabled())
+		return platform_driver_register(driver);
 
-		ret = pkvm_iommu_s2mpu_init(token);
-		if (ret) {
-			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
-			return ret;
-		}
+	/* Only try to register the driver with pKVM if pKVM is enabled. */
+	ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
+	if (ret) {
+		pr_err("Failed to load s2mpu el2 module: %d\n", ret);
+		return ret;
+	}
+
+	ret = pkvm_iommu_s2mpu_init(token);
+	if (ret) {
+		pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
+		return ret;
 	}
 
 	ret = platform_driver_probe(&s2mpu_driver, s2mpu_probe);
-
-	if (!is_protected_kvm_enabled())
-		return ret;
 
 	/* If one device is not probed it will not be controlled by the hypervisor. */
 	ret = pkvm_iommu_finalize(WARN_ON(nr_devs_total != nr_devs_registered) ? -ENXIO : 0);
