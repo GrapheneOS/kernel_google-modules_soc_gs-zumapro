@@ -16,6 +16,8 @@
 
 #define MCELSIUS        1000
 
+extern struct cpumask tmu_enabled_mask;
+
 struct gs_pi_param {
 	s64 err_integral;
 

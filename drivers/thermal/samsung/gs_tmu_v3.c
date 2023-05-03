@@ -170,9 +170,10 @@ static inline s64 div_frac(s64 x, s64 y)
 }
 
 static atomic_t gs_tmu_in_suspend;
-
 static struct acpm_tmu_cap cap;
 static unsigned int num_of_devices, suspended_count;
+struct cpumask tmu_enabled_mask;
+EXPORT_SYMBOL(tmu_enabled_mask);
 
 /* list of multiple instance for each thermal sensor */
 static LIST_HEAD(dtm_dev_list);
@@ -4770,6 +4771,10 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (!strncmp(data->tmu_name, "ISP", 3))
 		exynos_isp_cooling_init();
 #endif
+
+	spin_lock(&dev_list_spinlock);
+	cpumask_or(&tmu_enabled_mask, &tmu_enabled_mask, &data->mapped_cpus);
+	spin_unlock(&dev_list_spinlock);
 
 	register_tz_id_ignore_genl(data->tzd->id);
 
