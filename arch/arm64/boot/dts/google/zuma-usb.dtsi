@@ -119,7 +119,6 @@
 		enable_sprs_transfer = <1>;
 		s2mpus = <&s2mpu_s0_hsi0>;
 
-		usb3-lpm-capable;
 		samsung,no-extra-delay;
 		xhci_l2_support = <1>;
 
@@ -141,13 +140,13 @@
 			direct-usb-access;
 
 			maximum-speed = "super-speed-plus";
-			usb3-lpm-capable;
 			usb-psy-name = "usb";
 			snps,quirk-frame-length-adjustment = <0x20>;
 
-			snps,usb3_lpm_capable;
 			snps,has-lpm-erratum;
 			snps,lpm-nyet-threshold = <0>;
+
+			snps,usb2-gadget-lpm-disable;
 
 			/*
 			 * dis-u2-freeclk-exists-quirk, dis_u2_susphy_quirk are alternative.
