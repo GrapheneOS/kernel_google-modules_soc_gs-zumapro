@@ -825,6 +825,9 @@
 			<&sysmmu_ispfe_s1>,
 			<&sysmmu_ispfe_s2>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_gdc0: lwis_gdc@1D440000 {
