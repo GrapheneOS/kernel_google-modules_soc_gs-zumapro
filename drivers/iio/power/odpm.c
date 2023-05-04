@@ -268,6 +268,7 @@ int odpm_configure_chip(struct odpm_info *info)
 
 int odpm_meter_sw_reset(struct odpm_info *info)
 {
+	pr_info("odpm: %s: meter reset\n", info->chip.name);
 	return s2mpg1415_meter_sw_reset(info->chip.hw_id,
 					info->i2c);
 	return 0;
@@ -816,6 +817,11 @@ static u32 odpm_estimate_sampling_frequency(struct odpm_info *info,
 		       info->chip.name, sampling_frequency_table_uhz,
 		       sampling_frequency_estimated_uhz,
 		       elapsed_ms, acc_count);
+
+		if (sampling_frequency_estimated_uhz > freq_upper_bound) {
+			if (odpm_meter_sw_reset(info) != 0)
+				pr_err("odpm: meter_sw_reset failed\n");
+		}
 
 		/* Fall back to configured frequency */
 		return sampling_frequency_table_uhz;
