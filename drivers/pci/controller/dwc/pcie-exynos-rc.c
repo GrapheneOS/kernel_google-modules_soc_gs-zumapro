@@ -2374,7 +2374,7 @@ void exynos_pcie_rc_dump_all_status(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	unsigned long flags;
 
 	spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
@@ -2721,7 +2721,7 @@ void exynos_pcie_msi_post_process(struct dw_pcie_rp *pp)
 void exynos_pcie_rc_force_linkdown_work(int ch_num) {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	struct device *dev = pci->dev;
 
 	dev_info(dev, "start force Link down S/W recovery\n");
