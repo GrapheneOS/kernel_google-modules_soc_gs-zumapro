@@ -259,6 +259,7 @@ kernel_module(
         "drivers/soc/google/debug/itmon.ko",
         "drivers/soc/google/debug/pixel-boot-metrics.ko",
         "drivers/soc/google/debug/pixel-debug-test.ko",
+        "drivers/soc/google/debug/pixel-suspend-diag.ko",
         "drivers/soc/google/debug/sjtag-driver.ko",
         "drivers/soc/google/ect_parser.ko",
         "drivers/soc/google/eh/eh.ko",
