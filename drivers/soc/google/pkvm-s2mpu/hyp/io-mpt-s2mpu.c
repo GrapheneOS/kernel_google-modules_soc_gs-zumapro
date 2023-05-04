@@ -12,13 +12,6 @@
 #define SMPT_NUM_TO_BYTE(x)		((x) / SMPT_GRAN / SMPT_ELEMS_PER_BYTE(config_prot_bits))
 #define BYTE_TO_SMPT_INDEX(x)		((x) / SMPT_WORD_BYTE_RANGE(config_prot_bits))
 
-#ifdef memset
-#undef memset
-#endif
-
-#ifdef memcpy
-#undef memcpy
-#endif
 
 /* Abstraction for functions used from module ops. */
 static const struct pkvm_module_ops *mod_ops;
