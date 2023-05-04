@@ -467,7 +467,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 		dev_warn(dev, "hypervisor disabled, control from kernel\n");
 
 	if (data->pkvm_registered && nr_devs == nr_devs_total) {
-		ret = pkvm_iommu_finalize(0);
+		ret = pkvm_iommu_finalize();
 		if (!ret)
 			pr_info("list of devices successfully finalized\n");
 		else
