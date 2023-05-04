@@ -55,7 +55,6 @@ struct samsung_sysmmu_domain {
 };
 
 static bool sysmmu_global_init_done;
-static DEFINE_MUTEX(sysmmu_global_mutex); /* Global driver mutex */
 static struct device sync_dev;
 static struct kmem_cache *flpt_cache, *slpt_cache;
 
@@ -993,6 +992,7 @@ static void samsung_sysmmu_group_data_release(void *iommu_data)
 
 static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 {
+	static DEFINE_MUTEX(set_iommudata_mutex);
 	struct iommu_group *group;
 	struct device_node *np;
 	struct platform_device *pdev;
@@ -1022,15 +1022,15 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 		return ERR_PTR(-EPROBE_DEFER);
 	}
 
-	mutex_lock(&sysmmu_global_mutex);
+	mutex_lock(&set_iommudata_mutex);
 	if (iommu_group_get_iommudata(group)) {
-		mutex_unlock(&sysmmu_global_mutex);
+		mutex_unlock(&set_iommudata_mutex);
 		return group;
 	}
 
 	list = kzalloc(sizeof(*list), GFP_KERNEL);
 	if (!list) {
-		mutex_unlock(&sysmmu_global_mutex);
+		mutex_unlock(&set_iommudata_mutex);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -1038,7 +1038,7 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 	iommu_group_set_iommudata(group, list,
 				  samsung_sysmmu_group_data_release);
 
-	mutex_unlock(&sysmmu_global_mutex);
+	mutex_unlock(&set_iommudata_mutex);
 	return group;
 }
 
@@ -1541,6 +1541,7 @@ err_init_slpt_fail:
 
 static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 {
+	static DEFINE_MUTEX(initialization_mutex);
 	struct sysmmu_drvdata *data;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
@@ -1619,16 +1620,16 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 		goto err_iommu_register;
 	}
 
-	mutex_lock(&sysmmu_global_mutex);
+	mutex_lock(&initialization_mutex);
 	if (!sysmmu_global_init_done) {
 		err = samsung_sysmmu_init_global();
 		if (err) {
 			dev_err(dev, "failed to initialize global data\n");
-			mutex_unlock(&sysmmu_global_mutex);
+			mutex_unlock(&initialization_mutex);
 			goto err_global_init;
 		}
 	}
-	mutex_unlock(&sysmmu_global_mutex);
+	mutex_unlock(&initialization_mutex);
 
 	dev_info(dev, "initialized IOMMU. Ver %d.%d.%d, %sgate clock\n",
 		 MMU_VERSION_MAJOR(data->version),
