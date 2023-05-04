@@ -49,31 +49,25 @@ static unsigned int dss_freq_size;
 long dss_get_len_##item##_log(void) {					\
 	return ARRAY_SIZE(dss_log->item);				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_len_##item##_log);				\
 long dss_get_last_##item##_log_idx(void) {				\
 	return (atomic_read(&dss_log_misc.item##_log_idx) - 1) &	\
 			(dss_get_len_##item##_log() - 1);		\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_last_##item##_log_idx);				\
 long dss_get_first_##item##_log_idx(void) {				\
 	return atomic_read(&dss_log_misc.item##_log_idx) &		\
 			(dss_get_len_##item##_log() - 1);		\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_first_##item##_log_idx);				\
 struct item##_log *dss_get_last_##item##_log(void) {			\
 	return &dss_log->item[dss_get_last_##item##_log_idx()];		\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_last_##item##_log);				\
 struct item##_log *dss_get_first_##item##_log(void) {			\
 	return &dss_log->item[dss_get_first_##item##_log_idx()];	\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_first_##item##_log);				\
 struct item##_log *dss_get_##item##_log_by_idx(int idx) {		\
 	if (idx < 0 || idx >= dss_get_len_##item##_log())		\
 		return NULL;						\
 	return &dss_log->item[idx];					\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_##item##_log_by_idx);				\
 struct item##_log *dss_get_##item##_log_iter(int idx) {			\
 	if (idx < 0)							\
 		idx = dss_get_len_##item##_log() - abs(idx);		\
@@ -81,49 +75,41 @@ struct item##_log *dss_get_##item##_log_iter(int idx) {			\
 		idx -= dss_get_len_##item##_log();			\
 	return &dss_log->item[idx];					\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_##item##_log_iter);				\
 unsigned long dss_get_vaddr_##item##_log(void) {			\
 	return (unsigned long)dss_log->item;				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_vaddr_##item##_log)
 
 #define dss_get_log_by_cpu(item)					\
 long dss_get_len_##item##_log(void) {					\
 	return ARRAY_SIZE(dss_log->item);				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_len_##item##_log);				\
 long dss_get_len_##item##_log_by_cpu(int cpu) {				\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return -EINVAL;						\
 	return ARRAY_SIZE(dss_log->item[cpu]);				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_len_##item##_log_by_cpu);				\
 long dss_get_last_##item##_log_idx(int cpu) {				\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return -EINVAL;						\
 	return (atomic_read(&dss_log_misc.item##_log_idx[cpu]) - 1) &	\
 			(dss_get_len_##item##_log_by_cpu(cpu) - 1);	\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_last_##item##_log_idx);				\
 long dss_get_first_##item##_log_idx(int cpu) {				\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return -EINVAL;						\
 	return atomic_read(&dss_log_misc.item##_log_idx[cpu]) &		\
 			(dss_get_len_##item##_log_by_cpu(cpu) - 1);	\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_first_##item##_log_idx);				\
 struct item##_log *dss_get_last_##item##_log(int cpu) {			\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return NULL;						\
 	return &dss_log->item[cpu][dss_get_last_##item##_log_idx(cpu)];	\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_last_##item##_log);				\
 struct item##_log *dss_get_first_##item##_log(int cpu) {		\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return NULL;						\
 	return &dss_log->item[cpu][dss_get_first_##item##_log_idx(cpu)];\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_first_##item##_log);				\
 struct item##_log *dss_get_##item##_log_by_idx(int cpu, int idx) {	\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return NULL;						\
@@ -131,7 +117,6 @@ struct item##_log *dss_get_##item##_log_by_idx(int cpu, int idx) {	\
 		return NULL;						\
 	return &dss_log->item[cpu][idx];				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_##item##_log_by_idx);				\
 struct item##_log *dss_get_##item##_log_by_cpu_iter(int cpu, int idx) {	\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return NULL;						\
@@ -141,13 +126,11 @@ struct item##_log *dss_get_##item##_log_by_cpu_iter(int cpu, int idx) {	\
 		idx -= dss_get_len_##item##_log_by_cpu(cpu);		\
 	return &dss_log->item[cpu][idx];				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_##item##_log_by_cpu_iter);			\
 unsigned long dss_get_vaddr_##item##_log_by_cpu(int cpu) {		\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return 0;						\
 	return (unsigned long)dss_log->item[cpu];			\
-}									\
-EXPORT_SYMBOL_GPL(dss_get_vaddr_##item##_log_by_cpu)
+}
 
 dss_get_log_by_cpu(task);
 dss_get_log_by_cpu(work);
