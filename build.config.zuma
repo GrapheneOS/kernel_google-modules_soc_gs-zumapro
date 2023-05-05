@@ -1,10 +1,5 @@
 KCONFIG_EXT_PREFIX=${SOC_DIR}
-# TODO(b/231473697): use realpath --relative-to
-# rel_path does not work with Kleaf --config=local builds because
-# rel_path is not simplified enough (e.g. the following evaluates to
-# ../../__main__ in Kleaf, which does not work in non-sandbox builds).
-# Hence use rel_path2 so it evaluates to a simpler path ../
-KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
+KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
 
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.common
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.aarch64
