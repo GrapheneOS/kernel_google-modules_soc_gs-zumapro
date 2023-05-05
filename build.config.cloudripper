@@ -77,5 +77,9 @@ private/google-modules/aoc
 private/google-modules/aoc/alsa
 private/google-modules/lwis
 private/google-modules/nfc
+private/google-modules/touch/common
+private/google-modules/touch/focaltech/ft3658
+private/google-modules/touch/sec
+private/google-modules/touch/synaptics
 private/google-modules/video/gchips
 "
