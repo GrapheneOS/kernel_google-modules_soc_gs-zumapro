@@ -52,8 +52,6 @@ obj-y += drivers/power/
 
 obj-y += drivers/thermal/
 
-obj-y += drivers/trusty/
-
 obj-y += drivers/watchdog/
 
 obj-y += drivers/cpufreq/

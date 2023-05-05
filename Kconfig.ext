@@ -36,8 +36,6 @@ source "$(KCONFIG_EXT_PREFIX)drivers/power/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/thermal/Kconfig"
 
-source "$(KCONFIG_EXT_PREFIX)drivers/trusty/Kconfig"
-
 source "$(KCONFIG_EXT_PREFIX)drivers/watchdog/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/regulator/Kconfig"

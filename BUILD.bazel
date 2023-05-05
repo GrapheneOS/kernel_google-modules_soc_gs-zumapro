@@ -142,6 +142,7 @@ filegroup(
         ],
     ) + [
         "//private/google-modules/bms/misc:headers",
+        "//private/google-modules/trusty:headers",
     ],
     visibility = [
         # keep sorted
