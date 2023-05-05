@@ -64,7 +64,9 @@ filegroup(
             "**/*.bzl",
             "build.config.*",
         ],
-    ),
+    ) + [
+        "//private/google-modules/trusty:headers",
+    ],
 )
 
 filegroup(

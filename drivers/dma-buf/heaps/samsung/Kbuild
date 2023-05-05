@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
 ccflags-y += -I$(srctree)/drivers/dma-buf
+ccflags-y += -I$(KERNEL_SRC)/../private/google-modules/trusty/include
 
 # Needed for the trace points
 CFLAGS_samsung_heap.o = -I$(srctree)/$(src)
