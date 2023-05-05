@@ -184,6 +184,11 @@ int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 		return -ENOMEM;
 	}
 
+	/*
+	 * Set default "Emergency Reboot" message
+	 */
+	scnprintf(reboot_msg, DSS_PANIC_STRING_SZ, "Emergency Reboot");
+
 	if (!dss_soc_ops.expire_watchdog) {
 		dev_emerg(dss_desc.dev, "There is no wdt functions!\n");
 		return -ENODEV;
