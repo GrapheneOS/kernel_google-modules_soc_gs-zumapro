@@ -182,6 +182,8 @@ struct max77759_plat {
 
 	/* GPIO state for SBU pin pull up/down */
 	int current_sbu_state;
+	/* IRQ_HPD event count */
+	u32 irq_hpd_count;
 
 	/* Signal from charger when AICL is active. */
 	struct gvotable_election *aicl_active_el;

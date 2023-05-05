@@ -20,6 +20,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/spinlock.h>
 #include <linux/usb/pd.h>
+#include <linux/usb/pd_vdo.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_dp.h>
@@ -525,6 +526,14 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 }
 static DEVICE_ATTR_RW(sbu_pullup);
 
+static ssize_t irq_hpd_count_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+
+	return sysfs_emit(buf, "%u\n", chip->irq_hpd_count);
+};
+static DEVICE_ATTR_RO(irq_hpd_count);
+
 static ssize_t usb_limit_source_enable_show(struct device *dev, struct device_attribute *attr,
 					    char *buf)
 {
@@ -566,6 +575,7 @@ static struct device_attribute *max77759_device_attrs[] = {
 	&dev_attr_usb_limit_accessory_current,
 	&dev_attr_sbu_pullup,
 	&dev_attr_usb_limit_source_enable,
+	&dev_attr_irq_hpd_count,
 	NULL
 };
 
@@ -705,6 +715,36 @@ static void max77759_init_regs(struct regmap *regmap, struct logbuffer *log)
 		logbuffer_log(log, "TCPC_VENDOR_VCON_CTRL: update vcnilim to 300mA failed");
 }
 
+static int post_process_pd_message(struct max77759_plat *chip, struct pd_message msg)
+{
+	enum pd_ctrl_msg_type pd_type = pd_header_type_le(msg.header);
+	struct logbuffer *log = chip->log;
+
+	if (pd_type == PD_DATA_VENDOR_DEF) {
+		u32 payload[2];
+		int i;
+
+		for (i = 0; i < 2; i++) {
+			payload[i] = le32_to_cpu(msg.payload[i]);
+			if ((PD_VDO_VID(payload[0]) == USB_TYPEC_DP_SID))
+				logbuffer_log(log, "DP VDO[%d] 0x%x", i, payload[i]);
+		}
+
+		if (PD_VDO_SVDM(payload[0]) && (PD_VDO_VID(payload[0]) == USB_TYPEC_DP_SID) &&
+		    ((PD_VDO_CMD(payload[0]) == CMD_ATTENTION) ||
+		    (PD_VDO_CMD(payload[0]) == DP_CMD_STATUS_UPDATE)) &&
+		    (payload[1] & DP_STATUS_IRQ_HPD)) {
+			chip->irq_hpd_count++;
+			logbuffer_log(log, "DP IRQ_HPD:%d count:%u",
+				      (payload[1] & DP_STATUS_IRQ_HPD), chip->irq_hpd_count);
+			// sysfs_notify(&chip->dev->kobj, NULL, "irq_hpd_count");
+			kobject_uevent(&chip->dev->kobj, KOBJ_CHANGE);
+		}
+	}
+
+	return 0;
+}
+
 static int process_rx(struct max77759_plat *chip, u16 status)
 {
 	struct pd_message msg;
@@ -790,6 +830,11 @@ static int process_rx(struct max77759_plat *chip, u16 status)
 	}
 
 	tcpm_pd_receive(chip->port, &msg);
+
+	ret = post_process_pd_message(chip, msg);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 }
 
