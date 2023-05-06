@@ -85,7 +85,7 @@
 			altmodes {
 				displayport {
 					svid = <0xff01>;
-					vdo = <0x1414c6>;
+					vdo = <0x14c6>;
 				};
 			};
 			ports {
