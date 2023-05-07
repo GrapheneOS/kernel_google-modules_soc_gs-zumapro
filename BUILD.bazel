@@ -150,7 +150,9 @@ kernel_build(
         # keep sorted
         "arm_dsu_pmu.ko",
         "at24.ko",
+        "cfg80211.ko",
         "i2c-dev.ko",
+        "mac80211.ko",
         "pktgen.ko",
         "pps-gpio.ko",
         "sg.ko",
@@ -366,10 +368,8 @@ _gki_modules = [
     "//common:kernel_aarch64/lib/crypto/libarc4.ko",
     "//common:kernel_aarch64/mm/zsmalloc.ko",
     "//common:kernel_aarch64/net/ieee802154/ieee802154.ko",
-    "//common:kernel_aarch64/net/mac80211/mac80211.ko",
     "//common:kernel_aarch64/net/mac802154/mac802154.ko",
     "//common:kernel_aarch64/net/rfkill/rfkill.ko",
-    "//common:kernel_aarch64/net/wireless/cfg80211.ko",
 ]
 
 filegroup(
