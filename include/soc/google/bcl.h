@@ -55,9 +55,9 @@ enum SUBSYSTEM_SOURCE {
 	SUBSYSTEM_CPU0,
 	SUBSYSTEM_CPU1,
 	SUBSYSTEM_CPU2,
-	SUBSYSTEM_AUR,
 	SUBSYSTEM_TPU,
 	SUBSYSTEM_GPU,
+	SUBSYSTEM_AUR,
 	SUBSYSTEM_SOURCE_MAX,
 };
 
@@ -289,8 +289,8 @@ extern int google_init_gpu_ratio(struct bcl_device *data);
 extern int google_init_tpu_ratio(struct bcl_device *data);
 extern int google_init_aur_ratio(struct bcl_device *data);
 bool bcl_is_subsystem_on(unsigned int addr);
-void bcl_disable_power(void);
-void bcl_enable_power(void);
+bool bcl_disable_power(int cluster);
+bool bcl_enable_power(int cluster);
 void __iomem *get_addr_by_subsystem(void *dev, const char *subsystem);
 int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
 int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);

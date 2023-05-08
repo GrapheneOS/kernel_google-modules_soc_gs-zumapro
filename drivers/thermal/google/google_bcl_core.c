@@ -42,6 +42,14 @@ static const struct platform_device_id google_id_table[] = {
 	{},
 };
 
+static const unsigned int xclkout_source[] = {
+	XCLKOUT_SOURCE_CPU0,
+	XCLKOUT_SOURCE_CPU1,
+	XCLKOUT_SOURCE_CPU2,
+	XCLKOUT_SOURCE_TPU,
+	XCLKOUT_SOURCE_GPU
+};
+
 DEFINE_MUTEX(sysreg_lock);
 
 static void update_irq_end_times(struct bcl_device *bcl_dev, int id);
@@ -486,99 +494,77 @@ struct bcl_device *google_retrieve_bcl_handle(void)
 }
 EXPORT_SYMBOL_GPL(google_retrieve_bcl_handle);
 
-int google_init_tpu_ratio(struct bcl_device *data)
+static int google_init_ratio(struct bcl_device *data, enum SUBSYSTEM_SOURCE idx)
 {
 	void __iomem *addr;
+	unsigned int clk_stats;
 
 	if (!data)
 		return -ENOMEM;
 
-	if (!data->sysreg_cpucl0)
-		return -ENOMEM;
+	if (!bcl_is_subsystem_on(subsystem_pmu[idx]))
+		return -EIO;
 
-	if (!bcl_is_subsystem_on(subsystem_pmu[SUBSYSTEM_TPU]))
+	if (idx < SUBSYSTEM_TPU)
 		return -EIO;
 
 	mutex_lock(&data->ratio_lock);
-	bcl_disable_power();
-	addr = data->base_mem[SUBSYSTEM_TPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
-	__raw_writel(data->tpu_con_heavy, addr);
-	addr = data->base_mem[SUBSYSTEM_TPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
-	__raw_writel(data->tpu_con_light, addr);
-	addr = data->base_mem[SUBSYSTEM_TPU] + CLKDIVSTEP;
-	__raw_writel(data->tpu_clkdivstep, addr);
-	addr = data->base_mem[SUBSYSTEM_TPU] + VDROOP_FLT;
-	__raw_writel(data->tpu_vdroop_flt, addr);
-	addr = data->base_mem[SUBSYSTEM_TPU] + CLKOUT;
-	__raw_writel(data->tpu_clk_out, addr);
-	data->tpu_clk_stats = __raw_readl(data->base_mem[SUBSYSTEM_TPU] +
-	                                  clk_stats_offset[SUBSYSTEM_TPU]);
-	bcl_enable_power();
+	addr = data->base_mem[idx] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
+	if (idx == SUBSYSTEM_TPU)
+		__raw_writel(data->tpu_con_heavy, addr);
+	else if (idx == SUBSYSTEM_GPU)
+		__raw_writel(data->gpu_con_heavy, addr);
+	addr = data->base_mem[idx] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
+	if (idx == SUBSYSTEM_TPU)
+		__raw_writel(data->tpu_con_light, addr);
+	else if (idx == SUBSYSTEM_GPU)
+		__raw_writel(data->gpu_con_light, addr);
+	addr = data->base_mem[idx] + CLKDIVSTEP;
+	if (idx == SUBSYSTEM_TPU)
+		__raw_writel(data->tpu_clkdivstep, addr);
+	else if (idx == SUBSYSTEM_GPU)
+		__raw_writel(data->gpu_clkdivstep, addr);
+	else if (idx == SUBSYSTEM_AUR)
+		__raw_writel(data->aur_clkdivstep, addr);
+	addr = data->base_mem[idx] + VDROOP_FLT;
+	if (idx == SUBSYSTEM_TPU)
+		__raw_writel(data->tpu_vdroop_flt, addr);
+	else if (idx == SUBSYSTEM_GPU)
+		__raw_writel(data->gpu_vdroop_flt, addr);
+	addr = data->base_mem[idx] + CLKOUT;
+	if (idx == SUBSYSTEM_TPU)
+		__raw_writel(data->tpu_clk_out, addr);
+	else if (idx == SUBSYSTEM_GPU)
+		__raw_writel(data->gpu_clk_out, addr);
+	else if (idx == SUBSYSTEM_AUR)
+		__raw_writel(data->aur_clk_out, addr);
+	clk_stats = __raw_readl(data->base_mem[idx] + clk_stats_offset[idx]);
+	if (idx == SUBSYSTEM_TPU)
+		data->tpu_clk_stats = clk_stats;
+	else if (idx == SUBSYSTEM_GPU)
+		data->gpu_clk_stats = clk_stats;
+	else if (idx == SUBSYSTEM_AUR)
+		data->aur_clk_stats = clk_stats;
 	mutex_unlock(&data->ratio_lock);
 
 	return 0;
+}
+
+int google_init_tpu_ratio(struct bcl_device *data)
+{
+	return google_init_ratio(data, SUBSYSTEM_TPU);
 }
 EXPORT_SYMBOL_GPL(google_init_tpu_ratio);
 
 int google_init_gpu_ratio(struct bcl_device *data)
 {
-	void __iomem *addr;
-
-	if (!data)
-		return -ENOMEM;
-
-	if (!data->sysreg_cpucl0)
-		return -ENOMEM;
-
-	if (!bcl_is_subsystem_on(subsystem_pmu[SUBSYSTEM_GPU]))
-		return -EIO;
-
-	mutex_lock(&data->ratio_lock);
-	bcl_disable_power();
-	addr = data->base_mem[SUBSYSTEM_GPU] + CPUCL12_CLKDIVSTEP_CON_HEAVY;
-	__raw_writel(data->gpu_con_heavy, addr);
-	addr = data->base_mem[SUBSYSTEM_GPU] + CPUCL12_CLKDIVSTEP_CON_LIGHT;
-	__raw_writel(data->gpu_con_light, addr);
-	addr = data->base_mem[SUBSYSTEM_GPU] + CLKDIVSTEP;
-	__raw_writel(data->gpu_clkdivstep, addr);
-	addr = data->base_mem[SUBSYSTEM_GPU] + VDROOP_FLT;
-	__raw_writel(data->gpu_vdroop_flt, addr);
-	addr = data->base_mem[SUBSYSTEM_GPU] + CLKOUT;
-	__raw_writel(data->gpu_clk_out, addr);
-	data->gpu_clk_stats = __raw_readl(data->base_mem[SUBSYSTEM_GPU] +
-	                                  clk_stats_offset[SUBSYSTEM_GPU]);
-	bcl_enable_power();
-	mutex_unlock(&data->ratio_lock);
-
-	return 0;
+	return google_init_ratio(data, SUBSYSTEM_GPU);
 }
 EXPORT_SYMBOL_GPL(google_init_gpu_ratio);
 
 int google_init_aur_ratio(struct bcl_device *data)
 {
-	void __iomem *addr;
-
-	if (!data)
-		return -ENOMEM;
-
-	if (!data->sysreg_cpucl0)
-		return -ENOMEM;
-
-	if (!bcl_is_subsystem_on(subsystem_pmu[SUBSYSTEM_AUR]))
-		return -EIO;
-
-	mutex_lock(&data->ratio_lock);
-	bcl_disable_power();
-	addr = data->base_mem[SUBSYSTEM_AUR] + CLKDIVSTEP;
-	__raw_writel(data->aur_clkdivstep, addr);
-	addr = data->base_mem[SUBSYSTEM_AUR] + CLKOUT;
-	__raw_writel(data->aur_clk_out, addr);
-	data->aur_clk_stats = __raw_readl(data->base_mem[SUBSYSTEM_AUR] +
-					  clk_stats_offset[SUBSYSTEM_AUR]);
-	bcl_enable_power();
-	mutex_unlock(&data->ratio_lock);
-
-	return 0;
+	return google_init_ratio(data, SUBSYSTEM_AUR);
 }
 EXPORT_SYMBOL_GPL(google_init_aur_ratio);
 
@@ -848,123 +834,94 @@ static int google_bcl_register_zone(struct bcl_device *bcl_dev, int idx, const c
 	return ret;
 }
 
-static int get_cpu0clk(void *data, u64 *val)
+static int get_xclk(void *data, u64 *val, enum SUBSYSTEM_SOURCE idx)
 {
 	struct bcl_device *bcl_dev = data;
 	void __iomem *addr;
-	unsigned int value;
 
-	bcl_disable_power();
-	addr = bcl_dev->base_mem[SUBSYSTEM_CPU0] + CLKOUT;
-	*val = __raw_readl(addr);
-	bcl_enable_power();
-	exynos_pmu_read(PMU_CLK_OUT, &value);
+	*val = 0;
+	if (idx < SUBSYSTEM_TPU) {
+		if (bcl_disable_power(idx)) {
+			addr = bcl_dev->base_mem[idx] + CLKOUT;
+			*val = __raw_readl(addr);
+			bcl_enable_power(idx);
+		}
+	} else if (idx == SUBSYSTEM_GPU)
+		*val = bcl_dev->gpu_clk_out;
+	else if (idx == SUBSYSTEM_TPU)
+		*val = bcl_dev->tpu_clk_out;
+
 	return 0;
+}
+
+static int set_xclk(void *data, u64 val, enum SUBSYSTEM_SOURCE idx)
+{
+	struct bcl_device *bcl_dev = data;
+	void __iomem *addr;
+
+	if (idx < SUBSYSTEM_TPU) {
+		if (bcl_disable_power(idx)) {
+			addr = bcl_dev->base_mem[idx] + CLKOUT;
+			__raw_writel(val, addr);
+			bcl_enable_power(idx);
+		}
+	} else if (idx == SUBSYSTEM_GPU)
+		bcl_dev->gpu_clk_out = val;
+	else if (idx == SUBSYSTEM_TPU)
+		bcl_dev->tpu_clk_out = val;
+
+	exynos_pmu_write(PMU_CLK_OUT, val ? xclkout_source[idx] : 0);
+	return 0;
+}
+
+static int get_cpu0clk(void *data, u64 *val)
+{
+	return get_xclk(data, val, SUBSYSTEM_CPU0);
 }
 
 static int set_cpu0clk(void *data, u64 val)
 {
-	struct bcl_device *bcl_dev = data;
-	void __iomem *addr;
-
-	bcl_disable_power();
-	addr = bcl_dev->base_mem[SUBSYSTEM_CPU0] + CLKOUT;
-	__raw_writel(val, addr);
-	bcl_enable_power();
-	exynos_pmu_write(PMU_CLK_OUT, val ? 0x3001 : 0);
-	return 0;
+	return set_xclk(data, val, SUBSYSTEM_CPU0);
 }
 
 static int get_cpu1clk(void *data, u64 *val)
 {
-	struct bcl_device *bcl_dev = data;
-	void __iomem *addr;
-	unsigned int value;
-
-	bcl_disable_power();
-	addr = bcl_dev->base_mem[SUBSYSTEM_CPU1] + CLKOUT;
-	*val = __raw_readl(addr);
-	bcl_enable_power();
-	exynos_pmu_read(PMU_CLK_OUT, &value);
-	return 0;
+	return get_xclk(data, val, SUBSYSTEM_CPU1);
 }
 
 static int set_cpu1clk(void *data, u64 val)
 {
-	struct bcl_device *bcl_dev = data;
-	void __iomem *addr;
-
-	bcl_disable_power();
-	addr = bcl_dev->base_mem[SUBSYSTEM_CPU1] + CLKOUT;
-	__raw_writel(val, addr);
-	bcl_enable_power();
-	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1101 : 0);
-	return 0;
+	return set_xclk(data, val, SUBSYSTEM_CPU1);
 }
 
 static int get_cpu2clk(void *data, u64 *val)
 {
-	struct bcl_device *bcl_dev = data;
-	void __iomem *addr;
-	unsigned int value;
-
-	bcl_disable_power();
-	addr = bcl_dev->base_mem[SUBSYSTEM_CPU2] + CLKOUT;
-	*val = __raw_readl(addr);
-	bcl_enable_power();
-	exynos_pmu_read(PMU_CLK_OUT, &value);
-	return 0;
+	return get_xclk(data, val, SUBSYSTEM_CPU2);
 }
 
 static int set_cpu2clk(void *data, u64 val)
 {
-	struct bcl_device *bcl_dev = data;
-	void __iomem *addr;
-
-	bcl_disable_power();
-	addr = bcl_dev->base_mem[SUBSYSTEM_CPU2] + CLKOUT;
-	__raw_writel(val, addr);
-	bcl_enable_power();
-	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1201 : 0);
-	return 0;
+	return set_xclk(data, val, SUBSYSTEM_CPU2);
 }
 
 static int get_gpuclk(void *data, u64 *val)
 {
-	struct bcl_device *bcl_dev = data;
-	unsigned int value;
-
-	*val = bcl_dev->gpu_clk_out;
-	exynos_pmu_read(PMU_CLK_OUT, &value);
-	return 0;
+	return get_xclk(data, val, SUBSYSTEM_GPU);
 }
 
 static int set_gpuclk(void *data, u64 val)
 {
-	struct bcl_device *bcl_dev = data;
-
-	bcl_dev->gpu_clk_out = val;
-	exynos_pmu_write(PMU_CLK_OUT, val ? 0x1a01 : 0);
-	return 0;
+	return set_xclk(data, val, SUBSYSTEM_GPU);
 }
 
 static int get_tpuclk(void *data, u64 *val)
 {
-	struct bcl_device *bcl_dev = data;
-	unsigned int value;
-
-	*val = bcl_dev->tpu_clk_out;
-	exynos_pmu_read(PMU_CLK_OUT, &value);
-	return 0;
+	return get_xclk(data, val, SUBSYSTEM_TPU);
 }
 
 static int set_tpuclk(void *data, u64 val)
 {
-	struct bcl_device *bcl_dev = data;
-
-	bcl_dev->tpu_clk_out = val;
-	exynos_pmu_write(PMU_CLK_OUT, val ? 0x2E01 : 0);
-	return 0;
+	return set_xclk(data, val, SUBSYSTEM_TPU);
 }
 
 static int get_modem_gpio1(void *data, u64 *val)
@@ -1049,8 +1006,16 @@ static int get_add_data(void *data, u64 *val)
 		return -EINVAL;
 
 	mutex_lock(&sysreg_lock);
+	if ((bcl_dev->add_perph < SUBSYSTEM_TPU) && (bcl_dev->add_perph != SUBSYSTEM_CPU0)) {
+		if (!bcl_disable_power(bcl_dev->add_perph)) {
+			mutex_unlock(&sysreg_lock);
+			return 0;
+		}
+	}
 	read_addr = bcl_dev->base_add_mem[bcl_dev->add_perph] + bcl_dev->add_addr;
 	*val = __raw_readl(read_addr);
+	if ((bcl_dev->add_perph < SUBSYSTEM_TPU) && (bcl_dev->add_perph != SUBSYSTEM_CPU0))
+		bcl_enable_power(bcl_dev->add_perph);
 	mutex_unlock(&sysreg_lock);
 
 	return 0;
@@ -1076,8 +1041,16 @@ static int set_add_data(void *data, u64 val)
 	}
 
 	mutex_lock(&sysreg_lock);
+	if ((bcl_dev->add_perph < SUBSYSTEM_TPU) && (bcl_dev->add_perph != SUBSYSTEM_CPU0)) {
+		if (!bcl_disable_power(bcl_dev->add_perph)) {
+			mutex_unlock(&sysreg_lock);
+			return 0;
+		}
+	}
 	write_addr = bcl_dev->base_add_mem[bcl_dev->add_perph] + bcl_dev->add_addr;
 	__raw_writel(val, write_addr);
+	if ((bcl_dev->add_perph < SUBSYSTEM_TPU) && (bcl_dev->add_perph != SUBSYSTEM_CPU0))
+		bcl_enable_power(bcl_dev->add_perph);
 	mutex_unlock(&sysreg_lock);
 	return 0;
 }
@@ -1491,6 +1464,7 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 	if (google_bcl_setup_qos(bcl_dev) != 0) {
 		dev_err(bcl_dev->device, "Cannot Initiate QOS\n");
 		google_bcl_remove_qos(bcl_dev);
+		bcl_dev->ready = false;
 	}
 
 	return;
@@ -1943,14 +1917,20 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 		}
 	}
 
-	bcl_disable_power();
-	if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU2, bcl_dev->cpu2_clkdivstep) != 0)
-		dev_err(bcl_dev->device, "CPU2 Address is NULL\n");
-	if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU1, bcl_dev->cpu1_clkdivstep) != 0)
-		dev_err(bcl_dev->device, "CPU1 Address is NULL\n");
+	if (bcl_disable_power(SUBSYSTEM_CPU2)) {
+		if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU2,
+					    bcl_dev->cpu2_clkdivstep) != 0)
+			dev_err(bcl_dev->device, "CPU2 Address is NULL\n");
+		bcl_enable_power(SUBSYSTEM_CPU2);
+	}
+	if (bcl_disable_power(SUBSYSTEM_CPU1)) {
+		if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU1,
+					    bcl_dev->cpu1_clkdivstep) != 0)
+			dev_err(bcl_dev->device, "CPU1 Address is NULL\n");
+		bcl_enable_power(SUBSYSTEM_CPU2);
+	}
 	if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU0, bcl_dev->cpu0_clkdivstep) != 0)
 		dev_err(bcl_dev->device, "CPU0 Address is NULL\n");
-	bcl_enable_power();
 }
 
 static int google_bcl_configure_modem(struct bcl_device *bcl_dev)
