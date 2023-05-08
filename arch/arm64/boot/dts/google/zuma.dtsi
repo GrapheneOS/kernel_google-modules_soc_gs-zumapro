@@ -1066,7 +1066,7 @@
 			use_delay_time = "false";
 
 			freq_info = <315000 315000 315000 315000
-					1942000 315000>;
+					1401000 315000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
 
