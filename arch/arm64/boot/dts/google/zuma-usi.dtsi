@@ -89,6 +89,7 @@
 		samsung,scl-clk-stretching;
 		samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
+		samsung,polling-mode;
 		interrupts = <GIC_SPI IRQ_USI1_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		samsung,usi-phandle = <&sysreg_peric0>;
 		pinctrl-names = "default";
@@ -110,6 +111,7 @@
 		samsung,scl-clk-stretching;
 		samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
+		samsung,polling-mode;
 		interrupts = <GIC_SPI IRQ_USI2_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c2_bus>;
@@ -131,6 +133,7 @@
 		samsung,scl-clk-stretching;
 		samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
+		samsung,polling-mode;
 		interrupts = <GIC_SPI IRQ_USI3_USI_PERIC0 IRQ_TYPE_LEVEL_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hsi2c3_bus>;
