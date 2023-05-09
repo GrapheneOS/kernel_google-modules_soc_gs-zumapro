@@ -1157,11 +1157,20 @@ void exynos_pcie_rc_print_link_history(struct pcie_port *pp)
 static int exynos_pcie_rc_rd_own_conf(struct pcie_port *pp, int where, int size, u32 *val)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct device *dev = pci->dev;
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	int is_linked = 0;
 	int ret = 0;
 	u32 __maybe_unused reg_val;
 	unsigned long flags;
+
+	/* For Wifi, skip reading conf in cpl_timeout_recovery */
+	if ((exynos_pcie->ch_num == 1)
+	    && (exynos_pcie->cpl_timeout_recovery)) {
+		*val = 0xffffffff;
+		dev_err(dev, "Can't read own conf in cpl_timeout_recovery\n");
+		return PCIBIOS_DEVICE_NOT_FOUND;
+	}
 
 	if (exynos_pcie->phy_control == PCIE_PHY_ISOLATION) {
 		*val = 0xffffffff;
@@ -1202,11 +1211,19 @@ static int exynos_pcie_rc_rd_own_conf(struct pcie_port *pp, int where, int size,
 static int exynos_pcie_rc_wr_own_conf(struct pcie_port *pp, int where, int size, u32 val)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct device *dev = pci->dev;
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	int is_linked = 0;
 	int ret = 0;
 	u32 __maybe_unused reg_val;
 	unsigned long flags;
+
+	/* For Wifi, skip writing conf in cpl_timeout_recovery */
+	if ((exynos_pcie->ch_num == 1)
+	    && (exynos_pcie->cpl_timeout_recovery)) {
+		dev_err(dev, "Can't write own conf in cpl_timeout_recovery\n");
+		return PCIBIOS_DEVICE_NOT_FOUND;
+	}
 
 	if (exynos_pcie->phy_control == PCIE_PHY_ISOLATION)
 		return PCIBIOS_DEVICE_NOT_FOUND;
