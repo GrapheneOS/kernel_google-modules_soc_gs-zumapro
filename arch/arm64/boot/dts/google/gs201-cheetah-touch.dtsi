@@ -21,6 +21,11 @@
 	/delete-property/ regulator-always-on;
 };
 
+&spi_0 {
+	cs-gpios = <&gpp20 3 GPIO_ACTIVE_LOW>;
+	num-cs = <1>;
+};
+
 &spitouch {
 	status = "ok";
 
@@ -54,7 +59,6 @@
 	synaptics,dynamic-report-rate;
 
 	controller-data {
-		cs-gpio = <&gpp20 3 0>;
 		samsung,spi-feedback-delay = <0>;
 		samsung,spi-chip-select-mode = <0>;
 		cs-clock-delay = <2>;
