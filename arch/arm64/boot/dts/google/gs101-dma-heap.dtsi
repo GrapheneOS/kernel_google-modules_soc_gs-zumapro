@@ -18,7 +18,7 @@
 	};
 
 	faceauth_model_heap: faceauth_model_heap {
-		compatible = "samsung,dma-heap-carveout";
+		compatible = "google,dma-heap-gcma";
 		memory-region = <&famodel>;
 		dma-heap,name = "famodel";
 		dma-heap,dynamic-secure;
