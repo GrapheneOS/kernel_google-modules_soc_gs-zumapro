@@ -64,6 +64,7 @@ EXT_MODULES="
 private/google-modules/soc/gs
 private/google-modules/gpu/mali_pixel
 private/google-modules/gpu/mali_kbase
+private/google-modules/edgetpu/janeiro/drivers/edgetpu
 private/google-modules/display
 private/google-modules/bms
 private/google-modules/power/reset
