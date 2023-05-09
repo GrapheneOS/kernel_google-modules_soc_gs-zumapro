@@ -1610,11 +1610,13 @@
 		reg = <0x0 0x154D0000 0x1000>,
 			<0x0 0x154E0000 0x1000>,
 			<0x0 0x10400204 0x100>,
-			<0x0 0x15200000 0x100>;  /* GS_MAILBOX_AP_AOCA3_HOST */
+			<0x0 0x15200000 0x100>,  /* GS_MAILBOX_AP_AOCA3_HOST */
+			<0x0 0x15220000 0x100>;  /* GS_MAILBOX_AP_AOCF1_HOST */
 		reg-names = "gpio_alive_base",
 			"gpio_far_alive_base",
 			"gicd_ispendrn_base",
-			"mailbox_ap_aoc_host";
+			"mailbox_ap_aoca3_host",
+			"mailbox_ap_aocf1_host";
 
 		num-gic = <30>;
 		suspend_mode_idx = <8>;
