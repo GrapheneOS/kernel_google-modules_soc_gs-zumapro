@@ -3030,15 +3030,10 @@ sustainable_power_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	if (data->pi_param) {
-		u32 sustainable_power;
-		exynos_acpm_tmu_ipc_get_pi_param(data->id, SUSTAINABLE_POWER, &sustainable_power);
-		if (sustainable_power != data->pi_param->sustainable_power)
-			return sysfs_emit(buf, "%u\n", -1);
-		else
-			return sysfs_emit(buf, "%u\n", data->pi_param->sustainable_power);
-	} else
-		return -EIO;
+	if (data->pi_param)
+		return sysfs_emit(buf, "%u\n", data->pi_param->sustainable_power);
+
+	return -EIO;
 }
 
 static ssize_t
@@ -3057,7 +3052,6 @@ sustainable_power_store(struct device *dev, struct device_attribute *devattr,
 
 	data->pi_param->sustainable_power = sustainable_power;
 
-	exynos_acpm_tmu_ipc_set_pi_param(data->id, SUSTAINABLE_POWER, sustainable_power);
 	return count;
 }
 
@@ -3068,15 +3062,10 @@ integral_cutoff_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	if (data->pi_param) {
-		int integral_cutoff = 0;
-		exynos_acpm_tmu_ipc_get_pi_param(data->id, INTEGRAL_CUTOFF, &integral_cutoff);
-		if (integral_cutoff != data->pi_param->integral_cutoff)
-			return sysfs_emit(buf, "%u\n", -1);
-		else
-			return sysfs_emit(buf, "%u\n", data->pi_param->integral_cutoff);
-	} else
-		return -EIO;
+	if (data->pi_param)
+		return sysfs_emit(buf, "%u\n", data->pi_param->integral_cutoff);
+
+	return -EIO;
 }
 
 static ssize_t
@@ -3095,7 +3084,6 @@ integral_cutoff_store(struct device *dev, struct device_attribute *devattr,
 
 	data->pi_param->integral_cutoff = integral_cutoff;
 
-	exynos_acpm_tmu_ipc_set_pi_param(data->id, INTEGRAL_CUTOFF, integral_cutoff);
 	return count;
 }
 
@@ -4748,14 +4736,10 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	}
 
 	if (data->use_pi_thermal) {
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, SUSTAINABLE_POWER,
-						 data->pi_param->sustainable_power);
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PO, frac_to_int(data->pi_param->k_po));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PU, frac_to_int(data->pi_param->k_pu));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX, frac_to_int(data->pi_param->i_max));
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, INTEGRAL_CUTOFF,
-						 data->pi_param->integral_cutoff);
 		data->acpm_pi_enable = true;
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
 	} else {
