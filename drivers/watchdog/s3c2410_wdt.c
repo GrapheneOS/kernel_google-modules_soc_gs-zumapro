@@ -1162,7 +1162,7 @@ static void s3c2410wdt_multistage_wdt_keepalive(void)
 	spin_unlock_irqrestore(&s3c_wdt[index]->lock, flags);
 
 	wtcnt = readl(s3c_wdt[index]->reg_base + S3C2410_WTCNT);
-	dev_info(s3c_wdt[index]->dev,
+	dev_dbg(s3c_wdt[index]->dev,
 		 "Watchdog cluster %u keepalive!, old_wtcnt = %lx, wtcnt = %lx\n",
 		 s3c_wdt[index]->cluster, old_wtcnt, wtcnt);
 }
