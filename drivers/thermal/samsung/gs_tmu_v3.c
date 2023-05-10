@@ -699,6 +699,41 @@ static void thermal_pressure_polling(struct kthread_work *work)
 	thermal_pressure_work(apply_thermal_pressure, state);
 }
 
+static get_cpu_power_table_ect_offset_cb get_cpu_power_table_ect_offset;
+void register_get_cpu_power_table_ect_offset(get_cpu_power_table_ect_offset_cb cb)
+{
+	if (WARN_ON(!cb)) {
+		pr_err("Failed to register in %s\n", __func__);
+		return;
+	}
+
+	if (WARN_ON(get_cpu_power_table_ect_offset)) {
+		pr_err("get_cpu_power_table_ect_offset function is already set");
+		return;
+	}
+
+	get_cpu_power_table_ect_offset = cb;
+}
+EXPORT_SYMBOL(register_get_cpu_power_table_ect_offset);
+
+void update_tj_power_table_ect_offset(struct gs_tmu_data *data)
+{
+	int ect_offset;
+
+	switch (data->id) {
+	case TZ_BIG:
+	case TZ_MID:
+	case TZ_LIT:
+		if (get_cpu_power_table_ect_offset &&
+		    !get_cpu_power_table_ect_offset(&data->mapped_cpus, &ect_offset))
+			exynos_acpm_tmu_ipc_set_pi_param(data->id, POWER_TABLE_ECT_OFFSET,
+							 ect_offset);
+		break;
+	default:
+		break;
+	}
+}
+
 static void update_time_in_state(struct throttling_stats *stats)
 {
 	ktime_t now = ktime_get(), delta;
@@ -2756,6 +2791,8 @@ static int param_update_acpm_pi_table_set(const char *val, const struct kernel_p
 					exynos_acpm_tmu_ipc_set_table(data->id, i, power);
 				}
 			}
+
+			update_tj_power_table_ect_offset(data);
 		}
 	}
 
@@ -3085,6 +3122,41 @@ integral_cutoff_store(struct device *dev, struct device_attribute *devattr,
 	data->pi_param->integral_cutoff = integral_cutoff;
 
 	return count;
+}
+
+static ssize_t
+power_table_ect_offset_show(struct device *dev, struct device_attribute *devattr,
+					   char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	if (data->use_pi_thermal) {
+		u32 power_table_ect_offset;
+		exynos_acpm_tmu_ipc_get_pi_param(data->id, POWER_TABLE_ECT_OFFSET,
+						 &power_table_ect_offset);
+		return sysfs_emit(buf, "%u\n", power_table_ect_offset);
+	}
+	return -EIO;
+}
+
+static ssize_t
+power_table_ect_offset_store(struct device *dev, struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	if (data->use_pi_thermal) {
+		u8 power_table_ect_offset;
+		if (kstrtou8(buf, 10, &power_table_ect_offset))
+			return -EINVAL;
+
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, POWER_TABLE_ECT_OFFSET, (u32)power_table_ect_offset);
+		return count;
+	}
+
+	return -EIO;
 }
 
 static ssize_t
@@ -3591,6 +3663,7 @@ create_s32_param_attr(k_i, K_I);
 create_s32_param_attr(i_max, I_MAX);
 static DEVICE_ATTR_RW(integral_cutoff);
 static DEVICE_ATTR_RW(acpm_pi_enable);
+static DEVICE_ATTR_RW(power_table_ect_offset);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
@@ -3626,6 +3699,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_ipc_dump1.attr,
 	&dev_attr_ipc_dump2.attr,
 	&dev_attr_acpm_pi_enable.attr,
+	&dev_attr_power_table_ect_offset.attr,
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,

@@ -34,7 +34,15 @@ struct gs_pi_param {
 	bool switched_on;
 };
 
-enum pi_param { UNUSED0 = 0, K_PO = 1, K_PU = 2, K_I = 3, I_MAX = 4, UNUSED5 = 5, PI_ENABLE = 6 };
+enum pi_param {
+	UNUSED0 = 0,
+	K_PO = 1,
+	K_PU = 2,
+	K_I = 3,
+	I_MAX = 4,
+	POWER_TABLE_ECT_OFFSET = 5,
+	PI_ENABLE = 6
+};
 
 #define STEPWISE_GAIN_MIN 0
 #define STEPWISE_GAIN_MAX 31
@@ -355,6 +363,10 @@ enum tmu_grp_idx_t {
 #define NR_TZ TZ_END
 
 int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on);
+
+/* Callback for registering to CPU frequency table to ECT table offset */
+typedef int (*get_cpu_power_table_ect_offset_cb)(struct cpumask *maskp, int *offset);
+void register_get_cpu_power_table_ect_offset(get_cpu_power_table_ect_offset_cb cb);
 
 #define ACPM_SM_BUFFER_VERSION_UPPER_32b 0x5A554D41ULL
 #define ACPM_SM_BUFFER_VERSION_SIZE 8
