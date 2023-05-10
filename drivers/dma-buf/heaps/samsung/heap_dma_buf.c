@@ -214,7 +214,7 @@ static struct sg_table *samsung_heap_map_dma_buf(struct dma_buf_attachment *a,
 	if (!iovm_map)
 		return ERR_PTR(-ENOMEM);
 
-	if (!dma_heap_skip_cache_ops(buffer->flags))
+	if (!(dma_heap_skip_cache_ops(buffer->flags) || a->dma_map_attrs & DMA_ATTR_SKIP_CPU_SYNC))
 		dma_sync_sgtable_for_device(iovm_map->dev, &iovm_map->table, direction);
 
 	return &iovm_map->table;
@@ -226,7 +226,7 @@ static void samsung_heap_unmap_dma_buf(struct dma_buf_attachment *a,
 {
 	struct samsung_dma_buffer *buffer = a->dmabuf->priv;
 
-	if (!dma_heap_skip_cache_ops(buffer->flags))
+	if (!(dma_heap_skip_cache_ops(buffer->flags) || a->dma_map_attrs & DMA_ATTR_SKIP_CPU_SYNC))
 		dma_sync_sgtable_for_cpu(a->dev, table, direction);
 
 	dma_put_iovm_map(a, direction);
