@@ -51,6 +51,11 @@
 
 		mapped_cpus = "8";
 		pressure_index = <0>;
+
+		use-acpm-mpmm-throttle;
+		mpmm_enable = <0x1>;
+		mpmm_throttle_level = <0x4>;
+		mpmm_clr_throttle_level = <0x6>;
 	};
 
 	tmuctrl_1: MID@100A0000 {
@@ -82,6 +87,11 @@
 
 		mapped_cpus = "4-7";
 		pressure_index = <1>;
+
+		use-acpm-mpmm-throttle;
+		mpmm_enable = <0xF>;
+		mpmm_throttle_level = <0x1AA>;
+		mpmm_clr_throttle_level = <0x100>;
 	};
 
 	tmuctrl_2: LITTLE@100A0000 {
@@ -113,6 +123,10 @@
 
 		mapped_cpus = "0-3";
 		pressure_index = <2>;
+
+		mpmm_enable = <0x0>;
+		mpmm_throttle_level = <0x1AA>;
+		mpmm_clr_throttle_level = <0x1AA>;
 	};
 
 	tmuctrl_3: G3D@100B0000 {
