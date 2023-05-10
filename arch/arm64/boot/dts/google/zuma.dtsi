@@ -684,6 +684,7 @@
 		clocks = <&clock DOUT_CLK_EH_NOCP>;
 		clock-names = "eh-clock";
 		power-domains = <&pd_eh>;
+		s2mpus = <&s2mpu_s0_eh>;
 		google,eh,ignore-gctrl-reset;
 	};
 
