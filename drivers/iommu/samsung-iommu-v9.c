@@ -671,6 +671,15 @@ static int samsung_sysmmu_map(struct iommu_domain *dom, unsigned long l_iova, ph
 	return ret;
 }
 
+static inline void samsung_sysmmu_iotlb_gather_add_joint_range(struct iommu_domain *domain,
+					       struct iommu_iotlb_gather *gather,
+					       unsigned long iova, size_t size)
+{
+	if (iommu_iotlb_gather_is_disjoint(gather, iova, size))
+		iommu_iotlb_sync(domain, gather);
+	iommu_iotlb_gather_add_range(gather, iova, size);
+}
+
 static size_t samsung_sysmmu_unmap(struct iommu_domain *dom, unsigned long l_iova, size_t size,
 				   struct iommu_iotlb_gather *gather)
 {
@@ -729,7 +738,7 @@ static size_t samsung_sysmmu_unmap(struct iommu_domain *dom, unsigned long l_iov
 	atomic_sub(SPAGES_PER_LPAGE, lv2entcnt);
 
 done:
-	iommu_iotlb_gather_add_page(dom, gather, iova, size);
+	samsung_sysmmu_iotlb_gather_add_joint_range(dom, gather, iova, size);
 
 	return size;
 
@@ -808,7 +817,7 @@ size_t samsung_sysmmu_unmap_pages(struct iommu_domain *dom, unsigned long iova_o
 		unmap_slpt(domain, iova, size);
 	}
 
-	iommu_iotlb_gather_add_page(dom, gather, iova_org, size);
+	samsung_sysmmu_iotlb_gather_add_joint_range(dom, gather, iova_org, size);
 
 	return size;
 }
