@@ -255,6 +255,20 @@ static void exynos_cpufreq_set_tj_pressure_cb(struct cpumask *maskp, int cdev_in
 }
 
 /*********************************************************************
+ *                   EXYNOS CPUFREQ ECT POWER TABLE OFFSET           *
+ *********************************************************************/
+static int exynos_cpufreq_get_power_table_ect_offset(struct cpumask *maskp, int *offset)
+{
+	struct exynos_cpufreq_domain *domain;
+	list_for_each_entry (domain, &domains, list)
+		if (cpumask_subset(&domain->cpus, maskp)) {
+			*offset = domain->ect_table_offset;
+			return 0;
+		}
+	return -ENODEV;
+}
+
+/*********************************************************************
  *                   EXYNOS CPUFREQ DRIVER INTERFACE                 *
  *********************************************************************/
 static int exynos_cpufreq_init(struct cpufreq_policy *policy)
@@ -1320,6 +1334,8 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 		kfree(freq_table);
 		return -ENODEV;
 	}
+
+	register_get_cpu_power_table_ect_offset(exynos_cpufreq_get_power_table_ect_offset);
 
 	/*
 	 * Add OPP table for thermal.
