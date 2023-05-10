@@ -58,7 +58,7 @@
 	};
 
 	tui_dma_heap {
-		compatible = "samsung,dma-heap-carveout";
+		compatible = "google,dma-heap-gcma";
 		memory-region = <&tui>;
 		dma-heap,name = "tui";
 		dma-heap,secure;
