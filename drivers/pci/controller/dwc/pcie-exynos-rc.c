@@ -3090,6 +3090,18 @@ retry:
 	save_before_state = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP);
 	/* DBG: sleep_range(48000, 50000); */
 
+	val = exynos_elbi_read(exynos_pcie, PCIE_STATE_HISTORY_CHECK);
+	val &= ~(HISTORY_BUFFER_CONDITION_SEL);
+	exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
+
+	exynos_elbi_write(exynos_pcie, 0xffffffff, PCIE_STATE_POWER_S);
+	exynos_elbi_write(exynos_pcie, 0xffffffff, PCIE_STATE_POWER_M);
+
+	/* enable history buffer */
+	val = exynos_elbi_read(exynos_pcie, PCIE_STATE_HISTORY_CHECK);
+	val |= HISTORY_BUFFER_ENABLE;
+	exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
+
 	/* assert LTSSM enable */
 	exynos_elbi_write(exynos_pcie, PCIE_ELBI_LTSSM_ENABLE, PCIE_APP_LTSSM_ENABLE);
 	count = 0;
@@ -3300,17 +3312,6 @@ int exynos_pcie_rc_poweron(int ch_num)
 
 			goto poweron_fail;
 		}
-
-		val = exynos_elbi_read(exynos_pcie, PCIE_STATE_HISTORY_CHECK);
-		val &= ~(HISTORY_BUFFER_CONDITION_SEL);
-		exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
-
-		exynos_elbi_write(exynos_pcie, 0xffffffff, PCIE_STATE_POWER_S);
-		exynos_elbi_write(exynos_pcie, 0xffffffff, PCIE_STATE_POWER_M);
-
-		val = exynos_elbi_read(exynos_pcie, PCIE_STATE_HISTORY_CHECK);
-		val |= HISTORY_BUFFER_ENABLE;
-		exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
 
 		spin_lock_irqsave(&exynos_pcie->reg_lock, flags);
 		exynos_pcie->state = STATE_LINK_UP;
