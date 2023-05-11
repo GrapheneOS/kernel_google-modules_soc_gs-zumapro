@@ -17,6 +17,11 @@
 #define MCELSIUS        1000
 
 extern struct cpumask tmu_enabled_mask;
+enum acpm_gov_select_bit_offset {
+	STEPWISE = 0,
+	PI_LOOP  = 1,
+	TEMP_LUT = 2,
+};
 
 struct gs_pi_param {
 	s64 err_integral;
@@ -38,7 +43,7 @@ enum pi_param {
 	K_I = 3,
 	I_MAX = 4,
 	POWER_TABLE_ECT_OFFSET = 5,
-	PI_ENABLE = 6
+	GOV_SELECT = 6
 };
 
 #define STEPWISE_GAIN_MIN 0
@@ -117,7 +122,12 @@ struct acpm_gov_common {
 	struct thermal_pressure thermal_pressure;
 };
 
-#define TRIP_LEVEL_NUM 8
+struct gs_temp_lut_st {
+	u32 temp;
+	u32 state;
+};
+
+#define TRIP_LEVEL_NUM        8
 
 /**
  * struct gs_tmu_data : A structure to hold the private data of the TMU
@@ -207,7 +217,7 @@ struct gs_tmu_data {
 	atomic64_t trip_counter[TRIP_LEVEL_NUM];
 	union acpm_gov_params_un acpm_gov_params;
 	u32 fvp_get_target_freq;
-	bool acpm_pi_enable;
+	u32 acpm_gov_select;
 	u32 control_temp_step;
 	tr_handle tr_handle;
 	struct cpumask mapped_cpus;
@@ -215,6 +225,9 @@ struct gs_tmu_data {
 	int polling_delay_on;
 	int polling_delay_off;
 	int thermal_pressure_time_window;
+	bool use_temp_lut_thermal;
+	u32 temp_state_lut_len;
+	struct gs_temp_lut_st *temp_state_lut;
 };
 
 enum throttling_stats_type {

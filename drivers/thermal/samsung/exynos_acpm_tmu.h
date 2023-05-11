@@ -58,6 +58,8 @@
 #define TMU_IPC_SET_TR_THRESHOLD		0x33
 #define TMU_IPC_GET_TR_THRESHOLD		0x34
 #define TMU_IPC_GET_TR_STATS                    0x35
+#define TMU_IPC_SET_TEMP_STATE_LUT              0x36
+#define TMU_IPC_GET_TEMP_STATE_LUT              0x37
 #define TMU_IPC_SET_MPMM_CLR_THROTTLE_LEVEL     0x38
 #define TMU_IPC_SET_MPMM_THROTTLE_LEVEL         0x39
 #define TMU_IPC_SET_MPMM_ENABLE                 0x40
@@ -183,7 +185,7 @@ int exynos_acpm_tmu_ipc_get_gov_tz_time_windows(int tz, int *timer_interval,
 						int *thermal_press_window);
 void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter);
 void exynos_acpm_tmu_ipc_reset_trip_counter(int tz);
-void exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val);
+int exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val);
 void exynos_acpm_tmu_ipc_get_pi_param(int tz, u8 param, u32 *val);
 void exynos_acpm_tmu_ipc_set_table(int tz, u8 index, int val);
 void exynos_acpm_tmu_ipc_get_table(int tz, u8 index, int *val);
@@ -195,6 +197,8 @@ int exynos_acpm_tmu_ipc_get_tr_num_thresholds(int tz, int *num_of_threshold);
 int exynos_acpm_tmu_ipc_set_tr_thresholds(int tz, u8 qword_index, u64 val);
 int exynos_acpm_tmu_ipc_get_tr_thresholds(int tz, u8 qword_index, u64 *val);
 int exynos_acpm_tmu_ipc_get_tr_stats(int tz, int bucket_idx, u64 *bucket_stat);
+int exynos_acpm_tmu_ipc_set_temp_lut(int tz, int temp, int state, int append);
+int exynos_acpm_tmu_ipc_get_temp_lut(int tz, u8 index, int *temp, int *state);
 int exynos_acpm_tmu_ipc_set_mpmm_clr_throttle_level(int tz, u16 val);
 int exynos_acpm_tmu_ipc_set_mpmm_throttle_level(int tz, u16 val);
 int exynos_acpm_tmu_ipc_set_mpmm_enable(int tz, u8 enable);

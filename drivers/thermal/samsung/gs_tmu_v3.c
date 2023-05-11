@@ -470,7 +470,7 @@ static void capture_bulk_trace(void)
 	int k_p = 0;
 
 	list_for_each_entry (data, &dtm_dev_list, node) {
-		pi_enable[data->id] = data->acpm_pi_enable;
+		pi_enable[data->id] = data->acpm_gov_select & (1 << PI_LOOP);
 		if (pi_enable[data->id]) {
 			k_po[data->id] = data->pi_param->k_po;
 			k_pu[data->id] = data->pi_param->k_pu;
@@ -573,7 +573,7 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 				struct curr_state curr_state = curr_state_all[data->id];
 
 				int k_p = 0, k_i = 0;
-				if (data->acpm_pi_enable) {
+				if (data->acpm_gov_select & (1 << PI_LOOP)) {
 					k_p = (curr_state.ctrl_temp - curr_state.temperature) < 0 ?
 						      data->pi_param->k_po :
 						      data->pi_param->k_pu;
@@ -2261,6 +2261,35 @@ static int gs_map_dt_data(struct platform_device *pdev)
 
 		data->acpm_gov_params.fields.enable = 1;
 
+		/* only check and activate temp lut when acpm gov is enabled */
+		data->use_temp_lut_thermal = false;
+		if (of_property_read_bool(pdev->dev.of_node, "use-temp-lut-thermal")) {
+			struct gs_temp_lut_st *lut = NULL;
+			int dt_arr_size, table_len;
+			dt_arr_size = of_property_count_u32_elems(pdev->dev.of_node,
+			                                                        "temp_state_table");
+			if ((dt_arr_size <= 0) || (dt_arr_size % 2 != 0)) {
+				dev_err(&pdev->dev, "Invalid input temp state lut length: %d\n",
+				                                                       dt_arr_size);
+			} else {
+				table_len = dt_arr_size / 2;
+				lut = kcalloc(table_len, sizeof(*lut), GFP_KERNEL);
+				ret = of_property_read_u32_array(pdev->dev.of_node,
+				                       "temp_state_table", (u32 *)lut, dt_arr_size);
+				if (ret) {
+					dev_err(&pdev->dev, "Cannot load temp state lut\n");
+					kfree(lut);
+					data->temp_state_lut = NULL;
+				} else {
+					data->temp_state_lut_len = table_len;
+					data->temp_state_lut = lut;
+					data->use_temp_lut_thermal = true;
+				}
+			}
+		} else {
+			data->temp_state_lut = NULL;
+		}
+
 		data->acpm_gov_params.fields.mpmm_throttle_on = 0;
 		if (IS_CPU(data->id) &&
 		            of_property_read_bool(pdev->dev.of_node, "use-acpm-mpmm-throttle")) {
@@ -2290,6 +2319,73 @@ static const struct thermal_zone_of_device_ops gs_sensor_ops = {
 	.get_trend = gs_get_trend,
 	.set_trip_temp = gs_tmu_set_trip_temp,
 };
+
+static void gs_tmu_clear_temp_state_table(struct gs_tmu_data *data)
+{
+	data->temp_state_lut_len = 0;
+	if (!data->temp_state_lut)
+		return;
+
+	kfree(data->temp_state_lut);
+	data->temp_state_lut = NULL;
+}
+
+static int gs_tmu_set_temp_state_table(struct gs_tmu_data *data)
+{
+	int i, ret;
+
+	if (!data->temp_state_lut)
+		return -EINVAL;
+
+	for (i = 0; i < data->temp_state_lut_len; ++i) {
+		ret = exynos_acpm_tmu_ipc_set_temp_lut(data->id,
+		            data->temp_state_lut[i].temp, data->temp_state_lut[i].state, i);
+		if (ret) {
+			pr_err("%s: failed to set acpm_temp_state_lut, ret=%d",
+			                                               data->tmu_name, ret);
+			break;
+		}
+	}
+	gs_tmu_clear_temp_state_table(data);
+	return ret;
+}
+
+#define TEMP_LUT_BUFF_SIZE 20
+static int gs_tmu_get_temp_state_table(struct gs_tmu_data *data)
+{
+	int index;
+	int ret = 0;
+	struct gs_temp_lut_st table_buffer[TEMP_LUT_BUFF_SIZE];
+	struct gs_temp_lut_st *table;
+
+	for (index = 0; index < TEMP_LUT_BUFF_SIZE; ++index) {
+		ret = exynos_acpm_tmu_ipc_get_temp_lut(data->id, index,
+		                          &table_buffer[index].temp, &table_buffer[index].state);
+		if (ret) {
+			pr_err("%s: failded to get acpm_temp_state_lut, ret=%d\n",
+			                                                    data->tmu_name, ret);
+			return -EIO;
+		}
+		if (table_buffer[index].state == __UINT8_MAX__) {
+			break;
+		}
+	}
+	if ((index > 0) && (index <= TEMP_LUT_BUFF_SIZE)) {
+		table = kcalloc(index, sizeof(struct gs_temp_lut_st), GFP_KERNEL);
+		if (!table)
+			return -ENOMEM;
+		memcpy(table, table_buffer, index * sizeof(struct gs_temp_lut_st));
+	} else {
+		table = NULL;
+	}
+
+	data->temp_state_lut_len = index;
+	if (data->temp_state_lut)
+		kfree(data->temp_state_lut);
+	data->temp_state_lut = table;
+
+	return 0;
+}
 
 static ssize_t
 cpu_hw_throttling_trigger_temp_show(struct device *dev, struct device_attribute *devattr,
@@ -3115,30 +3211,36 @@ power_table_ect_offset_store(struct device *dev, struct device_attribute *devatt
 }
 
 static ssize_t
-acpm_pi_enable_show(struct device *dev, struct device_attribute *devattr,
+acpm_gov_select_show(struct device *dev, struct device_attribute *devattr,
 		       char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	return sysfs_emit(buf, "%u\n", data->acpm_pi_enable);
+	exynos_acpm_tmu_ipc_get_pi_param(data->id, GOV_SELECT, &data->acpm_gov_select);
+	return sysfs_emit(buf, "%u\n", data->acpm_gov_select);
 }
 
 static ssize_t
-acpm_pi_enable_store(struct device *dev, struct device_attribute *devattr,
+acpm_gov_select_store(struct device *dev, struct device_attribute *devattr,
 			const char *buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	u32 gov_select;
 
-	if (data->use_pi_thermal) {
-		if (kstrtobool(buf, &data->acpm_pi_enable))
-			return -EINVAL;
+	if (kstrtou32(buf, 10, &gov_select))
+		return -EINVAL;
+	if (gov_select > 0xff)
+		return -EINVAL;
 
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
-	} else {
+	data->acpm_gov_select = (u32)exynos_acpm_tmu_ipc_set_pi_param(data->id, GOV_SELECT,
+	                                                                              gov_select);
+	if (data->acpm_gov_select != gov_select) {
+		pr_err("%s: invalid acpm_gov_select value: %d", data->tmu_name, gov_select);
 		return -EINVAL;
 	}
+
 	return count;
 }
 
@@ -3566,6 +3668,102 @@ static ssize_t ipc_dump2_show(struct device *dev, struct device_attribute *attr,
 			data.val[4], data.val[5], data.val[6], data.val[7]);
 }
 
+static ssize_t acpm_temp_state_table_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int i, ret;
+	int len = 0;
+
+	len += sysfs_emit_at(buf, len, "%s:", data->tmu_name);
+
+	ret = gs_tmu_get_temp_state_table(data);
+	if (ret) {
+		len += sysfs_emit_at(buf, len, " n/a\n", data->tmu_name);
+		goto end;
+	}
+
+	if (data->temp_state_lut_len == 0) {
+		len += sysfs_emit_at(buf, len, " null\n", data->tmu_name);
+		goto end;
+	}
+
+	for (i = 0; i < data->temp_state_lut_len; ++i) {
+		len += sysfs_emit_at(buf, len, " (%d %d)", data->temp_state_lut[i].temp,
+								data->temp_state_lut[i].state);
+	}
+	len += sysfs_emit_at(buf, len, "\n");
+	gs_tmu_clear_temp_state_table(data);
+end:
+	return len;
+}
+
+static ssize_t acpm_temp_state_table_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf,
+				      size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int ret = 0;
+	int table_len = 0;
+	struct gs_temp_lut_st *table;
+	char **argv;
+	int argc, i;
+
+	argv = argv_split(GFP_KERNEL, buf, &argc);
+	if (!argv) {
+		ret = -ENOMEM;
+		pr_err("%s: memory allocation error", __func__);
+		goto out;
+	}
+
+	if (argc % 2) {
+		pr_err("%s: parse error: number of input must be even", __func__);
+		ret = -EINVAL;
+		goto free_arg_out;
+	}
+
+	table_len = argc / 2;
+	table = kcalloc(table_len, sizeof(*table), GFP_KERNEL);
+	if (!table) {
+		ret = -ENOMEM;
+		goto free_arg_out;
+	}
+	for (i = 0; i < table_len; ++i) {
+		u32 temp, state;
+		ret = kstrtou32(argv[2 * i], 10, &temp);
+		if (ret) {
+			pr_err("%s: parse acpm_temp_state_lut error, temp: %s, ret=%d",
+			                                            __func__, argv[i], ret);
+			goto err_parse;
+		}
+		ret = kstrtou32(argv[2 * i + 1], 10, &state);
+		if (ret) {
+			pr_err("%s: parse acpm_temp_state_lut error, state: %s, ret=%d",
+			                                            __func__, argv[i + 1], ret);
+			goto err_parse;
+		}
+		table[i].temp = temp;
+		table[i].state = state;
+	}
+	gs_tmu_clear_temp_state_table(data);
+	data->temp_state_lut_len = table_len;
+	data->temp_state_lut = table;
+	gs_tmu_set_temp_state_table(data);
+	ret = count;
+	goto free_arg_out;
+
+err_parse:
+	kfree(table);
+free_arg_out:
+	argv_free(argv);
+out:
+	return ret;
+}
+
 static ssize_t mpmm_clr_throttle_level_show(struct device *dev, struct device_attribute *attr,
 				char *buf)
 {
@@ -3786,7 +3984,7 @@ create_s32_param_attr(k_pu, K_PU);
 create_s32_param_attr(k_i, K_I);
 create_s32_param_attr(i_max, I_MAX);
 static DEVICE_ATTR_RW(integral_cutoff);
-static DEVICE_ATTR_RW(acpm_pi_enable);
+static DEVICE_ATTR_RW(acpm_gov_select);
 static DEVICE_ATTR_RW(power_table_ect_offset);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
@@ -3794,6 +3992,7 @@ static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
 static DEVICE_ATTR_RO(tj_cur_cdev_state);
 static DEVICE_ATTR_RW(control_temp_step);
 static DEVICE_ATTR_RW(thermal_pressure_time_window);
+static DEVICE_ATTR_RW(acpm_temp_state_table);
 static DEVICE_ATTR_RW(mpmm_clr_throttle_level);
 static DEVICE_ATTR_RW(mpmm_throttle_level);
 static DEVICE_ATTR_RO(mpmm_current_level);
@@ -3828,7 +4027,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_trip_counter_reset.attr,
 	&dev_attr_ipc_dump1.attr,
 	&dev_attr_ipc_dump2.attr,
-	&dev_attr_acpm_pi_enable.attr,
+	&dev_attr_acpm_gov_select.attr,
 	&dev_attr_power_table_ect_offset.attr,
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
@@ -3836,6 +4035,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_tj_cur_cdev_state.attr,
 	&dev_attr_control_temp_step.attr,
 	&dev_attr_thermal_pressure_time_window.attr,
+	&dev_attr_acpm_temp_state_table.attr,
 	&dev_attr_mpmm_clr_throttle_level.attr,
 	&dev_attr_mpmm_throttle_level.attr,
 	&dev_attr_mpmm_current_level.attr,
@@ -4908,16 +5108,17 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			start_pi_polling(data, 0);
 	}
 
+	data->acpm_gov_select = 0;
 	if (data->use_pi_thermal) {
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PO, frac_to_int(data->pi_param->k_po));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PU, frac_to_int(data->pi_param->k_pu));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX,
 						 frac_to_int(data->pi_param->i_max));
-		data->acpm_pi_enable = true;
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
+		data->acpm_gov_select |= 1 << PI_LOOP;
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, GOV_SELECT, data->acpm_gov_select);
 	} else {
-		data->acpm_pi_enable = false;
+		data->acpm_gov_select &= ~(1 << PI_LOOP);
 	}
 
 	if (acpm_gov_common.turn_on) {
@@ -4978,6 +5179,24 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		sync_kernel_acpm_timestamp();
 		register_pm_notifier(&gs_tmu_pm_nb);
 	}
+
+	if (data->use_temp_lut_thermal) {
+		data->acpm_gov_select |= 1 << TEMP_LUT;
+		if (gs_tmu_set_temp_state_table(data)) {
+			pr_err("temp lut governor not supported on tmu: %s\n", data->tmu_name);
+			data->acpm_gov_select &= ~(1 << TEMP_LUT);
+			data->use_temp_lut_thermal = false;
+		}
+		gs_tmu_clear_temp_state_table(data);
+	} else {
+		data->acpm_gov_select &= ~(1 << TEMP_LUT);
+	}
+
+	/* STEPWISE is the default if no other governor configured */
+	if (data->acpm_gov_select == 0)
+		data->acpm_gov_select |= 1 << STEPWISE;
+	data->acpm_gov_select = (u32)exynos_acpm_tmu_ipc_set_pi_param(data->id, GOV_SELECT,
+	                                                                    data->acpm_gov_select);
 
 #if IS_ENABLED(CONFIG_MALI_DEBUG_KERNEL_SYSFS)
 	if (data->id == EXYNOS_GPU_TMU_GRP_ID)
