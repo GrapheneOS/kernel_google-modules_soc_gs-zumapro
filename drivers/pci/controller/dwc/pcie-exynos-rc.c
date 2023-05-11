@@ -2693,12 +2693,8 @@ static void exynos_pcie_setup_rc(struct dw_pcie_rp *pp)
 
 static int exynos_pcie_rc_init(struct dw_pcie_rp *pp)
 {
-	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
-	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
-
 	/* Setup RC to avoid initialization faile in PCIe stack */
-	if (exynos_pcie->use_phy_isol_con)
-		pp->bridge->ops = &exynos_pcie_rc_root_ops;
+	pp->bridge->ops = &exynos_pcie_rc_root_ops;
 	pp->bridge->child_ops = &exynos_pcie_rc_child_ops;
 	dw_pcie_setup_rc(pp);
 
@@ -3471,6 +3467,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		/* LTSSM disable */
 		exynos_elbi_write(exynos_pcie, PCIE_ELBI_LTSSM_DISABLE, PCIE_APP_LTSSM_ENABLE);
 
+		spin_lock(&exynos_pcie->reg_lock);
 		/* force SOFT_PWR_RESET */
 		val = exynos_elbi_read(exynos_pcie, PCIE_SOFT_RESET);
 		val &= ~SOFT_PWR_RESET;
@@ -3478,6 +3475,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		udelay(20);
 		val |= SOFT_PWR_RESET;
 		exynos_elbi_write(exynos_pcie, val, PCIE_SOFT_RESET);
+		spin_unlock(&exynos_pcie->reg_lock);
 
 		/* phy all power down */
 		if (exynos_pcie->phy_ops.phy_all_pwrdn)
