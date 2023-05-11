@@ -16,14 +16,6 @@
 #include <soc/google/exynos-pmu-if.h>
 #include <soc/google/bcl.h>
 
-#define CPU0_CLUSTER_MIN 0
-#define CPU1_CLUSTER_MIN 4
-#define CPU2_CLUSTER_MIN 8
-
-const char * const clk_stats_source[] = {
-	"cpu0", "cpu1", "cpu2", "tpu", "gpu"
-};
-
 const unsigned int subsystem_pmu[] = {
 	PMU_ALIVE_CPU0_STATES,
 	PMU_ALIVE_CPU1_STATES,
@@ -36,10 +28,10 @@ const unsigned int subsystem_pmu[] = {
 int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 {
 	switch (pmic) {
-		case CORE_PMIC_SUB:
-			return s2mpg15_write_reg((bcl_dev)->sub_meter_i2c, reg, value);
-		case CORE_PMIC_MAIN:
-			return s2mpg14_write_reg((bcl_dev)->main_meter_i2c, reg, value);
+	case CORE_PMIC_SUB:
+		return s2mpg15_write_reg((bcl_dev)->sub_meter_i2c, reg, value);
+	case CORE_PMIC_MAIN:
+		return s2mpg14_write_reg((bcl_dev)->main_meter_i2c, reg, value);
 	}
 	return 0;
 }
@@ -47,10 +39,10 @@ int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
 {
 	switch (pmic) {
-		case CORE_PMIC_SUB:
-			return s2mpg15_read_reg((bcl_dev)->sub_meter_i2c, reg, value);
-		case CORE_PMIC_MAIN:
-			return s2mpg14_read_reg((bcl_dev)->main_meter_i2c, reg, value);
+	case CORE_PMIC_SUB:
+		return s2mpg15_read_reg((bcl_dev)->sub_meter_i2c, reg, value);
+	case CORE_PMIC_MAIN:
+		return s2mpg14_read_reg((bcl_dev)->main_meter_i2c, reg, value);
 	}
 	return 0;
 }
@@ -58,10 +50,10 @@ int meter_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
 int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 {
 	switch (pmic) {
-		case CORE_PMIC_SUB:
-			return s2mpg15_write_reg((bcl_dev)->sub_pmic_i2c, reg, value);
-		case CORE_PMIC_MAIN:
-			return s2mpg14_write_reg((bcl_dev)->main_pmic_i2c, reg, value);
+	case CORE_PMIC_SUB:
+		return s2mpg15_write_reg((bcl_dev)->sub_pmic_i2c, reg, value);
+	case CORE_PMIC_MAIN:
+		return s2mpg14_write_reg((bcl_dev)->main_pmic_i2c, reg, value);
 	}
 	return 0;
 }
@@ -69,27 +61,15 @@ int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value)
 int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value)
 {
 	switch (pmic) {
-		case CORE_PMIC_SUB:
-			return s2mpg15_read_reg((bcl_dev)->sub_pmic_i2c, reg, value);
-		case CORE_PMIC_MAIN:
-			return s2mpg14_read_reg((bcl_dev)->main_pmic_i2c, reg, value);
+	case CORE_PMIC_SUB:
+		return s2mpg15_read_reg((bcl_dev)->sub_pmic_i2c, reg, value);
+	case CORE_PMIC_MAIN:
+		return s2mpg14_read_reg((bcl_dev)->main_pmic_i2c, reg, value);
 	}
 	return 0;
 }
 
-bool bcl_is_subsystem_on(unsigned int addr)
-{
-	unsigned int value;
-
-	if ((addr == PMU_ALIVE_TPU_STATES) || (addr == PMU_ALIVE_GPU_STATES) ||
-	    (addr == PMU_ALIVE_AUR_STATES)) {
-		exynos_pmu_read(addr, &value);
-		return !(value & BIT(7));
-	}
-	return true;
-}
-
-static bool bcl_is_cluster_on(int cluster)
+bool bcl_is_cluster_on(int cluster)
 {
 #if IS_ENABLED(CONFIG_SOC_ZUMA)
 	unsigned int addr, value = 0;
@@ -105,6 +85,26 @@ static bool bcl_is_cluster_on(int cluster)
 		return value & BIT(4);
 	}
 #endif
+	return false;
+}
+
+bool bcl_is_subsystem_on(unsigned int addr)
+{
+	unsigned int value;
+
+	switch (addr) {
+	case PMU_ALIVE_TPU_STATES:
+	case PMU_ALIVE_GPU_STATES:
+	case PMU_ALIVE_AUR_STATES:
+		exynos_pmu_read(addr, &value);
+		return !(value & BIT(7));
+	case PMU_ALIVE_CPU0_STATES:
+		return true;
+	case PMU_ALIVE_CPU1_STATES:
+		return bcl_is_cluster_on(CPU1_CLUSTER_MIN);
+	case PMU_ALIVE_CPU2_STATES:
+		return bcl_is_cluster_on(CPU2_CLUSTER_MIN);
+	}
 	return false;
 }
 
@@ -163,19 +163,4 @@ bool bcl_enable_power(int cluster)
 		enable_power_mode(CPU2_CLUSTER_MIN, POWERMODE_TYPE_CLUSTER);
 #endif
 	return true;
-}
-
-void __iomem *get_addr_by_subsystem(void *dev, const char *subsystem)
-{
-	int i = 0;
-	struct bcl_device *bcl_dev = dev;
-
-	for (i = 0; i < ARRAY_SIZE(clk_stats_source); i++) {
-		if (strcmp(subsystem, clk_stats_source[i]) == 0) {
-			if (!bcl_is_subsystem_on(subsystem_pmu[i]))
-				return NULL;
-			return bcl_dev->base_mem[i] + CLKDIVSTEP;
-		}
-	}
-	return NULL;
 }

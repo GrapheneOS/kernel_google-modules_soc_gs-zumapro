@@ -25,16 +25,11 @@
 
 const unsigned int clk_stats_offset[] = {
 	CPUCL0_CLKDIVSTEP_STAT,
-	CPUCL12_CLKDIVSTEP_STAT,
-	CPUCL12_CLKDIVSTEP_STAT,
+	CLKDIVSTEP_STAT,
+	CLKDIVSTEP_STAT,
 	TPU_CLKDIVSTEP_STAT,
 	G3D_CLKDIVSTEP_STAT,
 	AUR_CLKDIVSTEP_STAT,
-};
-
-static const char * const clk_ratio_source[] = {
-	"cpu0", "cpu1_heavy", "cpu2_heavy", "tpu_heavy", "gpu_heavy",
-	"cpu1_light", "cpu2_light", "tpu_light", "gpu_light"
 };
 
 static const char * const batt_irq_names[] = {
@@ -759,11 +754,11 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 
 	bcl_dev->enabled = value;
 	if (bcl_dev->enabled) {
-		bcl_dev->gpu_clkdivstep |= 0x1;
-		bcl_dev->tpu_clkdivstep |= 0x1;
-		bcl_dev->aur_clkdivstep |= 0x1;
+		bcl_dev->core_conf[SUBSYSTEM_TPU].clkdivstep |= 0x1;
+		bcl_dev->core_conf[SUBSYSTEM_GPU].clkdivstep |= 0x1;
+		bcl_dev->core_conf[SUBSYSTEM_AUR].clkdivstep |= 0x1;
 		for (i = 0; i < CPU_CLUSTER_MAX; i++) {
-			addr = bcl_dev->base_mem[i] + CLKDIVSTEP;
+			addr = bcl_dev->core_conf[i].base_mem + CLKDIVSTEP;
 			mutex_lock(&bcl_dev->ratio_lock);
 			if (bcl_disable_power(i)) {
 				reg = __raw_readl(addr);
@@ -775,11 +770,11 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 		for (i = 0; i < TRIGGERED_SOURCE_MAX; i++)
 			enable_irq(bcl_dev->zone[i]->bcl_irq);
 	} else {
-		bcl_dev->gpu_clkdivstep &= ~(1 << 0);
-		bcl_dev->tpu_clkdivstep &= ~(1 << 0);
-		bcl_dev->aur_clkdivstep &= ~(1 << 0);
+		bcl_dev->core_conf[SUBSYSTEM_TPU].clkdivstep &= ~(1 << 0);
+		bcl_dev->core_conf[SUBSYSTEM_GPU].clkdivstep &= ~(1 << 0);
+		bcl_dev->core_conf[SUBSYSTEM_AUR].clkdivstep &= ~(1 << 0);
 		for (i = 0; i < CPU_CLUSTER_MAX; i++) {
-			addr = bcl_dev->base_mem[i] + CLKDIVSTEP;
+			addr = bcl_dev->core_conf[i].base_mem + CLKDIVSTEP;
 			mutex_lock(&bcl_dev->ratio_lock);
 			if (bcl_disable_power(i)) {
 				reg = __raw_readl(addr);
@@ -1183,7 +1178,7 @@ static ssize_t ocp_cpu1_lvl_show(struct device *dev, struct device_attribute *at
 	u64 val;
 
 	if (get_ocp_lvl(bcl_dev, &val, CPU1_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B3M_UPPER_LIMIT, B3M_STEP) < 0)
+	                CPU1_UPPER_LIMIT, CPU1_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1202,7 +1197,7 @@ static ssize_t ocp_cpu1_lvl_store(struct device *dev,
 		return ret;
 
 	if (set_ocp_lvl(bcl_dev, value, CPU1_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B3M_LOWER_LIMIT, B3M_UPPER_LIMIT, B3M_STEP, OCP_WARN_CPUCL1) < 0)
+	                CPU1_LOWER_LIMIT, CPU1_UPPER_LIMIT, CPU1_STEP, OCP_WARN_CPUCL1) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1216,7 +1211,7 @@ static ssize_t ocp_cpu2_lvl_show(struct device *dev, struct device_attribute *at
 	u64 val;
 
 	if (get_ocp_lvl(bcl_dev, &val, CPU2_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B2M_UPPER_LIMIT, B2M_STEP) < 0)
+	                CPU2_UPPER_LIMIT, CPU2_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1235,7 +1230,7 @@ static ssize_t ocp_cpu2_lvl_store(struct device *dev,
 		return ret;
 
 	if (set_ocp_lvl(bcl_dev, value, CPU2_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B2M_LOWER_LIMIT, B2M_UPPER_LIMIT, B2M_STEP, OCP_WARN_CPUCL2) < 0)
+	                CPU2_LOWER_LIMIT, CPU2_UPPER_LIMIT, CPU2_STEP, OCP_WARN_CPUCL2) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1249,7 +1244,7 @@ static ssize_t ocp_tpu_lvl_show(struct device *dev, struct device_attribute *att
 	u64 val;
 
 	if (get_ocp_lvl(bcl_dev, &val, TPU_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B7M_UPPER_LIMIT, B7M_STEP) < 0)
+	                TPU_UPPER_LIMIT, TPU_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1268,7 +1263,7 @@ static ssize_t ocp_tpu_lvl_store(struct device *dev, struct device_attribute *at
 		return ret;
 
 	if (set_ocp_lvl(bcl_dev, value, TPU_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B7M_LOWER_LIMIT, B7M_UPPER_LIMIT, B7M_STEP, OCP_WARN_TPU) < 0)
+	                TPU_LOWER_LIMIT, TPU_UPPER_LIMIT, TPU_STEP, OCP_WARN_TPU) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1281,8 +1276,8 @@ static ssize_t ocp_gpu_lvl_show(struct device *dev, struct device_attribute *att
 	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
 	u64 val;
 
-	if (get_ocp_lvl(bcl_dev, &val, GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK, B2S_UPPER_LIMIT,
-			B2S_STEP) < 0)
+	if (get_ocp_lvl(bcl_dev, &val, GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK, GPU_UPPER_LIMIT,
+			GPU_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1301,7 +1296,7 @@ static ssize_t ocp_gpu_lvl_store(struct device *dev, struct device_attribute *at
 		return ret;
 
 	if (set_ocp_lvl(bcl_dev, value, GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK,
-	                B2S_LOWER_LIMIT, B2S_UPPER_LIMIT, B2S_STEP, OCP_WARN_GPU) < 0)
+	                GPU_LOWER_LIMIT, GPU_UPPER_LIMIT, GPU_STEP, OCP_WARN_GPU) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1315,7 +1310,7 @@ static ssize_t soft_ocp_cpu1_lvl_show(struct device *dev, struct device_attribut
 	u64 val;
 
 	if (get_ocp_lvl(bcl_dev, &val, SOFT_CPU1_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B3M_UPPER_LIMIT, B3M_STEP) < 0)
+	                CPU1_UPPER_LIMIT, CPU1_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1334,7 +1329,7 @@ static ssize_t soft_ocp_cpu1_lvl_store(struct device *dev, struct device_attribu
 		return ret;
 
 	if (set_ocp_lvl(bcl_dev, value, SOFT_CPU1_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B3M_LOWER_LIMIT, B3M_UPPER_LIMIT, B3M_STEP, SOFT_OCP_WARN_CPUCL1) < 0)
+	                CPU1_LOWER_LIMIT, CPU1_UPPER_LIMIT, CPU1_STEP, SOFT_OCP_WARN_CPUCL1) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1348,7 +1343,7 @@ static ssize_t soft_ocp_cpu2_lvl_show(struct device *dev, struct device_attribut
 	u64 val;
 
 	if (get_ocp_lvl(bcl_dev, &val, SOFT_CPU2_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B2M_UPPER_LIMIT, B2M_STEP) < 0)
+	                CPU2_UPPER_LIMIT, CPU2_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1367,7 +1362,7 @@ static ssize_t soft_ocp_cpu2_lvl_store(struct device *dev, struct device_attribu
 		return ret;
 
 	if (set_ocp_lvl(bcl_dev, value, SOFT_CPU2_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B2M_LOWER_LIMIT, B2M_UPPER_LIMIT, B2M_STEP, SOFT_OCP_WARN_CPUCL2) < 0)
+	                CPU2_LOWER_LIMIT, CPU2_UPPER_LIMIT, CPU2_STEP, SOFT_OCP_WARN_CPUCL2) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1381,7 +1376,7 @@ static ssize_t soft_ocp_tpu_lvl_show(struct device *dev, struct device_attribute
 	u64 val;
 
 	if (get_ocp_lvl(bcl_dev, &val, SOFT_TPU_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B7M_UPPER_LIMIT, B7M_STEP) < 0)
+	                TPU_UPPER_LIMIT, TPU_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1400,7 +1395,7 @@ static ssize_t soft_ocp_tpu_lvl_store(struct device *dev, struct device_attribut
 		return ret;
 
 	if (set_ocp_lvl(bcl_dev, value, SOFT_TPU_OCP_WARN, CORE_PMIC_MAIN, OCP_WARN_MASK,
-	                B7M_LOWER_LIMIT, B7M_UPPER_LIMIT, B7M_STEP, SOFT_OCP_WARN_TPU) < 0)
+	                TPU_LOWER_LIMIT, TPU_UPPER_LIMIT, TPU_STEP, SOFT_OCP_WARN_TPU) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1414,7 +1409,7 @@ static ssize_t soft_ocp_gpu_lvl_show(struct device *dev, struct device_attribute
 	u64 val;
 
 	if (get_ocp_lvl(bcl_dev, &val, SOFT_GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK,
-	                B2S_UPPER_LIMIT, B2S_STEP) < 0)
+	                GPU_UPPER_LIMIT, GPU_STEP) < 0)
 		return -EINVAL;
 	return sysfs_emit(buf, "%llumA\n", val);
 
@@ -1433,7 +1428,7 @@ static ssize_t soft_ocp_gpu_lvl_store(struct device *dev, struct device_attribut
 		return ret;
 
 	if (set_ocp_lvl(bcl_dev, value, SOFT_GPU_OCP_WARN, CORE_PMIC_SUB, OCP_WARN_MASK,
-	                B2S_LOWER_LIMIT, B2S_UPPER_LIMIT, B2S_STEP, SOFT_OCP_WARN_GPU) < 0)
+	                GPU_LOWER_LIMIT, GPU_UPPER_LIMIT, GPU_STEP, SOFT_OCP_WARN_GPU) < 0)
 		return -EINVAL;
 	return size;
 }
@@ -1461,30 +1456,6 @@ static const struct attribute_group triggered_lvl_group = {
 	.name = "triggered_lvl",
 };
 
-static void __iomem *get_addr_by_rail(struct bcl_device *bcl_dev, const char *rail_name)
-{
-	int i = 0, idx;
-
-	for (i = 0; i < 9; i++) {
-		if (strcmp(rail_name, clk_ratio_source[i]) == 0) {
-			idx = i > 4 ? i - 4 : i;
-			if (bcl_is_subsystem_on(subsystem_pmu[idx])) {
-				if (idx == 0)
-					return bcl_dev->base_mem[SUBSYSTEM_CPU0] + CPUCL0_CLKDIVSTEP_CON;
-				if (i > 4)
-					return bcl_dev->base_mem[idx] +
-							CPUCL12_CLKDIVSTEP_CON_LIGHT;
-				else
-					return bcl_dev->base_mem[idx] +
-							CPUCL12_CLKDIVSTEP_CON_HEAVY;
-			} else
-				return NULL;
-		}
-	}
-
-	return NULL;
-}
-
 static ssize_t clk_div_show(struct bcl_device *bcl_dev, int idx, char *buf)
 {
 	unsigned int reg = 0;
@@ -1492,16 +1463,23 @@ static ssize_t clk_div_show(struct bcl_device *bcl_dev, int idx, char *buf)
 
 	if (!bcl_dev)
 		return -EIO;
-	if (idx == SUBSYSTEM_TPU)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_clkdivstep);
-	else if (idx == SUBSYSTEM_GPU)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->gpu_clkdivstep);
-	else if (idx == SUBSYSTEM_AUR)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->aur_clkdivstep);
-
-	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
+	switch (idx) {
+	case SUBSYSTEM_TPU:
+	case SUBSYSTEM_GPU:
+	case SUBSYSTEM_AUR:
+		return sysfs_emit(buf, "0x%x\n", bcl_dev->core_conf[idx].clkdivstep);
+	case SUBSYSTEM_CPU1:
+		if (!bcl_is_cluster_on(CPU1_CLUSTER_MIN))
+			return sysfs_emit(buf, "off\n");
+		break;
+	case SUBSYSTEM_CPU2:
+		if (!bcl_is_cluster_on(CPU2_CLUSTER_MIN))
+			return sysfs_emit(buf, "off\n");
+		break;
+	}
+	addr = bcl_dev->core_conf[idx].base_mem + CLKDIVSTEP;
 	if (addr == NULL)
-		return sysfs_emit(buf, "off\n");
+		return -EIO;
 	if (!bcl_disable_power(idx))
 		return sysfs_emit(buf, "off\n");
 	reg = __raw_readl(addr);
@@ -1513,24 +1491,28 @@ static ssize_t clk_div_show(struct bcl_device *bcl_dev, int idx, char *buf)
 static ssize_t clk_stats_show(struct bcl_device *bcl_dev, int idx, char *buf)
 {
 	unsigned int reg = 0;
-	void __iomem *addr;
 
 	if (!bcl_dev)
 		return -EIO;
-	if (idx == SUBSYSTEM_TPU)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_clk_stats);
-	else if (idx == SUBSYSTEM_GPU)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->gpu_clk_stats);
-	else if (idx == SUBSYSTEM_AUR)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->aur_clk_stats);
-
-	addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
-	if (addr == NULL)
-		return sysfs_emit(buf, "off\n");
-
+	switch (idx) {
+	case SUBSYSTEM_TPU:
+	case SUBSYSTEM_GPU:
+	case SUBSYSTEM_AUR:
+		return sysfs_emit(buf, "0x%x\n", bcl_dev->core_conf[idx].clk_stats);
+	case SUBSYSTEM_CPU1:
+		if (!bcl_is_cluster_on(CPU1_CLUSTER_MIN))
+			return sysfs_emit(buf, "off\n");
+		break;
+	case SUBSYSTEM_CPU2:
+		if (!bcl_is_cluster_on(CPU2_CLUSTER_MIN))
+			return sysfs_emit(buf, "off\n");
+		break;
+	case SUBSYSTEM_CPU0:
+		break;
+	}
 	if (!bcl_disable_power(idx))
 		return sysfs_emit(buf, "off\n");
-	reg = __raw_readl(bcl_dev->base_mem[idx] + clk_stats_offset[idx]);
+	reg = __raw_readl(bcl_dev->core_conf[idx].base_mem + clk_stats_offset[idx]);
 	bcl_enable_power(idx);
 
 	return sysfs_emit(buf, "0x%x\n", reg);
@@ -1556,34 +1538,34 @@ static ssize_t clk_div_store(struct bcl_device *bcl_dev, int idx,
 
 	if (!bcl_dev)
 		return -EIO;
-	if (idx == SUBSYSTEM_TPU)
-		bcl_dev->tpu_clkdivstep = value;
-	else if (idx == SUBSYSTEM_GPU)
-		bcl_dev->gpu_clkdivstep = value;
-	else if (idx == SUBSYSTEM_AUR)
-		bcl_dev->aur_clkdivstep = value;
-	else {
-		if (idx == SUBSYSTEM_CPU2)
-			bcl_dev->cpu2_clkdivstep = value;
-		else if (idx == SUBSYSTEM_CPU1)
-			bcl_dev->cpu1_clkdivstep = value;
-		else
-			bcl_dev->cpu0_clkdivstep = value;
-
-		addr = get_addr_by_subsystem(bcl_dev, clk_stats_source[idx]);
-		if (addr == NULL) {
-			dev_err(bcl_dev->device, "IDX %d: Address is NULL\n", idx);
+	bcl_dev->core_conf[idx].clkdivstep = value;
+	switch (idx) {
+	case SUBSYSTEM_TPU:
+	case SUBSYSTEM_GPU:
+	case SUBSYSTEM_AUR:
+		return size;
+	case SUBSYSTEM_CPU1:
+		if (!bcl_is_cluster_on(CPU1_CLUSTER_MIN))
 			return -EIO;
-		}
-		mutex_lock(&bcl_dev->ratio_lock);
-		if (!bcl_disable_power(idx)) {
-			mutex_unlock(&bcl_dev->ratio_lock);
+		break;
+	case SUBSYSTEM_CPU2:
+		if (!bcl_is_cluster_on(CPU2_CLUSTER_MIN))
 			return -EIO;
-		}
-		__raw_writel(value, addr);
-		bcl_enable_power(idx);
-		mutex_unlock(&bcl_dev->ratio_lock);
+		break;
+	case SUBSYSTEM_CPU0:
+		break;
 	}
+	addr = bcl_dev->core_conf[idx].base_mem + CLKDIVSTEP;
+	if (addr == NULL)
+		return -EIO;
+	mutex_lock(&bcl_dev->ratio_lock);
+	if (!bcl_disable_power(idx)) {
+		mutex_unlock(&bcl_dev->ratio_lock);
+		return -EIO;
+	}
+	__raw_writel(value, addr);
+	bcl_enable_power(idx);
+	mutex_unlock(&bcl_dev->ratio_lock);
 
 	return size;
 }
@@ -1709,26 +1691,36 @@ static const struct attribute_group clock_div_group = {
 	.name = "clock_div",
 };
 
-static ssize_t clk_ratio_show(struct bcl_device *bcl_dev, int idx, char *buf, int sub_idx)
+static ssize_t clk_ratio_show(struct bcl_device *bcl_dev, enum RATIO_SOURCE idx, char *buf,
+			      int sub_idx)
 {
 	unsigned int reg = 0;
 	void __iomem *addr;
 
 	if (!bcl_dev)
 		return -EIO;
-	if (idx == TPU_HEAVY)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_con_heavy);
-	else if (idx == TPU_LIGHT)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_con_light);
-	else if (idx == GPU_LIGHT)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->gpu_con_light);
-	else if (idx == GPU_HEAVY)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->gpu_con_heavy);
 
-	addr = get_addr_by_rail(bcl_dev, clk_ratio_source[idx]);
+	switch (idx) {
+	case TPU_HEAVY:
+	case GPU_HEAVY:
+		return sysfs_emit(buf, "0x%x\n", bcl_dev->core_conf[sub_idx].con_heavy);
+	case TPU_LIGHT:
+	case GPU_LIGHT:
+		return sysfs_emit(buf, "0x%x\n", bcl_dev->core_conf[sub_idx].con_light);
+	case CPU1_LIGHT:
+	case CPU2_LIGHT:
+		addr = bcl_dev->core_conf[sub_idx].base_mem + CLKDIVSTEP_CON_LIGHT;
+		break;
+	case CPU1_HEAVY:
+	case CPU2_HEAVY:
+		addr = bcl_dev->core_conf[sub_idx].base_mem + CLKDIVSTEP_CON_HEAVY;
+		break;
+	case CPU0_CON:
+		addr = bcl_dev->core_conf[sub_idx].base_mem + CPUCL0_CLKDIVSTEP_CON;
+		break;
+	}
 	if (addr == NULL)
-		return sysfs_emit(buf, "off\n");
-
+		return -EIO;
 	if (!bcl_disable_power(sub_idx))
 		return sysfs_emit(buf, "off\n");
 	reg = __raw_readl(addr);
@@ -1736,7 +1728,7 @@ static ssize_t clk_ratio_show(struct bcl_device *bcl_dev, int idx, char *buf, in
 	return sysfs_emit(buf, "0x%x\n", reg);
 }
 
-static ssize_t clk_ratio_store(struct bcl_device *bcl_dev, int idx,
+static ssize_t clk_ratio_store(struct bcl_device *bcl_dev, enum RATIO_SOURCE idx,
 			       const char *buf, size_t size, int sub_idx)
 {
 	void __iomem *addr;
@@ -1749,29 +1741,38 @@ static ssize_t clk_ratio_store(struct bcl_device *bcl_dev, int idx,
 
 	if (!bcl_dev)
 		return -EIO;
-	if (idx == TPU_HEAVY)
-		bcl_dev->tpu_con_heavy = value;
-	else if (idx == GPU_HEAVY)
-		bcl_dev->gpu_con_heavy = value;
-	else if (idx == TPU_LIGHT)
-		bcl_dev->tpu_con_light = value;
-	else if (idx == GPU_LIGHT)
-		bcl_dev->gpu_con_light = value;
-	else {
-		addr = get_addr_by_rail(bcl_dev, clk_ratio_source[idx]);
-		if (addr == NULL) {
-			dev_err(bcl_dev->device, "IDX %d: Address is NULL\n", idx);
-			return -EIO;
-		}
-		mutex_lock(&bcl_dev->ratio_lock);
-		if (!bcl_disable_power(sub_idx)) {
-			mutex_unlock(&bcl_dev->ratio_lock);
-			return -EIO;
-		}
-		__raw_writel(value, addr);
-		bcl_enable_power(sub_idx);
-		mutex_unlock(&bcl_dev->ratio_lock);
+
+	switch (idx) {
+	case TPU_HEAVY:
+	case GPU_HEAVY:
+		bcl_dev->core_conf[sub_idx].con_heavy = value;
+		return size;
+	case TPU_LIGHT:
+	case GPU_LIGHT:
+		bcl_dev->core_conf[sub_idx].con_light = value;
+		return size;
+	case CPU1_LIGHT:
+	case CPU2_LIGHT:
+		addr = bcl_dev->core_conf[sub_idx].base_mem + CLKDIVSTEP_CON_LIGHT;
+		break;
+	case CPU1_HEAVY:
+	case CPU2_HEAVY:
+		addr = bcl_dev->core_conf[sub_idx].base_mem + CLKDIVSTEP_CON_HEAVY;
+		break;
+	case CPU0_CON:
+		addr = bcl_dev->core_conf[sub_idx].base_mem + CPUCL0_CLKDIVSTEP_CON;
+		break;
 	}
+	if (addr == NULL)
+		return -EIO;
+	mutex_lock(&bcl_dev->ratio_lock);
+	if (!bcl_disable_power(sub_idx)) {
+		mutex_unlock(&bcl_dev->ratio_lock);
+		return -EIO;
+	}
+	__raw_writel(value, addr);
+	bcl_enable_power(sub_idx);
+	mutex_unlock(&bcl_dev->ratio_lock);
 
 	return size;
 }
@@ -2139,15 +2140,18 @@ static ssize_t vdroop_flt_show(struct bcl_device *bcl_dev, int idx, char *buf)
 
 	if (!bcl_dev)
 		return -EIO;
-	if (idx == SUBSYSTEM_TPU)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->tpu_vdroop_flt);
-	else if (idx == SUBSYSTEM_GPU)
-		return sysfs_emit(buf, "0x%x\n", bcl_dev->gpu_vdroop_flt);
-	else if (idx >= SUBSYSTEM_CPU1 && idx <= SUBSYSTEM_CPU2)
-		addr = bcl_dev->base_mem[idx] + VDROOP_FLT;
-	else
-		return sysfs_emit(buf, "off\n");
+	switch (idx) {
+	case SUBSYSTEM_TPU:
+	case SUBSYSTEM_GPU:
+		return sysfs_emit(buf, "0x%x\n", bcl_dev->core_conf[idx].vdroop_flt);
+	case SUBSYSTEM_CPU1:
+	case SUBSYSTEM_CPU2:
+		addr = bcl_dev->core_conf[idx].base_mem + VDROOP_FLT;
+		break;
+	}
 
+	if (addr == NULL)
+		return -EIO;
 	if (!bcl_disable_power(idx))
 		return sysfs_emit(buf, "off\n");
 	reg = __raw_readl(addr);
@@ -2159,7 +2163,7 @@ static ssize_t vdroop_flt_show(struct bcl_device *bcl_dev, int idx, char *buf)
 static ssize_t vdroop_flt_store(struct bcl_device *bcl_dev, int idx,
 				const char *buf, size_t size)
 {
-	void __iomem *addr;
+	void __iomem *addr = NULL;
 	unsigned int value;
 
 	if (sscanf(buf, "0x%x", &value) != 1)
@@ -2167,22 +2171,26 @@ static ssize_t vdroop_flt_store(struct bcl_device *bcl_dev, int idx,
 
 	if (!bcl_dev)
 		return -EIO;
-	if (idx == SUBSYSTEM_TPU)
-		bcl_dev->tpu_vdroop_flt = value;
-	else if (idx == SUBSYSTEM_GPU)
-		bcl_dev->gpu_vdroop_flt = value;
-	else if (idx >= SUBSYSTEM_CPU1 && idx <= SUBSYSTEM_CPU2) {
-		addr = bcl_dev->base_mem[idx] + VDROOP_FLT;
-		mutex_lock(&bcl_dev->ratio_lock);
-		if (!bcl_disable_power(idx)) {
-			mutex_unlock(&bcl_dev->ratio_lock);
-			return -EIO;
-		}
-		__raw_writel(value, addr);
-		bcl_enable_power(idx);
+	switch (idx) {
+	case SUBSYSTEM_TPU:
+	case SUBSYSTEM_GPU:
+		bcl_dev->core_conf[idx].vdroop_flt = value;
+		return size;
+	case SUBSYSTEM_CPU1:
+	case SUBSYSTEM_CPU2:
+		addr = bcl_dev->core_conf[idx].base_mem + VDROOP_FLT;
+		break;
+	}
+	if (addr == NULL)
+		return -EIO;
+	mutex_lock(&bcl_dev->ratio_lock);
+	if (!bcl_disable_power(idx)) {
 		mutex_unlock(&bcl_dev->ratio_lock);
-	} else
-		return -EINVAL;
+		return -EIO;
+	}
+	__raw_writel(value, addr);
+	bcl_enable_power(idx);
+	mutex_unlock(&bcl_dev->ratio_lock);
 
 	return size;
 }

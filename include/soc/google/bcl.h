@@ -96,7 +96,6 @@ struct irq_duration_stats {
 
 extern const unsigned int subsystem_pmu[];
 extern const unsigned int clk_stats_offset[];
-extern const char * const clk_stats_source[];
 
 struct ocpsmpl_stats {
 	ktime_t _time;
@@ -178,6 +177,16 @@ struct bcl_zone {
 	int idx;
 };
 
+struct bcl_core_conf {
+	unsigned int con_heavy;
+	unsigned int con_light;
+	unsigned int clkdivstep;
+	unsigned int vdroop_flt;
+	unsigned int clk_stats;
+	unsigned int clk_out;
+	void __iomem *base_mem;
+};
+
 struct bcl_device {
 	struct device *device;
 	struct device *main_dev;
@@ -185,7 +194,6 @@ struct bcl_device {
 	struct device *mitigation_dev;
 	struct odpm_info *main_odpm;
 	struct odpm_info *sub_odpm;
-	void __iomem *base_mem[SUBSYSTEM_SOURCE_MAX];
 	void __iomem *sysreg_cpucl0;
 	struct power_supply *batt_psy;
 	const struct bcl_ifpmic_ops *pmic_ops;
@@ -201,6 +209,7 @@ struct bcl_device {
 	int trip_low_temp;
 	int trip_val;
 	struct mutex state_trans_lock;
+	struct mutex sysreg_lock;
 
 	struct i2c_client *main_pmic_i2c;
 	struct i2c_client *sub_pmic_i2c;
@@ -209,22 +218,7 @@ struct bcl_device {
 	struct i2c_client *intf_pmic_i2c;
 
 	struct mutex ratio_lock;
-	unsigned int tpu_con_heavy;
-	unsigned int tpu_con_light;
-	unsigned int gpu_con_heavy;
-	unsigned int gpu_con_light;
-	unsigned int tpu_clkdivstep;
-	unsigned int gpu_clkdivstep;
-	unsigned int aur_clkdivstep;
-	unsigned int cpu2_clkdivstep;
-	unsigned int cpu1_clkdivstep;
-	unsigned int cpu0_clkdivstep;
-	unsigned int gpu_clk_stats;
-	unsigned int tpu_clk_stats;
-	unsigned int aur_clk_stats;
-	unsigned int tpu_vdroop_flt;
-	unsigned int gpu_vdroop_flt;
-	unsigned int odpm_ratio;
+	struct bcl_core_conf core_conf[SUBSYSTEM_SOURCE_MAX];
 
 	bool batt_psy_initialized;
 	bool enabled;
@@ -291,7 +285,7 @@ extern int google_init_aur_ratio(struct bcl_device *data);
 bool bcl_is_subsystem_on(unsigned int addr);
 bool bcl_disable_power(int cluster);
 bool bcl_enable_power(int cluster);
-void __iomem *get_addr_by_subsystem(void *dev, const char *subsystem);
+bool bcl_is_cluster_on(int cluster);
 int pmic_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
 int pmic_read(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 *value);
 int meter_write(int pmic, struct bcl_device *bcl_dev, u8 reg, u8 value);
@@ -300,6 +294,7 @@ u64 settings_to_current(struct bcl_device *bcl_dev, int pmic, int idx, u32 setti
 void google_bcl_qos_update(struct bcl_zone *zone, bool throttle);
 int google_bcl_setup_qos(struct bcl_device *bcl_dev);
 void google_bcl_remove_qos(struct bcl_device *bcl_dev);
+void google_init_debugfs(struct bcl_device *bcl_dev);
 #else
 struct bcl_device;
 
@@ -337,10 +332,6 @@ static inline void bcl_disable_power(void)
 }
 static inline void bcl_enable_power(void)
 {
-}
-static inline void __iomem *get_addr_by_subsystem(void *dev, const char *subsystem)
-{
-	return NULL;
 }
 static inline void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index,
 					     unsigned int lvl)
