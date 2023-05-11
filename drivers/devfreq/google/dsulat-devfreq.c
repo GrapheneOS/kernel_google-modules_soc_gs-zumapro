@@ -177,7 +177,7 @@ static int exynos_init_freq_table(struct exynos_devfreq_data *data)
 			return ret;
 		}
 
-		dev_info(data->dev, "DEVFREQ : %8uKhz, %8uuV\n", freq,
+		dev_dbg(data->dev, "DEVFREQ : %8uKhz, %8uuV\n", freq,
 			 volt);
 	}
 

@@ -226,7 +226,6 @@ static int exynos_init_freq_table(struct exynos_devfreq_data *data)
 {
 	int i, ret;
 	u32 freq, volt;
-
 	for (i = 0; i < data->max_state; i++) {
 		freq = data->opp_list[i].freq;
 		volt = data->opp_list[i].volt;
@@ -240,10 +239,9 @@ static int exynos_init_freq_table(struct exynos_devfreq_data *data)
 			return ret;
 		}
 
-		dev_info(data->dev, "DEVFREQ : %8uKhz, %8uuV\n", freq,
+		dev_dbg(data->dev, "DEVFREQ : %8uKhz, %8uuV\n", freq,
 			 volt);
 	}
-
 	ret = exynos_devfreq_init_freq_table(data);
 	if (ret) {
 		dev_err(data->dev, "failed init frequency table\n");
