@@ -104,4 +104,9 @@
 		status = "okay";
 	};
 
+	exynos-cpuphp {
+		compatible = "samsung,exynos-cpuhp";
+		status = "okay";
+	};
+
 };
