@@ -242,7 +242,7 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 	unsigned long l2_cache_wb, l3_cache_access, wb_pct, mem_stall_pct, mem_stall_floor;
 	struct dsulat_node *node = df->data;
 	unsigned long max_freq = 0, dsu_freq = 0;
-	unsigned int ratio, ratio_ceil, wb_pct_thres, wb_filter_ratio;
+	unsigned int ratio, ratio_ceil, wb_pct_thres, wb_filter_ratio, dsulat_cpuidle_state_aware;
 	int ret;
 
 	/*
@@ -265,8 +265,32 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 
 	for (cpu = 0; cpu < CONFIG_VH_SCHED_CPU_NR; cpu++)
 	{
+		if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
+			ratio_ceil = node->ratio_ceil_cl0;
+			wb_pct_thres = node->wb_pct_thres_cl0;
+			wb_filter_ratio = node->wb_filter_ratio_cl0;
+			mem_stall_floor = node->mem_stall_floor_cl0;
+			dsulat_cpuidle_state_aware = node->dsulat_cpuidle_state_aware_cl0;
+		} else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
+			ratio_ceil = node->ratio_ceil_cl1;
+			wb_pct_thres = node->wb_pct_thres_cl1;
+			wb_filter_ratio = node->wb_filter_ratio_cl1;
+			mem_stall_floor = node->mem_stall_floor_cl1;
+			dsulat_cpuidle_state_aware = node->dsulat_cpuidle_state_aware_cl1;
+		} else {
+			ratio_ceil = node->ratio_ceil_cl2;
+			wb_pct_thres = node->wb_pct_thres_cl2;
+			wb_filter_ratio = node->wb_filter_ratio_cl2;
+			mem_stall_floor = node->mem_stall_floor_cl2;
+			dsulat_cpuidle_state_aware = node->dsulat_cpuidle_state_aware_cl2;
+		}
 		/* ignore idle cpu for DSU frequency boosting */
-		if (get_cpu_idle_state(cpu) == DEEP_MEMLAT_CPUIDLE_STATE_AWARE)
+		if ((dsulat_cpuidle_state_aware ==
+				DEEP_MEMLAT_CPUIDLE_STATE_AWARE
+				&& get_cpu_idle_state(cpu) > 0)
+				|| (dsulat_cpuidle_state_aware ==
+				ALL_MEMLAT_CPUIDLE_STATE_AWARE
+				&& get_cpu_idle_state(cpu) != -1))
 			continue;
 
 		ret = get_ev_data(cpu, &inst, &cyc,
@@ -298,23 +322,6 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 					wb_pct,
 					mem_stall_pct, ratio);
 
-		if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
-			ratio_ceil = node->ratio_ceil_cl0;
-			wb_pct_thres = node->wb_pct_thres_cl0;
-			wb_filter_ratio = node->wb_filter_ratio_cl0;
-			mem_stall_floor = node->mem_stall_floor_cl0;
-		} else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
-			ratio_ceil = node->ratio_ceil_cl1;
-			wb_pct_thres = node->wb_pct_thres_cl1;
-			wb_filter_ratio = node->wb_filter_ratio_cl1;
-			mem_stall_floor = node->mem_stall_floor_cl1;
-		} else {
-			ratio_ceil = node->ratio_ceil_cl2;
-			wb_pct_thres = node->wb_pct_thres_cl2;
-			wb_filter_ratio = node->wb_filter_ratio_cl2;
-			mem_stall_floor = node->mem_stall_floor_cl2;
-		}
-
 		if ((ratio <= ratio_ceil
 			&& mem_stall_pct >= mem_stall_floor) ||
 			(wb_pct >= wb_pct_thres
@@ -337,11 +344,9 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 
 	}
 
-	if (max_freq) {
-		*target_freq = max_freq;
-		/* Update BCI freq based on modified DSU freq */
-		update_bci_freq(node, max_freq);
-	}
+	*target_freq = max_freq;
+	/* Update BCI freq based on modified DSU freq */
+	update_bci_freq(node, max_freq);
 
 	return 0;
 }
@@ -357,6 +362,21 @@ static DEVICE_ATTR(ratio_ceil_cl1, 0644, show_ratio_ceil_cl1, store_ratio_ceil_c
 show_attr(ratio_ceil_cl2)
 store_attr(ratio_ceil_cl2, 1U, 20000U)
 static DEVICE_ATTR(ratio_ceil_cl2, 0644, show_ratio_ceil_cl2, store_ratio_ceil_cl2);
+
+show_attr(dsulat_cpuidle_state_aware_cl0)
+store_attr(dsulat_cpuidle_state_aware_cl0, 0U, 2U)
+static DEVICE_ATTR(dsulat_cpuidle_state_aware_cl0, 0644, show_dsulat_cpuidle_state_aware_cl0,
+			store_dsulat_cpuidle_state_aware_cl0);
+
+show_attr(dsulat_cpuidle_state_aware_cl1)
+store_attr(dsulat_cpuidle_state_aware_cl1, 0U, 2U)
+static DEVICE_ATTR(dsulat_cpuidle_state_aware_cl1, 0644, show_dsulat_cpuidle_state_aware_cl1,
+			store_dsulat_cpuidle_state_aware_cl1);
+
+show_attr(dsulat_cpuidle_state_aware_cl2)
+store_attr(dsulat_cpuidle_state_aware_cl2, 0U, 2U)
+static DEVICE_ATTR(dsulat_cpuidle_state_aware_cl2, 0644, show_dsulat_cpuidle_state_aware_cl2,
+			store_dsulat_cpuidle_state_aware_cl2);
 
 show_attr(wb_pct_thres_cl0)
 store_attr(wb_pct_thres_cl0, 1U, 100U)
@@ -408,6 +428,9 @@ static struct attribute *dsulat_dev_attr[] = {
 	&dev_attr_mem_stall_floor_cl1.attr,
 	&dev_attr_mem_stall_floor_cl2.attr,
 	&dev_attr_freq_map.attr,
+	&dev_attr_dsulat_cpuidle_state_aware_cl0.attr,
+	&dev_attr_dsulat_cpuidle_state_aware_cl1.attr,
+	&dev_attr_dsulat_cpuidle_state_aware_cl2.attr,
 	NULL,
 };
 
