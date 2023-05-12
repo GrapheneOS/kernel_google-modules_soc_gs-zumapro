@@ -237,13 +237,13 @@ extern int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 static int devfreq_dsulat_get_freq(struct devfreq *df,
 				   unsigned long *target_freq)
 {
-	int cpu;
+	int cpu, ret;
 	unsigned long inst, cyc, stall, l2_cachemiss, l3_cachemiss, freq, mem_stall, mem_count;
 	unsigned long l2_cache_wb, l3_cache_access, wb_pct, mem_stall_pct, mem_stall_floor;
 	struct dsulat_node *node = df->data;
 	unsigned long max_freq = 0, dsu_freq = 0;
 	unsigned int ratio, ratio_ceil, wb_pct_thres, wb_filter_ratio, dsulat_cpuidle_state_aware;
-	int ret;
+	char trace_name[] = {'c', 'p', 'u', '0', 'd', 's', 'u', '\0'};
 
 	/*
 	 * node->resume_freq is set to 0 at the end of resume (after the update)
@@ -265,6 +265,7 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 
 	for (cpu = 0; cpu < CONFIG_VH_SCHED_CPU_NR; cpu++)
 	{
+		trace_name[3] = '0' + cpu;
 		if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
 			ratio_ceil = node->ratio_ceil_cl0;
 			wb_pct_thres = node->wb_pct_thres_cl0;
@@ -290,8 +291,10 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 				&& get_cpu_idle_state(cpu) > 0)
 				|| (dsulat_cpuidle_state_aware ==
 				ALL_MEMLAT_CPUIDLE_STATE_AWARE
-				&& get_cpu_idle_state(cpu) != -1))
+				&& get_cpu_idle_state(cpu) != -1)) {
+			trace_clock_set_rate(trace_name, 0, raw_smp_processor_id());
 			continue;
+		}
 
 		ret = get_ev_data(cpu, &inst, &cyc,
 				  &stall, &l2_cachemiss, &l3_cachemiss, &mem_stall,
@@ -339,9 +342,11 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 							wb_pct,
 							mem_stall_pct,
 							max_freq);
+				trace_clock_set_rate(trace_name, dsu_freq, raw_smp_processor_id());
 			}
 		}
-
+		else
+			trace_clock_set_rate(trace_name, 0, raw_smp_processor_id());
 	}
 
 	*target_freq = max_freq;
