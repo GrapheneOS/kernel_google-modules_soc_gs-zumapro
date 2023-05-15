@@ -185,6 +185,7 @@ exports_files([
     "build.config.slider.kasan",
     "build.config.slider.khwasan",
     "build.config.zuma",
+    "system_dlkm.props.zuma",
     "vendor_dlkm.blocklist.zuma",
     "vendor_dlkm.props.zuma",
     "vendor_dlkm_modules.zuma",
