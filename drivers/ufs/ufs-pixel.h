@@ -297,4 +297,18 @@ struct pixel_cmd_log {
 	u8 *event_str[EVENT_TYPE_MAX];
 	u8 *cmd_str[CMD_TYPE_MAX];
 };
+
+enum pixel_power_event_type {
+	PE_H8_EXIT = 0,
+	PE_H8_ENTER,
+	PE_SYSTEM_RESUME,
+	PE_SYSTEM_SUSPEND,
+	PE_IO_ISSUE,
+	PE_IO_COMPLETE,
+	PE_MAX
+};
+
+void pixel_update_power_event(struct ufs_hba *hba,
+			      enum pixel_power_event_type event);
+
 #endif
