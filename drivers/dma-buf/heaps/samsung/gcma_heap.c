@@ -47,7 +47,7 @@ static struct dma_buf *gcma_heap_allocate(struct dma_heap *heap, unsigned long l
 
 	buffer = samsung_dma_buffer_alloc(samsung_dma_heap, size, 1);
 	if (IS_ERR(buffer))
-		return ERR_PTR(-ENOMEM);
+		goto out;
 
 	paddr = gen_pool_alloc(gcma_heap->pool, size);
 	if (!paddr) {
@@ -88,6 +88,8 @@ free_prot:
 		gen_pool_free(gcma_heap->pool, paddr, size);
 free_gen:
 	samsung_dma_buffer_free(buffer);
+out:
+	pr_err("failed to heap allocation size %lu ret %d\n", size, ret);
 
 	return ERR_PTR(ret);
 }
