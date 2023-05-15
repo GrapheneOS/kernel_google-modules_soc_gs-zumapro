@@ -435,6 +435,7 @@ define_slider_kleaf_tests()
 exports_files([
     # keep sorted
     "build.config.cloudripper",
+    "system_dlkm.props.gs201",
     "vendor_dlkm.blocklist.cloudripper",
     "vendor_dlkm.props.slider",
     "vendor_dlkm_modules.slider",
