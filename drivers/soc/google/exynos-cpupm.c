@@ -90,6 +90,9 @@ struct power_mode {
 	/* name of power mode, it is declared in device tree */
 	char		name[NAME_LEN];
 
+	/* file node name of target_residency */
+	char		target_residency_name[NAME_LEN];
+
 	/* power mode state, BUSY or IDLE */
 	int		state;
 
@@ -119,6 +122,12 @@ struct power_mode {
 	 * it supports for enabling or disabling this power mode
 	 */
 	struct device_attribute	attr;
+
+	/*
+	 * device attribute for sysfs,
+	 * it supports for turning target residency
+	 */
+	struct device_attribute       target_residency_attr;
 
 	/* user's request for enabling/disabling power mode */
 	bool		user_request;
@@ -1072,6 +1081,33 @@ static ssize_t power_mode_store(struct device *dev,
 	return count;
 }
 
+static ssize_t target_residency_store(struct device *dev,
+				      struct device_attribute *target_residency_attr,
+				      const char *buf, size_t count)
+{
+	struct power_mode *mode = container_of(target_residency_attr,
+					       struct power_mode, target_residency_attr);
+	unsigned int val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (mode->target_residency == val)
+		return count;
+	mode->target_residency = val;
+	return count;
+}
+
+static ssize_t target_residency_show(struct device *dev,
+				     struct device_attribute *target_residency_attr,
+				     char *buf)
+{
+	struct power_mode *mode = container_of(target_residency_attr,
+					       struct power_mode, target_residency_attr);
+
+	return sysfs_emit(buf, "%d\n", mode->target_residency);
+}
+
 static struct attribute *exynos_cpupm_attrs[] = {
 	&dev_attr_idle_ip.attr,
 	&dev_attr_time_in_state.attr,
@@ -1235,6 +1271,9 @@ static int exynos_cpupm_mode_init(struct platform_device *pdev)
 			return -ENOMEM;
 
 		strncpy(mode->name, dn->name, NAME_LEN - 1);
+		scnprintf(mode->target_residency_name,
+			  sizeof(mode->target_residency_name),
+			  "%s_target_residency", mode->name);
 
 		ret = of_property_read_u32(dn, "target-residency",
 					   &mode->target_residency);
@@ -1284,6 +1323,16 @@ static int exynos_cpupm_mode_init(struct platform_device *pdev)
 						      exynos_cpupm_group.name);
 			if (ret)
 				pr_warn("Failed to add sysfs or POWERMODE\n");
+
+			CPUPM_ATTR(mode->target_residency_attr,
+				   mode->target_residency_name, 0644,
+				   target_residency_show, target_residency_store);
+
+			ret = sysfs_add_file_to_group(&pdev->dev.kobj,
+						      &mode->target_residency_attr.attr,
+						      exynos_cpupm_group.name);
+			if (ret)
+				pr_warn("Faile to add sysfs or TARGET_RESIDENCY\n");
 		}
 
 		/* Connect power mode to the cpus in the power domain */
