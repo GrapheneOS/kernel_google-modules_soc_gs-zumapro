@@ -25,9 +25,12 @@ struct dsulat_node {
 	bool already_zero;
 	struct list_head list;
 	void *orig_data;
-	struct core_dev_map *freq_map_cl0;
-	struct core_dev_map *freq_map_cl1;
-	struct core_dev_map *freq_map_cl2;
+	struct core_dev_map *freq_map_cl0_low_latency;
+	struct core_dev_map *freq_map_cl1_low_latency;
+	struct core_dev_map *freq_map_cl2_low_latency;
+	struct core_dev_map *freq_map_cl0_base;
+	struct core_dev_map *freq_map_cl1_base;
+	struct core_dev_map *freq_map_cl2_base;
 	struct core_dev_map *freq_map_dsu_bci;
 	struct devfreq_governor *gov;
 	struct attribute_group *attr_grp;
