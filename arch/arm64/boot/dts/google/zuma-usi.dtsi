@@ -363,7 +363,7 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		status = "disabled";
 		};
 	/* BLK_HSI0 USI1_HSI0 */
@@ -382,7 +382,7 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		status = "disabled";
 	};
 	/* BLK_HSI0 USI2_HSI0 */
@@ -401,7 +401,7 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		status = "disabled";
 	};
 	/* BLK_HSI0 USI3_HSI0 */
@@ -420,7 +420,7 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		status = "disabled";
 	};
 	/* BLK_HSI0 USI4_HSI0 */
@@ -439,7 +439,7 @@
 		samsung,scl-clk-stretching;
 //              samsung,no_lose_arbitration;
 		samsung,usi-i2c-v2;
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		status = "disabled";
 	};
 
@@ -1138,7 +1138,7 @@
 		samsung,usi-phandle = <&sysreg_hsi0>;
 		samsung,usi-offset = <0x00001014>;
 		status = "disabled";
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 	};
 	/* BLK_HSI0 USI1_HSI0 */
 	spi_19: spi@111C0000 {
@@ -1157,7 +1157,7 @@
 		samsung,usi-phandle = <&sysreg_hsi0>;
 		samsung,usi-offset = <0x00001018>;
 		status = "disabled";
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 	};
 	/* BLK_HSI0 USI2_HSI0 */
 	spi_20: spi@111D0000 {
@@ -1176,7 +1176,7 @@
 		samsung,usi-phandle = <&sysreg_hsi0>;
 		samsung,usi-offset = <0x0000101C>;
 		status = "disabled";
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 	};
 	/* BLK_HSI0 USI3_HSI0 */
 	spi_21: spi@111E0000 {
@@ -1195,7 +1195,7 @@
 		samsung,usi-phandle = <&sysreg_hsi0>;
 		samsung,usi-offset = <0x00001020>;
 		status = "disabled";
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 	};
 	/* BLK_HSI0 USI4_HSI0 */
 	spi_22: spi@111F0000 {
@@ -1214,6 +1214,6 @@
 		samsung,usi-phandle = <&sysreg_hsi0>;
 		samsung,usi-offset = <0x00001024>;
 		status = "disabled";
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 	};
 };
