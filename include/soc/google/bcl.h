@@ -160,7 +160,6 @@ struct bcl_zone {
 	struct delayed_work irq_untriggered_work;
 	struct delayed_work irq_work;
 	struct delayed_work enable_irq_work;
-	struct delayed_work reset_batoilo_work;
 	struct thermal_zone_device *tz;
 	struct thermal_zone_of_device_ops tz_ops;
 	struct qos_throttle_limit *bcl_qos;

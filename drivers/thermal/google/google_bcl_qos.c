@@ -25,16 +25,10 @@ void google_bcl_qos_update(struct bcl_zone *zone, bool throttle)
 	zone->bcl_qos->throttle = throttle;
 	freq_qos_update_request(&zone->bcl_qos->cpu0_max_qos_req,
 				throttle ? zone->bcl_qos->cpu0_limit : INT_MAX);
-	if (bcl_disable_power(SUBSYSTEM_CPU1)) {
-		freq_qos_update_request(&zone->bcl_qos->cpu1_max_qos_req,
-					throttle ? zone->bcl_qos->cpu1_limit : INT_MAX);
-		bcl_enable_power(SUBSYSTEM_CPU1);
-	}
-	if (bcl_disable_power(SUBSYSTEM_CPU2)) {
-		freq_qos_update_request(&zone->bcl_qos->cpu2_max_qos_req,
-					throttle ? zone->bcl_qos->cpu2_limit : INT_MAX);
-		bcl_enable_power(SUBSYSTEM_CPU2);
-	}
+	freq_qos_update_request(&zone->bcl_qos->cpu1_max_qos_req,
+				throttle ? zone->bcl_qos->cpu1_limit : INT_MAX);
+	freq_qos_update_request(&zone->bcl_qos->cpu2_max_qos_req,
+				throttle ? zone->bcl_qos->cpu2_limit : INT_MAX);
 	exynos_pm_qos_update_request(&zone->bcl_qos->tpu_qos_max,
 				     throttle ? zone->bcl_qos->tpu_limit : INT_MAX);
 	exynos_pm_qos_update_request(&zone->bcl_qos->gpu_qos_max,
@@ -62,39 +56,25 @@ static int init_freq_qos(struct bcl_device *bcl_dev, struct qos_throttle_limit *
 	if (ret < 0)
 		return ret;
 
-	if (bcl_disable_power(SUBSYSTEM_CPU1)) {
-		policy = cpufreq_cpu_get(bcl_dev->cpu1_cluster);
-		if (!policy) {
-			bcl_enable_power(SUBSYSTEM_CPU1);
-			return -EINVAL;
-		}
+	policy = cpufreq_cpu_get(bcl_dev->cpu1_cluster);
+	if (!policy)
+		return -EINVAL;
 
-		ret = freq_qos_add_request(&policy->constraints, &throttle->cpu1_max_qos_req,
-				   	   FREQ_QOS_MAX, INT_MAX);
-		cpufreq_cpu_put(policy);
-		if (ret < 0) {
-			bcl_enable_power(SUBSYSTEM_CPU1);
-			return ret;
-		}
-		bcl_enable_power(SUBSYSTEM_CPU1);
-	}
+	ret = freq_qos_add_request(&policy->constraints, &throttle->cpu1_max_qos_req,
+				   FREQ_QOS_MAX, INT_MAX);
+	cpufreq_cpu_put(policy);
+	if (ret < 0)
+		return ret;
 
-	if (bcl_disable_power(SUBSYSTEM_CPU2)) {
-		policy = cpufreq_cpu_get(bcl_dev->cpu2_cluster);
-		if (!policy) {
-			bcl_enable_power(SUBSYSTEM_CPU2);
-			return -EINVAL;
-		}
+	policy = cpufreq_cpu_get(bcl_dev->cpu2_cluster);
+	if (!policy)
+		return -EINVAL;
 
-		ret = freq_qos_add_request(&policy->constraints, &throttle->cpu2_max_qos_req,
-				   	   FREQ_QOS_MAX, INT_MAX);
-		cpufreq_cpu_put(policy);
-		if (ret < 0) {
-			bcl_enable_power(SUBSYSTEM_CPU2);
-			return ret;
-		}
-		bcl_enable_power(SUBSYSTEM_CPU2);
-	}
+	ret = freq_qos_add_request(&policy->constraints, &throttle->cpu2_max_qos_req,
+				   FREQ_QOS_MAX, INT_MAX);
+	cpufreq_cpu_put(policy);
+	if (ret < 0)
+		return ret;
 
 	return ret;
 }
@@ -133,14 +113,8 @@ void google_bcl_remove_qos(struct bcl_device *bcl_dev)
 		if ((!zone) || (!zone->bcl_qos))
 			continue;
 		freq_qos_remove_request(&zone->bcl_qos->cpu0_max_qos_req);
-		if (bcl_disable_power(SUBSYSTEM_CPU1)) {
-			freq_qos_remove_request(&zone->bcl_qos->cpu1_max_qos_req);
-			bcl_enable_power(SUBSYSTEM_CPU1);
-		}
-		if (bcl_disable_power(SUBSYSTEM_CPU2)) {
-			freq_qos_remove_request(&zone->bcl_qos->cpu2_max_qos_req);
-			bcl_enable_power(SUBSYSTEM_CPU2);
-		}
+		freq_qos_remove_request(&zone->bcl_qos->cpu1_max_qos_req);
+		freq_qos_remove_request(&zone->bcl_qos->cpu2_max_qos_req);
 		exynos_pm_qos_remove_request(&zone->bcl_qos->tpu_qos_max);
 		exynos_pm_qos_remove_request(&zone->bcl_qos->gpu_qos_max);
 		zone->bcl_qos = NULL;

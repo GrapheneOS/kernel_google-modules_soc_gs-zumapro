@@ -804,6 +804,7 @@ static int google_bcl_register_zone(struct bcl_device *bcl_dev, int idx, const c
 			devm_kfree(bcl_dev->device, zone);
 			return ret;
 		}
+		disable_irq(zone->bcl_irq);
 	}
 	zone->tz_ops.get_temp = zone_read_temp;
 	zone->tz = thermal_zone_of_sensor_register(bcl_dev->device, idx, zone, &zone->tz_ops);
@@ -1127,7 +1128,7 @@ static void google_bcl_parse_qos(struct bcl_device *bcl_dev)
 static void google_set_intf_pmic_work(struct work_struct *work)
 {
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device, init_work.work);
-	int ret = 0;
+	int ret = 0, i;
 	unsigned int uvlo1_lvl, uvlo2_lvl, batoilo_lvl;
 
 	if (!bcl_dev->intf_pmic_i2c)
@@ -1198,6 +1199,14 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 		dev_err(bcl_dev->device, "Cannot Initiate QOS\n");
 		google_bcl_remove_qos(bcl_dev);
 		bcl_dev->ready = false;
+	}
+
+	if (!bcl_dev->ready)
+		return;
+
+	for (i = 0; i < TRIGGERED_SOURCE_MAX; i++) {
+		if (bcl_dev->zone[i] && (i != BATOILO))
+			enable_irq(bcl_dev->zone[i]->bcl_irq);
 	}
 
 	return;
