@@ -99,6 +99,11 @@ max77759_contaminant.ko
 max77759_helper.ko
 max77779-charger.ko
 max77779-sp.ko
+max77779_i2cm.ko
+max77779_pmic.ko
+max77779_pmic_irq.ko
+max77779_pmic_pinctrl.ko
+max77779_pmic_sgpio.ko
 memlat-devfreq.ko
 net_failover.ko
 netfs.ko
