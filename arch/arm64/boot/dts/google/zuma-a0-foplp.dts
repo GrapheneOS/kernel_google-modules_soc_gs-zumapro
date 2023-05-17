@@ -32,7 +32,7 @@
 		#thermal-sensor-cells = <0>;
 
 		use-pi-thermal;
-		polling_delay_on = <50>;
+		polling_delay_on = <25>;
 		polling_delay_off = <0>;
 		k_po = <30>;
 		k_pu = <30>;
@@ -63,7 +63,7 @@
 		#thermal-sensor-cells = <0>;
 
 		use-pi-thermal;
-		polling_delay_on = <50>;
+		polling_delay_on = <25>;
 		polling_delay_off = <0>;
 		k_po = <60>;
 		k_pu = <60>;
@@ -190,6 +190,7 @@
 		ect_nouse;
 		#thermal-sensor-cells = <0>;
 		tmu_work_affinity = "0-8";
+		polling_delay_on = <50>;
 
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
