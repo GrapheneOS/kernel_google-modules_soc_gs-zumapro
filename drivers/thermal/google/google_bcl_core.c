@@ -1664,7 +1664,7 @@ static void google_bcl_parse_dtree(struct bcl_device *bcl_dev)
 		if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU1,
 					    bcl_dev->core_conf[SUBSYSTEM_CPU1].clkdivstep) != 0)
 			dev_err(bcl_dev->device, "CPU1 Address is NULL\n");
-		bcl_enable_power(SUBSYSTEM_CPU2);
+		bcl_enable_power(SUBSYSTEM_CPU1);
 	}
 	if (google_bcl_init_clk_div(bcl_dev, SUBSYSTEM_CPU0,
 	                            bcl_dev->core_conf[SUBSYSTEM_CPU0].clkdivstep) != 0)
