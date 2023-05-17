@@ -26,6 +26,25 @@ label_flag(
     build_setting_default = ":gs_undefined",
 )
 
+config_setting(
+    name = "gki_aosp",
+    flag_values = {
+        ":gki_kernel_dir": "aosp",
+    },
+)
+
+config_setting(
+    name = "gki_aosp_staging",
+    flag_values = {
+        ":gki_kernel_dir": "aosp-staging",
+    },
+)
+
+string_flag(
+    name = "gki_kernel_dir",
+    build_setting_default = "aosp",
+)
+
 string_flag(
     name = "debug_fragment",
     build_setting_default = "",
