@@ -58,7 +58,8 @@
 #define TMU_IPC_SET_TR_THRESHOLD		0x33
 #define TMU_IPC_GET_TR_THRESHOLD		0x34
 #define TMU_IPC_GET_TR_STATS                    0x35
-
+#define TMU_IPC_SET_GOV_TZ_TIMER_INTERVAL       0x41
+#define TMU_IPC_GET_GOV_TZ_TIMER_INTERVAL       0x42
 
 /* TMU register offset shift for IPC messages */
 #define TMU_REG_OFFSET_SHIFT_8	(8)
@@ -173,6 +174,10 @@ void exynos_acpm_tmu_ipc_get_target_freq(int tz, u32 *freq);
 void exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword);
 void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode);
 int exynos_acpm_tmu_ipc_set_gov_time_windows(int timer_interval, int thermal_press_window);
+int exynos_acpm_tmu_ipc_set_gov_tz_time_windows(int tz, int timer_interval,
+						int thermal_press_window);
+int exynos_acpm_tmu_ipc_get_gov_tz_time_windows(int tz, int *timer_interval,
+						int *thermal_press_window);
 void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter);
 void exynos_acpm_tmu_ipc_reset_trip_counter(int tz);
 void exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val);

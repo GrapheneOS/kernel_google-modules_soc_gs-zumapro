@@ -469,6 +469,41 @@ int exynos_acpm_tmu_ipc_set_gov_time_windows(int timer_interval, int thermal_pre
 	return message.resp.ret;
 }
 
+int exynos_acpm_tmu_ipc_set_gov_tz_time_windows(int tz, int timer_interval,
+						int thermal_press_window)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.tzid = tz;
+	message.req.type = TMU_IPC_SET_GOV_TZ_TIMER_INTERVAL;
+	message.req.req_rsvd0 = (u8)(timer_interval & 0xff);
+	message.req.req_rsvd1 = (u8)(thermal_press_window & 0xff);
+	message.req.req_rsvd2 = (u8)((thermal_press_window >> 8) & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	return message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_gov_tz_time_windows(int tz, int *timer_interval,
+						int *thermal_press_window)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.tzid = tz;
+	message.req.type = TMU_IPC_GET_GOV_TZ_TIMER_INTERVAL;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*timer_interval = (int)message.resp.rsvd0;
+	*thermal_press_window = (int)((u16)message.resp.rsvd2 << 8) | (u16)message.resp.rsvd1;
+
+	return message.resp.ret;
+}
+
 void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter)
 {
 	union tmu_ipc_message message;

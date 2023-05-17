@@ -94,7 +94,6 @@ struct thermal_pressure {
 	struct kthread_delayed_work polling_work;
 	int polling_delay_on;
 	int polling_delay_off;
-	u16 time_window;
 	struct thermal_state state;
 	struct cpumask work_affinity;
 	bool enabled;
@@ -109,7 +108,6 @@ struct acpm_gov_common {
 	void __iomem *sm_base;
 	u32 sm_size;
 	enum acpm_gov_debug_mode_enum tracing_mode;
-	u8 timer_interval;
 	bool tracing_buffer_flush_pending;
 	bool turn_on;
 	u64 buffer_version;
@@ -213,6 +211,7 @@ struct gs_tmu_data {
 	int pressure_index;
 	int polling_delay_on;
 	int polling_delay_off;
+	int thermal_pressure_time_window;
 };
 
 enum throttling_stats_type {

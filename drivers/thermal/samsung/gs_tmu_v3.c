@@ -190,7 +190,6 @@ static struct acpm_gov_common acpm_gov_common = {
 	.last_ts = 0,
 	.tracing_buffer_flush_pending = false,
 	.tracing_mode = ACPM_GOV_DEBUG_MODE_DISABLED,
-	.timer_interval = ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT,
 	.buffer_version = -1,
 	.bulk_trace_buffer = NULL,
 };
@@ -2228,10 +2227,30 @@ static int gs_map_dt_data(struct platform_device *pdev)
 	}
 
 	of_property_read_u32(pdev->dev.of_node, "polling_delay_on", &data->polling_delay_on);
-	if (!data->polling_delay_on)
+	if (acpm_gov_common.turn_on == true) {
+		if (data->polling_delay_on < ACPM_GOV_TIMER_INTERVAL_MS_MIN) {
+			dev_info(&pdev->dev, "polling_delay_on is out of range, using min value %d\n",
+				 ACPM_GOV_TIMER_INTERVAL_MS_MIN);
+			data->polling_delay_on = ACPM_GOV_TIMER_INTERVAL_MS_MIN;
+		} else if (data->polling_delay_on > ACPM_GOV_TIMER_INTERVAL_MS_MAX) {
+			dev_info(&pdev->dev, "polling_delay_on is out of range, using max value %d\n",
+				 ACPM_GOV_TIMER_INTERVAL_MS_MAX);
+			data->polling_delay_on = ACPM_GOV_TIMER_INTERVAL_MS_MAX;
+		} else if (data->polling_delay_on == 0) {
+			dev_info(&pdev->dev, "No input polling_delay_on, using default value %d\n",
+				 ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT);
+			data->polling_delay_on = ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT;
+		}
+	} else if (data->polling_delay_on == 0)
 		dev_err(&pdev->dev, "No input polling_delay_on\n");
 
 	of_property_read_u32(pdev->dev.of_node, "polling_delay_off", &data->polling_delay_off);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "thermal_pressure_time_window",
+				   &data->thermal_pressure_time_window);
+	if (ret < 0) {
+		data->thermal_pressure_time_window = 0;
+	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "control_temp_step",
 		&data->control_temp_step);
@@ -2458,6 +2477,51 @@ static ssize_t tj_cur_cdev_state_show(struct device *dev, struct device_attribut
 	return sysfs_emit(buf, "%u\n", tj_cur_cdev_state_val);
 }
 
+static ssize_t thermal_pressure_time_window_store(struct device *dev,
+						  struct device_attribute *devattr, const char *buf,
+						  size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	u8 thermal_pressure_time_window;
+
+	if (kstrtou8(buf, 10, &thermal_pressure_time_window)) {
+		pr_err("%s: thermal_pressure_time_window parse error", __func__);
+		return -EINVAL;
+	}
+
+	if ((thermal_pressure_time_window < ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MIN) ||
+	    (thermal_pressure_time_window > ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MAX)) {
+		return -ERANGE;
+	}
+
+	if (exynos_acpm_tmu_ipc_set_gov_tz_time_windows(data->id, data->polling_delay_on,
+							thermal_pressure_time_window)) {
+		pr_err("%s: unable to set thermal_pressure_time_window", __func__);
+		return -EINVAL;
+	}
+
+	data->thermal_pressure_time_window = thermal_pressure_time_window;
+
+	return count;
+}
+
+static ssize_t thermal_pressure_time_window_show(struct device *dev,
+						 struct device_attribute *devattr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	int timer_interval;
+	int time_window;
+
+	if (exynos_acpm_tmu_ipc_get_gov_tz_time_windows(data->id, &timer_interval, &time_window))
+		return -EIO;
+
+	return sysfs_emit(buf, "%d\n", time_window);
+}
+
 static int param_acpm_gov_kernel_ts_get(char *buf, const struct kernel_param *kp)
 {
 	return sysfs_emit(buf, "%llu\n", acpm_gov_common.kernel_ts);
@@ -2609,81 +2673,6 @@ static const struct kernel_param_ops param_ops_acpm_gov_thermal_state = {
 
 module_param_cb(acpm_gov_thermal_state, &param_ops_acpm_gov_thermal_state, NULL, 0444);
 
-static int param_acpm_gov_timer_interval_get(char *buf, const struct kernel_param *kp)
-{
-	return sysfs_emit(buf, "%d\n", acpm_gov_common.timer_interval);
-}
-
-static int param_acpm_gov_timer_interval_set(const char *val, const struct kernel_param *kp)
-{
-	u8 timer_interval_val;
-
-	if (kstrtou8(val, 10, &timer_interval_val)) {
-		pr_err("%s: timer_interval parse error", __func__);
-		return -EINVAL;
-	}
-
-	if ((timer_interval_val < ACPM_GOV_TIMER_INTERVAL_MS_MIN) || (timer_interval_val > ACPM_GOV_TIMER_INTERVAL_MS_MAX)) {
-		return -ERANGE;
-	}
-
-	if (exynos_acpm_tmu_ipc_set_gov_time_windows(
-		    timer_interval_val, acpm_gov_common.thermal_pressure.time_window)) {
-		pr_err("%s: timer interval and thermal pressure window values are incompatible", __func__);
-		return -EINVAL;
-	}
-
-	acpm_gov_common.timer_interval = timer_interval_val;
-
-	return 0;
-}
-
-static const struct kernel_param_ops param_ops_acpm_gov_timer_interval = {
-	.get = param_acpm_gov_timer_interval_get,
-	.set = param_acpm_gov_timer_interval_set,
-};
-
-module_param_cb(acpm_gov_timer_interval, &param_ops_acpm_gov_timer_interval, NULL, 0644);
-
-static int param_acpm_gov_thermal_press_window_get(char *buf, const struct kernel_param *kp)
-{
-	return sysfs_emit(buf, "%d\n", acpm_gov_common.thermal_pressure.time_window);
-}
-
-static int param_acpm_gov_thermal_press_window_set(const char *val, const struct kernel_param *kp)
-{
-	u16 thermal_press_window_val;
-
-	if (kstrtou16(val, 10, &thermal_press_window_val)) {
-		pr_err("%s: thermal_press_window parse error", __func__);
-		return -EINVAL;
-	}
-
-	if ((thermal_press_window_val < ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MIN) ||
-	    (thermal_press_window_val > ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MAX)) {
-		return -ERANGE;
-	}
-
-	if (exynos_acpm_tmu_ipc_set_gov_time_windows(acpm_gov_common.timer_interval,
-						     thermal_press_window_val)) {
-		pr_err("%s: timer interval and thermal pressure window values are incompatible",
-		       __func__);
-		return -EINVAL;
-	}
-
-	acpm_gov_common.thermal_pressure.time_window = thermal_press_window_val;
-
-	return 0;
-}
-
-static const struct kernel_param_ops param_ops_acpm_gov_thermal_press_window = {
-	.get = param_acpm_gov_thermal_press_window_get,
-	.set = param_acpm_gov_thermal_press_window_set,
-};
-
-module_param_cb(acpm_gov_thermal_press_window, &param_ops_acpm_gov_thermal_press_window, NULL,
-		0644);
-
 static int param_acpm_gov_turn_on_get(char *buf, const struct kernel_param *kp)
 {
 	return sysfs_emit(buf, "%d\n", acpm_gov_common.turn_on);
@@ -2723,11 +2712,6 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 		return -EINVAL;
 
 	exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(acpm_gov_common.tracing_mode);
-	if (exynos_acpm_tmu_ipc_set_gov_time_windows(
-		    acpm_gov_common.timer_interval, acpm_gov_common.thermal_pressure.time_window)) {
-		pr_err("GOV: timer interval and thermal press window configuration error\n");
-		return -EINVAL;
-	}
 
 	//run loop for all TZ
 	list_for_each_entry (gsdata, &dtm_dev_list, node) {
@@ -2744,6 +2728,9 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 			//sending an IPC to setup GOV param and control temperature step
 			exynos_acpm_tmu_ipc_set_gov_config(tzid, gsdata->acpm_gov_params.qword);
 			exynos_acpm_tmu_ipc_set_control_temp_step(tzid, control_temp_step);
+			exynos_acpm_tmu_ipc_set_gov_tz_time_windows(
+				gsdata->id, gsdata->polling_delay_on,
+				gsdata->thermal_pressure_time_window);
 		}
 		thermal_zone_device_disable(gsdata->tzd);
 	}
@@ -3300,6 +3287,17 @@ polling_delay_on_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
+	if (acpm_gov_common.turn_on) {
+		int timer_interval;
+		int time_window;
+
+		if (exynos_acpm_tmu_ipc_get_gov_tz_time_windows(data->id, &timer_interval,
+								&time_window))
+			return -EIO;
+
+		return sysfs_emit(buf, "%d\n", timer_interval);
+	}
+
 	return sysfs_emit(buf, "%u\n", data->polling_delay_on);
 }
 
@@ -3314,18 +3312,33 @@ polling_delay_on_store(struct device *dev, struct device_attribute *devattr,
 	if (kstrtou32(buf, 10, &polling_delay_on))
 		return -EINVAL;
 
-	data->polling_delay_on = polling_delay_on;
+	if (acpm_gov_common.turn_on) {
+		if ((polling_delay_on < ACPM_GOV_TIMER_INTERVAL_MS_MIN) ||
+		    (polling_delay_on > ACPM_GOV_TIMER_INTERVAL_MS_MAX)) {
+			return -ERANGE;
+		}
 
-	/*
-	 * This sysfs node is mainly used for debugging and could race with
-	 * suspend/resume path as we don't use a lock to avoid it. The race
-	 * could cause pi-polling work re-queued after suspend so the pid
-	 * sample time might not run as our expectation. Please do NOT use
-	 * this for the production line.
-	 */
-	if (data->use_pi_thermal) {
-		WARN(1, "%s could potentially race with suspend/resume path!", __func__);
-		start_pi_polling(data, 0);
+		if (exynos_acpm_tmu_ipc_set_gov_tz_time_windows(
+			    data->id, polling_delay_on, data->thermal_pressure_time_window)) {
+			pr_err("%s: unable to set acpm gov polling_delay_on", __func__);
+			return -EINVAL;
+		}
+
+		data->polling_delay_on = polling_delay_on;
+	} else {
+		data->polling_delay_on = polling_delay_on;
+
+		/*
+	 	 * This sysfs node is mainly used for debugging and could race with
+	 	 * suspend/resume path as we don't use a lock to avoid it. The race
+	 	 * could cause pi-polling work re-queued after suspend so the pid
+	 	 * sample time might not run as our expectation. Please do NOT use
+	 	 * this for the production line.
+	 	 */
+		if (data->use_pi_thermal) {
+			WARN(1, "%s could potentially race with suspend/resume path!", __func__);
+			start_pi_polling(data, 0);
+		}
 	}
 
 	return count;
@@ -3655,6 +3668,7 @@ static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
 static DEVICE_ATTR_RO(tj_cur_cdev_state);
 static DEVICE_ATTR_RW(control_temp_step);
+static DEVICE_ATTR_RW(thermal_pressure_time_window);
 
 static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_pause_cpus_temp.attr,
@@ -3691,6 +3705,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
 	&dev_attr_tj_cur_cdev_state.attr,
 	&dev_attr_control_temp_step.attr,
+	&dev_attr_thermal_pressure_time_window.attr,
 	NULL,
 };
 
@@ -4631,8 +4646,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			if (parse_acpm_gov_common_dt())
 				goto err_dtm_dev_list;
 
-			acpm_gov_common.thermal_pressure.time_window =
-				ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT;
 			acpm_gov_common.thermal_pressure.state.switched_on = 0;
 			for(i = 0; i < NR_PRESSURE_TZ; i++)
 				acpm_gov_common.thermal_pressure.state.therm_press[i] = 0;
@@ -4667,12 +4680,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			struct task_struct *thread;
 			exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(
 				acpm_gov_common.tracing_mode);
-			if (exynos_acpm_tmu_ipc_set_gov_time_windows(
-				    acpm_gov_common.timer_interval,
-				    acpm_gov_common.thermal_pressure.time_window)) {
-				pr_err("GOV: timer interval and thermal press window configuration error\n");
-				goto err_dtm_dev_list;
-			}
 
 			if (acpm_gov_common.thermal_pressure.enabled) {
 				kthread_init_worker(&acpm_gov_common.thermal_pressure.worker);
@@ -4779,6 +4786,17 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			//sending an IPC to setup GOV param and control temperature step
 			exynos_acpm_tmu_ipc_set_gov_config(tzid, data->acpm_gov_params.qword);
 			exynos_acpm_tmu_ipc_set_control_temp_step(tzid, control_temp_step);
+
+			if (exynos_acpm_tmu_ipc_set_gov_tz_time_windows(
+				    data->id, data->polling_delay_on,
+				    data->thermal_pressure_time_window)) {
+				/* falling back to original interface as
+				 * the new individual timer feature is unavailable
+				 */
+				exynos_acpm_tmu_ipc_set_gov_time_windows(
+					ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT,
+					ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT);
+			}
 		}
 	} else {
 		thermal_zone_device_enable(data->tzd);
