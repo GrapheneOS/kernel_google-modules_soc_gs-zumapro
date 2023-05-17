@@ -54,6 +54,7 @@
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
 		timer_stepwise_gain = <1>;
+		thermal_pressure_time_window = <100>;
 
 		mapped_cpus = "8";
 		pressure_index = <0>;
@@ -84,6 +85,7 @@
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
 		timer_stepwise_gain = <1>;
+		thermal_pressure_time_window = <100>;
 
 		mapped_cpus = "4-7";
 		pressure_index = <1>;
@@ -114,6 +116,7 @@
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;
 		timer_stepwise_gain = <1>;
+		thermal_pressure_time_window = <100>;
 
 		mapped_cpus = "0-3";
 		pressure_index = <2>;
