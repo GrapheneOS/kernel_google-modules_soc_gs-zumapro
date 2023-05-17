@@ -448,7 +448,7 @@ static int samsung_pinconf_rw(struct pinctrl_dev *pctldev, unsigned int pin,
 	struct samsung_pin_bank *bank;
 	void __iomem *reg_base;
 	enum pincfg_type cfg_type = PINCFG_UNPACK_TYPE(*config);
-	u32 data, width, pin_offset, mask, shift;
+	u32 data, width, pin_offset, mask, shift, test_data;
 	u32 cfg_value, cfg_reg;
 	unsigned long flags;
 
@@ -474,6 +474,10 @@ static int samsung_pinconf_rw(struct pinctrl_dev *pctldev, unsigned int pin,
 		data &= ~(mask << shift);
 		data |= (cfg_value << shift);
 		writel(data, reg_base + cfg_reg);
+		test_data = readl(reg_base + cfg_reg);
+		if (data != test_data)
+			dev_err(drvdata->dev, "mismatched pinconf write, bank=%s, cfg=%d, pin=%d, data=%d, readback=%d",
+			       bank->name, cfg_reg, pin_offset, data, test_data);
 	} else {
 		data >>= shift;
 		data &= mask;
