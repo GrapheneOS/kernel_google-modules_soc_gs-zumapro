@@ -1390,9 +1390,9 @@ static void gs_pi_thermal(struct gs_tmu_data *data)
 
 polling:
 	if (params->switched_on)
-		delay = params->polling_delay_on;
+		delay = data->polling_delay_on;
 	else
-		delay = params->polling_delay_off;
+		delay = data->polling_delay_off;
 
 	if (delay)
 		start_pi_polling(data, delay);
@@ -2180,14 +2180,6 @@ static int gs_map_dt_data(struct platform_device *pdev)
 		if (!params)
 			return -ENOMEM;
 
-		of_property_read_u32(pdev->dev.of_node, "polling_delay_on",
-				     &params->polling_delay_on);
-		if (!params->polling_delay_on)
-			dev_err(&pdev->dev, "No input polling_delay_on\n");
-
-		of_property_read_u32(pdev->dev.of_node, "polling_delay_off",
-				     &params->polling_delay_off);
-
 		ret = of_property_read_u32(pdev->dev.of_node, "k_po",
 					   &value);
 		if (ret < 0)
@@ -2234,6 +2226,12 @@ static int gs_map_dt_data(struct platform_device *pdev)
 	} else {
 		data->use_pi_thermal = false;
 	}
+
+	of_property_read_u32(pdev->dev.of_node, "polling_delay_on", &data->polling_delay_on);
+	if (!data->polling_delay_on)
+		dev_err(&pdev->dev, "No input polling_delay_on\n");
+
+	of_property_read_u32(pdev->dev.of_node, "polling_delay_off", &data->polling_delay_off);
 
 	ret = of_property_read_u32(pdev->dev.of_node, "control_temp_step",
 		&data->control_temp_step);
@@ -3302,10 +3300,7 @@ polling_delay_on_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	if (data->pi_param)
-		return sysfs_emit(buf, "%u\n", data->pi_param->polling_delay_on);
-	else
-		return -EIO;
+	return sysfs_emit(buf, "%u\n", data->polling_delay_on);
 }
 
 static ssize_t
@@ -3316,13 +3311,10 @@ polling_delay_on_store(struct device *dev, struct device_attribute *devattr,
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 	u32 polling_delay_on;
 
-	if (!data->pi_param)
-		return -EIO;
-
 	if (kstrtou32(buf, 10, &polling_delay_on))
 		return -EINVAL;
 
-	data->pi_param->polling_delay_on = polling_delay_on;
+	data->polling_delay_on = polling_delay_on;
 
 	/*
 	 * This sysfs node is mainly used for debugging and could race with
@@ -3346,10 +3338,7 @@ polling_delay_off_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	if (data->pi_param)
-		return sysfs_emit(buf, "%u\n", data->pi_param->polling_delay_off);
-	else
-		return -EIO;
+	return sysfs_emit(buf, "%u\n", data->polling_delay_off);
 }
 
 static ssize_t
@@ -3360,13 +3349,10 @@ polling_delay_off_store(struct device *dev, struct device_attribute *devattr,
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 	u32 polling_delay_off;
 
-	if (!data->pi_param)
-		return -EIO;
-
 	if (kstrtou32(buf, 10, &polling_delay_off))
 		return -EINVAL;
 
-	data->pi_param->polling_delay_off = polling_delay_off;
+	data->polling_delay_off = polling_delay_off;
 
 	/*
 	 * This sysfs node is mainly used for debugging and could race with

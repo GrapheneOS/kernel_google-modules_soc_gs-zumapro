@@ -28,9 +28,6 @@ struct gs_pi_param {
 	s32 i_max;
 	s32 integral_cutoff;
 
-	int polling_delay_on;
-	int polling_delay_off;
-
 	bool switched_on;
 };
 
@@ -214,6 +211,8 @@ struct gs_tmu_data {
 	tr_handle tr_handle;
 	struct cpumask mapped_cpus;
 	int pressure_index;
+	int polling_delay_on;
+	int polling_delay_off;
 };
 
 enum throttling_stats_type {
