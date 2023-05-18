@@ -21,7 +21,8 @@
 #include <soc/google/gcma.h>
 
 #include "samsung-dma-heap.h"
-
+#include "gcma_heap.h"
+#include "gcma_heap_sysfs.h"
 
 #define BASE_GFP (GFP_HIGHUSER | __GFP_ZERO | __GFP_COMP)
 #define LIGHT_EFFORT_GFP  ((BASE_GFP | __GFP_NOWARN | __GFP_NORETRY) & ~__GFP_RECLAIM)
@@ -35,11 +36,6 @@
 static const unsigned int buddy_pages_orders[] = {9, 8, 4, 0};
 static const unsigned int gcma_pages_orders[] = {4};
 
-struct gcma_heap {
-	struct gen_pool *pool;
-	bool flexible_alloc;
-};
-
 struct heap_pages {
   struct list_head pages_list;
   unsigned int count;
@@ -52,21 +48,22 @@ unsigned long dma_heap_gcma_inuse_pages(void)
 
 static inline unsigned long gcma_get_size(struct page *page)
 {
-    return page_private(page);
+	return page_private(page);
 }
 
 static inline void gcma_set_size(struct page *page, unsigned long size)
 {
-    return set_page_private(page, size);
+	return set_page_private(page, size);
 }
 
 static inline bool page_is_gcma(struct page *page)
 {
-    return page_private(page) ? true : false;
+	return page_private(page) ? true : false;
 }
 
-static struct page *gcma_alloc(struct gen_pool *pool, unsigned long size)
+static struct page *gcma_alloc(struct gcma_heap *gcma_heap, unsigned long size)
 {
+	struct gen_pool *pool = gcma_heap->pool;
 	phys_addr_t paddr;
 	unsigned long pfn;
 	struct page *page = NULL;
@@ -79,6 +76,7 @@ static struct page *gcma_alloc(struct gen_pool *pool, unsigned long size)
 	page = phys_to_page(paddr);
 	gcma_alloc_range(pfn, pfn + (size >> PAGE_SHIFT) - 1);
 	gcma_set_size(page, size);
+	inc_gcma_heap_stat(gcma_heap, USAGE, size);
 	/*
 	 * zero out pages to align with the strategy in buddy allocator GFP flag
 	 */
@@ -103,9 +101,10 @@ static void free_gcma_heap_page(struct gcma_heap *gcma_heap, struct page *page)
 	if (unlikely(!page))
 		return;
 
-	if (page_is_gcma(page))
+	if (page_is_gcma(page)) {
 		gcma_free(gcma_heap->pool, page);
-	else {
+		dec_gcma_heap_stat(gcma_heap, USAGE, gcma_get_size(page));
+	} else {
 		unsigned int order = compound_order(page);
 		__free_pages(page, order);
 		dma_heap_dec_inuse(1 << order);
@@ -141,12 +140,13 @@ static struct page *alloc_largest_available(struct gcma_heap *gcma_heap,
 		if (size < gcma_size && i != ARRAY_SIZE(gcma_pages_orders) - 1)
 			continue;
 
-		page = gcma_alloc(gcma_heap->pool, gcma_size);
+		page = gcma_alloc(gcma_heap, gcma_size);
 		if (page)
 			goto out;
 	}
 
 	page = alloc_pages(HARD_EFFORT_GFP, 0);
+	inc_gcma_heap_stat(gcma_heap, ALLOCSTALL, PAGE_SIZE);
 out:
 	if (page && !page_is_gcma(page))
 		dma_heap_inc_inuse(1 << compound_order(page));
@@ -202,7 +202,7 @@ out_flexible_alloc:
 static int allocate_fixed_pages(struct gcma_heap *gcma_heap, unsigned long len,
 					    struct heap_pages *heap_pages)
 {
-	struct page *page = gcma_alloc(gcma_heap->pool, len);
+	struct page *page = gcma_alloc(gcma_heap, len);
 	if (page) {
 		list_add_tail(&page->lru, &heap_pages->pages_list);
 		heap_pages->count = 1;
@@ -380,6 +380,8 @@ static int gcma_heap_probe(struct platform_device *pdev)
 	if (ret == -ENODEV)
 		return 0;
 
+	register_heap_sysfs(gcma_heap, pdev->name);
+
 	return ret;
 }
 
@@ -399,6 +401,7 @@ static struct platform_driver gcma_heap_driver = {
 
 int __init gcma_dma_heap_init(void)
 {
+	gcma_heap_sysfs_init();
 	return platform_driver_register(&gcma_heap_driver);
 }
 
