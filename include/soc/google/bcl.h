@@ -270,11 +270,7 @@ struct bcl_device {
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);
 extern int google_set_db(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index);
-extern int google_set_mpmm(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index);
-extern int google_set_ppm(struct bcl_device *data, unsigned int value);
 extern unsigned int google_get_db(struct bcl_device *data, enum MPMM_SOURCE index);
-extern unsigned int google_get_mpmm(struct bcl_device *data, enum MPMM_SOURCE index);
-extern unsigned int google_get_ppm(struct bcl_device *data);
 extern struct bcl_device *google_retrieve_bcl_handle(void);
 extern int google_bcl_register_ifpmic(struct bcl_device *bcl_dev,
 				      const struct bcl_ifpmic_ops *pmic_ops);
@@ -335,22 +331,6 @@ static inline void bcl_enable_power(void)
 static inline void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index,
 					     unsigned int lvl)
 {
-}
-static inline unsigned int google_get_mpmm(struct bcl_device *data)
-{
-	return 0;
-}
-static inline unsigned int google_get_ppm(struct bcl_device *data)
-{
-	return 0;
-}
-static inline int google_set_ppm(struct bcl_device *data, unsigned int value)
-{
-	return 0;
-}
-static inline int google_set_mpmm(struct bcl_device *data, unsigned int value)
-{
-	return 0;
 }
 static inline struct bcl_device *google_retrieve_bcl_handle(void)
 {

@@ -1449,9 +1449,7 @@ static void init_bcl_dev(struct kthread_work *work)
 	struct gs_tmu_data *data = container_of(work,
 						   struct gs_tmu_data,
 						   cpu_hw_throttle_init_work.work);
-	int ret = 0;
 
-	mutex_lock(&data->lock);
 	data->bcl_dev = google_retrieve_bcl_handle();
 
 	if (!data->bcl_dev) {
@@ -1459,38 +1457,7 @@ static void init_bcl_dev(struct kthread_work *work)
 		kthread_mod_delayed_work(&data->cpu_hw_throttle_worker,
 					 &data->cpu_hw_throttle_init_work,
 					 msecs_to_jiffies(500));
-		goto init_exit;
 	}
-
-	if (!data->ppm_clr_throttle_level)
-		data->ppm_clr_throttle_level = google_get_ppm(data->bcl_dev);
-
-	if (!data->mpmm_clr_throttle_level)
-		data->mpmm_clr_throttle_level = google_get_mpmm(data->bcl_dev, LITTLE);
-	if (!data->mpmm_clr_throttle_level)
-		data->mpmm_clr_throttle_level = google_get_mpmm(data->bcl_dev, MID);
-	if (!data->mpmm_clr_throttle_level)
-		data->mpmm_clr_throttle_level = google_get_mpmm(data->bcl_dev, BIG);
-
-	if (data->ppm_clr_throttle_level < 0)
-		ret = data->ppm_clr_throttle_level;
-
-	if (data->mpmm_clr_throttle_level < 0)
-		ret = data->mpmm_clr_throttle_level;
-
-	if (ret < 0) {
-		pr_err_ratelimited("%s: failed to get ppm(%#x)/mpmm(%#x) setting, ret = %d\n",
-				   data->tmu_name,
-				   data->ppm_clr_throttle_level,
-				   data->mpmm_clr_throttle_level, ret);
-		goto init_exit;
-	}
-
-	pr_info("%s: parsing default setting ppm: %#x, mpmm: %#x\n", data->tmu_name,
-		data->ppm_clr_throttle_level, data->mpmm_clr_throttle_level);
-
-init_exit:
-	mutex_unlock(&data->lock);
 }
 
 static void gs_throttle_arm(struct kthread_work *work)
@@ -1498,110 +1465,13 @@ static void gs_throttle_arm(struct kthread_work *work)
 	struct gs_tmu_data *data = container_of(work,
 						   struct gs_tmu_data, cpu_hw_throttle_work);
 
-	int ret = 0;
+	/* MPMM throttle is handled by ACPM with ZUMA.
+	 * This function is obsolete and need to be implemented within the TMU driver if requested
+	 * for other devices.
+	 */
 
-	if (!data->bcl_dev) {
-		pr_err_ratelimited("Failed to retrieve bcl_dev, ppm/mpmm throttling failed\n");
-		return;
-	}
-
-	mutex_lock(&data->lock);
-
-	if (data->is_cpu_hw_throttled) {
-		if (data->temperature < data->cpu_hw_throttling_clr_threshold) {
-			pr_info_ratelimited("ppm/mpmm thermal throttling disable!\n");
-
-			ret = google_set_ppm(data->bcl_dev, data->ppm_clr_throttle_level);
-			if (ret) {
-				pr_err_ratelimited("Failed to clr ppm throttle to %#x, ret = %d",
-						   data->ppm_clr_throttle_level, ret);
-				goto unlock;
-			}
-			pr_info_ratelimited("Set ppm throttle to %#x\n",
-					    data->ppm_clr_throttle_level);
-
-			ret = google_set_mpmm(data->bcl_dev, data->mpmm_clr_throttle_level,
-					      LITTLE);
-			if (ret) {
-				pr_err_ratelimited("Failed to clr LITTLE mpmm throttle to %#x, ret = %d",
-						   data->mpmm_clr_throttle_level, ret);
-				goto unlock;
-			}
-			pr_info_ratelimited("Set LITTLE mpmm throttle to %#x\n",
-					    data->mpmm_clr_throttle_level);
-
-			ret = google_set_mpmm(data->bcl_dev, data->mpmm_clr_throttle_level,
-					      MID);
-			if (ret) {
-				pr_err_ratelimited("Failed to clr MID mpmm throttle to %#x, ret = %d",
-						   data->mpmm_clr_throttle_level, ret);
-				goto unlock;
-			}
-			pr_info_ratelimited("Set MID mpmm throttle to %#x\n",
-					    data->mpmm_clr_throttle_level);
-
-			ret = google_set_mpmm(data->bcl_dev, data->mpmm_clr_throttle_level,
-					      BIG);
-			if (ret) {
-				pr_err_ratelimited("Failed to clr BIG mpmm throttle to %#x, ret = %d",
-						   data->mpmm_clr_throttle_level, ret);
-				goto unlock;
-			}
-			pr_info_ratelimited("Set BIG mpmm throttle to %#x\n",
-					    data->mpmm_clr_throttle_level);
-
-			data->is_cpu_hw_throttled = false;
-		}
-	} else {
-		if (data->temperature >= data->cpu_hw_throttling_trigger_threshold) {
-			pr_info_ratelimited("ppm/mpmm thermal throttling enable!\n");
-
-			ret = google_set_ppm(data->bcl_dev, data->ppm_throttle_level);
-			if (ret) {
-				pr_err_ratelimited("Failed to set ppm throttle to %#x, ret = %d",
-						   data->ppm_throttle_level, ret);
-				goto unlock;
-			}
-			pr_info_ratelimited("Set ppm throttle to %#x\n",
-					    data->ppm_throttle_level);
-
-			ret = google_set_mpmm(data->bcl_dev, data->mpmm_throttle_level,
-			                      LITTLE);
-			if (ret) {
-				pr_err_ratelimited("Failed to set LITTLE mpmm to %#x, ret = %d",
-						   data->mpmm_throttle_level, ret);
-				goto unlock;
-			}
-			pr_info_ratelimited("Set LITTLE mpmm throttle to %#x\n",
-					    data->mpmm_throttle_level);
-
-			ret = google_set_mpmm(data->bcl_dev, data->mpmm_throttle_level,
-			                      MID);
-			if (ret) {
-				pr_err_ratelimited("Failed to set MID mpmm to %#x, ret = %d",
-						   data->mpmm_throttle_level, ret);
-				goto unlock;
-			}
-			pr_info_ratelimited("Set MID mpmm throttle to %#x\n",
-					    data->mpmm_throttle_level);
-
-			ret = google_set_mpmm(data->bcl_dev, data->mpmm_throttle_level,
-			                      BIG);
-			if (ret) {
-				pr_err_ratelimited("Failed to set BIG mpmm to %#x, ret = %d",
-						   data->mpmm_throttle_level, ret);
-				goto unlock;
-			}
-			pr_info_ratelimited("Set BIG mpmm throttle to %#x\n",
-					    data->mpmm_throttle_level);
-
-			data->is_cpu_hw_throttled = true;
-		}
-	}
-	update_thermal_trace(data, CPU_THROTTLE, data->is_cpu_hw_throttled);
-
-unlock:
-	mutex_unlock(&data->lock);
+	pr_err("%s: gs_throttle_arm is not supported\n", data->tmu_name);
+	return;
 }
 
 static void gs_throttle_cpu_hotplug(struct kthread_work *work)
