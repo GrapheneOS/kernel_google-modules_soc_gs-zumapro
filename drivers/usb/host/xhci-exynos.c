@@ -10,6 +10,8 @@
  * Copyright (c) 2021 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  */
+
+#include <core/hub.h> /* $(srctree)/drivers/usb/core/hub.h */
 #include <host/xhci.h> /* $(srctree)/drivers/usb/host/xhci.h */
 #include <host/xhci-mvebu.h> /* $(srctree)/drivers/usb/host/xhci-mvebu.h */
 #include <host/xhci-plat.h> /* $(srctree)/drivers/usb/host/xhci-plat.h */
@@ -25,6 +27,7 @@
 #include <linux/phy/phy.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/usb.h>
 #include <linux/usb/dwc3-exynos.h>
 #include <linux/usb/of.h>
 #include <linux/usb/phy.h>
@@ -43,6 +46,30 @@ static const struct xhci_driver_overrides xhci_exynos_overrides __initconst = {
 	.reset = xhci_exynos_setup,
 	.start = xhci_exynos_start,
 };
+
+static void xhci_exynos_early_stop_set(struct xhci_hcd_exynos *xhci_exynos, struct usb_hcd *hcd)
+{
+	struct usb_device *hdev = hcd->self.root_hub;
+	struct usb_hub *hub;
+	struct usb_port *port_dev;
+
+	if (!hdev || !hdev->actconfig || !hdev->maxchild) {
+		dev_info(xhci_exynos->dev, "no hdev to set early_stop\n");
+		return;
+	}
+
+	hub = usb_get_intfdata(hdev->actconfig->interface[0]);
+
+	if (!hub) {
+		dev_info(xhci_exynos->dev, "can't get usb_hub\n");
+		return;
+	}
+
+	port_dev = hub->ports[0];
+	port_dev->early_stop = true;
+
+	return;
+}
 
 static void xhci_priv_exynos_start(struct usb_hcd *hcd)
 {
@@ -694,6 +721,9 @@ static int xhci_exynos_probe(struct platform_device *pdev)
 	ret = usb_add_hcd(xhci->shared_hcd, irq, IRQF_SHARED);
 	if (ret)
 		goto dealloc_usb2_hcd;
+
+	xhci_exynos_early_stop_set(xhci_exynos, hcd);
+	xhci_exynos_early_stop_set(xhci_exynos, xhci->shared_hcd);
 
 	ret = xhci_vendor_offload_setup(&pdev->dev, xhci);
 	if (ret)
