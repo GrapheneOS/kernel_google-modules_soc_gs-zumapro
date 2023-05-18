@@ -768,7 +768,8 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 		for (i = 0; i < TRIGGERED_SOURCE_MAX; i++)
-			enable_irq(bcl_dev->zone[i]->bcl_irq);
+			if (bcl_dev->zone[i] && i != BATOILO)
+				enable_irq(bcl_dev->zone[i]->bcl_irq);
 	} else {
 		bcl_dev->core_conf[SUBSYSTEM_TPU].clkdivstep &= ~(1 << 0);
 		bcl_dev->core_conf[SUBSYSTEM_GPU].clkdivstep &= ~(1 << 0);
@@ -784,7 +785,8 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 			mutex_unlock(&bcl_dev->ratio_lock);
 		}
 		for (i = 0; i < TRIGGERED_SOURCE_MAX; i++)
-			disable_irq(bcl_dev->zone[i]->bcl_irq);
+			if (bcl_dev->zone[i] && i != BATOILO)
+				disable_irq(bcl_dev->zone[i]->bcl_irq);
 	}
 	return size;
 }
@@ -1032,9 +1034,8 @@ static ssize_t batoilo_lvl_store(struct device *dev,
 			BO_LOWER_LIMIT, BO_UPPER_LIMIT);
 		return -EINVAL;
 	}
-	disable_irq(bcl_dev->zone[BATOILO]->bcl_irq);
+
 	if (bcl_cb_batoilo_write(bcl_dev, value) < 0) {
-		enable_irq(bcl_dev->zone[BATOILO]->bcl_irq);
 		return -EIO;
 	}
 	bcl_dev->zone[BATOILO]->bcl_lvl = value - THERMAL_HYST_LEVEL;
@@ -1043,7 +1044,6 @@ static ssize_t batoilo_lvl_store(struct device *dev,
 		thermal_zone_device_update(bcl_dev->zone[BATOILO]->tz, THERMAL_EVENT_UNSPECIFIED);
 	if (ret)
 		dev_err(bcl_dev->device, "Fail to set sys_uvlo2 trip temp\n");
-	enable_irq(bcl_dev->zone[BATOILO]->bcl_irq);
 	return size;
 }
 

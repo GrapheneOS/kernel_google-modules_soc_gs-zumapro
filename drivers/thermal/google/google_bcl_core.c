@@ -295,7 +295,8 @@ static void google_warn_work(struct work_struct *work)
 	idx = zone->idx;
 	bcl_dev = zone->parent;
 
-	disable_irq(zone->bcl_irq);
+	if (idx != BATOILO)
+		disable_irq(zone->bcl_irq);
 	gpio_level = gpio_get_value(zone->bcl_pin);
 	if (gpio_level != zone->polarity) {
 		zone->bcl_cur_lvl = 0;
@@ -312,7 +313,8 @@ static void google_warn_work(struct work_struct *work)
 	}
 	if (zone->tz)
 		thermal_zone_device_update(zone->tz, THERMAL_EVENT_UNSPECIFIED);
-	enable_irq(zone->bcl_irq);
+	if (idx != BATOILO)
+		enable_irq(zone->bcl_irq);
 }
 
 static int google_bcl_set_soc(void *data, int low, int high)
