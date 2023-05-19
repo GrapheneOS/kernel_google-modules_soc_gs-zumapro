@@ -27,7 +27,6 @@
 };
 
 &cpufreq_domain1 {
-	soft-max-freq = <2367000>;
 	resume-freq = <1836000>;
 };
 
