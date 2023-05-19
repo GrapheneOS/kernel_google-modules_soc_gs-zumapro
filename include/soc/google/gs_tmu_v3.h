@@ -60,7 +60,8 @@ struct acpm_gov_params_st {
 	u8 timer_stepwise_gain;
 	u8 integral_thresh;
 	u8 enable;
-	u8 reserved[2];
+	u8 mpmm_throttle_on;
+	u8 reserved;
 };
 
 union acpm_gov_params_un {
@@ -156,6 +157,7 @@ struct gs_tmu_data {
 	int cpu_hw_throttling_clr_threshold;
 	int ppm_clr_throttle_level;
 	int ppm_throttle_level;
+	int mpmm_enable;
 	int mpmm_clr_throttle_level;
 	int mpmm_throttle_level;
 	int limited_frequency;
@@ -166,6 +168,7 @@ struct gs_tmu_data {
 	struct exynos_pm_qos_request thermal_limit_request;
 	bool limited;
 	void __iomem *base;
+	void __iomem *sysreg_cpucl0;
 	int irq;
 	struct kthread_worker hardlimit_worker;
 	struct kthread_worker thermal_worker;
@@ -406,5 +409,18 @@ struct gov_trace_data_struct {
 	struct buffered_curr_state buffered_curr_state[BULK_TRACE_DATA_LEN];
 	struct curr_state curr_state[NR_TZ];
 };
+
+#define SYSREG_CPUCL0_BASE (0x29c20000)
+#define CLUSTER0_LIT_MPMM  (0x1408)
+#define CLUSTER0_MID_MPMM  (0x140C)
+#define CLUSTER0_BIG_MPMM  (0x1410)
+#define CLUSTER0_MPMMEN    (0x1414)
+#define LIT_MPMMEN_MASK        (0xF)
+#define LIT_MPMMEN_OFFSET      (0)
+#define MID_MPMMEN_MASK        (0xF)
+#define MID_MPMMEN_OFFSET      (4)
+#define BIG_MPMMEN_MASK        (0x1)
+#define BIG_MPMMEN_OFFSET      (8)
+#define IS_CPU(tzid)       ((tzid) == TZ_BIG || (tzid) == TZ_MID || (tzid) == TZ_LIT)
 
 #endif /* _GS_TMU_V3_H */

@@ -58,6 +58,9 @@
 #define TMU_IPC_SET_TR_THRESHOLD		0x33
 #define TMU_IPC_GET_TR_THRESHOLD		0x34
 #define TMU_IPC_GET_TR_STATS                    0x35
+#define TMU_IPC_SET_MPMM_CLR_THROTTLE_LEVEL     0x38
+#define TMU_IPC_SET_MPMM_THROTTLE_LEVEL         0x39
+#define TMU_IPC_SET_MPMM_ENABLE                 0x40
 #define TMU_IPC_SET_GOV_TZ_TIMER_INTERVAL       0x41
 #define TMU_IPC_GET_GOV_TZ_TIMER_INTERVAL       0x42
 
@@ -171,7 +174,7 @@ void exynos_acpm_tmu_set_emul_temp(int tz, unsigned char temp);
 void exynos_acpm_tmu_reg_read(u8 tmu_id, u16 offset, u32 *val);
 void exynos_acpm_tmu_reg_write(u8 tmu_id, u16 offset, u32 val);
 void exynos_acpm_tmu_ipc_get_target_freq(int tz, u32 *freq);
-void exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword);
+int exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword);
 void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode);
 int exynos_acpm_tmu_ipc_set_gov_time_windows(int timer_interval, int thermal_press_window);
 int exynos_acpm_tmu_ipc_set_gov_tz_time_windows(int tz, int timer_interval,
@@ -192,6 +195,9 @@ int exynos_acpm_tmu_ipc_get_tr_num_thresholds(int tz, int *num_of_threshold);
 int exynos_acpm_tmu_ipc_set_tr_thresholds(int tz, u8 qword_index, u64 val);
 int exynos_acpm_tmu_ipc_get_tr_thresholds(int tz, u8 qword_index, u64 *val);
 int exynos_acpm_tmu_ipc_get_tr_stats(int tz, int bucket_idx, u64 *bucket_stat);
+int exynos_acpm_tmu_ipc_set_mpmm_clr_throttle_level(int tz, u16 val);
+int exynos_acpm_tmu_ipc_set_mpmm_throttle_level(int tz, u16 val);
+int exynos_acpm_tmu_ipc_set_mpmm_enable(int tz, u8 enable);
 
 struct acpm_irq_callback {
 	void *fn;

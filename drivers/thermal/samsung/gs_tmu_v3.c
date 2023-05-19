@@ -1399,6 +1399,71 @@ polling:
 	mutex_unlock(&data->lock);
 }
 
+static int gs_get_mpmm_level(struct gs_tmu_data *data)
+{
+	void __iomem *addr;
+	u32 reg;
+
+	if (!data)
+		return -EINVAL;
+	if (!data->sysreg_cpucl0) {
+		pr_err("Error in sysreg_cpucl0\n");
+		return -ENOMEM;
+	}
+
+	switch (data->id) {
+		case TZ_BIG: addr = data->sysreg_cpucl0 + CLUSTER0_BIG_MPMM; break;
+		case TZ_MID: addr = data->sysreg_cpucl0 + CLUSTER0_MID_MPMM; break;
+		case TZ_LIT: addr = data->sysreg_cpucl0 + CLUSTER0_LIT_MPMM; break;
+		default:
+			return -ENODEV;
+	}
+
+	mutex_lock(&data->lock);
+	reg = __raw_readl(addr);
+	mutex_unlock(&data->lock);
+
+	return reg;
+}
+
+static int gs_get_mpmm_enable(struct gs_tmu_data *data)
+{
+	void __iomem *addr;
+	u32 reg, mask, offset;
+
+	if (!data)
+		return -EINVAL;
+	if (!data->sysreg_cpucl0) {
+		pr_err("Error in sysreg_cpucl0\n");
+		return -ENOMEM;
+	}
+
+	switch (data->id) {
+		case TZ_BIG:
+			mask = BIG_MPMMEN_MASK;
+			offset = BIG_MPMMEN_OFFSET;
+			break;
+		case TZ_MID:
+			mask = MID_MPMMEN_MASK;
+			offset = MID_MPMMEN_OFFSET;
+			break;
+		case TZ_LIT:
+			mask = LIT_MPMMEN_MASK;
+			offset = LIT_MPMMEN_OFFSET;
+			break;
+		default:
+			return -ENODEV;
+	}
+
+	addr = data->sysreg_cpucl0 + CLUSTER0_MPMMEN;
+	mutex_lock(&data->lock);
+	reg = __raw_readl(addr);
+	mutex_unlock(&data->lock);
+
+	reg = (reg >> offset) & mask;
+	return reg;
+}
+
 static void gs_pi_polling(struct kthread_work *work)
 {
 	struct gs_tmu_data *data =
@@ -2004,7 +2069,34 @@ static int gs_map_dt_data(struct platform_device *pdev)
 	}
 #endif
 
-#if IS_ENABLED(CONFIG_GOOGLE_BCL)
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	data->sysreg_cpucl0 = devm_ioremap(&pdev->dev, SYSREG_CPUCL0_BASE, SZ_8K);
+	if (!data->sysreg_cpucl0) {
+		dev_err(&pdev->dev, "Failed to ioremap sysreg_cpucl0\n");
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_enable", &data->mpmm_enable);
+	if (ret < 0) {
+		data->mpmm_enable = 0;
+		dev_err(&pdev->dev, "No input mpmm_enable\n");
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_throttle_level",
+								&data->mpmm_throttle_level);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "No input mpmm_throttle_level\n");
+		data->mpmm_throttle_level = 0;
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_clr_throttle_level",
+								&data->mpmm_clr_throttle_level);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "No input mpmm_clr_throttle_level\n");
+		data->mpmm_clr_throttle_level = 0;
+	}
+#else
+	data->sysreg_cpucl0 = 0;
+
 	data->cpu_hw_throttling_enable = of_property_read_bool(pdev->dev.of_node,
 							       "cpu_hw_throttling_enable");
 	if (data->cpu_hw_throttling_enable) {
@@ -2168,6 +2260,14 @@ static int gs_map_dt_data(struct platform_device *pdev)
 		}
 
 		data->acpm_gov_params.fields.enable = 1;
+
+		data->acpm_gov_params.fields.mpmm_throttle_on = 0;
+		if (IS_CPU(data->id) &&
+		            of_property_read_bool(pdev->dev.of_node, "use-acpm-mpmm-throttle")) {
+			data->acpm_gov_params.fields.mpmm_throttle_on = 1;
+			// force turning off kernel mpmm throttling
+			data->cpu_hw_throttling_enable = false;
+		}
 	}
 
 	ret = of_property_read_string(pdev->dev.of_node, "mapped_cpus", &buf);
@@ -3466,6 +3566,161 @@ static ssize_t ipc_dump2_show(struct device *dev, struct device_attribute *attr,
 			data.val[4], data.val[5], data.val[6], data.val[7]);
 }
 
+static ssize_t mpmm_clr_throttle_level_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	if (data->mpmm_clr_throttle_level < 0)
+		return sysfs_emit(buf, "n/a\n");
+	else
+		return sysfs_emit(buf, "0x%x\n", data->mpmm_clr_throttle_level);
+}
+
+static ssize_t mpmm_clr_throttle_level_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf,
+					size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	u16 val;
+	int ret;
+
+	if (kstrtou16(buf, 16, &val))
+		return -EINVAL;
+
+	if (!acpm_gov_common.turn_on)
+		return -ENODEV;
+
+	ret = exynos_acpm_tmu_ipc_set_mpmm_clr_throttle_level(data->id, val);
+	if (ret)
+		return -EIO;
+	data->mpmm_clr_throttle_level = (int)val;
+	return count;
+}
+
+static ssize_t mpmm_throttle_level_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	if (data->mpmm_throttle_level < 0)
+		return sysfs_emit(buf, "n/a\n");
+	else
+		return sysfs_emit(buf, "0x%x\n", data->mpmm_throttle_level);
+}
+
+static ssize_t mpmm_throttle_level_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf,
+					size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	u16 val;
+	int ret;
+
+	if (kstrtou16(buf, 16, &val))
+		return -EINVAL;
+
+	if (!acpm_gov_common.turn_on)
+		return -ENODEV;
+
+	ret = exynos_acpm_tmu_ipc_set_mpmm_throttle_level(data->id, val);
+	if (ret)
+		return -EIO;
+	data->mpmm_throttle_level = (int)val;
+	return count;
+}
+
+static ssize_t mpmm_current_level_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	u32 val;
+
+	val = gs_get_mpmm_level(data);
+
+	return sysfs_emit(buf, "0x%x\n", val);
+}
+
+
+static ssize_t mpmm_enable_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int val;
+
+	val = gs_get_mpmm_enable(data);
+
+	return sysfs_emit(buf, "0x%x\n", val);
+}
+
+static ssize_t mpmm_enable_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf,
+					size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	u8 mpmm_enable;
+	int ret;
+
+	if (kstrtou8(buf, 16, &mpmm_enable))
+		return -EINVAL;
+
+	if (!acpm_gov_common.turn_on)
+		return -ENODEV;
+
+	ret = exynos_acpm_tmu_ipc_set_mpmm_enable(data->id, mpmm_enable);
+	if (ret)
+		return -EIO;
+	data->mpmm_enable = (int)mpmm_enable;
+	return count;
+}
+
+static ssize_t acpm_mpmm_throttle_on_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	return sysfs_emit(buf, "%llu\n", data->acpm_gov_params.fields.mpmm_throttle_on);
+}
+
+static ssize_t acpm_mpmm_throttle_on_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf,
+					size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	union acpm_gov_params_un gov_param;
+	int ret;
+
+	gov_param.qword = data->acpm_gov_params.qword;
+	if (!IS_CPU(data->id))
+		return -ENODEV;
+	if (kstrtou8(buf, 16, &gov_param.fields.mpmm_throttle_on))
+		return -EINVAL;
+	if (gov_param.fields.mpmm_throttle_on > 1)
+		return -EINVAL;
+
+	if (!acpm_gov_common.turn_on)
+		return -ENODEV;
+
+	ret = exynos_acpm_tmu_ipc_set_gov_config(data->id, gov_param.qword);
+	if (ret)
+		return -EIO;
+	data->acpm_gov_params.qword = gov_param.qword;
+	return count;
+}
+
 #define create_s32_param_attr(name, Name)                                                          \
 	static ssize_t name##_show(struct device *dev, struct device_attribute *devattr,           \
 				   char *buf)                                                      \
@@ -3539,6 +3794,11 @@ static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
 static DEVICE_ATTR_RO(tj_cur_cdev_state);
 static DEVICE_ATTR_RW(control_temp_step);
 static DEVICE_ATTR_RW(thermal_pressure_time_window);
+static DEVICE_ATTR_RW(mpmm_clr_throttle_level);
+static DEVICE_ATTR_RW(mpmm_throttle_level);
+static DEVICE_ATTR_RO(mpmm_current_level);
+static DEVICE_ATTR_RW(mpmm_enable);
+static DEVICE_ATTR_RW(acpm_mpmm_throttle_on);
 
 static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_pause_cpus_temp.attr,
@@ -3576,6 +3836,11 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_tj_cur_cdev_state.attr,
 	&dev_attr_control_temp_step.attr,
 	&dev_attr_thermal_pressure_time_window.attr,
+	&dev_attr_mpmm_clr_throttle_level.attr,
+	&dev_attr_mpmm_throttle_level.attr,
+	&dev_attr_mpmm_current_level.attr,
+	&dev_attr_mpmm_enable.attr,
+	&dev_attr_acpm_mpmm_throttle_on.attr,
 	NULL,
 };
 
@@ -4658,6 +4923,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (acpm_gov_common.turn_on) {
 		if (data->acpm_gov_params.fields.enable) {
 			int tzid = data->id;
+			int ret;
 			u32 control_temp_step = data->control_temp_step;
 
 			data->acpm_gov_params.fields.ctrl_temp_idx =
@@ -4678,6 +4944,24 @@ static int gs_tmu_probe(struct platform_device *pdev)
 				exynos_acpm_tmu_ipc_set_gov_time_windows(
 					ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT,
 					ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT);
+			}
+			//sending an IPC to setup GOV MPMM parameters
+			ret = exynos_acpm_tmu_ipc_set_mpmm_clr_throttle_level(tzid,
+			                                       data->mpmm_clr_throttle_level);
+			if (ret) {
+				dev_warn(&pdev->dev, "cannot set mpmm_clr_throttle_level\n");
+				data->mpmm_clr_throttle_level = -1;
+			}
+			ret = exynos_acpm_tmu_ipc_set_mpmm_throttle_level(tzid,
+			                                           data->mpmm_throttle_level);
+			if (ret) {
+				dev_warn(&pdev->dev, "cannot set mpmm_throttle_level\n");
+				data->mpmm_throttle_level = -1;
+			}
+			ret = exynos_acpm_tmu_ipc_set_mpmm_enable(tzid, (u8)data->mpmm_enable);
+			if (ret) {
+				dev_warn(&pdev->dev, "cannot set mpmm_enable\n");
+				data->mpmm_enable = gs_get_mpmm_enable(data);
 			}
 		}
 	} else {
