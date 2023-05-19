@@ -19,6 +19,7 @@
 
 #include "gcma_vh.h"
 #include "gcma_sysfs.h"
+#include "gcma_debug.h"
 
 #define CREATE_TRACE_POINTS
 #include "gcma_trace.h"
@@ -683,7 +684,10 @@ void gcma_cc_store_page(int hash_id, struct cleancache_filekey key,
 	struct page *g_page;
 	void *src, *dst;
 	bool is_new = false;
-	bool workingset = PageWorkingset(page);
+	bool workingset = true;
+
+	if (workingset_filter_enabled())
+		workingset = PageWorkingset(page);
 
 	/*
 	 * This cleancache function is called under irq disabled so every
@@ -973,6 +977,7 @@ int __init gcma_init(void)
 		return -ENOMEM;
 
 	gcma_sysfs_init();
+	gcma_debugfs_init();
 	cleancache_register_ops(&gcma_cleancache_ops);
 
 	return 0;
