@@ -803,7 +803,6 @@ static bool try_empty_inode(struct gcma_inode *inode)
 			continue;
 		xas_pause(&xas);
 		xas_unlock_irqrestore(&xas, flags);
-		cond_resched();
 		xas_lock_irqsave(&xas, flags);
 	}
 	xas_unlock_irqrestore(&xas, flags);
