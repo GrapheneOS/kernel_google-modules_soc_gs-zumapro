@@ -41,8 +41,8 @@
 		use-pi-thermal;
 		polling_delay_on = <25>;
 		polling_delay_off = <0>;
-		k_po = <90>;
-		k_pu = <90>;
+		k_po = <68>;
+		k_pu = <68>;
 		k_i = <50>;
 		i_max = <5>;
 		integral_cutoff = <10>;
@@ -83,9 +83,9 @@
 		use-pi-thermal;
 		polling_delay_on = <25>;
 		polling_delay_off = <0>;
-		k_po = <90>;
-		k_pu = <90>;
-		k_i = <50>;
+		k_po = <36>;
+		k_pu = <36>;
+		k_i = <58>;
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <1000>;
@@ -119,9 +119,9 @@
 		use-pi-thermal;
 		polling_delay_on = <50>;
 		polling_delay_off = <0>;
-		k_po = <90>;
-		k_pu = <90>;
-		k_i = <50>;
+		k_po = <60>;
+		k_pu = <60>;
+		k_i = <20>;
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
