@@ -312,7 +312,7 @@
 			dm-type = <DM_CPU_CL2>;
 
 			min-freq = <500000>;
-			max-freq = <2943000>;
+			max-freq = <2914000>;
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <0>;
