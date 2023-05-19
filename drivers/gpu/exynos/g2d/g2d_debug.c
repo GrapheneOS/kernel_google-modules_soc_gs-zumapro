@@ -373,7 +373,7 @@ static void g2d_dump_common_sfr(struct g2d_device *g2d_dev,
 				struct g2d_task *task,
 				unsigned int *hdrmap, unsigned int *filtermap)
 {
-	unsigned int nr_layer = task ? task->num_source : g2d_dev->max_layers;
+	unsigned int nr_layer = g2d_dev->max_layers;
 	unsigned int i;
 
 	__g2d_dump_sfr(g2d_dev->reg, g2d_reg_info_common, ARRAY_SIZE(g2d_reg_info_common));
@@ -453,7 +453,7 @@ void g2d_dump_sfr(struct g2d_device *g2d_dev, struct g2d_task *task)
 
 	g2d_dump_common_sfr(g2d_dev, task, &hdrmap, &filtermap);
 
-	if (!(g2d_dev->caps & G2D_DEVICE_CAPS_AFBC_V12))
+	if (!!(g2d_dev->caps & G2D_DEVICE_CAPS_AFBC_V12))
 		__g2d_dump_sfr(g2d_dev->reg, &g2d_reg_info_afbc, 1);
 
 	if (!!(g2d_dev->caps & G2D_DEVICE_CAPS_HWFC))

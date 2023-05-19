@@ -578,11 +578,59 @@ err_buffer:
 	return ret;
 }
 
+static inline bool caps_has_afbcv12(unsigned long caps)
+{
+	return !!(caps & G2D_DEVICE_CAPS_AFBC_V12);
+}
+
+#define TARGET_OFFSET		0x120
+#if IS_ENABLED(CONFIG_SOC_GS101) || IS_ENABLED(CONFIG_SOC_GS201)
+#define LAYER_OFFSET(idx)	((2 + (idx)) << 8)
+#elif IS_ENABLED(CONFIG_SOC_ZUMA)
+#define LAYER_OFFSET(idx)       ((3 + (idx)) << 8)
+#endif
+
+enum {
+	G2D_AFBC_REG_VALUE_BLK_16x16 = 0,
+	G2D_AFBC_REG_VALUE_BLK_32x8 = 1,
+};
+
+static unsigned int update_afbc_supblock_size(struct g2d_task *task,
+					      struct g2d_reg regs[])
+{
+	unsigned int i;
+	unsigned int count = 0;
+
+	if (!caps_has_afbcv12(task->g2d_dev->caps))
+		return 0;
+
+	if (IS_AFBC(task->target.commands[G2DSFR_IMG_COLORMODE].value) &&
+	    !!(task->target.flags & G2D_LAYERFLAG_AFBC_LANDSCAPE)) {
+		regs[count].offset = TARGET_OFFSET + 0x94;
+		regs[count].value = G2D_AFBC_REG_VALUE_BLK_32x8;
+		count++;
+	}
+
+	for (i = 0; i < task->num_source; i++) {
+		struct g2d_layer *layer = &task->source[i];
+
+		if (IS_AFBC(layer->commands[G2DSFR_IMG_COLORMODE].value) &&
+		    !!(layer->flags & G2D_LAYERFLAG_AFBC_LANDSCAPE)) {
+			regs[count].offset = LAYER_OFFSET(i) + 0xB4;
+			regs[count].value = G2D_AFBC_REG_VALUE_BLK_32x8;
+			count++;
+		}
+	}
+
+	return count;
+}
+
 int g2d_get_userdata(struct g2d_device *g2d_dev, struct g2d_context *ctx,
 		     struct g2d_task *task, struct g2d_task_data *data)
 {
 	unsigned int i;
 	int ret;
+	struct g2d_reg *cmdaddr = page_address(task->cmd_page);
 
 	/* invalid range check */
 	if (data->num_source < 1 || data->num_source > g2d_dev->max_layers) {
@@ -598,7 +646,7 @@ int g2d_get_userdata(struct g2d_device *g2d_dev, struct g2d_context *ctx,
 	task->flags = data->flags;
 	task->num_source = data->num_source;
 
-	ret = g2d_import_commands(g2d_dev, task, data, task->num_source);
+	ret = g2d_import_commands(g2d_dev, task, data, task->num_source, cmdaddr);
 	if (ret < 0)
 		return ret;
 
@@ -609,6 +657,7 @@ int g2d_get_userdata(struct g2d_device *g2d_dev, struct g2d_context *ctx,
 	ret = g2d_get_sources(g2d_dev, task, data->source);
 	if (ret)
 		goto err_src;
+	task->sec.cmd_count += update_afbc_supblock_size(task, cmdaddr);
 
 	task->release_fence = g2d_create_release_fence(g2d_dev, task, data);
 	if (IS_ERR(task->release_fence)) {
