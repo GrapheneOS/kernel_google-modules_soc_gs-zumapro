@@ -29,6 +29,37 @@
  * page->index : page offset from inode
  */
 
+static inline int get_area_id(struct page *page)
+{
+	return page->units;
+}
+
+static inline void set_area_id(struct page *page, int id)
+{
+	page->units = id;
+}
+
+static inline unsigned long get_inode_index(struct page *page)
+{
+	return page->index;
+}
+
+static inline void set_inode_index(struct page *page, unsigned long index)
+{
+	page->index = index;
+}
+
+static inline struct gcma_inode *get_inode_mapping(struct page *page)
+{
+	return (struct gcma_inode *)page->mapping;
+}
+
+static inline void set_inode_mapping(struct page *page,
+				     struct gcma_inode *inode)
+{
+	page->mapping = (struct address_space *)inode;
+}
+
 #define GCMA_HASH_BITS	10
 
 /*
@@ -129,8 +160,8 @@ static void ClearPageGCMAFree(struct page *page)
 
 static void reset_gcma_page(struct page *page)
 {
-	page->mapping = NULL;
-	page->index = 0;
+	set_inode_mapping(page, NULL);
+	set_inode_index(page, 0);
 }
 
 static struct gcma_inode *alloc_gcma_inode(struct gcma_fs *gcma_fs,
@@ -248,7 +279,7 @@ int register_gcma_area(const char *name, phys_addr_t base, phys_addr_t size)
 	for (i = 0; i < page_count; i++) {
 		page = pfn_to_page(pfn + i);
 		/* Never changed since the id set up */
-		page->units = area_id;
+		set_area_id(page, area_id);
 		reset_gcma_page(page);
 		SetPageGCMAFree(page);
 		list_add(&page->lru, &area->free_pages);
@@ -271,7 +302,7 @@ static void page_area_lock(struct page *page)
 
 	VM_BUG_ON(!irqs_disabled());
 
-	area = &areas[page->units];
+	area = &areas[get_area_id(page)];
 	spin_lock(&area->free_pages_lock);
 }
 
@@ -279,7 +310,7 @@ static void page_area_unlock(struct page *page)
 {
 	struct gcma_area *area;
 
-	area = &areas[page->units];
+	area = &areas[get_area_id(page)];
 	spin_unlock(&area->free_pages_lock);
 }
 
@@ -317,7 +348,7 @@ static struct page *gcma_alloc_page(void)
 /* Hold page_area_lock */
 static void __gcma_free_page(struct page *page)
 {
-	struct gcma_area *area = &areas[page->units];
+	struct gcma_area *area = &areas[get_area_id(page)];
 
 	reset_gcma_page(page);
 	VM_BUG_ON(!list_empty(&page->lru));
@@ -367,8 +398,8 @@ static int gcma_store_page(struct gcma_inode *inode, unsigned long index,
 	if (!err) {
 		atomic_inc(&inode->ref_count);
 		gcma_get_page(page);
-		page->mapping = (struct address_space *)inode;
-		page->index = index;
+		set_inode_mapping(page, inode);
+		set_inode_index(page, index);
 	}
 
 	return err;
@@ -458,8 +489,8 @@ again:
 		 * From now on, the page and inode is never freed by page's
 		 * refcount and RCU lock.
 		 */
-		inode = (struct gcma_inode *)page->mapping;
-		index = page->index;
+		inode = get_inode_mapping(page);
+		index = get_inode_index(page);
 		page_area_unlock(page);
 
 		/*
@@ -613,8 +644,8 @@ static void evict_gcma_lru_pages(unsigned long nr_request)
 			unsigned long index;
 
 			page = pages[i];
-			inode = (struct gcma_inode *)page->mapping;
-			index = page->index;
+			inode = get_inode_mapping(page);
+			index = get_inode_index(page);
 
 			xa_lock_irqsave(&inode->pages, flags);
 			if (xa_load(&inode->pages, index) == page)
