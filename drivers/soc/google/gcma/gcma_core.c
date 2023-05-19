@@ -255,8 +255,8 @@ int register_gcma_area(const char *name, phys_addr_t base, phys_addr_t size)
 	area->end_pfn = pfn + page_count - 1;
 	atomic64_add(page_count, &total_gcma_pages);
 
-	pr_info("Reserved memory: created GCMA memory pool at %pa, size %ld MiB for %s\n",
-		 &base, size / SZ_1M, name ? : "none");
+	pr_info("Reserved memory: created GCMA memory pool at %pa, size %lu MiB for %s\n",
+		 &base, (unsigned long)size / SZ_1M, name ? : "none");
 
 	return 0;
 }
