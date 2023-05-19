@@ -6,16 +6,20 @@
 
 #define pr_fmt(fmt) "gcma: " fmt
 
+#ifdef CONFIG_ANDROID_VENDOR_HOOKS
 #include <soc/google/gcma.h>
+#endif
+
 #include <linux/cleancache.h>
 #include <linux/slab.h>
 #include <linux/highmem.h>
 #include <linux/idr.h>
 #include <linux/hashtable.h>
 #include <linux/xarray.h>
-#include <trace/hooks/mm.h>
 
+#include "gcma_vh.h"
 #include "gcma_sysfs.h"
+
 #define CREATE_TRACE_POINTS
 #include "gcma_trace.h"
 
@@ -43,7 +47,6 @@ static LIST_HEAD(gcma_lru);
 static DEFINE_SPINLOCK(lru_lock);
 
 static atomic_t nr_gcma_area = ATOMIC_INIT(0);
-static atomic64_t total_gcma_pages = ATOMIC64_INIT(0);
 
 /* represent reserved memory range */
 struct gcma_area {
@@ -253,7 +256,7 @@ int register_gcma_area(const char *name, phys_addr_t base, phys_addr_t size)
 
 	area->start_pfn = pfn;
 	area->end_pfn = pfn + page_count - 1;
-	atomic64_add(page_count, &total_gcma_pages);
+	inc_gcma_total_pages(page_count);
 
 	pr_info("Reserved memory: created GCMA memory pool at %pa, size %lu MiB for %s\n",
 		 &base, (unsigned long)size / SZ_1M, name ? : "none");
@@ -916,11 +919,6 @@ static int gcma_cc_init_shared_fs(uuid_t *uuid, size_t pagesize)
 	return -1;
 }
 
-static void vh_gcma_si_meminfo_fixup(void *data, struct sysinfo *val)
-{
-	val->totalram += (u64)atomic64_read(&total_gcma_pages);
-}
-
 struct cleancache_ops gcma_cleancache_ops = {
 	.init_fs = gcma_cc_init_fs,
 	.init_shared_fs = gcma_cc_init_shared_fs,
@@ -935,7 +933,7 @@ int __init gcma_init(void)
 {
 	int err;
 
-	err = register_trace_android_vh_si_meminfo(vh_gcma_si_meminfo_fixup, NULL);
+	err = gcma_vh_init();
 	if (err)
 		return err;
 

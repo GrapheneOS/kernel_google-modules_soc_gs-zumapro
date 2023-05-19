@@ -8,3 +8,4 @@ CFLAGS_gcma_core.o = -I$(srctree)/$(src)
 obj-$(CONFIG_GCMA) += gcma.o
 
 gcma-y                    := gcma_core.o gcma_sysfs.o
+gcma-$(CONFIG_ANDROID_VENDOR_HOOKS) += gcma_vh.o
