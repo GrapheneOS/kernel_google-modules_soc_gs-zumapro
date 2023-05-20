@@ -325,7 +325,7 @@ static void __gcma_free_page(struct page *page)
 static void gcma_free_page(struct page *page)
 {
 	__gcma_free_page(page);
-	inc_gcma_stat(CACHED_PAGE);
+	dec_gcma_stat(CACHED_PAGE);
 }
 
 static inline void gcma_get_page(struct page *page)
