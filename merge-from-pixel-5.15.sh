@@ -40,8 +40,7 @@ do_merge() {
   shift
   (
     cd ${dir} || exit 1
-    branch=`git branch -r 2>&1 | sed -n 's/ *m\/.* -> //p'`
-    [ -n "${branch}" ] || branch=partner/android-gs-pixel-mainline
+    branch=partner/android14-gs-pixel-6.1-zuma
     repo start ${BRANCH} . || exit 1
     commits="`git cherry -v ${branch} ${from_branch} |
                 sed -n 's/^[+] //p'`"
