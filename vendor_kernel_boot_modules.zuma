@@ -46,6 +46,7 @@ exynos-cpupm.ko
 exynos-debug-test.ko
 exynos-dm.ko
 exynos-drm.ko
+exynos-drm-audio.ko
 exynos-ecc-handler.ko
 exynos-hdcp2.ko
 exynos-pd-dbg.ko
