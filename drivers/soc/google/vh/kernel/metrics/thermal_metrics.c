@@ -18,18 +18,9 @@
 #define MAX_NUM_SUPPORTED_THERMAL_ZONES        36
 #define MAX_NUM_SUPPORTED_THERMAL_GROUPS       10
 
-#define GET_TZ_THRESHOLD(stats, tr_handle)     (stats->ops.get_thresholds(tr_handle,           \
-                                                  stats->threshold, &stats->num_thresholds))
-#define GET_TZ_STATS(stats, tr_handle)         (stats->ops.get_stats(tr_handle,                \
-                                                  stats->time_in_state_ms))
+
 static const int default_thresholds[MAX_SUPPORTED_THRESHOLDS] = {
 			60000, 80000, 90000, 100000, 103000, 105000, 110000, 115000};
-
-struct temperature_sample {
-	int temp;
-	// real timestamp in seconds
-	time64_t timestamp;
-};
 
 struct temperature_bucket_sample {
 	int temp;
@@ -41,8 +32,8 @@ struct temperature_residency_stats {
 	spinlock_t lock;
 	int threshold[MAX_SUPPORTED_THRESHOLDS];
 	atomic64_t time_in_state_ms[MAX_SUPPORTED_THRESHOLDS + 1];
-	struct temperature_sample max_sample;
-	struct temperature_sample min_sample;
+	struct tr_sample max_sample;
+	struct tr_sample min_sample;
 	bool started;
 	char name[THERMAL_NAME_LENGTH + 1];
 	struct temperature_bucket_sample prev;
@@ -67,7 +58,7 @@ static struct attribute_group temp_residency_all_attr_group;
 /*********************************************************************
  *                          HELPER FUNCTIONS                         *
  *********************************************************************/
-static void set_temperature_sample(struct temperature_sample *sample, int temp)
+static void set_temperature_sample(struct tr_sample *sample, int temp)
 {
 	sample->temp = temp;
 	sample->timestamp = ktime_get_real_seconds();
@@ -169,6 +160,17 @@ static struct kobject *get_thermal_group_kobj(char *thermal_group_name)
 	thermal_group_array[index].name = kstrdup(thermal_group_name, GFP_KERNEL);
 	thermal_group_array[index].kobj = thermal_group_kobj;
 	return thermal_group_kobj;
+}
+
+static int get_tz_cb_threshold(tr_handle instance, struct temperature_residency_stats *stats)
+{
+	return stats->ops.get_thresholds(instance, stats->threshold, &stats->num_thresholds);
+}
+
+static int get_tz_cb_stats(tr_handle instance, struct temperature_residency_stats *stats)
+{
+	return stats->ops.get_stats(instance, stats->time_in_state_ms,
+	                                       &stats->max_sample, &stats->min_sample);
 }
 
 /*********************************************************************
@@ -331,7 +333,7 @@ static ssize_t temp_residency_all_stats_show(struct kobject *kobj,
 {
 	struct temperature_residency_stats *stats;
 	int instance;
-	int index;
+	int index, ret;
 	int len = 0;
 	for (instance = 0 ; instance < MAX_NUM_SUPPORTED_THERMAL_ZONES ; instance++) {
 		stats = &residency_stat_array[instance];
@@ -339,15 +341,15 @@ static ssize_t temp_residency_all_stats_show(struct kobject *kobj,
 			continue;
 
 		if (stats->use_callback) {
-			int err = GET_TZ_THRESHOLD(stats, instance);
-			if (err < 0) {
-				pr_err("thresholds read failed: %s: %d\n", stats->name, err);
-				return -EIO;
+			ret = get_tz_cb_threshold(instance, stats);
+			if(ret) {
+				pr_err("thresholds read failed: %s\n", stats->name);
+				goto end_err;
 			}
-			err = GET_TZ_STATS(stats, instance);
-			if (err < 0) {
-				pr_err("stats read failed: %s: %d\n", stats->name, err);
-				return -EIO;
+			ret = get_tz_cb_stats(instance, stats);
+			if (ret) {
+				pr_err("stats read failed: %s\n", stats->name);
+				goto end_err;
 			}
 		} else {
 			temp_residency_stats_update(instance, stats->prev.temp);
@@ -375,6 +377,8 @@ static ssize_t temp_residency_all_stats_show(struct kobject *kobj,
 			atomic64_read(&(stats->time_in_state_ms[stats->num_thresholds])));
 	}
 	return len;
+end_err:
+	return ret;
 }
 
 static ssize_t temp_residency_all_stats_reset_store(struct kobject *kobj,
@@ -396,7 +400,7 @@ static ssize_t temp_residency_name_stats_show(struct kobject *kobj,
 					 char *buf)
 {
 	struct temperature_residency_stats *designated_stats;
-	int index;
+	int index, ret;
 	int len = 0;
 	if (designated_handle == -1) {
 		len += sysfs_emit_at(buf, len, "NO DESIGNATED THERMAL ZONE\n");
@@ -404,15 +408,15 @@ static ssize_t temp_residency_name_stats_show(struct kobject *kobj,
 	}
 	designated_stats = &residency_stat_array[designated_handle];
 	if (designated_stats->use_callback) {
-		int err = GET_TZ_THRESHOLD(designated_stats, designated_handle);
-		if (err < 0) {
-			pr_err("thresholds read failed: %s: %d\n", designated_stats->name, err);
-			return -EIO;
+		ret = get_tz_cb_threshold(designated_handle, designated_stats);
+		if (ret) {
+			pr_err("thresholds read failed: %s\n", designated_stats->name);
+			goto end_err;
 		}
-		err = GET_TZ_STATS(designated_stats, designated_handle);
-		if (err < 0) {
-			pr_err("stats read failed: %s: %d\n", designated_stats->name, err);
-			return -EIO;
+		ret = get_tz_cb_stats(designated_handle, designated_stats);
+		if (ret) {
+			pr_err("stats read failed: %s\n", designated_stats->name);
+			goto end_err;
 		}
 	} else {
 		temp_residency_stats_update(designated_handle, designated_stats->prev.temp);
@@ -438,6 +442,8 @@ static ssize_t temp_residency_name_stats_show(struct kobject *kobj,
 	atomic64_read(&(designated_stats->time_in_state_ms[designated_stats->num_thresholds])));
 
 	return len;
+end_err:
+	return ret;
 }
 
 static ssize_t temp_residency_name_stats_reset_store(struct kobject *kobj,
@@ -489,7 +495,7 @@ static ssize_t temp_residency_all_thresholds_show(struct kobject *kobj,
 {
 	int instance;
 	struct temperature_residency_stats *stats;
-	int index;
+	int index, ret;
 	int len = 0;
 	for (instance = 0 ; instance < MAX_NUM_SUPPORTED_THERMAL_ZONES ; instance++) {
 		stats = &residency_stat_array[instance];
@@ -497,10 +503,10 @@ static ssize_t temp_residency_all_thresholds_show(struct kobject *kobj,
 			continue;
 
 		if (stats->use_callback) {
-			int err = GET_TZ_THRESHOLD(stats, instance);
-			if (err < 0) {
-				pr_err("thresholds read failed: %s: %d\n", stats->name, err);
-				return -EIO;
+			ret = get_tz_cb_threshold(instance, stats);
+			if (ret) {
+				pr_err("thresholds read failed: %s\n", stats->name);
+				return ret;
 			}
 		}
 		len += sysfs_emit_at(buf, len, "THERMAL ZONE: %s\n", stats->name);
@@ -548,7 +554,7 @@ static ssize_t temp_residency_name_thresholds_show(struct kobject *kobj,
 					 char *buf)
 {
 	struct temperature_residency_stats *designated_stats;
-	int index;
+	int index, ret;
 	int len = 0;
 	if (designated_handle == -1) {
 		len += sysfs_emit_at(buf, len, "NO DESIGNATED THERMAL ZONE\n");
@@ -556,10 +562,10 @@ static ssize_t temp_residency_name_thresholds_show(struct kobject *kobj,
 	}
 	designated_stats = &residency_stat_array[designated_handle];
 	if (designated_stats->use_callback) {
-		int err = GET_TZ_THRESHOLD(designated_stats, designated_handle);
-		if (err < 0) {
-			pr_err("thresholds read failed: %s: %d\n", designated_stats->name, err);
-			return -EIO;
+		ret = get_tz_cb_threshold(designated_handle, designated_stats);
+		if (ret) {
+			pr_err("thresholds read failed: %s\n", designated_stats->name);
+			return ret;
 		}
 	}
 	len += sysfs_emit_at(buf, len, "THERMAL ZONE: %s\n", designated_stats->name);
