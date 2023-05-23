@@ -611,7 +611,7 @@ void gcma_free_range(unsigned long start_pfn, unsigned long end_pfn)
 }
 EXPORT_SYMBOL_GPL(gcma_free_range);
 
-static void evict_gcma_lru_pages(unsigned long nr_request)
+void evict_gcma_lru_pages(unsigned long nr_request)
 {
 	unsigned long nr_evicted = 0;
 
