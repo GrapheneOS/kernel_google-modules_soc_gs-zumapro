@@ -422,10 +422,6 @@ static struct samsung_sysmmu_domain *attach_helper(struct iommu_domain *dom, str
 	}
 
 	domain = to_sysmmu_domain(dom);
-	if (domain->vid) {
-		dev_err(dev, "IOMMU domain is already used as AUX domain\n");
-		return ERR_PTR(-EBUSY);
-	}
 
 	return domain;
 }
@@ -445,6 +441,12 @@ static int samsung_sysmmu_attach_dev(struct iommu_domain *dom,
 	domain = attach_helper(dom, dev);
 	if (IS_ERR(domain))
 		return (int)PTR_ERR(domain);
+
+	if (domain->vid) {
+		dev_err(dev, "IOMMU domain is already used as PASID domain for vid %u\n",
+			domain->vid);
+		return -EBUSY;
+	}
 
 	domain->group = group;
 	groupdata = iommu_group_get_iommudata(group);
@@ -1032,7 +1034,7 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 		spin_lock_init(&groupdata->sysmmu_list_lock[i]);
 	}
 
-	groupdata->vid_map = BIT(0); /* Block vid 0 which is not available for AUX domains. */
+	groupdata->vid_map = BIT(0); /* Block vid 0 which is not available for PASID domains. */
 	/* has_vcr will be set to false if any SysMMU with no vcr support is added to this group. */
 	groupdata->has_vcr = true;
 	iommu_group_set_iommudata(group, groupdata,
@@ -1104,24 +1106,169 @@ static int samsung_sysmmu_of_xlate(struct device *dev,
 	return ret;
 }
 
-static bool samsung_sysmmu_dev_has_feat(struct device *dev, enum iommu_dev_features f)
+static int samsung_sysmmu_set_dev_pasid(struct iommu_domain *dom, struct device *dev,
+					ioasid_t pasid)
 {
-	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
 	struct sysmmu_clientdata *client;
+	struct samsung_sysmmu_domain *domain;
+	struct iommu_group *group;
+	struct sysmmu_groupdata *groupdata;
 	struct sysmmu_drvdata *drvdata;
+	phys_addr_t page_table;
+	unsigned long flags;
+	unsigned long vid_map;
+	unsigned long map;
+	unsigned int vid = pasid;
+	int i;
+	int ret = 0;
+
+	if (vid >= MAX_VIDS) {
+		dev_err(dev, "Requested VID %u above or equal maximum of %u\n", vid, MAX_VIDS);
+		return -EINVAL;
+	}
+
+	domain = attach_helper(dom, dev);
+	if (IS_ERR(domain))
+		return (int)PTR_ERR(domain);
+
+	group = iommu_group_get(dev);
+	groupdata = iommu_group_get_iommudata(group);
+	if (domain->group || domain->vid) {
+		if (domain->group == group && domain->vid == vid)
+			/* We only allow a single device per IOMMU group. The challenge with
+			 * allowing multiple devices is correctly implementing the .remove_dev_pasid
+			 * callback. We would need to track attachment on a per-device basis,
+			 * because only when a domain is detached from all devices can we safely
+			 * detach it from the SysMMU instance.
+			 */
+			dev_err(dev, "For set_dev_pasid, only one device per IOMMU group allowed\n");
+		else if (domain->vid)
+			dev_err(dev, "IOMMU domain is already used as PASID domain for vid %u\n",
+				domain->vid);
+		else
+			dev_err(dev, "IOMMU domain is already in use\n");
+		ret = -EBUSY;
+		goto group_put;
+	}
+
+	if (!groupdata->has_vcr) {
+		dev_err(dev, "SysMMU group does not support IOMMU PASID domains\n");
+		ret = -ENODEV;
+		goto group_put;
+	}
+
+	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
+
+	for (i = 0; i < (int)client->sysmmu_count; i++) {
+		drvdata = client->sysmmus[i];
+		if (!drvdata->attached_count[0]) {
+			dev_err(dev, "SysMMU %s needs to be enabled to attach PASID domain\n",
+				dev_name(drvdata->dev));
+			ret = -ENODEV;
+			goto group_put;
+		}
+	}
+
+	/* Allocate VID */
+	vid_map = groupdata->vid_map;
+	do {
+		map = vid_map;
+		if (map & BIT(vid)) {
+			dev_err(dev, "vid %u already in use for PASID domain\n", vid);
+			ret = -EBUSY;
+			goto group_put;
+		}
+		cpu_relax();
+	} while ((vid_map = cmpxchg(&groupdata->vid_map, map, map | BIT(vid))) != map);
+
+	page_table = virt_to_phys(domain->page_table);
+	spin_lock_irqsave(&groupdata->sysmmu_list_lock[vid], flags);
+	for (i = 0; i < (int)client->sysmmu_count; i++) {
+		drvdata = client->sysmmus[i];
+		spin_lock(&drvdata->lock);
+		if (drvdata->attached_count[vid]++ == 0) {
+			list_add(&drvdata->list[vid], &groupdata->sysmmu_list[vid]);
+			drvdata->pgtable[vid] = page_table;
+
+			if (pm_runtime_active(drvdata->dev))
+				__sysmmu_enable_vid(drvdata, vid);
+		} else if (drvdata->pgtable[vid] != page_table) {
+			dev_err(dev, "%s vid %u is already attached to other domain\n",
+				dev_name(drvdata->dev), vid);
+		}
+		spin_unlock(&drvdata->lock);
+	}
+	spin_unlock_irqrestore(&groupdata->sysmmu_list_lock[vid], flags);
+
+	domain->vid = vid;
+	smp_wmb(); /* Ensure domain->vid is visible before domain->group */
+	domain->group = group;
+
+group_put:
+	iommu_group_put(group);
+	return ret;
+}
+
+static void samsung_sysmmu_remove_dev_pasid(struct device *dev, ioasid_t pasid)
+{
+	struct sysmmu_clientdata *client;
+	struct iommu_domain *dom;
+	struct samsung_sysmmu_domain *domain;
+	struct iommu_group *group;
+	struct sysmmu_groupdata *groupdata;
+	struct sysmmu_drvdata *drvdata;
+	unsigned long flags;
+	unsigned long vid_map;
+	unsigned long map;
+	unsigned int vid = pasid;
 	unsigned int i;
 
-	client = (struct sysmmu_clientdata *) dev_iommu_priv_get(dev);
-	if (!fwspec || !client || fwspec->ops != &samsung_sysmmu_ops)
-		return false;
-	if (client->sysmmu_count == 0)
-		return false;
+	WARN(vid >= MAX_VIDS, "VID %u for device %s above or equal maximum of %u\n",
+	     vid, dev_name(dev), MAX_VIDS);
+
+	dom = iommu_get_domain_for_dev_pasid(dev, pasid, 0);
+	if (WARN_ON(IS_ERR(dom)) || !dom)
+		return;
+	domain = to_sysmmu_domain(dom);
+	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
+	if (WARN_ON(!domain->vid) || WARN_ON(vid != domain->vid))
+		return;
+
+	vid = domain->vid;
+	group = iommu_group_get(dev);
+	groupdata = iommu_group_get_iommudata(group);
+
+	spin_lock_irqsave(&groupdata->sysmmu_list_lock[vid], flags);
 	for (i = 0; i < client->sysmmu_count; i++) {
 		drvdata = client->sysmmus[i];
 		if (!drvdata->has_vcr)
-			return false;
+			continue;
+		spin_lock(&drvdata->lock);
+		if (--drvdata->attached_count[vid] == 0) {
+			list_del(&drvdata->list[vid]);
+			drvdata->pgtable[vid] = 0;
+			if (pm_runtime_active(drvdata->dev))
+				__sysmmu_disable_vid(drvdata, vid);
+		}
+		spin_unlock(&drvdata->lock);
 	}
-	return true;
+	spin_unlock_irqrestore(&groupdata->sysmmu_list_lock[vid], flags);
+
+	/* De-allocate VID */
+	vid_map = groupdata->vid_map;
+	do {
+		map = vid_map;
+		cpu_relax();
+	} while ((vid_map = cmpxchg(&groupdata->vid_map, map, map & ~BIT(vid))) != map);
+	domain->group = NULL;
+	smp_wmb(); /* Ensure domain->group is visible before domain->vid */
+	domain->vid = 0;
+	iommu_group_put(group);
+}
+
+static bool samsung_sysmmu_dev_has_feat(struct device *dev, enum iommu_dev_features f)
+{
+	return false;
 }
 
 static int samsung_sysmmu_dev_enable_feat(struct device *dev, enum iommu_dev_features f)
@@ -1201,19 +1348,21 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.get_resv_regions	= samsung_sysmmu_get_resv_regions,
 	.dev_enable_feat	= samsung_sysmmu_dev_enable_feat,
 	.dev_disable_feat	= samsung_sysmmu_dev_disable_feat,
+	.remove_dev_pasid	= samsung_sysmmu_remove_dev_pasid,
 	.pgsize_bitmap		= SECT_SIZE | LPAGE_SIZE | SPAGE_SIZE,
 	.owner						= THIS_MODULE,
 	.default_domain_ops	= &(const struct iommu_domain_ops) {
-		.attach_dev             = samsung_sysmmu_attach_dev,
-		.detach_dev             = samsung_sysmmu_detach_dev,
-		.map                    = samsung_sysmmu_map,
-		.unmap                  = samsung_sysmmu_unmap,
-		.unmap_pages            = samsung_sysmmu_unmap_pages,
-		.flush_iotlb_all        = samsung_sysmmu_flush_iotlb_all,
-		.iotlb_sync_map         = samsung_sysmmu_iotlb_sync_map,
-		.iotlb_sync             = samsung_sysmmu_iotlb_sync,
-		.iova_to_phys           = samsung_sysmmu_iova_to_phys,
-		.free                   = samsung_sysmmu_domain_free,
+		.attach_dev		= samsung_sysmmu_attach_dev,
+		.detach_dev		= samsung_sysmmu_detach_dev,
+		.set_dev_pasid		= samsung_sysmmu_set_dev_pasid,
+		.map			= samsung_sysmmu_map,
+		.unmap			= samsung_sysmmu_unmap,
+		.unmap_pages		= samsung_sysmmu_unmap_pages,
+		.flush_iotlb_all	= samsung_sysmmu_flush_iotlb_all,
+		.iotlb_sync_map		= samsung_sysmmu_iotlb_sync_map,
+		.iotlb_sync		= samsung_sysmmu_iotlb_sync,
+		.iova_to_phys		= samsung_sysmmu_iova_to_phys,
+		.free			= samsung_sysmmu_domain_free,
 	}
 };
 
