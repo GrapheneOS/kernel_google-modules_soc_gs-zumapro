@@ -4819,6 +4819,9 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX, frac_to_int(data->pi_param->i_max));
 		data->acpm_pi_enable = true;
+		/* Enabling PID governor should be performed at last
+		 * after all the PID param configuration is complete
+		 */
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
 	} else {
 		data->acpm_pi_enable = false;
