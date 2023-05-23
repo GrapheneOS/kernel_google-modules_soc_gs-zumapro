@@ -2667,7 +2667,7 @@ static void dp_notification_work_item(struct kthread_work *work)
 	devm_kfree(chip->dev, evt);
 }
 
-static int max77759_usb_set_mode(struct typec_mux *mux, struct typec_mux_state *state)
+static int max77759_usb_set_mode(struct typec_mux_dev *mux, struct typec_mux_state *state)
 {
 	struct max77759_plat *chip = typec_mux_get_drvdata(mux);
 	struct dp_notification_event *evt;

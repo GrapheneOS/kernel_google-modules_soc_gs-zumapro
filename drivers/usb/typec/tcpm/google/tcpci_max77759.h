@@ -151,7 +151,7 @@ struct max77759_plat {
 	/* Notifier for orientation */
 	struct typec_switch_dev *typec_sw;
 	/* mode mux */
-	struct typec_mux *mode_mux;
+	struct typec_mux_dev *mode_mux;
 	/* Cache orientation for dp */
 	enum typec_orientation orientation;
 	/* Cache the number of lanes */
