@@ -4,6 +4,7 @@
 
 try-import %workspace%/.d1.bazelrc
 try-import %workspace%/.d2.bazelrc
+try-import %workspace%/.d3.bazelrc
 
 build:raviole --//private/google-modules/soc/gs:gs_kernel_build=//private/google-modules/soc/gs:slider
 build:raviole --//private/google-modules/soc/gs:gs_soc_module=//private/google-modules/soc/gs:gs101_soc
