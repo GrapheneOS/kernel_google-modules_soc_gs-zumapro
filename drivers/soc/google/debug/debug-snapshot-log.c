@@ -299,7 +299,8 @@ static void dbg_snapshot_task(int cpu, struct task_struct *v_task)
 
 static void dbg_snapshot_sched_switch(void *ignore, bool preempt,
 				      struct task_struct *prev,
-				      struct task_struct *next)
+				      struct task_struct *next,
+				      unsigned int prev_state)
 {
 	dbg_snapshot_task(raw_smp_processor_id(), next);
 }

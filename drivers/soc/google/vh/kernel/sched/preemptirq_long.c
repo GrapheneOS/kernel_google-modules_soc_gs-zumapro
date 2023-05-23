@@ -89,7 +89,7 @@ void test_preempt_disable_long(void *u1, unsigned long u2,
 }
 
 void note_context_switch(void *u1, bool u2, struct task_struct *u3,
-				struct task_struct *next)
+				struct task_struct *next, unsigned int prev_state)
 {
 	/*
 	 * Discard false positives during context switch to idle.

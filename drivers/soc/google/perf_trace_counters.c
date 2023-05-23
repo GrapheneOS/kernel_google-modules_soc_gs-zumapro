@@ -65,7 +65,8 @@ static void setup_prev_cnts(u32 cpu)
 }
 
 static void tracectr_notifier(void *data, bool preempt,
-			struct task_struct *prev, struct task_struct *next)
+			struct task_struct *prev, struct task_struct *next,
+			unsigned int prev_state)
 {
 	u32 cnten_val;
 	int current_pid;
