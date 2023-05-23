@@ -161,7 +161,7 @@ struct bcl_zone {
 	struct delayed_work irq_work;
 	struct delayed_work enable_irq_work;
 	struct thermal_zone_device *tz;
-	struct thermal_zone_of_device_ops tz_ops;
+	struct thermal_zone_device_ops tz_ops;
 	struct qos_throttle_limit *bcl_qos;
 	struct ocpsmpl_stats bcl_stats;
 	atomic_t bcl_cnt;
@@ -202,7 +202,7 @@ struct bcl_device {
 	struct delayed_work init_work;
 	struct delayed_work soc_work;
 	struct thermal_zone_device *soc_tz;
-	struct thermal_zone_of_device_ops soc_tz_ops;
+	struct thermal_zone_device_ops soc_tz_ops;
 
 	int trip_high_temp;
 	int trip_low_temp;

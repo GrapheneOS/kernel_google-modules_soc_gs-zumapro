@@ -52,9 +52,9 @@ static const unsigned int xclkout_source[] = {
 
 static void update_irq_end_times(struct bcl_device *bcl_dev, int id);
 
-static int zone_read_temp(void *data, int *val)
+static int zone_read_temp(struct thermal_zone_device *tz, int *val)
 {
-	struct bcl_zone *zone = data;
+	struct bcl_zone *zone = tz->devdata;
 
 	*val = zone->bcl_cur_lvl;
 	zone->bcl_prev_lvl = *val;
