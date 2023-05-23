@@ -720,6 +720,14 @@ int exynos_acpm_tmu_ipc_get_tr_thresholds(int tz, u8 qword_index, u64 *val)
 	return (int)message.resp.ret;
 }
 
+enum tr_stat_type {
+	TIME_IN_STATES = 0,
+	MAX = 1,
+	MIN = 2,
+	START = 3,
+	END = 4,
+};
+
 int exynos_acpm_tmu_ipc_get_tr_stats(int tz, int bucket_idx, u64 *bucket_stats)
 {
 	union tmu_ipc_message message;
@@ -732,10 +740,83 @@ int exynos_acpm_tmu_ipc_get_tr_stats(int tz, int bucket_idx, u64 *bucket_stats)
 	message.req.type = TMU_IPC_GET_TR_STATS;
 	message.req.tzid = (u8)tz;
 	message.req.rsvd = (u8)bucket_idx;
+	message.req.rsvd2 = TIME_IN_STATES;
 
 	exynos_acpm_tmu_ipc_send_data(&message);
 
 	*bucket_stats = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats_start(int tz)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd2 = START;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats_end(int tz)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd2 = END;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats_max(int tz, int *temp, u64 *timestamp)
+{
+	union tmu_ipc_message message;
+
+	if (!temp || !timestamp)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd2 = MAX;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*temp = message.resp.temp;
+	*timestamp = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats_min(int tz, int *temp, u64 *timestamp)
+{
+	union tmu_ipc_message message;
+
+	if (!temp || !timestamp)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd2 = MIN;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*temp = message.resp.temp;
+	*timestamp = message.data_64b[1];
 
 	return (int)message.resp.ret;
 }

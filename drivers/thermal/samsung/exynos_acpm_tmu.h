@@ -204,6 +204,10 @@ int exynos_acpm_tmu_ipc_get_temp_lut(int tz, u8 index, int *temp, int *state);
 int exynos_acpm_tmu_ipc_set_mpmm_clr_throttle_level(int tz, u16 val);
 int exynos_acpm_tmu_ipc_set_mpmm_throttle_level(int tz, u16 val);
 int exynos_acpm_tmu_ipc_set_mpmm_enable(int tz, u8 enable);
+int exynos_acpm_tmu_ipc_get_tr_stats_max(int tz, int *temp, u64 *time);
+int exynos_acpm_tmu_ipc_get_tr_stats_min(int tz, int *temp, u64 *time);
+int exynos_acpm_tmu_ipc_get_tr_stats_start(int tz);
+int exynos_acpm_tmu_ipc_get_tr_stats_end(int tz);
 
 struct acpm_irq_callback {
 	void *fn;

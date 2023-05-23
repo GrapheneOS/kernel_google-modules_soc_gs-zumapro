@@ -130,6 +130,7 @@ struct acpm_gov_common {
 	struct gov_trace_data_struct *bulk_trace_buffer;
 	spinlock_t lock;
 	struct thermal_pressure thermal_pressure;
+	time64_t tr_ktime_real_offset;
 };
 
 struct gs_temp_lut_st {
@@ -398,7 +399,8 @@ void register_get_cpu_power_table_ect_offset(get_cpu_power_table_ect_offset_cb c
 #define BULK_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20
 #define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
-#define NS_PER_MS 1000000
+#define NS_PER_MS  1000000
+#define NS_PER_SEC 1000000000
 #define acpm_systick_to_ns(acpm_tick)     ((acpm_tick * ACPM_SYSTICK_NUMERATOR) +              \
                                             (acpm_tick / ACPM_SYSTICK_FRACTIONAL_DENOMINATOR))
 #define acpm_systick_to_ms(acpm_tick)     (acpm_systick_to_ns(acpm_tick) / NS_PER_MS)
