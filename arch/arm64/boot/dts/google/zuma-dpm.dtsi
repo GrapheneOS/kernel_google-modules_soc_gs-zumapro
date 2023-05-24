@@ -13,4 +13,4 @@
 }; /* end of root */
 
 /* default settings built into kernel dt */
-#include "zuma-dpm-userdebug.dtsi"
+#include "zuma-dpm-user.dtsi"
