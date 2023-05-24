@@ -42,6 +42,12 @@
 		sustainable_power = <2000>;
 		control_temp_step = <1000>; // mC per second
 
+		use-temp-lut-thermal;
+		temp_state_table =
+			//temp level
+			<  80    2
+			   255   4 >;
+
 		tmu_work_affinity = "0-8";
 
 		use-acpm-gov;
@@ -225,32 +231,32 @@
 					type = "active";
 				};
 				big_switch_on: big-switch-on {
-					temperature = <65000>; /* millicelsius */
-					hysteresis = <2000>; /* millicelsius */
+					temperature = <70000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				big_control_temp: big-control-temp {
-					temperature = <85000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				big_alert1: big-alert1 {
-					temperature = <88000>; /* millicelsius */
-					hysteresis = <4000>; /* millicelsius */
-					type = "passive";
-				};
-				big_alert2: big-alert2 {
-					temperature = <90000>; /* millicelsius */
-					hysteresis = <1000>; /* millicelsius */
+					temperature = <93000>; /* millicelsius */
+					hysteresis = <100000>; /* millicelsius.  High hysteresis to disable falling edge irq */
 					type = "active";
 				};
-				big_alert3: big-alert3 {
-					temperature = <92000>; /* millicelsius */
+				big_early_throttle: big-early_throttle {
+					temperature = <80000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
+					type = "active";
+				};
+				big_sw_max_effort: big-sw_max_effort {
+					temperature = <97000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				big_dfs: big-dfs {
-					temperature = <95000>; /* millicelsius */
+					temperature = <100000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -280,32 +286,32 @@
 					type = "active";
 				};
 				mid_switch_on: mid-switch-on {
-					temperature = <65000>; /* millicelsius */
-					hysteresis = <2000>; /* millicelsius */
+					temperature = <70000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				mid_control_temp: mid-control-temp {
-					temperature = <85000>; /* millicelsius */
+					temperature = <90000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				mid_alert1: mid-alert1 {
-					temperature = <88000>; /* millicelsius */
-					hysteresis = <4000>; /* millicelsius */
-					type = "passive";
-				};
-				mid_alert2: mid-alert2 {
-					temperature = <90000>; /* millicelsius */
-					hysteresis = <1000>; /* millicelsius */
+					temperature = <93000>; /* millicelsius */
+					hysteresis = <100000>; /* 100C to avoid falling edge irq */
 					type = "active";
 				};
-				mid_alert3: mid-alert3 {
-					temperature = <92000>; /* millicelsius */
+				mid_alert2: mid-alert2 {
+					temperature = <95000>; /* millicelsius */
+					hysteresis = <10000>; /* millicelsius */
+					type = "passive";
+				};
+				mid_sw_max_effort: mid-sw_max_effort {
+					temperature = <97000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				mid_dfs: mid-dfs {
-					temperature = <95000>; /* millicelsius */
+					temperature = <100000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -335,32 +341,32 @@
 					type = "active";
 				};
 				little_switch_on: little-switch-on {
-					temperature = <65000>; /* millicelsius */
-					hysteresis = <2000>; /* millicelsius */
+					temperature = <70000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				little_control_temp: little-control-temp {
-					temperature = <85000>; /* millicelsius */
+					temperature = <95000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				little_alert1: little-alert1 {
-					temperature = <88000>; /* millicelsius */
-					hysteresis = <4000>; /* millicelsius */
-					type = "passive";
+					temperature = <97000>; /* millicelsius */
+					hysteresis = <100000>; /* 100C to avoid falling edge irq */
+					type = "active";
 				};
 				little_alert2: little-alert2 {
-					temperature = <90000>; /* millicelsius */
-					hysteresis = <1000>; /* millicelsius */
-					type = "active";
-				};
-				little_alert3: little-alert3 {
-					temperature = <92000>; /* millicelsius */
+					temperature = <98000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
-					type = "active";
+					type = "passive";
+				};
+				little_sw_max_effort: little-sw_max_effort {
+					temperature = <99000>; /* millicelsius */
+					hysteresis = <1000>; /* millicelsius */
+					type = "passive";
 				};
 				little_dfs: little-dfs {
-					temperature = <95000>; /* millicelsius */
+					temperature = <100000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
