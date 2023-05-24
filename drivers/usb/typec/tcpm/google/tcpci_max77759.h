@@ -15,9 +15,9 @@
 #include <linux/gpio/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/role.h>
+#include <linux/usb/tcpci.h>
 #include <linux/usb/typec_mux.h>
 #include <misc/gvotable.h>
-#include <tcpm/tcpci.h>
 
 #include "usb_psy.h"
 
