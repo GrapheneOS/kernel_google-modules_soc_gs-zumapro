@@ -452,6 +452,8 @@ static int exynos_etm_enable(unsigned int cpu)
 	etm_writel(info->base, !ETM_EN, ETMCTLR);
 	etm_writel(info->base, !OSLOCK, ETMOSLAR);
 	etm_writel(info->base, !ETM_EN, ETMCTLR);
+	dsb(sy);
+	isb();
 
 	/* Main control and Configuration */
 	etm_writel(info->base, 0xc1, ETMCONFIG);
@@ -464,6 +466,7 @@ static int exynos_etm_enable(unsigned int cpu)
 	etm_writel(info->base, 0x201, ETMVICTLR);
 	etm_writel(info->base, 0x0, ETMVIIECTLR);
 	etm_writel(info->base, 0x0, ETMVISSCTLR);
+	etm_writel(info->base, 0x2, ETMAUXCTLR);
 
 	channel = info->f_port[CHANNEL];
 	port = info->f_port[PORT];
@@ -480,6 +483,8 @@ static int exynos_etm_enable(unsigned int cpu)
 	info->status = true;
 
 	etm_writel(info->base, ETM_EN, ETMCTLR);
+	dsb(sy);
+	isb();
 	etm_writel(info->base, OSLOCK, ETMOSLAR);
 
 	soft_lock(info->base);
