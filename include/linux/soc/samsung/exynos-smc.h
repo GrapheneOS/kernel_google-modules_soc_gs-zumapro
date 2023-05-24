@@ -279,6 +279,26 @@ static inline unsigned long exynos_smc(unsigned long cmd,
 	return (unsigned long)res.a0;
 }
 
+static inline unsigned long exynos_smc4(unsigned long cmd,
+					unsigned long arg0,
+					unsigned long arg1,
+					unsigned long arg2,
+					unsigned long *ret1,
+					unsigned long *ret2,
+					unsigned long *ret3)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(cmd, arg0, arg1, arg2, 0, 0, 0, 0, &res);
+	if (ret1)
+		*ret1 = (unsigned long)res.a1;
+	if (ret2)
+		*ret2 = (unsigned long)res.a2;
+	if (ret3)
+		*ret3 = (unsigned long)res.a3;
+	return (unsigned long)res.a0;
+}
+
 static inline unsigned long exynos_smc_readsfr(unsigned long addr,
 					       unsigned long *val)
 {
