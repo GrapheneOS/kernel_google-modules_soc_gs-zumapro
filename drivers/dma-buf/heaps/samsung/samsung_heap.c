@@ -359,9 +359,22 @@ u64 trusty_dma_buf_get_ffa_tag(struct dma_buf *dma_buf)
 EXPORT_SYMBOL_GPL(trusty_dma_buf_get_ffa_tag);
 #endif
 
+void trusty_register_dma_buf_callbacks(void)
+{
+#if IS_ENABLED(CONFIG_TRUSTY_DMA_BUF_FFA_TAG)
+	trusty_register_func_for_dma_buf(trusty_dma_buf_get_ffa_tag,
+					 trusty_dma_buf_get_shared_mem_id);
+#else
+	trusty_register_func_for_dma_buf(NULL,
+					 trusty_dma_buf_get_shared_mem_id);
+#endif
+}
+
 static int __init samsung_dma_heap_init(void)
 {
 	int ret;
+
+	trusty_register_dma_buf_callbacks();
 
 	ret = chunk_dma_heap_init();
 	if (ret)
@@ -393,6 +406,8 @@ err_carveout:
 err_cma:
 	chunk_dma_heap_exit();
 
+	trusty_register_func_for_dma_buf(NULL, NULL);
+
 	return ret;
 }
 
@@ -402,6 +417,7 @@ static void __exit samsung_dma_heap_exit(void)
 	carveout_dma_heap_exit();
 	cma_dma_heap_exit();
 	chunk_dma_heap_exit();
+	trusty_register_func_for_dma_buf(NULL, NULL);
 }
 
 module_init(samsung_dma_heap_init);
