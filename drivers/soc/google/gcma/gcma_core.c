@@ -895,13 +895,15 @@ static void gcma_cc_invalidate_fs(int hash_id)
 	VM_BUG_ON(!gcma_fs);
 	VM_BUG_ON(irqs_disabled());
 
-	spin_lock_irq(&gcma_fs->hash_lock);
+	/*
+	 * No need to hold any lock here since this function is called when
+	 * fs is unmounted. IOW, inode insert/delete race cannot happen.
+	 */
 	hash_for_each_safe(gcma_fs->inode_hash, cursor, tmp, inode, hash) {
 		inode = __gcma_cc_invalidate_inode(gcma_fs, &inode->key);
 		if (inode)
 			__put_gcma_inode(inode);
 	}
-	spin_unlock_irq(&gcma_fs->hash_lock);
 
 	synchronize_rcu();
 
