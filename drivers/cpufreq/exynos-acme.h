@@ -94,8 +94,8 @@ struct exynos_cpufreq_domain {
 
 	/* Thermal pressure */
 	spinlock_t thermal_update_lock;
-	unsigned long thermal_pressure[NR_THERMAL_ACTORS];
-	char thermal_pressure_name[NR_THERMAL_ACTORS][THERMAL_PRESSURE_STR_LEN];
+	unsigned long capped_freq[NR_THERMAL_ACTORS];
+	char capped_freq_name[NR_THERMAL_ACTORS][THERMAL_PRESSURE_STR_LEN];
 	unsigned int ect_table_offset;
 };
 
