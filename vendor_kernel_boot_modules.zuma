@@ -75,6 +75,8 @@ governor_dsulat.ko
 governor_memlat.ko
 gpu_cooling.ko
 gs-chipid.ko
+gs-drm-connector.ko
+gs-panel.ko
 gs_acpm.ko
 pixel_metrics.ko
 gs_thermal.ko
