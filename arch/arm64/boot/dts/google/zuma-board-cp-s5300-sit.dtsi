@@ -8,7 +8,6 @@
 
 #include <dt-bindings/pinctrl/zuma.h>
 #include "zuma-cp-s5300-sit.dtsi"
-#include "gs101-cp-s5200-thermal-zone.dtsi"
 
 / {
 	fragment@modemif {
