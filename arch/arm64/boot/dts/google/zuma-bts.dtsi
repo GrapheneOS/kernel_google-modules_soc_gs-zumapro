@@ -75,6 +75,9 @@
 		};
 		nocl2ab {
 			nocl_node;
+			jpeg {
+				bus-width = <16>;
+			};
 			g2d {
 				bus-width = <16>;
 			};
