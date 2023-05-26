@@ -2,7 +2,7 @@ SOC_DIR=${KERNEL_DIR}
 # Compile these modules with the GKI kernel
 KERNEL_DIR="common"
 # Compute the path of this project relative to KERNEL_DIR
-SOC_REL_DIR=$(rel_path ${SOC_DIR} ${KERNEL_DIR})
+SOC_REL_DIR=$(realpath ${SOC_DIR} --relative-to ${KERNEL_DIR})
 KCONFIG_EXT_PREFIX=${SOC_DIR}
 
 . ${ROOT_DIR}/${SOC_DIR}/build.config.gs101

@@ -58,7 +58,7 @@ function concat_vendor_boot_modules() {
 
 VENDOR_DLKM_MODULES_BLOCKLIST=${SOC_DIR}/vendor_dlkm.blocklist.cloudripper
 
-KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
+KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
 
 EXT_MODULES="
 private/google-modules/soc/gs

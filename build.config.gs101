@@ -5,12 +5,7 @@ DEFCONFIG=slider_gki_defconfig
 GKI_FRAGMENT_DEFCONFIG=${GKI_FRAGMENT_DEFCONFIG:-${SOC_DIR}/arch/arm64/configs/slider_gki.fragment}
 PRE_DEFCONFIG_CMDS="mkdir -p \${OUT_DIR}/arch/arm64/configs/ && KCONFIG_CONFIG=\${OUT_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${ROOT_DIR}/${GKI_FRAGMENT_DEFCONFIG}"
 
-# TODO(b/231473697): use realpath --relative-to
-# rel_path does not work with Kleaf --config=local builds because
-# rel_path is not simplified enough (e.g. the following evaluates to
-# ../../__main__ in Kleaf, which does not work in non-sandbox builds).
-# Hence use rel_path2 so it evaluates to a simpler path ../
-KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
+KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
 
 MAKE_GOALS=
 KERNEL_BINARY=Image.lz4
