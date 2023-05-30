@@ -277,7 +277,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 	else
 		mod_delayed_work(system_highpri_wq, &zone->irq_untriggered_work, 0);
 exit:
-	if (zone->irq_type != IF_PMIC) {
+	if (zone->irq_type != IF_PMIC && bcl_dev->irq_delay != 0) {
 		disable_irq_nosync(irq);
 		mod_delayed_work(system_unbound_wq, &zone->enable_irq_work,
 				 msecs_to_jiffies(bcl_dev->irq_delay));
