@@ -239,7 +239,9 @@
 			need_llc_flush = <0>;
 
 			/* SLC (System Level Cache) */
-			pt_id = "MFC";
+			pt_id =
+				"MFC_p0",
+				"MFC_p1";
 
 			/* vOTF */
 			/* mfc_votf_base = <0x16650000>; */
