@@ -46,7 +46,7 @@ struct dbg_snapshot_log_item dss_log_items[] = {
 
 /*  Internal interface variable */
 struct dbg_snapshot_log_misc dss_log_misc;
-static char dss_freq_name[SZ_32][SZ_8];
+static char dss_freq_name[DSS_FREQ_MAX_SIZE][DSS_FREQ_MAX_NAME_SIZE];
 static unsigned int dss_freq_size;
 
 #define dss_get_log(item)						\
@@ -197,6 +197,21 @@ int dbg_snapshot_get_freq_idx(const char *name)
 	return -EFAULT;
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_get_freq_idx);
+
+void dbg_snapshot_get_freq_name(char (*freq_names)[DSS_FREQ_MAX_NAME_SIZE])
+{
+	int i;
+
+	for (i = 0; i < dss_freq_size; i++)
+		strlcpy(freq_names[i], dss_freq_name[i], DSS_FREQ_MAX_NAME_SIZE);
+}
+EXPORT_SYMBOL_GPL(dbg_snapshot_get_freq_name);
+
+unsigned int dbg_snapshot_get_freq_size(void)
+{
+	return dss_freq_size;
+}
+EXPORT_SYMBOL_GPL(dbg_snapshot_get_freq_size);
 
 void dbg_snapshot_log_output(void)
 {
