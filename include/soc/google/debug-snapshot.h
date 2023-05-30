@@ -19,6 +19,9 @@
 #if IS_ENABLED(CONFIG_DEBUG_SNAPSHOT)
 #include <linux/sched/clock.h>
 
+#define DSS_FREQ_MAX_SIZE		SZ_32
+#define DSS_FREQ_MAX_NAME_SIZE		SZ_8
+
 struct clk;
 struct clk_hw;
 struct exynos_tmu_data;
@@ -74,6 +77,8 @@ extern unsigned int dbg_snapshot_get_core_ehld_stat(unsigned int cpu);
 
 /* debug-snapshot-log functions */
 extern int dbg_snapshot_get_freq_idx(const char *name);
+extern void dbg_snapshot_get_freq_name(char (*freq_names)[DSS_FREQ_MAX_NAME_SIZE]);
+extern unsigned int dbg_snapshot_get_freq_size(void);
 extern void *dbg_snapshot_get_suspend_diag(void);
 
 #define dbg_snapshot_get_timestamp()	local_clock()
@@ -189,6 +194,8 @@ static inline void dbg_snapshot_spin_func(void)
 #define dbg_snapshot_stop_all_cpus()		(-1)
 
 #define dbg_snapshot_get_freq_idx(a)		(-1)
+#define dbg_snapshot_get_freq_name(a)		(0)
+#define dbg_snapshot_get_freq_size()		(0)
 
 #define dss_extern_get_log_by_cpu(item)					\
 static inline long dss_get_len_##item##_log(void) {			\
