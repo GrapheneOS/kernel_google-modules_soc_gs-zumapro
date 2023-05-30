@@ -1349,6 +1349,12 @@ struct mfc_core {
 #if IS_ENABLED(CONFIG_SLC_PARTITION_MANAGER)
 	struct pt_handle	*pt_handle;
 	int			ptid;
+
+	/* num of slc partition from device tree */
+	int 			num_slc_pt;
+
+	/* index of current slc partition which be enabled */
+	int 			curr_slc_pt_idx;
 #endif
 
 	struct mfc_variant	*variant;
