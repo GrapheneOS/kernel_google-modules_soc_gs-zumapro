@@ -774,9 +774,6 @@ static int stmvl53l1_stop(struct stmvl53l1_data *data)
 			__LINE__, rc);
 		rc = store_last_error(data, rc);
 	}
-	/* put device under reset */
-	/* do we ask explicit intr stop or just use stop */
-	reset_hold(data);
 
 	data->enable_sensor = 0;
 	if (data->poll_mode) {
@@ -3575,7 +3572,6 @@ static int stmvl53l1_ioctl_handler(
 		dev_dbg(dev, "VL53L1_IOCTL_REGISTER\n");
 		reset_release(data);
 		rc = ctrl_reg_access(data, p);
-		reset_hold(data);
 		break;
 
 	case VL53L1_IOCTL_PARAMETER:
