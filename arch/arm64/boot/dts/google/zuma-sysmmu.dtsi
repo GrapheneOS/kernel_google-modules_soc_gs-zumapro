@@ -1103,7 +1103,6 @@
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x11050000>;
 		power-domains = <&pd_hsi0>;
-		s2mpus = <&s2mpu_s0_hsi0>;
 		port-name = "HSI0";
 		#iommu-cells = <0>;
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE)>;
