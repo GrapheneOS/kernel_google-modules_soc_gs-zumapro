@@ -339,6 +339,8 @@ int adv_tracer_ipc_release_channel(unsigned int id)
 		return ret;
 	}
 
+	eat_ipc->channel[id].used = false;
+
 	return 0;
 }
 EXPORT_SYMBOL(adv_tracer_ipc_release_channel);
