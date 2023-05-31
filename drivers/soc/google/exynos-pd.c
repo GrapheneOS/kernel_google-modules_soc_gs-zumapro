@@ -35,6 +35,8 @@ struct exynos_pm_domain *exynos_pd_lookup_name(const char *domain_name)
 			if (!pdev)
 				continue;
 			pd = platform_get_drvdata(pdev);
+			if (!pd)
+				continue;
 			if (!strcmp(pd->name, domain_name)) {
 				exypd = pd;
 				break;
