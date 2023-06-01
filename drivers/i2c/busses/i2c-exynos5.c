@@ -199,6 +199,14 @@
 
 #define HSI2C_POLLING 0
 #define HSI2C_INTERRUPT 1
+#define HSI2C_HYBRID_POLLING 2
+
+/*
+ * For hybrid polling mode:
+ * If message length is below threshold, polling will be used.
+ * Otherwise, the transaction will be handled by interrupt.
+ */
+#define HSI2C_HYBRID_THRESHOLD 8
 
 #define EXYNOS5_I2C_TIMEOUT (msecs_to_jiffies(100))
 #define EXYNOS5_FIFO_SIZE		16
@@ -759,6 +767,12 @@ static int exynos5_i2c_xfer_msg(struct exynos5_i2c *i2c,
 	i2c->msg_ptr = 0;
 	i2c->trans_done = 0;
 
+	/* For hybrid polling, operation mode is determined by message length */
+	if (operation_mode == HSI2C_HYBRID_POLLING) {
+		operation_mode = (msgs->len > HSI2C_HYBRID_THRESHOLD) ?
+			HSI2C_INTERRUPT : HSI2C_POLLING;
+	}
+
 	/* (length * (bits + ack) * (s/ms) * / freq) * (tolerance) */
 	timeout_max = (i2c->msg->len * 9 * 1000 / i2c->clock_frequency) * 2;
 	/* Minimum timeout is 100ms */
@@ -1190,6 +1204,8 @@ static int exynos5_i2c_probe(struct platform_device *pdev)
 	/* Mode of operation Polling/Interrupt mode */
 	if (of_get_property(np, "samsung,polling-mode", NULL))
 		i2c->operation_mode = HSI2C_POLLING;
+	else if (of_get_property(np, "samsung,hybrid-polling-mode", NULL))
+		i2c->operation_mode = HSI2C_HYBRID_POLLING;
 	else
 		i2c->operation_mode = HSI2C_INTERRUPT;
 
@@ -1288,7 +1304,9 @@ static int exynos5_i2c_probe(struct platform_device *pdev)
 	/* Reset i2c SFR from u-boot or misc causes */
 	exynos5_i2c_reset(i2c);
 
-	if (i2c->operation_mode == HSI2C_INTERRUPT) {
+	/* Set up IRQ for Hybrid polling and interrupt modes */
+	if (i2c->operation_mode == HSI2C_INTERRUPT ||
+	    i2c->operation_mode == HSI2C_HYBRID_POLLING) {
 		i2c->irq = irq_of_parse_and_map(np, 0);
 		if (i2c->irq <= 0) {
 			dev_err(&pdev->dev, "cannot find HS-I2C IRQ\n");
