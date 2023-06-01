@@ -4773,6 +4773,18 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			start_pi_polling(data, 0);
 	}
 
+	if (data->use_pi_thermal) {
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PO, frac_to_int(data->pi_param->k_po));
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PU, frac_to_int(data->pi_param->k_pu));
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX,
+						 frac_to_int(data->pi_param->i_max));
+		data->acpm_pi_enable = true;
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
+	} else {
+		data->acpm_pi_enable = false;
+	}
+
 	if (acpm_gov_common.turn_on) {
 		if (data->acpm_gov_params.fields.enable) {
 			int tzid = data->id;
@@ -4811,20 +4823,6 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (is_first) {
 		sync_kernel_acpm_timestamp();
 		register_pm_notifier(&gs_tmu_pm_nb);
-	}
-
-	if (data->use_pi_thermal) {
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PO, frac_to_int(data->pi_param->k_po));
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PU, frac_to_int(data->pi_param->k_pu));
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX, frac_to_int(data->pi_param->i_max));
-		data->acpm_pi_enable = true;
-		/* Enabling PID governor should be performed at last
-		 * after all the PID param configuration is complete
-		 */
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
-	} else {
-		data->acpm_pi_enable = false;
 	}
 
 #if IS_ENABLED(CONFIG_MALI_DEBUG_KERNEL_SYSFS)
