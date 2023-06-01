@@ -266,6 +266,9 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		val = readl(udbg_base_regs + 0xC700) | (0x1 << 0);
 		writel(val, udbg_base_regs + 0xC700);        //Release External PLL init
 
+		val = readl(udbg_base_regs + 0xC700) & ~(0x1 << 1);
+		writel(val, udbg_base_regs + 0xC700);        //Override External PLL RESETB
+
 		/* check external pll lock */
 		ext_pll_lock = check_exynos_pcie_reg_status(exynos_pcie, udbg_base_regs,
 							    0xC734, 2, &lock_cnt);
@@ -347,8 +350,8 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x11, phy_base_regs + 0x0624);
 
 		//PLL margin issue setting for ERIO (GEN1 & GEN2)
-		writel(0x04, phy_base_regs + 0x0630);
-		writel(0x73, phy_base_regs + 0x06D0);
+		writel(0x0f, phy_base_regs + 0x0630);
+		writel(0x53, phy_base_regs + 0x06D0);
 
 		for (i = 0; i < num_lanes; i++) {
 			phy_base_regs += (i * 0x1000);
@@ -462,6 +465,8 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		logbuffer_log(exynos_pcie->log,
 			      "PLL_LOCK : 0x%x, CDR_LOCK : 0x%x, OC_DONE : 0x%x",
 			      pll_lock, cdr_lock, oc_done);
+
+		writel(0x0, phy_base_regs + 0x032C);    //PHY input clock un-gating
 
 		//L1 exit off by DBI
 		writel(0x1, elbi_base_regs + 0x1078);
