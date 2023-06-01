@@ -37,6 +37,10 @@ struct xhci_hcd_exynos {
 	int 			port_set_delayed;
 	u32 			portsc_control_priority;
 	enum usb_port_state	port_state;
+	bool			port_ctrl_allowed;
+
+	/* remote wakeup */
+	bool			rewa_supported;
 };
 
 struct xhci_exynos_priv {

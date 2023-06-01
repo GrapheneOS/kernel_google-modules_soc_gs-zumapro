@@ -52,7 +52,7 @@
 
 #define INVALID_TRIP -1
 /* current version of trace struct is only supported in verion 3 */
-#define EXPECT_BUF_VER 3
+#define EXPECT_BUF_VER 4
 #define ACPM_BUF_VER (acpm_gov_common.buffer_version & 0xff)
 
 enum tmu_type_t {
@@ -170,9 +170,10 @@ static inline s64 div_frac(s64 x, s64 y)
 }
 
 static atomic_t gs_tmu_in_suspend;
-
 static struct acpm_tmu_cap cap;
 static unsigned int num_of_devices, suspended_count;
+struct cpumask tmu_enabled_mask;
+EXPORT_SYMBOL(tmu_enabled_mask);
 
 /* list of multiple instance for each thermal sensor */
 static LIST_HEAD(dtm_dev_list);
@@ -189,7 +190,7 @@ static struct acpm_gov_common acpm_gov_common = {
 	.last_ts = 0,
 	.tracing_buffer_flush_pending = false,
 	.tracing_mode = ACPM_GOV_DEBUG_MODE_DISABLED,
-	.timer_interval = ACPM_GOV_TIMER_INTERVAL_MS,
+	.timer_interval = ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT,
 	.buffer_version = -1,
 	.bulk_trace_buffer = NULL,
 };
@@ -224,7 +225,7 @@ static bool get_bulk_mode_curr_state_buffer(void __iomem *base,
 
 	if(ACPM_BUF_VER > 0) {
 		/* offset for u64 buffer_version field */
-		offset = 8;
+		offset = ACPM_SM_BUFFER_VERSION_SIZE;
 	}
 
 	if (base) {
@@ -243,12 +244,29 @@ static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_sta
 		int cdev_state_offset = 0;
 		if (ACPM_BUF_VER > 0) {
 			/* offset for u64 buffer_version field */
-			cdev_state_offset = 8;
+			cdev_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
 		}
 		cdev_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN +
 				    sizeof(struct curr_state) * id;
 		memcpy_fromio(curr_state, base + cdev_state_offset,
 			      sizeof(struct curr_state));
+		return true;
+	} else {
+		return false;
+	}
+}
+
+static bool get_all_curr_state_from_acpm(void __iomem *base, struct curr_state *curr_state[])
+{
+	if (base) {
+		int cdev_state_offset = 0;
+		if (ACPM_BUF_VER > 0) {
+			/* offset for u64 buffer_version field */
+			cdev_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
+		}
+		cdev_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN;
+		memcpy_fromio(*curr_state, base + cdev_state_offset,
+			      sizeof(struct curr_state) * NR_TZ);
 		return true;
 	} else {
 		return false;
@@ -363,6 +381,20 @@ static int thermal_metrics_reset_stats(tr_handle instance)
 }
 #endif /* IS_ENABLED(CONFIG_PIXEL_METRICS) */
 
+static bool get_thermal_state_from_acpm(void __iomem *base, struct thermal_state *thermal_state)
+{
+	if (base) {
+		int thermal_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
+		thermal_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN +
+					sizeof(struct curr_state) * NR_TZ;
+		memcpy_fromio(thermal_state, base + thermal_state_offset,
+			      sizeof(struct thermal_state));
+		return true;
+	}
+
+	return false;
+}
+
 static u64 get_bulk_trace_buffer_timestamp(struct gov_trace_data_struct *bulk_trace_buffer, int idx)
 {
 	return bulk_trace_buffer->buffered_curr_state[idx].timestamp;
@@ -473,7 +505,7 @@ static void capture_bulk_trace(void)
 
 	acpm_gov_common.last_ts = get_bulk_trace_buffer_timestamp(bulk_trace_buffer, end_idx);
 
-	if (start_idx < end_idx)
+	if (start_idx <= end_idx)
 		len = end_idx - start_idx + 1;
 	else
 		len = BULK_TRACE_DATA_LEN - (start_idx - end_idx) + 1;
@@ -504,10 +536,31 @@ unlock:
 	spin_unlock(&acpm_gov_common.lock);
 }
 
+static bool cpu_switch_on_status_changed(struct thermal_state thermal_state)
+{
+	bool prev_switch_on_state =
+		((acpm_gov_common.thermal_pressure.state.switched_on & CPU_TZ_MASK) != 0);
+	bool curr_switch_on_state = ((thermal_state.switched_on & CPU_TZ_MASK) != 0);
+
+	return prev_switch_on_state != curr_switch_on_state;
+}
+
+static u8 get_dfs_status_changed(struct thermal_state thermal_state)
+{
+	u8 prev_dfs_on_state = acpm_gov_common.thermal_pressure.state.dfs_on;
+	u8 curr_dfs_on_state = thermal_state.dfs_on;
+
+	return prev_dfs_on_state ^ curr_dfs_on_state;
+}
+
 static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 {
-	/* current version of buffered_curr_state is only supported in verion 3 */
-	if(ACPM_BUF_VER != EXPECT_BUF_VER)
+	struct thermal_state thermal_state;
+	struct curr_state curr_state_all[NR_TZ];
+	struct curr_state *curr_state_ptr = curr_state_all;
+	bool curr_state_read = false;
+
+	if (ACPM_BUF_VER != EXPECT_BUF_VER)
 		return;
 
 	switch (acpm_gov_common.tracing_mode) {
@@ -517,11 +570,11 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 	case ACPM_GOV_DEBUG_MODE_HIGH_OVERHEAD: {
 		struct gs_tmu_data *data;
 
-		list_for_each_entry (data, &dtm_dev_list, node) {
-			struct curr_state curr_state;
+		if (get_all_curr_state_from_acpm(acpm_gov_common.sm_base, &curr_state_ptr)) {
+			curr_state_read = true;
+			list_for_each_entry (data, &dtm_dev_list, node) {
+				struct curr_state curr_state = curr_state_all[data->id];
 
-			if (get_curr_state_from_acpm(acpm_gov_common.sm_base, data->id,
-						     &curr_state)) {
 				int k_p = 0, k_i = 0;
 				if (data->acpm_pi_enable) {
 					k_p = (curr_state.ctrl_temp - curr_state.temperature) < 0 ?
@@ -542,9 +595,146 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 	default:
 		break;
 	}
+
+	if (get_thermal_state_from_acpm(acpm_gov_common.sm_base, &thermal_state)) {
+		u8 dfs_status_changed;
+		bool switch_on_work_needed = false;
+		struct gs_tmu_data *data;
+
+		spin_lock(&acpm_gov_common.thermal_pressure.lock);
+		switch_on_work_needed = cpu_switch_on_status_changed(thermal_state);
+		dfs_status_changed = get_dfs_status_changed(thermal_state);
+		acpm_gov_common.thermal_pressure.state = thermal_state;
+		spin_unlock(&acpm_gov_common.thermal_pressure.lock);
+
+		if (switch_on_work_needed)
+			kthread_queue_work(&acpm_gov_common.thermal_pressure.worker,
+					   &acpm_gov_common.thermal_pressure.switch_on_work);
+
+		if (!dfs_status_changed)
+			return;
+
+		if (!curr_state_read)
+			get_all_curr_state_from_acpm(acpm_gov_common.sm_base, &curr_state_ptr);
+
+		list_for_each_entry (data, &dtm_dev_list, node) {
+			struct curr_state curr_state = curr_state_all[data->id];
+			if ((!(dfs_status_changed & (1 << data->id))) ||
+			    (!(thermal_state.dfs_on & (1 << data->id))))
+				continue;
+			pr_info_ratelimited("%s DFS on: temperature = %dC, cdev_state = %d\n",
+					    data->tmu_name, curr_state.temperature,
+					    curr_state.cdev_state);
+		}
+	}
 }
 
-static struct acpm_irq_callback cb = { .fn = acpm_irq_cb, .ipc_ch = -1, .ipc_ch_size = -1};
+static struct acpm_irq_callback cb = { .fn = acpm_irq_cb, .ipc_ch = -1, .ipc_ch_size = -1 };
+
+void register_thermal_pressure_cb(thermal_pressure_cb cb)
+{
+	if (WARN_ON(!cb)) {
+		pr_err("Failed to register in %s\n", __func__);
+		return;
+	}
+
+	if (WARN_ON(acpm_gov_common.thermal_pressure.cb)) {
+		pr_err("thermal_pressure_cb function is already set");
+		return;
+	}
+
+	acpm_gov_common.thermal_pressure.cb = cb;
+}
+EXPORT_SYMBOL(register_thermal_pressure_cb);
+
+static void start_thermal_pressure_polling(int delay)
+{
+	kthread_mod_delayed_work(&acpm_gov_common.thermal_pressure.worker,
+				 &acpm_gov_common.thermal_pressure.polling_work, msecs_to_jiffies(delay));
+}
+
+static void thermal_pressure_work(bool apply_thermal_pressure, struct thermal_state state)
+{
+	int delay;
+	bool switched_on = state.switched_on & CPU_TZ_MASK;
+
+	if (apply_thermal_pressure && acpm_gov_common.thermal_pressure.cb) {
+		struct gs_tmu_data *data;
+
+		list_for_each_entry (data, &dtm_dev_list, node) {
+			if ((data->pressure_index == -1) || cpumask_empty(&data->mapped_cpus))
+				continue;
+			acpm_gov_common.thermal_pressure.cb(&data->mapped_cpus,
+							    (int)state.therm_press[data->pressure_index]);
+		}
+	}
+
+	if (switched_on) {
+		delay = acpm_gov_common.thermal_pressure.polling_delay_on;
+	} else
+		delay = acpm_gov_common.thermal_pressure.polling_delay_off;
+
+	if (delay)
+		start_thermal_pressure_polling(delay);
+}
+
+static void acpm_switch_on_work(struct kthread_work *work)
+{
+	thermal_pressure_work(true, acpm_gov_common.thermal_pressure.state);
+}
+
+static void thermal_pressure_polling(struct kthread_work *work)
+{
+	struct thermal_state state;
+	bool switched_on = false;
+	bool apply_thermal_pressure = false;
+
+	if (get_thermal_state_from_acpm(acpm_gov_common.sm_base, &state)) {
+		spin_lock(&acpm_gov_common.thermal_pressure.lock);
+		switched_on = state.switched_on & CPU_TZ_MASK;
+		if (cpu_switch_on_status_changed(state) || switched_on) {
+			apply_thermal_pressure = true;
+		}
+		acpm_gov_common.thermal_pressure.state = state;
+		spin_unlock(&acpm_gov_common.thermal_pressure.lock);
+	}
+	thermal_pressure_work(apply_thermal_pressure, state);
+}
+
+static get_cpu_power_table_ect_offset_cb get_cpu_power_table_ect_offset;
+void register_get_cpu_power_table_ect_offset(get_cpu_power_table_ect_offset_cb cb)
+{
+	if (WARN_ON(!cb)) {
+		pr_err("Failed to register in %s\n", __func__);
+		return;
+	}
+
+	if (WARN_ON(get_cpu_power_table_ect_offset)) {
+		pr_err("get_cpu_power_table_ect_offset function is already set");
+		return;
+	}
+
+	get_cpu_power_table_ect_offset = cb;
+}
+EXPORT_SYMBOL(register_get_cpu_power_table_ect_offset);
+
+void update_tj_power_table_ect_offset(struct gs_tmu_data *data)
+{
+	int ect_offset;
+
+	switch (data->id) {
+	case TZ_BIG:
+	case TZ_MID:
+	case TZ_LIT:
+		if (get_cpu_power_table_ect_offset &&
+		    !get_cpu_power_table_ect_offset(&data->mapped_cpus, &ect_offset))
+			exynos_acpm_tmu_ipc_set_pi_param(data->id, POWER_TABLE_ECT_OFFSET,
+							 ect_offset);
+		break;
+	default:
+		break;
+	}
+}
 
 static void update_time_in_state(struct throttling_stats *stats)
 {
@@ -1685,6 +1875,9 @@ static int gs_tmu_pm_notify(struct notifier_block *nb,
 				if (data->use_pi_thermal)
 					kthread_cancel_delayed_work_sync(&data->pi_work);
 			}
+		else if (acpm_gov_common.thermal_pressure.enabled)
+			kthread_cancel_delayed_work_sync(
+				&acpm_gov_common.thermal_pressure.polling_work);
 		break;
 	case PM_POST_HIBERNATION:
 	case PM_POST_RESTORE:
@@ -1695,6 +1888,8 @@ static int gs_tmu_pm_notify(struct notifier_block *nb,
 				if (data->use_pi_thermal)
 					start_pi_polling(data, 0);
 			}
+		else if (acpm_gov_common.thermal_pressure.enabled)
+			start_thermal_pressure_polling(0);
 		break;
 	default:
 		break;
@@ -2090,6 +2285,17 @@ static int gs_map_dt_data(struct platform_device *pdev)
 		data->acpm_gov_params.fields.enable = 1;
 	}
 
+	ret = of_property_read_string(pdev->dev.of_node, "mapped_cpus", &buf);
+	if (!ret) {
+		cpulist_parse(buf, &data->mapped_cpus);
+		cpumask_and(&data->mapped_cpus, &data->mapped_cpus, cpu_possible_mask);
+	} else
+		cpumask_clear(&data->mapped_cpus);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "pressure_index", &data->pressure_index);
+	if (ret || (data->pressure_index >= NR_PRESSURE_TZ))
+		data->pressure_index = -1;
+
 	return 0;
 }
 
@@ -2385,6 +2591,28 @@ static const struct kernel_param_ops param_ops_acpm_gov_tracing_mode = {
 
 module_param_cb(acpm_gov_tracing_mode, &param_ops_acpm_gov_tracing_mode, NULL, 0644);
 
+static int param_acpm_gov_thermal_state_get(char *buf, const struct kernel_param *kp)
+{
+	struct thermal_state therm_state;
+
+	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
+	    get_thermal_state_from_acpm(acpm_gov_common.sm_base, &therm_state)) {
+		return sysfs_emit(buf,
+				  "switch_on=%x, dfs_on=%x, pressure: [0]=%d, [1]=%d, [2]=%d\n",
+				  therm_state.switched_on, therm_state.dfs_on,
+				  therm_state.therm_press[0], therm_state.therm_press[1],
+				  therm_state.therm_press[2]);
+	}
+
+	return -EIO;
+}
+
+static const struct kernel_param_ops param_ops_acpm_gov_thermal_state = {
+	.get = param_acpm_gov_thermal_state_get,
+};
+
+module_param_cb(acpm_gov_thermal_state, &param_ops_acpm_gov_thermal_state, NULL, 0444);
+
 static int param_acpm_gov_timer_interval_get(char *buf, const struct kernel_param *kp)
 {
 	return sysfs_emit(buf, "%d\n", acpm_gov_common.timer_interval);
@@ -2396,16 +2624,20 @@ static int param_acpm_gov_timer_interval_set(const char *val, const struct kerne
 
 	if (kstrtou8(val, 10, &timer_interval_val)) {
 		pr_err("%s: timer_interval parse error", __func__);
-		return -1;
+		return -EINVAL;
 	}
 
-	if ((timer_interval_val < 0) || (timer_interval_val > 255)) {
+	if ((timer_interval_val < ACPM_GOV_TIMER_INTERVAL_MS_MIN) || (timer_interval_val > ACPM_GOV_TIMER_INTERVAL_MS_MAX)) {
 		return -ERANGE;
 	}
 
-	acpm_gov_common.timer_interval = timer_interval_val;
+	if (exynos_acpm_tmu_ipc_set_gov_time_windows(
+		    timer_interval_val, acpm_gov_common.thermal_pressure.time_window)) {
+		pr_err("%s: timer interval and thermal pressure window values are incompatible", __func__);
+		return -EINVAL;
+	}
 
-	exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(acpm_gov_common.timer_interval);
+	acpm_gov_common.timer_interval = timer_interval_val;
 
 	return 0;
 }
@@ -2416,6 +2648,45 @@ static const struct kernel_param_ops param_ops_acpm_gov_timer_interval = {
 };
 
 module_param_cb(acpm_gov_timer_interval, &param_ops_acpm_gov_timer_interval, NULL, 0644);
+
+static int param_acpm_gov_thermal_press_window_get(char *buf, const struct kernel_param *kp)
+{
+	return sysfs_emit(buf, "%d\n", acpm_gov_common.thermal_pressure.time_window);
+}
+
+static int param_acpm_gov_thermal_press_window_set(const char *val, const struct kernel_param *kp)
+{
+	u16 thermal_press_window_val;
+
+	if (kstrtou16(val, 10, &thermal_press_window_val)) {
+		pr_err("%s: thermal_press_window parse error", __func__);
+		return -EINVAL;
+	}
+
+	if ((thermal_press_window_val < ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MIN) ||
+	    (thermal_press_window_val > ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MAX)) {
+		return -ERANGE;
+	}
+
+	if (exynos_acpm_tmu_ipc_set_gov_time_windows(acpm_gov_common.timer_interval,
+						     thermal_press_window_val)) {
+		pr_err("%s: timer interval and thermal pressure window values are incompatible",
+		       __func__);
+		return -EINVAL;
+	}
+
+	acpm_gov_common.thermal_pressure.time_window = thermal_press_window_val;
+
+	return 0;
+}
+
+static const struct kernel_param_ops param_ops_acpm_gov_thermal_press_window = {
+	.get = param_acpm_gov_thermal_press_window_get,
+	.set = param_acpm_gov_thermal_press_window_set,
+};
+
+module_param_cb(acpm_gov_thermal_press_window, &param_ops_acpm_gov_thermal_press_window, NULL,
+		0644);
 
 static int param_acpm_gov_turn_on_get(char *buf, const struct kernel_param *kp)
 {
@@ -2429,7 +2700,7 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 
 	if (kstrtou8(val, 10, &turn_on_val)) {
 		pr_err("%s: turn_on parse error", __func__);
-		return -1;
+		return -EINVAL;
 	}
 
 	/* only allowing 0 -> 1 */
@@ -2438,7 +2709,7 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 
 	if (acpm_ipc_get_buffer("GOV_DBG", (char **)&acpm_gov_common.sm_base, &acpm_gov_common.sm_size)) {
 		pr_err("GOV: unavailable\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	if (acpm_gov_common.sm_size == 0xf10) {
@@ -2448,15 +2719,19 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 			      sizeof(acpm_gov_common.buffer_version));
 		if ((acpm_gov_common.buffer_version >> 32) != ACPM_SM_BUFFER_VERSION_UPPER_32b) {
 			pr_err("GOV: shared memory table version mismatch\n");
-			return -1;
+			return -EINVAL;
 		}
 	}
 
 	if (exynos_acpm_tmu_cb_init(&cb))
-		return -1;
+		return -EINVAL;
 
 	exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(acpm_gov_common.tracing_mode);
-	exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(acpm_gov_common.timer_interval);
+	if (exynos_acpm_tmu_ipc_set_gov_time_windows(
+		    acpm_gov_common.timer_interval, acpm_gov_common.thermal_pressure.time_window)) {
+		pr_err("GOV: timer interval and thermal press window configuration error\n");
+		return -EINVAL;
+	}
 
 	//run loop for all TZ
 	list_for_each_entry (gsdata, &dtm_dev_list, node) {
@@ -2518,6 +2793,8 @@ static int param_update_acpm_pi_table_set(const char *val, const struct kernel_p
 					exynos_acpm_tmu_ipc_set_table(data->id, i, power);
 				}
 			}
+
+			update_tj_power_table_ect_offset(data);
 		}
 	}
 
@@ -2792,15 +3069,10 @@ sustainable_power_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	if (data->pi_param) {
-		u32 sustainable_power;
-		exynos_acpm_tmu_ipc_get_pi_param(data->id, SUSTAINABLE_POWER, &sustainable_power);
-		if (sustainable_power != data->pi_param->sustainable_power)
-			return sysfs_emit(buf, "%u\n", -1);
-		else
-			return sysfs_emit(buf, "%u\n", data->pi_param->sustainable_power);
-	} else
-		return -EIO;
+	if (data->pi_param)
+		return sysfs_emit(buf, "%u\n", data->pi_param->sustainable_power);
+
+	return -EIO;
 }
 
 static ssize_t
@@ -2819,7 +3091,6 @@ sustainable_power_store(struct device *dev, struct device_attribute *devattr,
 
 	data->pi_param->sustainable_power = sustainable_power;
 
-	exynos_acpm_tmu_ipc_set_pi_param(data->id, SUSTAINABLE_POWER, sustainable_power);
 	return count;
 }
 
@@ -2830,15 +3101,10 @@ integral_cutoff_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
-	if (data->pi_param) {
-		int integral_cutoff = 0;
-		exynos_acpm_tmu_ipc_get_pi_param(data->id, INTEGRAL_CUTOFF, &integral_cutoff);
-		if (integral_cutoff != data->pi_param->integral_cutoff)
-			return sysfs_emit(buf, "%u\n", -1);
-		else
-			return sysfs_emit(buf, "%u\n", data->pi_param->integral_cutoff);
-	} else
-		return -EIO;
+	if (data->pi_param)
+		return sysfs_emit(buf, "%u\n", data->pi_param->integral_cutoff);
+
+	return -EIO;
 }
 
 static ssize_t
@@ -2857,8 +3123,42 @@ integral_cutoff_store(struct device *dev, struct device_attribute *devattr,
 
 	data->pi_param->integral_cutoff = integral_cutoff;
 
-	exynos_acpm_tmu_ipc_set_pi_param(data->id, INTEGRAL_CUTOFF, integral_cutoff);
 	return count;
+}
+
+static ssize_t
+power_table_ect_offset_show(struct device *dev, struct device_attribute *devattr,
+					   char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	if (data->use_pi_thermal) {
+		u32 power_table_ect_offset;
+		exynos_acpm_tmu_ipc_get_pi_param(data->id, POWER_TABLE_ECT_OFFSET,
+						 &power_table_ect_offset);
+		return sysfs_emit(buf, "%u\n", power_table_ect_offset);
+	}
+	return -EIO;
+}
+
+static ssize_t
+power_table_ect_offset_store(struct device *dev, struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+
+	if (data->use_pi_thermal) {
+		u8 power_table_ect_offset;
+		if (kstrtou8(buf, 10, &power_table_ect_offset))
+			return -EINVAL;
+
+		exynos_acpm_tmu_ipc_set_pi_param(data->id, POWER_TABLE_ECT_OFFSET, (u32)power_table_ect_offset);
+		return count;
+	}
+
+	return -EIO;
 }
 
 static ssize_t
@@ -3365,6 +3665,7 @@ create_s32_param_attr(k_i, K_I);
 create_s32_param_attr(i_max, I_MAX);
 static DEVICE_ATTR_RW(integral_cutoff);
 static DEVICE_ATTR_RW(acpm_pi_enable);
+static DEVICE_ATTR_RW(power_table_ect_offset);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
@@ -3400,6 +3701,7 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_ipc_dump1.attr,
 	&dev_attr_ipc_dump2.attr,
 	&dev_attr_acpm_pi_enable.attr,
+	&dev_attr_power_table_ect_offset.attr,
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
@@ -4270,7 +4572,40 @@ int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on)
 }
 EXPORT_SYMBOL(set_acpm_tj_power_status);
 
-extern void register_tz_id_ignore_genl(int tz_id);
+static int parse_acpm_gov_common_dt(void)
+{
+	int ret;
+	struct device_node *np;
+	const char *buf;
+
+	np = of_find_node_by_name(NULL, "acpm_gov");
+	if (!np) {
+		pr_err("GOV: No acpm_gov available\n");
+		return -ENODEV;
+	}
+
+	ret = of_property_read_string(np, "work_affinity", &buf);
+	if (!ret) {
+		cpulist_parse(buf, &acpm_gov_common.thermal_pressure.work_affinity);
+		cpumask_and(&acpm_gov_common.thermal_pressure.work_affinity, cpu_possible_mask,
+			    &acpm_gov_common.thermal_pressure.work_affinity);
+	} else
+		cpumask_copy(&acpm_gov_common.thermal_pressure.work_affinity, cpu_possible_mask);
+
+	ret = of_property_read_u32(np, "thermal_pressure_polling_delay_on",
+				   &acpm_gov_common.thermal_pressure.polling_delay_on);
+	if (ret < 0)
+		acpm_gov_common.thermal_pressure.polling_delay_on =
+			ACPM_GOV_THERMAL_PRESS_POLLING_DELAY_ON;
+
+	ret = of_property_read_u32(np, "thermal_pressure_polling_delay_off",
+				   &acpm_gov_common.thermal_pressure.polling_delay_off);
+	if (ret < 0)
+		acpm_gov_common.thermal_pressure.polling_delay_off =
+			ACPM_GOV_THERMAL_PRESS_POLLING_DELAY_OFF;
+
+	return 0;
+}
 
 static int gs_tmu_probe(struct platform_device *pdev)
 {
@@ -4306,6 +4641,18 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (is_first) {
 		spin_lock_init(&acpm_gov_common.lock);
 		if (acpm_gov_common.turn_on) {
+			int i;
+			spin_lock_init(&acpm_gov_common.thermal_pressure.lock);
+
+			if (parse_acpm_gov_common_dt())
+				goto err_dtm_dev_list;
+
+			acpm_gov_common.thermal_pressure.time_window =
+				ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT;
+			acpm_gov_common.thermal_pressure.state.switched_on = 0;
+			for(i = 0; i < NR_PRESSURE_TZ; i++)
+				acpm_gov_common.thermal_pressure.state.therm_press[i] = 0;
+
 			if (acpm_ipc_get_buffer("GOV_DBG", (char **)&acpm_gov_common.sm_base,
 						&acpm_gov_common.sm_size)) {
 				pr_info("GOV: unavailable\n");
@@ -4324,16 +4671,52 @@ static int gs_tmu_probe(struct platform_device *pdev)
 			}
 			if (exynos_acpm_tmu_cb_init(&cb))
 				goto err_dtm_dev_list;
+
+			/* If the buffer version doesn't match, thermal pressure functionality is unavailable */
+			acpm_gov_common.thermal_pressure.enabled = (ACPM_BUF_VER == EXPECT_BUF_VER);
 		}
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 		exynos_acpm_tmu_init();
 		exynos_acpm_tmu_set_init(&cap);
 #endif
 		if (acpm_gov_common.turn_on) {
+			struct task_struct *thread;
 			exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(
 				acpm_gov_common.tracing_mode);
-			exynos_acpm_tmu_ipc_set_gov_debug_timer_interval(
-				acpm_gov_common.timer_interval);
+			if (exynos_acpm_tmu_ipc_set_gov_time_windows(
+				    acpm_gov_common.timer_interval,
+				    acpm_gov_common.thermal_pressure.time_window)) {
+				pr_err("GOV: timer interval and thermal press window configuration error\n");
+				goto err_dtm_dev_list;
+			}
+
+			if (acpm_gov_common.thermal_pressure.enabled) {
+				kthread_init_worker(&acpm_gov_common.thermal_pressure.worker);
+				thread = kthread_create(kthread_worker_fn,
+							&acpm_gov_common.thermal_pressure.worker,
+							"thermal_pressure");
+				if (IS_ERR(thread)) {
+					dev_err(&pdev->dev,
+						"failed to create thermal pressure thread: %ld\n",
+						PTR_ERR(thread));
+					goto err_dtm_dev_list;
+				}
+
+				set_cpus_allowed_ptr(
+					thread, &acpm_gov_common.thermal_pressure.work_affinity);
+
+				sched_set_fifo(thread);
+
+				kthread_init_work(&acpm_gov_common.thermal_pressure.switch_on_work,
+						  acpm_switch_on_work);
+				kthread_init_delayed_work(
+					&acpm_gov_common.thermal_pressure.polling_work,
+					thermal_pressure_polling);
+
+				start_thermal_pressure_polling(0);
+
+				wake_up_process(thread);
+			}
 		}
 	}
 
@@ -4432,14 +4815,10 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	}
 
 	if (data->use_pi_thermal) {
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, SUSTAINABLE_POWER,
-						 data->pi_param->sustainable_power);
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PO, frac_to_int(data->pi_param->k_po));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_PU, frac_to_int(data->pi_param->k_pu));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX, frac_to_int(data->pi_param->i_max));
-		exynos_acpm_tmu_ipc_set_pi_param(data->id, INTEGRAL_CUTOFF,
-						 data->pi_param->integral_cutoff);
 		data->acpm_pi_enable = true;
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, PI_ENABLE, data->acpm_pi_enable);
 	} else {
@@ -4455,6 +4834,11 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	if (!strncmp(data->tmu_name, "ISP", 3))
 		exynos_isp_cooling_init();
 #endif
+
+	spin_lock(&dev_list_spinlock);
+	cpumask_or(&tmu_enabled_mask, &tmu_enabled_mask, &data->mapped_cpus);
+	spin_unlock(&dev_list_spinlock);
+
 	return 0;
 err_dtm_dev_list:
 	spin_lock(&dev_list_spinlock);
@@ -4489,11 +4873,15 @@ static int gs_tmu_suspend(struct device *dev)
 
 	gs_tmu_control(pdev, false);
 	if (suspended_count == num_of_devices) {
-		if (acpm_gov_common.turn_on)
+		if (acpm_gov_common.turn_on) {
 			if (acpm_gov_common.tracing_buffer_flush_pending == true) {
 				acpm_gov_common.last_ts = 0;
 				acpm_gov_common.tracing_buffer_flush_pending = false;
 			}
+			if (acpm_gov_common.thermal_pressure.enabled)
+				kthread_cancel_work_sync(
+					&acpm_gov_common.thermal_pressure.switch_on_work);
+		}
 		exynos_acpm_tmu_set_suspend(false);
 		pr_info("%s: TMU suspend\n", __func__);
 	}

@@ -263,13 +263,31 @@
 			dm-type = <DM_CPU_CL0>;
 
 			min-freq = <324000>;
-			max-freq = <2147000>;
+			max-freq = <1704000>;
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <2>;
 			tz-cooling-name = "LITTLE";
 			skip-boot-pmqos;
 			use-em-coeff;
+
+			dsu-bci-constraint-table =
+				/* CL0    DSU    BCI */
+				< 2147000 2120000 1790000
+				2098000 2120000 1790000
+				2024000 2120000 1790000
+				1950000 2120000 1790000
+				1785000 1800000 1401000
+				1704000 1800000 1401000
+				1548000 1800000 1401000
+				1425000 1800000 1401000
+				1328000 1328000 1205000
+				1197000 1328000 1205000
+				1098000 1328000 1205000
+				955000  1328000 1205000
+				820000  1328000 1205000
+				610000  1328000 1205000
+				324000  970000  1050000 >;
 		};
 
 		cpufreq_domain1: domain@1 {
@@ -278,7 +296,7 @@
 			dm-type = <DM_CPU_CL1>;
 
 			min-freq = <402000>;
-			max-freq = <2450000>;
+			max-freq = <2367000>;
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <1>;
@@ -294,7 +312,7 @@
 			dm-type = <DM_CPU_CL2>;
 
 			min-freq = <500000>;
-			max-freq = <3015000>;
+			max-freq = <2914000>;
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <0>;

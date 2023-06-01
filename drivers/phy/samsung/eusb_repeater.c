@@ -188,20 +188,23 @@ static int eusb_repeater_ctrl(int value)
 	struct eusb_repeater_data *tud = g_tud;
 	int ret = 0;
 
-	if (gpio_is_valid(tud->gpio_eusb_ctrl_sel)) {
-		ret = gpio_direction_output(tud->gpio_eusb_ctrl_sel, value);
-		if (ret) {
-			dev_err(tud->dev, "ctrl_sel on failed\n");
-			return -EIO;
-		}
+	ret = gpio_direction_output(tud->gpio_eusb_resetb, value);
+	if (ret)
+		dev_err(tud->dev, "Failed to control gpio: %s\n", ret);
+
+	if (value)
+		ret = pinctrl_select_state(tud->pinctrl, tud->power_on_state);
+	else
+		ret = pinctrl_select_state(tud->pinctrl, tud->power_off_state);
+
+
+	if (!ret)
 		tud->ctrl_sel_status = value;
-		return 0;
-	}
 
-	dev_err(tud->dev, "Failed to get gpio_eusb_ctrl_sel (%d)\n",
-		tud->gpio_eusb_ctrl_sel);
+	if (ret)
+		dev_err(tud->dev, "Failed to select %s state\n", value ? "power on" : "power off");
 
-	return -ENODEV;
+	return ret;
 }
 
 static ssize_t
@@ -236,7 +239,7 @@ eusb_repeater_store(struct device *dev,
 	if (sscanf(buf, "%29s %x", tune_name, &tune_val) != 2)
 		return -EINVAL;
 
-	if (tud->ctrl_sel_status == false) {
+	if (tud->ctrl_sel_status == false && gpio_is_valid(tud->gpio_eusb_resetb)) {
 		eusb_repeater_ctrl(true);
 		mdelay(3);
 	}
@@ -295,7 +298,7 @@ static int eusb_repeater_parse_dt(struct device *dev, struct eusb_repeater_data 
 	} else
 		dev_info(dev, "don't need repeater tuning param\n");
 
-	tud->gpio_eusb_ctrl_sel = of_get_named_gpio(np, "eusb,gpio_eusb_ctrl", 0);
+	tud->gpio_eusb_resetb = of_get_named_gpio(np, "eusb,gpio_eusb_resetb", 0);
 
 	return 0;
 }
@@ -312,7 +315,7 @@ int eusb_repeater_power_off(void)
 	if (!tud)
 		return -EEXIST;
 
-	if (gpio_is_valid(tud->gpio_eusb_ctrl_sel))
+	if (gpio_is_valid(tud->gpio_eusb_resetb))
 		eusb_repeater_ctrl(false);
 	return 0;
 }
@@ -327,7 +330,7 @@ int eusb_repeater_power_on(void)
 	if (!tud)
 		return -EEXIST;
 
-	if (gpio_is_valid(tud->gpio_eusb_ctrl_sel))
+	if (gpio_is_valid(tud->gpio_eusb_resetb))
 		eusb_repeater_ctrl(true);
 
 	mdelay(3);
@@ -419,12 +422,55 @@ static int eusb_repeater_probe(struct i2c_client *client,
 	tud->pdata = pdata;
 	g_tud = tud;
 
-	ret = gpio_request(tud->gpio_eusb_ctrl_sel, "eusb,gpio_eusb_ctrl");
+	ret = gpio_request(tud->gpio_eusb_resetb, "eusb_resetb");
 	if (ret) {
-		pr_err("failed to gpio_request eusb,gpio_eusb_ctrl\n");
-		goto err_parse_dt;
+		pr_err("failed to gpio_request gpio_eusb_resetb\n");
+		goto gpio_skip;
 	}
 
+	/*
+	 * power off repeater during driver probe
+	 */
+	ret = gpio_direction_output(tud->gpio_eusb_resetb, 0);
+	if (ret) {
+		dev_err(&client->dev, "failed to set eusb_resetb\n");
+		goto clear_gpio;
+	}
+
+	tud->pinctrl = devm_pinctrl_get(&client->dev);
+	if (IS_ERR(tud->pinctrl)) {
+		dev_err(&client->dev, "failed to allocate pinctrl ret: %ld\n", PTR_ERR(tud->pinctrl));
+		ret = PTR_ERR(tud->pinctrl);
+		goto clear_gpio;
+	}
+
+	tud->power_on_state = pinctrl_lookup_state(tud->pinctrl, "power_on");
+	if (IS_ERR(tud->power_on_state)) {
+		dev_err(&client->dev, "failed to allocate pinctrl ret: %ld\n",
+			PTR_ERR(tud->power_on_state));
+		ret = PTR_ERR(tud->power_on_state);
+		goto clear_gpio;
+	}
+
+	tud->power_off_state = pinctrl_lookup_state(tud->pinctrl, "power_off");
+	if (IS_ERR(tud->power_off_state)) {
+		dev_err(&client->dev, "failed to allocate pinctrl ret: %ld\n",
+			PTR_ERR(tud->power_off_state));
+		ret = PTR_ERR(tud->power_off_state);
+		goto clear_gpio;
+	}
+
+clear_gpio:
+	if (ret)
+		gpio_free(tud->gpio_eusb_resetb);
+
+	if (IS_ERR(tud->power_on_state) || IS_ERR(tud->power_off_state)) {
+		tud->pinctrl = NULL;
+		tud->power_on_state = NULL;
+		tud->power_off_state = NULL;
+	}
+
+gpio_skip:
 	i2c_set_clientdata(client, tud);
 	mutex_init(&tud->i2c_mutex);
 

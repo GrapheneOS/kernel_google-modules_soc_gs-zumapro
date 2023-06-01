@@ -18,7 +18,7 @@
 	};
 
 	faceauth_model_heap: faceauth_model_heap {
-		compatible = "samsung,dma-heap-carveout";
+		compatible = "google,dma-heap-gcma";
 		memory-region = <&famodel>;
 		dma-heap,name = "famodel";
 		dma-heap,dynamic-secure;
@@ -58,7 +58,7 @@
 	};
 
 	tui_dma_heap {
-		compatible = "samsung,dma-heap-carveout";
+		compatible = "google,dma-heap-gcma";
 		memory-region = <&tui>;
 		dma-heap,name = "tui";
 		dma-heap,secure;
@@ -164,7 +164,7 @@
 	};
 
 	tui: tui {
-		size = <0x3000000>;
+		size = <0x1800000>;
 		alloc-ranges = <0x0 0x80000000 0x80000000>;
 		alignment = <0x0 0x00010000>;
 	};
@@ -239,6 +239,14 @@
 
 	mfc_fw: mfc_fw {
 		size = <0x210000>;
+		alloc-ranges = <0x0 0x80000000 0x80000000>;
+		alignment = <0x0 0x00010000>;
+	};
+
+	dpado_mem: dpado-rmem {
+		status = "disabled";
+		compatible = "exynos,dp_ado_rmem";
+		size = <0x200000>; //1MB for each(playback, capture)
 		alloc-ranges = <0x0 0x80000000 0x80000000>;
 		alignment = <0x0 0x00010000>;
 	};

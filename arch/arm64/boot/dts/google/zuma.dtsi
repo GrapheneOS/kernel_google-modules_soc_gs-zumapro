@@ -84,7 +84,7 @@
 	};
 
 	chosen: chosen {
-		bootargs = "earlycon=exynos4210,mmio32,0x10870000 console=ttySAC0,115200n8 root=/dev/ram0 rw clocksource=arch_sys_counter androidboot.hardware=zuma androidboot.hardware.platform=zuma androidboot.debug_level=0x4948 clk_ignore_unused loop.max_part=7 loop.hw_queue_depth=31 coherent_pool=4M firmware_class.path=/vendor/firmware irqaffinity=0 swiotlb=noforce androidboot.slot_suffix=_a androidboot.secure_boot=NONE sysrq_always_enabled no_console_suspend softlockup_panic=1 kasan_multi_shot kvm-arm.protected_modules";
+		bootargs = "earlycon=exynos4210,mmio32,0x10870000 console=ttySAC0,115200n8 root=/dev/ram0 rw clocksource=arch_sys_counter androidboot.hardware=zuma androidboot.hardware.platform=zuma androidboot.debug_level=0x4948 clk_ignore_unused loop.max_part=7 loop.hw_queue_depth=31 coherent_pool=4M firmware_class.path=/vendor/firmware irqaffinity=0 swiotlb=noforce androidboot.slot_suffix=_a androidboot.secure_boot=NONE sysrq_always_enabled no_console_suspend softlockup_panic=1 kasan_multi_shot kvm-arm.protected_modules=exynos-pd,pkvm_s2mpu-v9";
 	};
 
 	odm: odm {
@@ -200,6 +200,11 @@
 		clocks = <&ext_200m>, <&ext_200m>;
 		clock-names = "gate_uart_clk0", "ipclk_uart0";
 		status = "disabled";
+	};
+
+	hdcp {
+		compatible = "samsung,exynos-hdcp";
+		interrupts = <GIC_SPI INTREQ__HDCP IRQ_TYPE_LEVEL_HIGH>;
 	};
 
 	/* GPIO_ALIVE */
@@ -604,6 +609,10 @@
 			/* vptid 40, max size 16384KB, priority 0, pbha 5 */
 			id_size_priority = <0x28 0x007fd001 0x0 0x5>;
 		};
+		gpu_g1_p0 {
+			/* vptid 2, max size 16384KB, priority 0, pbha 6 */
+			id_size_priority = <0x2 0xffffffff 0x0 0x6>;
+		};
 		CAMERA1WAY0 {
 			/* vptid 3, size 512KB, priority 0 (highest), pbha 0 */
 			id_size_priority = <0x3 0x00001001 0x0 0x0>;
@@ -675,6 +684,7 @@
 		clocks = <&clock DOUT_CLK_EH_NOCP>;
 		clock-names = "eh-clock";
 		power-domains = <&pd_eh>;
+		s2mpus = <&s2mpu_s0_eh>;
 		google,eh,ignore-gctrl-reset;
 	};
 
@@ -908,7 +918,7 @@
 			/* Delay time */
 			use_delay_time = "false";
 
-			freq_info = <166000 166000 166000 166000
+			freq_info = <143000 143000 143000 143000
 					664000 664000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
@@ -1032,7 +1042,7 @@
 			use_delay_time = "false";
 
 			freq_info = <324000 324000 324000 324000
-					2253000 324000>;
+					1800000 324000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
 
@@ -1057,7 +1067,7 @@
 			use_delay_time = "false";
 
 			freq_info = <315000 315000 315000 315000
-					1942000 315000>;
+					1401000 315000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
 
@@ -1247,12 +1257,20 @@
 	cpu0_memlat_cpugrp: cpu0-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu0>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0xA2>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu0_cpu_mif_latmon: cpu0-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu0>;
 			target-dev = <&mif_cpu0_mem_lat>;
-			cachemiss-ev = <0xA2>;
 			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
@@ -1270,12 +1288,20 @@
 	cpu1_memlat_cpugrp: cpu1-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu1>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0xA2>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu1_cpu_mif_latmon: cpu1-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu1>;
 			target-dev = <&mif_cpu1_mem_lat>;
-			cachemiss-ev = <0xA2>;
 			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
@@ -1293,12 +1319,20 @@
 	cpu2_memlat_cpugrp: cpu2-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu2>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0xA2>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu2_cpu_mif_latmon: cpu2-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu2>;
 			target-dev = <&mif_cpu2_mem_lat>;
-			cachemiss-ev = <0xA2>;
 			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
@@ -1316,12 +1350,20 @@
 	cpu3_memlat_cpugrp: cpu3-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu3>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0xA2>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu3_cpu_mif_latmon: cpu3-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu3>;
 			target-dev = <&mif_cpu3_mem_lat>;
-			cachemiss-ev = <0xA2>;
 			update-dsu-df;
 			core-dev-table =
 				<  250000  421000 >,
@@ -1339,12 +1381,20 @@
 	cpu4_memlat_cpugrp: cpu4-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu4>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu4_cpu_mif_latmon: cpu4-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu4>;
 			target-dev = <&mif_cpu4_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
@@ -1363,12 +1413,20 @@
 	cpu5_memlat_cpugrp: cpu5-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu5>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu5_cpu_mif_latmon: cpu5-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu5>;
 			target-dev = <&mif_cpu5_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
@@ -1387,12 +1445,20 @@
 	cpu6_memlat_cpugrp: cpu6-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu6>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu6_cpu_mif_latmon: cpu6-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu6>;
 			target-dev = <&mif_cpu6_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
@@ -1411,12 +1477,20 @@
 	cpu7_memlat_cpugrp: cpu7-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu7>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+			stall-backend-mem-ev = <0x4005>;
+		};
 
 		cpu7_cpu_mif_latmon: cpu7-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu7>;
 			target-dev = <&mif_cpu7_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  320000  421000 >,
@@ -1435,13 +1509,20 @@
 	cpu8_memlat_cpugrp: cpu8-cpugrp {
 		compatible = "arm-memlat-cpugrp";
 		cpulist = <&cpu8>;
-		stall-backend-ev= <0x4005>;
+		pmu {
+			l2-cachemiss-ev = <0x17>;
+			l3-cachemiss-ev = <0x2A>;
+			stall-backend-mem-ev = <0x4005>;
+		};
+		amu {
+			inst-ev = <0x0008>;
+			cyc-ev = <0x0011>;
+		};
 
 		cpu8_cpu_mif_latmon: cpu8-cpu-mif-latmon {
 			compatible = "arm-memlat-mon";
 			cpulist = <&cpu8>;
 			target-dev = <&mif_cpu8_mem_lat>;
-			cachemiss-ev = <0x2A>;
 			update-dsu-df;
 			core-dev-table =
 				<  400000  421000 >,
@@ -1470,24 +1551,29 @@
 		samsung,tzmp;
 		hw_ppc =
 			/* sc_up none x1 x1/4 x1/9 x1/16 */
-			<3800 3200 2100 2600 3300 3600 /* rgb32 non-rotated */
-			3500 3600 2100 2700 3300 3800 /* rgb32 rotated */
-			3700 3500 3600 4300 4300 3500 /* yuv2p non-rotated */
-			2600 2800 3200 3900 4300 3600 /* yuv2p rotated */
-			3600 2600 1400 900 1000 1000 /* sbwc non-rotated */
-			2600 2600 1400 900 1000 1000 /* sbwc rotated */
-			1600 3400 300 500 800 700 /* rgb afbc non-rotated */
-			1400 3600 300 800 900 900 /* rgb afbc rotated */
-			2900 2000 800 300 300 400 /* yuv afbc non-rotated */
-			2600 2000 800 300 300 400 /* yuv afbc rotated */
+			<3900 3600 2000 2900 2300 2900 /* rgb32 non-rotated */
+			3800 3500 3200 3500 3400 3800 /* rgb32 rotated */
+			3400 2200 2400 4300 5000 4500 /* yuv2p non-rotated */
+			2000 2200 3600 4200 4300 3600 /* yuv2p rotated */
+			3300 3200 2800 3000 3500 2900 /* sbwc non-rotated */
+			1900 2200 3100 3200 3200 2800 /* sbwc rotated */
+			3000 3100 2800 2600 3000 3700 /* rgb afbc non-rotated */
+			3800 2100 3200 3200 3500 3400 /* rgb afbc rotated */
+			3300 3000 3300 3100 3200 3400 /* yuv afbc non-rotated */
+			2000 2200 3000 3400 3600 3600 /* yuv afbc rotated */
 			2800>; /* colorfill */
 
-		g2d_dvfs_table = <533000 711000
-				465000 400000
-				332000 332000
-				200000 200000
-				100000 100000
+		g2d_dvfs_table = <1066000 711000
+				799000 620000
+				664000 400000
+				533000 332000
+				356000 200000
+				178000 100000
 				>;
+
+		dvfs_mif = <DEVFREQ_MIF>;
+		dvfs_int = <DEVFREQ_INT>;
+
 		itmon,port = "G2D";
 		itmon,dest = "G2D";
 	};
@@ -1524,14 +1610,14 @@
 		reg = <0x0 0x154D0000 0x1000>,
 			<0x0 0x154E0000 0x1000>,
 			<0x0 0x10400204 0x100>,
-			<0x0 0x15200000 0x100>;  /* GS_MAILBOX_AP_AOCA3_HOST */
+			<0x0 0x15200000 0x100>,  /* GS_MAILBOX_AP_AOCA3_HOST */
+			<0x0 0x15220000 0x100>;  /* GS_MAILBOX_AP_AOCF1_HOST */
 		reg-names = "gpio_alive_base",
 			"gpio_far_alive_base",
 			"gicd_ispendrn_base",
-			"mailbox_ap_aoc_host";
-		num-eint = <64>;	/* EINT_0 ~ 44 */
-		num-eint-far = <32>;	/* EINT_45 ~ 66 */
-		gpa-use = <8>, <7>, <5>, <4>, <4>, <7>, <8>, <2>, <8>, <4>, <8>, <2>;
+			"mailbox_ap_aoca3_host",
+			"mailbox_ap_aocf1_host";
+
 		num-gic = <30>;
 		suspend_mode_idx = <8>;
 

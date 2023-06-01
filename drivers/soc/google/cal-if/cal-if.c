@@ -34,10 +34,26 @@
 
 extern s32 gs_chipid_get_dvfs_version(void);
 
-int (*exynos_cal_pd_bcm_sync)(unsigned int id, bool on);
-EXPORT_SYMBOL(exynos_cal_pd_bcm_sync);
+static int (*exynos_cal_pd_bcm_sync)(unsigned int id, bool on);
+static DEFINE_MUTEX(cal_pd_bcm_sync_mutex);
 
 static DEFINE_SPINLOCK(pmucal_cpu_lock);
+
+void set_exynos_cal_pd_bcm_sync(int (*fn)(unsigned int id, bool on))
+{
+	mutex_lock(&cal_pd_bcm_sync_mutex);
+	exynos_cal_pd_bcm_sync = fn;
+	mutex_unlock(&cal_pd_bcm_sync_mutex);
+}
+EXPORT_SYMBOL_GPL(set_exynos_cal_pd_bcm_sync);
+
+void clear_exynos_cal_pd_bcm_sync(void)
+{
+	mutex_lock(&cal_pd_bcm_sync_mutex);
+	exynos_cal_pd_bcm_sync = NULL;
+	mutex_unlock(&cal_pd_bcm_sync_mutex);
+}
+EXPORT_SYMBOL_GPL(clear_exynos_cal_pd_bcm_sync);
 
 unsigned int cal_clk_is_enabled(unsigned int id)
 {
@@ -226,8 +242,10 @@ int cal_pd_control(unsigned int id, int on)
 			bts_pd_sync(id, on);
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_BCM_DBG)
+		mutex_lock(&cal_pd_bcm_sync_mutex);
 		if (exynos_cal_pd_bcm_sync && cal_pd_status(id))
 			exynos_cal_pd_bcm_sync(id, true);
+		mutex_unlock(&cal_pd_bcm_sync_mutex);
 #endif
 	} else {
 #ifdef CONFIG_EXYNOS9820_BTS
@@ -235,8 +253,10 @@ int cal_pd_control(unsigned int id, int on)
 			bts_pd_sync(id, on);
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_BCM_DBG)
+		mutex_lock(&cal_pd_bcm_sync_mutex);
 		if (exynos_cal_pd_bcm_sync && cal_pd_status(id))
 			exynos_cal_pd_bcm_sync(id, false);
+		mutex_unlock(&cal_pd_bcm_sync_mutex);
 #endif
 		ret = pmucal_local_disable(index);
 	}

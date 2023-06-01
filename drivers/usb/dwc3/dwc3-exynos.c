@@ -4,42 +4,38 @@
  *
  * Copyright (C) 2022 Samsung Electronics Co., Ltd.
  */
-
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/slab.h>
-#include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
-#include <linux/mutex.h>
-#include <linux/clk.h>
-#include <linux/usb/otg.h>
-#include <linux/usb/usb_phy_generic.h>
-#include <linux/dma-mapping.h>
-#include <linux/of.h>
-#include <linux/of_platform.h>
-#include <linux/pinctrl/consumer.h>
-#include <linux/workqueue.h>
-#include <linux/usb/gadget.h>
-
-#include <linux/usb/of.h>
-
 #include <dwc3/core.h> /* $(srctree)/drivers/usb/dwc3/core.h */
-#include "core-exynos.h"
-#include "dwc3-exynos.h"
-#include "dwc3-exynos-ldo.h"
 #include <dwc3/io.h> /* $(srctree)/drivers/usb/dwc3/io.h */
 #include <dwc3/gadget.h> /* $(srctree)/drivers/usb/dwc3/gadget.h */
 
-#include <linux/io.h>
-#include <linux/usb/otg-fsm.h>
+#include <linux/clk.h>
+#include <linux/dma-mapping.h>
 #include <linux/extcon.h>
-
-#include <linux/suspend.h>
-
-#include "exynos-otg.h"
+#include <linux/io.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/mutex.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
+#include <linux/slab.h>
+#include <linux/suspend.h>
+#include <linux/usb/dwc3-exynos.h>
+#include <linux/usb/gadget.h>
+#include <linux/usb/of.h>
+#include <linux/usb/otg.h>
+#include <linux/usb/otg-fsm.h>
+#include <linux/usb/usb_phy_generic.h>
+#include <linux/workqueue.h>
 
 #include <soc/google/exynos-cpupm.h>
+
+#include "core-exynos.h"
+#include "dwc3-exynos-ldo.h"
+#include "exynos-otg.h"
 
 static const struct of_device_id exynos_dwc3_match[] = {
 	{
@@ -622,6 +618,99 @@ int dwc3_exynos_vbus_event(struct device *dev, bool vbus_active)
 	return 0;
 }
 
+bool dwc3_exynos_check_usb_suspend(struct dwc3_otg *dotg)
+{
+	int wait_counter = 0;
+
+	do {
+		if (!dotg->dwc3_suspended)
+			break;
+
+		wait_counter++;
+		msleep(20);
+	} while (wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT);
+
+	return wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT;
+}
+
+/*
+ * dwc3_exynos_phy_enable - received combo phy control.
+ */
+int dwc3_exynos_phy_enable(int owner, bool on)
+{
+	struct dwc3_exynos	*exynos;
+	struct dwc3_exynos_rsw	*rsw;
+	struct otg_fsm		*fsm;
+	struct device_node *np = NULL;
+	struct platform_device *pdev = NULL;
+	struct dwc3		*dwc;
+	struct device		*dev;
+	struct dwc3_otg		*dotg;
+	int ret = 0;
+
+	pr_info("%s owner=%d on=%d +\n", __func__, owner, on);
+
+	np = of_find_compatible_node(NULL, NULL, "samsung,exynos9-dwusb");
+	if (np) {
+		pdev = of_find_device_by_node(np);
+		if (!pdev) {
+			pr_err("%s we can't get platform device\n", __func__);
+			ret = -ENODEV;
+			goto err;
+		}
+		of_node_put(np);
+	} else {
+		pr_err("%s we can't get np\n", __func__);
+		ret = -ENODEV;
+		goto err;
+	}
+
+	exynos = platform_get_drvdata(pdev);
+	if (!exynos) {
+		pr_err("%s we can't get drvdata\n", __func__);
+		ret = -ENOENT;
+		goto err;
+	}
+
+	rsw = &exynos->rsw;
+
+	fsm = rsw->fsm;
+	if (!fsm) {
+		pr_err("%s we can't get fsm\n", __func__);
+		ret = -ENOENT;
+		goto err;
+	}
+
+	dwc = exynos->dwc;
+	dev = dwc->dev;
+	dotg = exynos->dotg;
+	if (on) {
+		if (!dwc3_exynos_check_usb_suspend(dotg))
+			dev_err(dev, "too long to wait for dwc3 suspended\n");
+
+		mutex_lock(&dotg->lock);
+		exynos->need_dr_role = 1;
+		ret = pm_runtime_get_sync(dev);
+		if (ret < 0) {
+			dev_err(dwc->dev, "%s: failed to initialize core: %d\n",
+					__func__, ret);
+			pm_runtime_set_suspended(dev);
+		}
+		exynos->need_dr_role = 0;
+		mutex_unlock(&dotg->lock);
+	} else {
+		mutex_lock(&dotg->lock);
+		if (!dotg->otg_connection)
+			exynos->dwc->current_dr_role = DWC3_GCTL_PRTCAP_DEVICE;
+		pm_runtime_put_sync_suspend(dev);
+		mutex_unlock(&dotg->lock);
+	}
+
+err:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(dwc3_exynos_phy_enable);
+
 static int dwc3_exynos_register_phys(struct dwc3_exynos *exynos)
 {
 	struct platform_device	*pdev;
@@ -1084,11 +1173,23 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	struct device_node	*node = dev->of_node, *dwc3_np;
 	int			ret;
 	struct phy		*temp_usb_phy;
+	struct device_node	*s2mpu_np;
+	struct platform_device	*s2mpu_pdev;
 
 	temp_usb_phy = devm_phy_get(dev, "usb2-phy");
 	if (IS_ERR(temp_usb_phy)) {
 		dev_dbg(dev, "USB phy is not probed - defered return!\n");
 		return  -EPROBE_DEFER;
+	}
+
+	s2mpu_np = of_parse_phandle(dev->of_node, "s2mpus", 0);
+	if (s2mpu_np) {
+		s2mpu_pdev = of_find_device_by_node(s2mpu_np);
+		of_node_put(s2mpu_np);
+		if (s2mpu_pdev) {
+			device_link_add(dev, &s2mpu_pdev->dev,
+					DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_PM_RUNTIME);
+		}
 	}
 
 	exynos = devm_kzalloc(dev, sizeof(*exynos), GFP_KERNEL);
@@ -1155,7 +1256,6 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 		goto extcon_unregister;
 	}
 
-	exynos_usbdrd_vdd_hsi_manual_control(1);
 	exynos_usbdrd_ldo_manual_control(1);
 
 	if (node) {
@@ -1189,11 +1289,11 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	/* set the initial value */
 	exynos->usb_data_enabled = true;
 
-	ret = pm_runtime_put(dev);
-	pm_runtime_allow(dev);
-
 	exynos_usbdrd_phy_tune(exynos->dwc->usb2_generic_phy, 0);
 	exynos_usbdrd_phy_tune(exynos->dwc->usb3_generic_phy, 0);
+
+	ret = pm_runtime_put(dev);
+	pm_runtime_allow(dev);
 
 	dwc3_exynos_otg_init(exynos->dwc, exynos);
 

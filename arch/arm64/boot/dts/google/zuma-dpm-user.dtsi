@@ -118,3 +118,7 @@
 &log_slcdump {
 	status = "disabled";
 };
+
+&log_bcm {
+	status = "disabled";
+};

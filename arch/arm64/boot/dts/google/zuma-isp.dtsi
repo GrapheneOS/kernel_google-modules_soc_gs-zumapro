@@ -187,6 +187,7 @@
 		clock-names = "UMUX_CLKCMU_ISPFE";
 		clock-rates = <0>;
 		clock-family = <CAMERA_CLOCK_FAMILY_CAM>;
+		bts-scenario = "camera_default";
 
 		interrupts =
 			<GIC_SPI IRQ_ISPFE_1_ISPFE IRQ_TYPE_LEVEL_HIGH>,
@@ -824,6 +825,9 @@
 			<&sysmmu_ispfe_s1>,
 			<&sysmmu_ispfe_s2>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_gdc0: lwis_gdc@1D440000 {
@@ -869,16 +873,7 @@
 		bts-block-names =
 			"gdc";
 		samsung,iommu-group = <&iommu_group_isp>;
-		/*
-		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
-		 * writing the packet data to the target's C2SERV registers. Such data is
-		 * issued by initiator's (could be the producer or consumer depending on the
-		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
-		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
-		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
-		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
-		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
-		*/
+		/* Ref: b/280704201 */
 		samsung,iommu-identity-map =
 			<0x0 0x1C46D000 0x3000>,  /* RGBP */
 			<0x0 0x1C86D000 0x3000>,  /* YUVP */
@@ -886,6 +881,9 @@
 			<0x0 0x1D05D000 0x3000>,  /* MCSC */
 			<0x0 0x1D48D000 0x3000>,  /* GDC1 */
 			<0x0 0x1D85D000 0x3000>;  /* GSE */
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_gdc1: lwis_gdc@1D470000 {
@@ -931,16 +929,7 @@
 		bts-block-names =
 			"gdc";
 		samsung,iommu-group = <&iommu_group_isp>;
-		/*
-		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
-		 * writing the packet data to the target's C2SERV registers. Such data is
-		 * issued by initiator's (could be the producer or consumer depending on the
-		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
-		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
-		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
-		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
-		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
-		*/
+		/* Ref: b/280704201 */
 		samsung,iommu-identity-map =
 			<0x0 0x1C46D000 0x3000>,  /* RGBP */
 			<0x0 0x1C86D000 0x3000>,  /* YUVP */
@@ -948,6 +937,9 @@
 			<0x0 0x1D05D000 0x3000>,  /* MCSC */
 			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
 			<0x0 0x1D85D000 0x3000>;  /* GSE */
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_mcsc: lwis_mcsc@1D040000 {
@@ -1008,16 +1000,7 @@
 		iommus =
 			<&sysmmu_mcsc>;
 		samsung,iommu-group = <&iommu_group_isp>;
-		/*
-		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
-		 * writing the packet data to the target's C2SERV registers. Such data is
-		 * issued by initiator's (could be the producer or consumer depending on the
-		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
-		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
-		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
-		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
-		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
-		*/
+		/* Ref: b/280704201 */
 		samsung,iommu-identity-map =
 			<0x0 0x1C46D000 0x3000>,  /* RGBP */
 			<0x0 0x1C86D000 0x3000>,  /* YUVP */
@@ -1025,6 +1008,9 @@
 			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
 			<0x0 0x1D48D000 0x3000>,  /* GDC1 */
 			<0x0 0x1D85D000 0x3000>;  /* GSE */
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_gse: lwis_gse@0x1D840000 {
@@ -1083,16 +1069,7 @@
 		iommus =
 			<&sysmmu_gse>;
 		samsung,iommu-group = <&iommu_group_isp>;
-		/*
-		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
-		 * writing the packet data to the target's C2SERV registers. Such data is
-		 * issued by initiator's (could be the producer or consumer depending on the
-		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
-		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
-		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
-		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
-		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
-		*/
+		/* Ref: b/280704201 */
 		samsung,iommu-identity-map =
 			<0x0 0x1C46D000 0x3000>,  /* RGBP */
 			<0x0 0x1C86D000 0x3000>,  /* YUVP */
@@ -1100,6 +1077,9 @@
 			<0x0 0x1D05D000 0x3000>,  /* MCSC */
 			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
 			<0x0 0x1D48D000 0x3000>;  /* GDC1 */
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_be_core: lwis_be_core@1C440000 {
@@ -1116,11 +1096,11 @@
 			<0x0 0x1C5D4000 0xE00>,    /* SSMT D0 RGBP */
 			<0x0 0x1C914000 0xE00>,    /* SSMT D1 YUVP */
 			<0x0 0x1C420404 0x4>,      /* SYSREG RGBP */
-			<0x0 0x1C604400 0xE00>,    /* SSMT D0 MCFP */
-			<0x0 0x1C614400 0xE00>,    /* SSMT D1 MCFP */
-			<0x0 0x1C624400 0xE00>,    /* SSMT D2 MCFP */
-			<0x0 0x1C634400 0xE00>,    /* SSMT D3 MCFP */
-			<0x0 0x1C644400 0xE00>;    /* SSMT D4 MCFP */
+			<0x0 0x1C604000 0xE00>,    /* SSMT D0 MCFP */
+			<0x0 0x1C614000 0xE00>,    /* SSMT D1 MCFP */
+			<0x0 0x1C624000 0xE00>,    /* SSMT D2 MCFP */
+			<0x0 0x1C634000 0xE00>,    /* SSMT D3 MCFP */
+			<0x0 0x1C644000 0xE00>;    /* SSMT D4 MCFP */
 		reg-names =
 			"rgbp",
 			"mcfp",
@@ -1180,7 +1160,8 @@
 		clock-family = <CAMERA_CLOCK_FAMILY_INTCAM>;
 		bts-block-names =
 			"rgbp",
-			"yuvp";
+			"yuvp",
+			"gdc";
 
 		iommus =
 			<&sysmmu_yuvp>,
@@ -1190,16 +1171,7 @@
 			<&sysmmu_gdc>;
 		samsung,iommu-group = <&iommu_group_isp>;
 
-		/*
-		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
-		 * writing the packet data to the target's C2SERV registers. Such data is
-		 * issued by initiator's (could be the producer or consumer depending on the
-		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
-		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
-		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
-		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
-		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
-		*/
+		/* Ref: b/280704201 */
 		samsung,iommu-identity-map =
 			<0x0 0x1CC5D000 0x3000>,  /* GTNR Merge */
 			<0x0 0x1D05D000 0x3000>,  /* MCSC */
@@ -1211,6 +1183,9 @@
 			<&pd_yuvp>,
 			<&pd_rgbp>,
 			<&pd_gdc>;
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_gtnr_merge: lwis_gtnr_merge@1CC40000 {
@@ -1283,16 +1258,7 @@
 			<&sysmmu_tnr_s0>,
 			<&sysmmu_tnr_s1>;
 		samsung,iommu-group = <&iommu_group_isp>;
-		/*
-		 * For Zuma VOTF pair, producer and consumer exchange VOTF packet data by
-		 * writing the packet data to the target's C2SERV registers. Such data is
-		 * issued by initiator's (could be the producer or consumer depending on the
-		 * packet type) C2SERV, goes through the initiator's SSMT, SYSMMU, and then
-		 * AXI bus before reaching receiver's C2SERV. Thus, for each VOTF-enabled
-		 * IP, we need to add identity mapping of other IPs' C2SERV register regions
-		 * to its SYSMMU to let SYSMMU know how to translate these addresses.
-		 * Ref: b/239326504 and b/225419107 (for VOTF stream ID).
-		*/
+		/* Ref: b/280704201 */
 		samsung,iommu-identity-map =
 			<0x0 0x1C46D000 0x3000>,  /* RGBP */
 			<0x0 0x1C86D000 0x3000>,  /* YUVP */
@@ -1300,6 +1266,9 @@
 			<0x0 0x1D45D000 0x3000>,  /* GDC0 */
 			<0x0 0x1D48D000 0x3000>,  /* GDC1 */
 			<0x0 0x1D85D000 0x3000>;  /* GSE */
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_gtnr_align: lwis_gtnr_align@1CC60000 {
@@ -1371,6 +1340,9 @@
 		bts-block-names =
 			"gdc";
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_votf: lwis_votf@1C460000 {
@@ -1416,6 +1388,9 @@
 			<&pd_gdc>,
 			<&pd_gse>,
 			<&pd_mcsc>;
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_slc: lwis_slc@0 {

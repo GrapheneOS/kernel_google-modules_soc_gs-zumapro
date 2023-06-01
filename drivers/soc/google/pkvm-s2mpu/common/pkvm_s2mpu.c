@@ -54,7 +54,7 @@ static struct s2mpu_data *s2mpu_dev_data(struct device *dev)
 	return platform_get_drvdata(to_platform_device(dev));
 }
 
-int pkvm_s2mpu_of_link(struct device *parent)
+int __pkvm_s2mpu_of_link(struct device *parent)
 {
 	struct platform_device *pdev;
 	struct device_link *link;
@@ -94,7 +94,7 @@ int pkvm_s2mpu_of_link(struct device *parent)
 	return 0;
 }
 
-struct device *pkvm_s2mpu_of_parse(struct device *parent)
+struct device *__pkvm_s2mpu_of_parse(struct device *parent)
 {
 	struct platform_device *pdev;
 
@@ -138,7 +138,7 @@ static void s2mpu_probe_irq(struct platform_device *pdev, struct s2mpu_data *dat
 	}
 }
 
-int pkvm_s2mpu_suspend(struct device *dev)
+int __pkvm_s2mpu_suspend(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
 
@@ -151,7 +151,7 @@ int pkvm_s2mpu_suspend(struct device *dev)
 	return 0;
 }
 
-int pkvm_s2mpu_resume(struct device *dev)
+int __pkvm_s2mpu_resume(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
 
@@ -180,7 +180,7 @@ static int s2mpu_late_suspend(struct device *dev)
 		return 0;
 
 	dev->power.must_resume = true;
-	return pkvm_s2mpu_suspend(dev);
+	return __pkvm_s2mpu_suspend(dev);
 }
 
 static int s2mpu_late_resume(struct device *dev)
@@ -193,7 +193,7 @@ static int s2mpu_late_resume(struct device *dev)
 	if (pm_runtime_status_suspended(dev))
 		return 0;
 
-	return pkvm_s2mpu_resume(dev);
+	return __pkvm_s2mpu_resume(dev);
 }
 
 static int s2mpu_probe(struct platform_device *pdev)
@@ -202,7 +202,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	struct s2mpu_data *data;
-	bool off_at_boot;
+	bool off_at_boot, has_sync;
 	int ret, nr_devs;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -225,7 +225,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 
 	data->always_on = !!of_get_property(np, "always-on", NULL);
 	off_at_boot = !!of_get_property(np, "off-at-boot", NULL);
-
+	has_sync = !!of_get_property(np, "built-in-sync", NULL);
 	/*
 	 * Try to parse IRQ information. This is optional as it only affects
 	 * runtime fault reporting, and therefore errors do not fail the whole
@@ -233,7 +233,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 */
 	s2mpu_probe_irq(pdev, data);
 
-	ret = pkvm_iommu_s2mpu_register(dev, res->start);
+	ret = pkvm_iommu_s2mpu_register(dev, res->start, has_sync);
 	if (ret && ret != -ENODEV) {
 		dev_err(dev, "could not register: %d\n", ret);
 		return ret;
@@ -256,7 +256,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 * the state the hypervisor sets on suspend.
 	 */
 	if (!off_at_boot)
-		WARN_ON(pkvm_s2mpu_suspend(dev));
+		WARN_ON(__pkvm_s2mpu_suspend(dev));
 
 	pm_runtime_enable(dev);
 	if (data->always_on)
@@ -266,7 +266,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 }
 
 static const struct dev_pm_ops s2mpu_pm_ops = {
-	SET_RUNTIME_PM_OPS(pkvm_s2mpu_suspend, pkvm_s2mpu_resume, NULL)
+	SET_RUNTIME_PM_OPS(__pkvm_s2mpu_suspend, __pkvm_s2mpu_resume, NULL)
 	SET_LATE_SYSTEM_SLEEP_PM_OPS(s2mpu_late_suspend, s2mpu_late_resume)
 };
 
@@ -293,25 +293,24 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 		if (of_device_is_available(np))
 			nr_devs_total++;
 
-	/* Only try to register the driver with pKVM if pKVM is enabled. */
-	if (is_protected_kvm_enabled()) {
-		ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
-		if (ret) {
-			pr_err("Failed to load s2mpu el2 module: %d\n", ret);
-			return ret;
-		}
+	/* No need to force probe devices if pKVM is not enabled. */
+	if (!is_protected_kvm_enabled())
+		return platform_driver_register(driver);
 
-		ret = pkvm_iommu_s2mpu_init(token);
-		if (ret) {
-			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
-			return ret;
-		}
+	/* Only try to register the driver with pKVM if pKVM is enabled. */
+	ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
+	if (ret) {
+		pr_err("Failed to load s2mpu el2 module: %d\n", ret);
+		return ret;
+	}
+
+	ret = pkvm_iommu_s2mpu_init(token);
+	if (ret) {
+		pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
+		return ret;
 	}
 
 	ret = platform_driver_probe(&s2mpu_driver, s2mpu_probe);
-
-	if (!is_protected_kvm_enabled())
-		return ret;
 
 	/* If one device is not probed it will not be controlled by the hypervisor. */
 	ret = pkvm_iommu_finalize(WARN_ON(nr_devs_total != nr_devs_registered) ? -ENXIO : 0);

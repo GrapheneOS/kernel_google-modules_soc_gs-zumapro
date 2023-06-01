@@ -55,7 +55,6 @@ struct samsung_sysmmu_domain {
 };
 
 static bool sysmmu_global_init_done;
-static DEFINE_MUTEX(sysmmu_global_mutex); /* Global driver mutex */
 static struct device sync_dev;
 static struct kmem_cache *flpt_cache, *slpt_cache;
 
@@ -660,6 +659,15 @@ static int samsung_sysmmu_map(struct iommu_domain *dom, unsigned long l_iova, ph
 	return ret;
 }
 
+static inline void samsung_sysmmu_iotlb_gather_add_joint_range(struct iommu_domain *domain,
+					       struct iommu_iotlb_gather *gather,
+					       unsigned long iova, size_t size)
+{
+	if (iommu_iotlb_gather_is_disjoint(gather, iova, size))
+		iommu_iotlb_sync(domain, gather);
+	iommu_iotlb_gather_add_range(gather, iova, size);
+}
+
 static size_t samsung_sysmmu_unmap(struct iommu_domain *dom, unsigned long l_iova, size_t size,
 				   struct iommu_iotlb_gather *gather)
 {
@@ -718,7 +726,7 @@ static size_t samsung_sysmmu_unmap(struct iommu_domain *dom, unsigned long l_iov
 	atomic_sub(SPAGES_PER_LPAGE, lv2entcnt);
 
 done:
-	iommu_iotlb_gather_add_page(dom, gather, iova, size);
+	samsung_sysmmu_iotlb_gather_add_joint_range(dom, gather, iova, size);
 
 	return size;
 
@@ -797,7 +805,7 @@ size_t samsung_sysmmu_unmap_pages(struct iommu_domain *dom, unsigned long iova_o
 		unmap_slpt(domain, iova, size);
 	}
 
-	iommu_iotlb_gather_add_page(dom, gather, iova_org, size);
+	samsung_sysmmu_iotlb_gather_add_joint_range(dom, gather, iova_org, size);
 
 	return size;
 }
@@ -981,6 +989,7 @@ static void samsung_sysmmu_group_data_release(void *iommu_data)
 
 static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 {
+	static DEFINE_MUTEX(set_iommudata_mutex);
 	struct iommu_group *group;
 	struct device_node *np;
 	struct platform_device *pdev;
@@ -1010,15 +1019,15 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 		return ERR_PTR(-EPROBE_DEFER);
 	}
 
-	mutex_lock(&sysmmu_global_mutex);
+	mutex_lock(&set_iommudata_mutex);
 	if (iommu_group_get_iommudata(group)) {
-		mutex_unlock(&sysmmu_global_mutex);
+		mutex_unlock(&set_iommudata_mutex);
 		return group;
 	}
 
 	list = kzalloc(sizeof(*list), GFP_KERNEL);
 	if (!list) {
-		mutex_unlock(&sysmmu_global_mutex);
+		mutex_unlock(&set_iommudata_mutex);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -1026,7 +1035,7 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 	iommu_group_set_iommudata(group, list,
 				  samsung_sysmmu_group_data_release);
 
-	mutex_unlock(&sysmmu_global_mutex);
+	mutex_unlock(&set_iommudata_mutex);
 	return group;
 }
 
@@ -1422,6 +1431,7 @@ err_init_slpt_fail:
 
 static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 {
+	static DEFINE_MUTEX(initialization_mutex);
 	struct sysmmu_drvdata *data;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
@@ -1500,16 +1510,16 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 		goto err_iommu_register;
 	}
 
-	mutex_lock(&sysmmu_global_mutex);
+	mutex_lock(&initialization_mutex);
 	if (!sysmmu_global_init_done) {
 		err = samsung_sysmmu_init_global();
 		if (err) {
 			dev_err(dev, "failed to initialize global data\n");
-			mutex_unlock(&sysmmu_global_mutex);
+			mutex_unlock(&initialization_mutex);
 			goto err_global_init;
 		}
 	}
-	mutex_unlock(&sysmmu_global_mutex);
+	mutex_unlock(&initialization_mutex);
 
 	dev_info(dev, "initialized IOMMU. Ver %d.%d.%d, %sgate clock\n",
 		 MMU_VERSION_MAJOR(data->version),

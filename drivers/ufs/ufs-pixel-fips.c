@@ -291,8 +291,11 @@ static int ufs_pixel_fips_send_utrd(struct ufs_hba *hba,
 	memcpy(hba->utrdl_base_addr + task_tag, utrd,
 	       sizeof(struct utp_transfer_req_desc));
 
-	if (hba->vops && hba->vops->setup_xfer_req)
+	if (hba->vops && hba->vops->setup_xfer_req) {
+		spin_lock_irq(&hba->outstanding_lock);
 		hba->vops->setup_xfer_req(hba, task_tag, true);
+		spin_unlock_irq(&hba->outstanding_lock);
+	}
 
 	ufshcd_writel(hba, 1 << task_tag, REG_UTP_TRANSFER_REQ_DOOR_BELL);
 

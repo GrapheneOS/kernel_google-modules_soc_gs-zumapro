@@ -780,14 +780,22 @@ static void pixel_ufs_prepare_command(void *data, struct ufs_hba *hba,
 			struct request *rq, struct ufshcd_lrb *lrbp, int *err)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
-
 	u8 opcode;
 
 	*err = 0;
 
+	/*
+	 * Set the group number to 0x11 for REQ_META and REQ_IDLE requests
+	 * or if always_use_wb has been set.
+	 */
 	if (!(rq->cmd_flags & (REQ_META | REQ_IDLE)) && !ufs->always_use_wb)
 		return;
 
+	/* Do not set the group number for zoned logical units. */
+	if (blk_queue_is_zoned(rq->q))
+		return;
+
+	/* Only set the group number for UFS versions 3.1 and later. */
 	if (hba->dev_info.wspecversion <= 0x300)
 		return;
 

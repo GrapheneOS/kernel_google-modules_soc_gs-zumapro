@@ -45,6 +45,16 @@
 #define REG_NS_V9_PMMU_PTLB_INFO(n)		(0x3400 + (n)*0x4)
 #define REG_NS_V9_SWALKER_INFO			0x3104
 #define REG_NS_V9_MPTC_INFO			0x3C00
+#define REG_NS_V9_INVALIDATION_BARRIER_CMD	0x102C
+#define REG_NS_V9_INVALIDATION_BARRIER_COMP	0x1030
+
+/*
+ * Sync devices can be external or internal depending on SoC. However, in
+ * both cases they have the same structure, but in the internal case it would be
+ * at an offset from the S2MPU MMIO base. So we define this macro that allow
+ * us to use the same code for both sync devices.
+ */
+#define REG_NS_V9_SYNC_DEV_OFFSET		REG_NS_V9_INVALIDATION_BARRIER_CMD
 
 /* V9 Masks */
 #define V9_READ_MPTC_TAG_PPN_VALID_MASK		BIT(28)
@@ -374,6 +384,9 @@ static_assert(SMPT_GRAN <= PAGE_SIZE);
 #define SYNC_CMD_SYNC				BIT(0)
 #define SYNC_COMP_COMPLETE			BIT(0)
 
+/* S2MPU has builtin sync device flag in pkvm_iommu.flags. */
+#define S2MPU_HAS_SYNC				BIT(0)
+
 /*
  * Iterate over S2MPU gigabyte regions. Skip those that cannot be modified
  * (the MMIO registers are read only, with reset value MPT_PROT_NONE).
@@ -447,7 +460,7 @@ static const u64 mpt_prot_doubleword[] = {
 #define L1ENTRY_ATTR_GRAN_MASK			GENMASK(5, 4)
 #define MPT_PROT_BITS				2
 #define S2MPU_NAME				"s2mpu"
-#define PER_DRIVER_FN(x)			x##_v1
+#define PER_DRIVER_FN(x)			x
 static const u64 mpt_prot_doubleword[] = {
 	[MPT_PROT_NONE] = 0x0000000000000000,
 	[MPT_PROT_R]    = 0x5555555555555555,

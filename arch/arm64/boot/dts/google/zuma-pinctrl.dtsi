@@ -750,6 +750,9 @@
 			samsung,pin-function = <2>;
 			samsung,pin-pud = <0>;
 			samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
+			samsung,pin-con-pdn = <3>;
+			samsung,pin-pud-pdn = <0>;
+
 		};
 
 		uart9_bus_single: uart9-bus {
@@ -851,6 +854,7 @@
 			samsung,pin-function = <1>;
 			samsung,pin-drv = <ZUMA_PIN_DRV_X4>;
 			samsung,pin-con-pdn = <3>;
+			samsung,pin-pud-pdn = <0>;
 		};
 	};
 

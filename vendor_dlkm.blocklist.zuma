@@ -2,3 +2,5 @@ blocklist bcmdhd4398
 blocklist bcmdhd4383
 blocklist ftm5
 blocklist goodix_brl_touch
+blocklist mali_kutf
+blocklist mali_kutf_clk_rate_trace_test_portal

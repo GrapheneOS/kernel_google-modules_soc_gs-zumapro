@@ -42,6 +42,11 @@
 		compatible = "google-aoc-snd-nohost";
 	};
 
+	aoc_dp_nohost_drv: aoc_dp_nohost {
+		status = "disabled";
+		compatible = "google-aoc-snd-dp";
+	};
+
 	aoc_voip_ep: aoc_voip_drv {
 		compatible = "google-aoc-snd-voip";
 	};
@@ -558,6 +563,21 @@
 				};
 			};
 
+			dai_fe_hotword_tap_tx: fe_hotword_tap_tx {
+				dai-name = "audio_hotword_tap";
+				stream-name = "audio_hotword_tap";
+				id = <IDX_HOTWORD_TAP_TX>;
+				capture;
+				cpu {
+					sound-dai = <&aud_aoc_path IDX_HOTWORD_TAP_TX>;
+				};
+				platform {
+					tx1 {
+						of_drv = <&aoc_incall_ep>;
+					};
+				};
+			};
+
 			dai_be_i2s0_rx: be_i2s0_rx {
 				dai-name = "I2S_0_RX Playback";
 				stream-name = "I2S_0_RX Playback";
@@ -849,6 +869,37 @@
 				usefixup;
 				cpu {
 					sound-dai = <&aud_aoc_path ERASER_TX>;
+				};
+			};
+
+			dai_fe_dp_dma_nohost_rx: fe_dp_dma_nohost_rx {
+				status = "disabled";
+				dai-name = "dp_dma nohost playback";
+				stream-name = "dp_dma nohost playback";
+				id = <IDX_DP_DMA_NoHOST_RX>;
+				dynamic;
+				playback;
+				cpu {
+					sound-dai = <&aud_aoc_path IDX_DP_DMA_NoHOST_RX>;
+				};
+				platform {
+					rx1 {
+						of_drv = <&aoc_dp_nohost_drv>;
+					};
+				};
+			};
+
+			dai_be_dp_rx: be_dp_rx  {
+				status = "disabled";
+				dai-name = "DP_DMA_RX Playback";
+				stream-name = "DP_DMA_RX Playback";
+				id = <DP_DMA_RX>;
+				playback;
+				no-pcm;
+				useops;
+				usefixup;
+				cpu {
+					sound-dai = <&aud_aoc_path DP_DMA_RX>;
 				};
 			};
 

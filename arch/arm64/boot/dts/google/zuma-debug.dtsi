@@ -99,6 +99,11 @@
 		offset = <0x880>;
 	};
 
+	pixel-suspend-diag {
+		compatible = "google,pixel-suspend-diag";
+		memory-region = <&suspend_diag_log_reserved>;
+	};
+
 	pmu@30000000 {
 		compatible = "arm,ci-700";
 		reg = <0x0 0x30000000 0x4000000>;

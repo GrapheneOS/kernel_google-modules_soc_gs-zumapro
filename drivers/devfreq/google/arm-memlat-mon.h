@@ -17,8 +17,8 @@ struct event_data {
 };
 
 struct cpu_data {
-	struct event_data common_evs[NUM_COMMON_EVS];
-	struct event_data amu_evs[NUM_AMU_EVS];
+	struct event_data pmu_evs[NUM_COMMON_EVS];
+	struct event_data amu_evs[NUM_COMMON_EVS];
 	unsigned long freq;
 	unsigned long stall_pct;
 	spinlock_t    pmu_lock;
@@ -40,10 +40,6 @@ struct cpu_data {
  * @cpus:                       CPUs this mon votes on behalf of. Must be a
  *                              subset of @cpu_grp's CPUs. If no CPUs provided,
  *                              defaults to using all of @cpu_grp's CPUs.
- * @miss_ev_id:                 The event code corresponding to the @miss_ev
- *                              perf event. Will be 0 for compute.
- * @miss_ev:                    The cache miss perf event exclusive to this
- *                              mon. Will be NULL for compute.
  * @requested_update_ms:        The mon's desired polling rate. The lowest
  *                              @requested_update_ms of all mons determines
  *                              @cpu_grp's update_ms.
@@ -55,9 +51,7 @@ struct cpu_data {
 struct memlat_mon {
 	bool                    is_active;
 	cpumask_t               cpus;
-	unsigned int            miss_ev_id;
 	unsigned int            requested_update_ms;
-	struct event_data       *miss_ev;
 	struct memlat_hwmon     hw;
 	bool                    update_dsu_df;
 
@@ -90,7 +84,8 @@ struct memlat_mon {
 struct memlat_cpu_grp {
 	struct                  list_head node;
 	cpumask_t               cpus;
-	unsigned int            common_ev_ids[NUM_COMMON_EVS];
+	unsigned int            pmu_ev_ids[NUM_COMMON_EVS];
+	unsigned int            amu_ev_ids[NUM_COMMON_EVS];
 	struct cpu_data         *cpus_data;
 	ktime_t                 last_update_ts;
 	unsigned long           last_ts_delta_us;
@@ -112,8 +107,8 @@ struct memlat_mon_spec {
 
 #define to_cpu_data(cpu_grp, cpu) \
         (&cpu_grp->cpus_data[cpu - cpumask_first(&cpu_grp->cpus)])
-#define to_common_evs(cpu_grp, cpu) \
-        (cpu_grp->cpus_data[cpu - cpumask_first(&cpu_grp->cpus)].common_evs)
+#define to_pmu_evs(cpu_grp, cpu) \
+        (cpu_grp->cpus_data[cpu - cpumask_first(&cpu_grp->cpus)].pmu_evs)
 #define to_devstats(mon, cpu) \
         (&mon->hw.core_stats[cpu - cpumask_first(&mon->cpus)])
 #define to_mon(hwmon) container_of(hwmon, struct memlat_mon, hw)

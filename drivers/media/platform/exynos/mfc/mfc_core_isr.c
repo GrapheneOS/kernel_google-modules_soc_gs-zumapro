@@ -404,11 +404,12 @@ static struct mfc_buf *__mfc_handle_frame_output_del(struct mfc_core *core,
 
 		if ((IS_VP9_DEC(ctx) && mfc_core_get_disp_res_change()) ||
 			(IS_AV1_DEC(ctx) && mfc_core_get_disp_res_change_av1())) {
-			mfc_ctx_info("[FRAME] display resolution changed\n");
+			mfc_ctx_info("[FRAME][DRC] display resolution changed\n");
 			mutex_lock(&ctx->drc_wait_mutex);
 			ctx->wait_state = WAIT_G_FMT;
 			mfc_core_get_img_size(core, ctx, MFC_GET_RESOL_SIZE);
-			dec->disp_res_change = 1;
+			dec->disp_res_change++;
+			mfc_debug(2, "[DRC] disp_res_change %d\n", dec->disp_res_change);
 			mfc_set_mb_flag(dst_mb, MFC_FLAG_DISP_RES_CHANGE);
 			mutex_unlock(&ctx->drc_wait_mutex);
 		}
@@ -1432,6 +1433,11 @@ static int __mfc_handle_stream(struct mfc_core *core, struct mfc_ctx *ctx, unsig
 	/* set encoded frame type */
 	enc->frame_type = slice_type;
 	ctx->sequence++;
+
+	if (slice_type == MFC_REG_E_SLICE_TYPE_I && reason == MFC_REG_R2H_CMD_FRAME_DONE_RET) {
+		mfc_debug(2, "[FRAME] first frame with two pass for initial qpe is done\n");
+		enc->nal_q_disable_for_qpe_two_pass = false;
+	}
 
 	if (enc->in_slice) {
 		if (mfc_is_queue_count_same(&ctx->buf_queue_lock, &ctx->dst_buf_queue, 0)) {

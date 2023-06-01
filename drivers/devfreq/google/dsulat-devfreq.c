@@ -15,7 +15,7 @@
 #include <soc/google/cal-if.h>
 #include <soc/google/exynos-devfreq.h>
 #include <soc/google/ect_parser.h>
-#include <dt-bindings/soc/google/gs101-devfreq.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 #include <trace/events/power.h>
 #include "governor.h"
 #include "governor_dsulat.h"
@@ -177,7 +177,7 @@ static int exynos_init_freq_table(struct exynos_devfreq_data *data)
 			return ret;
 		}
 
-		dev_info(data->dev, "DEVFREQ : %8uKhz, %8uuV\n", freq,
+		dev_dbg(data->dev, "DEVFREQ : %8uKhz, %8uuV\n", freq,
 			 volt);
 	}
 

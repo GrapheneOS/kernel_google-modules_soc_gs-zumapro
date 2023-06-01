@@ -69,3 +69,8 @@
 	sensor_power_list = "sensor_1v8", "sensor_3v3";
 };
 
+&usbdrd_phy0 {
+    vdd075-supply = <&m_ldo8_reg>;
+    vdd12-supply = <&m_ldo9_reg>;
+    vdd33-supply = <&m_ldo19_reg>;
+};

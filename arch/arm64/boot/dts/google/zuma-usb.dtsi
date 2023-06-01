@@ -22,8 +22,74 @@
 		reg = <0x0 0x11020000 0x10000>;
 	};
 
-	eusb_repeater_tune:hs_tune {
+	eusb_repeater_tune:hs_tune_eusb {
+                status = "disabled";
+	};
+
+	usb_hs_tune:hs_tune_phy {
 		status = "disabled";
+		hs_tune_cnt = <12>;
+		/* value = <device host> */
+		/* 0xffffffff means using default value */
+		hs_tune1 {
+			tune_name = "tx_fsls_slew_rate";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune2 {
+			tune_name = "tx_fsls_vref_tune";
+			tune_value = <0x0 0x0>;
+		};
+
+		hs_tune3 {
+			tune_name = "tx_fsls_vreg_bypass";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune4 {
+			tune_name = "tx_hs_vref_tune";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune5 {
+			tune_name = "tx_hs_xv";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune6 {
+			tune_name = "tx_preemp";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune7 {
+			tune_name = "tx_res";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune8 {
+			tune_name = "tx_rise";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune9 {
+			tune_name = "rx_eq_ctle";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune10 {
+			tune_name = "rx_hs_term_en";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune11 {
+			tune_name = "rx_hs_tune";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
+
+		hs_tune12 {
+			tune_name = "reg_direct";
+			tune_value = <0xffffffff 0xffffffff>;
+		};
 	};
 
 	usb_ss_tune:ss_tune {
@@ -108,8 +174,7 @@
 		#size-cells = <1>;
 		ranges;
 		status = "okay";
-		/* TODO - waiting power domain SW is ready */
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		samsung,sysreg-hsi0 = <&sysreg_hsi0>;
 
 		interrupts = <GIC_SPI IRQ_USB32DRD_GIC_0_HSI0 IRQ_TYPE_LEVEL_HIGH>;
@@ -118,8 +183,8 @@
 		is_not_vbus_pad = <1>;
 		usb_host_device_timeout = <200>;
 		enable_sprs_transfer = <1>;
+		s2mpus = <&s2mpu_s0_hsi0>;
 
-		usb3-lpm-capable;
 		samsung,no-extra-delay;
 		xhci_l2_support = <1>;
 
@@ -141,13 +206,13 @@
 			direct-usb-access;
 
 			maximum-speed = "super-speed-plus";
-			usb3-lpm-capable;
 			usb-psy-name = "usb";
 			snps,quirk-frame-length-adjustment = <0x20>;
 
-			snps,usb3_lpm_capable;
 			snps,has-lpm-erratum;
 			snps,lpm-nyet-threshold = <0>;
+
+			snps,usb2-gadget-lpm-disable;
 
 			/*
 			 * dis-u2-freeclk-exists-quirk, dis_u2_susphy_quirk are alternative.
@@ -177,7 +242,7 @@
 		clocks = <&clock MUX_HSI0_USB20_REF>, <&clock GATE_USB32DRD_LINK>;
 		clock-names = "phy_ref", "aclk";
 		samsung,pmu-syscon = <&pmu_system_controller>;
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		pmu_mask = <0x0>;
 		pmu_offset = <0x3EB0>;
 		pmu_offset_dp = <0x3EB4>;
@@ -222,14 +287,9 @@
 		status = "okay";
 
 		/* TODO - will change if EUSB repeater SW is ready */
-		//hs_tune_param = <&usb_hs_tune>;
+		hs_tune_param = <&usb_hs_tune>;
 		ss_tune_param = <&usb_ss_tune>;
 		//extcon = <&max77759tcpc>;
-
-		//vdd_hsi-supply = <&m_ldo7_reg>;
-		//vdd085-supply = <&m_ldo8_reg>;
-		//vdd18-supply = <&m_ldo9_reg>;
-		//vdd30-supply = <&m_ldo10_reg>;
 
 		#phy-cells = <1>;
 		ranges;

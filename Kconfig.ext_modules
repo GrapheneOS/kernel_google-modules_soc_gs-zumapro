@@ -6,3 +6,4 @@ source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/touch/fts/ftm5/Kconf
 source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/touch/sec/Kconfig"
 source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/trusty/drivers/trusty/Kconfig"
 source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/power/reset/Kconfig"
+source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/wlan/wlan_ptracker/Kconfig"

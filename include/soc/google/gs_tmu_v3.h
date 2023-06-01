@@ -16,6 +16,8 @@
 
 #define MCELSIUS        1000
 
+extern struct cpumask tmu_enabled_mask;
+
 struct gs_pi_param {
 	s64 err_integral;
 
@@ -33,20 +35,27 @@ struct gs_pi_param {
 };
 
 enum pi_param {
-	SUSTAINABLE_POWER = 0,
+	UNUSED0 = 0,
 	K_PO = 1,
 	K_PU = 2,
 	K_I = 3,
 	I_MAX = 4,
-	INTEGRAL_CUTOFF = 5,
+	POWER_TABLE_ECT_OFFSET = 5,
 	PI_ENABLE = 6
 };
 
 #define STEPWISE_GAIN_MIN 0
 #define STEPWISE_GAIN_MAX 31
-#define ACPM_GOV_TIMER_INTERVAL_MS 50
+#define ACPM_GOV_TIMER_INTERVAL_MS_DEFAULT 25
+#define ACPM_GOV_TIMER_INTERVAL_MS_MIN 10
+#define ACPM_GOV_TIMER_INTERVAL_MS_MAX 100
 #define INTEGRAL_THRESH_MIN 0
 #define INTEGRAL_THRESH_MAX 255
+#define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_DEFAULT 100
+#define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MIN 0
+#define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MAX 1000
+#define ACPM_GOV_THERMAL_PRESS_POLLING_DELAY_ON 100
+#define ACPM_GOV_THERMAL_PRESS_POLLING_DELAY_OFF 0
 struct acpm_gov_params_st {
 	u8 ctrl_temp_idx;
 	u8 switch_on_temp_idx;
@@ -69,6 +78,33 @@ enum acpm_gov_debug_mode_enum {
 	ACPM_GOV_DEBUG_MODE_INVALID,
 };
 
+#define NR_PRESSURE_TZ 3
+#define CPU_TZ_MASK (0x7)
+struct thermal_state {
+	u8 switched_on;
+	u8 dfs_on;
+	u8 therm_press[NR_PRESSURE_TZ];
+	u8 reserved[3];
+};
+
+/* Callback for registering to thermal pressure update */
+typedef void (*thermal_pressure_cb)(struct cpumask *maskp, int cdev_index);
+void register_thermal_pressure_cb(thermal_pressure_cb cb);
+
+struct thermal_pressure {
+	struct kthread_worker worker;
+	struct kthread_work switch_on_work;
+	struct kthread_delayed_work polling_work;
+	int polling_delay_on;
+	int polling_delay_off;
+	u16 time_window;
+	struct thermal_state state;
+	struct cpumask work_affinity;
+	bool enabled;
+	spinlock_t lock;
+	thermal_pressure_cb cb;
+};
+
 struct acpm_gov_common {
 	u64 kernel_ts;
 	u64 acpm_ts;
@@ -82,6 +118,7 @@ struct acpm_gov_common {
 	u64 buffer_version;
 	struct gov_trace_data_struct *bulk_trace_buffer;
 	spinlock_t lock;
+	struct thermal_pressure thermal_pressure;
 };
 
 #define TRIP_LEVEL_NUM 8
@@ -175,6 +212,8 @@ struct gs_tmu_data {
 	bool acpm_pi_enable;
 	u32 control_temp_step;
 	tr_handle tr_handle;
+	struct cpumask mapped_cpus;
+	int pressure_index;
 };
 
 enum throttling_stats_type {
@@ -321,9 +360,16 @@ enum tmu_grp_idx_t {
 	TZ_END,
 };
 
+#define NR_TZ TZ_END
+
 int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on);
 
+/* Callback for registering to CPU frequency table to ECT table offset */
+typedef int (*get_cpu_power_table_ect_offset_cb)(struct cpumask *maskp, int *offset);
+void register_get_cpu_power_table_ect_offset(get_cpu_power_table_ect_offset_cb cb);
+
 #define ACPM_SM_BUFFER_VERSION_UPPER_32b 0x5A554D41ULL
+#define ACPM_SM_BUFFER_VERSION_SIZE 8
 #define BULK_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20
 #define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
@@ -360,7 +406,7 @@ struct buffered_curr_state {
 
 struct gov_trace_data_struct {
 	struct buffered_curr_state buffered_curr_state[BULK_TRACE_DATA_LEN];
-	struct curr_state curr_state[7];
+	struct curr_state curr_state[NR_TZ];
 };
 
 #endif /* _GS_TMU_V3_H */

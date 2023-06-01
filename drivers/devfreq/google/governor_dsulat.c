@@ -61,14 +61,14 @@ static ssize_t store_##name(struct device *dev,                         \
 	return count;                                                   \
 }
 
-static ssize_t freq_map_show(struct device *dev, struct device_attribute *attr,
+static ssize_t low_latency_freq_map_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct devfreq *df = to_devfreq(dev);
 	struct dsulat_node *dsu_node = df->data;
-	struct core_dev_map *map_cl0 = dsu_node->freq_map_cl0;
-	struct core_dev_map *map_cl1 = dsu_node->freq_map_cl1;
-	struct core_dev_map *map_cl2 = dsu_node->freq_map_cl2;
+	struct core_dev_map *map_cl0 = dsu_node->freq_map_cl0_low_latency;
+	struct core_dev_map *map_cl1 = dsu_node->freq_map_cl1_low_latency;
+	struct core_dev_map *map_cl2 = dsu_node->freq_map_cl2_low_latency;
 	unsigned int cnt = 0;
 
 	cnt += sysfs_emit_at(buf, cnt, "Cluster freq (MHz)\tDevice Freq(MHz)\n");
@@ -94,20 +94,68 @@ static ssize_t freq_map_show(struct device *dev, struct device_attribute *attr,
 	return cnt;
 }
 
-static DEVICE_ATTR_RO(freq_map);
+static DEVICE_ATTR_RO(low_latency_freq_map);
+
+static ssize_t base_freq_map_show(struct device *dev, struct device_attribute *attr,
+					char *buf)
+{
+	struct devfreq *df = to_devfreq(dev);
+	struct dsulat_node *dsu_node = df->data;
+	struct core_dev_map *map_cl0 = dsu_node->freq_map_cl0_base;
+	struct core_dev_map *map_cl1 = dsu_node->freq_map_cl1_base;
+	struct core_dev_map *map_cl2 = dsu_node->freq_map_cl2_base;
+	unsigned int cnt = 0;
+
+	cnt += sysfs_emit_at(buf, cnt, "Cluster freq (MHz)\tDevice Freq(MHz)\n");
+
+	while (map_cl0->core_mhz && cnt < PAGE_SIZE) {
+		cnt += sysfs_emit_at(buf, cnt, "cl0: %10u\t%9u\n",
+			map_cl0->core_mhz, map_cl0->target_freq);
+		map_cl0++;
+	}
+	while (map_cl1->core_mhz && cnt < PAGE_SIZE) {
+		cnt += sysfs_emit_at(buf, cnt, "cl1: %10u\t%9u\n",
+			map_cl1->core_mhz, map_cl1->target_freq);
+		map_cl1++;
+	}
+	while (map_cl2->core_mhz && cnt < PAGE_SIZE) {
+		cnt += sysfs_emit_at(buf, cnt, "cl2: %10u\t%9u\n",
+			map_cl2->core_mhz, map_cl2->target_freq);
+		map_cl2++;
+	}
+	if (cnt < PAGE_SIZE)
+		cnt += sysfs_emit_at(buf, cnt, "\n");
+
+	return cnt;
+}
+
+static DEVICE_ATTR_RO(base_freq_map);
+
 
 static unsigned long core_to_dev_freq(int cpu, struct dsulat_node *node,
-				      unsigned long coref)
+				      unsigned long coref, bool latency_mode)
 {
 	struct core_dev_map *map;
 	unsigned long freq = 0;
 
-	if (cpu < CONFIG_VH_MID_CAPACITY_CPU)
-		map = node->freq_map_cl0;
-	else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU)
-		map = node->freq_map_cl1;
-	else
-		map = node->freq_map_cl2;
+	if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
+		if (latency_mode)
+			map = node->freq_map_cl0_low_latency;
+		else
+			map = node->freq_map_cl0_base;
+	}
+	else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
+		if (latency_mode)
+			map = node->freq_map_cl1_low_latency;
+		else
+			map = node->freq_map_cl1_base;
+	}
+	else {
+		if (latency_mode)
+			map = node->freq_map_cl2_low_latency;
+		else
+			map = node->freq_map_cl2_base;
+	}
 
 	if (!map)
 		goto out;
@@ -119,7 +167,7 @@ static unsigned long core_to_dev_freq(int cpu, struct dsulat_node *node,
 	freq = map->target_freq;
 
 out:
-	pr_debug("freq: %lu -> dev: %lu\n", coref, freq);
+	pr_debug("latency_mode %d, cpu %d, freq: %lu -> dev: %lu\n", latency_mode, cpu, coref, freq);
 	return freq;
 }
 
@@ -237,13 +285,14 @@ extern int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 static int devfreq_dsulat_get_freq(struct devfreq *df,
 				   unsigned long *target_freq)
 {
-	int cpu;
+	int cpu, ret;
 	unsigned long inst, cyc, stall, l2_cachemiss, l3_cachemiss, freq, mem_stall, mem_count;
-	unsigned long l2_cache_wb, l3_cache_access, wb_pct;
+	unsigned long l2_cache_wb, l3_cache_access, wb_pct, mem_stall_pct, mem_stall_floor;
 	struct dsulat_node *node = df->data;
 	unsigned long max_freq = 0, dsu_freq = 0;
-	unsigned int ratio, ratio_ceil, wb_pct_thres, wb_filter_ratio;
-	int ret;
+	unsigned int ratio, ratio_ceil, wb_pct_thres, wb_filter_ratio, dsulat_cpuidle_state_aware;
+	bool latency_mode = false;
+	char trace_name[] = {'c', 'p', 'u', '0', 'd', 's', 'u', '\0'};
 
 	/*
 	 * node->resume_freq is set to 0 at the end of resume (after the update)
@@ -253,15 +302,50 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 	 * suspend and a vote for df->prev_freq during resume.
 	 */
 	if (!node->mon_started) {
+		/*
+		 * Since the resume_freq is 0 during suspend and is previous_freq
+		 * during resume, update_bci_freq vote to 0 during suspend and
+		 * restore the previouse vote during resume.
+		 */
 		*target_freq = node->resume_freq;
+		update_bci_freq(node, *target_freq);
 		return 0;
 	}
 
 	for (cpu = 0; cpu < CONFIG_VH_SCHED_CPU_NR; cpu++)
 	{
+		latency_mode = false;
+
+		trace_name[3] = '0' + cpu;
+		if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
+			ratio_ceil = node->ratio_ceil_cl0;
+			wb_pct_thres = node->wb_pct_thres_cl0;
+			wb_filter_ratio = node->wb_filter_ratio_cl0;
+			mem_stall_floor = node->mem_stall_floor_cl0;
+			dsulat_cpuidle_state_aware = node->dsulat_cpuidle_state_aware_cl0;
+		} else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
+			ratio_ceil = node->ratio_ceil_cl1;
+			wb_pct_thres = node->wb_pct_thres_cl1;
+			wb_filter_ratio = node->wb_filter_ratio_cl1;
+			mem_stall_floor = node->mem_stall_floor_cl1;
+			dsulat_cpuidle_state_aware = node->dsulat_cpuidle_state_aware_cl1;
+		} else {
+			ratio_ceil = node->ratio_ceil_cl2;
+			wb_pct_thres = node->wb_pct_thres_cl2;
+			wb_filter_ratio = node->wb_filter_ratio_cl2;
+			mem_stall_floor = node->mem_stall_floor_cl2;
+			dsulat_cpuidle_state_aware = node->dsulat_cpuidle_state_aware_cl2;
+		}
 		/* ignore idle cpu for DSU frequency boosting */
-		if (get_cpu_idle_state(cpu) == DEEP_MEMLAT_CPUIDLE_STATE_AWARE)
+		if ((dsulat_cpuidle_state_aware ==
+				DEEP_MEMLAT_CPUIDLE_STATE_AWARE
+				&& get_cpu_idle_state(cpu) > 0)
+				|| (dsulat_cpuidle_state_aware ==
+				ALL_MEMLAT_CPUIDLE_STATE_AWARE
+				&& get_cpu_idle_state(cpu) != -1)) {
+			trace_clock_set_rate(trace_name, 0, raw_smp_processor_id());
 			continue;
+		}
 
 		ret = get_ev_data(cpu, &inst, &cyc,
 				  &stall, &l2_cachemiss, &l3_cachemiss, &mem_stall,
@@ -278,6 +362,7 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 			ratio = inst;
 
 		wb_pct = mult_frac(100, l2_cache_wb, l3_cache_access);
+		mem_stall_pct = mult_frac(10000, mem_stall, cyc);
 
 		if (!freq)
 			continue;
@@ -286,54 +371,38 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 					inst,
 					l2_cachemiss,
 					freq,
-					stall,
 					l2_cache_wb,
 					l3_cache_access,
 					wb_pct,
-					mem_stall, ratio);
-
-		if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
-			ratio_ceil = node->ratio_ceil_cl0;
-			wb_pct_thres = node->wb_pct_thres_cl0;
-			wb_filter_ratio = node->wb_filter_ratio_cl0;
-		} else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
-			ratio_ceil = node->ratio_ceil_cl1;
-			wb_pct_thres = node->wb_pct_thres_cl1;
-			wb_filter_ratio = node->wb_filter_ratio_cl1;
-		} else {
-			ratio_ceil = node->ratio_ceil_cl2;
-			wb_pct_thres = node->wb_pct_thres_cl2;
-			wb_filter_ratio = node->wb_filter_ratio_cl2;
-		}
+					mem_stall_pct, ratio);
 
 		if ((ratio <= ratio_ceil
-			&& stall >= node->stall_floor) ||
+			&& mem_stall_pct >= mem_stall_floor) ||
 			(wb_pct >= wb_pct_thres
 			 && ratio <= wb_filter_ratio)) {
-			dsu_freq = core_to_dev_freq(cpu, node, freq);
-			if (!max_freq || dsu_freq > max_freq) {
-				max_freq = dsu_freq;
-				trace_dsulat_dev_update(dev_name(df->dev.parent),
-							cpu,
-							inst,
-							l2_cachemiss,
-							freq,
-							stall,
-							l2_cache_wb,
-							l3_cache_access,
-							wb_pct,
-							mem_stall,
-							max_freq);
-			}
+			latency_mode = true;
 		}
-
+		dsu_freq = core_to_dev_freq(cpu, node, freq, latency_mode);
+		if (!max_freq || dsu_freq > max_freq) {
+			max_freq = dsu_freq;
+			trace_dsulat_dev_update(dev_name(df->dev.parent),
+						cpu,
+						latency_mode,
+						inst,
+						l2_cachemiss,
+						freq,
+						l2_cache_wb,
+						l3_cache_access,
+						wb_pct,
+						mem_stall_pct,
+						max_freq);
+		}
+		trace_clock_set_rate(trace_name, dsu_freq, raw_smp_processor_id());
 	}
 
-	if (max_freq) {
-		*target_freq = max_freq;
-		/* Update BCI freq based on modified DSU freq */
-		update_bci_freq(node, max_freq);
-	}
+	*target_freq = max_freq;
+	/* Update BCI freq based on modified DSU freq */
+	update_bci_freq(node, max_freq);
 
 	return 0;
 }
@@ -349,6 +418,21 @@ static DEVICE_ATTR(ratio_ceil_cl1, 0644, show_ratio_ceil_cl1, store_ratio_ceil_c
 show_attr(ratio_ceil_cl2)
 store_attr(ratio_ceil_cl2, 1U, 20000U)
 static DEVICE_ATTR(ratio_ceil_cl2, 0644, show_ratio_ceil_cl2, store_ratio_ceil_cl2);
+
+show_attr(dsulat_cpuidle_state_aware_cl0)
+store_attr(dsulat_cpuidle_state_aware_cl0, 0U, 2U)
+static DEVICE_ATTR(dsulat_cpuidle_state_aware_cl0, 0644, show_dsulat_cpuidle_state_aware_cl0,
+			store_dsulat_cpuidle_state_aware_cl0);
+
+show_attr(dsulat_cpuidle_state_aware_cl1)
+store_attr(dsulat_cpuidle_state_aware_cl1, 0U, 2U)
+static DEVICE_ATTR(dsulat_cpuidle_state_aware_cl1, 0644, show_dsulat_cpuidle_state_aware_cl1,
+			store_dsulat_cpuidle_state_aware_cl1);
+
+show_attr(dsulat_cpuidle_state_aware_cl2)
+store_attr(dsulat_cpuidle_state_aware_cl2, 0U, 2U)
+static DEVICE_ATTR(dsulat_cpuidle_state_aware_cl2, 0644, show_dsulat_cpuidle_state_aware_cl2,
+			store_dsulat_cpuidle_state_aware_cl2);
 
 show_attr(wb_pct_thres_cl0)
 store_attr(wb_pct_thres_cl0, 1U, 100U)
@@ -374,9 +458,17 @@ show_attr(wb_filter_ratio_cl2)
 store_attr(wb_filter_ratio_cl2, 1U, 50000U)
 static DEVICE_ATTR(wb_filter_ratio_cl2, 0644, show_wb_filter_ratio_cl2, store_wb_filter_ratio_cl2);
 
-show_attr(stall_floor)
-store_attr(stall_floor, 0U, 100U)
-static DEVICE_ATTR(stall_floor, 0644, show_stall_floor, store_stall_floor);
+show_attr(mem_stall_floor_cl0)
+store_attr(mem_stall_floor_cl0, 0U, 10000U)
+static DEVICE_ATTR(mem_stall_floor_cl0, 0644, show_mem_stall_floor_cl0, store_mem_stall_floor_cl0);
+
+show_attr(mem_stall_floor_cl1)
+store_attr(mem_stall_floor_cl1, 0U, 10000U)
+static DEVICE_ATTR(mem_stall_floor_cl1, 0644, show_mem_stall_floor_cl1, store_mem_stall_floor_cl1);
+
+show_attr(mem_stall_floor_cl2)
+store_attr(mem_stall_floor_cl2, 0U, 10000U)
+static DEVICE_ATTR(mem_stall_floor_cl2, 0644, show_mem_stall_floor_cl2, store_mem_stall_floor_cl2);
 
 static struct attribute *dsulat_dev_attr[] = {
 	&dev_attr_ratio_ceil_cl0.attr,
@@ -388,8 +480,14 @@ static struct attribute *dsulat_dev_attr[] = {
 	&dev_attr_wb_filter_ratio_cl0.attr,
 	&dev_attr_wb_filter_ratio_cl1.attr,
 	&dev_attr_wb_filter_ratio_cl2.attr,
-	&dev_attr_stall_floor.attr,
-	&dev_attr_freq_map.attr,
+	&dev_attr_mem_stall_floor_cl0.attr,
+	&dev_attr_mem_stall_floor_cl1.attr,
+	&dev_attr_mem_stall_floor_cl2.attr,
+	&dev_attr_low_latency_freq_map.attr,
+	&dev_attr_base_freq_map.attr,
+	&dev_attr_dsulat_cpuidle_state_aware_cl0.attr,
+	&dev_attr_dsulat_cpuidle_state_aware_cl1.attr,
+	&dev_attr_dsulat_cpuidle_state_aware_cl2.attr,
 	NULL,
 };
 
@@ -514,21 +612,39 @@ static struct dsulat_node *register_common(struct device *dev)
 	node->ratio_ceil_cl1 = 1000;
 	node->ratio_ceil_cl2 = 3000;
 
-	node->freq_map_cl0 = init_core_dev_map(dev, NULL, "core-dev-table-cl0");
-	if (!node->freq_map_cl0) {
-		dev_err(dev, "Couldn't find the core-dev freq table for cl0!\n");
+	node->freq_map_cl0_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl0-low-latency");
+	if (!node->freq_map_cl0_low_latency) {
+		dev_err(dev, "Couldn't find the core-dev low latency freq table for cl0!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl1 = init_core_dev_map(dev, NULL, "core-dev-table-cl1");
-	if (!node->freq_map_cl1) {
-		dev_err(dev, "Couldn't find the core-dev freq table for cl1!\n");
+	node->freq_map_cl1_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl1-low-latency");
+	if (!node->freq_map_cl1_low_latency) {
+		dev_err(dev, "Couldn't find the core-dev low latency freq table for cl1!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl2 = init_core_dev_map(dev, NULL, "core-dev-table-cl2");
-	if (!node->freq_map_cl2) {
-		dev_err(dev, "Couldn't find the core-dev freq table for cl2!\n");
+	node->freq_map_cl2_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl2-low-latency");
+	if (!node->freq_map_cl2_low_latency) {
+		dev_err(dev, "Couldn't find the core-dev low latency freq table for cl2!\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	node->freq_map_cl0_base = init_core_dev_map(dev, NULL, "core-dev-table-cl0-base");
+	if (!node->freq_map_cl0_base) {
+		dev_err(dev, "Couldn't find the core-dev base freq table for cl0!\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	node->freq_map_cl1_base = init_core_dev_map(dev, NULL, "core-dev-table-cl1-base");
+	if (!node->freq_map_cl1_base) {
+		dev_err(dev, "Couldn't find the core-dev base freq table for cl1!\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	node->freq_map_cl2_base = init_core_dev_map(dev, NULL, "core-dev-table-cl2-base");
+	if (!node->freq_map_cl2_base) {
+		dev_err(dev, "Couldn't find the core-dev base freq table for cl2!\n");
 		return ERR_PTR(-EINVAL);
 	}
 

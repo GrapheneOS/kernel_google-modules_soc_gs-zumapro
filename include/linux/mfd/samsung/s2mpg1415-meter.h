@@ -20,6 +20,7 @@
 typedef enum {
 	ADDRESS_CTRL1,
 	ADDRESS_CTRL2,
+	ADDRESS_CTRL5,
 	ADDRESS_BUCKEN1,
 	ADDRESS_LPF_C0_0,
 	ADDRESS_ACC_MODE,
@@ -33,6 +34,7 @@ typedef enum {
 const int ADDRESS_AT[ADDRESS_COUNT][ID_COUNT] = {
 	[ADDRESS_CTRL1] = { S2MPG14_METER_CTRL1, S2MPG15_METER_CTRL1 },
 	[ADDRESS_CTRL2] = { S2MPG14_METER_CTRL2, S2MPG15_METER_CTRL2 },
+	[ADDRESS_CTRL5] = { S2MPG14_METER_CTRL5, S2MPG15_METER_CTRL5 },
 	[ADDRESS_BUCKEN1] = { S2MPG14_METER_BUCKEN1, S2MPG15_METER_BUCKEN1 },
 	[ADDRESS_LPF_C0_0] = { S2MPG14_METER_LPF_C0_0, S2MPG15_METER_LPF_C0_0 },
 	[ADDRESS_ACC_MODE] = { S2MPG14_METER_CTRL4, S2MPG15_METER_CTRL4 },
@@ -336,10 +338,18 @@ static inline int s2mpg1415_meter_measure_acc(enum s2mpg1415_id id,
 	return 0;
 }
 
+#define SW_RESET_DELAYTIME_US 2
 static inline int s2mpg1415_meter_sw_reset(enum s2mpg1415_id id,
 					   struct i2c_client *i2c)
 {
 	int ret;
+
+	ret = s2mpg1415_update_reg(id, i2c, ADDRESS_AT[ADDRESS_CTRL5][id], 0x40,
+				   SOFT_RST_MASK);
+	if (ret != 0)
+		pr_err("odpm: s2mpg1%d-odpm: failed to update meter_ctrl5 bit_6 to 1\n", id + 4);
+
+	usleep_range(SW_RESET_DELAYTIME_US, SW_RESET_DELAYTIME_US + 100);
 
 	ret = s2mpg1415_update_reg(id, i2c, ADDRESS_AT[ADDRESS_CTRL1][id], 0x01,
 				   METER_EN_MASK);

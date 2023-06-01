@@ -150,6 +150,7 @@ static LIST_HEAD(drvdata_list);
 
 #define USI_SW_CONF_MASK	(0x7 << 0)
 #define USI_SPI_SW_CONF		BIT(1)
+#define USI_I2C_SW_CONF		BIT(2)
 
 /* Make sure the busy wait won't take too long time. */
 #define MAX_CS_CLOCK_DELAY_US 20
@@ -1476,7 +1477,6 @@ static struct s3c64xx_spi_info *s3c64xx_spi_parse_dt(struct device *dev)
 {
 	struct s3c64xx_spi_info *sci;
 	u32 temp;
-	const char *domain;
 
 	sci = devm_kzalloc(dev, sizeof(*sci), GFP_KERNEL);
 	if (!sci)
@@ -1514,13 +1514,7 @@ static struct s3c64xx_spi_info *s3c64xx_spi_parse_dt(struct device *dev)
 		sci->num_cs = temp;
 	}
 
-	sci->domain = DOMAIN_TOP;
-	if (!of_property_read_string(dev->of_node, "domain", &domain)) {
-		if (strncmp(domain, "isp", 3) == 0)
-			sci->domain = DOMAIN_ISP;
-		else if (strncmp(domain, "cam1", 4) == 0)
-			sci->domain = DOMAIN_CAM1;
-	}
+	sci->domain = !!of_get_property(dev->of_node, "power-domains", NULL);
 
 	return sci;
 }
@@ -1593,11 +1587,6 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 					USI_SW_CONF_MASK);
 		}
 	}
-
-#if !defined(CONFIG_VIDEO_EXYNOS_PABLO_ISP)
-	if (sci->domain != DOMAIN_TOP)
-		return -ENODEV;
-#endif
 
 	mem_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!mem_res) {
@@ -1822,7 +1811,7 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 
 	sdd->is_probed = 1;
 #ifdef CONFIG_PM
-	if (sci->domain == DOMAIN_TOP)
+	if (sci->domain == NO_POWER_DOMAIN)
 		pm_runtime_set_autosuspend_delay(&pdev->dev,
 						 sdd->spi_clkoff_time);
 	else
@@ -1961,7 +1950,7 @@ static int s3c64xx_spi_runtime_resume(struct device *dev)
 			usleep_range(10000, 11000);
 	}
 
-	if (sci->domain == DOMAIN_TOP) {
+	if (sci->domain == NO_POWER_DOMAIN) {
 #ifdef CONFIG_CPU_IDLE
 		exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
 #endif
@@ -1969,18 +1958,21 @@ static int s3c64xx_spi_runtime_resume(struct device *dev)
 		clk_prepare_enable(sdd->clk);
 	}
 
-#if defined(CONFIG_VIDEO_EXYNOS_PABLO_ISP)
-	else if (sci->domain == DOMAIN_CAM1 || sci->domain == DOMAIN_ISP) {
+	else if (sci->domain != NO_POWER_DOMAIN) {
 #ifdef CONFIG_CPU_IDLE
 		exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
 #endif
 		clk_prepare_enable(sdd->src_clk);
 		clk_prepare_enable(sdd->clk);
 
+		/* To avoid SW RESET make CS low, change to I2C */
+		regmap_update_bits(sci->usi_reg, sci->usi_offset,
+				USI_SW_CONF_MASK, USI_I2C_SW_CONF);
 		exynos_usi_init(sdd);
+		regmap_update_bits(sci->usi_reg, sci->usi_offset,
+				USI_SW_CONF_MASK, USI_SPI_SW_CONF);
 		s3c64xx_spi_hwinit(sdd, sdd->port_id);
 	}
-#endif
 
 	return 0;
 }
@@ -2003,7 +1995,7 @@ static int s3c64xx_spi_suspend_operation(struct device *dev)
 	}
 
 #ifndef CONFIG_PM
-	if (sci->domain == DOMAIN_TOP) {
+	if (sci->domain == NO_POWER_DOMAIN) {
 		/* Disable the clock */
 		clk_disable_unprepare(sdd->src_clk);
 		clk_disable_unprepare(sdd->clk);
@@ -2030,7 +2022,7 @@ static int s3c64xx_spi_resume_operation(struct device *dev)
 	if (!pm_runtime_status_suspended(dev))
 		s3c64xx_spi_runtime_resume(dev);
 
-	if (sci->domain == DOMAIN_TOP) {
+	if (sci->domain == NO_POWER_DOMAIN) {
 		/* Enable the clock */
 #ifdef CONFIG_CPU_IDLE
 		exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
@@ -2074,24 +2066,7 @@ static int s3c64xx_spi_suspend(struct device *dev)
 	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
 	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 
-	if (sci->dma_mode != DMA_MODE)
-		return 0;
-
 	dev_dbg(dev, "spi suspend is handled in device suspend, dma mode = %d\n",
-		sci->dma_mode);
-	return s3c64xx_spi_suspend_operation(dev);
-}
-
-static int s3c64xx_spi_suspend_noirq(struct device *dev)
-{
-	struct spi_master *master = dev_get_drvdata(dev);
-	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
-	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
-
-	if (sci->dma_mode == DMA_MODE)
-		return 0;
-
-	dev_dbg(dev, "spi suspend is handled in suspend_noirq, dma mode = %d\n",
 		sci->dma_mode);
 	return s3c64xx_spi_suspend_operation(dev);
 }
@@ -2102,33 +2077,11 @@ static int s3c64xx_spi_resume(struct device *dev)
 	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
 	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 
-	if (sci->dma_mode != DMA_MODE)
-		return 0;
-
 	dev_dbg(dev, "spi resume is handled in device resume, dma mode = %d\n",
 		sci->dma_mode);
 	return s3c64xx_spi_resume_operation(dev);
 }
 
-static int s3c64xx_spi_resume_noirq(struct device *dev)
-{
-	struct spi_master *master = dev_get_drvdata(dev);
-	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
-	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
-
-	if (sci->secure_mode != SECURE_MODE) {
-		if (!IS_ERR(sci->usi_reg))
-			regmap_update_bits(sci->usi_reg, sci->usi_offset,
-					   USI_SW_CONF_MASK, USI_SPI_SW_CONF);
-	}
-
-	if (sci->dma_mode == DMA_MODE)
-		return 0;
-
-	dev_dbg(dev, "spi resume is handled in resume_noirq, dma mode = %d\n",
-		sci->dma_mode);
-	return s3c64xx_spi_resume_operation(dev);
-}
 #else
 static int s3c64xx_spi_suspend(struct device *dev)
 {
@@ -2143,8 +2096,6 @@ static int s3c64xx_spi_resume(struct device *dev)
 
 static const struct dev_pm_ops s3c64xx_spi_pm = {
 	SET_SYSTEM_SLEEP_PM_OPS(s3c64xx_spi_suspend, s3c64xx_spi_resume)
-	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(s3c64xx_spi_suspend_noirq,
-				      s3c64xx_spi_resume_noirq)
 	SET_RUNTIME_PM_OPS(s3c64xx_spi_runtime_suspend,
 			   s3c64xx_spi_runtime_resume, NULL)
 };
