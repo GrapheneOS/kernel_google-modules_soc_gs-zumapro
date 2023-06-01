@@ -184,6 +184,9 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	if (of_property_read_u32(np, "cpu", &data->cpu))
 		return -ENODEV;
 
+	data->min_freq = 0;
+	data->max_freq = INT_MAX;
+
 #if IS_ENABLED(CONFIG_ECT)
 	if (of_property_read_string(np, "devfreq_domain_name",
 				    &devfreq_domain_name))
@@ -192,9 +195,6 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	not_using_ect = exynos_devfreq_parse_ect(data, devfreq_domain_name);
 #endif
 
-
-	data->min_freq = 0;
-	data->max_freq = INT_MAX;
 
 	if (of_property_read_u32(np, "governor", &data->gov_type))
 		return -ENODEV;
