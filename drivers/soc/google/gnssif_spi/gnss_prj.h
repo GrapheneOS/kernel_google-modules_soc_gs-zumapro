@@ -38,6 +38,7 @@ struct link_device {
 	struct io_device *iod;
 	struct gnss_spi *gnss_if;
 	unsigned int spi_rx_size;
+	unsigned int spi_tx_size;
 	struct workqueue_struct *rx_wq;
 	struct delayed_work rx_dwork;
 

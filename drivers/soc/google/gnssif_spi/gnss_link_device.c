@@ -92,7 +92,7 @@ static void rx_work(struct work_struct *ws)
 
 		skb = alloc_skb(len, GFP_KERNEL);
 		if (!skb) {
-			gif_err("%s: ERR! alloc_skb fail (msg size:%d)\n",
+			gif_err("%s: ERR! rx alloc_skb fail (msg size:%u)\n",
 					iod->name, len);
 			goto exit;
 		}
@@ -127,14 +127,14 @@ static int send_betp(struct link_device *ld, struct io_device *iod, char *buff,
 	struct sk_buff *skb;
 	int ret = 0;
 
-	if (size > ld->spi_rx_size) {
-		gif_err("size(%d) is over %d\n", size, DEFAULT_SPI_RX_SIZE);
-		size = DEFAULT_SPI_RX_SIZE;
+	if (size > ld->spi_tx_size) {
+		gif_err("size(%d) is over %d\n", size, ld->spi_tx_size);
+		size = ld->spi_tx_size;
 	}
 
 	skb = alloc_skb(size, GFP_KERNEL);
 	if (!skb) {
-		gif_err("%s: ERR! rx alloc_skb fail (msg size:%d)\n",
+		gif_err("%s: ERR! tx alloc_skb fail (msg size:%u)\n",
 				iod->name, size);
 		return -ENOMEM;
 	}
@@ -201,6 +201,7 @@ struct link_device *create_link_device(struct platform_device *pdev)
 	ld->name = "GNSS_LINK_DEVICE";
 	ld->send = send_betp;
 	ld->spi_rx_size = DEFAULT_SPI_RX_SIZE;
+	ld->spi_tx_size = DEFAULT_SPI_TX_SIZE;
 
 	ld->rx_wq = alloc_workqueue("gnss_spi_wq",
 					__WQ_LEGACY | WQ_MEM_RECLAIM | WQ_UNBOUND, 1);

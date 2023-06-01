@@ -11,6 +11,7 @@
 #include <linux/mutex.h>
 
 #define DEFAULT_SPI_RX_SIZE	SZ_1K
+#define DEFAULT_SPI_TX_SIZE	SZ_4K
 
 struct gnss_spi {
 	struct spi_device *spi;
