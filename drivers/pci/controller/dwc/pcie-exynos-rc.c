@@ -3038,16 +3038,18 @@ retry:
 	/* to call eyxnos_pcie_rc_pcie_phy_config() in cal.c file */
 	exynos_pcie_rc_assert_phy_reset(pp);
 
-	if (exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
-		rmw_priv_reg(exynos_pcie->pmu_alive_pa +
-				exynos_pcie->pmu_offset, 0x400, 0x400);
+	rmw_priv_reg(exynos_pcie->pmu_alive_pa +
+			exynos_pcie->pmu_offset, 0x400, 0x400);
 
+	if (exynos_pcie->ch_num == 0) {
 		val = exynos_udbg_read(exynos_pcie, 0xC800);
 		val &= ~(0x3 << 5);
 		exynos_udbg_write(exynos_pcie, val, 0xC800);
-
-		exynos_phy_write(exynos_pcie, 0x0, 0x32C);
+	} else {
+		exynos_udbg_write(exynos_pcie, 0x421, 0xC800);
 	}
+
+	exynos_phy_write(exynos_pcie, 0x0, 0x32C);
 
 	/* EQ Off */
 	exynos_pcie_rc_wr_own_conf(pp, 0x890, 4, 0x12000);
