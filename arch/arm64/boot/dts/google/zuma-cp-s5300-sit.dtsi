@@ -459,7 +459,7 @@
 						iod,name = "gnss_boot";
 						iod,ch = <EXYNOS_CH_ID_GNSS_BOOT>;
 						iod,format = <IPC_RAW>;
-						iod,io_type = <IODEV_BOOTDUMP>;
+						iod,io_type = <IODEV_IPC>;
 						iod,link_type = <LINKDEV_PCIE>;
 						iod,attrs = <(IO_ATTR_NO_CHECK_MAXQ)>;
 					};
@@ -467,7 +467,7 @@
 						iod,name = "gnss_dump";
 						iod,ch = <EXYNOS_CH_ID_GNSS_DUMP>;
 						iod,format = <IPC_RAW>;
-						iod,io_type = <IODEV_BOOTDUMP>;
+						iod,io_type = <IODEV_IPC>;
 						iod,link_type = <LINKDEV_PCIE>;
 						iod,attrs = <(IO_ATTR_NO_CHECK_MAXQ)>;
 					};
