@@ -564,8 +564,8 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x11, phy_base_regs + 0x0624);
 
 		//PLL margin issue setting for ERIO (GEN1 & GEN2)
-		writel(0x04, phy_base_regs + 0x0630);
-		writel(0x73, phy_base_regs + 0x06D0);
+		writel(0xf, phy_base_regs + 0x0630);
+		writel(0x53, phy_base_regs + 0x06D0);
 
 		//lane
 		for (i = 0; i < num_lanes; i++) {
