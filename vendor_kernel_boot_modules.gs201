@@ -107,7 +107,6 @@ mcps802154.ko
 mcps802154_region_fira.ko
 mcps802154_region_nfcc_coex.ko
 memlat-devfreq.ko
-nitrous.ko
 odpm.ko
 p9221.ko
 panel-samsung-drv.ko
