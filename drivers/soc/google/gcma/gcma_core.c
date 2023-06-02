@@ -105,7 +105,7 @@ struct gcma_fs {
 struct gcma_inode {
 	struct cleancache_filekey key;
 	struct hlist_node hash;
-	atomic_t ref_count;
+	atomic64_t ref_count;
 
 	struct xarray pages;
 	struct rcu_head rcu;
@@ -187,7 +187,7 @@ static struct gcma_inode *alloc_gcma_inode(struct gcma_fs *gcma_fs,
 		xa_init_flags(&inode->pages, XA_FLAGS_LOCK_IRQ);
 		INIT_HLIST_NODE(&inode->hash);
 		inode->gcma_fs = gcma_fs;
-		atomic_set(&inode->ref_count, 1);
+		atomic64_set(&inode->ref_count, 1);
 	}
 
 	return inode;
@@ -203,7 +203,7 @@ static void gcma_inode_free(struct rcu_head *rcu)
 
 static bool get_gcma_inode(struct gcma_inode *inode)
 {
-	return atomic_inc_not_zero(&inode->ref_count);
+	return atomic64_inc_not_zero(&inode->ref_count);
 }
 
 static void __put_gcma_inode(struct gcma_inode *inode)
@@ -215,7 +215,7 @@ static void __put_gcma_inode(struct gcma_inode *inode)
 
 static void put_gcma_inode(struct gcma_inode *inode)
 {
-	if (atomic_dec_and_test(&inode->ref_count)) {
+	if (atomic64_dec_and_test(&inode->ref_count)) {
 		unsigned long flags;
 		struct gcma_fs *gcma_fs = inode->gcma_fs;
 
@@ -408,7 +408,7 @@ static int gcma_store_page(struct gcma_inode *inode, unsigned long index,
 				page, GFP_ATOMIC|__GFP_NOWARN));
 
 	if (!err) {
-		atomic_inc(&inode->ref_count);
+		atomic64_inc(&inode->ref_count);
 		gcma_get_page(page);
 		set_inode_mapping(page, inode);
 		set_inode_index(page, index);
@@ -856,7 +856,7 @@ static bool try_empty_inode(struct gcma_inode *inode)
 	}
 	xas_unlock_irqrestore(&xas, flags);
 
-	return atomic_cmpxchg(&inode->ref_count, 1, 0) == 1;
+	return atomic64_cmpxchg(&inode->ref_count, 1, 0) == 1;
 }
 
 static struct gcma_inode *__gcma_cc_invalidate_inode(struct gcma_fs *gcma_fs,
