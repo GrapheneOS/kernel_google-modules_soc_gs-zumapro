@@ -165,6 +165,17 @@ static void reset_gcma_page(struct page *page)
 	set_inode_index(page, 0);
 }
 
+static struct gcma_fs *find_gcma_fs(int hash_id)
+{
+	struct gcma_fs *ret;
+
+	rcu_read_lock();
+	ret = idr_find(&gcma_fs_idr, hash_id);
+	rcu_read_unlock();
+
+	return ret;
+}
+
 static struct gcma_inode *alloc_gcma_inode(struct gcma_fs *gcma_fs,
 					struct cleancache_filekey *key)
 {
@@ -697,7 +708,7 @@ void gcma_cc_store_page(int hash_id, struct cleancache_filekey key,
 	VM_BUG_ON(!irqs_disabled());
 
 find_inode:
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
+	gcma_fs = find_gcma_fs(hash_id);
 	VM_BUG_ON(!gcma_fs);
 
 	inode = find_and_get_gcma_inode(gcma_fs, &key);
@@ -772,7 +783,7 @@ static int gcma_cc_load_page(int hash_id, struct cleancache_filekey key,
 
 	VM_BUG_ON(irqs_disabled());
 
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
+	gcma_fs = find_gcma_fs(hash_id);
 	VM_BUG_ON(!gcma_fs);
 
 	inode = find_and_get_gcma_inode(gcma_fs, &key);
@@ -809,7 +820,7 @@ static void gcma_cc_invalidate_page(int hash_id, struct cleancache_filekey key,
 	struct page *g_page;
 	unsigned long flags;
 
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
+	gcma_fs = find_gcma_fs(hash_id);
 	VM_BUG_ON(!gcma_fs);
 
 	inode = find_and_get_gcma_inode(gcma_fs, &key);
@@ -871,7 +882,7 @@ static void gcma_cc_invalidate_inode(int hash_id, struct cleancache_filekey key)
 	struct gcma_fs *gcma_fs;
 	struct gcma_inode *inode;
 
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
+	gcma_fs = find_gcma_fs(hash_id);
 	VM_BUG_ON(!gcma_fs);
 
 	inode = __gcma_cc_invalidate_inode(gcma_fs, &key);
@@ -891,7 +902,7 @@ static void gcma_cc_invalidate_fs(int hash_id)
 	int cursor, i;
 	struct hlist_node *tmp;
 
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
+	gcma_fs = find_gcma_fs(hash_id);
 	VM_BUG_ON(!gcma_fs);
 	VM_BUG_ON(irqs_disabled());
 
