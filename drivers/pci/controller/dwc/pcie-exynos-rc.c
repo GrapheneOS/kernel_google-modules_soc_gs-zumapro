@@ -3267,7 +3267,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 	pp = &pci->pp;
 	dev = pci->dev;
 
-	dev_dbg(dev, "start poweron, state: %d\n", exynos_pcie->state);
+	dev_info(dev, "start poweron, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "start poweron, state: %d", exynos_pcie->state);
 
 	if (exynos_pcie->state == STATE_LINK_DOWN) {
@@ -3409,7 +3409,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 		}
 	}
 
-	dev_dbg(dev, "end poweron, state: %d\n", exynos_pcie->state);
+	dev_info(dev, "end poweron, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "end poweron, state: %d\n", exynos_pcie->state);
 
 	return 0;
