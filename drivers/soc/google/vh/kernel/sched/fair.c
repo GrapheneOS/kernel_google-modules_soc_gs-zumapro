@@ -37,6 +37,12 @@ extern bool vendor_sched_npi_packing;
 unsigned int sched_capacity_margin[CPU_NUM] = { [0 ... CPU_NUM - 1] = DEF_UTIL_THRESHOLD };
 unsigned int sched_dvfs_headroom[CPU_NUM] = { [0 ... CPU_NUM - 1] = DEF_UTIL_THRESHOLD };
 
+unsigned int sched_auto_uclamp_max[CPU_NUM] = {
+	[MIN_CAPACITY_CPU ... MID_CAPACITY_CPU - 1] = 100,
+	[MID_CAPACITY_CPU ... MAX_CAPACITY_CPU - 1] = 500,
+	[MAX_CAPACITY_CPU ... CPU_NUM - 1] = 700
+};
+
 struct vendor_group_property vg[VG_MAX];
 
 extern struct vendor_group_list vendor_group_list[VG_MAX];
@@ -63,14 +69,6 @@ extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum
 
 #define for_each_clamp_id(clamp_id) \
 	for ((clamp_id) = 0; (clamp_id) < UCLAMP_CNT; (clamp_id)++)
-
-static inline void uclamp_se_set(struct uclamp_se *uc_se,
-				 unsigned int value, bool user_defined)
-{
-	uc_se->value = value;
-	uc_se->bucket_id = get_bucket_id(value);
-	uc_se->user_defined = user_defined;
-}
 
 static void attach_task(struct rq *rq, struct task_struct *p)
 {
@@ -1436,15 +1434,9 @@ static void prio_changed(struct task_struct *p, int old_prio, int new_prio, bool
 void update_adpf_prio(struct task_struct *p, struct vendor_task_struct *vp, bool val)
 {
 	int new_prio, old_prio;
-	struct rq_flags rf;
-	struct rq *rq;
 
-	rq = task_rq_lock(p, &rf);
-
-	if (p->prio < MAX_RT_PRIO) {
-		task_rq_unlock(rq, p, &rf);
+	if (p->prio < MAX_RT_PRIO)
 		return;
-	}
 
 	if (val) {
 		raw_spin_lock(&vp->lock);
@@ -1464,8 +1456,6 @@ void update_adpf_prio(struct task_struct *p, struct vendor_task_struct *vp, bool
 
 	if (old_prio != new_prio)
 		prio_changed(p, old_prio, new_prio, true);
-
-	task_rq_unlock(rq, p, &rf);
 }
 
 static void get_uclamp_on_nice(struct task_struct *p, enum uclamp_id clamp_id,
@@ -1631,6 +1621,13 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 						 capacity, wake_util, capacity,	wake_util,
 						 spare_cap, task_fits, false);
 #endif
+
+			/*
+			 * Consider auto_uclamp_max based on placing the task
+			 * on the ith cpu
+			 */
+			if (get_vendor_task_struct(p)->auto_uclamp_max_flags)
+				util_max = p_util_max = sched_auto_uclamp_max[i];
 
 			/*
 			 * Skip CPUs that cannot satisfy the capacity request.
@@ -1888,11 +1885,12 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 		if (!cpumask_empty(&idle_fit)) {
 			cpumask_copy(&candidates, &idle_fit);
 		} else if (!cpumask_empty(&idle_unfit)) {
-			cpumask_copy(&candidates, &idle_unfit);
+			/* Assign biggest cpu core found for unfit case. */
+			cpumask_set_cpu(cpumask_last(&idle_unfit), &candidates);
 		} else if (!cpumask_empty(&unimportant_fit)) {
 			cpumask_copy(&candidates, &unimportant_fit);
 		} else if (!cpumask_empty(&unimportant_unfit)) {
-			cpumask_copy(&candidates, &unimportant_unfit);
+			cpumask_set_cpu(cpumask_last(&unimportant_unfit), &candidates);
 		} else if (!cpumask_empty(&idle_unpreferred)) {
 			cpumask_copy(&candidates, &idle_unpreferred);
 		} else if (!cpumask_empty(&packing)) {
@@ -2061,6 +2059,12 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 	// Vendor group restriction
 	vnd_min = vg[vp->group].uc_req[UCLAMP_MIN].value;
 	vnd_max = vg[vp->group].uc_req[UCLAMP_MAX].value;
+	if (vg[vp->group].auto_uclamp_max) {
+		vp->auto_uclamp_max_flags |= AUTO_UCLAMP_MAX_FLAG_GROUP;
+		vnd_max = sched_auto_uclamp_max[task_cpu(p)];
+	} else {
+		vp->auto_uclamp_max_flags &= ~AUTO_UCLAMP_MAX_FLAG_GROUP;
+	}
 
 	value = uc_req.value;
 	value = clamp(value, max(nice_min, max(tg_min, vnd_min)),
@@ -2334,15 +2338,39 @@ void rvh_post_init_entity_util_avg_pixel_mod(void *data, struct sched_entity *se
 	}
 }
 
+void vh_sched_uclamp_validate_pixel_mod(void *data, struct task_struct *tsk,
+					const struct sched_attr *attr, bool user,
+					int *ret, bool *done)
+{
+	struct vendor_task_struct *vtsk = get_vendor_task_struct(tsk);
+
+	if (attr->sched_util_max != AUTO_UCLAMP_MAX_MAGIC) {
+		vtsk->auto_uclamp_max_flags &= ~AUTO_UCLAMP_MAX_FLAG_TASK;
+		return;
+	}
+
+	*done = true;
+	*ret = 0;
+}
+
 void vh_sched_setscheduler_uclamp_pixel_mod(void *data, struct task_struct *tsk, int clamp_id,
 					    unsigned int value)
 {
+	struct vendor_task_struct *vtsk = get_vendor_task_struct(tsk);
+
 	trace_sched_setscheduler_uclamp(tsk, clamp_id, value);
 	if (trace_clock_set_rate_enabled()) {
 		char trace_name[32] = {0};
 		scnprintf(trace_name, sizeof(trace_name), "%s_%d",
 			clamp_id  == UCLAMP_MIN ? "UCLAMP_MIN" : "UCLAMP_MAX", tsk->pid);
 		trace_clock_set_rate(trace_name, value, raw_smp_processor_id());
+	}
+
+	if (clamp_id == UCLAMP_MAX && value == AUTO_UCLAMP_MAX_MAGIC) {
+		vtsk->auto_uclamp_max_flags |= AUTO_UCLAMP_MAX_FLAG_TASK;
+		uclamp_se_set(&tsk->uclamp_req[UCLAMP_MAX],
+			      sched_auto_uclamp_max[task_cpu(tsk)],
+			      true);
 	}
 }
 
@@ -2539,7 +2567,6 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 			if (!is_ui)
 				backup_unfit = p;
 		}
-
 	}
 
 	if (best_task)
@@ -2581,6 +2608,11 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	struct task_struct *p = NULL;
 	struct rq_flags src_rf;
 	int this_cpu = this_rq->cpu;
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(this_rq);
+
+	if (SCHED_WARN_ON(atomic_read(&vrq->num_adpf_tasks)))
+		atomic_set(&vrq->num_adpf_tasks, 0);
+
 
 	/*
 	 * We must set idle_stamp _before_ calling idle_balance(), such that we
@@ -2703,6 +2735,12 @@ void rvh_update_blocked_fair_pixel_mod(void *data, struct rq *rq)
 
 void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
+
+	if (vp->uclamp_fork_reset)
+		atomic_inc(&vrq->num_adpf_tasks);
+
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	if (likely(sched_feat(UTIL_EST))) {
 		int group = get_utilization_group(p, get_vendor_group(p));
@@ -2716,19 +2754,8 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 #endif
 
 	/* Can only process uclamp after sched_slice() was updated */
-	if (uclamp_is_used()) {
-		if (uclamp_can_ignore_uclamp_max(rq, p)) {
-			uclamp_set_ignore_uclamp_max(p);
-			/* GKI has incremented it already, undo that */
-			uclamp_rq_dec_id(rq, p, UCLAMP_MAX);
-		}
-
-		if (uclamp_can_ignore_uclamp_min(rq, p)) {
-			uclamp_set_ignore_uclamp_min(p);
-			/* GKI has incremented it already, undo that */
-			uclamp_rq_dec_id(rq, p, UCLAMP_MIN);
-		}
-	}
+	if (uclamp_is_used())
+		apply_uclamp_filters(rq, p);
 
 	/*
 	 * We strategically tell schedutil to ignore requests to update
@@ -2743,6 +2770,12 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 
 void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
+
+	if (vp->uclamp_fork_reset)
+		atomic_dec(&vrq->num_adpf_tasks);
+
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	if (likely(sched_feat(UTIL_EST))) {
 		int group = get_utilization_group(p, get_vendor_group(p));

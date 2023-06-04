@@ -115,6 +115,9 @@ struct smfc_dev {
 #if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
 	struct exynos_pm_qos_request qosreq_int;
 #endif
+	int bts_id;
+	int core_clk;
+	int bpc;
 	s32 qosreq_int_level;
 
 };

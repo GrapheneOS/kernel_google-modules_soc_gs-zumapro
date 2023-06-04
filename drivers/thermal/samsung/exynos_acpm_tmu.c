@@ -429,7 +429,7 @@ void exynos_acpm_tmu_ipc_get_target_freq(int tz, u32 *freq)
 		(message.resp.rsvd1 << 8) | (message.resp.rsvd0 << 0);
 }
 
-void exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword)
+int exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword)
 {
 	union tmu_ipc_message message;
 
@@ -440,6 +440,7 @@ void exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword)
 	message.data_64b[1] = qword;
 
 	exynos_acpm_tmu_ipc_send_data(&message);
+	return message.resp.ret;
 }
 
 void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode)
@@ -466,6 +467,41 @@ int exynos_acpm_tmu_ipc_set_gov_time_windows(int timer_interval, int thermal_pre
 	message.req.req_rsvd2 = (u8)((thermal_press_window>>8) & 0xff);
 
 	exynos_acpm_tmu_ipc_send_data(&message);
+	return message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_gov_tz_time_windows(int tz, int timer_interval,
+						int thermal_press_window)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.tzid = tz;
+	message.req.type = TMU_IPC_SET_GOV_TZ_TIMER_INTERVAL;
+	message.req.req_rsvd0 = (u8)(timer_interval & 0xff);
+	message.req.req_rsvd1 = (u8)(thermal_press_window & 0xff);
+	message.req.req_rsvd2 = (u8)((thermal_press_window >> 8) & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	return message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_gov_tz_time_windows(int tz, int *timer_interval,
+						int *thermal_press_window)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.tzid = tz;
+	message.req.type = TMU_IPC_GET_GOV_TZ_TIMER_INTERVAL;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*timer_interval = (int)message.resp.rsvd0;
+	*thermal_press_window = (int)((u16)message.resp.rsvd2 << 8) | (u16)message.resp.rsvd1;
+
 	return message.resp.ret;
 }
 
@@ -496,7 +532,7 @@ void exynos_acpm_tmu_ipc_reset_trip_counter(int tz)
 	exynos_acpm_tmu_ipc_send_data(&message);
 }
 
-void exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val)
+int exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val)
 {
 	union tmu_ipc_message message;
 
@@ -508,6 +544,7 @@ void exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val)
 	message.data[2] = val;
 
 	exynos_acpm_tmu_ipc_send_data(&message);
+	return (int)message.resp.ret;
 }
 
 void exynos_acpm_tmu_ipc_get_pi_param(int tz, u8 param, u32 *val)
@@ -585,6 +622,7 @@ int exynos_acpm_tmu_ipc_reset_tr_stats(int tz)
 	union tmu_ipc_message message;
 
 	memset(&message, 0, sizeof(message));
+
 	message.req.type = TMU_IPC_RESET_TR_STATS;
 	message.req.tzid = tz;
 
@@ -678,6 +716,86 @@ int exynos_acpm_tmu_ipc_get_tr_stats(int tz, int bucket_idx, u64 *bucket_stats)
 	exynos_acpm_tmu_ipc_send_data(&message);
 
 	*bucket_stats = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_temp_lut(int tz, int temp, int state, int append)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_TEMP_STATE_LUT;
+	message.req.tzid = tz;
+	message.req.rsvd = (u8)append;
+	message.data[2] = temp;
+	message.data[3] = state;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_temp_lut(int tz, u8 index, int *temp, int *state)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TEMP_STATE_LUT;
+	message.req.tzid = tz;
+	message.req.rsvd = index;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*temp = message.data[2];
+	*state = message.data[3];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_mpmm_clr_throttle_level(int tz, u16 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_MPMM_CLR_THROTTLE_LEVEL;
+	message.req.tzid = tz;
+	message.data[2] = (u32)val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_mpmm_throttle_level(int tz, u16 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_MPMM_THROTTLE_LEVEL;
+	message.req.tzid = tz;
+	message.data[2] = (u32)val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_mpmm_enable(int tz, u8 enable)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_MPMM_ENABLE;
+	message.req.tzid = tz;
+	message.req.rsvd  = enable;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
 
 	return (int)message.resp.ret;
 }

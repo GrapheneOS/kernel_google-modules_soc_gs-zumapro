@@ -38,6 +38,9 @@ struct vendor_kernel_info {
 	u64 page_end;
 	u64 phys_offset;
 	u64 kimage_voffset;
+	/* For debug snapshot */
+	char dss_freq_name[DSS_FREQ_MAX_SIZE][DSS_FREQ_MAX_NAME_SIZE];
+	u32 dss_freq_size;
 } __packed;
 
 struct vendor_kernel_all_info {
@@ -103,6 +106,9 @@ static void update_vendor_kernel_all_info(void)
 	info->page_end = PAGE_END;
 	info->phys_offset = PHYS_OFFSET;
 	info->kimage_voffset = kimage_voffset;
+
+	dbg_snapshot_get_freq_name(info->dss_freq_name);
+	info->dss_freq_size = dbg_snapshot_get_freq_size();
 
 	vendor_checksum_info = (u32 *)info;
 	for (index = 0; index < sizeof(*info) / sizeof(u32); index++)

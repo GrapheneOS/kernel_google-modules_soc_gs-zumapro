@@ -17,6 +17,11 @@
 #define MCELSIUS        1000
 
 extern struct cpumask tmu_enabled_mask;
+enum acpm_gov_select_bit_offset {
+	STEPWISE = 0,
+	PI_LOOP  = 1,
+	TEMP_LUT = 2,
+};
 
 struct gs_pi_param {
 	s64 err_integral;
@@ -28,9 +33,6 @@ struct gs_pi_param {
 	s32 i_max;
 	s32 integral_cutoff;
 
-	int polling_delay_on;
-	int polling_delay_off;
-
 	bool switched_on;
 };
 
@@ -41,7 +43,7 @@ enum pi_param {
 	K_I = 3,
 	I_MAX = 4,
 	POWER_TABLE_ECT_OFFSET = 5,
-	PI_ENABLE = 6
+	GOV_SELECT = 6
 };
 
 #define STEPWISE_GAIN_MIN 0
@@ -63,7 +65,8 @@ struct acpm_gov_params_st {
 	u8 timer_stepwise_gain;
 	u8 integral_thresh;
 	u8 enable;
-	u8 reserved[2];
+	u8 mpmm_throttle_on;
+	u8 reserved;
 };
 
 union acpm_gov_params_un {
@@ -97,7 +100,6 @@ struct thermal_pressure {
 	struct kthread_delayed_work polling_work;
 	int polling_delay_on;
 	int polling_delay_off;
-	u16 time_window;
 	struct thermal_state state;
 	struct cpumask work_affinity;
 	bool enabled;
@@ -112,7 +114,6 @@ struct acpm_gov_common {
 	void __iomem *sm_base;
 	u32 sm_size;
 	enum acpm_gov_debug_mode_enum tracing_mode;
-	u8 timer_interval;
 	bool tracing_buffer_flush_pending;
 	bool turn_on;
 	u64 buffer_version;
@@ -121,7 +122,12 @@ struct acpm_gov_common {
 	struct thermal_pressure thermal_pressure;
 };
 
-#define TRIP_LEVEL_NUM 8
+struct gs_temp_lut_st {
+	u32 temp;
+	u32 state;
+};
+
+#define TRIP_LEVEL_NUM        8
 
 /**
  * struct gs_tmu_data : A structure to hold the private data of the TMU
@@ -161,6 +167,7 @@ struct gs_tmu_data {
 	int cpu_hw_throttling_clr_threshold;
 	int ppm_clr_throttle_level;
 	int ppm_throttle_level;
+	int mpmm_enable;
 	int mpmm_clr_throttle_level;
 	int mpmm_throttle_level;
 	int limited_frequency;
@@ -171,6 +178,7 @@ struct gs_tmu_data {
 	struct exynos_pm_qos_request thermal_limit_request;
 	bool limited;
 	void __iomem *base;
+	void __iomem *sysreg_cpucl0;
 	int irq;
 	struct kthread_worker hardlimit_worker;
 	struct kthread_worker thermal_worker;
@@ -209,11 +217,17 @@ struct gs_tmu_data {
 	atomic64_t trip_counter[TRIP_LEVEL_NUM];
 	union acpm_gov_params_un acpm_gov_params;
 	u32 fvp_get_target_freq;
-	bool acpm_pi_enable;
+	u32 acpm_gov_select;
 	u32 control_temp_step;
 	tr_handle tr_handle;
 	struct cpumask mapped_cpus;
 	int pressure_index;
+	int polling_delay_on;
+	int polling_delay_off;
+	int thermal_pressure_time_window;
+	bool use_temp_lut_thermal;
+	u32 temp_state_lut_len;
+	struct gs_temp_lut_st *temp_state_lut;
 };
 
 enum throttling_stats_type {
@@ -408,5 +422,18 @@ struct gov_trace_data_struct {
 	struct buffered_curr_state buffered_curr_state[BULK_TRACE_DATA_LEN];
 	struct curr_state curr_state[NR_TZ];
 };
+
+#define SYSREG_CPUCL0_BASE (0x29c20000)
+#define CLUSTER0_LIT_MPMM  (0x1408)
+#define CLUSTER0_MID_MPMM  (0x140C)
+#define CLUSTER0_BIG_MPMM  (0x1410)
+#define CLUSTER0_MPMMEN    (0x1414)
+#define LIT_MPMMEN_MASK        (0xF)
+#define LIT_MPMMEN_OFFSET      (0)
+#define MID_MPMMEN_MASK        (0xF)
+#define MID_MPMMEN_OFFSET      (4)
+#define BIG_MPMMEN_MASK        (0x1)
+#define BIG_MPMMEN_OFFSET      (8)
+#define IS_CPU(tzid)       ((tzid) == TZ_BIG || (tzid) == TZ_MID || (tzid) == TZ_LIT)
 
 #endif /* _GS_TMU_V3_H */

@@ -456,6 +456,8 @@ static int devfreq_memlat_ev_handler(struct devfreq *df,
 
 static struct devfreq_governor devfreq_gov_memlat = {
 	.name = "mem_latency",
+	.attrs = DEVFREQ_GOV_ATTR_POLLING_INTERVAL
+		| DEVFREQ_GOV_ATTR_TIMER,
 	.get_target_freq = devfreq_memlat_get_freq,
 	.event_handler = devfreq_memlat_ev_handler,
 };

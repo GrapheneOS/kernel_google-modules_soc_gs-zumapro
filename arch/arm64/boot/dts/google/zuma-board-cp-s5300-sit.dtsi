@@ -17,6 +17,8 @@
 			spmi_bb: s5910_bb {
 				compatible = "google,bitbang-spmi-controller";
 				status = "okay";
+				#address-cells = <1>;
+				#size-cells = <1>;
 
 				clk-gpio = <&gpa3 0 GPIO_ACTIVE_HIGH>;
 				dat-gpio = <&gpa3 1 GPIO_ACTIVE_HIGH>;

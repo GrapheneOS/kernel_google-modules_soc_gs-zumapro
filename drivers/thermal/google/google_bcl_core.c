@@ -277,7 +277,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 	else
 		mod_delayed_work(system_highpri_wq, &zone->irq_untriggered_work, 0);
 exit:
-	if (zone->irq_type != IF_PMIC) {
+	if (zone->irq_type != IF_PMIC && bcl_dev->irq_delay != 0) {
 		disable_irq_nosync(irq);
 		mod_delayed_work(system_unbound_wq, &zone->enable_irq_work,
 				 msecs_to_jiffies(bcl_dev->irq_delay));
@@ -557,75 +557,6 @@ int google_init_aur_ratio(struct bcl_device *data)
 }
 EXPORT_SYMBOL_GPL(google_init_aur_ratio);
 
-unsigned int google_get_ppm(struct bcl_device *data)
-{
-	void __iomem *addr;
-	unsigned int reg;
-
-	if (!data)
-		return -ENOMEM;
-	if (!data->sysreg_cpucl0) {
-		pr_err("Error in sysreg_cpucl0\n");
-		return -ENOMEM;
-	}
-
-	mutex_lock(&data->sysreg_lock);
-	addr = data->sysreg_cpucl0 + CLUSTER0_PPM;
-	reg = __raw_readl(addr);
-	mutex_unlock(&data->sysreg_lock);
-
-	return reg;
-}
-EXPORT_SYMBOL_GPL(google_get_ppm);
-
-unsigned int google_get_mpmm(struct bcl_device *data, enum MPMM_SOURCE index)
-{
-	void __iomem *addr;
-	unsigned int reg;
-
-	if (!data)
-		return -ENOMEM;
-	if (!data->sysreg_cpucl0) {
-		pr_err("Error in sysreg_cpucl0\n");
-		return -ENOMEM;
-	}
-
-	if (index == LITTLE)
-		addr = data->sysreg_cpucl0 + CLUSTER0_LIT_MPMM;
-	else if (index == MID)
-		addr = data->sysreg_cpucl0 + CLUSTER0_MID_MPMM;
-	else if (index == BIG)
-		addr = data->sysreg_cpucl0 + CLUSTER0_BIG_MPMM;
-	else
-		addr = data->sysreg_cpucl0 + CLUSTER0_MPMMEN;
-	mutex_lock(&data->sysreg_lock);
-	reg = __raw_readl(addr);
-	mutex_unlock(&data->sysreg_lock);
-
-	return reg;
-}
-EXPORT_SYMBOL_GPL(google_get_mpmm);
-
-int google_set_ppm(struct bcl_device *data, unsigned int value)
-{
-	void __iomem *addr;
-
-	if (!data)
-		return -ENOMEM;
-	if (!data->sysreg_cpucl0) {
-		pr_err("Error in sysreg_cpucl0\n");
-		return -ENOMEM;
-	}
-
-	mutex_lock(&data->sysreg_lock);
-	addr = data->sysreg_cpucl0 + CLUSTER0_PPM;
-	__raw_writel(value, addr);
-	mutex_unlock(&data->sysreg_lock);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(google_set_ppm);
-
 unsigned int google_get_db(struct bcl_device *data, enum MPMM_SOURCE index)
 {
 	void __iomem *addr;
@@ -678,33 +609,6 @@ int google_set_db(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(google_set_db);
-
-int google_set_mpmm(struct bcl_device *data, unsigned int value, enum MPMM_SOURCE index)
-{
-	void __iomem *addr;
-
-	if (!data)
-		return -ENOMEM;
-	if (!data->sysreg_cpucl0) {
-		pr_err("Error in sysreg_cpucl0\n");
-		return -ENOMEM;
-	}
-
-	if (index == LITTLE)
-		addr = data->sysreg_cpucl0 + CLUSTER0_LIT_MPMM;
-	else if (index == MID)
-		addr = data->sysreg_cpucl0 + CLUSTER0_MID_MPMM;
-	else if (index == BIG)
-		addr = data->sysreg_cpucl0 + CLUSTER0_BIG_MPMM;
-	else
-		addr = data->sysreg_cpucl0 + CLUSTER0_MPMMEN;
-	mutex_lock(&data->sysreg_lock);
-	__raw_writel(value, addr);
-	mutex_unlock(&data->sysreg_lock);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(google_set_mpmm);
 
 static void google_enable_irq_work(struct work_struct *work)
 {
@@ -822,47 +726,6 @@ static int google_bcl_register_zone(struct bcl_device *bcl_dev, int idx, const c
 	}
 	bcl_dev->zone[idx] = zone;
 	return ret;
-}
-
-static void google_set_throttling(struct bcl_device *bcl_dev)
-{
-	struct device_node *np = bcl_dev->device->of_node;
-	int ret;
-	u32 val, ppm_settings, lit_mpmm_settings, mid_mpmm_settings, big_mpmm_settings, mpmm_en;
-	void __iomem *addr;
-
-	if (!bcl_dev->sysreg_cpucl0) {
-		dev_err(bcl_dev->device, "sysreg_cpucl0 ioremap not mapped\n");
-		return;
-	}
-	ret = of_property_read_u32(np, "ppm_settings", &val);
-	ppm_settings = ret ? 0 : val;
-
-	ret = of_property_read_u32(np, "lit_mpmm_settings", &val);
-	lit_mpmm_settings = ret ? 0 : val;
-
-	ret = of_property_read_u32(np, "mid_mpmm_settings", &val);
-	mid_mpmm_settings = ret ? 0 : val;
-
-	ret = of_property_read_u32(np, "big_mpmm_settings", &val);
-	big_mpmm_settings = ret ? 0 : val;
-
-	ret = of_property_read_u32(np, "mpmm_en", &val);
-	mpmm_en = ret ? 0 : val;
-
-	mutex_lock(&bcl_dev->sysreg_lock);
-	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_PPM;
-	__raw_writel(ppm_settings, addr);
-	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_LIT_MPMM;
-	__raw_writel(lit_mpmm_settings, addr);
-	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_MID_MPMM;
-	__raw_writel(mid_mpmm_settings, addr);
-	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_BIG_MPMM;
-	__raw_writel(big_mpmm_settings, addr);
-	addr = bcl_dev->sysreg_cpucl0 + CLUSTER0_MPMMEN;
-	__raw_writel(mpmm_en, addr);
-	mutex_unlock(&bcl_dev->sysreg_lock);
-
 }
 
 static void main_pwrwarn_irq_work(struct work_struct *work)
@@ -1455,8 +1318,6 @@ static void google_bcl_enable_vdroop_irq(struct bcl_device *bcl_dev)
 
 static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 {
-	unsigned int reg;
-
 	if (!bcl_dev)
 		return -EIO;
 
@@ -1502,15 +1363,6 @@ static int google_bcl_init_instruction(struct bcl_device *bcl_dev)
 		return -EIO;
 	}
 
-	mutex_lock(&bcl_dev->sysreg_lock);
-	reg = __raw_readl(bcl_dev->sysreg_cpucl0 + CLUSTER0_GENERAL_CTRL_64);
-	reg |= MPMMEN_MASK;
-	__raw_writel(reg, bcl_dev->sysreg_cpucl0 + CLUSTER0_GENERAL_CTRL_64);
-	reg = __raw_readl(bcl_dev->sysreg_cpucl0 + CLUSTER0_PPM);
-	reg |= PPMEN_MASK;
-	__raw_writel(reg, bcl_dev->sysreg_cpucl0 + CLUSTER0_PPM);
-
-	mutex_unlock(&bcl_dev->sysreg_lock);
 	mutex_init(&bcl_dev->state_trans_lock);
 	mutex_init(&bcl_dev->ratio_lock);
 	google_bcl_enable_vdroop_irq(bcl_dev);
@@ -1741,7 +1593,6 @@ static int google_bcl_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto bcl_soc_probe_exit;
 
-	google_set_throttling(bcl_dev);
 	google_set_main_pmic(bcl_dev);
 	google_set_sub_pmic(bcl_dev);
 	google_set_intf_pmic(bcl_dev);
