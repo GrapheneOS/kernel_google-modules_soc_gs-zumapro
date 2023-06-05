@@ -47,7 +47,7 @@ def define_slider_kleaf_tests():
                                 kernel_modules_install = ":slider_modules_install",
                                 modules_list = "vendor_boot_modules.gs101",
                                 vendor_dlkm_modules_list = "vendor_dlkm_modules.slider" if build_vendor_dlkm else None,
-                                vendor_dlkm_props = "vendor_dlkm.props.slider" if build_vendor_dlkm else None,
+                                vendor_dlkm_props = "vendor_dlkm.props" if build_vendor_dlkm else None,
                                 vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],
                                 deps = [
                                     "//prebuilts/boot-artifacts/selinux:vendor_dlkm_file_contexts",

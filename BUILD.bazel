@@ -354,11 +354,11 @@ kernel_images(
     # No MODULES_BLOCKLIST
     # Keep the following in sync with build.config.gs101:
     vendor_dlkm_modules_list = "vendor_dlkm_modules.slider",
-    vendor_dlkm_props = "vendor_dlkm.props.slider",
+    vendor_dlkm_props = "vendor_dlkm.props",
     # VENDOR_RAMDISK_BINARY
     vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],
     deps = [
-        # Keep the following in sync with vendor_dlkm.props.slider:
+        # Keep the following in sync with vendor_dlkm.props:
         # selinux_fc
         "//prebuilts/boot-artifacts/selinux:vendor_dlkm_file_contexts",
     ],
@@ -401,7 +401,7 @@ slider_dist_targets = [
     ":slider_merged_kernel_uapi_headers",
     ":slider_modules_install",
     ":slider_unstripped_modules_archive",
-    "vendor_dlkm.props.slider",
+    "vendor_dlkm.props",
     "//prebuilts/boot-artifacts/selinux:vendor_dlkm_file_contexts",
     "//common:android/abi_gki_aarch64_pixel",
     "//common:kernel_aarch64_download_or_build",
@@ -439,9 +439,9 @@ define_slider_kleaf_tests()
 exports_files([
     # keep sorted
     "build.config.cloudripper",
-    "system_dlkm.props.gs201",
+    "system_dlkm.props",
     "vendor_dlkm.blocklist.cloudripper",
-    "vendor_dlkm.props.slider",
+    "vendor_dlkm.props",
     "vendor_dlkm_modules.slider",
     "vendor_kernel_boot_modules.gs201",
 ])
