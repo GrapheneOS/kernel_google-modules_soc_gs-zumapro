@@ -360,7 +360,7 @@ kernel_images(
     deps = [
         # Keep the following in sync with vendor_dlkm.props.slider:
         # selinux_fc
-        "//prebuilts/boot-artifacts/selinux:file_contexts",
+        "//prebuilts/boot-artifacts/selinux:vendor_dlkm_file_contexts",
     ],
 )
 
@@ -401,6 +401,8 @@ slider_dist_targets = [
     ":slider_merged_kernel_uapi_headers",
     ":slider_modules_install",
     ":slider_unstripped_modules_archive",
+    "vendor_dlkm.props.slider",
+    "//prebuilts/boot-artifacts/selinux:vendor_dlkm_file_contexts",
     "//common:android/abi_gki_aarch64_pixel",
     "//common:kernel_aarch64_download_or_build",
 ] + _gki_modules

@@ -50,7 +50,7 @@ def define_slider_kleaf_tests():
                                 vendor_dlkm_props = "vendor_dlkm.props.slider" if build_vendor_dlkm else None,
                                 vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],
                                 deps = [
-                                    "//prebuilts/boot-artifacts/selinux:file_contexts",
+                                    "//prebuilts/boot-artifacts/selinux:vendor_dlkm_file_contexts",
                                 ],
                             )
                             targets.append(":slider-{}".format(suffix))
