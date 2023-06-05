@@ -9,6 +9,9 @@
 #ifndef __I2C_EXYNOS5_H
 #define __I2C_EXYNOS5_H
 
+#define NO_POWER_DOMAIN 	0
+#define ACTIVE_POWER_DOMAIN	1
+
 struct exynos5_i2c {
 	struct list_head	node;
 	struct i2c_adapter	adap;
@@ -29,6 +32,7 @@ struct exynos5_i2c {
 	int			state;
 	struct regmap		*usi_reg;
 	unsigned int		usi_offset;
+	int			power_domain;
 
 	/*
 	 * Since the TRANS_DONE bit is cleared on read, and we may read it

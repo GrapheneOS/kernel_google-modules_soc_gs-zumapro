@@ -2,53 +2,88 @@
 
 """Defines helper functions for creating debug and staging build configs."""
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(
     "//build/kernel/kleaf:kernel.bzl",
     "kernel_build_config",
     "kernel_module",
 )
 
-def staging_build_config(name, base_build_config, device_name, gki_build_config_fragment):
-    """Creates a staging kernel build config.
+def _set_gki_kernel_dir_impl(ctx):
+    output = ctx.actions.declare_file(ctx.label.name)
+
+    output_cmd = ""
+    if not ctx.attr.device_config_dir:
+        output_cmd = "KERNEL_DIR={gki_kernel_dir}\n".format(
+            gki_kernel_dir = str(ctx.attr.gki_kernel_dir[BuildSettingInfo].value),
+        )
+    else:
+        output_cmd = """
+            KERNEL_DIR="{device_config_dir}"
+            GKI_KERNEL_DIR="{gki_kernel_dir}"
+            """.format(
+            device_config_dir = ctx.attr.device_config_dir,
+            gki_kernel_dir = str(ctx.attr.gki_kernel_dir[BuildSettingInfo].value),
+        )
+
+    if ctx.file.gki_build_config_fragment:
+        output_cmd += "GKI_BUILD_CONFIG_FRAGMENT={}\n".format(ctx.file.gki_build_config_fragment.path)
+
+    ctx.actions.write(
+        output = output,
+        content = output_cmd,
+    )
+    return DefaultInfo(files = depset([output]))
+
+set_gki_kernel_dir = rule(
+    doc = """Creates a build config fragment file that defines the kernel
+             directories and GKI_BUILD_CONFIG_FRAGMENT (if set).
+             """,
+    implementation = _set_gki_kernel_dir_impl,
+    attrs = {
+        "device_config_dir": attr.string(
+            doc = "path to the device build config",
+            mandatory = False,
+        ),
+        "gki_kernel_dir": attr.label(
+            doc = "string_flag that contains the path to the GKI kernel source",
+            mandatory = True,
+        ),
+        "gki_build_config_fragment": attr.label(
+            doc = "file used as the debug build config fragment",
+            allow_single_file = True,
+            mandatory = False,
+        ),
+    },
+)
+
+def create_device_build_config(name, base_build_config, device_name, debug_fragment, gki_staging_fragment):
+    """Generates device and kernel build configs using the build config fragments.
 
     Defines these targets:
     - `{name}`
     - `{name}.gki`
 
     Args:
-      name: name of the main `kernel_build_config` target
-      base_build_config: the device build config
-      device_name: name of the device
-      gki_build_config_fragment: the staging kernel's build config fragment
+      name: name of the main `kernel_build_config` target.
+      base_build_config: the device build config.
+      device_name: name of the device.
+      debug_fragment: the GKI_BUILD_CONFIG_FRAGMENT used to enable debug configs.
+      gki_staging_fragment: the staging kernel's build config fragment which is
+                            concatenated with the base build configs.
     """
 
-    native.genrule(
+    set_gki_kernel_dir(
         name = "{}.gen".format(name),
-        srcs = [
-            gki_build_config_fragment,
-        ],
-        outs = ["{}.gen.generated".format(name)],
-        cmd = """
-            echo KERNEL_DIR=private/devices/google/{device_name} > $@
-            echo GKI_KERNEL_DIR="aosp-staging" >> $@
-            echo GKI_BUILD_CONFIG_FRAGMENT=$(location {gki_build_config_fragment}) >> $@
-            """.format(
-            device_name = device_name,
-            gki_build_config_fragment = gki_build_config_fragment,
-        ),
+        device_config_dir = "private/devices/google/{}".format(device_name),
+        gki_kernel_dir = "//private/google-modules/soc/gs:gki_kernel_dir",
+        gki_build_config_fragment = debug_fragment,
     )
-    native.genrule(
+
+    set_gki_kernel_dir(
         name = "{}.gki.gen".format(name),
-        srcs = [
-            gki_build_config_fragment,
-        ],
-        outs = ["{}.gki.gen.generated".format(name)],
-        cmd = """
-            echo KERNEL_DIR="aosp-staging" > $@
-            echo GKI_BUILD_CONFIG_FRAGMENT=$(location {gki_build_config_fragment}) >> $@
-            """.format(
-            gki_build_config_fragment = gki_build_config_fragment,
-        ),
+        gki_kernel_dir = "//private/google-modules/soc/gs:gki_kernel_dir",
+        gki_build_config_fragment = debug_fragment,
     )
 
     kernel_build_config(
@@ -57,7 +92,7 @@ def staging_build_config(name, base_build_config, device_name, gki_build_config_
             # do not sort
             ":{}.gen".format(name),
             base_build_config,
-        ],
+        ] + ([gki_staging_fragment] if gki_staging_fragment else []),
     )
 
     kernel_build_config(
@@ -65,96 +100,17 @@ def staging_build_config(name, base_build_config, device_name, gki_build_config_
         srcs = [
             # do not sort
             ":{}.gki.gen".format(name),
-            "//aosp-staging:build.config.gki.aarch64",
-        ],
-    )
-
-def create_debug_fragment(
-        name,
-        base_build_config,
-        device_name,
-        debug_fragment,
-        gki_kernel_dir,
-        gki_build_config_fragment = None):
-    """Creates a debug build config using the provided build config fragment.
-
-    Defines these targets:
-    - `{name}`
-    - `{name}.gki`
-
-    Args:
-      name: name of the main `kernel_build_config` target
-      base_build_config: the device build config
-      device_name: name of the device
-      debug_fragment: the debug build config fragment
-      gki_kernel_dir: the GKI kernel's path to be used, e.g. aosp-staging
-      gki_build_config_fragment: the staging kernel's build config fragment
-    """
-
-    native.genrule(
-        name = "{}.gen".format(name),
-        srcs = [
-            debug_fragment,
-        ],
-        outs = ["{}.gen.generated".format(name)],
-        cmd = """
-            echo KERNEL_DIR=private/devices/google/{device_name}> $@
-            echo GKI_KERNEL_DIR="{kernel_dir}" >> $@
-            echo GKI_BUILD_CONFIG_FRAGMENT=$(location {debug_fragment}) >> $@
-            """.format(
-            device_name = device_name,
-            debug_fragment = debug_fragment,
-            kernel_dir = gki_kernel_dir,
-        ),
-    )
-    native.genrule(
-        name = "{}.gki.gen".format(name),
-        srcs = [
-            debug_fragment,
-        ],
-        outs = ["{}.gki.gen.generated".format(name)],
-        cmd = """
-            echo KERNEL_DIR="{kernel_dir}" > $@
-            echo GKI_BUILD_CONFIG_FRAGMENT=$(location {debug_fragment}) >> $@
-            """.format(
-            kernel_dir = gki_kernel_dir,
-            debug_fragment = debug_fragment,
-        ),
-    )
-
-    kernel_build_config(
-        name = name,
-        srcs = [
-            # do not sort
-            ":{}.gen".format(name),
-            base_build_config,
-        ] + [
-            # Since we can't source two fragments, we can just append this to
-            # the end.
-            gki_build_config_fragment,
-        ] if gki_build_config_fragment else [],
-    )
-
-    kernel_build_config(
-        name = "{}.gki".format(name),
-        srcs = [
-            # do not sort
-            ":{}.gki.gen".format(name),
-            "//{}:build.config.gki.aarch64".format(gki_kernel_dir),
-        ] + [
-            # Since we can't source two fragments, we can just append this to
-            # the end.
-            gki_build_config_fragment,
-        ] if gki_build_config_fragment else [],
+        ] + select({
+            "//private/google-modules/soc/gs:gki_aosp": ["//aosp:build.config.gki.aarch64"],
+            "//private/google-modules/soc/gs:gki_aosp_staging": ["//aosp-staging:build.config.gki.aarch64"],
+        }) + ([gki_staging_fragment] if gki_staging_fragment else []),
     )
 
 def device_build_configs(
         name,
         base_build_config,
         device_name,
-        gki_kernel_dir,
-        gki_build_config_fragment = None,
-        staging_kernel = None):
+        gki_staging_fragment = None):
     """Creates the full set of debug configs for a pixel device.
 
     Defines these targets for each debug config:
@@ -165,18 +121,8 @@ def device_build_configs(
       name: name of the base `kernel_build_config` target
       base_build_config: the device build config
       device_name: name of the device
-      gki_kernel_dir: the GKI kernel's path to be used, e.g. aosp-staging
-      gki_build_config_fragment: the staging kernel's build config fragment
-      staging_kernel: If True, a staging build config is created
+      gki_staging_fragment: the staging kernel's build config fragment
     """
-
-    if staging_kernel:
-        staging_build_config(
-            name = "{}_staging".format(name),
-            base_build_config = base_build_config,
-            device_name = device_name,
-            gki_build_config_fragment = gki_build_config_fragment,
-        )
 
     debug_types = [
         "blktest",
@@ -191,13 +137,12 @@ def device_build_configs(
     debug_configs_mapping = {}
     debug_gki_configs_mapping = {}
     for debug_name in debug_types:
-        create_debug_fragment(
+        create_device_build_config(
             name = "{name}.{debug_name}".format(name = name, debug_name = debug_name),
             base_build_config = base_build_config,
             device_name = device_name,
             debug_fragment = "//private/google-modules/soc/gs:build.config.slider.{}".format(debug_name),
-            gki_kernel_dir = gki_kernel_dir,
-            gki_build_config_fragment = gki_build_config_fragment,
+            gki_staging_fragment = gki_staging_fragment,
         )
         debug_configs_mapping["//private/google-modules/soc/gs:{}".format(debug_name)] = \
             ["//private/devices/google/{device}:{name}.{debug_name}".format(
@@ -212,16 +157,18 @@ def device_build_configs(
                 debug_name = debug_name,
             )]
 
+    create_device_build_config(
+        name = "{}_mod".format(name),
+        base_build_config = base_build_config,
+        device_name = device_name,
+        debug_fragment = None,
+        gki_staging_fragment = gki_staging_fragment,
+    )
+
     debug_configs_mapping["//conditions:default"] = \
-        [":{name}{staging}".format(
-            name = name,
-            staging = "_staging" if staging_kernel else "",
-        )]
+        [":{name}_mod".format(name = name)]
     debug_gki_configs_mapping["//conditions:default"] = \
-        [":{name}{staging}.gki".format(
-            name = name,
-            staging = "_staging" if staging_kernel else "",
-        )]
+        [":{name}_mod.gki".format(name = name)]
 
     native.filegroup(
         name = "device_build_config",

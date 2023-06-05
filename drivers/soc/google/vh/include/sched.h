@@ -16,11 +16,11 @@
 
 // Maximum size: u64[2] for ANDROID_VENDOR_DATA_ARRAY(1, 2) in task_struct
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-enum vendor_util_group {
-	VUG_BG = 0,
-	// VUG_FG must be the last one so that we could skip it.
-	VUG_FG,
-	VUG_MAX,
+enum utilization_group {
+	UG_BG = 0,
+	UG_FG,
+	UG_AUTO,
+	UG_MAX = UG_AUTO,
 };
 #endif
 
@@ -52,7 +52,7 @@ struct uclamp_filter {
 
 /*
  * Always remember to initialize any new fields added here in
- * vh_dup_task_struct_pixel_mod() or you'll find newly forked tasks inheriting
+ * init_vendor_task_struct() or you'll find newly forked tasks inheriting
  * random states from the parent.
  */
 struct vendor_task_struct {
@@ -63,7 +63,9 @@ struct vendor_task_struct {
 	bool queued_to_list;
 	bool uclamp_fork_reset;
 	bool prefer_idle;
+	int auto_uclamp_max_flags;	// Relative to cpu instead of absolute
 	struct uclamp_filter uclamp_filter;
+	int orig_prio;
 
 	/* parameters for binder inheritance */
 	struct vendor_binder_task_struct binder_task;

@@ -175,9 +175,10 @@ struct exynos_usbdrd_phy {
 	struct clk *ref_clk;
 	struct regulator *vbus;
 	struct regulator *vdd_hsi;
-	struct regulator *vdd085;
+	struct regulator *vdd075;
+	struct regulator *vdd12;
 	struct regulator *vdd18;
-	struct regulator *vdd30;
+	struct regulator *vdd33;
 	struct exynos_usbphy_info usbphy_info;
 	struct exynos_usbphy_info usbphy_sub_info;
 	struct exynos_usbphy_info usbphy_blkcon_info;

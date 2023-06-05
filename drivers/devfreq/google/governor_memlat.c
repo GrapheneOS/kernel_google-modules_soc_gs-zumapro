@@ -22,7 +22,7 @@
 #include <linux/of.h>
 #include <linux/devfreq.h>
 #include <soc/google/exynos_pm_qos.h>
-#include <dt-bindings/soc/google/gs101-devfreq.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 #include <trace/events/power.h>
 #include "governor.h"
 #include "governor_memlat.h"
@@ -266,8 +266,9 @@ static int devfreq_memlat_set_idle_cpu_freq(struct devfreq *df)
 			if ((memlat_cpuidle_state_aware[cpu] ==
 				DEEP_MEMLAT_CPUIDLE_STATE_AWARE
 				&& hw->get_cpu_idle_state(cpu) > 0)
-				|| memlat_cpuidle_state_aware[cpu] ==
-				ALL_MEMLAT_CPUIDLE_STATE_AWARE) {
+				|| (memlat_cpuidle_state_aware[cpu] ==
+				ALL_MEMLAT_CPUIDLE_STATE_AWARE
+				&& hw->get_cpu_idle_state(cpu) != -1)) {
 				exynos_pm_qos_update_request(
 					memlat_cpu_qos_array[cpu], min_freq);
 				trace_clock_set_rate(dev_name(memlat_dev_array[cpu]),
@@ -455,6 +456,8 @@ static int devfreq_memlat_ev_handler(struct devfreq *df,
 
 static struct devfreq_governor devfreq_gov_memlat = {
 	.name = "mem_latency",
+	.attrs = DEVFREQ_GOV_ATTR_POLLING_INTERVAL
+		| DEVFREQ_GOV_ATTR_TIMER,
 	.get_target_freq = devfreq_memlat_get_freq,
 	.event_handler = devfreq_memlat_ev_handler,
 };

@@ -22,8 +22,16 @@
 	reg = <0x0 0x27F4F534 0x4>;
 };
 
+&cpufreq_domain0 {
+	resume-freq = <1425000>;
+};
+
 &cpufreq_domain1 {
-	soft-max-freq = <2367000>;
+	resume-freq = <1836000>;
+};
+
+&cpufreq_domain2 {
+	resume-freq = <1164000>;
 };
 
 &bigwave {
@@ -32,48 +40,86 @@
 
 &dsu_lat {
 		/* CL0         DSU */
-	core-dev-table-cl0 =
+	core-dev-table-cl0-low-latency =
 		<  324000        324000
-		   450000        610000
+		   610000        610000
 		   820000        820000
-		   955000       1197000
-		  1328000       1444000
-		  1425000       1548000
-		  2024000       1800000
-		  2098000       1880000
-		  2147000       1950000 >;
+		   955000        970000
+		  1704000       1197000 >;
 
 		/* CL1         DSU */
-	core-dev-table-cl1 =
-		< 402000        324000
-		  578000        820000
-		  697000        970000
-		  712000       1197000
-		  910000       1328000
-		 1328000       1444000
-		 1418000       1548000
-		 1572000       1880000
-		 1836000       1950000
-		 2245000       2024000
-		 2367000       2120000
-		 2450000       2150000 >;
+	core-dev-table-cl1-low-latency =
+		<  402000        324000
+		   712000        610000
+		   910000        820000
+		  1836000        970000
+		  2367000       1197000 >;
 
 		/* CL2         DSU */
-	core-dev-table-cl2 =
-		< 500000        324000
-		  880000        970000
-		 1164000       1098000
-		 1298000       1328000
-		 1557000       1704000
-		 1745000       1800000
-		 1885000       1880000
-		 2363000       2024000
-		 3015000       2150000 >;
+	core-dev-table-cl2-low-latency =
+		<  500000        324000
+		   880000        610000
+		  1164000        820000
+		  1745000        970000
+		  2049000       1098000
+		  2556000       1197000
+		  2943000       1328000 >;
+
+
+		   /* CL0         DSU */
+	core-dev-table-cl0-base =
+		<  324000        324000
+		   610000        324000
+		   820000        324000
+		   955000        324000
+		  1098000        610000
+		  1197000        610000
+		  1328000        610000
+		  1425000        610000
+		  1548000        610000
+		  1704000        610000 >;
+
+		   /* CL1         DSU */
+	core-dev-table-cl1-base =
+		<  402000       324000
+		   578000       324000
+		   697000       324000
+		   712000       324000
+		   910000       324000
+		  1065000       324000
+		  1221000       324000
+		  1328000       324000
+		  1418000       610000
+		  1572000       610000
+		  1836000       610000
+		  1945000       610000
+		  2130000       610000
+		  2245000       610000
+		  2367000       820000 >;
+
+		   /* CL2         DSU */
+	core-dev-table-cl2-base =
+		<  500000       324000
+		   880000       324000
+		  1164000       324000
+		  1298000       610000
+		  1557000       610000
+		  1745000       610000
+		  1885000       610000
+		  2049000       610000
+		  2147000       610000
+		  2294000       610000
+		  2363000       610000
+		  2556000       820000
+		  2687000       820000
+		  2802000       820000
+		  2914000       820000
+		  2943000       820000>;
 
 	dsu-bci-table =
 		/* DSU         BCI */
 		< 324000        315000
-		610000        575000
+		610000        315000
 		820000        840000
 		970000        1050000
 		1098000       1050000
@@ -86,4 +132,105 @@
 		1950000       1401000
 		2024000       1401000
 		2120000       1401000>;
+};
+
+/* S2MPUs in B0 has sync device which is not discoverable from IP version. */
+&s2mpu_s0_aur {
+	built-in-sync;
+};
+
+&s2mpu_s0_bw {
+	built-in-sync;
+};
+
+&s2mpu_s0_cpucl0 {
+	built-in-sync;
+};
+
+&s2mpu_s0_eh {
+	built-in-sync;
+};
+
+&s2mpu_s0_g2d {
+	built-in-sync;
+};
+
+&s2mpu_s0_g3d {
+	built-in-sync;
+};
+
+&s2mpu_s0_gdc {
+	built-in-sync;
+};
+
+&s2mpu_s0_gse {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi0 {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi1 {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi2 {
+	built-in-sync;
+};
+
+&s2mpu_s0_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s1_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s2_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s0_mcsc {
+	built-in-sync;
+};
+
+&s2mpu_s0_mfc {
+	built-in-sync;
+};
+
+&s2mpu_s0_misc {
+	built-in-sync;
+};
+
+&s2mpu_s0_rgbp {
+	built-in-sync;
+};
+
+&s2mpu_s1_rgbp {
+	built-in-sync;
+};
+
+&s2mpu_s0_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s1_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s2_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s0_tpu {
+	built-in-sync;
+};
+
+&s2mpu_s0_yuvp {
+	built-in-sync;
+};
+
+&s2mpu_s0_gsa {
+	built-in-sync;
 };

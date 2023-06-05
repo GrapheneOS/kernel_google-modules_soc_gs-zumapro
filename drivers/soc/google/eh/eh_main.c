@@ -57,6 +57,7 @@
 #include <linux/timer.h>
 #include <linux/wait.h>
 #include <linux/freezer.h>
+#include <linux/of_platform.h>
 #include <uapi/linux/sched/types.h>
 #ifdef CONFIG_SOC_ZUMA
 #include <soc/google/exynos-cpupm.h>
@@ -1292,8 +1293,21 @@ static int eh_of_probe(struct platform_device *pdev)
 	unsigned short quirks = 0;
 	struct clk *clk;
 	int sw_fifo_size = EH_SW_FIFO_SIZE;
+	struct device_node *s2mpu_np;
+	struct platform_device *s2mpu_pdev;
 
 	pr_info("starting probing\n");
+
+	s2mpu_np = of_parse_phandle(pdev->dev.of_node, "s2mpus", 0);
+	if (s2mpu_np) {
+		s2mpu_pdev = of_find_device_by_node(s2mpu_np);
+		of_node_put(s2mpu_np);
+		if (s2mpu_pdev) {
+			dev_info(&pdev->dev," link setup with %s\n", dev_name(&s2mpu_pdev->dev));
+			device_link_add(&pdev->dev, &s2mpu_pdev->dev,
+					DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_PM_RUNTIME);
+		}
+	}
 
 	pm_runtime_enable(&pdev->dev);
 	ret = pm_runtime_get_sync(&pdev->dev);

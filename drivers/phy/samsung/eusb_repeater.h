@@ -70,7 +70,10 @@ struct eusb_repeater_data {
 	/* Tune Parma list */
 	struct eusb_repeater_tune_param *tune_param;
 	u32 tune_cnt;
-	int gpio_eusb_ctrl_sel;
+	int gpio_eusb_resetb;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *power_on_state;
+	struct pinctrl_state *power_off_state;
 	int ctrl_sel_status;
 };
 

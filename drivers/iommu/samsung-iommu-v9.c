@@ -47,7 +47,7 @@ struct samsung_sysmmu_domain {
 	struct iommu_domain domain;
 	struct iommu_group *group;
 	struct sysmmu_drvdata *vm_sysmmu; /* valid only if vid != 0 */
-	/* if vid != 0, domain is an aux domain attached to exactly one device and sysmmu */
+	/* if vid != 0, domain is a pasid domain attached to exactly one device and sysmmu */
 	unsigned int vid;
 	sysmmu_pte_t *page_table;
 	atomic_t *lv2entcnt;
@@ -55,7 +55,6 @@ struct samsung_sysmmu_domain {
 };
 
 static bool sysmmu_global_init_done;
-static DEFINE_MUTEX(sysmmu_global_mutex); /* Global driver mutex */
 static struct device sync_dev;
 static struct kmem_cache *flpt_cache, *slpt_cache;
 
@@ -430,13 +429,7 @@ static struct samsung_sysmmu_domain *attach_helper(struct iommu_domain *dom, str
 		return ERR_PTR(-ENODEV);
 	}
 
-	domain = to_sysmmu_domain(dom);
-	if (domain->vm_sysmmu) {
-		dev_err(dev, "IOMMU domain is already used as AUX domain\n");
-		return ERR_PTR(-EBUSY);
-	}
-
-	return domain;
+	return to_sysmmu_domain(dom);
 }
 
 static int samsung_sysmmu_attach_dev(struct iommu_domain *dom, struct device *dev)
@@ -453,6 +446,12 @@ static int samsung_sysmmu_attach_dev(struct iommu_domain *dom, struct device *de
 	domain = attach_helper(dom, dev);
 	if (IS_ERR(domain))
 		return (int)PTR_ERR(domain);
+
+	if (domain->vm_sysmmu) {
+		dev_err(dev, "IOMMU domain is already used as PASID domain for VID %u\n",
+			domain->vid);
+		return -EBUSY;
+	}
 
 	domain->group = group;
 	group_list = iommu_group_get_iommudata(group);
@@ -662,6 +661,15 @@ static int samsung_sysmmu_map(struct iommu_domain *dom, unsigned long l_iova, ph
 	return ret;
 }
 
+static inline void samsung_sysmmu_iotlb_gather_add_joint_range(struct iommu_domain *domain,
+					       struct iommu_iotlb_gather *gather,
+					       unsigned long iova, size_t size)
+{
+	if (iommu_iotlb_gather_is_disjoint(gather, iova, size))
+		iommu_iotlb_sync(domain, gather);
+	iommu_iotlb_gather_add_range(gather, iova, size);
+}
+
 static size_t samsung_sysmmu_unmap(struct iommu_domain *dom, unsigned long l_iova, size_t size,
 				   struct iommu_iotlb_gather *gather)
 {
@@ -720,7 +728,7 @@ static size_t samsung_sysmmu_unmap(struct iommu_domain *dom, unsigned long l_iov
 	atomic_sub(SPAGES_PER_LPAGE, lv2entcnt);
 
 done:
-	iommu_iotlb_gather_add_page(dom, gather, iova, size);
+	samsung_sysmmu_iotlb_gather_add_joint_range(dom, gather, iova, size);
 
 	return size;
 
@@ -799,7 +807,7 @@ size_t samsung_sysmmu_unmap_pages(struct iommu_domain *dom, unsigned long iova_o
 		unmap_slpt(domain, iova, size);
 	}
 
-	iommu_iotlb_gather_add_page(dom, gather, iova_org, size);
+	samsung_sysmmu_iotlb_gather_add_joint_range(dom, gather, iova_org, size);
 
 	return size;
 }
@@ -811,7 +819,7 @@ static void samsung_sysmmu_flush_iotlb_all(struct iommu_domain *dom)
 	struct sysmmu_drvdata *drvdata;
 
 	if (domain->vm_sysmmu) {
-		/* Domain is used as AUX domain */
+		/* Domain is used as PASID domain */
 		drvdata = domain->vm_sysmmu;
 		spin_lock_irqsave(&drvdata->lock, flags);
 		if (drvdata->attached_count && drvdata->rpm_count > 0)
@@ -869,7 +877,7 @@ static void samsung_sysmmu_iotlb_sync(struct iommu_domain *dom, struct iommu_iot
 	struct sysmmu_drvdata *drvdata;
 
 	if (domain->vm_sysmmu) {
-		/* Domain is used as AUX domain */
+		/* Domain is used as PASID domain */
 		drvdata = domain->vm_sysmmu;
 		spin_lock_irqsave(&drvdata->lock, flags);
 		if (drvdata->attached_count && drvdata->rpm_count > 0)
@@ -983,6 +991,7 @@ static void samsung_sysmmu_group_data_release(void *iommu_data)
 
 static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 {
+	static DEFINE_MUTEX(set_iommudata_mutex);
 	struct iommu_group *group;
 	struct device_node *np;
 	struct platform_device *pdev;
@@ -1012,15 +1021,15 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 		return ERR_PTR(-EPROBE_DEFER);
 	}
 
-	mutex_lock(&sysmmu_global_mutex);
+	mutex_lock(&set_iommudata_mutex);
 	if (iommu_group_get_iommudata(group)) {
-		mutex_unlock(&sysmmu_global_mutex);
+		mutex_unlock(&set_iommudata_mutex);
 		return group;
 	}
 
 	list = kzalloc(sizeof(*list), GFP_KERNEL);
 	if (!list) {
-		mutex_unlock(&sysmmu_global_mutex);
+		mutex_unlock(&set_iommudata_mutex);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -1028,7 +1037,7 @@ static struct iommu_group *samsung_sysmmu_device_group(struct device *dev)
 	iommu_group_set_iommudata(group, list,
 				  samsung_sysmmu_group_data_release);
 
-	mutex_unlock(&sysmmu_global_mutex);
+	mutex_unlock(&set_iommudata_mutex);
 	return group;
 }
 
@@ -1071,21 +1080,113 @@ static int samsung_sysmmu_of_xlate(struct device *dev, struct of_phandle_args *a
 	return 0;
 }
 
-static bool samsung_sysmmu_dev_has_feat(struct device *dev, enum iommu_dev_features f)
+static int samsung_sysmmu_set_dev_pasid(struct iommu_domain *dom, struct device *dev,
+					ioasid_t pasid)
 {
-	return false;
-}
+	struct sysmmu_clientdata *client;
+	struct samsung_sysmmu_domain *domain;
+	struct sysmmu_drvdata *drvdata;
+	unsigned long flags;
+	unsigned int vid = pasid;
 
-static int samsung_sysmmu_dev_enable_feat(struct device *dev, enum iommu_dev_features f)
-{
-	if (!samsung_sysmmu_dev_has_feat(dev, f))
+	if (vid >= MAX_VIDS) {
+		dev_err(dev, "Requested VID %u above or equal maximum of %u\n", vid, MAX_VIDS);
 		return -EINVAL;
+	}
+
+	domain = attach_helper(dom, dev);
+	if (IS_ERR(domain))
+		return (int)PTR_ERR(domain);
+
+	if (domain->group) {
+		dev_err(dev, "IOMMU domain is already in use as VID 0 domain\n");
+		return -EBUSY;
+	}
+	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
+	if (client->sysmmu_count != 1) {
+		dev_err(dev, "IOMMU PASID domains not supported for devices served by more than one IOMMU\n");
+		return -ENXIO;
+	}
+	drvdata = client->sysmmus[0];
+
+	if (domain->vm_sysmmu) {
+		if (drvdata == domain->vm_sysmmu && vid == domain->vid)
+			/* We only allow a single device per IOMMU group. The challenge with
+			 * allowing multiple devices is correctly implementing the .remove_dev_pasid
+			 * callback. We would need to track attachment on a per-device basis,
+			 * because only when a domain is detached from all devices can we safely
+			 * detach it from the SysMMU instance.
+			 */
+			dev_err(dev, "For set_dev_pasid, only one device per IOMMU group allowed\n");
+		else
+			dev_err(dev, "IOMMU domain is already used as PASID domain for VID %u\n",
+				domain->vid);
+		return -EBUSY;
+	}
+
+	spin_lock_irqsave(&drvdata->lock, flags);
+	if (!drvdata->attached_count) {
+		dev_err(dev, "IOMMU needs to be enabled to attach PASID domain\n");
+		spin_unlock_irqrestore(&drvdata->lock, flags);
+		return -ENXIO;
+	}
+	if (drvdata->vmid_mask & BIT(vid)) {
+		dev_err(dev, "VID %u is used by default domain\n", vid);
+		spin_unlock_irqrestore(&drvdata->lock, flags);
+		return -EBUSY;
+	}
+	if (drvdata->pgtable[vid]) {
+		dev_err(dev, "VID %u is already in use\n", vid);
+		spin_unlock_irqrestore(&drvdata->lock, flags);
+		return -EBUSY;
+	}
+	drvdata->pgtable[vid] = virt_to_phys(domain->page_table);
+	if (pm_runtime_active(drvdata->dev))
+		__sysmmu_enable_vid(drvdata, vid);
+	spin_unlock_irqrestore(&drvdata->lock, flags);
+	domain->vm_sysmmu = drvdata;
+	domain->vid = vid;
 	return 0;
 }
 
-static int samsung_sysmmu_dev_disable_feat(struct device *dev, enum iommu_dev_features f)
+static void samsung_sysmmu_remove_dev_pasid(struct device *dev, ioasid_t pasid)
 {
-	return -EINVAL;
+	struct sysmmu_clientdata *client;
+	struct iommu_domain *dom;
+	struct samsung_sysmmu_domain *domain;
+	struct sysmmu_drvdata *drvdata;
+	unsigned long flags;
+	unsigned int vid = pasid;
+
+	if (vid >= MAX_VIDS) {
+		dev_err(dev, "VID %u above or equal maximum of %u\n", vid, MAX_VIDS);
+		return;
+	}
+
+	dom = iommu_get_domain_for_dev_pasid(dev, pasid, 0);
+	if (WARN_ON(IS_ERR(dom)) || !dom)
+		return;
+	domain = to_sysmmu_domain(dom);
+
+	client = (struct sysmmu_clientdata *)dev_iommu_priv_get(dev);
+	if (client->sysmmu_count != 1) {
+		dev_err(dev, "IOMMU PASID domains not supported for devices served by more than one IOMMU\n");
+		return;
+	}
+	drvdata = client->sysmmus[0];
+
+	spin_lock_irqsave(&drvdata->lock, flags);
+	if (drvdata->vmid_mask & BIT(vid)) {
+		dev_err(dev, "VID %u is used by default domain\n", vid);
+		spin_unlock_irqrestore(&drvdata->lock, flags);
+		return;
+	}
+	domain->vm_sysmmu = NULL;
+	domain->vid = 0;
+	drvdata->pgtable[vid] = 0;
+	if (pm_runtime_active(drvdata->dev))
+		__sysmmu_disable_vid(drvdata, vid);
+	spin_unlock_irqrestore(&drvdata->lock, flags);
 }
 
 static void samsung_sysmmu_put_resv_regions(struct device *dev,
@@ -1227,12 +1328,12 @@ static struct iommu_ops samsung_sysmmu_ops = {
 	.of_xlate		= samsung_sysmmu_of_xlate,
 	.get_resv_regions	= samsung_sysmmu_get_resv_regions,
 	.def_domain_type	= samsung_sysmmu_def_domain_type,
-	.dev_enable_feat	= samsung_sysmmu_dev_enable_feat,
-	.dev_disable_feat	= samsung_sysmmu_dev_disable_feat,
+	.remove_dev_pasid	= samsung_sysmmu_remove_dev_pasid,
 	.pgsize_bitmap		= SECT_SIZE | LPAGE_SIZE | SPAGE_SIZE,
 	.default_domain_ops     = &(const struct iommu_domain_ops) {
 		.attach_dev             = samsung_sysmmu_attach_dev,
 		.detach_dev             = samsung_sysmmu_detach_dev,
+		.set_dev_pasid		= samsung_sysmmu_set_dev_pasid,
 		.map                    = samsung_sysmmu_map,
 		.unmap                  = samsung_sysmmu_unmap,
 		.unmap_pages            = samsung_sysmmu_unmap_pages,
@@ -1424,6 +1525,7 @@ err_init_slpt_fail:
 
 static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 {
+	static DEFINE_MUTEX(initialization_mutex);
 	struct sysmmu_drvdata *data;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
@@ -1502,16 +1604,16 @@ static int samsung_sysmmu_device_probe(struct platform_device *pdev)
 		goto err_iommu_register;
 	}
 
-	mutex_lock(&sysmmu_global_mutex);
+	mutex_lock(&initialization_mutex);
 	if (!sysmmu_global_init_done) {
 		err = samsung_sysmmu_init_global();
 		if (err) {
 			dev_err(dev, "failed to initialize global data\n");
-			mutex_unlock(&sysmmu_global_mutex);
+			mutex_unlock(&initialization_mutex);
 			goto err_global_init;
 		}
 	}
-	mutex_unlock(&sysmmu_global_mutex);
+	mutex_unlock(&initialization_mutex);
 
 	dev_info(dev, "initialized IOMMU. Ver %d.%d.%d, %sgate clock\n",
 		 MMU_VERSION_MAJOR(data->version),

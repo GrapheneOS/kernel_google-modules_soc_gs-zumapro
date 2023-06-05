@@ -20,7 +20,7 @@
 		compatible = "max77759tcpc";
 		reg = <0x25>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&usb_pd_irq>;
+		pinctrl-0 = <&usb_pd_irq &gpa7_5>;
 		interrupt-parent = <&gpa8>;
 		usbpd,usbpd_int = <&gpa8 3 GPIO_ACTIVE_LOW>;
 		usb-psy-name = "usb";
@@ -29,8 +29,12 @@
 		/* Default OVP IC is SLG59H1313C. Config others in overlay if needed. */
 		ovp-present;
 		in-switch-gpio = <&max777x9_gpio 5 GPIO_ACTIVE_LOW>;
+		sbu-mux-sel-gpio = <&gpa7 5 GPIO_ACTIVE_HIGH>;
 		conn = <&conn>;
 		orientation-switch;
+		mode-switch;
+		svid = <0xff01>;
+		pullup-supply = <&m_ldo19_reg>;
 
 		conn: connector {
 			compatible = "usb-c-connector";
@@ -78,25 +82,47 @@
 						0x18D1)
 					VDO_CERT(0x0)
 					VDO_PRODUCT(0x4EE1, 0x0)>;
-
-			port {
+			altmodes {
+				displayport {
+					svid = <0xff01>;
+					vdo = <0x14c6>;
+				};
+			};
+			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
-				mux_notification_src: endpoint@0 {
+
+				port@0 {
 					reg = <0>;
-					remote-endpoint = <&mux_notification_snk>;
+					mux_notification_source_1: endpoint {
+						remote-endpoint = <&mux_notification_sink_1>;
+					};
 				};
 
+				port@1 {
+					reg = <0>;
+					mode_notification_source_2: endpoint {
+						remote-endpoint = <&mode_notification_sink_2>;
+					};
+				};
 			};
 		};
 
-		port {
+		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			mux_notification_snk: endpoint@0 {
+			port@0 {
 				reg = <0>;
-				remote-endpoint = <&mux_notification_src>;
+				mux_notification_sink_1: endpoint {
+					remote-endpoint = <&mux_notification_source_1>;
+				};
+			};
+			port@1 {
+				reg = <0>;
+				mode_notification_sink_2: endpoint {
+					remote-endpoint = <&mode_notification_source_2>;
+				};
 			};
 		};
 
@@ -119,6 +145,13 @@
 		samsung,pins = "gpa8-3";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_UP>;
+		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
+	};
+
+	gpa7_5: gpa7-5 {
+		samsung,pins = "gpa7-5";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
 		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
 	};
 };

@@ -52,11 +52,8 @@ int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 				      unsigned long *mem_count, unsigned long *freq)
 {
 	struct memlat_cpu_grp *cpu_grp = per_cpu(cpu_grp_p, cpu);
-	struct memlat_mon *mons = cpu_grp->mons;
 	struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
 
-	unsigned int mon_idx =
-		cpu - cpumask_first(&mons->cpus);
 
 	spin_lock(&cpu_data->pmu_lock);
 	*inst = cpu_data->inst;
@@ -68,11 +65,7 @@ int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 	*l2_cache_wb = cpu_data->l2_cache_wb;
 	*l3_cache_access = cpu_data->l3_cache_access;
 	*mem_stall = cpu_data->mem_stall;
-	if (mons->miss_ev) {
-		*mem_count = mons->miss_ev[mon_idx].last_delta;
-        } else {
-		*mem_count = 1;
-        }
+	*mem_count = cpu_data->l3_cachemiss;
 	spin_unlock(&cpu_data->pmu_lock);
 
 	return 0;
@@ -126,6 +119,44 @@ static inline void read_event_local(struct event_data *event)
 
 }
 
+int read_perf_event_local(int cpu, unsigned int event_id, u64 *count)
+{
+	struct memlat_cpu_grp *cpu_grp;
+	struct cpu_data *cpu_data;
+	struct event_data *pmu_evs;
+
+	if (cpu != raw_smp_processor_id())
+		return -EINVAL;
+
+	list_for_each_entry(cpu_grp, &cpu_grp_list, node) {
+		if (!cpu_grp->initialized)
+			continue;
+
+		if (cpumask_test_cpu(cpu, &cpu_grp->cpus))
+			break;
+	}
+
+	if (!cpu_grp || event_id >= NUM_COMMON_EVS)
+		return -EINVAL;
+
+	cpu_data = to_cpu_data(cpu_grp, cpu);
+	if (cpu_grp->num_active_mons > 0 && cpu_grp->pmu_ev_ids[event_id] != UINT_MAX) {
+		pmu_evs = cpu_data->pmu_evs;
+		read_event_local(&pmu_evs[event_id]);
+		*count = pmu_evs[event_id].total;
+	} else if (event_id == CYCLE_IDX && cpu_grp->amu_ev_ids[CYCLE_IDX] != UINT_MAX) {
+		*count = read_sysreg_s(SYS_AMEVCNTR0_CORE_EL0);
+	} else if (event_id == INST_IDX && cpu_grp->amu_ev_ids[INST_IDX] != UINT_MAX) {
+		*count = read_sysreg_s(SYS_AMEVCNTR0_INST_RET_EL0);
+	} else if (event_id == STALL_BACKEND_MEM_IDX &&
+			   cpu_grp->amu_ev_ids[STALL_BACKEND_MEM_IDX] != UINT_MAX) {
+		*count = read_sysreg_s(SYS_AMEVCNTR0_MEM_STALL);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(read_perf_event_local);
+
 static void read_amu_counters(struct memlat_cpu_grp *cpu_grp)
 {
 	unsigned long mem_stall, cpu_inst, cpu_cycle, delta;
@@ -135,20 +166,56 @@ static void read_amu_counters(struct memlat_cpu_grp *cpu_grp)
 	for_each_cpu(cpu, &cpu_grp->cpus) {
 		cpu_data = to_cpu_data(cpu_grp, cpu);
 
-		mem_stall = read_sysreg_s(SYS_AMEVCNTR0_MEM_STALL);
-		delta = mem_stall - cpu_data->amu_evs[MEM_STALL_IDX].prev_count;
-		cpu_data->amu_evs[MEM_STALL_IDX].prev_count = mem_stall;
-		cpu_data->amu_evs[MEM_STALL_IDX].last_delta = delta;
+		if (cpu_grp->amu_ev_ids[CYCLE_IDX] != UINT_MAX) {
+			cpu_cycle = read_sysreg_s(SYS_AMEVCNTR0_CORE_EL0);
+			delta = cpu_cycle - cpu_data->amu_evs[CYCLE_IDX].prev_count;
+			cpu_data->amu_evs[CYCLE_IDX].prev_count = cpu_cycle;
+			cpu_data->amu_evs[CYCLE_IDX].last_delta = delta;
+			cpu_data->cyc = cpu_data->amu_evs[CYCLE_IDX].last_delta;
+		}
 
-		cpu_inst = read_sysreg_s(SYS_AMEVCNTR0_INST_RET_EL0);
-		delta = cpu_inst - cpu_data->amu_evs[INST_IDX].prev_count;
-		cpu_data->amu_evs[INST_IDX].prev_count = cpu_inst;
-		cpu_data->amu_evs[INST_IDX].last_delta = delta;
+		if (cpu_grp->amu_ev_ids[INST_IDX] != UINT_MAX) {
+			cpu_inst = read_sysreg_s(SYS_AMEVCNTR0_INST_RET_EL0);
+			delta = cpu_inst - cpu_data->amu_evs[INST_IDX].prev_count;
+			cpu_data->amu_evs[INST_IDX].prev_count = cpu_inst;
+			cpu_data->amu_evs[INST_IDX].last_delta = delta;
+			cpu_data->inst = cpu_data->amu_evs[INST_IDX].last_delta;
+		}
 
-		cpu_cycle = read_sysreg_s(SYS_AMEVCNTR0_CORE_EL0);
-		delta = cpu_cycle - cpu_data->amu_evs[CYCLE_IDX].prev_count;
-		cpu_data->amu_evs[CYCLE_IDX].prev_count = cpu_cycle;
-		cpu_data->amu_evs[CYCLE_IDX].last_delta = delta;
+		if (cpu_grp->amu_ev_ids[STALL_BACKEND_MEM_IDX] != UINT_MAX) {
+			mem_stall = read_sysreg_s(SYS_AMEVCNTR0_MEM_STALL);
+			delta = mem_stall - cpu_data->amu_evs[STALL_BACKEND_MEM_IDX].prev_count;
+			cpu_data->amu_evs[STALL_BACKEND_MEM_IDX].prev_count = mem_stall;
+			cpu_data->amu_evs[STALL_BACKEND_MEM_IDX].last_delta = delta;
+			cpu_data->mem_stall = cpu_data->amu_evs[STALL_BACKEND_MEM_IDX].last_delta;
+		}
+	}
+}
+
+static void read_pmu_counters(struct memlat_cpu_grp *cpu_grp)
+{
+	struct cpu_data *cpu_data;
+	struct event_data *pmu_evs;
+	unsigned int cpu, i;
+
+	for_each_cpu(cpu, &cpu_grp->cpus) {
+		cpu_data = to_cpu_data(cpu_grp, cpu);
+		pmu_evs = cpu_data->pmu_evs;
+		for (i = 0; i < NUM_COMMON_EVS; i++)
+			read_event(&pmu_evs[i]);
+
+		if (cpu_grp->pmu_ev_ids[INST_IDX] != UINT_MAX)
+			cpu_data->cyc = pmu_evs[INST_IDX].last_delta;
+		if (cpu_grp->pmu_ev_ids[CYCLE_IDX] != UINT_MAX)
+			cpu_data->inst = pmu_evs[CYCLE_IDX].last_delta;
+		if (cpu_grp->pmu_ev_ids[STALL_BACKEND_MEM_IDX] != UINT_MAX)
+			cpu_data->mem_stall = pmu_evs[STALL_BACKEND_MEM_IDX].last_delta;
+		if (cpu_grp->pmu_ev_ids[STALL_IDX] != UINT_MAX)
+			cpu_data->stall = pmu_evs[STALL_IDX].last_delta;
+		if (cpu_grp->pmu_ev_ids[L2D_CACHE_REFILL_IDX] != UINT_MAX)
+			cpu_data->l2_cachemiss = pmu_evs[L2D_CACHE_REFILL_IDX].last_delta;
+		if (cpu_grp->pmu_ev_ids[L3_CACHE_MISS_IDX] != UINT_MAX)
+			cpu_data->l3_cachemiss = pmu_evs[L3_CACHE_MISS_IDX].last_delta;
 	}
 }
 
@@ -177,62 +244,28 @@ EXPORT_SYMBOL(get_cpu_idle_state);
 
 static void update_counts(struct memlat_cpu_grp *cpu_grp)
 {
-	unsigned int cpu, i;
-	struct memlat_mon *mon;
+	unsigned int cpu;
 	ktime_t now = ktime_get();
 	unsigned long delta = ktime_us_delta(now, cpu_grp->last_update_ts);
 	struct cpu_data *cpu_data;
-	struct event_data *common_evs;
-	unsigned int mon_idx;
 
 	cpu_grp->last_ts_delta_us = delta;
 	cpu_grp->last_update_ts = now;
 
+	read_pmu_counters(cpu_grp);
+	read_amu_counters(cpu_grp);
+
 	for_each_cpu(cpu, &cpu_grp->cpus) {
 		cpu_data = to_cpu_data(cpu_grp, cpu);
-		common_evs = cpu_data->common_evs;
-		for (i = 0; i < NUM_COMMON_EVS; i++)
-			read_event(&common_evs[i]);
 
-		if (!common_evs[STALL_IDX].pevent)
-			common_evs[STALL_IDX].last_delta =
-				cpu_data->amu_evs[CYCLE_IDX].last_delta;
-
-		cpu_data->freq = cpu_data->amu_evs[CYCLE_IDX].last_delta / delta;
-
-		if (cpu_grp->common_ev_ids[STALL_BACKEND_MEM_IDX] != UINT_MAX)
-			cpu_data->stall_pct = mult_frac(10000,
-				common_evs[STALL_BACKEND_MEM_IDX].last_delta,
-				cpu_data->amu_evs[CYCLE_IDX].last_delta);
-		else
-			cpu_data->stall_pct = mult_frac(10000,
-				cpu_data->amu_evs[MEM_STALL_IDX].last_delta,
-				cpu_data->amu_evs[CYCLE_IDX].last_delta);
+		cpu_data->freq = cpu_data->cyc / delta;
+		cpu_data->stall_pct = mult_frac(10000,
+				cpu_data->mem_stall,
+				cpu_data->cyc);
+		cpu_data->l2_cache_wb = 0;
+		cpu_data->l3_cache_access = 0;
 	}
 
-	for (i = 0; i < cpu_grp->num_mons; i++) {
-		mon = &cpu_grp->mons[i];
-
-		if (!mon->is_active || !mon->miss_ev)
-			continue;
-
-		for_each_cpu(cpu, &mon->cpus) {
-			mon_idx = cpu - cpumask_first(&mon->cpus);
-			read_event(&mon->miss_ev[mon_idx]);
-		}
-	}
-
-	read_amu_counters(cpu_grp);
-	spin_lock(&cpu_data->pmu_lock);
-	cpu_data->cyc = cpu_data->amu_evs[CYCLE_IDX].last_delta;
-	cpu_data->stall = common_evs[STALL_IDX].last_delta;
-	cpu_data->l2_cachemiss = common_evs[L2D_CACHE_REFILL_IDX].last_delta;
-	cpu_data->l3_cachemiss = mon->miss_ev[mon_idx].last_delta;
-	cpu_data->mem_stall = cpu_data->amu_evs[MEM_STALL_IDX].last_delta;
-	cpu_data->inst = cpu_data->amu_evs[INST_IDX].last_delta;
-	cpu_data->l2_cache_wb = 0;
-	cpu_data->l3_cache_access = 0;
-	spin_unlock(&cpu_data->pmu_lock);
 }
 
 static unsigned long get_cnt(struct memlat_hwmon *hw)
@@ -243,8 +276,6 @@ static unsigned long get_cnt(struct memlat_hwmon *hw)
 
 	for_each_cpu(cpu, &mon->cpus) {
 		struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
-		unsigned int mon_idx =
-			cpu - cpumask_first(&mon->cpus);
 		struct dev_stats *devstats = to_devstats(mon, cpu);
 
 		devstats->freq = cpu_data->freq;
@@ -252,14 +283,7 @@ static unsigned long get_cnt(struct memlat_hwmon *hw)
 		devstats->inst_count = cpu_data->inst;
 		devstats->mem_stall_count = cpu_data->mem_stall;
 		devstats->l2_cachemiss_count = cpu_data->l2_cachemiss;
-
-		if (mon->miss_ev)
-			devstats->mem_count =
-				mon->miss_ev[mon_idx].last_delta;
-		else {
-			devstats->inst_count = 0;
-			devstats->mem_count = 1;
-		}
+		devstats->mem_count = cpu_data->l3_cachemiss;
 	}
 
 	return 0;
@@ -311,11 +335,10 @@ static int set_event(struct event_data *ev, int cpu, unsigned int event_id,
 static int memlat_cpuhp_up(unsigned int cpu)
 {
 	int ret = 0;
-	unsigned int i, mon_idx;
+	unsigned int i;
 	struct memlat_cpu_grp *cpu_grp;
-	struct memlat_mon *mon;
 	struct cpu_data *cpu_data;
-	struct event_data *common_evs;
+	struct event_data *pmu_evs;
 	struct perf_event_attr *attr = alloc_attr();
 
 	if (!attr)
@@ -339,30 +362,13 @@ static int memlat_cpuhp_up(unsigned int cpu)
 		goto unlock_out;
 
 	cpu_data = to_cpu_data(cpu_grp, cpu);
-	common_evs = cpu_data->common_evs;
+	pmu_evs = cpu_data->pmu_evs;
 	for (i = 0; i < NUM_COMMON_EVS; i++) {
-		ret = set_event(&common_evs[i], cpu,
-		  cpu_grp->common_ev_ids[i], attr);
+		ret = set_event(&pmu_evs[i], cpu,
+		  cpu_grp->pmu_ev_ids[i], attr);
 		if (ret) {
 			pr_err("set event %u on CPU %u fail: %d",
-			  cpu_grp->common_ev_ids[i],
-			  cpu, ret);
-			goto unlock_out;
-		}
-	}
-
-	for (i = 0; i < cpu_grp->num_mons; i++) {
-		mon = &cpu_grp->mons[i];
-
-		if (!mon->is_active || !mon->miss_ev)
-			continue;
-
-		mon_idx = cpu - cpumask_first(&mon->cpus);
-		ret = set_event(&mon->miss_ev[mon_idx], cpu,
-					mon->miss_ev_id, attr);
-		if (ret) {
-			pr_err("set event %u on CPU %u fail: %d",
-			  mon->miss_ev_id,
+			  cpu_grp->pmu_ev_ids[i],
 			  cpu, ret);
 			goto unlock_out;
 		}
@@ -377,11 +383,10 @@ unlock_out:
 static int memlat_cpuhp_down(unsigned int cpu)
 {
 	int ret = 0;
-	unsigned int i, mon_idx;
+	unsigned int i;
 	struct memlat_cpu_grp *cpu_grp;
-	struct memlat_mon *mon;
 	struct cpu_data *cpu_data;
-	struct event_data *common_evs;
+	struct event_data *pmu_evs;
 
 	list_for_each_entry(cpu_grp, &cpu_grp_list, node) {
 		if (!cpu_grp->initialized)
@@ -398,20 +403,11 @@ static int memlat_cpuhp_down(unsigned int cpu)
 		goto unlock_out;
 
 	cpu_data = to_cpu_data(cpu_grp, cpu);
-	common_evs = cpu_data->common_evs;
+	pmu_evs = cpu_data->pmu_evs;
 
 	for (i = 0; i < NUM_COMMON_EVS; i++)
-		delete_event(&common_evs[i]);
+		delete_event(&pmu_evs[i]);
 
-	for (i = 0; i < cpu_grp->num_mons; i++) {
-		mon = &cpu_grp->mons[i];
-
-		if (!mon->is_active || !mon->miss_ev)
-			continue;
-
-		mon_idx = cpu - cpumask_first(&mon->cpus);
-		delete_event(&mon->miss_ev[mon_idx]);
-	}
 	per_cpu(is_on, cpu) = false;
 
 unlock_out:
@@ -433,7 +429,7 @@ static int init_memlat_cpuhp(void)
 }
 
 
-static int init_common_evs(struct memlat_cpu_grp *cpu_grp,
+static int init_pmu_evs(struct memlat_cpu_grp *cpu_grp,
 			   struct perf_event_attr *attr)
 {
 	unsigned int cpu, i;
@@ -441,11 +437,11 @@ static int init_common_evs(struct memlat_cpu_grp *cpu_grp,
 
 	cpu_grp->initialized = false;
 	for_each_cpu(cpu, &cpu_grp->cpus) {
-		struct event_data *common_evs = to_common_evs(cpu_grp, cpu);
+		struct event_data *pmu_evs = to_pmu_evs(cpu_grp, cpu);
 
 		for (i = 0; i < NUM_COMMON_EVS; i++) {
-			ret = set_event(&common_evs[i], cpu,
-					cpu_grp->common_ev_ids[i], attr);
+			ret = set_event(&pmu_evs[i], cpu,
+					cpu_grp->pmu_ev_ids[i], attr);
 			if (ret)
 				break;
 		}
@@ -465,15 +461,15 @@ static inline void queue_cpugrp_work(struct memlat_cpu_grp *cpu_grp)
 		  msecs_to_jiffies(cpu_grp->update_ms));
 }
 
-static void free_common_evs(struct memlat_cpu_grp *cpu_grp)
+static void free_pmu_evs(struct memlat_cpu_grp *cpu_grp)
 {
 	unsigned int cpu, i;
 
 	for_each_cpu(cpu, &cpu_grp->cpus) {
-		struct event_data *common_evs = to_common_evs(cpu_grp, cpu);
+		struct event_data *pmu_evs = to_pmu_evs(cpu_grp, cpu);
 
 		for (i = 0; i < NUM_COMMON_EVS; i++)
-			delete_event(&common_evs[i]);
+			delete_event(&pmu_evs[i]);
 	}
 }
 
@@ -526,7 +522,6 @@ unlock_out:
 static int start_hwmon(struct memlat_hwmon *hw)
 {
 	int ret = 0;
-	unsigned int cpu;
 	struct memlat_mon *mon = to_mon(hw);
 	struct memlat_cpu_grp *cpu_grp = mon->cpu_grp;
 	bool should_init_cpu_grp;
@@ -538,7 +533,7 @@ static int start_hwmon(struct memlat_hwmon *hw)
 	mutex_lock(&cpu_grp->mons_lock);
 	should_init_cpu_grp = !(cpu_grp->num_active_mons++);
 	if (should_init_cpu_grp) {
-		ret = init_common_evs(cpu_grp, attr);
+		ret = init_pmu_evs(cpu_grp, attr);
 		if (ret)
 			goto unlock_out;
 
@@ -547,16 +542,6 @@ static int start_hwmon(struct memlat_hwmon *hw)
 		INIT_DEFERRABLE_WORK(&cpu_grp->work, &memlat_monitor_work);
 	}
 
-	if (mon->miss_ev) {
-		for_each_cpu(cpu, &mon->cpus) {
-			unsigned int idx = cpu - cpumask_first(&mon->cpus);
-
-			ret = set_event(&mon->miss_ev[idx], cpu,
-					mon->miss_ev_id, attr);
-			if (ret)
-				goto unlock_out;
-		}
-	}
 
 	mon->is_active = true;
 
@@ -597,11 +582,9 @@ static void stop_hwmon(struct memlat_hwmon *hw)
 	cpu_grp->num_active_mons--;
 
 	for_each_cpu(cpu, &mon->cpus) {
-		unsigned int idx = cpu - cpumask_first(&mon->cpus);
+
 		struct dev_stats *devstats = to_devstats(mon, cpu);
 
-		if (mon->miss_ev)
-			delete_event(&mon->miss_ev[idx]);
 		devstats->inst_count = 0;
 		devstats->mem_count = 0;
 		devstats->freq = 0;
@@ -611,7 +594,7 @@ static void stop_hwmon(struct memlat_hwmon *hw)
 
 	if (!cpu_grp->num_active_mons) {
 		cancel_delayed_work(&cpu_grp->work);
-		free_common_evs(cpu_grp);
+		free_pmu_evs(cpu_grp);
 		cpu_grp->initialized=false;
 		list_del(&cpu_grp->node);
 	}
@@ -697,9 +680,12 @@ static int get_mask_from_dev_handle(struct platform_device *pdev,
 static int memlat_cpu_grp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct device_node *pmu_node;
+	struct device_node *amu_node;
 	struct memlat_cpu_grp *cpu_grp;
 	int ret = 0;
-	unsigned int event_id, num_cpus, num_mons;
+	unsigned int event_id, num_cpus, num_mons, num_child_nodes;
+	unsigned int num_not_mon_nodes = 0;
 
 	cpu_grp = devm_kzalloc(dev, sizeof(*cpu_grp), GFP_KERNEL);
 	if (!cpu_grp)
@@ -710,10 +696,116 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	num_mons = of_get_available_child_count(dev->of_node);
+	num_child_nodes = of_get_available_child_count(dev->of_node);
 
-	if (!num_mons) {
-		dev_err(dev, "No mons provided.\n");
+	pmu_node = of_get_child_by_name(dev->of_node, "pmu");
+
+	if (!pmu_node) {
+		memset(cpu_grp->pmu_ev_ids, UINT_MAX, NUM_COMMON_EVS);
+		dev_dbg(dev, "PMU node not defined.\n");
+	} else {
+		num_not_mon_nodes += 1;
+
+		ret = of_property_read_u32(pmu_node, "inst-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "inst event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->pmu_ev_ids[INST_IDX] = event_id;
+
+		ret = of_property_read_u32(pmu_node, "cyc-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "cyc event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->pmu_ev_ids[CYCLE_IDX] = event_id;
+
+		ret = of_property_read_u32(pmu_node, "stall-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "Stall event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->pmu_ev_ids[STALL_IDX] = event_id;
+
+		ret = of_property_read_u32(pmu_node, "stall-backend-mem-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "Stall backend event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->pmu_ev_ids[STALL_BACKEND_MEM_IDX] = event_id;
+
+		ret = of_property_read_u32(pmu_node, "l2-cachemiss-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "L2 cachemiss event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->pmu_ev_ids[L2D_CACHE_REFILL_IDX] = event_id;
+
+		ret = of_property_read_u32(pmu_node, "l3-cachemiss-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "L3 cachemiss event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->pmu_ev_ids[L3_CACHE_MISS_IDX] = event_id;
+
+	}
+
+	amu_node = of_get_child_by_name(dev->of_node, "amu");
+
+	if (!amu_node) {
+		memset(cpu_grp->amu_ev_ids, UINT_MAX, NUM_COMMON_EVS);
+		dev_dbg(dev, "AMU node not defined.\n");
+	} else {
+		num_not_mon_nodes += 1;
+		ret = of_property_read_u32(amu_node, "inst-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "inst event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->amu_ev_ids[INST_IDX] = event_id;
+
+		ret = of_property_read_u32(amu_node, "cyc-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "cyc event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->amu_ev_ids[CYCLE_IDX] = event_id;
+
+		ret = of_property_read_u32(amu_node, "stall-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "Stall event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->amu_ev_ids[STALL_IDX] = event_id;
+
+		ret = of_property_read_u32(amu_node, "stall-backend-mem-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "Stall backend event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->amu_ev_ids[STALL_BACKEND_MEM_IDX] = event_id;
+
+		ret = of_property_read_u32(amu_node, "l2-cachemiss-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "L2 cachemiss event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->amu_ev_ids[L2D_CACHE_REFILL_IDX] = event_id;
+
+		ret = of_property_read_u32(amu_node, "l3-cachemiss-ev", &event_id);
+		if (ret) {
+			dev_dbg(dev, "L3 cachemiss event not specified. Skipping.\n");
+			event_id = UINT_MAX;
+		}
+		cpu_grp->amu_ev_ids[L3_CACHE_MISS_IDX] = event_id;
+
+
+	}
+
+	num_mons = num_child_nodes - num_not_mon_nodes;
+
+	if (!num_mons || !num_not_mon_nodes) {
+		dev_err(dev, "No mons or neither pmu/amu provided.\n");
 		return -ENODEV;
 	}
 
@@ -726,26 +818,6 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 	if (!cpu_grp->mons)
 		return -ENOMEM;
 
-	ret = of_property_read_u32(dev->of_node, "stall-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "Stall event not specified. Skipping.\n");
-		event_id = STALL_EV;
-	}
-	cpu_grp->common_ev_ids[STALL_IDX] = event_id;
-
-	ret = of_property_read_u32(dev->of_node, "stall-backend-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "Stall backend event not specified. Skipping.\n");
-		event_id = UINT_MAX;
-	}
-	cpu_grp->common_ev_ids[STALL_BACKEND_MEM_IDX] = event_id;
-
-	ret = of_property_read_u32(dev->of_node, "l2-cachemiss-ev", &event_id);
-	if (ret) {
-		dev_dbg(dev, "L2 cachemiss event not specified. Skipping.\n");
-		event_id = L2D_CACHE_REFILL_EV;
-	}
-	cpu_grp->common_ev_ids[L2D_CACHE_REFILL_IDX] = event_id;
 
 	num_cpus = cpumask_weight(&cpu_grp->cpus);
 	cpu_grp->cpus_data =
@@ -769,7 +841,7 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	struct memlat_cpu_grp *cpu_grp;
 	struct memlat_mon *mon;
 	struct memlat_hwmon *hw;
-	unsigned int event_id, num_cpus, cpu;
+	unsigned int num_cpus, cpu;
 	struct cpu_data *cpu_data;
 
 	if (!memlat_wq)
@@ -838,24 +910,6 @@ static int memlat_mon_probe(struct platform_device *pdev)
 	hw->get_cnt = &get_cnt;
 	hw->get_cpu_idle_state = &get_cpu_idle_state;
 	hw->request_update_ms = &request_update_ms;
-
-	mon->miss_ev =
-	  devm_kzalloc(dev, num_cpus * sizeof(*mon->miss_ev),
-	    GFP_KERNEL);
-	if (!mon->miss_ev) {
-		ret = -ENOMEM;
-		goto unlock_out;
-	}
-
-	ret = of_property_read_u32(dev->of_node, "cachemiss-ev",
-	  &event_id);
-	if (ret) {
-		dev_err(dev, "Cache miss event missing for mon: %d\n",
-		  ret);
-		ret = -EINVAL;
-		goto unlock_out;
-	}
-	mon->miss_ev_id = event_id;
 
 	mon->update_dsu_df = of_property_read_bool(dev->of_node, "update-dsu-df");
 

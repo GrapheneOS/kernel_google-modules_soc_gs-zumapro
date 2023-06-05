@@ -1,10 +1,5 @@
 KCONFIG_EXT_PREFIX=${SOC_DIR}
-# TODO(b/231473697): use realpath --relative-to
-# rel_path does not work with Kleaf --config=local builds because
-# rel_path is not simplified enough (e.g. the following evaluates to
-# ../../__main__ in Kleaf, which does not work in non-sandbox builds).
-# Hence use rel_path2 so it evaluates to a simpler path ../
-KCONFIG_EXT_MODULES_PREFIX=$(rel_path2 ${ROOT_DIR} ${KERNEL_DIR})/
+KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
 
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.common
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.aarch64
@@ -20,39 +15,11 @@ function update_config_zumapro() {
 }
 
 MAKE_GOALS=
-KERNEL_BINARY=Image.lz4
 
-DO_NOT_STRIP_MODULES=
-BUILD_BOOT_IMG=1
-BUILD_INITRAMFS=1
-BUILD_VENDOR_KERNEL_BOOT=1
 LZ4_RAMDISK=1
 BOOT_IMAGE_HEADER_VERSION=4
 TRIM_UNUSED_MODULES=1
-VENDOR_DLKM_MODULES_LIST=${SOC_DIR}/vendor_dlkm_modules.zumapro
-VENDOR_DLKM_MODULES_BLOCKLIST=${SOC_DIR}/vendor_dlkm.blocklist.zumapro
-VENDOR_DLKM_PROPS=${SOC_DIR}/vendor_dlkm.props.zumapro
-
-AVB_SIGN_BOOT_IMG=1
-AVB_BOOT_PARTITION_SIZE=0x04000000
-AVB_BOOT_KEY=${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
-AVB_BOOT_ALGORITHM=SHA256_RSA2048
-
-UWB_MODULE="private/google-modules/uwb/kernel"
-#if [ -d "${ROOT_DIR}/${UWB_MODULE}" ]; then
-#EXT_MODULES+=${UWB_MODULE}
-#fi
-
-# Prevent GKI kernel build from overwriting our kernel-uapi-headers.tar.gz file
-GKI_SKIP_CP_KERNEL_HDR=1
 
 if [ -n "${GKI_BUILD_CONFIG_FRAGMENT}" ]; then
 source ${GKI_BUILD_CONFIG_FRAGMENT}
-fi
-
-if [ -z "${FAST_BUILD}" ]; then
-COMPRESS_UNSTRIPPED_MODULES=1
-UNSTRIPPED_MODULES="
-*.ko
-"
 fi

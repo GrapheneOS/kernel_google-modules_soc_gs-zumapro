@@ -36,7 +36,7 @@
  * @li stmvl53l1_ranging1
  * @li stmvl53l1_ranging2
  */
-#define VL53L1_MISC_DEV_NAME "stmvl53l1_ranging"
+#define VL53L1_MISC_DEV_NAME "ispolin_ranging"
 /**
  * register data use for simple/single ranging data @ref VL53L1_IOCTL_GETDATAS
  *

@@ -199,6 +199,14 @@
 
 #define HSI2C_POLLING 0
 #define HSI2C_INTERRUPT 1
+#define HSI2C_HYBRID_POLLING 2
+
+/*
+ * For hybrid polling mode:
+ * If message length is below threshold, polling will be used.
+ * Otherwise, the transaction will be handled by interrupt.
+ */
+#define HSI2C_HYBRID_THRESHOLD 8
 
 #define EXYNOS5_I2C_TIMEOUT (msecs_to_jiffies(100))
 #define EXYNOS5_FIFO_SIZE		16
@@ -759,6 +767,12 @@ static int exynos5_i2c_xfer_msg(struct exynos5_i2c *i2c,
 	i2c->msg_ptr = 0;
 	i2c->trans_done = 0;
 
+	/* For hybrid polling, operation mode is determined by message length */
+	if (operation_mode == HSI2C_HYBRID_POLLING) {
+		operation_mode = (msgs->len > HSI2C_HYBRID_THRESHOLD) ?
+			HSI2C_INTERRUPT : HSI2C_POLLING;
+	}
+
 	/* (length * (bits + ack) * (s/ms) * / freq) * (tolerance) */
 	timeout_max = (i2c->msg->len * 9 * 1000 / i2c->clock_frequency) * 2;
 	/* Minimum timeout is 100ms */
@@ -1175,6 +1189,10 @@ static int exynos5_i2c_probe(struct platform_device *pdev)
 		}
 	}
 
+	i2c->power_domain = NO_POWER_DOMAIN;
+	if (of_get_property(dev->of_node, "power-domains", NULL))
+		i2c->power_domain = ACTIVE_POWER_DOMAIN;
+
 	ret = of_property_read_u32(np, "samsung,tscl-h", &i2c->tscl_h);
 	if (!ret)
 		dev_warn(&pdev->dev, "tSCL_HIGH val: 0x%x\n", i2c->tscl_h);
@@ -1186,6 +1204,8 @@ static int exynos5_i2c_probe(struct platform_device *pdev)
 	/* Mode of operation Polling/Interrupt mode */
 	if (of_get_property(np, "samsung,polling-mode", NULL))
 		i2c->operation_mode = HSI2C_POLLING;
+	else if (of_get_property(np, "samsung,hybrid-polling-mode", NULL))
+		i2c->operation_mode = HSI2C_HYBRID_POLLING;
 	else
 		i2c->operation_mode = HSI2C_INTERRUPT;
 
@@ -1284,7 +1304,9 @@ static int exynos5_i2c_probe(struct platform_device *pdev)
 	/* Reset i2c SFR from u-boot or misc causes */
 	exynos5_i2c_reset(i2c);
 
-	if (i2c->operation_mode == HSI2C_INTERRUPT) {
+	/* Set up IRQ for Hybrid polling and interrupt modes */
+	if (i2c->operation_mode == HSI2C_INTERRUPT ||
+	    i2c->operation_mode == HSI2C_HYBRID_POLLING) {
 		i2c->irq = irq_of_parse_and_map(np, 0);
 		if (i2c->irq <= 0) {
 			dev_err(&pdev->dev, "cannot find HS-I2C IRQ\n");
@@ -1366,6 +1388,16 @@ static int exynos5_i2c_runtime_resume(struct device *dev)
 	int ret = 0;
 
 	exynos_update_ip_idle_status(i2c->idle_ip_index, 0);
+
+	if (i2c->power_domain == ACTIVE_POWER_DOMAIN) {
+		if (!IS_ERR(i2c->usi_reg))
+			regmap_update_bits(i2c->usi_reg, i2c->usi_offset,
+				   USI_SW_CONF_MASK, USI_I2C_SW_CONF);
+
+		exynos_usi_init(i2c);
+		exynos5_i2c_reset(i2c);
+	}
+
 	ret = clk_enable(i2c->clk);
 	i2c->runtime_resumed = 1;
 	if (ret) {
@@ -1415,9 +1447,11 @@ static int exynos5_i2c_resume_noirq(struct device *dev)
 	struct exynos5_i2c *i2c = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	if (!IS_ERR(i2c->usi_reg))
-		regmap_update_bits(i2c->usi_reg, i2c->usi_offset,
-				   USI_SW_CONF_MASK, USI_I2C_SW_CONF);
+	if (i2c->power_domain == NO_POWER_DOMAIN) {
+		if (!IS_ERR(i2c->usi_reg))
+			regmap_update_bits(i2c->usi_reg, i2c->usi_offset,
+					   USI_SW_CONF_MASK, USI_I2C_SW_CONF);
+	}
 
 	i2c_lock_bus(&i2c->adap, I2C_LOCK_ROOT_ADAPTER);
 
@@ -1432,8 +1466,11 @@ static int exynos5_i2c_resume_noirq(struct device *dev)
 		return ret;
 	}
 
-	exynos_usi_init(i2c);
-	exynos5_i2c_reset(i2c);
+	if (i2c->power_domain == NO_POWER_DOMAIN) {
+		exynos_usi_init(i2c);
+		exynos5_i2c_reset(i2c);
+	}
+
 	clk_disable(i2c->clk);
 	exynos_update_ip_idle_status(i2c->idle_ip_index, 1);
 	i2c->suspended = 0;

@@ -3045,6 +3045,11 @@ static int ctrl_roi(struct stmvl53l1_data *data, void __user *p)
 			rc = -EFAULT;
 			goto done;
 		}
+		/* revalidate roi_cnt in case it changed */
+		if (roi_cnt != rois.roi_cfg.NumberOfRoi) {
+			rc = -EINVAL;
+			goto done;
+		}
 		dump_roi(dev, data->roi_cfg.UserRois,
 			 data->roi_cfg.NumberOfRoi);
 		/* we may ask ll driver to check but check is mode dependent

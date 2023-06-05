@@ -6,13 +6,18 @@
 
 #define pr_fmt(fmt) "gcma: " fmt
 
+#include <soc/google/gcma.h>
 #include <linux/cleancache.h>
 #include <linux/slab.h>
 #include <linux/highmem.h>
-#include <linux/sysfs.h>
 #include <linux/idr.h>
 #include <linux/hashtable.h>
 #include <linux/xarray.h>
+#include <trace/hooks/mm.h>
+
+#include "gcma_sysfs.h"
+#define CREATE_TRACE_POINTS
+#include "gcma_trace.h"
 
 /*
  * page->units : area id
@@ -38,12 +43,7 @@ static LIST_HEAD(gcma_lru);
 static DEFINE_SPINLOCK(lru_lock);
 
 static atomic_t nr_gcma_area = ATOMIC_INIT(0);
-
-static atomic64_t gcma_stored_page = ATOMIC64_INIT(0);
-static atomic64_t gcma_loaded_page = ATOMIC64_INIT(0);
-static atomic64_t gcma_evicted_page = ATOMIC64_INIT(0);
-static atomic64_t gcma_cached_page = ATOMIC64_INIT(0);
-static atomic64_t gcma_discarded_page = ATOMIC64_INIT(0);
+static atomic64_t total_gcma_pages = ATOMIC64_INIT(0);
 
 /* represent reserved memory range */
 struct gcma_area {
@@ -53,7 +53,7 @@ struct gcma_area {
 	unsigned long end_pfn;
 };
 
-struct gcma_area areas[MAX_GCMA_AREAS];
+static struct gcma_area areas[MAX_GCMA_AREAS];
 
 /* represents each file system instance hosted by the cleancache */
 struct gcma_fs {
@@ -253,6 +253,7 @@ int register_gcma_area(const char *name, phys_addr_t base, phys_addr_t size)
 
 	area->start_pfn = pfn;
 	area->end_pfn = pfn + page_count - 1;
+	atomic64_add(page_count, &total_gcma_pages);
 
 	pr_info("Reserved memory: created GCMA memory pool at %pa, size %ld MiB for %s\n",
 		 &base, size / SZ_1M, name ? : "none");
@@ -303,7 +304,7 @@ static struct page *gcma_alloc_page(void)
 		ClearPageGCMAFree(page);
 		set_page_count(page, 1);
 		spin_unlock(&area->free_pages_lock);
-		atomic64_inc(&gcma_cached_page);
+		inc_gcma_stat(CACHED_PAGE);
 		break;
 	}
 
@@ -324,7 +325,7 @@ static void __gcma_free_page(struct page *page)
 static void gcma_free_page(struct page *page)
 {
 	__gcma_free_page(page);
-	atomic64_dec(&gcma_cached_page);
+	inc_gcma_stat(CACHED_PAGE);
 }
 
 static inline void gcma_get_page(struct page *page)
@@ -387,7 +388,7 @@ static void isolate_gcma_page(struct gcma_inode *inode, struct page *page)
 	page_area_lock(page);
 	reset_gcma_page(page);
 	page_area_unlock(page);
-	atomic64_dec(&gcma_cached_page);
+	dec_gcma_stat(CACHED_PAGE);
 
 	/*
 	 * Release the inode refcount the gcma_put_page was supposed
@@ -404,13 +405,14 @@ static void isolate_gcma_page(struct gcma_inode *inode, struct page *page)
  * where doesn't allow preemption. Thus,retrial in this logic would make
  * forward progress with just retrial.
  */
-static void __gcma_discard_range(struct gcma_area *area,
-				unsigned long start_pfn,
-				unsigned long end_pfn)
+static unsigned long __gcma_discard_range(struct gcma_area *area,
+					  unsigned long start_pfn,
+					  unsigned long end_pfn)
 {
 	unsigned long pfn;
 	struct page *page;
 	unsigned long scanned = 0;
+	unsigned long discard = 0;
 
 	local_irq_disable();
 
@@ -503,18 +505,26 @@ again:
 		__xa_erase(&inode->pages, index);
 		xa_unlock(&inode->pages);
 		isolate_gcma_page(inode, page);
-		atomic64_inc(&gcma_discarded_page);
+		inc_gcma_stat(DISCARDED_PAGE);
+		discard++;
 
 	}
 	local_irq_enable();
+
+	return discard;
 }
 
 void gcma_alloc_range(unsigned long start_pfn, unsigned long end_pfn)
 {
+	s64 start_time;
 	int i;
 	struct gcma_area *area;
 	int nr_area = atomic_read(&nr_gcma_area);
+	unsigned long latency, count = end_pfn - start_pfn + 1;
+	unsigned long discarded = 0;
 
+	trace_gcma_alloc_start(start_pfn, count);
+	start_time = ktime_to_ns(ktime_get());
 	for (i = 0; i < nr_area; i++) {
 		unsigned long s_pfn, e_pfn;
 
@@ -528,8 +538,11 @@ void gcma_alloc_range(unsigned long start_pfn, unsigned long end_pfn)
 		s_pfn = max(start_pfn, area->start_pfn);
 		e_pfn = min(end_pfn, area->end_pfn);
 
-		__gcma_discard_range(area, s_pfn, e_pfn);
+		discarded += __gcma_discard_range(area, s_pfn, e_pfn);
 	}
+	trace_gcma_alloc_finish(count, discarded);
+	latency = ktime_to_ns(ktime_get()) - start_time;
+	account_gcma_per_page_alloc_latency(count, latency);
 }
 EXPORT_SYMBOL_GPL(gcma_alloc_range);
 
@@ -609,7 +622,7 @@ static void evict_gcma_lru_pages(unsigned long nr_request)
 		nr_evicted += isolated;
 	}
 
-	atomic64_add(nr_evicted, &gcma_evicted_page);
+	add_gcma_stat(EVICTED_PAGE, nr_evicted);
 }
 
 static void evict_gcma_pages(struct work_struct *work)
@@ -705,7 +718,7 @@ copy:
 	else
 		rotate_lru_page(g_page);
 
-	atomic64_inc(&gcma_stored_page);
+	inc_gcma_stat(STORED_PAGE);
 out_unlock:
 	xa_unlock(&inode->pages);
 	put_gcma_inode(inode);
@@ -745,7 +758,7 @@ static int gcma_cc_load_page(int hash_id, struct cleancache_filekey key,
 	xa_unlock_irq(&inode->pages);
 
 	put_gcma_inode(inode);
-	atomic64_inc(&gcma_loaded_page);
+	inc_gcma_stat(LOADED_PAGE);
 
 	return 0;
 }
@@ -904,6 +917,11 @@ static int gcma_cc_init_shared_fs(uuid_t *uuid, size_t pagesize)
 	return -1;
 }
 
+static void vh_gcma_si_meminfo_fixup(void *data, struct sysinfo *val)
+{
+	val->totalram += (u64)atomic64_read(&total_gcma_pages);
+}
+
 struct cleancache_ops gcma_cleancache_ops = {
 	.init_fs = gcma_cc_init_fs,
 	.init_shared_fs = gcma_cc_init_shared_fs,
@@ -914,88 +932,22 @@ struct cleancache_ops gcma_cleancache_ops = {
 	.invalidate_fs = gcma_cc_invalidate_fs,
 };
 
-#ifdef CONFIG_SYSFS
-/*
- * This all compiles without CONFIG_SYSFS, but is a waste of space.
- */
-
-#define GCMA_ATTR_RO(_name) \
-	static struct kobj_attribute _name##_attr = __ATTR_RO(_name)
-
-static ssize_t stored_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%llu\n", (u64)atomic64_read(&gcma_stored_page));
-}
-GCMA_ATTR_RO(stored);
-
-static ssize_t loaded_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%llu\n", (u64)atomic64_read(&gcma_loaded_page));
-}
-GCMA_ATTR_RO(loaded);
-
-static ssize_t evicted_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%llu\n", (u64)atomic64_read(&gcma_evicted_page));
-}
-GCMA_ATTR_RO(evicted);
-
-static ssize_t cached_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%llu\n", (u64)atomic64_read(&gcma_cached_page));
-}
-GCMA_ATTR_RO(cached);
-
-static ssize_t discarded_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%llu\n", (u64)atomic64_read(&gcma_discarded_page));
-}
-GCMA_ATTR_RO(discarded);
-
-static struct attribute *gcma_attrs[] = {
-	&stored_attr.attr,
-	&loaded_attr.attr,
-	&evicted_attr.attr,
-	&cached_attr.attr,
-	&discarded_attr.attr,
-	NULL,
-};
-
-static const struct attribute_group gcma_attr_group = {
-	.attrs = gcma_attrs,
-	.name = "gcma",
-};
-#endif
-
-extern struct kobject *vendor_mm_kobj;
-
 int __init gcma_init(void)
 {
-	int err = -ENOMEM;
+	int err;
+
+	err = register_trace_android_vh_si_meminfo(vh_gcma_si_meminfo_fixup, NULL);
+	if (err)
+		return err;
 
 	slab_gcma_inode = KMEM_CACHE(gcma_inode, 0);
 	if (!slab_gcma_inode)
-		goto out;
+		return -ENOMEM;
 
-#ifdef CONFIG_SYSFS
-	err = sysfs_create_group(vendor_mm_kobj, &gcma_attr_group);
-	if (err) {
-		pr_err("failed to register sysfs\n");
-		kmem_cache_destroy(slab_gcma_inode);
-		goto out;
-	}
-#endif
-
+	gcma_sysfs_init();
 	cleancache_register_ops(&gcma_cleancache_ops);
 
 	return 0;
-out:
-	return err;
 }
 
 module_init(gcma_init);

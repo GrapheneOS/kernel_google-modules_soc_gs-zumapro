@@ -446,7 +446,7 @@ static int samsung_pinconf_rw(struct pinctrl_dev *pctldev, unsigned int pin,
 	struct samsung_pin_bank *bank;
 	void __iomem *reg_base;
 	enum pincfg_type cfg_type = PINCFG_UNPACK_TYPE(*config);
-	u32 data, width, pin_offset, mask, shift;
+	u32 data, width, pin_offset, mask, shift, test_data;
 	u32 cfg_value, cfg_reg;
 	unsigned long flags;
 
@@ -472,6 +472,10 @@ static int samsung_pinconf_rw(struct pinctrl_dev *pctldev, unsigned int pin,
 		data &= ~(mask << shift);
 		data |= (cfg_value << shift);
 		writel(data, reg_base + cfg_reg);
+		test_data = readl(reg_base + cfg_reg);
+		if (data != test_data)
+			dev_err(drvdata->dev, "mismatched pinconf write, bank=%s, cfg=%d, pin=%d, data=%d, readback=%d",
+			       bank->name, cfg_reg, pin_offset, data, test_data);
 	} else {
 		data >>= shift;
 		data &= mask;
@@ -1389,27 +1393,6 @@ static void samsung_pinctrl_resume(void)
 		samsung_pinctrl_resume_dev(drvdata);
 	}
 }
-
-u32 exynos_eint_to_pin_num(int eint)
-{
-	struct samsung_pinctrl_drv_data *drvdata;
-	struct samsung_pin_bank *pbank;
-	int i, offset = 0;
-
-	drvdata = list_first_entry(&drvdata_list,
-			struct samsung_pinctrl_drv_data, node);
-
-	for (i = 0; i < drvdata->nr_banks; i++) {
-		pbank = &drvdata->pin_banks[i];
-		if (!strncmp(pbank->name, "gpa0", strlen(pbank->name)))
-			break;
-
-		offset += pbank->nr_pins;
-	}
-
-	return drvdata->pin_base + eint + offset;
-}
-EXPORT_SYMBOL(exynos_eint_to_pin_num);
 
 #else
 #define samsung_pinctrl_suspend		NULL

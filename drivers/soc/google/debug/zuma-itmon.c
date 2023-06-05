@@ -155,21 +155,21 @@
 #define	NOT_SUPPORT			(0xFF)
 
 #define log_dev_err(dev, fmt, ...)	\
-do {									\
-	dev_printk_emit(LOGLEVEL_ERR, dev, fmt, ##__VA_ARGS__);		\
-	dbg_snapshot_itmon_backup_log(fmt, ##__VA_ARGS__);		\
+do {								\
+	dev_err(dev, fmt, ##__VA_ARGS__);			\
+	dbg_snapshot_itmon_backup_log(fmt, ##__VA_ARGS__);	\
 } while (0)
 
 #define log_dev_info(dev, fmt, ...)	\
-do {									\
-	dev_printk_emit(LOGLEVEL_INFO, dev, fmt, ##__VA_ARGS__);	\
-	dbg_snapshot_itmon_backup_log(fmt, ##__VA_ARGS__);		\
+do {								\
+	dev_info(dev, fmt, ##__VA_ARGS__);			\
+	dbg_snapshot_itmon_backup_log(fmt, ##__VA_ARGS__);	\
 } while (0)
 
 #define log_dev_dbg(dev, fmt, ...)	\
-do {									\
-	dev_printk_emit(LOGLEVEL_DEBUG, dev, fmt, ##__VA_ARGS__);	\
-	dbg_snapshot_itmon_backup_log(fmt, ##__VA_ARGS__);		\
+do {								\
+	dev_dbg(dev, fmt, ##__VA_ARGS__);			\
+	dbg_snapshot_itmon_backup_log(fmt, ##__VA_ARGS__);	\
 } while (0)
 
 enum err_type {
@@ -2281,6 +2281,12 @@ void itmon_notifier_chain_register(struct notifier_block *block)
 	atomic_notifier_chain_register(&itmon_notifier_list, block);
 }
 EXPORT_SYMBOL(itmon_notifier_chain_register);
+
+void itmon_notifier_chain_unregister(struct notifier_block *block)
+{
+	atomic_notifier_chain_unregister(&itmon_notifier_list, block);
+}
+EXPORT_SYMBOL(itmon_notifier_chain_unregister);
 
 static int itmon_logging_panic_handler(struct notifier_block *nb,
 				       unsigned long l, void *buf)

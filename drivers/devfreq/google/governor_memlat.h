@@ -13,19 +13,11 @@ enum common_ev_idx {
 	STALL_IDX,
 	L2D_CACHE_REFILL_IDX,
 	STALL_BACKEND_MEM_IDX,
-	NUM_COMMON_EVS
-};
-
-enum amu_ev_idx {
+	L3_CACHE_MISS_IDX,
 	INST_IDX,
 	CYCLE_IDX,
-	MEM_STALL_IDX,
-	NUM_AMU_EVS
+	NUM_COMMON_EVS
 };
-
-#define STALL_EV 0x24
-#define L2D_CACHE_REFILL_EV 0x17
-#define L3D_CACHE_REFILL_EV 0x2A
 
 /**
  * memlat cpuidle awareness state

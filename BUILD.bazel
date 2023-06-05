@@ -26,6 +26,25 @@ label_flag(
     build_setting_default = ":gs_undefined",
 )
 
+config_setting(
+    name = "gki_aosp",
+    flag_values = {
+        ":gki_kernel_dir": "aosp",
+    },
+)
+
+config_setting(
+    name = "gki_aosp_staging",
+    flag_values = {
+        ":gki_kernel_dir": "aosp-staging",
+    },
+)
+
+string_flag(
+    name = "gki_kernel_dir",
+    build_setting_default = "aosp",
+)
+
 string_flag(
     name = "debug_fragment",
     build_setting_default = "",
@@ -142,6 +161,7 @@ filegroup(
         ],
     ) + [
         "//private/google-modules/bms/misc:headers",
+        "//private/google-modules/trusty:headers",
     ],
     visibility = [
         # keep sorted
@@ -185,6 +205,7 @@ exports_files([
     "build.config.slider.khwasan",
     "build.config.zuma",
     "build.config.zumapro",
+    "system_dlkm.props.zuma",
     "vendor_dlkm.blocklist.zuma",
     "vendor_dlkm.blocklist.zumapro",
     "vendor_dlkm.props.zuma",

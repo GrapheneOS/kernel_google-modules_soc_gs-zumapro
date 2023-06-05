@@ -22,6 +22,7 @@
 #define HAPTIC_RX		0x80000011
 #define ERASER_TX	        0xC0000012
 #define INTERNAL_MIC_US_TX	0xC0000013
+#define DP_DMA_RX		0x80000014
 
 #define IDX_EP1_RX		0x0
 #define IDX_EP2_RX		0x1
@@ -42,6 +43,7 @@
 #define IDX_INCALL_PB2_RX       0x14
 #define IDX_IMSV_RX             0x15
 #define IDX_CAP_INJ_RX          0x16
+#define IDX_DP_DMA_NoHOST_RX	0x20000017
 
 #define IDX_EP1_TX		0x40000000
 #define IDX_EP2_TX		0x40000001
@@ -59,4 +61,5 @@
 #define IDX_INCALL_CAP2_TX	0x4000000f
 #define IDX_HIFI_TX	        0x40000010
 #define IDX_ANDROID_AEC_TX	0x40000012
+#define IDX_HOTWORD_TAP_TX	0x40000017
 #endif /* __DT_GOOGLE_AOC_H */

@@ -55,6 +55,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <misc/logbuffer.h>
 
+
 /* Debug logging */
 #define DATA_BYTES_PER_LINE     (16)
 
@@ -64,6 +65,8 @@
 
 #define EXYNOS_SERIAL_CTRL_NUM			0x4
 #define EXYNOS_SERIAL_BAUD_NUM			0x2
+
+#define S5PV210_UMCON_RTSTRIG_SHIFT		(5)
 
 struct exynos_uart_info {
 	char			*name;
@@ -866,6 +869,31 @@ static void exynos_serial_start_tx(struct uart_port *port)
 		if (!uart_circ_empty(xmit) && !ourport->tx_in_progress)
 			exynos_serial_start_next_tx(ourport);
 	}
+}
+
+/* Throttle is called in n_tty_receive_buf_common */
+static void exynos_serial_throttle(struct uart_port *port)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&port->lock, flags);
+
+	__set_bit(S3C64XX_UINTM_RXD, portaddrl(port, S3C64XX_UINTM));
+	wr_regl(port, S3C64XX_UINTP, S3C64XX_UINTM_RXD_MSK);
+
+	spin_unlock_irqrestore(&port->lock, flags);
+}
+
+/* Unthrottle is called in n_tty_read */
+static void exynos_serial_unthrottle(struct uart_port *port)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&port->lock, flags);
+
+	__clear_bit(S3C64XX_UINTM_RXD, portaddrl(port, S3C64XX_UINTM));
+
+	spin_unlock_irqrestore(&port->lock, flags);
 }
 
 static void exynos_uart_copy_rx_to_tty(struct exynos_uart_port *ourport, struct
@@ -2064,6 +2092,8 @@ static const struct uart_ops exynos_serial_ops = {
 	.set_mctrl	= exynos_serial_set_mctrl,
 	.stop_tx	= exynos_serial_stop_tx,
 	.start_tx	= exynos_serial_start_tx,
+	.throttle       = exynos_serial_throttle,
+	.unthrottle     = exynos_serial_unthrottle,
 	.stop_rx	= exynos_serial_stop_rx,
 	.break_ctl	= exynos_serial_break_ctl,
 	.startup	= exynos_serial_startup,
@@ -3161,6 +3191,7 @@ static struct exynos_serial_drv_data exynos_serial_drv_data = {
 		.tx_fifofull	= S5PV210_UFSTAT_TXFULL,
 		.tx_fifomask	= S5PV210_UFSTAT_TXMASK,
 		.tx_fifoshift	= S5PV210_UFSTAT_TXSHIFT,
+		.rts_trig_shift = S5PV210_UMCON_RTSTRIG_SHIFT,
 		.def_clk_sel	= S3C2410_UCON_CLKSEL0,
 		.num_clks	= 1,
 		.clksel_mask	= 0,

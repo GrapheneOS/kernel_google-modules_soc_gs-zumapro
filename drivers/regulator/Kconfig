@@ -114,5 +114,16 @@ config REGULATOR_SLG51002
 	  The SLG51002 is eight compact and customizable low dropout
 	  regulators.
 
+config REGULATOR_RT6160_GS
+	tristate "Richtek RT6160 BuckBoost voltage regulator for some GS SoCs"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This adds support for voltage regulator in Richtek RT6160.
+	  This device automatically change voltage output mode from
+	  Buck or Boost. The mode transition depend on the input source voltage.
+	  The wide output range is from 2025mV to 5200mV and can be used on most
+	  common application scenario.
+
 
 endif

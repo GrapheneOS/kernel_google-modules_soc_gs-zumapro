@@ -221,6 +221,12 @@ config EXYNOS_CONTENT_PATH_PROTECTION
 	help
 	  Enable content path protection of EXYNOS.
 
+config PERF_TRACE_CTRS
+	tristate "perf_trace_counters support"
+	default n
+	help
+	Support perf_trace_counters
+
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/gsa/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif/Kconfig"

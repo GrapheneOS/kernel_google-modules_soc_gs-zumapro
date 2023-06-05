@@ -1301,6 +1301,20 @@ static int exynos_usbdrd_get_iptype(struct exynos_usbdrd_phy *phy_drd)
 	return 0;
 }
 
+static void exynos_usbdrd_update_phy_value(struct exynos_usbdrd_phy *phy_drd)
+{
+	struct exynos_usb_tune_param *hs_tune_param = phy_drd->usbphy_info.tune_param;
+	int i;
+
+	for (i = 0; hs_tune_param[i].value != EXYNOS_USB_TUNE_LAST; i++) {
+		if (i == EXYNOS_DRD_MAX_TUNEPARAM_NUM)
+			break;
+		hs_tune_param[i].value = phy_drd->hs_tune_param_value[i][USBPHY_MODE_DEV];
+	}
+
+	return;
+}
+
 static int exynos_usbdrd_usb_update(struct notifier_block *nb,
 				    unsigned long action, void *dev)
 {
@@ -1470,6 +1484,8 @@ static void exynos_usbdrd_utmi_init(struct exynos_usbdrd_phy *phy_drd)
 
 	exynos_usbcon_init_link(&phy_drd->usbphy_blkcon_info);
 
+	exynos_usbdrd_update_phy_value(phy_drd);
+
 	phy_exynos_eusb_initiate(&phy_drd->usbphy_info);
 
 	if (phy_drd->use_phy_umux) {
@@ -1547,6 +1563,12 @@ static int exynos_usbdrd_utmi_vendor_set(struct exynos_usbdrd_phy *phy_drd,
 			if (phy_drd->is_irq_enabled == 1) {
 				dev_info(phy_drd->dev, "[%s] REWA CANCEL\n", __func__);
 				exynos_usbcon_rewa_cancel(&phy_drd->usbphy_blkcon_info);
+
+				dev_info(phy_drd->dev, "REWA wakeup/conn IRQ disable\n");
+
+				disable_irq_nosync(phy_drd->irq_wakeup);
+				disable_irq_nosync(phy_drd->irq_conn);
+				phy_drd->is_irq_enabled = 0;
 			} else {
 				dev_dbg(phy_drd->dev, "Vendor set by interrupt, Do not REWA cancel\n");
 			}
@@ -1562,7 +1584,7 @@ static int exynos_usbdrd_utmi_vendor_set(struct exynos_usbdrd_phy *phy_drd,
 			/* inform what USB state is idle to IDLE_IP */
 			//exynos_update_ip_idle_status(phy_drd->idle_ip_idx, 1);
 
-			dev_dbg(phy_drd->dev, "REWA ENABLE Complete\n");
+			dev_info(phy_drd->dev, "REWA ENABLE Complete\n");
 
 			if (phy_drd->is_irq_enabled == 0) {
 				enable_irq(phy_drd->irq_wakeup);
@@ -1628,67 +1650,57 @@ void exynos_usbdrd_ldo_control(struct exynos_usbdrd_phy *phy_drd, int on)
 {
 	int ret1, ret2, ret3;
 
-	if (phy_drd->vdd085 == NULL ||
-	    phy_drd->vdd18 == NULL ||
-	    phy_drd->vdd30 == NULL) {
+	if (phy_drd->vdd075 == NULL ||
+	    phy_drd->vdd12 == NULL ||
+	    phy_drd->vdd33 == NULL) {
 		dev_err(phy_drd->dev, "%s: not defined regulator\n",
 			__func__);
 		return;
 	}
 
 	if (on) {
-		ret1 = regulator_enable(phy_drd->vdd085);
+		ret1 = regulator_enable(phy_drd->vdd075);
 		if (ret1) {
 			dev_err(phy_drd->dev,
-				"Failed to enable vdd085: %d\n", ret1);
+				"Failed to enable vdd075: %d\n", ret1);
 			return;
 		}
 
-		ret1 = regulator_enable(phy_drd->vdd18);
+		ret1 = regulator_enable(phy_drd->vdd12);
 		if (ret1) {
 			dev_err(phy_drd->dev,
-				"Failed to enable vdd18: %d\n", ret1);
-			regulator_disable(phy_drd->vdd085);
+				"Failed to enable vdd12: %d\n", ret1);
+			ret2 = regulator_disable(phy_drd->vdd075);
+			if (ret2) {
+				dev_err(phy_drd->dev,
+					"Failed to disable vdd075: %d\n",
+					ret2);
+			}
 			return;
 		}
 
-		ret1 = regulator_enable(phy_drd->vdd30);
+		ret1 = regulator_enable(phy_drd->vdd33);
 		if (ret1) {
 			dev_err(phy_drd->dev,
-				"Failed to enable vdd30: %d\n", ret1);
-			regulator_disable(phy_drd->vdd085);
-			regulator_disable(phy_drd->vdd18);
+				"Failed to enable vdd33: %d\n", ret1);
+			ret2 = regulator_disable(phy_drd->vdd075);
+			ret3 = regulator_disable(phy_drd->vdd12);
+			if (ret2 || ret3) {
+				dev_err(phy_drd->dev,
+					"Failed to disable vdd075, vdd12: %d %d\n",
+					ret2, ret3);
+			}
 			return;
 		}
 	} else {
-		ret1 = regulator_disable(phy_drd->vdd085);
-		ret2 = regulator_disable(phy_drd->vdd18);
-		ret3 = regulator_disable(phy_drd->vdd30);
+		ret1 = regulator_disable(phy_drd->vdd075);
+		ret2 = regulator_disable(phy_drd->vdd12);
+		ret3 = regulator_disable(phy_drd->vdd33);
 		if (ret1 || ret2 || ret3) {
 			dev_err(phy_drd->dev,
 				"Failed to disable USB LDOs: %d %d %d\n",
 				ret1, ret2, ret3);
 		}
-	}
-}
-
-void exynos_usbdrd_l7m_control(struct exynos_usbdrd_phy *phy_drd, int on)
-{
-	int ret;
-
-	if (phy_drd->vdd_hsi == NULL) {
-		dev_err(phy_drd->dev, "%s: not defined regulator L7M\n", __func__);
-		return;
-	}
-
-	if (on) {
-		ret = regulator_enable(phy_drd->vdd_hsi);
-		if (ret)
-			 pr_err("Failed to enable vdd_hsi: %d\n", ret);
-	} else {
-		ret = regulator_disable(phy_drd->vdd_hsi);
-		if (ret)
-			 pr_err("Failed to disable vdd_hsi: %d\n", ret);
 	}
 }
 
@@ -1895,22 +1907,6 @@ int exynos_usbdrd_ldo_manual_control(bool on)
 }
 EXPORT_SYMBOL_GPL(exynos_usbdrd_ldo_manual_control);
 
-int exynos_usbdrd_vdd_hsi_manual_control(bool on)
-{
-	struct exynos_usbdrd_phy *phy_drd;
-
-	phy_drd = exynos_usbdrd_get_struct();
-
-	if (!phy_drd) {
-		pr_err("[%s] exynos_usbdrd_get_struct error\n", __func__);
-		return -ENODEV;
-	}
-	exynos_usbdrd_l7m_control(phy_drd, on);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(exynos_usbdrd_vdd_hsi_manual_control);
-
 bool exynos_usbdrd_get_ldo_status(void)
 {
 	struct exynos_usbdrd_phy *phy_drd;
@@ -1922,9 +1918,9 @@ bool exynos_usbdrd_get_ldo_status(void)
 		return status;
 	}
 
-	status = regulator_is_enabled(phy_drd->vdd085) &&
-		 regulator_is_enabled(phy_drd->vdd18) &&
-		 regulator_is_enabled(phy_drd->vdd30);
+	status = regulator_is_enabled(phy_drd->vdd075) &&
+		 regulator_is_enabled(phy_drd->vdd12) &&
+		 regulator_is_enabled(phy_drd->vdd33);
 
 	return status;
 }
@@ -2389,34 +2385,26 @@ skip_clock:
 	spin_lock_init(&phy_drd->lock);
 
 	dev_dbg(dev, "Get USB LDO!\n");
-	phy_drd->vdd085 = devm_regulator_get(dev, "vdd085");
-	if (IS_ERR(phy_drd->vdd085)) {
-		dev_err(dev, "%s - vdd085 regulator_get fail: %ld\n",
-			__func__, PTR_ERR(phy_drd->vdd085));
-		return PTR_ERR(phy_drd->vdd085);
+	phy_drd->vdd075 = devm_regulator_get(dev, "vdd075");
+	if (IS_ERR(phy_drd->vdd075)) {
+		dev_err(dev, "%s - vdd075 regulator_get fail: %ld\n",
+			__func__, PTR_ERR(phy_drd->vdd075));
+		return PTR_ERR(phy_drd->vdd075);
 	}
 
-	phy_drd->vdd18 = devm_regulator_get(dev, "vdd18");
-	if (IS_ERR(phy_drd->vdd18)) {
-		dev_err(dev, "%s - vdd18 regulator_get fail: %ld\n",
-			__func__, PTR_ERR(phy_drd->vdd18));
-		return PTR_ERR(phy_drd->vdd18);
+	phy_drd->vdd12 = devm_regulator_get(dev, "vdd12");
+	if (IS_ERR(phy_drd->vdd12)) {
+		dev_err(dev, "%s - vdd12 regulator_get fail: %ld\n",
+			__func__, PTR_ERR(phy_drd->vdd12));
+		return PTR_ERR(phy_drd->vdd12);
 	}
 
-	phy_drd->vdd30 = devm_regulator_get(dev, "vdd30");
-	if (IS_ERR(phy_drd->vdd30)) {
-		dev_err(dev, "%s - vdd30 regulator_get fail: %ld\n",
-			__func__, PTR_ERR(phy_drd->vdd30));
-		return PTR_ERR(phy_drd->vdd30);
+	phy_drd->vdd33 = devm_regulator_get(dev, "vdd33");
+	if (IS_ERR(phy_drd->vdd33)) {
+		dev_err(dev, "%s - vdd33 regulator_get fail: %ld\n",
+			__func__, PTR_ERR(phy_drd->vdd33));
+		return PTR_ERR(phy_drd->vdd33);
 	}
-
-	phy_drd->vdd_hsi = devm_regulator_get(dev, "vdd_hsi");
-	if (IS_ERR(phy_drd->vdd_hsi)) {
-		dev_err(dev, "%s - vdd_hsi regulator_get fail: %ld\n",
-			__func__, PTR_ERR(phy_drd->vdd_hsi));
-		return PTR_ERR(phy_drd->vdd_hsi);
-	}
-
 	phy_drd->is_irq_enabled = 0;
 	phy_drd->is_usb3_rewa_enabled = 0;
 	pm_runtime_enable(dev);

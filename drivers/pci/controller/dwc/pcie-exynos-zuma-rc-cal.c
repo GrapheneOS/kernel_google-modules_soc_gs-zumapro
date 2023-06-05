@@ -412,12 +412,7 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x60700000, phy_pcs_base_regs + 0x124);
 		writel(0x00000007, phy_pcs_base_regs + 0x174);
 		writel(0x00000100, phy_pcs_base_regs + 0x178);
-
-		if (exynos_pcie->ep_device_type == EP_BCM_WIFI) {
-			writel(0x00000700, phy_pcs_base_regs + 0x17c);
-		} else {
-			writel(0x00000010, phy_pcs_base_regs + 0x17c);
-		}
+		writel(0x00000010, phy_pcs_base_regs + 0x17c);
 
 		/* Additional configuration for SAMSUNG WIFI */
 		if (exynos_pcie->ep_device_type == EP_SAMSUNG_WIFI) {

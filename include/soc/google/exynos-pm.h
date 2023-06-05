@@ -30,10 +30,8 @@ static inline u32 acpm_get_early_wakeup_count(void) { return 0; }
 #define BITMAP_SIZE (EINTMASK_ARR_SIZE * 32)
 
 #if IS_ENABLED(CONFIG_PINCTRL_EXYNOS_GS)
-u32 exynos_eint_to_pin_num(int eint);
 extern u32 exynos_eint_wake_mask_array[EINTMASK_ARR_SIZE];
 #else
-u32 exynos_eint_to_pin_num(int eint) { return 0; }
 u32 exynos_eint_wake_mask_array[EINTMASK_ARR_SIZE] = {~0U, ~0U, ~0U};
 #endif
 
@@ -48,11 +46,8 @@ struct exynos_pm_info {
 	void __iomem *eint_far_base;
 	void __iomem *gic_base;		/* GICD_ISPENDRn base to check wkup reason */
 	void __iomem *mbox_aoc;
-	unsigned int num_eint;		/* Total number of EINT sources */
-	unsigned int num_eint_far;
+	void __iomem *mbox_aocf1;
 	unsigned int num_gic;		/* Total number of GIC sources */
-	unsigned int num_gpa;
-	unsigned int *gpa_use;
 
 	bool is_early_wakeup;
 	unsigned int suspend_mode_idx;	/* power mode to be used in suspend scenario */
