@@ -383,7 +383,7 @@
 				mfc_e_qos_variant_1 {
 					thrd_mb = <265147>;
 					freq_mfc = <310000>;
-					freq_int = <200000>;
+					freq_int = <178000>;
 					freq_mif = <421000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
@@ -394,7 +394,7 @@
 				mfc_e_qos_variant_2 {
 					thrd_mb = <551811>;
 					freq_mfc = <310000>;
-					freq_int = <200000>;
+					freq_int = <178000>;
 					freq_mif = <676000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
