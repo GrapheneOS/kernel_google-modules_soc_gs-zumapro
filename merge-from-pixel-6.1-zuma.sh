@@ -40,7 +40,7 @@ do_merge() {
   shift
   (
     cd ${dir} || exit 1
-    branch=partner/android14-gs-pixel-6.1-zuma
+    branch=partner/android14-gs-pixel-6.1-zuma-pro
     repo start ${BRANCH} . || exit 1
     commits="`git cherry -v ${branch} ${from_branch} |
                 sed -n 's/^[+] //p'`"
@@ -65,10 +65,10 @@ ${@}
 
 [ "Perform Merge" ]
 
-find private/google-modules -name .git |
+find private/google-modules private/devices/google/shusky -name .git |
   while read gitdir; do
     dir=${gitdir%/.git}
-    do_merge ${dir} partner/android14-gs-pixel-5.15 || 
+    do_merge ${dir} partner/android14-gs-pixel-6.1-zuma || 
 	    echo ERROR: merge ${dir} failed
   done 2>&1 |
   tee /dev/stderr |
