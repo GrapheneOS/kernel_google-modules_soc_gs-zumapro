@@ -14,6 +14,7 @@
 		#dma-size-cells = <1>;
 		dma-window = <0x30000000 0x80000000>; /* SysMMU attribute. */
 		gcip-dma-window = <0xB0000000 0x40000000>; /* GCIP IOMMU attribute. */
+		pasid-num-bits = <3>;
 		reg = <0x0 0x20C00000 0x01400000
 		       /* Mailboxes */
 		       0x0 0x15320000 0x1000
