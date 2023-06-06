@@ -21,8 +21,9 @@ enum acpm_gov_select_bit_offset {
 	STEPWISE = 0,
 	PI_LOOP  = 1,
 	TEMP_LUT = 2,
-	RESERVED = 3,
-	EARLY_THROTTLE = 4
+	HARDLIMIT_VIA_PID = 3,
+	EARLY_THROTTLE = 4,
+	INVALID_GOV_MOD = 8
 };
 
 struct gs_pi_param {
@@ -237,6 +238,7 @@ struct gs_tmu_data {
 	bool use_temp_lut_thermal;
 	u32 temp_state_lut_len;
 	struct gs_temp_lut_st *temp_state_lut;
+	bool use_hardlimit_pid;
 };
 
 enum throttling_stats_type {

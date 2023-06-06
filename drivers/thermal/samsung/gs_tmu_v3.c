@@ -2254,6 +2254,8 @@ static int gs_map_dt_data(struct platform_device *pdev)
 		dev_err(&pdev->dev, "No input control_temp_step\n");
 	}
 
+	data->use_hardlimit_pid = false;
+
 	data->acpm_gov_params.qword = 0;
 	if (of_property_read_bool(pdev->dev.of_node, "use-acpm-gov")) {
 		u32 temp;
@@ -2330,6 +2332,9 @@ static int gs_map_dt_data(struct platform_device *pdev)
 			// force turning off kernel mpmm throttling
 			data->cpu_hw_throttling_enable = false;
 		}
+
+		if (of_property_read_bool(pdev->dev.of_node, "use-hardlimit-pid"))
+			data->use_hardlimit_pid = true;
 	}
 
 	ret = of_property_read_string(pdev->dev.of_node, "mapped_cpus", &buf);
@@ -5236,6 +5241,12 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		gs_tmu_clear_temp_state_table(data);
 	} else {
 		data->acpm_gov_select &= ~(1 << TEMP_LUT);
+	}
+
+	if (data->use_pi_thermal && data->use_hardlimit_pid) {
+		data->acpm_gov_select |= 1 << HARDLIMIT_VIA_PID;
+	} else {
+		data->acpm_gov_select &= ~(1 << HARDLIMIT_VIA_PID);
 	}
 
 	/* STEPWISE is the default if no other governor configured */
