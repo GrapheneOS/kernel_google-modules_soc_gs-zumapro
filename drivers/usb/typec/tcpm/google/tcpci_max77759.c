@@ -2655,7 +2655,8 @@ static void dp_notification_work_item(struct kthread_work *work)
 			      ret < 0 ? "fail" : "success", ret);
 	}
 
-	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ? SBUSW_PATH_1 : 0);
+	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL,
+			      dp ? SBUSW_PATH_1 : (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
 	logbuffer_log(chip->log, "SBU dp switch %s %s ret:%d", dp ? "enable" : "disable",
 		      ret < 0 ? "fail" : "success", ret);
 
@@ -2671,6 +2672,11 @@ static int max77759_usb_set_mode(struct typec_mux_dev *mux, struct typec_mux_sta
 {
 	struct max77759_plat *chip = typec_mux_get_drvdata(mux);
 	struct dp_notification_event *evt;
+
+	if (!state || !state->alt) {
+		logbuffer_log(chip->log, "%s: dropping event", __func__);
+		return 0;
+	}
 
 	evt = devm_kzalloc(chip->dev, sizeof(*evt), GFP_KERNEL);
 	if (!evt) {
