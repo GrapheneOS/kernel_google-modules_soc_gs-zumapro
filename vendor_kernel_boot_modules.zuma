@@ -193,6 +193,7 @@ usb_f_rndis.ko
 usb_psy.ko
 usbc_cooling_dev.ko
 vh_cgroup.ko
+vh_fs.ko
 vh_mm.ko
 vh_sched.ko
 vh_thermal.ko
