@@ -50,6 +50,8 @@ static inline void soft_unlock(void __iomem *base)
 	etm_writel(base, OSLOCK_MAGIC, LAR);
 	dsb(sy);
 	isb();
+	while ((etm_readl(base, LSR) & 0x02) != 0x00)
+		;
 }
 
 struct etm_info {
@@ -104,6 +106,7 @@ struct trex_info {
 };
 struct exynos_etm_info {
 	struct etm_info		*cpu;
+	u32			etm_en_mask;
 	spinlock_t		trace_lock;
 	struct device		*dev;
 	bool			enabled;
@@ -111,7 +114,6 @@ struct exynos_etm_info {
 	u32			boot_start;
 	u32			etr_buf_size;
 	u32			etr_aux_buf_size;
-
 	u32			funnel_num;
 	struct funnel_info	*funnel;
 #ifdef CONFIG_EXYNOS_CORESIGHT_ETF
@@ -130,16 +132,18 @@ struct exynos_etm_info {
 static struct exynos_etm_info *ee_info;
 
 static void exynos_etm_set_funnel_port(struct funnel_info *funnel,
-				      int port, bool enabled)
+				       int port, bool enabled)
 {
 	soft_unlock(funnel->base);
 	funnel->port_status = etm_readl(funnel->base, FUNCTRL);
+
 	if (enabled) {
 		funnel->port_status |= BIT(port);
 	} else {
 		funnel->port_status &= ~BIT(port);
 		funnel->port_status |= funnel->manual_port_status;
 	}
+
 	etm_writel(funnel->base, funnel->port_status, FUNCTRL);
 	soft_lock(funnel->base);
 }
@@ -186,6 +190,7 @@ static void exynos_etm_etf_enable(void)
 {
 	unsigned int i, port, channel;
 	struct etf_info *etf;
+	struct etr_info *etr = &ee_info->etr;
 	struct funnel_info *funnel;
 
 	for (i = 0; i < ee_info->etf_num; i++) {
@@ -408,16 +413,13 @@ int gs_coresight_etm_external_etr_off(void)
 
 	if (!bdu_enable) {
 		ee_info->enabled = false;
-		exynos_etm_trace_stop();
 
 		for_each_possible_cpu(i) {
 			ee_info->cpu[i].enabled = false;
 		}
 
-		for_each_online_cpu(i) {
-			smp_call_function_single(i, exynos_etm_smp_enable, NULL,
-						 1);
-		}
+		exynos_etm_trace_stop();
+
 	} else {
 #ifdef CONFIG_EXYNOS_CORESIGHT_ETR
 		bdu_etr_disable();
@@ -443,6 +445,7 @@ int gs_coresight_etm_external_etr_off(void)
 static int exynos_etm_enable(unsigned int cpu)
 {
 	struct etm_info *info = &ee_info->cpu[cpu];
+	struct etr_info *etr = &ee_info->etr;
 	struct funnel_info *funnel;
 	unsigned int channel, port;
 
@@ -471,6 +474,7 @@ static int exynos_etm_enable(unsigned int cpu)
 	etm_writel(info->base, 0x201, ETMVICTLR);
 	etm_writel(info->base, 0x0, ETMVIIECTLR);
 	etm_writel(info->base, 0x0, ETMVISSCTLR);
+
 	etm_writel(info->base, 0x2, ETMAUXCTLR);
 
 	etm_writel(info->base, ETM_EN, ETMCTLR);
@@ -478,19 +482,26 @@ static int exynos_etm_enable(unsigned int cpu)
 
 	channel = info->f_port[CHANNEL];
 	port = info->f_port[PORT];
-	funnel = &ee_info->funnel[channel];
 
 	spin_lock(&ee_info->trace_lock);
-	info->status = true;
-	exynos_etm_set_funnel_port(funnel, port, true);
+	funnel = &ee_info->funnel[channel];
+
+	if (!ee_info->etm_en_mask) {
+		exynos_etm_set_funnel_port(funnel, port, true);
+	}
+	ee_info->etm_en_mask |= 1 << cpu;
 	spin_unlock(&ee_info->trace_lock);
 
+	info->status = true;
+
+	soft_lock(info->base);
 	return 0;
 }
 
 static int exynos_etm_disable(unsigned int cpu)
 {
 	struct etm_info *info = &ee_info->cpu[cpu];
+	struct etr_info *etr = &ee_info->etr;
 	struct funnel_info *funnel;
 	unsigned int channel, port;
 
@@ -499,16 +510,20 @@ static int exynos_etm_disable(unsigned int cpu)
 
 	channel = info->f_port[CHANNEL];
 	port = info->f_port[PORT];
-	funnel = &ee_info->funnel[channel];
 
 	spin_lock(&ee_info->trace_lock);
-	info->status = false;
-	exynos_etm_set_funnel_port(funnel, port, false);
+	ee_info->etm_en_mask &= ~(1 << cpu);
+	funnel = &ee_info->funnel[channel];
+	if (!ee_info->etm_en_mask) {
+		exynos_etm_set_funnel_port(funnel, port, false);
+	}
 	spin_unlock(&ee_info->trace_lock);
 
+	info->status = false;
 	soft_unlock(info->base);
 	etm_writel(info->base, !ETM_EN, ETMCTLR);
 	etm_writel(info->base, OSLOCK, ETMOSLAR);
+	soft_lock(info->base);
 
 	return 0;
 }
@@ -527,7 +542,7 @@ static void exynos_etm_smp_enable(void *ununsed)
 		exynos_etm_disable(cpu);
 
 	dev_info(ee_info->dev, "CPU%d ETM %sabled\n",
-			cpu, info->enabled ? "en" : "dis");
+			cpu, (info->enabled) ? "en" : "dis");
 }
 
 static ssize_t exynos_etm_print_info(char *buf)
@@ -1380,6 +1395,7 @@ static int exynos_etm_cs_etm_init_dt(struct device *dev)
 	ee_info->dev = dev;
 	ee_info->cpu = devm_kcalloc(dev, num_possible_cpus(),
 			sizeof(struct etm_info), GFP_KERNEL);
+	ee_info->etm_en_mask = 0x0;
 	if (!ee_info->cpu)
 		return -ENOMEM;
 
