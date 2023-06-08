@@ -2004,8 +2004,9 @@ static int s3c64xx_spi_suspend_operation(struct device *dev)
 #endif
 	}
 #endif
-	if (!pm_runtime_status_suspended(dev))
-		s3c64xx_spi_runtime_suspend(dev);
+	ret = pm_runtime_force_suspend(dev);
+	if (ret < 0)
+		return ret;
 
 	sdd->cur_speed = 0; /* Output Clock is stopped */
 
@@ -2019,8 +2020,9 @@ static int s3c64xx_spi_resume_operation(struct device *dev)
 	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 	int ret;
 
-	if (!pm_runtime_status_suspended(dev))
-		s3c64xx_spi_runtime_resume(dev);
+	ret = pm_runtime_force_resume(dev);
+	if (ret < 0)
+		return ret;
 
 	if (sci->domain == NO_POWER_DOMAIN) {
 		/* Enable the clock */
