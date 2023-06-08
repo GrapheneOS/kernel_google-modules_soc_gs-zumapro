@@ -1950,29 +1950,21 @@ static int s3c64xx_spi_runtime_resume(struct device *dev)
 			usleep_range(10000, 11000);
 	}
 
-	if (sci->domain == NO_POWER_DOMAIN) {
 #ifdef CONFIG_CPU_IDLE
-		exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
+	exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
 #endif
-		clk_prepare_enable(sdd->src_clk);
-		clk_prepare_enable(sdd->clk);
-	}
+	clk_prepare_enable(sdd->src_clk);
+	clk_prepare_enable(sdd->clk);
 
-	else if (sci->domain != NO_POWER_DOMAIN) {
-#ifdef CONFIG_CPU_IDLE
-		exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
-#endif
-		clk_prepare_enable(sdd->src_clk);
-		clk_prepare_enable(sdd->clk);
-
+	if (sci->domain != NO_POWER_DOMAIN) {
 		/* To avoid SW RESET make CS low, change to I2C */
 		regmap_update_bits(sci->usi_reg, sci->usi_offset,
 				USI_SW_CONF_MASK, USI_I2C_SW_CONF);
-		exynos_usi_init(sdd);
-		regmap_update_bits(sci->usi_reg, sci->usi_offset,
-				USI_SW_CONF_MASK, USI_SPI_SW_CONF);
-		s3c64xx_spi_hwinit(sdd, sdd->port_id);
 	}
+	exynos_usi_init(sdd);
+	regmap_update_bits(sci->usi_reg, sci->usi_offset,
+			USI_SW_CONF_MASK, USI_SPI_SW_CONF);
+	s3c64xx_spi_hwinit(sdd, sdd->port_id);
 
 	return 0;
 }
