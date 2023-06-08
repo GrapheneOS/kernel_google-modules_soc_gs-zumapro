@@ -197,12 +197,8 @@ static void exynos_etm_etf_enable(void)
 		etf = &ee_info->etf[i];
 		soft_unlock(etf->base);
 		etm_writel(etf->base, 0x0, TMCCTL);
-		etm_writel(etf->base, 0x800, TMCRSZ);
-#ifdef CONFIG_EXYNOS_CORESIGHT_ETR
+		//etm_writel(etf->base, 0x800, TMCRSZ);
 		etm_writel(etf->base, 0x2, TMCMODE);
-#else
-		etm_writel(etf->base, 0x0, TMCMODE);
-#endif
 		etm_writel(etf->base, 0x0, TMCTGR);
 		etm_writel(etf->base, 0x0, TMCFFCR);
 		etm_writel(etf->base, 0x1, TMCCTL);
@@ -453,32 +449,21 @@ static int exynos_etm_enable(unsigned int cpu)
 		return 0;
 
 	soft_unlock(info->base);
-	etm_writel(info->base, OSLOCK, ETMOSLAR);
+	etm_writel(info->base, !ETM_EN, ETMCTLR);
+	etm_writel(info->base, !OSLOCK, ETMOSLAR);
 	etm_writel(info->base, !ETM_EN, ETMCTLR);
 
 	/* Main control and Configuration */
-	etm_writel(info->base, 0, ETMPROCSELR);
-	etm_writel(info->base, TIMESTAMP, ETMCONFIG);
-	etm_writel(info->base, PERIOD(8), ETMSYNCPR);
-
-	etm_writel(info->base, cpu + 1, ETMTRACEIDR);
-
-	etm_writel(info->base, 0x1000, ETMEVENTCTL0R);
+	etm_writel(info->base, 0xc1, ETMCONFIG);
+	etm_writel(info->base, 0x0, ETMEVENTCTL0R);
 	etm_writel(info->base, 0x0, ETMEVENTCTL1R);
-	etm_writel(info->base, 0xc, ETMSTALLCTLR);
-	etm_writel(info->base, 0x801, ETMCONFIG);
+	etm_writel(info->base, 0x0, ETMSTALLCTLR);
+	etm_writel(info->base, 0xc, ETMSYNCPR);
+	etm_writel(info->base, cpu + 1, ETMTRACEIDR);
 	etm_writel(info->base, 0x0, ETMTSCTLR);
-	etm_writel(info->base, 0x4, ETMCCCCTLR);
-
-
 	etm_writel(info->base, 0x201, ETMVICTLR);
 	etm_writel(info->base, 0x0, ETMVIIECTLR);
 	etm_writel(info->base, 0x0, ETMVISSCTLR);
-
-	etm_writel(info->base, 0x2, ETMAUXCTLR);
-
-	etm_writel(info->base, ETM_EN, ETMCTLR);
-	etm_writel(info->base, !OSLOCK, ETMOSLAR);
 
 	channel = info->f_port[CHANNEL];
 	port = info->f_port[PORT];
@@ -493,6 +478,9 @@ static int exynos_etm_enable(unsigned int cpu)
 	spin_unlock(&ee_info->trace_lock);
 
 	info->status = true;
+
+	etm_writel(info->base, ETM_EN, ETMCTLR);
+	etm_writel(info->base, OSLOCK, ETMOSLAR);
 
 	soft_lock(info->base);
 	return 0;
@@ -521,6 +509,7 @@ static int exynos_etm_disable(unsigned int cpu)
 
 	info->status = false;
 	soft_unlock(info->base);
+	etm_writel(info->base, !OSLOCK, ETMOSLAR);
 	etm_writel(info->base, !ETM_EN, ETMCTLR);
 	etm_writel(info->base, OSLOCK, ETMOSLAR);
 	soft_lock(info->base);
