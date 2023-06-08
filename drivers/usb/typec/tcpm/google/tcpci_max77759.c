@@ -2093,7 +2093,7 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 }
 
 static void max77759_store_partner_src_caps(void *unused, unsigned int *nr_source_caps,
-					    u32 (*source_caps)[PDO_MAX_OBJECTS])
+					    u32 (*source_caps)[])
 {
 	int i;
 
