@@ -103,6 +103,8 @@ struct dwc3_exynos {
 
 	/* Flag for setting current_dr_role peripheral */
 	int			need_dr_role;
+
+	struct xhci_goog_dma_coherent_mem	**mem;
 };
 
 static inline u32 dwc3_exynos_readl(void __iomem *base, u32 offset)

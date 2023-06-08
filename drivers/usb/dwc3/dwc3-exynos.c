@@ -34,6 +34,9 @@
 #include "core-exynos.h"
 #include "dwc3-exynos-ldo.h"
 #include "exynos-otg.h"
+#if IS_ENABLED(CONFIG_USB_XHCI_GOOG_DMA)
+#include "xhci-goog-dma.h"
+#endif
 
 static const struct of_device_id exynos_dwc3_match[] = {
 	{
@@ -635,6 +638,43 @@ static int dwc3_exynos_remove_child(struct device *dev, void *unused)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_USB_XHCI_GOOG_DMA)
+static struct xhci_goog_dma_coherent_mem **dwc3_exynos_get_dma_coherent_mem(struct device *dev)
+{
+	struct xhci_goog_dma_coherent_mem **dma_mem = NULL;
+	struct device *dwc3_exynos = dev->parent;
+	struct dwc3_exynos *exynos = dev_get_drvdata(dwc3_exynos);
+
+	if (exynos) {
+		if (!exynos->mem) {
+			exynos->mem = devm_kzalloc(dev,
+				XHCI_GOOG_DMA_RMEM_MAX*sizeof(struct xhci_goog_dma_coherent_mem *),
+				GFP_KERNEL);
+		}
+
+		dma_mem = exynos->mem;
+	}
+
+	return dma_mem;
+}
+
+static void dwc3_exynos_put_dma_coherent_mem(struct device *dev)
+{
+	struct device *dwc3_exynos = dev->parent;
+	struct dwc3_exynos *exynos = dev_get_drvdata(dwc3_exynos);
+
+	if (exynos) {
+		if (exynos->mem) {
+			dev_dbg(dev, "Free the DMA memory.\n");
+			exynos->mem[XHCI_GOOG_DMA_RMEM_SRAM] = NULL;
+			exynos->mem[XHCI_GOOG_DMA_RMEM_DRAM] = NULL;
+			devm_kfree(dev, exynos->mem);
+			exynos->mem = NULL;
+		}
+	}
+}
+#endif
+
 int dwc3_exynos_host_init(struct dwc3_exynos *exynos)
 {
 	struct dwc3		*dwc = exynos->dwc;
@@ -669,6 +709,11 @@ int dwc3_exynos_host_init(struct dwc3_exynos *exynos)
 	dwc->xhci_resources[1].end = irq;
 	dwc->xhci_resources[1].flags = IORESOURCE_IRQ | irq_get_trigger_type(irq);
 	dwc->xhci_resources[1].name = of_node_full_name(dwc3_pdev->dev.of_node);
+
+#if IS_ENABLED(CONFIG_USB_XHCI_GOOG_DMA)
+	xhci_goog_register_get_cb(dwc3_exynos_get_dma_coherent_mem);
+	xhci_goog_register_put_cb(dwc3_exynos_put_dma_coherent_mem);
+#endif
 
 	xhci = platform_device_alloc("xhci-hcd-exynos", PLATFORM_DEVID_AUTO);
 	if (!xhci) {
@@ -732,6 +777,11 @@ void dwc3_exynos_host_exit(struct dwc3_exynos *exynos)
 	struct dwc3		*dwc = exynos->dwc;
 
 	platform_device_unregister(dwc->xhci);
+
+#if IS_ENABLED(CONFIG_USB_XHCI_GOOG_DMA)
+	xhci_goog_unregister_get_cb();
+	xhci_goog_unregister_put_cb();
+#endif
 }
 EXPORT_SYMBOL_GPL(dwc3_exynos_host_exit);
 
