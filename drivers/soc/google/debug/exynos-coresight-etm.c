@@ -193,6 +193,9 @@ static void exynos_etm_etf_enable(void)
 	struct etr_info *etr = &ee_info->etr;
 	struct funnel_info *funnel;
 
+	if (etr->hwacg)
+		writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
+
 	for (i = 0; i < ee_info->etf_num; i++) {
 		etf = &ee_info->etf[i];
 		soft_unlock(etf->base);
@@ -291,9 +294,6 @@ static void exynos_etm_etr_disable(void)
 		etr->buf_pointer |= etm_readl(etr->base, TMCRWP);
 	}
 	soft_lock(etr->base);
-
-	if (etr->hwacg)
-		writel_relaxed(0x0, etr->sfr_base + etr->qch_offset);
 }
 
 static void bdu_etr_enable(void)
@@ -361,6 +361,9 @@ int gs_coresight_etm_external_etr_on(u64 buf_addr, u32 buf_size)
 		dev_err(ee_info->dev, "Coresight requires SJTAG auth\n");
 		return -EACCES;
 	}
+
+	if (etr->hwacg)
+		writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
 
 	etr->aux_buf_addr = buf_addr;
 	ee_info->etr_aux_buf_size = buf_size;
@@ -475,6 +478,9 @@ static int exynos_etm_enable(unsigned int cpu)
 	funnel = &ee_info->funnel[channel];
 
 	if (!ee_info->etm_en_mask) {
+		if (etr->hwacg)
+			writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
+
 		exynos_etm_set_funnel_port(funnel, port, true);
 	}
 	ee_info->etm_en_mask |= 1 << cpu;
@@ -508,6 +514,8 @@ static int exynos_etm_disable(unsigned int cpu)
 	ee_info->etm_en_mask &= ~(1 << cpu);
 	funnel = &ee_info->funnel[channel];
 	if (!ee_info->etm_en_mask) {
+		if (etr->hwacg)
+			writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
 		exynos_etm_set_funnel_port(funnel, port, false);
 	}
 	spin_unlock(&ee_info->trace_lock);
@@ -614,6 +622,7 @@ static ssize_t exynos_etm_print_info(char *buf)
 void exynos_etm_trace_start(void)
 {
 	char *buf;
+	struct etr_info *etr = &ee_info->etr;
 
 	if (!ee_info->enabled || ee_info->status)
 		return;
@@ -626,6 +635,9 @@ void exynos_etm_trace_start(void)
 	buf = devm_kzalloc(ee_info->dev, PAGE_SIZE, GFP_KERNEL);
 	if (!buf)
 		return;
+
+	if (etr->hwacg)
+		writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
 
 	ee_info->status = true;
 
