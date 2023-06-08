@@ -151,7 +151,9 @@ static int exynos_devfreq_get_dev_status(struct device *dev,
 		div64_u64(stat->busy_time * 100, stat->total_time);
 
 	for (i = 0; i < data->um_data.um_count_total; i++) {
-		exynos_reset_ppc(data->um_data.va_base[i]);
+		if (!data->um_data.ppc_read_reset_disable) {
+			exynos_reset_ppc(data->um_data.va_base[i]);
+		}
 		exynos_start_ppc(data->um_data.va_base[i]);
 	}
 
