@@ -14,6 +14,7 @@
 #include <linux/of.h>
 #include <linux/io.h>
 #include <asm/barrier.h>
+#include <asm/sysreg.h>
 #include <soc/google/debug-snapshot.h>
 #include <soc/google/sjtag-driver.h>
 
@@ -37,6 +38,17 @@
 #define BDU_AMATCH1 0x18
 #define BDU_AMASK1 0x1C
 #define BDU_AMATCH_CTRL 0x20
+
+static inline u64 read_trfcr(void)
+{
+	return read_sysreg_s(SYS_TRFCR_EL1);
+}
+
+static inline void write_trfcr(u64 val)
+{
+	write_sysreg_s(val, SYS_TRFCR_EL1);
+	isb();
+}
 
 static inline void soft_lock(void __iomem *base)
 {
@@ -130,6 +142,19 @@ struct exynos_etm_info {
 };
 
 static struct exynos_etm_info *ee_info;
+
+static void set_trfcr(bool enable)
+{
+	u64 trfcr = read_trfcr();
+
+	if (!!enable) {
+		trfcr |= 0x63;
+	} else {
+		trfcr &= ~(0x63);
+	}
+
+	write_trfcr(trfcr);
+}
 
 static void exynos_etm_set_funnel_port(struct funnel_info *funnel,
 				       int port, bool enabled)
@@ -474,6 +499,8 @@ static int exynos_etm_enable(unsigned int cpu)
 	channel = info->f_port[CHANNEL];
 	port = info->f_port[PORT];
 
+	set_trfcr(true);
+
 	spin_lock(&ee_info->trace_lock);
 	funnel = &ee_info->funnel[channel];
 
@@ -509,6 +536,8 @@ static int exynos_etm_disable(unsigned int cpu)
 
 	channel = info->f_port[CHANNEL];
 	port = info->f_port[PORT];
+
+	set_trfcr(false);
 
 	spin_lock(&ee_info->trace_lock);
 	ee_info->etm_en_mask &= ~(1 << cpu);
