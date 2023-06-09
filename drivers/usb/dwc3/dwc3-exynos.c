@@ -1186,9 +1186,13 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 
 	ret = dwc3_exynos_extcon_register(exynos);
 	if (ret < 0) {
-		dev_err(dev, "failed to register extcon\n");
-		ret = -EPROBE_DEFER;
-		goto vdd33_err;
+		if (ret == -EINVAL)
+			dev_warn(dev, "no extcon found\n");
+		else {
+			dev_err(dev, "failed to register extcon (%d)\n", ret);
+			ret = -EPROBE_DEFER;
+			goto vdd33_err;
+		}
 	}
 
 	ret = dwc3_exynos_register_phys(exynos);
@@ -1274,6 +1278,10 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 		dwc3_exynos_vbus_event(exynos->dev, 1);
 	else if (extcon_get_state(exynos->edev, EXTCON_USB_HOST) > 0)
 		dwc3_exynos_id_event(exynos->dev, 0);
+	else {
+		dev_warn(exynos->dev, "Couldn't find extcon. Enable vbus event forcibly.");
+		dwc3_exynos_vbus_event(exynos->dev, 1);
+	}
 
 	return 0;
 
