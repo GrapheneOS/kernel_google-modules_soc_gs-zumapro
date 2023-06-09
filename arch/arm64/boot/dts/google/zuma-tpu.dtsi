@@ -41,15 +41,15 @@
 		edgetpu,shareability = <0x1A320000>; /* SYSREG_TPU */
 		pmu-status-base = <0x15462504>; /* PMU TPU_STATUS */
 		gsa-device=<&gsa>;
-		/* TODO(b/259344339): Check if below values are still vaild. */
-		gcip-dvfs-table-size = <7 2>; /*<row col>*/
+		gcip-dvfs-table-size = <8 2>; /*<row col>*/
 		gcip-dvfs-table = <
 		/* when updating gcip-dvfs-table, update gcip-dvfs-table-size as well
 		 *        freq  power(mW)
 		 *----------------------------------
 		 */
 			1119000 128
-			 967000 131
+			1119000 128
+			 967000 127
 			 845000  95
 			 712000  91
 			 627000  73
