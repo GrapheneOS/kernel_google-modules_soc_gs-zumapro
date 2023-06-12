@@ -53,6 +53,8 @@
 		early_throttle_k_p = <50>;
 		early_throttle_offset = <10>; // in Celsius
 
+		use-hardlimit-pid;
+
 		tmu_work_affinity = "0-8";
 
 		use-acpm-gov;
