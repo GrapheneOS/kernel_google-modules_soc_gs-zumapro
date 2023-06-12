@@ -9,10 +9,10 @@
 //#include <dt-bindings/clock/gs101.h>
 
 &reserved_memory {
-	xhci_dma: xhci_dma@17BC0000 {
+	xhci_dma: xhci_dma@97000000 {
 		compatible = "shared-dma-pool";
-		reg = <0x0 0x17BC0000 0x40000>;
-		no-map;
+		reg = <0x0 0x97000000 0x400000>;
+		reusable;
 	};
 };
 
