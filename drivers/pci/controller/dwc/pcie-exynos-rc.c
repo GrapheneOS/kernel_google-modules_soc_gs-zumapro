@@ -66,6 +66,7 @@
 
 struct exynos_pcie g_pcie_rc[MAX_RC_NUM];
 int pcie_is_linkup;	/* checkpatch: do not initialise globals to 0 */
+static bool d3_ack_timeout_occurred = 0;
 static struct separated_msi_vector sep_msi_vec[MAX_RC_NUM][PCIE_MAX_SEPA_IRQ_NUM];
 static bool is_vhook_registered;
 
@@ -1154,6 +1155,14 @@ void exynos_pcie_rc_print_link_history(struct pcie_port *pp)
 	}
 }
 
+void exynos_pcie_d3_ack_timeout_set(bool val)
+{
+	struct exynos_pcie *exynos_pcie = &(g_pcie_rc[1]);
+	d3_ack_timeout_occurred = val;
+	logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR, "D3 ack flag set to %d\n", d3_ack_timeout_occurred);
+}
+EXPORT_SYMBOL_GPL(exynos_pcie_d3_ack_timeout_set);
+
 static int exynos_pcie_rc_rd_own_conf(struct pcie_port *pp, int where, int size, u32 *val)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
@@ -1163,6 +1172,11 @@ static int exynos_pcie_rc_rd_own_conf(struct pcie_port *pp, int where, int size,
 	int ret = 0;
 	u32 __maybe_unused reg_val;
 	unsigned long flags;
+
+	if ((exynos_pcie->ch_num == 1) && d3_ack_timeout_occurred) {
+		*val = 0xffffffff;
+		return PCIBIOS_DEVICE_NOT_FOUND;
+	}
 
 	/* For Wifi, skip reading conf in cpl_timeout_recovery */
 	if ((exynos_pcie->ch_num == 1)
@@ -1217,6 +1231,9 @@ static int exynos_pcie_rc_wr_own_conf(struct pcie_port *pp, int where, int size,
 	int ret = 0;
 	u32 __maybe_unused reg_val;
 	unsigned long flags;
+
+	if ((exynos_pcie->ch_num == 1) && d3_ack_timeout_occurred)
+		return PCIBIOS_DEVICE_NOT_FOUND;
 
 	/* For Wifi, skip writing conf in cpl_timeout_recovery */
 	if ((exynos_pcie->ch_num == 1)
@@ -1449,7 +1466,11 @@ static int exynos_pcie_rc_rd_other_conf_new(struct pci_bus *bus,
 {
 	struct pcie_port *pp = bus->sysdata;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	int ret = 0;
+
+	if ((exynos_pcie->ch_num == 1) && d3_ack_timeout_occurred)
+		return ret;
 
 	if (exynos_pcie_rc_link_up(pci))
 		ret = exynos_pcie_rc_rd_other_conf(pp, bus, devfn, where, size, val);
@@ -1462,7 +1483,11 @@ static int exynos_pcie_rc_wr_other_conf_new(struct pci_bus *bus,
 {
 	struct pcie_port *pp = bus->sysdata;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	int ret = 0;
+
+	if ((exynos_pcie->ch_num == 1) && d3_ack_timeout_occurred)
+		return ret;
 
 	if (exynos_pcie_rc_link_up(pci))
 		ret = exynos_pcie_rc_wr_other_conf(pp, bus, devfn, where, size, val);
@@ -3573,6 +3598,10 @@ int exynos_pcie_pm_resume(int ch_num)
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 
 	logbuffer_log(exynos_pcie->log, "pm_resume api called");
+	if (d3_ack_timeout_occurred) {
+		d3_ack_timeout_occurred = 0;
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR, "reset d3 ack flag\n");
+	}
 	return exynos_pcie_rc_poweron(ch_num);
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_pm_resume);
