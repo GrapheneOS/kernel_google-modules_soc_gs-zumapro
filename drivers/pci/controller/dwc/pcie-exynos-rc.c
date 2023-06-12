@@ -2387,6 +2387,9 @@ void exynos_pcie_rc_dislink_work(struct work_struct *work)
 		pcie_is_linkup = 0;
 	}
 
+	/* Reset ATU flag as dislink */
+	exynos_pcie->atu_ok = 0;
+
 	exynos_pcie_notify_callback(pp, EXYNOS_PCIE_EVENT_LINKDOWN);
 }
 
@@ -2405,6 +2408,9 @@ void exynos_pcie_rc_cpl_timeout_work(struct work_struct *work)
 		dev_info(dev, "[%s] pcie_is_linkup = 0\n", __func__);
 		pcie_is_linkup = 0;
 	}
+
+	/* Reset ATU flag as CPL timeout */
+	exynos_pcie->atu_ok = 0;
 
 	dev_info(dev, "call PCIE_CPL_TIMEOUT callback\n");
 	exynos_pcie_notify_callback(pp, EXYNOS_PCIE_EVENT_CPL_TIMEOUT);
