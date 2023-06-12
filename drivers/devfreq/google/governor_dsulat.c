@@ -160,11 +160,10 @@ static unsigned long core_to_dev_freq(int cpu, struct dsulat_node *node,
 	if (!map)
 		goto out;
 
-	while (map->core_mhz && map->core_mhz < coref)
+	while (map->core_mhz && map->core_mhz <= coref) {
+		freq = map->target_freq;
 		map++;
-	if (!map->core_mhz)
-		map--;
-	freq = map->target_freq;
+	}
 
 out:
 	pr_debug("latency_mode %d, cpu %d, freq: %lu -> dev: %lu\n", latency_mode, cpu, coref, freq);
@@ -257,11 +256,10 @@ static unsigned long dsu_to_bci_freq(struct dsulat_node *node,
 		goto out;
 
 	dsuf = dsuf / 1000;
-	while (map->core_mhz && map->core_mhz < dsuf)
+	while (map->core_mhz && map->core_mhz <= dsuf) {
+		freq = map->target_freq;
 		map++;
-	if (!map->core_mhz)
-		map--;
-	freq = map->target_freq;
+	}
 
 out:
 	pr_debug("dsuf: %lu -> bcif: %lu\n", dsuf, freq);
@@ -612,43 +610,43 @@ static struct dsulat_node *register_common(struct device *dev)
 	node->ratio_ceil_cl1 = 1000;
 	node->ratio_ceil_cl2 = 3000;
 
-	node->freq_map_cl0_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl0-low-latency");
+	node->freq_map_cl0_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl0-low-latency-v2");
 	if (!node->freq_map_cl0_low_latency) {
 		dev_err(dev, "Couldn't find the core-dev low latency freq table for cl0!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl1_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl1-low-latency");
+	node->freq_map_cl1_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl1-low-latency-v2");
 	if (!node->freq_map_cl1_low_latency) {
 		dev_err(dev, "Couldn't find the core-dev low latency freq table for cl1!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl2_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl2-low-latency");
+	node->freq_map_cl2_low_latency = init_core_dev_map(dev, NULL, "core-dev-table-cl2-low-latency-v2");
 	if (!node->freq_map_cl2_low_latency) {
 		dev_err(dev, "Couldn't find the core-dev low latency freq table for cl2!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl0_base = init_core_dev_map(dev, NULL, "core-dev-table-cl0-base");
+	node->freq_map_cl0_base = init_core_dev_map(dev, NULL, "core-dev-table-cl0-base-v2");
 	if (!node->freq_map_cl0_base) {
 		dev_err(dev, "Couldn't find the core-dev base freq table for cl0!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl1_base = init_core_dev_map(dev, NULL, "core-dev-table-cl1-base");
+	node->freq_map_cl1_base = init_core_dev_map(dev, NULL, "core-dev-table-cl1-base-v2");
 	if (!node->freq_map_cl1_base) {
 		dev_err(dev, "Couldn't find the core-dev base freq table for cl1!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_cl2_base = init_core_dev_map(dev, NULL, "core-dev-table-cl2-base");
+	node->freq_map_cl2_base = init_core_dev_map(dev, NULL, "core-dev-table-cl2-base-v2");
 	if (!node->freq_map_cl2_base) {
 		dev_err(dev, "Couldn't find the core-dev base freq table for cl2!\n");
 		return ERR_PTR(-EINVAL);
 	}
 
-	node->freq_map_dsu_bci = init_core_dev_map(dev, NULL, "dsu-bci-table");
+	node->freq_map_dsu_bci = init_core_dev_map(dev, NULL, "dsu-bci-table-v2");
 	if (!node->freq_map_dsu_bci) {
 		dev_err(dev, "Couldn't find the dsu-bci freq table!\n");
 		return ERR_PTR(-EINVAL);
