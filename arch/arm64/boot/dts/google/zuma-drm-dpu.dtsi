@@ -726,7 +726,7 @@
 		 *
 		 * DSI0(0x1), DSI1(0x2), VIDI(0x8), DP(0x10)
 		 */
-		connector = <0x8 0x10>;
+		connector = <0x10>;
 
 		itmon,port = "DPUF", "DPUB";
 		itmon,dest = "DPUF", "DPUB";
