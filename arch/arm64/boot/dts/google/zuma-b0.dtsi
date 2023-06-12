@@ -41,26 +41,30 @@
 &dsu_lat {
 		/* CL0         DSU */
 	core-dev-table-cl0-low-latency =
-		<  610000        324000
-		  1197000        610000
-		  1425000        820000
-		  1785000        970000
-		  2024000       1197000
-		  2147000       1548000 >;
+		<  324000        324000
+		   610000        610000
+		   820000        820000
+		   955000        970000
+		  1704000       1197000 >;
 
 		/* CL1         DSU */
 	core-dev-table-cl1-low-latency =
-		< 1221000       610000
-		  1945000       820000
-		  2367000       970000 >;
+		<  402000        324000
+		   712000        610000
+		   910000        820000
+		  1836000        970000
+		  2367000       1197000 >;
 
 		/* CL2         DSU */
 	core-dev-table-cl2-low-latency =
-		< 1164000       820000
-		  1745000       970000
-		  2049000      1098000
-		  2556000      1197000
-		  2802000      1328000 >;
+		<  500000        324000
+		   880000        610000
+		  1164000        820000
+		  1745000        970000
+		  2049000       1098000
+		  2556000       1197000
+		  2943000       1328000 >;
+
 
 		   /* CL0         DSU */
 	core-dev-table-cl0-base =
@@ -115,7 +119,7 @@
 	dsu-bci-table =
 		/* DSU         BCI */
 		< 324000        315000
-		610000        575000
+		610000        315000
 		820000        840000
 		970000        1050000
 		1098000       1050000
@@ -128,4 +132,105 @@
 		1950000       1401000
 		2024000       1401000
 		2120000       1401000>;
+};
+
+/* S2MPUs in B0 has sync device which is not discoverable from IP version. */
+&s2mpu_s0_aur {
+	built-in-sync;
+};
+
+&s2mpu_s0_bw {
+	built-in-sync;
+};
+
+&s2mpu_s0_cpucl0 {
+	built-in-sync;
+};
+
+&s2mpu_s0_eh {
+	built-in-sync;
+};
+
+&s2mpu_s0_g2d {
+	built-in-sync;
+};
+
+&s2mpu_s0_g3d {
+	built-in-sync;
+};
+
+&s2mpu_s0_gdc {
+	built-in-sync;
+};
+
+&s2mpu_s0_gse {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi0 {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi1 {
+	built-in-sync;
+};
+
+&s2mpu_s0_hsi2 {
+	built-in-sync;
+};
+
+&s2mpu_s0_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s1_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s2_ispfe {
+	built-in-sync;
+};
+
+&s2mpu_s0_mcsc {
+	built-in-sync;
+};
+
+&s2mpu_s0_mfc {
+	built-in-sync;
+};
+
+&s2mpu_s0_misc {
+	built-in-sync;
+};
+
+&s2mpu_s0_rgbp {
+	built-in-sync;
+};
+
+&s2mpu_s1_rgbp {
+	built-in-sync;
+};
+
+&s2mpu_s0_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s1_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s2_tnr {
+	built-in-sync;
+};
+
+&s2mpu_s0_tpu {
+	built-in-sync;
+};
+
+&s2mpu_s0_yuvp {
+	built-in-sync;
+};
+
+&s2mpu_s0_gsa {
+	built-in-sync;
 };

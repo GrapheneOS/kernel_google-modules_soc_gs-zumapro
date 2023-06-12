@@ -17,7 +17,7 @@ void mfc_slc_enable(struct mfc_core *core)
 	mfc_core_debug_enter();
 
 	if (slc_disable)
-		return;
+		goto done;
 
 	/*
 	 * SSMT ALLOCATE_OVERRIDE set to BYPASS
@@ -35,7 +35,9 @@ void mfc_slc_enable(struct mfc_core *core)
 		MFC_SSMT1_WRITEL(MFC_SLC_CMD_SSMT_AXI_XXX_SLC, 0x800 + 0x4 * i);
 	}
 
-	core->ptid = pt_client_enable(core->pt_handle, 0);
+	/* default use 512KB for internal buffers */
+	core->curr_slc_pt_idx = MFC_SLC_PARTITION_512KB;
+	core->ptid = pt_client_enable(core->pt_handle, core->curr_slc_pt_idx);
 
 	/*
 	 * SSMT PID settings for internal buffers
@@ -60,6 +62,7 @@ void mfc_slc_enable(struct mfc_core *core)
 	mfc_core_info("[SLC] enabled ptid: %d\n", core->ptid);
 	MFC_TRACE_CORE("[SLC] enabled\n");
 
+done:
 	mfc_core_debug_leave();
 }
 
@@ -67,27 +70,32 @@ void mfc_slc_disable(struct mfc_core *core)
 {
 	mfc_core_debug_enter();
 
-	pt_client_disable(core->pt_handle, 0);
+	pt_client_disable(core->pt_handle, core->curr_slc_pt_idx);
 	core->slc_on_status = 0;
+	core->curr_slc_pt_idx = MFC_SLC_PARTITION_INVALID;
+
 	mfc_core_info("[SLC] disabled\n");
 	MFC_TRACE_CORE("[SLC] disabled\n");
 
 	mfc_core_debug_leave();
 }
 
-void mfc_slc_flush(struct mfc_core *core)
+void mfc_slc_flush(struct mfc_core *core, struct mfc_ctx *ctx)
 {
 	mfc_core_debug_enter();
 
 	if (slc_disable)
-		return;
+		goto done;
 
 	mfc_slc_disable(core);
 	mfc_slc_enable(core);
 
+	mfc_slc_update_partition(core, ctx);
+
 	mfc_core_debug(2, "[SLC] flushed\n");
 	MFC_TRACE_CORE("[SLC] flushed\n");
 
+done:
 	mfc_core_debug_leave();
 }
 
@@ -109,10 +117,12 @@ void mfc_client_pt_register(struct mfc_core *core)
 		mfc_pt_resize_callback);
 	if (!IS_ERR(core->pt_handle)) {
 		core->has_slc = 1;
+		core->num_slc_pt = of_property_count_strings(core->device->of_node, "pt_id");
 		mfc_core_info("[SLC] PT Client Register success\n");
 	} else {
 		core->pt_handle = NULL;
 		core->has_slc = 0;
+		core->num_slc_pt = 0;
 		mfc_core_info("[SLC] PT Client Register fail\n");
 	}
 
@@ -130,6 +140,33 @@ void mfc_client_pt_unregister(struct mfc_core *core)
 		mfc_core_info("[SLC] PT Client Unregister.\n");
 	}
 
+	mfc_core_debug_leave();
+}
+
+void mfc_slc_update_partition(struct mfc_core *core, struct mfc_ctx *ctx)
+{
+	mfc_core_debug_enter();
+
+	if (slc_disable)
+		goto done;
+
+	if (core->num_slc_pt > 1) {
+		/* When codec resolution >= 4k, resizing SLC partition to 1MB */
+		if (OVER_UHD_RES(ctx) && (core->curr_slc_pt_idx == MFC_SLC_PARTITION_512KB)) {
+			core->ptid = pt_client_mutate(core->pt_handle,
+				core->curr_slc_pt_idx, MFC_SLC_PARTITION_1MB);
+
+			if (core->ptid == PT_PTID_INVALID) {
+				mfc_core_err("[SLC] Resizing SLC partition fail");
+				mfc_slc_disable(core);
+			} else {
+				mfc_core_info("[SLC] Resizing SLC partition success\n");
+				core->curr_slc_pt_idx = MFC_SLC_PARTITION_1MB;
+			}
+		}
+	}
+
+done:
 	mfc_core_debug_leave();
 }
 #endif

@@ -170,7 +170,7 @@
 
 		/* QoS bitrate */
 		num_mfc_freq = <5>;
-		mfc_freqs = <100000 310000 465000 664000 711000>;
+		mfc_freqs = <100000 310000 400000 465000 664000>;
 		/* spec: H264(240M) VP8(80M) */
 		max_Kbps = <245760 81920>;
 
@@ -239,7 +239,9 @@
 			need_llc_flush = <0>;
 
 			/* SLC (System Level Cache) */
-			pt_id = "MFC";
+			pt_id =
+				"MFC_p0",
+				"MFC_p1";
 
 			/* vOTF */
 			/* mfc_votf_base = <0x16650000>; */
@@ -383,7 +385,7 @@
 				mfc_e_qos_variant_1 {
 					thrd_mb = <265147>;
 					freq_mfc = <310000>;
-					freq_int = <200000>;
+					freq_int = <178000>;
 					freq_mif = <421000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;
@@ -394,7 +396,7 @@
 				mfc_e_qos_variant_2 {
 					thrd_mb = <551811>;
 					freq_mfc = <310000>;
-					freq_int = <200000>;
+					freq_int = <178000>;
 					freq_mif = <676000>;
 					mo_value = <0>;
 					mo_10bit_value = <0>;

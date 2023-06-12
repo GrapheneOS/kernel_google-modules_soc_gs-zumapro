@@ -180,8 +180,7 @@ DECLARE_STATIC_KEY_FALSE(uclamp_max_filter_enable);
 
 DECLARE_STATIC_KEY_FALSE(tapered_dvfs_headroom_enable);
 
-#define SCHED_PIXEL_BLOCK_UPDATES		BIT(8)
-#define SCHED_PIXEL_RESUME_UPDATES		BIT(9)
+#define SCHED_PIXEL_FORCE_UPDATE		BIT(8)
 
 /*****************************************************************************/
 /*                       Upstream Code Section                               */
@@ -617,11 +616,13 @@ static inline bool uclamp_is_ignore_uclamp_max(struct task_struct *p)
 	return vp->uclamp_filter.uclamp_max_ignored;
 }
 
-static inline void apply_uclamp_filters(struct rq *rq, struct task_struct *p)
+static inline bool apply_uclamp_filters(struct rq *rq, struct task_struct *p)
 {
 	bool auto_uclamp_max = get_vendor_task_struct(p)->auto_uclamp_max_flags;
+	bool filtered = false;
 
 	if (auto_uclamp_max) {
+		filtered = true;
 		/* GKI has incremented it already, undo that */
 		uclamp_rq_dec_id(rq, p, UCLAMP_MAX);
 		/* update uclamp_max if set to auto */
@@ -630,6 +631,7 @@ static inline void apply_uclamp_filters(struct rq *rq, struct task_struct *p)
 	}
 
 	if (uclamp_can_ignore_uclamp_max(rq, p)) {
+		filtered = true;
 		uclamp_set_ignore_uclamp_max(p);
 		if (!auto_uclamp_max) {
 			/* GKI has incremented it already, undo that */
@@ -644,8 +646,11 @@ static inline void apply_uclamp_filters(struct rq *rq, struct task_struct *p)
 	}
 
 	if (uclamp_can_ignore_uclamp_min(rq, p)) {
+		filtered = true;
 		uclamp_set_ignore_uclamp_min(p);
 		/* GKI has incremented it already, undo that */
 		uclamp_rq_dec_id(rq, p, UCLAMP_MIN);
 	}
+
+	return filtered;
 }

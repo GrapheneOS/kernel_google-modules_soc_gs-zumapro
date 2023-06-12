@@ -371,7 +371,7 @@ int mfc_core_cmd_dec_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_llc_flush(core);
 
 		if (core->has_slc && core->slc_on_status)
-			mfc_slc_flush(core);
+			mfc_slc_flush(core, ctx);
 
 		mfc_release_codec_buffers(core_ctx);
 		ret = mfc_alloc_codec_buffers(core_ctx);
@@ -387,6 +387,7 @@ int mfc_core_cmd_dec_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 
 	if (core->has_slc && core->slc_on_status) {
+		mfc_slc_update_partition(core, ctx);
 		MFC_CORE_WRITEL(MFC_SLC_CMD_ATTR, MFC_REG_D_AXI_RD_ATTR0_SLC);
 		MFC_CORE_WRITEL(MFC_SLC_CMD_ATTR, MFC_REG_D_AXI_WR_ATTR0_SLC);
 	}
@@ -440,7 +441,7 @@ int mfc_core_cmd_enc_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_llc_flush(core);
 
 		if (core->has_slc && core->slc_on_status)
-			mfc_slc_flush(core);
+			mfc_slc_flush(core, ctx);
 
 		mfc_release_codec_buffers(core_ctx);
 		ret = mfc_alloc_codec_buffers(core_ctx);
@@ -456,6 +457,7 @@ int mfc_core_cmd_enc_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 
 	if (core->has_slc && core->slc_on_status) {
+		mfc_slc_update_partition(core, ctx);
 		MFC_CORE_WRITEL(MFC_SLC_CMD_ATTR, MFC_REG_E_AXI_RD_ATTR0_SLC);
 		MFC_CORE_WRITEL(MFC_SLC_CMD_ATTR, MFC_REG_E_AXI_WR_ATTR0_SLC);
 	}
@@ -481,7 +483,7 @@ static int __mfc_set_scratch_dpb_buffer(struct mfc_core *core, struct mfc_ctx *c
 		mfc_llc_flush(core);
 
 	if (core->has_slc && core->slc_on_status)
-		mfc_slc_flush(core);
+		mfc_slc_flush(core, ctx);
 
 	ret = mfc_alloc_scratch_buffer(core_ctx);
 	if (ret) {

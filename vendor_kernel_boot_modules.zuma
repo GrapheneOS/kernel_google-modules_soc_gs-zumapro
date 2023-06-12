@@ -40,6 +40,7 @@ exynos-bcm_dbg-dump.ko
 exynos-bcm_dbg-ppmu.ko
 exynos-bcm_dbg.ko
 exynos-coresight.ko
+exynos-coresight-etm.ko
 exynos-cpuhp.ko
 exynos-cpupm.ko
 exynos-debug-test.ko
@@ -202,8 +203,6 @@ virtio_mmio.ko
 virtio_net.ko
 virtio_pci.ko
 virtio_pci_modern_dev.ko
-wc68.ko
-wlc98_driver.ko
 xhci-exynos.ko
 zcomp_cpu.ko
 zcomp_eh.ko

@@ -618,7 +618,7 @@ static int mfc_enc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 				mfc_llc_flush(core);
 
 			if (core->has_slc && core->slc_on_status)
-				mfc_slc_flush(core);
+				mfc_slc_flush(core, ctx);
 
 			mfc_release_codec_buffers(core_ctx);
 			ret = mfc_alloc_codec_buffers(core_ctx);

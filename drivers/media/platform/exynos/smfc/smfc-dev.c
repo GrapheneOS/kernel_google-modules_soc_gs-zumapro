@@ -18,6 +18,9 @@
 #include <linux/mutex.h>
 #include <linux/wait.h>
 #include <linux/iommu.h>
+#if IS_ENABLED(CONFIG_EXYNOS_BTS)
+#include <soc/google/bts.h>
+#endif
 
 #include <media/videobuf2-core.h>
 #include <media/videobuf2-dma-sg.h>
@@ -854,8 +857,29 @@ static void g2d_pm_qos_remove_request(struct smfc_dev *smfc)
 		exynos_pm_qos_remove_request(&smfc->qosreq_int);
 }
 
+#if IS_ENABLED(CONFIG_EXYNOS_BTS)
+void smfc_get_bandwidth(struct smfc_dev *smfc, struct bts_bw *bw)
+{
+	unsigned int bpc = smfc->bpc;
+	unsigned int core_clk = smfc->core_clk;
+	unsigned int bw_khz = bpc * core_clk / SZ_1K / BITS_PER_BYTE;
+
+	bw->read = bw_khz * 1000;
+	bw->write = bw->read;
+	bw->peak = (bw->read + bw->write) / 2;
+}
+#endif
+
 static void g2d_pm_qos_update_request(struct smfc_dev *smfc)
 {
+#if IS_ENABLED(CONFIG_EXYNOS_BTS)
+	__maybe_unused struct bts_bw bw = { 0 };
+
+	if (smfc->bts_id >= 0) {
+		smfc_get_bandwidth(smfc, &bw);
+		bts_update_bw(smfc->bts_id, bw);
+	}
+#endif
 	if (!exynos_pm_qos_request_active(&smfc->qosreq_int))
 		exynos_pm_qos_add_request(&smfc->qosreq_int, PM_QOS_DEVICE_THROUGHPUT, 0);
 
@@ -865,6 +889,12 @@ static void g2d_pm_qos_update_request(struct smfc_dev *smfc)
 
 static void g2d_pm_qos_reset_request(struct smfc_dev *smfc)
 {
+#if IS_ENABLED(CONFIG_EXYNOS_BTS)
+	if (smfc->bts_id >= 0) {
+		__maybe_unused struct bts_bw bw = { 0 };
+		bts_update_bw(smfc->bts_id, bw);
+	}
+#endif
 	if (smfc->qosreq_int_level > 0)
 		exynos_pm_qos_update_request(&smfc->qosreq_int, 0);
 }
@@ -1002,9 +1032,28 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 
 	pm_runtime_enable(&pdev->dev);
 
+#if IS_ENABLED(CONFIG_EXYNOS_BTS)
+	smfc->bts_id = bts_get_bwindex("jpeg");
+#else
+	smfc->bts_id = -1;
+#endif
+	dev_info(&pdev->dev, "bts_id = %d\n", smfc->bts_id);
+
 	if (of_property_read_u32(pdev->dev.of_node, "smfc,int_qos_minlock",
 				 (u32 *)&smfc->qosreq_int_level))
 		smfc->qosreq_int_level = 0;
+
+	if (of_property_read_u32(pdev->dev.of_node, "smfc_core_clk",
+				&smfc->core_clk)) {
+		smfc->core_clk = 0;
+		dev_err(&pdev->dev, "Failed to get core_clk for smfc BTS support\n");
+	}
+
+	if (of_property_read_u32(pdev->dev.of_node, "smfc_bpc",
+				&smfc->bpc)) {
+		smfc->bpc = 0;
+		dev_err(&pdev->dev, "Failed to get bpc for smfc BTS support\n");
+	}
 
 	platform_set_drvdata(pdev, smfc);
 
@@ -1022,9 +1071,9 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 
 	spin_lock_init(&smfc->flag_lock);
 
-	dev_info(&pdev->dev, "Probed H/W Version: %02x.%02x.%04x int_level=%d\n",
+	dev_info(&pdev->dev, "Probed H/W Version: %02x.%02x.%04x int_level=%d Core(%d), BPC(%d) \n",
 		 (smfc->hwver >> 24) & 0xFF, (smfc->hwver >> 16) & 0xFF,
-		 smfc->hwver & 0xFFFF, smfc->qosreq_int_level);
+		 smfc->hwver & 0xFFFF, smfc->qosreq_int_level, smfc->core_clk, smfc->bpc);
 	return 0;
 
 err_hwver:
