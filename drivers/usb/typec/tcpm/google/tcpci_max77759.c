@@ -2887,6 +2887,12 @@ static int max77759_probe(struct i2c_client *client,
 		return PTR_ERR(chip->data.regmap);
 	}
 
+	dn = dev_of_node(&client->dev);
+	if (!dn) {
+		dev_err(&client->dev, "of node not found\n");
+		return -EINVAL;
+	}
+
 	chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
 	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
 		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed",
@@ -2901,12 +2907,6 @@ static int max77759_probe(struct i2c_client *client,
 		   reenable_auto_ultra_low_power_mode_alarm_handler);
 	kthread_init_work(&chip->aicl_check_alarm_work, aicl_check_alarm_work_item);
 	alarm_init(&chip->aicl_check_alarm, ALARM_BOOTTIME, aicl_check_alarm_handler);
-
-	dn = dev_of_node(&client->dev);
-	if (!dn) {
-		dev_err(&client->dev, "of node not found\n");
-		return -EINVAL;
-	}
 
 	chip->in_switch_gpio = -EINVAL;
 	if (of_property_read_bool(dn, "ovp-present")) {
