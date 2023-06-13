@@ -35,7 +35,7 @@
 };
 
 &dsu_lat {
-	core-dev-table-cl0-low-latency =
+	core-dev-table-cl0-low-latency-v2 =
 		/* CL0         DSU */
 		< 351000        324000
 		615000        324000
@@ -54,7 +54,7 @@
 		2147000       820000
 		2253000       820000 >;
 
-	core-dev-table-cl1-low-latency =
+	core-dev-table-cl1-low-latency-v2 =
 		/* CL1         DSU */
 		< 402000        324000
 		578000        615000
@@ -76,7 +76,7 @@
 		2550000       820000
 		2600000       820000 >;
 
-	core-dev-table-cl2-low-latency =
+	core-dev-table-cl2-low-latency-v2 =
 		/* CL2         DSU */
 		< 500000        324000
 		893000        615000
@@ -98,15 +98,15 @@
 		3178000       975000
 		3310000       975000 >;
 
-	core-dev-table-cl0-base =
+	core-dev-table-cl0-base-v2 =
 		<  324000        324000
 		  1704000        324000 >;
 
-	core-dev-table-cl1-base =
+	core-dev-table-cl1-base-v2 =
 		<  402000       324000
 		  2367000       324000 >;
 
-	core-dev-table-cl2-base =
+	core-dev-table-cl2-base-v2 =
 		<  500000       324000
 		  2943000       324000 >;
 
