@@ -490,6 +490,7 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 {
 	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
 	int val, ret = 0;
+	bool enable = false;
 
 	if (kstrtoint(buf, 0, &val) < 0)
 		return -EINVAL;
@@ -499,25 +500,51 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
+		enable = false;
 		break;
 	case 1:
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
+		enable = false;
 		break;
 	case 2:
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
+		enable = true;
 		break;
 	case 3:
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
-	default:
+		enable = true;
 		break;
+	default:
+		goto set_sbu_state;
 	}
 
+	if ((enable && !chip->dp_regulator_enabled) || (!enable && chip->dp_regulator_enabled)) {
+		ret = enable ? regulator_enable(chip->dp_regulator) : \
+			regulator_disable(chip->dp_regulator);
+		if (ret >= 0)
+			chip->dp_regulator_enabled = enable;
+		dev_info(chip->dev, "dp regulator_%s %s ret:%d", enable ? "enable" : "disable",
+				ret < 0 ? "fail" : "success", ret);
+		ret = enable ? regulator_set_voltage(chip->dp_regulator, VOLTAGE_DP_AUX_DEFAULT_UV,
+							VOLTAGE_DP_AUX_DEFAULT_UV) : \
+				regulator_set_voltage(chip->dp_regulator, chip->dp_regulator_min_uv,
+							chip->dp_regulator_max_uv);
+		dev_info(chip->dev, "dp regulator_set_voltage %s ret:%d",
+				ret < 0 ? "fail" : "success", ret);
+	}
+
+	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, enable ? SBUSW_PATH_1 :
+			      (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "SBU dp switch %s %s ret:%d",
+		       enable ? "enable" : "disable", ret < 0 ? "fail" : "success", ret);
+
+set_sbu_state:
 	dev_info(chip->dev, "dp_debug: sbu_pullup_store: val:%d \n", val);
 	if (!ret)
 		chip->current_sbu_state = val;
