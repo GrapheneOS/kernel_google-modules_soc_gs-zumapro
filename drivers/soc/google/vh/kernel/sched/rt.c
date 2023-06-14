@@ -79,6 +79,41 @@ static inline void rt_task_fits_capacity(struct task_struct *p, int cpu,
 			 cpu >= MAX_CAPACITY_CPU;
 }
 
+void check_migrate_rt_task(struct rq *rq, struct task_struct *p)
+{
+	bool fits, fits_orig;
+	struct task_struct *push_task = NULL;
+
+	/*
+	 * Since stopper masquerades as RT task with prio 0, we must find
+	 * a better way to detect the RT class.
+	 *
+	 * p->sched_class can be used, but requires exporting stuff from GKI
+	 * that is defined in linker scripts..
+	 */
+	if (!p->prio || !rt_task(p))
+		return;
+
+	rt_task_fits_capacity(p, cpu_of(rq), &fits, &fits_orig);
+
+	/*
+	 * We ignore thermal impact here and just check if fits_orig.
+	 * find_lowest_rq will handle thermal impact.
+	 *
+	 * Of course if this is stuck on big core and it starts to get
+	 * thermally throttled, we might want to consider doing something about
+	 * it then.
+	 */
+	if (!fits_orig) {
+		push_task = get_push_task(rq);
+		if (push_task) {
+			raw_spin_rq_unlock(rq);
+			stop_one_cpu_nowait(cpu_of(rq), push_cpu_stop, push_task, &rq->push_work);
+			raw_spin_rq_lock(rq);
+		}
+	}
+}
+
 static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_mask,
 				 struct cpumask *backup_mask)
 {

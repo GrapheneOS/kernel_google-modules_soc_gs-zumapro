@@ -162,6 +162,7 @@ struct vendor_group_list {
 unsigned long apply_dvfs_headroom(unsigned long util, int cpu, bool tapered);
 unsigned long map_util_freq_pixel_mod(unsigned long util, unsigned long freq,
 				      unsigned long cap);
+void check_migrate_rt_task(struct rq *rq, struct task_struct *p);
 
 enum vendor_group_attribute {
 	VTA_TASK_GROUP,
