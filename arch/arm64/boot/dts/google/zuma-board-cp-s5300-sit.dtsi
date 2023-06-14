@@ -8,7 +8,6 @@
 
 #include <dt-bindings/pinctrl/zuma.h>
 #include "zuma-cp-s5300-sit.dtsi"
-#include "gs101-cp-s5200-thermal-zone.dtsi"
 
 / {
 	fragment@modemif {
@@ -58,6 +57,7 @@
 				gpio_ap2cp_pda_active =	<&gph1 0 0x1>;
 				gpio_ap2cp_nreset_n =	<&gph1 7 0x1>;
 				gpio_ap2cp_cp_wrst_n =	<&gph1 1 0x1>;
+				gpio_cp2ap_cp_wrst_n =  <&gpa0 1 0x1>;
 				gpio_ap2cp_pm_wrst_n =	<&gpa0 2 0x1>;
 
 				gpio_cp2ap_phone_active = <&gpa7 0 0x1>;

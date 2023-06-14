@@ -699,6 +699,7 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 
 		exynos_pm_qos_update_request(&cpufreq_cdev->dsu_qos_max, dsu_freq);
 		exynos_pm_qos_update_request(&cpufreq_cdev->bci_qos_max, bci_freq);
+		trace_thermal_exynos_dus_bci_freq_update_request(dsu_freq, bci_freq);
 	}
 
 	return ret;

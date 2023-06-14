@@ -862,7 +862,7 @@ static int mfc_dec_reqbufs(struct file *file, void *priv,
 					if (core->has_llc && core->llc_on_status)
 						mfc_llc_flush(core);
 					if (core->has_slc && core->slc_on_status)
-						mfc_slc_flush(core);
+						mfc_slc_flush(core, ctx);
 
 					core_ctx = core->core_ctx[ctx->num];
 					mfc_release_codec_buffers(core_ctx);
