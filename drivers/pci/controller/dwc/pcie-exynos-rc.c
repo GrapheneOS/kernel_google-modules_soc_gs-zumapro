@@ -2259,7 +2259,7 @@ void exynos_pcie_rc_register_dump(int ch_num)
 
 	pr_err("[-------- Print additional PHY Register --------]\n");
 	/* internal state monitor */
-	for (i = 0x1E4; i < 0x200; i += 0x10) {
+	for (i = 0x1E4; i < 0x220; i += 0x10) {
 		pr_err("PHY 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
 				i,
 				exynos_phy_read(exynos_pcie, i + 0x0),
@@ -2270,6 +2270,16 @@ void exynos_pcie_rc_register_dump(int ch_num)
 
 	/* lock state */
 	for (i = 0x260; i < 0x280; i += 0x10) {
+		pr_err("PHY 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
+				i,
+				exynos_phy_read(exynos_pcie, i + 0x0),
+				exynos_phy_read(exynos_pcie, i + 0x4),
+				exynos_phy_read(exynos_pcie, i + 0x8),
+				exynos_phy_read(exynos_pcie, i + 0xC));
+	}
+
+	/* RC to EP Reference clock setting check & enable monitor */
+	for (i = 0x580; i < 0x5C4; i += 0x10) {
 		pr_err("PHY 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
 				i,
 				exynos_phy_read(exynos_pcie, i + 0x0),
@@ -2310,6 +2320,26 @@ void exynos_pcie_rc_register_dump(int ch_num)
 
 
 	pr_err("\n");
+
+	/* 100MHz source Reference clock (external pll) setting & internal state monitor */
+	for (i = 0xC700; i < 0xC720; i += 0x10) {
+		pr_err("UDBG 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
+				i,
+				exynos_udbg_read(exynos_pcie, i + 0x0),
+				exynos_udbg_read(exynos_pcie, i + 0x4),
+				exynos_udbg_read(exynos_pcie, i + 0x8),
+				exynos_udbg_read(exynos_pcie, i + 0xC));
+	}
+
+	/* power gating setting & state monitor */
+	for (i = 0xC800; i < 0xC810; i += 0x10) {
+		pr_err("UDBG 0x%04x:    0x%08x    0x%08x    0x%08x    0x%08x\n",
+				i,
+				exynos_udbg_read(exynos_pcie, i + 0x0),
+				exynos_udbg_read(exynos_pcie, i + 0x4),
+				exynos_udbg_read(exynos_pcie, i + 0x8),
+				exynos_udbg_read(exynos_pcie, i + 0xC));
+	}
 
 	/* ---------------------- */
 	/* PHY PCS : 0x0 ~ 0x19C */
