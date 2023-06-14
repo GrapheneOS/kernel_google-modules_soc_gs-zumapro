@@ -225,7 +225,11 @@ static inline int __init gcma_dma_heap_init(void)
 }
 
 #define gcma_dma_heap_exit() do { } while (0)
-#define dma_heap_gcma_inuse_pages() do { } while (0)
+
+static inline unsigned long dma_heap_gcma_inuse_pages(void)
+{
+	return 0;
+}
 #endif
 
 #if defined(CONFIG_DMABUF_HEAPS_SAMSUNG_CHUNK)
