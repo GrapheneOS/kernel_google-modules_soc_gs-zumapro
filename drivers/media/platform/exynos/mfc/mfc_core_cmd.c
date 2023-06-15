@@ -288,7 +288,9 @@ void mfc_core_cmd_dec_seq_header(struct mfc_core *core, struct mfc_ctx *ctx)
 		reg |= (0x1 << MFC_REG_D_SEI_ENABLE_MASTERING_DISPLAY_SHIFT);
 	}
 	reg |= (0x1 << MFC_REG_D_SEI_ENABLE_RECOVERY_PARSING_SHIFT);
-	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus))
+	/* If the metadata interface is supported, the SEI interface is not enabled. */
+	if (!MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus_full) &&
+			MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus))
 		reg |= (0x1 << MFC_REG_D_SEI_ENABLE_ST_2094_40_SEI_SHIFT);
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->av1_film_grain))
