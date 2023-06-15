@@ -328,6 +328,26 @@ void exynos_acpm_tmu_tz_control(int tz, bool enable)
 	}
 }
 
+int exynos_acpm_tmu_tz_trip_control(int tz, bool enable)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+	message.req.type = TMU_IPC_TMU_TRIP_CONTROL;
+	message.req.tzid = tz;
+	message.req.req_rsvd0 = ((enable) ? 1 : 0);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	if (acpm_tmu_log) {
+		pr_info_ratelimited("[acpm_tmu] data 0:0x%08x 1:0x%08x 2:0x%08x 3:0x%08x\n",
+			message.data[0],
+			message.data[1],
+			message.data[2],
+			message.data[3]);
+	}
+	return message.resp.ret;
+}
+
 void exynos_acpm_tmu_clear_tz_irq(int tz)
 {
 	union tmu_ipc_message message;

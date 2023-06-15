@@ -1099,9 +1099,20 @@ static int gs_tmu_set_trip_temp(void *drv_data, int trip, int temp)
 	}
 	mutex_lock(&data->lock);
 	if (data->enabled) {
-		exynos_acpm_tmu_tz_control(data->id, false);
+		bool acpm_trip_ctrl_available = true;
+
+		if (exynos_acpm_tmu_tz_trip_control(data->id, false)) {
+			/* backwards compatibility with older bootloader */
+			exynos_acpm_tmu_tz_control(data->id, false);
+			acpm_trip_ctrl_available = false;
+		}
+
 		exynos_acpm_tmu_set_threshold(data->id, threshold);
-		exynos_acpm_tmu_tz_control(data->id, true);
+
+		if (acpm_trip_ctrl_available)
+			exynos_acpm_tmu_tz_trip_control(data->id, true);
+		else
+			exynos_acpm_tmu_tz_control(data->id, true);
 	} else {
 		exynos_acpm_tmu_set_threshold(data->id, threshold);
 	}

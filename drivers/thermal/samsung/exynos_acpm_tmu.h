@@ -43,6 +43,7 @@
 #define TMU_IPC_SET_GOV_CONFIG                  0x17
 #define TMU_IPC_GET_TARGET_FREQ                 0x18
 #define TMU_IPC_SET_GOV_DEBUG_TRACING_MODE      0x19
+#define TMU_IPC_TMU_TRIP_CONTROL                0x1A
 #define TMU_IPC_SET_GOV_DEBUG_TIMER_INTERVAL    0x20
 #define TMU_IPC_GET_TRIP_CNT                    0x21
 #define TMU_IPC_RESET_TRIP_CNT                  0x22
@@ -171,6 +172,7 @@ void exynos_acpm_tmu_set_threshold(int tz, unsigned char temp[]);
 void exynos_acpm_tmu_set_hysteresis(int tz, unsigned char hyst[]);
 void exynos_acpm_tmu_set_interrupt_enable(int tz, unsigned char inten);
 void exynos_acpm_tmu_tz_control(int tz, bool enable);
+int exynos_acpm_tmu_tz_trip_control(int tz, bool enable);
 void exynos_acpm_tmu_clear_tz_irq(int tz);
 void exynos_acpm_tmu_set_emul_temp(int tz, unsigned char temp);
 void exynos_acpm_tmu_reg_read(u8 tmu_id, u16 offset, u32 *val);
