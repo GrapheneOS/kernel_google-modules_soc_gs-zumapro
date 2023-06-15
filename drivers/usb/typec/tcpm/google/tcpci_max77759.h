@@ -88,6 +88,8 @@ struct max77759_plat {
 	bool limit_accessory_enable;
 	/* uA */
 	unsigned int limit_accessory_current;
+	bool usb_throttled;
+	struct gvotable_election *usb_throttle_votable;
 
 	/* True when TCPC is in SINK DEBUG ACCESSORY CONNECTED state */
 	u8 debug_acc_connected:1;

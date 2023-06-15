@@ -536,9 +536,13 @@ int process_contaminant_alert(struct max77759_contaminant *contaminant, bool deb
 			if (ret == -EIO)
 				return ret;
 		}
-		*cc_update_handled = false;
-		/* Assuming port is clean */
-		*port_clean = true;
+		if (contaminant->state == DETECTED) {
+			*cc_update_handled = true;
+			*port_clean = false;
+		} else {
+			*cc_update_handled = false;
+			*port_clean = true;
+		}
 		return 0;
 	}
 
