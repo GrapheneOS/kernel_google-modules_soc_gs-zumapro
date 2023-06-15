@@ -20,6 +20,7 @@ KERNEL_VENDOR_CMDLINE+=" cma_sysfs.experimental=Y"
 KERNEL_VENDOR_CMDLINE+=" swiotlb=noforce"
 KERNEL_VENDOR_CMDLINE+=" disable_dma32=on"
 VENDOR_BOOTCONFIG="androidboot.boot_devices=14700000.ufs"
+VENDOR_BOOTCONFIG+=" androidboot.vh_sched_available=0"
 
 AVB_SIGN_BOOT_IMG=1
 AVB_BOOT_PARTITION_SIZE=0x04000000
