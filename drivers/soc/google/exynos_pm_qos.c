@@ -1030,7 +1030,7 @@ void exynos_pm_qos_update_request_async(struct exynos_pm_qos_request *req,
 
 	if (req->async_vote.target_freq != new_value) {
 		req->async_vote.target_freq = new_value;
-		queue_work_on(0, async_vote_wq, &req->async_vote.work);
+		queue_work(async_vote_wq, &req->async_vote.work);
 	}
 }
 EXPORT_SYMBOL_GPL(exynos_pm_qos_update_request_async);
@@ -1162,7 +1162,7 @@ static int exynos_pm_qos_power_init(void)
 
 	if (!async_vote_wq)
 		async_vote_wq = alloc_workqueue("async_vote_wq",
-						WQ_FREEZABLE,
+						WQ_FREEZABLE | WQ_UNBOUND,
 						1);
 
 	if (!async_vote_wq) {
