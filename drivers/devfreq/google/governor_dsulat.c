@@ -271,7 +271,7 @@ static void update_bci_freq(struct dsulat_node *node, unsigned long dsu_freq)
 	unsigned long bci_freq = 0;
 	bci_freq = dsu_to_bci_freq(node, dsu_freq);
 
-	exynos_pm_qos_update_request(&node->dsu_bci_qos_req, bci_freq);
+	exynos_pm_qos_update_request_async(&node->dsu_bci_qos_req, bci_freq);
 	trace_clock_set_rate("dsu2bci", bci_freq, raw_smp_processor_id());
 }
 
