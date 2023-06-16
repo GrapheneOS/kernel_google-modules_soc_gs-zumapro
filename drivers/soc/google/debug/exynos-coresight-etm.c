@@ -14,6 +14,7 @@
 #include <linux/of.h>
 #include <linux/io.h>
 #include <asm/barrier.h>
+#include <asm/sysreg.h>
 #include <soc/google/debug-snapshot.h>
 #include <soc/google/sjtag-driver.h>
 
@@ -38,6 +39,17 @@
 #define BDU_AMASK1 0x1C
 #define BDU_AMATCH_CTRL 0x20
 
+static inline u64 read_trfcr(void)
+{
+	return read_sysreg_s(SYS_TRFCR_EL1);
+}
+
+static inline void write_trfcr(u64 val)
+{
+	write_sysreg_s(val, SYS_TRFCR_EL1);
+	isb();
+}
+
 static inline void soft_lock(void __iomem *base)
 {
 	dsb(sy);
@@ -50,6 +62,8 @@ static inline void soft_unlock(void __iomem *base)
 	etm_writel(base, OSLOCK_MAGIC, LAR);
 	dsb(sy);
 	isb();
+	while ((etm_readl(base, LSR) & 0x02) != 0x00)
+		;
 }
 
 struct etm_info {
@@ -104,6 +118,7 @@ struct trex_info {
 };
 struct exynos_etm_info {
 	struct etm_info		*cpu;
+	u32			etm_en_mask;
 	spinlock_t		trace_lock;
 	struct device		*dev;
 	bool			enabled;
@@ -111,7 +126,6 @@ struct exynos_etm_info {
 	u32			boot_start;
 	u32			etr_buf_size;
 	u32			etr_aux_buf_size;
-
 	u32			funnel_num;
 	struct funnel_info	*funnel;
 #ifdef CONFIG_EXYNOS_CORESIGHT_ETF
@@ -129,17 +143,32 @@ struct exynos_etm_info {
 
 static struct exynos_etm_info *ee_info;
 
+static void set_trfcr(bool enable)
+{
+	u64 trfcr = read_trfcr();
+
+	if (!!enable) {
+		trfcr |= 0x63;
+	} else {
+		trfcr &= ~(0x63);
+	}
+
+	write_trfcr(trfcr);
+}
+
 static void exynos_etm_set_funnel_port(struct funnel_info *funnel,
-				      int port, bool enabled)
+				       int port, bool enabled)
 {
 	soft_unlock(funnel->base);
 	funnel->port_status = etm_readl(funnel->base, FUNCTRL);
+
 	if (enabled) {
 		funnel->port_status |= BIT(port);
 	} else {
 		funnel->port_status &= ~BIT(port);
 		funnel->port_status |= funnel->manual_port_status;
 	}
+
 	etm_writel(funnel->base, funnel->port_status, FUNCTRL);
 	soft_lock(funnel->base);
 }
@@ -186,18 +215,18 @@ static void exynos_etm_etf_enable(void)
 {
 	unsigned int i, port, channel;
 	struct etf_info *etf;
+	struct etr_info *etr = &ee_info->etr;
 	struct funnel_info *funnel;
+
+	if (etr->hwacg)
+		writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
 
 	for (i = 0; i < ee_info->etf_num; i++) {
 		etf = &ee_info->etf[i];
 		soft_unlock(etf->base);
 		etm_writel(etf->base, 0x0, TMCCTL);
-		etm_writel(etf->base, 0x800, TMCRSZ);
-#ifdef CONFIG_EXYNOS_CORESIGHT_ETR
+		//etm_writel(etf->base, 0x800, TMCRSZ);
 		etm_writel(etf->base, 0x2, TMCMODE);
-#else
-		etm_writel(etf->base, 0x0, TMCMODE);
-#endif
 		etm_writel(etf->base, 0x0, TMCTGR);
 		etm_writel(etf->base, 0x0, TMCFFCR);
 		etm_writel(etf->base, 0x1, TMCCTL);
@@ -290,9 +319,6 @@ static void exynos_etm_etr_disable(void)
 		etr->buf_pointer |= etm_readl(etr->base, TMCRWP);
 	}
 	soft_lock(etr->base);
-
-	if (etr->hwacg)
-		writel_relaxed(0x0, etr->sfr_base + etr->qch_offset);
 }
 
 static void bdu_etr_enable(void)
@@ -361,6 +387,9 @@ int gs_coresight_etm_external_etr_on(u64 buf_addr, u32 buf_size)
 		return -EACCES;
 	}
 
+	if (etr->hwacg)
+		writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
+
 	etr->aux_buf_addr = buf_addr;
 	ee_info->etr_aux_buf_size = buf_size;
 
@@ -408,16 +437,13 @@ int gs_coresight_etm_external_etr_off(void)
 
 	if (!bdu_enable) {
 		ee_info->enabled = false;
-		exynos_etm_trace_stop();
 
 		for_each_possible_cpu(i) {
 			ee_info->cpu[i].enabled = false;
 		}
 
-		for_each_online_cpu(i) {
-			smp_call_function_single(i, exynos_etm_smp_enable, NULL,
-						 1);
-		}
+		exynos_etm_trace_stop();
+
 	} else {
 #ifdef CONFIG_EXYNOS_CORESIGHT_ETR
 		bdu_etr_disable();
@@ -443,6 +469,7 @@ int gs_coresight_etm_external_etr_off(void)
 static int exynos_etm_enable(unsigned int cpu)
 {
 	struct etm_info *info = &ee_info->cpu[cpu];
+	struct etr_info *etr = &ee_info->etr;
 	struct funnel_info *funnel;
 	unsigned int channel, port;
 
@@ -450,47 +477,57 @@ static int exynos_etm_enable(unsigned int cpu)
 		return 0;
 
 	soft_unlock(info->base);
-	etm_writel(info->base, OSLOCK, ETMOSLAR);
 	etm_writel(info->base, !ETM_EN, ETMCTLR);
+	etm_writel(info->base, !OSLOCK, ETMOSLAR);
+	etm_writel(info->base, !ETM_EN, ETMCTLR);
+	dsb(sy);
+	isb();
 
 	/* Main control and Configuration */
-	etm_writel(info->base, 0, ETMPROCSELR);
-	etm_writel(info->base, TIMESTAMP, ETMCONFIG);
-	etm_writel(info->base, PERIOD(8), ETMSYNCPR);
-
-	etm_writel(info->base, cpu + 1, ETMTRACEIDR);
-
-	etm_writel(info->base, 0x1000, ETMEVENTCTL0R);
+	etm_writel(info->base, 0xc1, ETMCONFIG);
+	etm_writel(info->base, 0x0, ETMEVENTCTL0R);
 	etm_writel(info->base, 0x0, ETMEVENTCTL1R);
-	etm_writel(info->base, 0xc, ETMSTALLCTLR);
-	etm_writel(info->base, 0x801, ETMCONFIG);
+	etm_writel(info->base, 0x0, ETMSTALLCTLR);
+	etm_writel(info->base, 0xc, ETMSYNCPR);
+	etm_writel(info->base, cpu + 1, ETMTRACEIDR);
 	etm_writel(info->base, 0x0, ETMTSCTLR);
-	etm_writel(info->base, 0x4, ETMCCCCTLR);
-
-
 	etm_writel(info->base, 0x201, ETMVICTLR);
 	etm_writel(info->base, 0x0, ETMVIIECTLR);
 	etm_writel(info->base, 0x0, ETMVISSCTLR);
 	etm_writel(info->base, 0x2, ETMAUXCTLR);
 
-	etm_writel(info->base, ETM_EN, ETMCTLR);
-	etm_writel(info->base, !OSLOCK, ETMOSLAR);
-
 	channel = info->f_port[CHANNEL];
 	port = info->f_port[PORT];
-	funnel = &ee_info->funnel[channel];
+
+	set_trfcr(true);
 
 	spin_lock(&ee_info->trace_lock);
-	info->status = true;
-	exynos_etm_set_funnel_port(funnel, port, true);
+	funnel = &ee_info->funnel[channel];
+
+	if (!ee_info->etm_en_mask) {
+		if (etr->hwacg)
+			writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
+
+		exynos_etm_set_funnel_port(funnel, port, true);
+	}
+	ee_info->etm_en_mask |= 1 << cpu;
 	spin_unlock(&ee_info->trace_lock);
 
+	info->status = true;
+
+	etm_writel(info->base, ETM_EN, ETMCTLR);
+	dsb(sy);
+	isb();
+	etm_writel(info->base, OSLOCK, ETMOSLAR);
+
+	soft_lock(info->base);
 	return 0;
 }
 
 static int exynos_etm_disable(unsigned int cpu)
 {
 	struct etm_info *info = &ee_info->cpu[cpu];
+	struct etr_info *etr = &ee_info->etr;
 	struct funnel_info *funnel;
 	unsigned int channel, port;
 
@@ -499,16 +536,25 @@ static int exynos_etm_disable(unsigned int cpu)
 
 	channel = info->f_port[CHANNEL];
 	port = info->f_port[PORT];
-	funnel = &ee_info->funnel[channel];
+
+	set_trfcr(false);
 
 	spin_lock(&ee_info->trace_lock);
-	info->status = false;
-	exynos_etm_set_funnel_port(funnel, port, false);
+	ee_info->etm_en_mask &= ~(1 << cpu);
+	funnel = &ee_info->funnel[channel];
+	if (!ee_info->etm_en_mask) {
+		if (etr->hwacg)
+			writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
+		exynos_etm_set_funnel_port(funnel, port, false);
+	}
 	spin_unlock(&ee_info->trace_lock);
 
+	info->status = false;
 	soft_unlock(info->base);
+	etm_writel(info->base, !OSLOCK, ETMOSLAR);
 	etm_writel(info->base, !ETM_EN, ETMCTLR);
 	etm_writel(info->base, OSLOCK, ETMOSLAR);
+	soft_lock(info->base);
 
 	return 0;
 }
@@ -527,7 +573,7 @@ static void exynos_etm_smp_enable(void *ununsed)
 		exynos_etm_disable(cpu);
 
 	dev_info(ee_info->dev, "CPU%d ETM %sabled\n",
-			cpu, info->enabled ? "en" : "dis");
+			cpu, (info->enabled) ? "en" : "dis");
 }
 
 static ssize_t exynos_etm_print_info(char *buf)
@@ -605,6 +651,7 @@ static ssize_t exynos_etm_print_info(char *buf)
 void exynos_etm_trace_start(void)
 {
 	char *buf;
+	struct etr_info *etr = &ee_info->etr;
 
 	if (!ee_info->enabled || ee_info->status)
 		return;
@@ -617,6 +664,9 @@ void exynos_etm_trace_start(void)
 	buf = devm_kzalloc(ee_info->dev, PAGE_SIZE, GFP_KERNEL);
 	if (!buf)
 		return;
+
+	if (etr->hwacg)
+		writel_relaxed(0x1, etr->sfr_base + etr->qch_offset);
 
 	ee_info->status = true;
 
@@ -1380,6 +1430,7 @@ static int exynos_etm_cs_etm_init_dt(struct device *dev)
 	ee_info->dev = dev;
 	ee_info->cpu = devm_kcalloc(dev, num_possible_cpus(),
 			sizeof(struct etm_info), GFP_KERNEL);
+	ee_info->etm_en_mask = 0x0;
 	if (!ee_info->cpu)
 		return -ENOMEM;
 

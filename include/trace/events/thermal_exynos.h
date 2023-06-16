@@ -228,6 +228,24 @@ TRACE_EVENT(thermal_exynos_power_allocator_pid,
 		  __entry->p, __entry->i, __entry->output)
 );
 
+TRACE_EVENT(thermal_exynos_dus_bci_freq_update_request,
+	TP_PROTO(int dsu_freq, int bci_freq),
+
+	TP_ARGS(dsu_freq, bci_freq),
+
+	TP_STRUCT__entry(
+		__field(int, dsu_freq)
+		__field(int, bci_freq)
+	),
+
+	TP_fast_assign(
+		__entry->dsu_freq = dsu_freq;
+		__entry->bci_freq = bci_freq;
+	),
+
+	TP_printk("dsu_freq=%d bci_freq=%d", __entry->dsu_freq, __entry->bci_freq)
+);
+
 TRACE_EVENT(thermal_cpu_pressure,
 	TP_PROTO(unsigned long pressure, int cpu),
 

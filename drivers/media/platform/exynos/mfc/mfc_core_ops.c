@@ -312,7 +312,7 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 				mfc_llc_update_size(core, false);
 	}
 
-	if (core->has_slc && core->slc_on_status)
+	if (core->has_slc && core->slc_on_status && core->num_inst == 0)
 		mfc_slc_disable(core);
 
 	return 0;
