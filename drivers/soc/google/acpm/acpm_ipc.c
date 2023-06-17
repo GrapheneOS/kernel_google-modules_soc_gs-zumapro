@@ -199,6 +199,16 @@ unsigned int acpm_fw_get_log_level(void)
 	return acpm_debug->debug_log_level;
 }
 
+void acpm_fw_set_retry_log_ctrl(bool enable)
+{
+	acpm_debug->retry_log = enable;
+}
+
+unsigned int acpm_fw_get_retry_log_ctrl(void)
+{
+	return acpm_debug->retry_log;
+}
+
 void acpm_ramdump(void)
 {
 	if (acpm_debug->dump_size)
@@ -782,6 +792,13 @@ retry:
 						__raw_readl(acpm_ipc->intr + INTMSR1));
 
 					cpu_irq_info_dump(retry_cnt);
+					if (retry_cnt == 1) {
+						acpm_debug->debug_log_level =
+							acpm_debug->retry_log ?
+								2 : saved_debug_log_level;
+						acpm_log_print();
+						acpm_debug->debug_log_level = saved_debug_log_level;
+					}
 					++retry_cnt;
 
 					goto retry;
@@ -806,10 +823,6 @@ retry:
 			pr_err("%s Timeout error! now = %llu timeout = %llu ch:%u s:%u bitmap:%lx\n",
 			       __func__, now, timeout, channel->id, seq_num,
 			       channel->bitmap_seqnum[0]);
-
-			acpm_debug->debug_log_level = 2;
-			acpm_log_print();
-			acpm_debug->debug_log_level = saved_debug_log_level;
 
 			acpm_ramdump();
 			dump_stack();
