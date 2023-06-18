@@ -262,6 +262,8 @@ static irqreturn_t irq_handler(int irq, void *data)
 
 	idx = zone->idx;
 	bcl_dev = zone->parent;
+	if (!bcl_dev->ready)
+		return IRQ_HANDLED;
 
 	gpio_level = gpio_get_value(zone->bcl_pin);
 
@@ -690,10 +692,6 @@ static int google_bcl_register_zone(struct bcl_device *bcl_dev, int idx, const c
 	zone->parent = bcl_dev;
 	zone->irq_type = type;
 	atomic_set(&zone->bcl_cnt, 0);
-	INIT_DELAYED_WORK(&zone->irq_work, google_warn_work);
-	INIT_DELAYED_WORK(&zone->irq_triggered_work, google_irq_triggered_work);
-	INIT_DELAYED_WORK(&zone->irq_untriggered_work, google_irq_untriggered_work);
-	INIT_DELAYED_WORK(&zone->enable_irq_work, google_enable_irq_work);
 	if (idx == SMPL_WARN) {
 		irq_set_status_flags(zone->bcl_irq, IRQ_DISABLE_UNLAZY);
 		zone->polarity = 0;
@@ -710,6 +708,10 @@ static int google_bcl_register_zone(struct bcl_device *bcl_dev, int idx, const c
 		}
 		disable_irq(zone->bcl_irq);
 	}
+	INIT_DELAYED_WORK(&zone->irq_work, google_warn_work);
+	INIT_DELAYED_WORK(&zone->irq_triggered_work, google_irq_triggered_work);
+	INIT_DELAYED_WORK(&zone->irq_untriggered_work, google_irq_untriggered_work);
+	INIT_DELAYED_WORK(&zone->enable_irq_work, google_enable_irq_work);
 	zone->tz_ops.get_temp = zone_read_temp;
 	zone->tz = thermal_zone_of_sensor_register(bcl_dev->device, idx, zone, &zone->tz_ops);
 	if (IS_ERR(zone->tz))
@@ -993,6 +995,7 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 	struct bcl_device *bcl_dev = container_of(work, struct bcl_device, init_work.work);
 	int ret = 0, i;
 	unsigned int uvlo1_lvl, uvlo2_lvl, batoilo_lvl;
+	u8 irq_val;
 
 	if (!bcl_dev->intf_pmic_i2c)
 		goto retry_init_work;
@@ -1003,6 +1006,10 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 	if (bcl_cb_uvlo2_read(bcl_dev, &uvlo2_lvl) < 0)
 		goto retry_init_work;
 	if (bcl_cb_batoilo_read(bcl_dev, &batoilo_lvl) < 0)
+		goto retry_init_work;
+	if (bcl_cb_get_irq(bcl_dev, &irq_val) < 0)
+		goto retry_init_work;
+	if (bcl_cb_clr_irq(bcl_dev) < 0)
 		goto retry_init_work;
 
 	bcl_dev->batt_psy = google_get_power_supply(bcl_dev);
@@ -1589,12 +1596,13 @@ static int google_bcl_probe(struct platform_device *pdev)
 
 	google_set_main_pmic(bcl_dev);
 	google_set_sub_pmic(bcl_dev);
-	google_set_intf_pmic(bcl_dev);
 	google_bcl_parse_dtree(bcl_dev);
 	google_bcl_configure_modem(bcl_dev);
 
 	ret = google_init_fs(bcl_dev);
 	if (ret < 0)
+		goto bcl_soc_probe_exit;
+	if (google_set_intf_pmic(bcl_dev) < 0)
 		goto bcl_soc_probe_exit;
 	schedule_delayed_work(&bcl_dev->init_work, msecs_to_jiffies(THERMAL_DELAY_INIT_MS));
 	bcl_dev->enabled = true;
