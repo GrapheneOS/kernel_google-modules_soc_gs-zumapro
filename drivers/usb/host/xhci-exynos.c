@@ -282,6 +282,12 @@ static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_dev
 	if (!usb3_hub_detect && !usb2_detect)
 		xhci_exynos->port_state = PORT_EMPTY;
 
+	if (xhci_exynos->rewa_supported) {
+		/* release wakelock for platform suspend */
+		__pm_relax(xhci_exynos->main_wakelock);
+		__pm_relax(xhci_exynos->shared_wakelock);
+	}
+
 	dev_dbg(ddev, "%s %s state pre=%d now=%d\n", __func__,
 		on ? "on" : "off", pre_state, xhci_exynos->port_state);
 
@@ -305,13 +311,6 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 	} else
 		udev->dev.platform_data  = xhci_exynos;
 
-/* TODO: b/280748587 enable this once playback suspend feature ready */
-#if 0
-	/* hold wakelock before port setup */
-	xhci_exynos->rewa_supported = false;
-	__pm_stay_awake(xhci_exynos->main_wakelock);
-	__pm_stay_awake(xhci_exynos->shared_wakelock);
-#endif
 	check_port = xhci_exynos_check_port(xhci_exynos, udev, on);
 	if (check_port < 0)
 		return;
@@ -344,15 +343,6 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 	default:
 		break;
 	}
-
-/* TODO: b/280748587 enable this once playback suspend feature ready */
-#if 0
-	if (xhci_exynos->rewa_supported) {
-		/* release wakelock for platform suspend */
-		__pm_relax(xhci_exynos->main_wakelock);
-		__pm_relax(xhci_exynos->shared_wakelock);
-	}
-#endif
 }
 
 static int xhci_exynos_power_notify(struct notifier_block *self,
