@@ -3,6 +3,7 @@
 #include "gcma_sysfs.h"
 
 extern struct kobject *vendor_mm_kobj;
+static struct kobject *gcma_parent_kobj;
 static struct kobject gcma_kobj;
 
 static atomic64_t gcma_stats[NUM_OF_GCMA_STAT];
@@ -236,5 +237,10 @@ static struct kobj_type gcma_ktype = {
 
 int __init gcma_sysfs_init(void)
 {
-	return kobject_init_and_add(&gcma_kobj, &gcma_ktype, vendor_mm_kobj, "gcma");
+#ifdef CONFIG_ANDROID_VENDOR_HOOKS
+	gcma_parent_kobj = vendor_mm_kobj;
+#else
+	gcma_parent_kobj = mm_kobj;
+#endif
+	return kobject_init_and_add(&gcma_kobj, &gcma_ktype, gcma_parent_kobj, "gcma");
 }

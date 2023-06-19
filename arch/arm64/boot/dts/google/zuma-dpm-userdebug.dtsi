@@ -3,7 +3,7 @@
 #include <dt-bindings/soc/google/debug-snapshot-def.h>
 
 &dpm {
-	version = <101>;
+	version = <102>;
 	variant = "userdebug";
 
 	security {
@@ -112,13 +112,5 @@
 };
 
 &log_bcm {
-	status = "disabled";
-};
-
-&log_preslcdump {
-	status = "disabled";
-};
-
-&log_slcdump {
 	status = "disabled";
 };

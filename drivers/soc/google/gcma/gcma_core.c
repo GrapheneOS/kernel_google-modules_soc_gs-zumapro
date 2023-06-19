@@ -6,16 +6,21 @@
 
 #define pr_fmt(fmt) "gcma: " fmt
 
+#ifdef CONFIG_ANDROID_VENDOR_HOOKS
 #include <soc/google/gcma.h>
+#endif
+
 #include <linux/cleancache.h>
 #include <linux/slab.h>
 #include <linux/highmem.h>
 #include <linux/idr.h>
 #include <linux/hashtable.h>
 #include <linux/xarray.h>
-#include <trace/hooks/mm.h>
 
+#include "gcma_vh.h"
 #include "gcma_sysfs.h"
+#include "gcma_debug.h"
+
 #define CREATE_TRACE_POINTS
 #include "gcma_trace.h"
 
@@ -24,6 +29,37 @@
  * page->mapping : struct gcma_inode
  * page->index : page offset from inode
  */
+
+static inline int get_area_id(struct page *page)
+{
+	return page->units;
+}
+
+static inline void set_area_id(struct page *page, int id)
+{
+	page->units = id;
+}
+
+static inline unsigned long get_inode_index(struct page *page)
+{
+	return page->index;
+}
+
+static inline void set_inode_index(struct page *page, unsigned long index)
+{
+	page->index = index;
+}
+
+static inline struct gcma_inode *get_inode_mapping(struct page *page)
+{
+	return (struct gcma_inode *)page->mapping;
+}
+
+static inline void set_inode_mapping(struct page *page,
+				     struct gcma_inode *inode)
+{
+	page->mapping = (struct address_space *)inode;
+}
 
 #define GCMA_HASH_BITS	10
 
@@ -43,7 +79,6 @@ static LIST_HEAD(gcma_lru);
 static DEFINE_SPINLOCK(lru_lock);
 
 static atomic_t nr_gcma_area = ATOMIC_INIT(0);
-static atomic64_t total_gcma_pages = ATOMIC64_INIT(0);
 
 /* represent reserved memory range */
 struct gcma_area {
@@ -70,7 +105,7 @@ struct gcma_fs {
 struct gcma_inode {
 	struct cleancache_filekey key;
 	struct hlist_node hash;
-	atomic_t ref_count;
+	atomic64_t ref_count;
 
 	struct xarray pages;
 	struct rcu_head rcu;
@@ -126,8 +161,20 @@ static void ClearPageGCMAFree(struct page *page)
 
 static void reset_gcma_page(struct page *page)
 {
-	page->mapping = NULL;
-	page->index = 0;
+	set_inode_mapping(page, NULL);
+	set_inode_index(page, 0);
+}
+
+static struct gcma_fs *find_gcma_fs(int hash_id)
+{
+	struct gcma_fs *ret;
+
+	rcu_read_lock();
+	ret = idr_find(&gcma_fs_idr, hash_id);
+	rcu_read_unlock();
+
+	WARN_RATELIMIT(!ret, "wrong hash_id %d\n", hash_id);
+	return ret;
 }
 
 static struct gcma_inode *alloc_gcma_inode(struct gcma_fs *gcma_fs,
@@ -141,7 +188,7 @@ static struct gcma_inode *alloc_gcma_inode(struct gcma_fs *gcma_fs,
 		xa_init_flags(&inode->pages, XA_FLAGS_LOCK_IRQ);
 		INIT_HLIST_NODE(&inode->hash);
 		inode->gcma_fs = gcma_fs;
-		atomic_set(&inode->ref_count, 1);
+		atomic64_set(&inode->ref_count, 1);
 	}
 
 	return inode;
@@ -157,7 +204,7 @@ static void gcma_inode_free(struct rcu_head *rcu)
 
 static bool get_gcma_inode(struct gcma_inode *inode)
 {
-	return atomic_inc_not_zero(&inode->ref_count);
+	return atomic64_inc_not_zero(&inode->ref_count);
 }
 
 static void __put_gcma_inode(struct gcma_inode *inode)
@@ -169,7 +216,7 @@ static void __put_gcma_inode(struct gcma_inode *inode)
 
 static void put_gcma_inode(struct gcma_inode *inode)
 {
-	if (atomic_dec_and_test(&inode->ref_count)) {
+	if (atomic64_dec_and_test(&inode->ref_count)) {
 		unsigned long flags;
 		struct gcma_fs *gcma_fs = inode->gcma_fs;
 
@@ -245,7 +292,7 @@ int register_gcma_area(const char *name, phys_addr_t base, phys_addr_t size)
 	for (i = 0; i < page_count; i++) {
 		page = pfn_to_page(pfn + i);
 		/* Never changed since the id set up */
-		page->units = area_id;
+		set_area_id(page, area_id);
 		reset_gcma_page(page);
 		SetPageGCMAFree(page);
 		list_add(&page->lru, &area->free_pages);
@@ -253,10 +300,10 @@ int register_gcma_area(const char *name, phys_addr_t base, phys_addr_t size)
 
 	area->start_pfn = pfn;
 	area->end_pfn = pfn + page_count - 1;
-	atomic64_add(page_count, &total_gcma_pages);
+	inc_gcma_total_pages(page_count);
 
-	pr_info("Reserved memory: created GCMA memory pool at %pa, size %ld MiB for %s\n",
-		 &base, size / SZ_1M, name ? : "none");
+	pr_info("Reserved memory: created GCMA memory pool at %pa, size %lu MiB for %s\n",
+		 &base, (unsigned long)size / SZ_1M, name ? : "none");
 
 	return 0;
 }
@@ -268,7 +315,7 @@ static void page_area_lock(struct page *page)
 
 	VM_BUG_ON(!irqs_disabled());
 
-	area = &areas[page->units];
+	area = &areas[get_area_id(page)];
 	spin_lock(&area->free_pages_lock);
 }
 
@@ -276,7 +323,7 @@ static void page_area_unlock(struct page *page)
 {
 	struct gcma_area *area;
 
-	area = &areas[page->units];
+	area = &areas[get_area_id(page)];
 	spin_unlock(&area->free_pages_lock);
 }
 
@@ -314,7 +361,7 @@ static struct page *gcma_alloc_page(void)
 /* Hold page_area_lock */
 static void __gcma_free_page(struct page *page)
 {
-	struct gcma_area *area = &areas[page->units];
+	struct gcma_area *area = &areas[get_area_id(page)];
 
 	reset_gcma_page(page);
 	VM_BUG_ON(!list_empty(&page->lru));
@@ -325,7 +372,7 @@ static void __gcma_free_page(struct page *page)
 static void gcma_free_page(struct page *page)
 {
 	__gcma_free_page(page);
-	inc_gcma_stat(CACHED_PAGE);
+	dec_gcma_stat(CACHED_PAGE);
 }
 
 static inline void gcma_get_page(struct page *page)
@@ -362,10 +409,10 @@ static int gcma_store_page(struct gcma_inode *inode, unsigned long index,
 				page, GFP_ATOMIC|__GFP_NOWARN));
 
 	if (!err) {
-		atomic_inc(&inode->ref_count);
+		atomic64_inc(&inode->ref_count);
 		gcma_get_page(page);
-		page->mapping = (struct address_space *)inode;
-		page->index = index;
+		set_inode_mapping(page, inode);
+		set_inode_index(page, index);
 	}
 
 	return err;
@@ -455,8 +502,8 @@ again:
 		 * From now on, the page and inode is never freed by page's
 		 * refcount and RCU lock.
 		 */
-		inode = (struct gcma_inode *)page->mapping;
-		index = page->index;
+		inode = get_inode_mapping(page);
+		index = get_inode_index(page);
 		page_area_unlock(page);
 
 		/*
@@ -576,7 +623,7 @@ void gcma_free_range(unsigned long start_pfn, unsigned long end_pfn)
 }
 EXPORT_SYMBOL_GPL(gcma_free_range);
 
-static void evict_gcma_lru_pages(unsigned long nr_request)
+void evict_gcma_lru_pages(unsigned long nr_request)
 {
 	unsigned long nr_evicted = 0;
 
@@ -610,8 +657,8 @@ static void evict_gcma_lru_pages(unsigned long nr_request)
 			unsigned long index;
 
 			page = pages[i];
-			inode = (struct gcma_inode *)page->mapping;
-			index = page->index;
+			inode = get_inode_mapping(page);
+			index = get_inode_index(page);
 
 			xa_lock_irqsave(&inode->pages, flags);
 			if (xa_load(&inode->pages, index) == page)
@@ -649,7 +696,10 @@ void gcma_cc_store_page(int hash_id, struct cleancache_filekey key,
 	struct page *g_page;
 	void *src, *dst;
 	bool is_new = false;
-	bool workingset = PageWorkingset(page);
+	bool workingset = true;
+
+	if (workingset_filter_enabled())
+		workingset = PageWorkingset(page);
 
 	/*
 	 * This cleancache function is called under irq disabled so every
@@ -659,8 +709,9 @@ void gcma_cc_store_page(int hash_id, struct cleancache_filekey key,
 	VM_BUG_ON(!irqs_disabled());
 
 find_inode:
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
-	VM_BUG_ON(!gcma_fs);
+	gcma_fs = find_gcma_fs(hash_id);
+	if (!gcma_fs)
+		return;
 
 	inode = find_and_get_gcma_inode(gcma_fs, &key);
 	if (!inode) {
@@ -734,8 +785,9 @@ static int gcma_cc_load_page(int hash_id, struct cleancache_filekey key,
 
 	VM_BUG_ON(irqs_disabled());
 
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
-	VM_BUG_ON(!gcma_fs);
+	gcma_fs = find_gcma_fs(hash_id);
+	if (!gcma_fs)
+		return -1;
 
 	inode = find_and_get_gcma_inode(gcma_fs, &key);
 	if (!inode)
@@ -771,8 +823,9 @@ static void gcma_cc_invalidate_page(int hash_id, struct cleancache_filekey key,
 	struct page *g_page;
 	unsigned long flags;
 
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
-	VM_BUG_ON(!gcma_fs);
+	gcma_fs = find_gcma_fs(hash_id);
+	if (!gcma_fs)
+		return;
 
 	inode = find_and_get_gcma_inode(gcma_fs, &key);
 	if (!inode)
@@ -803,12 +856,11 @@ static bool try_empty_inode(struct gcma_inode *inode)
 			continue;
 		xas_pause(&xas);
 		xas_unlock_irqrestore(&xas, flags);
-		cond_resched();
 		xas_lock_irqsave(&xas, flags);
 	}
 	xas_unlock_irqrestore(&xas, flags);
 
-	return atomic_cmpxchg(&inode->ref_count, 1, 0) == 1;
+	return atomic64_cmpxchg(&inode->ref_count, 1, 0) == 1;
 }
 
 static struct gcma_inode *__gcma_cc_invalidate_inode(struct gcma_fs *gcma_fs,
@@ -834,8 +886,9 @@ static void gcma_cc_invalidate_inode(int hash_id, struct cleancache_filekey key)
 	struct gcma_fs *gcma_fs;
 	struct gcma_inode *inode;
 
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
-	VM_BUG_ON(!gcma_fs);
+	gcma_fs = find_gcma_fs(hash_id);
+	if (!gcma_fs)
+		return;
 
 	inode = __gcma_cc_invalidate_inode(gcma_fs, &key);
 	if (inode) {
@@ -854,17 +907,21 @@ static void gcma_cc_invalidate_fs(int hash_id)
 	int cursor, i;
 	struct hlist_node *tmp;
 
-	gcma_fs = idr_find(&gcma_fs_idr, hash_id);
-	VM_BUG_ON(!gcma_fs);
+	gcma_fs = find_gcma_fs(hash_id);
+	if (!gcma_fs)
+		return;
+
 	VM_BUG_ON(irqs_disabled());
 
-	spin_lock_irq(&gcma_fs->hash_lock);
+	/*
+	 * No need to hold any lock here since this function is called when
+	 * fs is unmounted. IOW, inode insert/delete race cannot happen.
+	 */
 	hash_for_each_safe(gcma_fs->inode_hash, cursor, tmp, inode, hash) {
 		inode = __gcma_cc_invalidate_inode(gcma_fs, &inode->key);
 		if (inode)
 			__put_gcma_inode(inode);
 	}
-	spin_unlock_irq(&gcma_fs->hash_lock);
 
 	synchronize_rcu();
 
@@ -874,6 +931,7 @@ static void gcma_cc_invalidate_fs(int hash_id)
 	spin_lock(&gcma_fs_lock);
 	idr_remove(&gcma_fs_idr, hash_id);
 	spin_unlock(&gcma_fs_lock);
+	pr_info("removed hash_id %d\n", hash_id);
 
 	kfree(gcma_fs);
 }
@@ -917,11 +975,6 @@ static int gcma_cc_init_shared_fs(uuid_t *uuid, size_t pagesize)
 	return -1;
 }
 
-static void vh_gcma_si_meminfo_fixup(void *data, struct sysinfo *val)
-{
-	val->totalram += (u64)atomic64_read(&total_gcma_pages);
-}
-
 struct cleancache_ops gcma_cleancache_ops = {
 	.init_fs = gcma_cc_init_fs,
 	.init_shared_fs = gcma_cc_init_shared_fs,
@@ -936,7 +989,7 @@ int __init gcma_init(void)
 {
 	int err;
 
-	err = register_trace_android_vh_si_meminfo(vh_gcma_si_meminfo_fixup, NULL);
+	err = gcma_vh_init();
 	if (err)
 		return err;
 
@@ -945,6 +998,7 @@ int __init gcma_init(void)
 		return -ENOMEM;
 
 	gcma_sysfs_init();
+	gcma_debugfs_init();
 	cleancache_register_ops(&gcma_cleancache_ops);
 
 	return 0;
