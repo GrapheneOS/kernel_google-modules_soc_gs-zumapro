@@ -40,6 +40,7 @@ exynos-bcm_dbg-dump.ko
 exynos-bcm_dbg-ppmu.ko
 exynos-bcm_dbg.ko
 exynos-coresight.ko
+exynos-coresight-etm.ko
 exynos-cpuhp.ko
 exynos-cpupm.ko
 exynos-debug-test.ko
@@ -98,6 +99,7 @@ max77759-charger.ko
 max77759_contaminant.ko
 max77759_helper.ko
 max77779-charger.ko
+max77779-fg.ko
 max77779-sp.ko
 max77779_i2cm.ko
 max77779_pmic.ko
@@ -202,8 +204,6 @@ virtio_mmio.ko
 virtio_net.ko
 virtio_pci.ko
 virtio_pci_modern_dev.ko
-wc68.ko
-wlc98_driver.ko
 xhci-exynos.ko
 zcomp_cpu.ko
 zcomp_eh.ko

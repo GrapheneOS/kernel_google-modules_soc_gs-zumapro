@@ -41,7 +41,10 @@ static inline void dma_heap_dec_inuse(unsigned long pages)
 }
 
 unsigned long dma_heap_inuse_pages(void);
-unsigned long dma_heap_pool_bytes(void);
+unsigned long dma_heap_pool_pages(void);
+
+unsigned long dma_heap_system_inuse_pages(void);
+unsigned long dma_heap_system_pool_pages(void);
 
 struct samsung_dma_buffer {
 	struct samsung_dma_heap *heap;
@@ -214,6 +217,7 @@ static inline int __init carveout_dma_heap_init(void)
 #if defined(CONFIG_DMABUF_HEAPS_GOOGLE_GCMA)
 int __init gcma_dma_heap_init(void);
 void gcma_dma_heap_exit(void);
+unsigned long dma_heap_gcma_inuse_pages(void);
 #else
 static inline int __init gcma_dma_heap_init(void)
 {
@@ -221,6 +225,11 @@ static inline int __init gcma_dma_heap_init(void)
 }
 
 #define gcma_dma_heap_exit() do { } while (0)
+
+static inline unsigned long dma_heap_gcma_inuse_pages(void)
+{
+	return 0;
+}
 #endif
 
 #if defined(CONFIG_DMABUF_HEAPS_SAMSUNG_CHUNK)

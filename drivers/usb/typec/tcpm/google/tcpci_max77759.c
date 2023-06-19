@@ -1200,7 +1200,8 @@ static void check_missing_rp_work(struct kthread_work *work)
 		update_compliance_warnings(chip, COMPLIANCE_WARNING_MISSING_RP, true);
 		usb_psy_set_sink_state(chip->usb_psy_data, true);
 	} else if (chip->compliance_warnings->missing_rp) {
-		disconnect_missing_rp_partner(chip);
+		if (!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES))
+			disconnect_missing_rp_partner(chip);
 	}
 }
 
@@ -1225,7 +1226,8 @@ static void check_missing_rp(struct max77759_plat *chip, bool vbus_present,
 		chip->first_rp_missing_timeout = false;
 	} else if (chip->compliance_warnings->missing_rp) {
 		kthread_cancel_delayed_work_sync(&chip->check_missing_rp_work);
-		disconnect_missing_rp_partner(chip);
+		if (!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES))
+			disconnect_missing_rp_partner(chip);
 	}
 }
 
@@ -2655,7 +2657,8 @@ static void dp_notification_work_item(struct kthread_work *work)
 			      ret < 0 ? "fail" : "success", ret);
 	}
 
-	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ? SBUSW_PATH_1 : 0);
+	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL,
+			      dp ? SBUSW_PATH_1 : (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
 	logbuffer_log(chip->log, "SBU dp switch %s %s ret:%d", dp ? "enable" : "disable",
 		      ret < 0 ? "fail" : "success", ret);
 
@@ -2671,6 +2674,11 @@ static int max77759_usb_set_mode(struct typec_mux_dev *mux, struct typec_mux_sta
 {
 	struct max77759_plat *chip = typec_mux_get_drvdata(mux);
 	struct dp_notification_event *evt;
+
+	if (!state || !state->alt) {
+		logbuffer_log(chip->log, "%s: dropping event", __func__);
+		return 0;
+	}
 
 	evt = devm_kzalloc(chip->dev, sizeof(*evt), GFP_KERNEL);
 	if (!evt) {
@@ -2792,9 +2800,14 @@ static bool is_aicl_limited(struct max77759_plat *chip)
 	/*
 	 * AICL_ACTIVE + Charging over USB + USB input current less than 500mA and charging from
 	 * default power sources.
+	 *
+	 * USB input current could be reported as 0 in scenarios such as charge full.
+	 * Exclude these cases as input current should not be 0 esp. when input current is limited.
 	 */
-	if (chip->aicl_active && vbus_present && snk_vbus && current_now.intval < 500000 &&
-	    default_power && is_dcp)
+	if (!current_now.intval)
+		return false;
+	else if (chip->aicl_active && vbus_present && snk_vbus && current_now.intval < 500000 &&
+		 default_power && is_dcp)
 		return true;
 
 	return false;

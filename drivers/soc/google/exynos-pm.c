@@ -218,7 +218,7 @@ static int exynos_pm_syscore_suspend(void)
 
 	pm_dbg->mifdn_early_wakeup_prev = acpm_get_early_wakeup_count();
 
-	pr_info("%s: frc:%llu prev mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
+	pr_info("%s frc:%llu prev mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
 		EXYNOS_PM_PREFIX, get_frc_time(), pm_dbg->mifdn_cnt_prev,
 		pm_info->apdn_cnt_prev, pm_dbg->mifdn_early_wakeup_prev);
 
@@ -231,7 +231,7 @@ static void exynos_pm_syscore_resume(void)
 	pm_info->apdn_cnt = acpm_get_apsocdn_count();
 	pm_dbg->mifdn_early_wakeup_cnt = acpm_get_early_wakeup_count();
 
-	pr_info("%s: post mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
+	pr_info("%s post mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
 		EXYNOS_PM_PREFIX, pm_dbg->mifdn_cnt,
 		pm_info->apdn_cnt, pm_dbg->mifdn_early_wakeup_cnt);
 
@@ -244,13 +244,13 @@ static void exynos_pm_syscore_resume(void)
 	}
 
 	if (pm_dbg->mifdn_early_wakeup_cnt != pm_dbg->mifdn_early_wakeup_prev)
-		pr_debug("%s: Sequence early wakeup\n", EXYNOS_PM_PREFIX);
+		pr_debug("%s Sequence early wakeup\n", EXYNOS_PM_PREFIX);
 
 	if (pm_dbg->mifdn_cnt == pm_dbg->mifdn_cnt_prev)
-		pr_info("%s: MIF blocked. MIF request Mster was  0x%x\n",
+		pr_info("%s MIF blocked. MIF request Mster was  0x%x\n",
 			EXYNOS_PM_PREFIX, pm_dbg->mif_req);
 	else
-		pr_info("%s: MIF down. cur_count: %d, acc_count: %d\n",
+		pr_info("%s MIF down. cur_count: %d, acc_count: %d\n",
 			EXYNOS_PM_PREFIX,
 			pm_dbg->mifdn_cnt - pm_dbg->mifdn_cnt_prev,
 			pm_dbg->mifdn_cnt);

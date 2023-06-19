@@ -825,7 +825,8 @@ static inline void exynos_pinctrl_show_wkup_reason(struct samsung_pin_bank *bank
 
 	pmu_mask = exynos_eint_wake_mask_array[bank->eint_num / 32];
 	pend_reg = readl(bank->eint_base + bank->irq_chip->eint_pend + bank->eint_offset);
-	pr_debug("[%s] PEND_REG: 0x%02x", bank->name, pend_reg);
+	if (pend_reg)
+		pr_info("%s [%s] PEND_REG: 0x%02x", EXYNOS_PM_PREFIX, bank->name, pend_reg);
 	for_each_set_bit(pin, &pend_reg, 32) {
 		shift_cnt = (bank->eint_num % 32) + pin;
 		if (pmu_mask & (1 << shift_cnt))

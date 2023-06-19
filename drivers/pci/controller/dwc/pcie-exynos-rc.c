@@ -2414,6 +2414,9 @@ void exynos_pcie_rc_dislink_work(struct work_struct *work)
 		pcie_is_linkup = 0;
 	}
 
+	/* Reset ATU flag as dislink */
+	exynos_pcie->atu_ok = 0;
+
 	exynos_pcie_notify_callback(pp, EXYNOS_PCIE_EVENT_LINKDOWN);
 }
 
@@ -2432,6 +2435,9 @@ void exynos_pcie_rc_cpl_timeout_work(struct work_struct *work)
 		dev_info(dev, "[%s] pcie_is_linkup = 0\n", __func__);
 		pcie_is_linkup = 0;
 	}
+
+	/* Reset ATU flag as CPL timeout */
+	exynos_pcie->atu_ok = 0;
 
 	dev_info(dev, "call PCIE_CPL_TIMEOUT callback\n");
 	exynos_pcie_notify_callback(pp, EXYNOS_PCIE_EVENT_CPL_TIMEOUT);
@@ -3065,6 +3071,19 @@ retry:
 	/* to call eyxnos_pcie_rc_pcie_phy_config() in cal.c file */
 	exynos_pcie_rc_assert_phy_reset(pp);
 
+	rmw_priv_reg(exynos_pcie->pmu_alive_pa +
+			exynos_pcie->pmu_offset, 0x400, 0x400);
+
+	if (exynos_pcie->ch_num == 0) {
+		val = exynos_udbg_read(exynos_pcie, 0xC800);
+		val &= ~(0x3 << 5);
+		exynos_udbg_write(exynos_pcie, val, 0xC800);
+	} else {
+		exynos_udbg_write(exynos_pcie, 0x421, 0xC800);
+	}
+
+	exynos_phy_write(exynos_pcie, 0x0, 0x32C);
+
 	/* EQ Off */
 	exynos_pcie_rc_wr_own_conf(pp, 0x890, 4, 0x12000);
 
@@ -3277,11 +3296,13 @@ int exynos_pcie_rc_poweron(int ch_num)
 		return -ENODEV;
 	}
 
+	mutex_lock(&exynos_pcie->power_onoff_lock);
+
 	pci = exynos_pcie->pci;
 	pp = &pci->pp;
 	dev = pci->dev;
 
-	dev_dbg(dev, "start poweron, state: %d\n", exynos_pcie->state);
+	dev_info(dev, "start poweron, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "start poweron, state: %d", exynos_pcie->state);
 
 	if (exynos_pcie->state == STATE_LINK_DOWN) {
@@ -3333,9 +3354,6 @@ int exynos_pcie_rc_poweron(int ch_num)
 		exynos_pcie->state = STATE_LINK_UP_TRY;
 		spin_unlock_irqrestore(&exynos_pcie->reg_lock, flags);
 
-		exynos_pcie->sudden_linkdown = 0;
-		exynos_pcie->cpl_timeout_recovery = 0;
-
 		enable_irq(pp->irq);
 
 		if (exynos_pcie_rc_establish_link(pp)) {
@@ -3343,6 +3361,9 @@ int exynos_pcie_rc_poweron(int ch_num)
 
 			goto poweron_fail;
 		}
+
+		exynos_pcie->sudden_linkdown = 0;
+		exynos_pcie->cpl_timeout_recovery = 0;
 
 		spin_lock_irqsave(&exynos_pcie->reg_lock, flags);
 		exynos_pcie->state = STATE_LINK_UP;
@@ -3373,7 +3394,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 				if (ret) {
 					dev_err(dev, "%s: Failed MSI initialization(%d)\n",
 						__func__, ret);
-
+					mutex_unlock(&exynos_pcie->power_onoff_lock);
 					return ret;
 				}
 			}
@@ -3407,7 +3428,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 					logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR,
 						      "%s: Failed MSI initialization(%d)",
 						      __func__, ret);
-
+					mutex_unlock(&exynos_pcie->power_onoff_lock);
 					return ret;
 				}
 			}
@@ -3423,13 +3444,15 @@ int exynos_pcie_rc_poweron(int ch_num)
 		}
 	}
 
-	dev_dbg(dev, "end poweron, state: %d\n", exynos_pcie->state);
+	dev_info(dev, "end poweron, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "end poweron, state: %d\n", exynos_pcie->state);
+	mutex_unlock(&exynos_pcie->power_onoff_lock);
 
 	return 0;
 
 poweron_fail:
 	exynos_pcie->state = STATE_LINK_UP;
+	mutex_unlock(&exynos_pcie->power_onoff_lock);
 	exynos_pcie_rc_poweroff(exynos_pcie->ch_num);
 
 	return -EPIPE;
@@ -3448,6 +3471,8 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		pr_err("%s: ch#%d PCIe device is not loaded\n", __func__, ch_num);
 		return;
 	}
+
+	mutex_lock(&exynos_pcie->power_onoff_lock);
 
 	pci = exynos_pcie->pci;
 	pp = &pci->pp;
@@ -3550,6 +3575,8 @@ void exynos_pcie_rc_poweroff(int ch_num)
 
 	dev_err(dev, "end poweroff, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "end poweroff, state: %d\n", exynos_pcie->state);
+
+	mutex_unlock(&exynos_pcie->power_onoff_lock);
 }
 
 void exynos_pcie_pm_suspend(int ch_num)
@@ -4984,6 +5011,8 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 	spin_lock_init(&exynos_pcie->reg_lock);
 	spin_lock_init(&exynos_pcie->s2mpu_refcnt_lock);
 
+	mutex_init(&exynos_pcie->power_onoff_lock);
+
 	exynos_pcie->ch_num = ch_num;
 	exynos_pcie->l1ss_enable = 1;
 	exynos_pcie->state = STATE_LINK_DOWN;
@@ -5143,7 +5172,13 @@ probe_fail:
 
 static int __exit exynos_pcie_rc_remove(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
+	struct dw_pcie *pci = container_of(&dev, struct dw_pcie, dev);
+	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
+
 	dev_info(&pdev->dev, "%s\n", __func__);
+
+	mutex_destroy(&exynos_pcie->power_onoff_lock);
 
 	return 0;
 }

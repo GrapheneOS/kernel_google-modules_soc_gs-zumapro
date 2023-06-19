@@ -555,6 +555,7 @@ void init_vendor_group_data(void)
 	int group;
 	struct rq_flags rf;
 	struct task_struct *p;
+	u64 last_update_time;
 #endif
 
 	for (i = 0; i < VG_MAX; i++) {
@@ -576,8 +577,10 @@ void init_vendor_group_data(void)
 		}
 
 		rq_lock_irqsave(rq, &rf);
+		update_rq_clock(rq);
+		last_update_time = rq_clock_pelt(rq);
 		for (i = 0; i < UG_MAX - 1; i++)
-			vendor_cfs_util[i][j].avg.last_update_time = rq_clock_pelt(rq);
+			vendor_cfs_util[i][j].avg.last_update_time = last_update_time;
 
 		list_for_each_entry(p, &rq->cfs_tasks, se.group_node) {
 			group = get_utilization_group(p, get_vendor_group(p));
@@ -1957,26 +1960,7 @@ out:
 void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
 			      int *should_iowait_boost)
 {
-	unsigned int flags = SCHED_PIXEL_BLOCK_UPDATES;
-
 	*should_iowait_boost = p->in_iowait && uclamp_boosted(p);
-
-	if (*should_iowait_boost)
-		flags |= SCHED_CPUFREQ_IOWAIT;
-
-	/*
-	 * Tell sched pixel to ignore cpufreq updates. this happens at
-	 * enqueue_task_fair() entry.
-	 *
-	 * We want to defer all request to defer frequency updates until uclamp
-	 * filter is applied.
-	 *
-	 * Note that enqueue_task_fair() could request cpufreq updates when
-	 * calling update_load_avg(). Since this vh is called before those
-	 * - this strategic block will ensure all subsequent requests are
-	 *   ignored.
-	 */
-	cpufreq_update_util(task_rq(p), flags);
 }
 
 void rvh_cpu_overutilized_pixel_mod(void *data, int cpu, int *overutilized)
@@ -2698,6 +2682,21 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	return;
 }
 
+void rvh_can_migrate_task_pixel_mod(void *data, struct task_struct *mp,
+	int dst_cpu, int *can_migrate)
+{
+	struct vendor_task_struct *mvp = get_vendor_task_struct(mp);
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(cpu_rq(dst_cpu));
+
+	if (!mvp->uclamp_fork_reset || !get_prefer_idle(mp))
+		return;
+
+	lockdep_assert_rq_held(cpu_rq(dst_cpu));
+
+	if (atomic_read(&vrq->num_adpf_tasks))
+		*can_migrate = 0;
+}
+
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 void rvh_attach_entity_load_avg_pixel_mod(void *data, struct cfs_rq *cfs_rq,
 					  struct sched_entity *se)
@@ -2737,6 +2736,7 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 {
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
+	bool force_cpufreq_update = false;
 
 	if (vp->uclamp_fork_reset)
 		atomic_inc(&vrq->num_adpf_tasks);
@@ -2755,17 +2755,14 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 
 	/* Can only process uclamp after sched_slice() was updated */
 	if (uclamp_is_used())
-		apply_uclamp_filters(rq, p);
+		force_cpufreq_update = apply_uclamp_filters(rq, p);
 
 	/*
-	 * We strategically tell schedutil to ignore requests to update
-	 * frequencies when we call rvh_set_iowait_pixel_mod().
-	 *
-	 * Now we have applied the uclamp filter, we'll unconditionally request
-	 * a frequency update which should take all changes into account in one
-	 * go.
+	 * If we have applied the uclamp filter, we'll unconditionally request
+	 * a frequency update which should take new changes into account.
 	 */
-	cpufreq_update_util(rq, SCHED_PIXEL_RESUME_UPDATES);
+	if (uclamp_is_used() && force_cpufreq_update)
+		cpufreq_update_util(rq, SCHED_PIXEL_FORCE_UPDATE);
 }
 
 void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
