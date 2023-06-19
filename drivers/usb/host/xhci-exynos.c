@@ -33,6 +33,8 @@
 #include <linux/usb/phy.h>
 
 #include <soc/google/exynos-cpupm.h>
+#include <trace/hooks/sound.h>
+#include <trace/hooks/usb.h>
 
 #include "xhci-exynos.h"
 
@@ -827,8 +829,16 @@ static int __maybe_unused xhci_exynos_suspend(struct device *dev)
 	struct xhci_hcd_exynos *xhci_exynos = dev_get_drvdata(dev);
 	struct usb_hcd	*hcd = xhci_exynos->hcd;
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
-	int ret;
-	int ret_phy;
+	int ret = 0;
+	int ret_phy = 0;
+	int bypass = 0;
+	struct usb_device *udev = hcd->self.root_hub;
+	pm_message_t msg;
+
+	msg.event = 0;
+	trace_android_rvh_usb_dev_suspend(udev, msg, &bypass);
+	if (bypass)
+		return 0;
 
 	if (xhci_exynos->port_state == PORT_USB2) {
 		ret_phy = exynos_usbdrd_phy_vendor_set(xhci_exynos->phy_usb2, 1, 0);
@@ -858,8 +868,16 @@ static int __maybe_unused xhci_exynos_resume(struct device *dev)
 	struct xhci_hcd_exynos *xhci_exynos = dev_get_drvdata(dev);
 	struct usb_hcd	*hcd = xhci_exynos->hcd;
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
-	int ret;
-	int ret_phy;
+	int ret = 0;
+	int ret_phy = 0;
+	int bypass = 0;
+	struct usb_device *udev = hcd->self.root_hub;
+	pm_message_t msg;
+
+	msg.event = 0;
+	trace_android_vh_usb_dev_resume(udev, msg, &bypass);
+	if (bypass)
+		return 0;
 
 	ret = xhci_priv_resume_quirk(hcd);
 	if (ret)
