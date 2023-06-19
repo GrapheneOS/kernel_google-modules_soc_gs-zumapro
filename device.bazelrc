@@ -5,6 +5,7 @@
 build:pixel_debug_common --notrim
 build:pixel_debug_common --nokmi_symbol_list_strict_mode
 build:pixel_debug_common --nokmi_symbol_list_violations_check
+build:pixel_debug_common --config=no_download_gki
 
 build:blktest --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=blktest \
     --gki_build_config_fragment=//private/google-modules/soc/gs:build.config.slider.blktest

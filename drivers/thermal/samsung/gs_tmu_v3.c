@@ -517,7 +517,7 @@ static void capture_bulk_trace(void)
 			(u8)(bulk_trace_buffer->buffered_curr_state[start_idx].temperature),
 			(u8)(bulk_trace_buffer->buffered_curr_state[start_idx].ctrl_temp),
 			(u8)(bulk_trace_buffer->buffered_curr_state[start_idx].cdev_state),
-			(s32)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_err_integral),
+			(s32)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_et_p),
 			(s16)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_power_range),
 			(s16)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_p),
 			(s32)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_i),
@@ -583,7 +583,7 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 					(int)data->id, (u8)curr_state.temperature,
 					(u8)curr_state.ctrl_temp,
 					(u8)curr_state.cdev_state,
-					(s32)curr_state.pid_err_integral,
+					(s32)curr_state.pid_et_p,
 					(s32)frac_to_int(k_p),
 					(s32)frac_to_int(k_i));
 			}
@@ -2182,6 +2182,28 @@ static int gs_map_dt_data(struct platform_device *pdev)
 			dev_err(&pdev->dev, "No input sustainable_power\n");
 		else
 			params->sustainable_power = value;
+
+
+		if (of_property_read_bool(pdev->dev.of_node, "early_throttle_enable")) {
+			ret = of_property_read_u32(pdev->dev.of_node, "early_throttle_offset",
+						   &value);
+			if (ret < 0)
+				dev_err(&pdev->dev, "No input early_throttle_offset\n");
+			else
+				params->early_throttle_offset = int_to_frac(value);
+
+			ret = of_property_read_u32(pdev->dev.of_node, "early_throttle_k_p",
+						   &value);
+			if (ret < 0)
+				dev_err(&pdev->dev, "No input early_throttle_k_p\n");
+			else
+				params->early_throttle_k_p = int_to_frac(value);
+
+			params->early_throttle_enable = true;
+
+		} else {
+			params->early_throttle_enable = false;
+		}
 
 		data->pi_param = params;
 	} else {
@@ -3983,6 +4005,8 @@ create_s32_param_attr(k_po, K_PO);
 create_s32_param_attr(k_pu, K_PU);
 create_s32_param_attr(k_i, K_I);
 create_s32_param_attr(i_max, I_MAX);
+create_s32_param_attr(early_throttle_offset, EARLY_THROTTLE_OFFSET);
+create_s32_param_attr(early_throttle_k_p, EARLY_THROTTLE_K_P);
 static DEVICE_ATTR_RW(integral_cutoff);
 static DEVICE_ATTR_RW(acpm_gov_select);
 static DEVICE_ATTR_RW(power_table_ect_offset);
@@ -4017,6 +4041,8 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_k_i.attr,
 	&dev_attr_i_max.attr,
 	&dev_attr_integral_cutoff.attr,
+	&dev_attr_early_throttle_offset.attr,
+	&dev_attr_early_throttle_k_p.attr,
 	&dev_attr_pause_time_in_state_ms.attr,
 	&dev_attr_pause_total_count.attr,
 	&dev_attr_pause_reset.attr,
@@ -5115,10 +5141,19 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX,
 						 frac_to_int(data->pi_param->i_max));
+
 		data->acpm_gov_select |= 1 << PI_LOOP;
+
+		if (data->pi_param->early_throttle_enable) {
+			exynos_acpm_tmu_ipc_set_pi_param(data->id, EARLY_THROTTLE_OFFSET,
+				frac_to_int(data->pi_param->early_throttle_offset));
+			exynos_acpm_tmu_ipc_set_pi_param(data->id, EARLY_THROTTLE_K_P,
+				frac_to_int(data->pi_param->early_throttle_k_p));
+
+			data->acpm_gov_select |= (1 << EARLY_THROTTLE);
+		}
+
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, GOV_SELECT, data->acpm_gov_select);
-	} else {
-		data->acpm_gov_select &= ~(1 << PI_LOOP);
 	}
 
 	if (acpm_gov_common.turn_on) {

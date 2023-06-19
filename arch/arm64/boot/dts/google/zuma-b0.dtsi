@@ -147,6 +147,14 @@
 	built-in-sync;
 };
 
+&s2mpu_s0_dpuf0 {
+	built-in-sync;
+};
+
+&s2mpu_s0_dpuf1 {
+	built-in-sync;
+};
+
 &s2mpu_s0_eh {
 	built-in-sync;
 };

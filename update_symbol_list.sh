@@ -5,9 +5,10 @@
 # Author: Will McVicker (willmcvicker@google.com)
 
 GKI_REMOTE="aosp"
-GKI_BRANCH="android14-5.15"
+GKI_SHA=`repo info aosp | grep "Manifest revision" | sed 's/Manifest revision: //g'`
+GKI_BRANCH=`repo forall aosp -c git branch -r --list 'aosp/android14-5.15*' --contains ${GKI_SHA} | grep "  aosp/" | sed 's/  aosp\///g'`
 GKI_STAGING_REMOTE="partner-common"
-GKI_STAGING_BRANCH="android14-5.15-pixel-staging"
+GKI_STAGING_BRANCH=`repo info aosp-staging | grep "Manifest revision" | sed 's/Manifest revision: //g'`
 TARGET=
 FOR_AOSP_PUSH_BRANCH="update_symbol_list-delete-after-push"
 CONTINUE_AFTER_REBASE=0

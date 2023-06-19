@@ -4,7 +4,7 @@
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load("//build/kernel/kleaf:hermetic_tools.bzl", "HermeticToolsInfo")
+load("//build/kernel/kleaf:hermetic_tools.bzl", "hermetic_toolchain")
 load(
     "//build/kernel/kleaf:kernel.bzl",
     "kernel_build_config",
@@ -12,8 +12,9 @@ load(
 )
 
 def _extracted_system_dlkm(ctx):
+    hermetic_tools = hermetic_toolchain.get(ctx)
+
     inputs = []
-    inputs += ctx.attr._hermetic_tools[HermeticToolsInfo].deps
 
     system_dlkm_archive = None
     for f in ctx.files.images:
@@ -33,8 +34,7 @@ def _extracted_system_dlkm(ctx):
         ctx.attr.name + "_intermediates",
     )
 
-    command = ""
-    command = ctx.attr._hermetic_tools[HermeticToolsInfo].setup
+    command = hermetic_tools.setup
     command += """
         # Extract GKI modules
         mkdir -p {intermediates_dir}
@@ -62,6 +62,7 @@ def _extracted_system_dlkm(ctx):
         mnemonic = "ExtractedSystemDlkm",
         inputs = inputs,
         outputs = outs,
+        tools = hermetic_tools.deps,
         progress_message = "Extracting GKI modules",
         command = command,
     )
@@ -82,8 +83,8 @@ extracted_system_dlkm = rule(
             allow_empty = False,
             mandatory = True,
         ),
-        "_hermetic_tools": attr.label(default = "//build/kernel:hermetic-tools", providers = [HermeticToolsInfo]),
     },
+    toolchains = [hermetic_toolchain.type],
 )
 
 def _set_gki_kernel_dir_impl(ctx):
