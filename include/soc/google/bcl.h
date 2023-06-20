@@ -174,6 +174,7 @@ struct bcl_zone {
 	int polarity;
 	void *parent;
 	int idx;
+	bool disabled;
 };
 
 struct bcl_core_conf {

@@ -279,11 +279,6 @@ static irqreturn_t irq_handler(int irq, void *data)
 	else
 		mod_delayed_work(system_highpri_wq, &zone->irq_untriggered_work, 0);
 exit:
-	if (zone->irq_type != IF_PMIC && bcl_dev->irq_delay != 0) {
-		disable_irq_nosync(irq);
-		mod_delayed_work(system_unbound_wq, &zone->enable_irq_work,
-				 msecs_to_jiffies(bcl_dev->irq_delay));
-	}
 	return IRQ_HANDLED;
 }
 
@@ -297,8 +292,10 @@ static void google_warn_work(struct work_struct *work)
 	idx = zone->idx;
 	bcl_dev = zone->parent;
 
-	if (idx != BATOILO)
+	if (zone->irq_type == IF_PMIC && idx != BATOILO) {
+		zone->disabled = true;
 		disable_irq(zone->bcl_irq);
+	}
 	gpio_level = gpio_get_value(zone->bcl_pin);
 	if (gpio_level != zone->polarity) {
 		zone->bcl_cur_lvl = 0;
@@ -315,8 +312,18 @@ static void google_warn_work(struct work_struct *work)
 	}
 	if (zone->tz)
 		thermal_zone_device_update(zone->tz, THERMAL_EVENT_UNSPECIFIED);
-	if (idx != BATOILO)
+	if (zone->irq_type == IF_PMIC && idx != BATOILO) {
+		zone->disabled = false;
 		enable_irq(zone->bcl_irq);
+	}
+	if (zone->irq_type != IF_PMIC && bcl_dev->irq_delay != 0) {
+		if (!zone->disabled) {
+			zone->disabled = true;
+			disable_irq(zone->bcl_irq);
+			mod_delayed_work(system_unbound_wq, &zone->enable_irq_work,
+					 msecs_to_jiffies(bcl_dev->irq_delay));
+		}
+	}
 }
 
 static int google_bcl_set_soc(struct bcl_device *bcl_dev, int low, int high)
@@ -619,6 +626,7 @@ static void google_enable_irq_work(struct work_struct *work)
 	if (!zone)
 		return;
 
+	zone->disabled = false;
 	enable_irq(zone->bcl_irq);
 }
 
@@ -712,6 +720,7 @@ static int google_bcl_register_zone(struct bcl_device *bcl_dev, int idx, const c
 			devm_kfree(bcl_dev->device, zone);
 			return ret;
 		}
+		zone->disabled = true;
 		disable_irq(zone->bcl_irq);
 	}
 	INIT_DELAYED_WORK(&zone->irq_work, google_warn_work);
@@ -1081,8 +1090,10 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 		return;
 
 	for (i = 0; i < TRIGGERED_SOURCE_MAX; i++) {
-		if (bcl_dev->zone[i] && (i != BATOILO))
+		if (bcl_dev->zone[i] && (i != BATOILO)) {
+			bcl_dev->zone[i]->disabled = false;
 			enable_irq(bcl_dev->zone[i]->bcl_irq);
+		}
 	}
 
 	return;
