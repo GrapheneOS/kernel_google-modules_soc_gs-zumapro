@@ -2100,6 +2100,8 @@ void initialize_vendor_group_property(void)
 {
 	int i;
 	unsigned int min_val = 0;
+	// Choose an uclamp min for early boot stage boost.
+	unsigned int boot_boost_min_val = 563;
 	unsigned int max_val = SCHED_CAPACITY_SCALE;
 
 	for (i = 0; i < VG_MAX; i++) {
@@ -2126,8 +2128,12 @@ void initialize_vendor_group_property(void)
 		vg[i].uclamp_max_on_nice_high_prio = DEFAULT_PRIO;
 		vg[i].uclamp_min_on_nice_enable = false;
 		vg[i].uclamp_max_on_nice_enable = false;
-		vg[i].uc_req[UCLAMP_MIN].value = min_val;
-		vg[i].uc_req[UCLAMP_MIN].bucket_id = get_bucket_id(min_val);
+		if (i == VG_SYSTEM) {
+			vg[i].uc_req[UCLAMP_MIN].value = boot_boost_min_val;
+		} else {
+			vg[i].uc_req[UCLAMP_MIN].value = min_val;
+		}
+		vg[i].uc_req[UCLAMP_MIN].bucket_id = get_bucket_id(vg[i].uc_req[UCLAMP_MIN].value);
 		vg[i].uc_req[UCLAMP_MIN].user_defined = false;
 		vg[i].uc_req[UCLAMP_MAX].value = max_val;
 		vg[i].uc_req[UCLAMP_MAX].bucket_id = get_bucket_id(max_val);
