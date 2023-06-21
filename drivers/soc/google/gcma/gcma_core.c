@@ -90,6 +90,26 @@ struct gcma_area {
 
 static struct gcma_area areas[MAX_GCMA_AREAS];
 
+static int lookup_area_id(struct page *page, int start_id)
+{
+	int id, nr_area;
+	unsigned long pfn = page_to_pfn(page);
+	struct gcma_area *area;
+
+	area = &areas[start_id];
+	if (pfn >= area->start_pfn && pfn <= area->end_pfn)
+		return start_id;
+
+	nr_area = atomic_read(&nr_gcma_area);
+	for (id = 0; id < nr_area; id++) {
+		area = &areas[id];
+		if (pfn >= area->start_pfn && pfn <= area->end_pfn)
+			return id;
+	}
+
+	return -1;
+}
+
 /* represents each file system instance hosted by the cleancache */
 struct gcma_fs {
 	spinlock_t hash_lock;
@@ -291,7 +311,6 @@ int register_gcma_area(const char *name, phys_addr_t base, phys_addr_t size)
 
 	for (i = 0; i < page_count; i++) {
 		page = pfn_to_page(pfn + i);
-		/* Never changed since the id set up */
 		set_area_id(page, area_id);
 		reset_gcma_page(page);
 		SetPageGCMAFree(page);
@@ -598,6 +617,7 @@ void gcma_free_range(unsigned long start_pfn, unsigned long end_pfn)
 	unsigned long pfn;
 	struct page *page;
 	unsigned long scanned = 0;
+	int area_id, start_id = 0;
 
 	VM_BUG_ON(irqs_disabled());
 
@@ -614,6 +634,13 @@ void gcma_free_range(unsigned long start_pfn, unsigned long end_pfn)
 		page = pfn_to_page(pfn);
 		VM_BUG_ON(PageGCMAFree(page));
 
+		area_id = lookup_area_id(page, start_id);
+		VM_BUG_ON(area_id == -1);
+		if (start_id != area_id)
+			start_id = area_id;
+		/* The struct page fields would be contaminated so reset them */
+		set_area_id(page, area_id);
+		INIT_LIST_HEAD(&page->lru);
 		page_area_lock(page);
 		__gcma_free_page(page);
 		page_area_unlock(page);
