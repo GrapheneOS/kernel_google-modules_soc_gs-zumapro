@@ -7,7 +7,7 @@ config GSA
 config GSA_PKVM
 	bool "Support pKVM"
 	depends on GSA
-	depends on PKVM_S2MPU_V9
+	depends on PKVM_S2MPU_V9 || PKVM_S2MPU
 	default n
 
 config GSA_GSC
