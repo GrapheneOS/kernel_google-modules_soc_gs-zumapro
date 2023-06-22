@@ -10,7 +10,6 @@
 #include <dt-bindings/pinctrl/samsung.h>
 
 #include "zuma-pmic.dtsi"
-#include "zuma-typec.dtsi"
 
 &serial_0 {
 	status = "okay";

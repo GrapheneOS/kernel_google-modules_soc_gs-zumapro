@@ -14,5 +14,3 @@
 #include "zuma-board-ese.dtsi"
 #include "zuma-board-nfc.dtsi"
 #include "zuma-board-udfps.dtsi"
-
-
