@@ -60,7 +60,7 @@
 	gnss_spi_irq: gnss_spi_irq {
 		samsung,pins = "gpa5-3";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
-		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_DOWN>;
 		samsung,pin-drv = <0>;
 		samsung,pin-con-pdn = <EXYNOS_PIN_PDN_PREV>;
 		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_NONE>;
