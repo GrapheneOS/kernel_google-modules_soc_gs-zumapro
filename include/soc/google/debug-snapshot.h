@@ -55,6 +55,7 @@ extern void dbg_snapshot_qd_dump_stack(u64 sp);
 extern int dbg_snapshot_get_sjtag_status(void);
 extern bool dbg_snapshot_get_reboot_status(void);
 extern bool dbg_snapshot_get_panic_status(void);
+extern void dbg_snapshot_set_core_cflush_stat(unsigned int val);
 extern bool dbg_snapshot_get_warm_status(void);
 extern void dbg_snapshot_ecc_dump(bool call_panic);
 extern int dbg_snapshot_start_watchdog(int sec);
