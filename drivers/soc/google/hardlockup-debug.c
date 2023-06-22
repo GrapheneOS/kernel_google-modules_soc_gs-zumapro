@@ -336,12 +336,17 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 		}
 		spin_unlock_irqrestore(&pm_trace_lock, flags);
 
+		hardlockup_core_handled_mask |= (1 << cpu);
+
 		if (ret)
 			raw_spin_unlock(&hardlockup_log_lock);
 
-		hardlockup_core_handled_mask |= (1 << cpu);
-
-		if (hardlockup_core_mask == hardlockup_core_handled_mask) {
+		if (hardlockup_debug_get_locked_cpu_mask() == hardlockup_core_handled_mask) {
+			/*
+			 * Tell debugcore that AP has finished performing
+			 * cache flush.
+			 */
+			dbg_snapshot_set_core_cflush_stat(0x1);
 #if IS_ENABLED(CONFIG_GS_ACPM)
 			exynos_acpm_reboot();
 #endif
@@ -521,6 +526,9 @@ static int hardlockup_debugger_probe(struct platform_device *pdev)
 
 	WARN_ON(register_trace_device_pm_callback_start(pm_dev_start, NULL));
 	WARN_ON(register_trace_device_pm_callback_end(pm_dev_end, NULL));
+
+	/* Clear AP cache flush complete flag on boot */
+	dbg_snapshot_set_core_cflush_stat(0x0);
 
 	dev_info(&pdev->dev,
 			"Initialized hardlockup debug dump successfully.\n");

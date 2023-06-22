@@ -144,6 +144,7 @@ struct s3c2410_wdt {
 	phys_addr_t pmu_alive_pa;
 	unsigned int cluster;
 	int use_multistage_wdt;
+	int enable_cl0_fiq;
 	unsigned int disable_reg_val;
 	unsigned int mask_reset_reg_val;
 	unsigned int noncpu_int_reg_val;
@@ -803,6 +804,10 @@ static int s3c2410wdt_start(struct watchdog_device *wdd)
 		wtcon |= S3C2410_WTCON_RSTEN;
 	}
 
+	/* Enable cl0 watchdog interrupt if fiq handling is true */
+	if (wdt->enable_cl0_fiq)
+		wtcon |= S3C2410_WTCON_INTEN;
+
 	dev_dbg(wdt->dev, "Starting watchdog: count=0x%08x, wtcon=%08lx\n",
 		wdt->count, wtcon);
 
@@ -1263,6 +1268,10 @@ int s3c2410wdt_set_emergency_reset(unsigned int timeout_cnt, int index)
 	wtcon = readl(wdt->reg_base + S3C2410_WTCON);
 	wtcon |= S3C2410_WTCON_RSTEN | S3C2410_WTCON_ENABLE;
 
+	/* Enable cl0 watchdog interrupt if fiq handling is true */
+	if (wdt->enable_cl0_fiq)
+		wtcon |= S3C2410_WTCON_INTEN;
+
 	if (wdt->drv_data->quirks & QUIRK_HAS_WTMINCNT_REG)
 		writel(wtdat * WINDOW_MULTIPLIER, wdt->reg_base + EXYNOS_WTMINCNT);
 	writel(wtdat, wdt->reg_base + S3C2410_WTDAT);
@@ -1586,6 +1595,13 @@ static int s3c2410wdt_probe(struct platform_device *pdev)
 		/* Not use Multistage watchdog */
 		wdt->use_multistage_wdt = false;
 		dev_info(dev, "It is not a multistage watchdog.\n");
+	}
+
+	if (of_find_property(dev->of_node, "enable-cl0-fiq", NULL)) {
+		wdt->enable_cl0_fiq = true;
+		dev_info(dev, "CL0 fiq handling is enabled.\n");
+	} else {
+		wdt->enable_cl0_fiq = false;
 	}
 
 	if (wdt->drv_data->quirks & QUIRKS_HAVE_PMUREG) {
