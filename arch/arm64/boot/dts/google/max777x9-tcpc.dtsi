@@ -18,10 +18,7 @@ max77759tcpc: max77759tcpc@25 {
 	usb-psy-name = "usb";
 	/* Enable when BMS is up */
 	chg-psy-name = "gcpm";
-	/* Default OVP IC is SLG59H1313C. Config others in overlay if needed. */
-	ovp-present;
 	in-switch-gpio = <&max777x9_gpio 5 GPIO_ACTIVE_LOW>;
-	sbu-mux-sel-gpio = <&gpa7 5 GPIO_ACTIVE_HIGH>;
 	conn = <&conn>;
 	orientation-switch;
 	mode-switch;
