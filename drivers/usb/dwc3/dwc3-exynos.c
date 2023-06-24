@@ -741,6 +741,7 @@ int dwc3_exynos_host_init(struct dwc3_exynos *exynos)
 	struct platform_device	*dwc3_pdev = to_platform_device(dwc->dev);
 	int			prop_idx = 0;
 	int			ret = 0;
+	int			irq;
 
 	/* Configuration xhci resources */
 	res = platform_get_resource(dwc3_pdev, IORESOURCE_MEM, 0);
@@ -754,16 +755,16 @@ int dwc3_exynos_host_init(struct dwc3_exynos *exynos)
 	dwc->xhci_resources[0].flags = res->flags;
 	dwc->xhci_resources[0].name = res->name;
 
-	res = platform_get_resource(dwc3_pdev, IORESOURCE_IRQ, 0);
-	if (!res) {
+	irq = platform_get_irq(dwc3_pdev, 0);
+	if (irq < 0) {
 		dev_err(dev, "missing irq resource\n");
-		return -ENODEV;
+		return irq;
 	}
 
-	dwc->xhci_resources[1].start = dwc->irq_gadget;
-	dwc->xhci_resources[1].end = dwc->irq_gadget;
-	dwc->xhci_resources[1].flags = res->flags;
-	dwc->xhci_resources[1].name = res->name;
+	dwc->xhci_resources[1].start = irq;
+	dwc->xhci_resources[1].end = irq;
+	dwc->xhci_resources[1].flags = IORESOURCE_IRQ | irq_get_trigger_type(irq);
+	dwc->xhci_resources[1].name = of_node_full_name(dwc3_pdev->dev.of_node);
 
 	xhci = platform_device_alloc("xhci-hcd-exynos", PLATFORM_DEVID_AUTO);
 	if (!xhci) {
