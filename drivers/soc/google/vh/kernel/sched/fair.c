@@ -231,7 +231,7 @@ u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 	return slice;
 }
 
-static void set_next_buddy(struct sched_entity *se)
+void set_next_buddy(struct sched_entity *se)
 {
 	if (entity_is_task(se) && unlikely(task_has_idle_policy(task_of(se))))
 		return;
@@ -2636,7 +2636,19 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 			continue;
 		}
 
-		if (src_rq->nr_running <= 1) {
+		if (cpu_is_idle(cpu)) {
+			rq_unlock_irqrestore(src_rq, &src_rf);
+			continue;
+		}
+
+		/* src_cpu is just waken up by tasks */
+		if (src_rq->curr == src_rq->idle) {
+			rq_unlock_irqrestore(src_rq, &src_rf);
+			continue;
+		}
+
+		/* we assume rt task will release cpu soon */
+		if (src_rq->curr->prio < MAX_RT_PRIO) {
 			rq_unlock_irqrestore(src_rq, &src_rf);
 			continue;
 		}
@@ -2738,8 +2750,14 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
 	bool force_cpufreq_update = false;
 
-	if (vp->uclamp_fork_reset)
+	if (vp->uclamp_fork_reset) {
 		atomic_inc(&vrq->num_adpf_tasks);
+
+		/*
+		 * Tell the scheduler that this tasks really wants to run next
+		 */
+		set_next_buddy(&p->se);
+	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	if (likely(sched_feat(UTIL_EST))) {

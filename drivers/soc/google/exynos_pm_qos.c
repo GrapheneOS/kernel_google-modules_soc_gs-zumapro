@@ -618,6 +618,8 @@ static struct exynos_pm_qos_object *exynos_pm_qos_array[] = {
 	&tpu_freq_max_pm_qos,
 };
 
+static struct workqueue_struct *async_vote_wq;
+
 /* unlocked internal variant */
 static inline int exynos_pm_qos_get_value(struct exynos_pm_qos_constraints *c)
 {
@@ -930,6 +932,21 @@ static void exynos_pm_qos_work_fn(struct work_struct *work)
 	__exynos_pm_qos_update_request(req, EXYNOS_PM_QOS_DEFAULT_VALUE);
 }
 
+
+static void exynos_pm_qos_async_vote_fn(struct work_struct *work)
+{
+	struct exynos_pm_asynchronous_vote *async_vote = container_of(work,
+						  struct exynos_pm_asynchronous_vote,
+						  work);
+
+	struct exynos_pm_qos_request *req = container_of(async_vote,
+						  struct exynos_pm_qos_request,
+						  async_vote);
+
+	exynos_pm_qos_update_request(req, async_vote->target_freq);
+}
+
+
 /**
  * exynos_pm_qos_add_request_trace - inserts new qos request into the list
  * @req: pointer to a preallocated handle
@@ -958,6 +975,7 @@ void exynos_pm_qos_add_request_trace(const char *func, unsigned int line,
 	req->func = func;
 	req->line = line;
 	INIT_DELAYED_WORK(&req->work, exynos_pm_qos_work_fn);
+	INIT_WORK(&req->async_vote.work, exynos_pm_qos_async_vote_fn);
 	exynos_pm_qos_update_target(exynos_pm_qos_array[exynos_pm_qos_class]->constraints,
 				    &req->node, EXYNOS_PM_QOS_ADD_REQ, value);
 	trace_clock_set_rate(exynos_pm_qos_array[exynos_pm_qos_class]->name,
@@ -990,6 +1008,32 @@ void exynos_pm_qos_update_request(struct exynos_pm_qos_request *req,
 	__exynos_pm_qos_update_request(req, new_value);
 }
 EXPORT_SYMBOL_GPL(exynos_pm_qos_update_request);
+
+/**
+ * exynos_pm_qos_update_request_async - async version of exynos_pm_qos_update_request
+ * @req : handle to list element holding a exynos_pm_qos request to use
+ * @value: defines the qos request
+ *
+ * If the async_vote_wq is initialized, defers the actual call to exynos_pm_qos_update_request
+ * to said workqueue. Otherwise, calls it immediately.
+ */
+void exynos_pm_qos_update_request_async(struct exynos_pm_qos_request *req,
+					s32 new_value)
+{
+	if (!req)
+		return;
+
+	if (!async_vote_wq) {
+		exynos_pm_qos_update_request(req, new_value);
+		return;
+	}
+
+	if (req->async_vote.target_freq != new_value) {
+		req->async_vote.target_freq = new_value;
+		queue_work(async_vote_wq, &req->async_vote.work);
+	}
+}
+EXPORT_SYMBOL_GPL(exynos_pm_qos_update_request_async);
 
 /**
  * exynos_pm_qos_update_request_timeout - modifies an existing qos request temporarily.
@@ -1114,6 +1158,15 @@ static int exynos_pm_qos_power_init(void)
 		debugfs_create_file(exynos_pm_qos_array[i]->name, 0444, d,
 				    (void *)exynos_pm_qos_array[i],
 				    &exynos_pm_qos_debug_fops);
+	}
+
+	if (!async_vote_wq)
+		async_vote_wq = alloc_workqueue("async_vote_wq",
+						WQ_FREEZABLE | WQ_UNBOUND,
+						1);
+
+	if (!async_vote_wq) {
+		pr_err("%s: Couldn't create async_vote_wq workqueue!\n", __func__);
 	}
 
 	return ret;
