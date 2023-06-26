@@ -83,12 +83,18 @@ enum exynos_pm_qos_flags_status {
 #define PM_QOS_GPU_FREQ_MIN_DEFAULT_VALUE	0
 #define PM_QOS_GPU_FREQ_MAX_DEFAULT_VALUE	INT_MAX
 
+struct exynos_pm_asynchronous_vote {
+    struct work_struct work;
+    s32 target_freq;
+};
+
 struct exynos_pm_qos_request {
 	struct plist_node node;
 	int exynos_pm_qos_class;
 	struct delayed_work work; /* for exynos_pm_qos_update_request_timeout */
 	const char *func;
 	unsigned int line;
+	struct exynos_pm_asynchronous_vote async_vote;
 };
 
 struct exynos_pm_qos_flags_request {
@@ -145,6 +151,8 @@ void exynos_pm_qos_add_request_trace(const char *func, unsigned int line,
 				     s32 value);
 void exynos_pm_qos_update_request(struct exynos_pm_qos_request *req,
 				  s32 new_value);
+void exynos_pm_qos_update_request_async(struct exynos_pm_qos_request *req,
+					s32 new_value);
 void exynos_pm_qos_update_request_timeout(struct exynos_pm_qos_request *req,
 					  s32 new_value, unsigned long timeout_us);
 void exynos_pm_qos_remove_request(struct exynos_pm_qos_request *req);

@@ -54,7 +54,7 @@ static int gs_memlat_devfreq_target(struct device *parent,
 	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
 
 	if (exynos_pm_qos_request_active(&data->sys_pm_qos_min)) {
-		exynos_pm_qos_update_request(&data->sys_pm_qos_min, *target_freq);
+		exynos_pm_qos_update_request_async(&data->sys_pm_qos_min, *target_freq);
 		trace_clock_set_rate(dev_name(data->dev), *target_freq, raw_smp_processor_id());
 	}
 

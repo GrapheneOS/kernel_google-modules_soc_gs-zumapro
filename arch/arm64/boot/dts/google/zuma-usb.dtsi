@@ -9,10 +9,10 @@
 //#include <dt-bindings/clock/gs101.h>
 
 &reserved_memory {
-	xhci_dma: xhci_dma@17BC0000 {
+	xhci_dma: xhci_dma@97000000 {
 		compatible = "shared-dma-pool";
-		reg = <0x0 0x17BC0000 0x40000>;
-		no-map;
+		reg = <0x0 0x97000000 0x400000>;
+		reusable;
 	};
 };
 
@@ -183,7 +183,6 @@
 		is_not_vbus_pad = <1>;
 		usb_host_device_timeout = <200>;
 		enable_sprs_transfer = <1>;
-		s2mpus = <&s2mpu_s0_hsi0>;
 
 		samsung,no-extra-delay;
 		xhci_l2_support = <1>;
@@ -255,6 +254,7 @@
 		phyclk_mux = "none";
 		phy_refclk = "phy_ref";
 		phy_ref_clock = <19200000>;
+		s2mpus = <&s2mpu_s0_hsi0>;
 
 		/* if Main phy has the other phy, it must be set to 1. jusf for usbphy_info */
 		has_other_phy = <0>;

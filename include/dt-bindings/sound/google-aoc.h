@@ -43,7 +43,7 @@
 #define IDX_INCALL_PB2_RX       0x14
 #define IDX_IMSV_RX             0x15
 #define IDX_CAP_INJ_RX          0x16
-#define IDX_DP_DMA_NoHOST_RX	0x20000017
+#define IDX_DP_DMA_NoHOST_RX	0x20000018
 
 #define IDX_EP1_TX		0x40000000
 #define IDX_EP2_TX		0x40000001
