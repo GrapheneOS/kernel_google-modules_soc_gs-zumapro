@@ -1189,6 +1189,8 @@ static int mfc_remove(struct platform_device *pdev)
 	mfc_deinit_debugfs(dev);
 	video_unregister_device(dev->vfd_enc);
 	video_unregister_device(dev->vfd_dec);
+	video_unregister_device(dev->vfd_dec_drm);
+	video_unregister_device(dev->vfd_enc_drm);
 	video_unregister_device(dev->vfd_enc_otf);
 	video_unregister_device(dev->vfd_enc_otf_drm);
 	v4l2_device_unregister(&dev->v4l2_dev);
