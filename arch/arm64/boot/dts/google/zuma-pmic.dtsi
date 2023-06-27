@@ -475,8 +475,7 @@
 				regulator-name = "S2MPG14_LDO22";
 				regulator-min-microvolt = <725000>;
 				regulator-max-microvolt = <1300000>;
-				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_OFF>;
 				channel-mux-selection = <0x36>;
 				schematic-name = "L22M_DISP_VDDD";
 				subsys-name = "Display";
@@ -1049,8 +1048,7 @@
 				regulator-name = "S2MPG15_LDO15";
 				regulator-min-microvolt = <2500000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
-				regulator-initial-mode = <SEC_OPMODE_ON>;
+				regulator-initial-mode = <SEC_OPMODE_OFF>;
 				channel-mux-selection = <0x2F>;
 				schematic-name = "L15S_UDFPS";
 				subsys-name = "FPS";
