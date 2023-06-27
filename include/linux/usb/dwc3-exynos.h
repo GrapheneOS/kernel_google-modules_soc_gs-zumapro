@@ -63,11 +63,6 @@
 #define DWC3_EXYNOS_MAX_WAIT_COUNT 250
 #define DWC3_EXYNOS_DISCONNECT_COUNT 500
 
-struct dwc3_exynos_rsw {
-	struct otg_fsm		*fsm;
-	struct work_struct	work;
-};
-
 struct dwc3_exynos_config { /* Exynos Specific Configuations */
 	bool adj_sof_accuracy;
 	bool is_not_vbus_pad;
@@ -100,7 +95,6 @@ struct dwc3_exynos {
 
 	int			idle_ip_index;
 
-	struct dwc3_exynos_rsw	rsw;
 	struct dwc3_otg		*dotg;
 
 	struct dwc3_exynos_config config;
@@ -121,15 +115,10 @@ static inline void dwc3_exynos_writel(void __iomem *base, u32 offset, u32 value)
 	writel(value, base + offset - DWC3_GLOBALS_REGS_START);
 }
 
-bool dwc3_exynos_rsw_available(struct device *dev);
-int dwc3_exynos_rsw_setup(struct device *dev, struct otg_fsm *fsm);
-void dwc3_exynos_rsw_exit(struct device *dev);
-int dwc3_exynos_rsw_start(struct device *dev);
 int dwc3_exynos_id_event(struct device *dev, int state);
 int dwc3_exynos_vbus_event(struct device *dev, bool vbus_active);
 int dwc3_exynos_phy_enable(int owner, bool on);
 extern int dwc3_exynos_set_bus_clock(struct device *dev, int clk_level);
-void dwc3_otg_run_sm(struct otg_fsm *fsm);
 
 int dwc3_exynos_core_init(struct dwc3 *dwc, struct dwc3_exynos *exynos);
 int dwc3_exynos_host_init(struct dwc3_exynos *exynos);

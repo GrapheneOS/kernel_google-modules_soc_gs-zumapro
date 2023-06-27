@@ -47,18 +47,6 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 	enum usb_otg_state prev_state = otg->state;
 	int ret = 0;
 
-	if (dotg->fsm_reset) {
-		if (otg->state == OTG_STATE_A_HOST) {
-			otg_drv_vbus(fsm, 0);
-			otg_start_host(fsm, 0);
-		} else if (otg->state == OTG_STATE_B_PERIPHERAL) {
-			otg_start_gadget(fsm, 0);
-		}
-
-		otg->state = OTG_STATE_UNDEFINED;
-		goto exit;
-	}
-
 	switch (otg->state) {
 	case OTG_STATE_UNDEFINED:
 		if (fsm->id)
@@ -70,7 +58,7 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		if (!fsm->id) {
 			otg->state = OTG_STATE_A_IDLE;
 		} else if (fsm->b_sess_vld) {
-			ret = otg_start_gadget(fsm, 1);
+			ret = dwc3_otg_start_gadget(fsm, 1);
 			if (!ret)
 				otg->state = OTG_STATE_B_PERIPHERAL;
 			else
@@ -79,7 +67,7 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		break;
 	case OTG_STATE_B_PERIPHERAL:
 		if (!fsm->id || !fsm->b_sess_vld) {
-			ret = otg_start_gadget(fsm, 0);
+			ret = dwc3_otg_start_gadget(fsm, 0);
 			if (!ret)
 				otg->state = OTG_STATE_B_IDLE;
 			else
@@ -90,9 +78,9 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		if (fsm->id) {
 			otg->state = OTG_STATE_B_IDLE;
 		} else {
-			ret = otg_start_host(fsm, 1);
+			ret = dwc3_otg_start_host(fsm, 1);
 			if (!ret) {
-				otg_drv_vbus(fsm, 1);
+				dwc3_otg_drv_vbus(fsm, 1);
 				otg->state = OTG_STATE_A_HOST;
 			} else {
 				dev_err(dev, "OTG SM: cannot start host\n");
@@ -101,8 +89,8 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		break;
 	case OTG_STATE_A_HOST:
 		if (fsm->id) {
-			otg_drv_vbus(fsm, 0);
-			ret = otg_start_host(fsm, 0);
+			dwc3_otg_drv_vbus(fsm, 0);
+			ret = dwc3_otg_start_host(fsm, 0);
 			if (!ret)
 				otg->state = OTG_STATE_A_IDLE;
 			else
@@ -113,7 +101,6 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		dev_err(dev, "OTG SM: invalid state\n");
 	}
 
-exit:
 	if (!ret)
 		ret = (otg->state != prev_state);
 
@@ -124,32 +111,6 @@ exit:
 }
 
 /* -------------------------------------------------------------------------- */
-
-static struct dwc3_ext_otg_ops *dwc3_otg_exynos_rsw_probe(struct dwc3 *dwc)
-{
-	struct dwc3_ext_otg_ops *ops;
-	bool ext_otg;
-
-	ext_otg = dwc3_exynos_rsw_available(dwc->dev->parent);
-	if (!ext_otg) {
-		dev_err(dwc->dev, "failed to get ext_otg\n");
-		return NULL;
-	}
-
-	/* Allocate and init otg instance */
-	ops = devm_kzalloc(dwc->dev, sizeof(struct dwc3_ext_otg_ops),
-			GFP_KERNEL);
-	if (!ops)
-		return NULL;
-
-	ops->setup = dwc3_exynos_rsw_setup;
-	ops->exit = dwc3_exynos_rsw_exit;
-	ops->start = dwc3_exynos_rsw_start;
-
-	dev_dbg(dwc->dev, "rsw_probe done\n");
-
-	return ops;
-}
 
 static void dwc3_otg_set_mode(struct dwc3 *dwc, u32 mode)
 {
@@ -166,35 +127,22 @@ static void dwc3_otg_set_host_mode(struct dwc3_otg *dotg)
 	struct dwc3 *dwc = dotg->dwc;
 	u32 reg;
 
-	if (dotg->regs) {
-		reg = dwc3_exynos_readl(dotg->regs, DWC3_OCTL);
-		reg &= ~DWC3_OTG_OCTL_PERIMODE;
-		dwc3_exynos_writel(dotg->regs, DWC3_OCTL, reg);
-	} else {
-		/* Disable undefined length burst mode */
-		reg = dwc3_exynos_readl(dwc->regs, DWC3_GSBUSCFG0);
-		reg &= ~(DWC3_GSBUSCFG0_INCRBRSTEN);
-		dwc3_exynos_writel(dwc->regs, DWC3_GSBUSCFG0, reg);
+	/* Disable undefined length burst mode */
+	reg = dwc3_exynos_readl(dwc->regs, DWC3_GSBUSCFG0);
+	reg &= ~(DWC3_GSBUSCFG0_INCRBRSTEN);
+	dwc3_exynos_writel(dwc->regs, DWC3_GSBUSCFG0, reg);
 
-		dwc3_otg_set_mode(dwc, DWC3_GCTL_PRTCAP_HOST);
-	}
+	dwc3_otg_set_mode(dwc, DWC3_GCTL_PRTCAP_HOST);
 }
 
 static void dwc3_otg_set_peripheral_mode(struct dwc3_otg *dotg)
 {
 	struct dwc3 *dwc = dotg->dwc;
-	u32 reg;
 
-	if (dotg->regs) {
-		reg = dwc3_exynos_readl(dotg->regs, DWC3_OCTL);
-		reg |= DWC3_OTG_OCTL_PERIMODE;
-		dwc3_exynos_writel(dotg->regs, DWC3_OCTL, reg);
-	} else {
-		dwc3_otg_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
-	}
+	dwc3_otg_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
 }
 
-static void dwc3_otg_drv_vbus(struct otg_fsm *fsm, int on)
+void dwc3_otg_drv_vbus(struct otg_fsm *fsm, int on)
 {
 	struct dwc3_otg	*dotg = container_of(fsm, struct dwc3_otg, fsm);
 	int ret;
@@ -214,26 +162,6 @@ static void dwc3_otg_drv_vbus(struct otg_fsm *fsm, int on)
 						on ? "on" : "off");
 }
 
-void dwc3_otg_pm_ctrl(struct dwc3 *dwc, int onoff)
-{
-	u32 reg;
-
-	if (onoff == 0) {
-		/* Disable U1U2 */
-		reg = dwc3_exynos_readl(dwc->regs, DWC3_DCTL);
-		reg &= ~(DWC3_DCTL_INITU1ENA | DWC3_DCTL_ACCEPTU1ENA |
-				DWC3_DCTL_INITU2ENA | DWC3_DCTL_ACCEPTU2ENA);
-		dwc3_exynos_writel(dwc->regs, DWC3_DCTL, reg);
-
-	} else {
-		/* Enable U1U2 */
-		reg = dwc3_exynos_readl(dwc->regs, DWC3_DCTL);
-		reg |= (DWC3_DCTL_INITU1ENA | DWC3_DCTL_ACCEPTU1ENA |
-				DWC3_DCTL_INITU2ENA | DWC3_DCTL_ACCEPTU2ENA);
-		dwc3_exynos_writel(dwc->regs, DWC3_DCTL, reg);
-	}
-}
-
 void dwc3_otg_phy_tune(struct otg_fsm *fsm)
 {
 	struct usb_otg	*otg = fsm->otg;
@@ -248,7 +176,7 @@ void dwc3_otg_phy_tune(struct otg_fsm *fsm)
 #endif
 }
 
-static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
+int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 {
 	struct usb_otg	*otg = fsm->otg;
 	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
@@ -350,7 +278,7 @@ err1:
 	return ret;
 }
 
-static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
+int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 {
 	struct usb_otg	*otg = fsm->otg;
 	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
@@ -361,7 +289,7 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 	int wait_counter = 0;
 	u32 evt_count, evt_buf_cnt;
 
-	if (!otg->gadget) {
+	if (!dwc->gadget) {
 		dev_err(dev, "%s does not have any gadget\n", __func__);
 		return -EINVAL;
 	}
@@ -448,12 +376,6 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 	return 0;
 }
 
-static struct otg_fsm_ops dwc3_otg_fsm_ops = {
-	.drv_vbus	= dwc3_otg_drv_vbus,
-	.start_host	= dwc3_otg_start_host,
-	.start_gadget	= dwc3_otg_start_gadget,
-};
-
 /* -------------------------------------------------------------------------- */
 
 void dwc3_otg_run_sm(struct otg_fsm *fsm)
@@ -474,128 +396,6 @@ void dwc3_otg_run_sm(struct otg_fsm *fsm)
 	mutex_unlock(&fsm->lock);
 }
 
-/* Bind/Unbind the peripheral controller driver */
-static int dwc3_otg_set_peripheral(struct usb_otg *otg,
-				struct usb_gadget *gadget)
-{
-	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
-	struct otg_fsm	*fsm = &dotg->fsm;
-	struct device	*dev = dotg->dwc->dev;
-
-	if (gadget) {
-		dev_dbg(dev, "Binding gadget %s\n", gadget->name);
-
-		otg->gadget = gadget;
-	} else {
-		dev_dbg(dev, "Unbinding gadget\n");
-
-		mutex_lock(&fsm->lock);
-
-		if (otg->state == OTG_STATE_B_PERIPHERAL) {
-			/* Reset OTG Statemachine */
-			dotg->fsm_reset = 1;
-			dwc3_otg_statemachine(fsm);
-			dotg->fsm_reset = 0;
-		}
-		otg->gadget = NULL;
-
-		mutex_unlock(&fsm->lock);
-
-		dwc3_otg_run_sm(fsm);
-	}
-
-	return 0;
-}
-
-static int dwc3_otg_get_id_state(struct dwc3_otg *dotg)
-{
-	u32 reg = dwc3_exynos_readl(dotg->regs, DWC3_OSTS);
-
-	return !!(reg & DWC3_OTG_OSTS_CONIDSTS);
-}
-
-static int dwc3_otg_get_b_sess_state(struct dwc3_otg *dotg)
-{
-	u32 reg = dwc3_exynos_readl(dotg->regs, DWC3_OSTS);
-
-	return !!(reg & DWC3_OTG_OSTS_BSESVALID);
-}
-
-static irqreturn_t dwc3_otg_interrupt(int irq, void *_dotg)
-{
-	struct dwc3_otg	*dotg = (struct dwc3_otg *)_dotg;
-	struct otg_fsm	*fsm = &dotg->fsm;
-	u32 oevt, handled_events = 0;
-	irqreturn_t ret = IRQ_NONE;
-
-	oevt = dwc3_exynos_readl(dotg->regs, DWC3_OEVT);
-
-	/* ID */
-	if (oevt & DWC3_OEVTEN_OTGCONIDSTSCHNGEVNT) {
-		fsm->id = dwc3_otg_get_id_state(dotg);
-		handled_events |= DWC3_OEVTEN_OTGCONIDSTSCHNGEVNT;
-	}
-
-	/* VBus */
-	if (oevt & DWC3_OEVTEN_OTGBDEVVBUSCHNGEVNT) {
-		fsm->b_sess_vld = dwc3_otg_get_b_sess_state(dotg);
-		handled_events |= DWC3_OEVTEN_OTGBDEVVBUSCHNGEVNT;
-	}
-
-	if (handled_events) {
-		dwc3_exynos_writel(dotg->regs, DWC3_OEVT, handled_events);
-		ret = IRQ_WAKE_THREAD;
-	}
-
-	return ret;
-}
-
-static irqreturn_t dwc3_otg_thread_interrupt(int irq, void *_dotg)
-{
-	struct dwc3_otg	*dotg = (struct dwc3_otg *)_dotg;
-
-	dwc3_otg_run_sm(&dotg->fsm);
-
-	return IRQ_HANDLED;
-}
-
-static void dwc3_otg_enable_irq(struct dwc3_otg *dotg)
-{
-	/* Enable only connector ID status & VBUS change events */
-	dwc3_exynos_writel(dotg->regs, DWC3_OEVTEN,
-			DWC3_OEVTEN_OTGCONIDSTSCHNGEVNT |
-			DWC3_OEVTEN_OTGBDEVVBUSCHNGEVNT);
-}
-
-static void dwc3_otg_disable_irq(struct dwc3_otg *dotg)
-{
-	dwc3_exynos_writel(dotg->regs, DWC3_OEVTEN, 0x0);
-}
-
-static void dwc3_otg_reset(struct dwc3_otg *dotg)
-{
-	/*
-	 * OCFG[2] - OTG-Version = 0
-	 * OCFG[1] - HNPCap = 0
-	 * OCFG[0] - SRPCap = 0
-	 */
-	dwc3_exynos_writel(dotg->regs, DWC3_OCFG, 0x0);
-
-	/*
-	 * OCTL[6] - PeriMode = 1
-	 * OCTL[5] - PrtPwrCtl = 0
-	 * OCTL[4] - HNPReq = 0
-	 * OCTL[3] - SesReq = 0
-	 * OCTL[2] - TermSelDLPulse = 0
-	 * OCTL[1] - DevSetHNPEn = 0
-	 * OCTL[0] - HstSetHNPEn = 0
-	 */
-	dwc3_exynos_writel(dotg->regs, DWC3_OCTL, DWC3_OTG_OCTL_PERIMODE);
-
-	/* Clear all otg events (interrupts) indications  */
-	dwc3_exynos_writel(dotg->regs, DWC3_OEVT, (u32)DWC3_OEVT_CLEAR_ALL);
-}
-
 /**
  * dwc3_otg_start
  * @dwc: pointer to our controller context structure
@@ -604,59 +404,16 @@ int dwc3_otg_start(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 {
 	struct dwc3_otg	*dotg = exynos->dotg;
 	struct otg_fsm	*fsm = &dotg->fsm;
-	int		ret;
 
-	if (dotg->ext_otg_ops) {
-		ret = dwc3_ext_otg_start(dotg);
-		if (ret) {
-			dev_err(dwc->dev, "failed to start external OTG\n");
-			return ret;
-		}
-	} else {
-		dotg->regs = dwc->regs;
-
-		dwc3_otg_reset(dotg);
-
-		dotg->fsm.id = dwc3_otg_get_id_state(dotg);
-		dotg->fsm.b_sess_vld = dwc3_otg_get_b_sess_state(dotg);
-
-		dotg->irq = platform_get_irq(to_platform_device(dwc->dev), 0);
-		ret = devm_request_threaded_irq(dwc->dev, dotg->irq,
-				dwc3_otg_interrupt,
-				dwc3_otg_thread_interrupt,
-				IRQF_SHARED, "dwc3-otg", dotg);
-		if (ret) {
-			dev_err(dwc->dev, "failed to request irq #%d --> %d\n",
-					dotg->irq, ret);
-			return ret;
-		}
-
-		dwc3_otg_enable_irq(dotg);
-	}
+	/* B-device by default */
+	fsm->id = 1;
+	fsm->b_sess_vld = 0;
 
 	dotg->ready = 1;
 
 	dwc3_otg_run_sm(fsm);
 
 	return 0;
-}
-
-/**
- * dwc3_otg_stop
- * @dwc: pointer to our controller context structure
- */
-void dwc3_otg_stop(struct dwc3 *dwc, struct dwc3_exynos *exynos)
-{
-	struct dwc3_otg         *dotg = exynos->dotg;
-
-	if (dotg->ext_otg_ops) {
-		dwc3_ext_otg_stop(dotg);
-	} else {
-		dwc3_otg_disable_irq(dotg);
-		free_irq(dotg->irq, dotg);
-	}
-
-	dotg->ready = 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -864,24 +621,22 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	return NOTIFY_OK;
 }
 
+static void dwc3_exynos_rsw_work(struct work_struct *w)
+{
+	struct dwc3_otg *dotg = container_of(w, struct dwc3_otg, work);
+
+	dwc3_otg_run_sm(&dotg->fsm);
+}
+
 int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 {
-	struct dwc3_otg *dotg = exynos->dotg;
-	struct dwc3_ext_otg_ops *ops = NULL;
+	struct dwc3_otg *dotg;
 	int ret = 0;
 
-	/* EXYNOS SoCs don't have HW OTG, but it supports SW OTG. */
-	ops = dwc3_otg_exynos_rsw_probe(dwc);
-	if (!ops)
-		return 0;
-
-	/* Allocate and init otg instance */
 	dotg = devm_kzalloc(dwc->dev, sizeof(struct dwc3_otg), GFP_KERNEL);
 	if (!dotg)
 		return -ENOMEM;
 
-	/* This reference is used by dwc3 modules for checking otg existence */
-	exynos->dotg = dotg;
 	dotg->dwc = dwc;
 	dotg->exynos = exynos;
 
@@ -901,30 +656,17 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 					  PM_QOS_DEVICE_THROUGHPUT, 0);
 	}
 
-	dotg->ext_otg_ops = ops;
-
-	dotg->otg.set_peripheral = dwc3_otg_set_peripheral;
-	dotg->otg.set_host = NULL;
-
 	dotg->otg.state = OTG_STATE_UNDEFINED;
 	dotg->in_shutdown = false;
 
 	mutex_init(&dotg->fsm.lock);
-	dotg->fsm.ops = &dwc3_otg_fsm_ops;
 	dotg->fsm.otg = &dotg->otg;
 
 	dotg->vbus_reg = devm_regulator_get(dwc->dev, "dwc3-vbus");
 	if (IS_ERR(dotg->vbus_reg))
 		dev_err(dwc->dev, "failed to obtain vbus regulator\n");
 
-	if (dotg->ext_otg_ops) {
-		dev_dbg(dwc->dev, "%s, dwc3_ext_otg_setup call\n", __func__);
-		ret = dwc3_ext_otg_setup(dotg);
-		if (ret) {
-			dev_err(dwc->dev, "failed to setup OTG\n");
-			return ret;
-		}
-	}
+	INIT_WORK(&dotg->work, dwc3_exynos_rsw_work);
 
 	dotg->wakelock = wakeup_source_register(dwc->dev, "dwc3-otg");
 
@@ -944,6 +686,9 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 	if (ret)
 		dev_err(dwc->dev, "failed register power supply notifier\n");
 
+	/* Make dwc3_otg accessible after member variable initialization completes */
+	exynos->dotg = dotg;
+
 	dev_dbg(dwc->dev, "otg_init done\n");
 
 	return 0;
@@ -953,15 +698,9 @@ void dwc3_exynos_otg_exit(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 {
 	struct dwc3_otg *dotg = exynos->dotg;
 
-	if (!dotg->ext_otg_ops)
-		return;
-
 	unregister_pm_notifier(&dotg->pm_nb);
-
-	dwc3_ext_otg_exit(dotg);
-
+	cancel_work_sync(&dotg->work);
 	wakeup_source_unregister(dotg->wakelock);
-	free_irq(dotg->irq, dotg);
 	dotg->otg.state = OTG_STATE_UNDEFINED;
 	kfree(dotg);
 	exynos->dotg = NULL;
