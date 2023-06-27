@@ -45,7 +45,6 @@ struct dwc3_otg {
 	int                     irq;
 	void __iomem            *regs;
 	struct wakeup_source	*wakelock;
-	struct wakeup_source	*reconn_wakelock;
 
 	unsigned		ready:1;
 	int			otg_connection;
@@ -58,8 +57,6 @@ struct dwc3_otg {
 
 	struct dwc3_ext_otg_ops *ext_otg_ops;
 
-	struct work_struct	recov_work;
-
 	struct notifier_block	pm_nb;
 	struct notifier_block	psy_notifier;
 	struct completion	resume_cmpl;
@@ -69,9 +66,6 @@ struct dwc3_otg {
 	bool			usb_charged;
 
 	struct mutex lock;
-	u16 combo_phy_control;
-	u16 usb2_phy_control;
-
 };
 
 static inline int dwc3_ext_otg_setup(struct dwc3_otg *dotg)
@@ -118,7 +112,6 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos);
 void dwc3_exynos_otg_exit(struct dwc3 *dwc, struct dwc3_exynos *exynos);
 int dwc3_otg_start(struct dwc3 *dwc, struct dwc3_exynos *exynos);
 void dwc3_otg_stop(struct dwc3 *dwc, struct dwc3_exynos *exynos);
-int dwc3_otg_usb_recovery_reconn(struct dwc3_exynos *exynos);
 bool dwc3_otg_check_usb_suspend(struct dwc3_exynos *exynos);
 bool dwc3_otg_check_usb_activity(struct dwc3_exynos *exynos);
 

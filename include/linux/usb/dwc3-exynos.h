@@ -90,9 +90,6 @@ struct dwc3_exynos {
 	struct clk		**clocks;
 	struct clk		*bus_clock;
 
-	struct regulator	*vdd33;
-	struct regulator	*vdd10;
-
 	struct extcon_dev	*edev;
 	struct notifier_block	vbus_nb;
 	struct notifier_block	id_nb;
@@ -102,20 +99,11 @@ struct dwc3_exynos {
 	bool			gadget_state;
 
 	int			idle_ip_index;
-	unsigned long		bus_clock_rate;
 
 	struct dwc3_exynos_rsw	rsw;
 	struct dwc3_otg		*dotg;
 
-	/* To check USB connection */
-	int			vbus_state;
 	struct dwc3_exynos_config config;
-
-	/* Timer and retry count for USB device reconnection */
-	struct timer_list	usb_connect_timer;
-	int			retry_cnt;
-
-	struct delayed_work	usb_qos_lock_delayed_work;
 
 	int			force_speed;
 
