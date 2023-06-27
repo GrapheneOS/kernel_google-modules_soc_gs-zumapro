@@ -437,45 +437,6 @@ int dwc3_core_susphy_set(struct dwc3 *dwc, int on)
 
 
 /* -------------------------------------------------------------------------- */
-static struct dwc3_exynos *dwc3_exynos_match(struct device *dev)
-{
-	const struct of_device_id *matches = NULL;
-	struct dwc3_exynos *exynos = NULL;
-
-	if (!dev)
-		return NULL;
-
-	matches = exynos_dwc3_match;
-
-	if (of_match_device(matches, dev))
-		exynos = dev_get_drvdata(dev);
-
-	return exynos;
-}
-
-bool dwc3_exynos_rsw_available(struct device *dev)
-{
-	struct dwc3_exynos *exynos;
-
-	exynos = dwc3_exynos_match(dev);
-	if (!exynos)
-		return false;
-
-	return true;
-}
-EXPORT_SYMBOL_GPL(dwc3_exynos_rsw_available);
-
-int dwc3_exynos_rsw_start(struct device *dev)
-{
-	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct dwc3_exynos_rsw	*rsw = &exynos->rsw;
-
-	/* B-device by default */
-	rsw->fsm->id = 1;
-	rsw->fsm->b_sess_vld = 0;
-
-	return 0;
-}
 
 int dwc3_exynos_set_bus_clock(struct device *dev, int clk_level)
 {
@@ -502,36 +463,6 @@ int dwc3_exynos_set_bus_clock(struct device *dev, int clk_level)
 	return 0;
 }
 
-static void dwc3_exynos_rsw_work(struct work_struct *w)
-{
-	struct dwc3_exynos_rsw	*rsw = container_of(w,
-					struct dwc3_exynos_rsw, work);
-
-	dwc3_otg_run_sm(rsw->fsm);
-}
-
-int dwc3_exynos_rsw_setup(struct device *dev, struct otg_fsm *fsm)
-{
-	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct dwc3_exynos_rsw	*rsw = &exynos->rsw;
-
-	INIT_WORK(&rsw->work, dwc3_exynos_rsw_work);
-
-	rsw->fsm = fsm;
-
-	return 0;
-}
-
-void dwc3_exynos_rsw_exit(struct device *dev)
-{
-	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct dwc3_exynos_rsw	*rsw = &exynos->rsw;
-
-	cancel_work_sync(&rsw->work);
-
-	rsw->fsm = NULL;
-}
-
 /**
  * dwc3_exynos_id_event - receive ID pin state change event.
  * @state : New ID pin state.
@@ -539,22 +470,19 @@ void dwc3_exynos_rsw_exit(struct device *dev)
 int dwc3_exynos_id_event(struct device *dev, int state)
 {
 	struct dwc3_exynos	*exynos;
-	struct dwc3_exynos_rsw	*rsw;
-	struct otg_fsm		*fsm;
+	struct dwc3_otg *dotg;
 
 	exynos = dev_get_drvdata(dev);
 	if (!exynos)
 		return -ENOENT;
 
-	rsw = &exynos->rsw;
-
-	fsm = rsw->fsm;
-	if (!fsm)
+	dotg = exynos->dotg;
+	if (!dotg)
 		return -ENOENT;
 
-	if (fsm->id != state) {
-		fsm->id = state;
-		schedule_work(&rsw->work);
+	if (dotg->fsm.id != state) {
+		dotg->fsm.id = state;
+		schedule_work(&dotg->work);
 	}
 
 	return 0;
@@ -567,22 +495,19 @@ int dwc3_exynos_id_event(struct device *dev, int state)
 int dwc3_exynos_vbus_event(struct device *dev, bool vbus_active)
 {
 	struct dwc3_exynos	*exynos;
-	struct dwc3_exynos_rsw	*rsw;
-	struct otg_fsm		*fsm;
+	struct dwc3_otg *dotg;
 
 	exynos = dev_get_drvdata(dev);
 	if (!exynos)
 		return -ENOENT;
 
-	rsw = &exynos->rsw;
-
-	fsm = rsw->fsm;
-	if (!fsm)
+	dotg = exynos->dotg;
+	if (!dotg)
 		return -ENOENT;
 
-	if (fsm->b_sess_vld != vbus_active) {
-		fsm->b_sess_vld = vbus_active;
-		schedule_work(&rsw->work);
+	if (dotg->fsm.b_sess_vld != vbus_active) {
+		dotg->fsm.b_sess_vld = vbus_active;
+		schedule_work(&dotg->work);
 	}
 
 	return 0;
@@ -609,8 +534,6 @@ bool dwc3_exynos_check_usb_suspend(struct dwc3_otg *dotg)
 int dwc3_exynos_phy_enable(int owner, bool on)
 {
 	struct dwc3_exynos	*exynos;
-	struct dwc3_exynos_rsw	*rsw;
-	struct otg_fsm		*fsm;
 	struct device_node *np = NULL;
 	struct platform_device *pdev = NULL;
 	struct dwc3		*dwc;
@@ -638,15 +561,6 @@ int dwc3_exynos_phy_enable(int owner, bool on)
 	exynos = platform_get_drvdata(pdev);
 	if (!exynos) {
 		pr_err("%s we can't get drvdata\n", __func__);
-		ret = -ENOENT;
-		goto err;
-	}
-
-	rsw = &exynos->rsw;
-
-	fsm = rsw->fsm;
-	if (!fsm) {
-		pr_err("%s we can't get fsm\n", __func__);
 		ret = -ENOENT;
 		goto err;
 	}
@@ -1264,8 +1178,6 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	dwc3_exynos_otg_init(exynos->dwc, exynos);
 
 	dwc3_otg_start(exynos->dwc, exynos);
-
-	otg_set_peripheral(&exynos->dotg->otg, exynos->dwc->gadget);
 
 	/* disconnect gadget in probe */
 	usb_udc_vbus_handler(exynos->dwc->gadget, false);

@@ -12,38 +12,26 @@
 #include <linux/pm_qos.h>
 #include <linux/pm_wakeup.h>
 #include <linux/power_supply.h>
-#include <linux/usb/dwc3-exynos.h>
 #include <linux/usb/otg-fsm.h>
+#include <linux/usb/otg.h>
 
 #include <soc/google/exynos_pm_qos.h>
-
-struct dwc3_ext_otg_ops {
-	int	(*setup)(struct device *dev, struct otg_fsm *fsm);
-	void	(*exit)(struct device *dev);
-	int	(*start)(struct device *dev);
-	void	(*stop)(struct device *dev);
-};
 
 /**
  * struct dwc3_otg: OTG driver data. Shared by HCD and DCD.
  * @otg: USB OTG Transceiver structure.
  * @fsm: OTG Final State Machine.
  * @dwc: pointer to our controller context structure.
- * @irq: IRQ number assigned for HSUSB controller.
- * @regs: ioremapped register base address.
  * @wakelock: prevents the system from entering suspend while
  *		host or peripheral mode is active.
  * @vbus_reg: Vbus regulator.
  * @ready: is one when OTG is ready for operation.
- * @ext_otg_ops: external OTG engine ops.
  */
 struct dwc3_otg {
 	struct usb_otg          otg;
 	struct otg_fsm		fsm;
 	struct dwc3             *dwc;
 	struct dwc3_exynos      *exynos;
-	int                     irq;
-	void __iomem            *regs;
 	struct wakeup_source	*wakelock;
 
 	unsigned		ready:1;
@@ -55,65 +43,27 @@ struct dwc3_otg {
 	int				pm_qos_int_usb2_val;
 	int				pm_qos_int_usb3_val;
 
-	struct dwc3_ext_otg_ops *ext_otg_ops;
+	struct work_struct	work;
 
 	struct notifier_block	pm_nb;
 	struct notifier_block	psy_notifier;
 	struct completion	resume_cmpl;
 	int			dwc3_suspended;
-	int			fsm_reset;
 	int			in_shutdown;
 	bool			usb_charged;
 
 	struct mutex lock;
 };
 
-static inline int dwc3_ext_otg_setup(struct dwc3_otg *dotg)
-{
-	struct device *dev = dotg->exynos->dev;
-
-	if (!dotg->ext_otg_ops->setup)
-		return -EOPNOTSUPP;
-	return dotg->ext_otg_ops->setup(dev, &dotg->fsm);
-}
-
-static inline int dwc3_ext_otg_exit(struct dwc3_otg *dotg)
-{
-	struct device *dev = dotg->exynos->dev;
-
-	if (!dotg->ext_otg_ops->exit)
-		return -EOPNOTSUPP;
-	dotg->ext_otg_ops->exit(dev);
-	return 0;
-}
-
-static inline int dwc3_ext_otg_start(struct dwc3_otg *dotg)
-{
-	struct device *dev = dotg->exynos->dev;
-
-	pr_info("%s\n", __func__);
-
-	if (!dotg->ext_otg_ops->start)
-		return -EOPNOTSUPP;
-	return dotg->ext_otg_ops->start(dev);
-}
-
-static inline int dwc3_ext_otg_stop(struct dwc3_otg *dotg)
-{
-	struct device *dev = dotg->exynos->dev;
-
-	if (!dotg->ext_otg_ops->stop)
-		return -EOPNOTSUPP;
-	dotg->ext_otg_ops->stop(dev);
-	return 0;
-}
-
+void dwc3_otg_run_sm(struct otg_fsm *fsm);
 int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos);
 void dwc3_exynos_otg_exit(struct dwc3 *dwc, struct dwc3_exynos *exynos);
 int dwc3_otg_start(struct dwc3 *dwc, struct dwc3_exynos *exynos);
-void dwc3_otg_stop(struct dwc3 *dwc, struct dwc3_exynos *exynos);
 bool dwc3_otg_check_usb_suspend(struct dwc3_exynos *exynos);
 bool dwc3_otg_check_usb_activity(struct dwc3_exynos *exynos);
+int dwc3_otg_start_host(struct otg_fsm *fsm, int on);
+int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on);
+void dwc3_otg_drv_vbus(struct otg_fsm *fsm, int on);
 
 extern void __iomem *phycon_base_addr;
 extern int exynos_usbdrd_pipe3_enable(struct phy *phy);
