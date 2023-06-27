@@ -24,7 +24,6 @@
  * @dwc: pointer to our controller context structure.
  * @wakelock: prevents the system from entering suspend while
  *		host or peripheral mode is active.
- * @vbus_reg: Vbus regulator.
  * @ready: is one when OTG is ready for operation.
  */
 struct dwc3_otg {
@@ -36,8 +35,6 @@ struct dwc3_otg {
 
 	unsigned		ready:1;
 	int			otg_connection;
-
-	struct regulator	*vbus_reg;
 
 	struct exynos_pm_qos_request	pm_qos_int_req;
 	int				pm_qos_int_usb2_val;
@@ -63,7 +60,6 @@ bool dwc3_otg_check_usb_suspend(struct dwc3_exynos *exynos);
 bool dwc3_otg_check_usb_activity(struct dwc3_exynos *exynos);
 int dwc3_otg_start_host(struct otg_fsm *fsm, int on);
 int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on);
-void dwc3_otg_drv_vbus(struct otg_fsm *fsm, int on);
 
 extern void __iomem *phycon_base_addr;
 extern int exynos_usbdrd_pipe3_enable(struct phy *phy);

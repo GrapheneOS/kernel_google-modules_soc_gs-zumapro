@@ -80,7 +80,6 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		} else {
 			ret = dwc3_otg_start_host(fsm, 1);
 			if (!ret) {
-				dwc3_otg_drv_vbus(fsm, 1);
 				otg->state = OTG_STATE_A_HOST;
 			} else {
 				dev_err(dev, "OTG SM: cannot start host\n");
@@ -89,7 +88,6 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		break;
 	case OTG_STATE_A_HOST:
 		if (fsm->id) {
-			dwc3_otg_drv_vbus(fsm, 0);
 			ret = dwc3_otg_start_host(fsm, 0);
 			if (!ret)
 				otg->state = OTG_STATE_A_IDLE;
@@ -140,26 +138,6 @@ static void dwc3_otg_set_peripheral_mode(struct dwc3_otg *dotg)
 	struct dwc3 *dwc = dotg->dwc;
 
 	dwc3_otg_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
-}
-
-void dwc3_otg_drv_vbus(struct otg_fsm *fsm, int on)
-{
-	struct dwc3_otg	*dotg = container_of(fsm, struct dwc3_otg, fsm);
-	int ret;
-
-	if (IS_ERR(dotg->vbus_reg)) {
-		dev_err(dotg->dwc->dev, "vbus regulator is not available\n");
-		return;
-	}
-
-	if (on)
-		ret = regulator_enable(dotg->vbus_reg);
-	else
-		ret = regulator_disable(dotg->vbus_reg);
-
-	if (ret)
-		dev_err(dotg->dwc->dev, "failed to turn Vbus %s\n",
-						on ? "on" : "off");
 }
 
 void dwc3_otg_phy_tune(struct otg_fsm *fsm)
@@ -661,10 +639,6 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 
 	mutex_init(&dotg->fsm.lock);
 	dotg->fsm.otg = &dotg->otg;
-
-	dotg->vbus_reg = devm_regulator_get(dwc->dev, "dwc3-vbus");
-	if (IS_ERR(dotg->vbus_reg))
-		dev_err(dwc->dev, "failed to obtain vbus regulator\n");
 
 	INIT_WORK(&dotg->work, dwc3_exynos_rsw_work);
 
