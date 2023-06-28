@@ -2600,23 +2600,6 @@ static ssize_t acpm_gov_timer_stepwise_gain_store(struct device *dev,
 	return count;
 }
 
-static ssize_t tj_cur_cdev_state_show(struct device *dev, struct device_attribute *devattr, char *buf)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct gs_tmu_data *data = platform_get_drvdata(pdev);
-
-	struct curr_state curr_state;
-	u8 tj_cur_cdev_state_val;
-
-	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
-	    get_curr_state_from_acpm(acpm_gov_common.sm_base, data->id, &curr_state))
-		tj_cur_cdev_state_val = curr_state.cdev_state;
-	else
-		return -EIO;
-
-	return sysfs_emit(buf, "%u\n", tj_cur_cdev_state_val);
-}
-
 static ssize_t thermal_pressure_time_window_store(struct device *dev,
 						  struct device_attribute *devattr, const char *buf,
 						  size_t count)
@@ -4065,7 +4048,6 @@ static DEVICE_ATTR_RW(power_table_ect_offset);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
-static DEVICE_ATTR_RO(tj_cur_cdev_state);
 static DEVICE_ATTR_RW(control_temp_step);
 static DEVICE_ATTR_RW(thermal_pressure_time_window);
 static DEVICE_ATTR_RW(acpm_temp_state_table);
@@ -4110,7 +4092,6 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
-	&dev_attr_tj_cur_cdev_state.attr,
 	&dev_attr_control_temp_step.attr,
 	&dev_attr_thermal_pressure_time_window.attr,
 	&dev_attr_acpm_temp_state_table.attr,
