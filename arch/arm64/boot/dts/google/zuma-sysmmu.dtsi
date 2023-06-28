@@ -1000,7 +1000,6 @@
 		qos = <15>;
 
 		sysmmu,async-fault;
-		sysmmu,ap-permissive;
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A480000>;
 		power-domains = <&pd_mfc>;
