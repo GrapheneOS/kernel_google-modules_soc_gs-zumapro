@@ -108,6 +108,7 @@ kernel_module_group(
         "//private/google-modules/touch/common:touch.common",
         "//private/google-modules/touch/fts/ftm5",
         "//private/google-modules/touch/sec",
+        "//private/google-modules/trusty",
         "//private/google-modules/power/reset",
         "//private/google-modules/bluetooth/broadcom:bluetooth.broadcom",
         "//private/google-modules/nfc",
@@ -134,6 +135,7 @@ kernel_build(
         "//private/google-modules/touch/common:common.kconfig",
         "//private/google-modules/touch/fts/ftm5:ftm5.kconfig",
         "//private/google-modules/touch/sec:sec.kconfig",
+        "//private/google-modules/trusty:trusty.kconfig",
         "//private/google-modules/video/gchips:video.gchips.kconfig",
     ],
     outs = [
@@ -297,11 +299,6 @@ kernel_module(
         "drivers/thermal/google/gs101_spmic_thermal.ko",
         "drivers/thermal/samsung/gpu_cooling.ko",
         "drivers/thermal/samsung/gs_thermal.ko",
-        "drivers/trusty/trusty-core.ko",
-        "drivers/trusty/trusty-ipc.ko",
-        "drivers/trusty/trusty-log.ko",
-        "drivers/trusty/trusty-test.ko",
-        "drivers/trusty/trusty-virtio.ko",
         "drivers/tty/serial/exynos_tty.ko",
         "drivers/usb/dwc3/dwc3-exynos-usb.ko",
         "drivers/usb/gadget/function/usb_f_dm.ko",
@@ -318,6 +315,9 @@ kernel_module(
         "drivers/watchdog/s3c2410_wdt.ko",
     ],
     kernel_build = "//private/google-modules/soc/gs:gs_kernel_build",
+    deps = [
+        "//private/google-modules/trusty",
+    ],
 )
 
 kernel_modules_install(
