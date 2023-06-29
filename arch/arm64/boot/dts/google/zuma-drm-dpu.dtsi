@@ -494,6 +494,10 @@
 
 		interrupts = <GIC_SPI IRQ_DP_LINK_HSI0 IRQ_TYPE_LEVEL_HIGH>;
 
+		/* clock */
+		clocks = <&clock UMUX_CLKCMU_HSI0_DPOSC_USER>;
+		clock-names = "dposc_clk";
+
 		/* To use secure buffer address range. */
 		/* If you not set this, normal buffer is transfered on DRM scenario */
 		samsung,tzmp;
