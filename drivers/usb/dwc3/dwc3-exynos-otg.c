@@ -39,73 +39,101 @@ static struct notifier_block dwc3_otg_reboot_notifier = {
 	.notifier_call = dwc3_otg_reboot_notify,
 };
 
-static int dwc3_otg_statemachine(struct otg_fsm *fsm)
-{
-	struct usb_otg *otg = fsm->otg;
-	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
-	struct device *dev = dotg->dwc->dev;
-	enum usb_otg_state prev_state = otg->state;
+/*
+ * dwc3_exynos_wait_role - wait for pending role switch to complete and return
+ * the current role. The role switch is done asynchronously in a workqueue,
+ * hence the previouse requested role could be overrideen by the later one.
+ * The caller could use this function to ensure the role has switched as
+ * intended before requesting another role switch.
+ * Example use case: toggling the gadget mode off and on.
+ */
+enum usb_role dwc3_exynos_wait_role(struct dwc3_otg *dotg) {
+	flush_work(&dotg->work);
+	return dotg->current_role;
+}
+
+static void dwc3_exynos_set_role_work(struct work_struct *work) {
+	struct dwc3_otg *dotg = container_of(work, struct dwc3_otg, work);
+	struct dwc3_exynos *exynos = dotg->exynos;
+	enum usb_role current_role, desired_role;
 	int ret = 0;
 
-	switch (otg->state) {
-	case OTG_STATE_UNDEFINED:
-		if (fsm->id)
-			otg->state = OTG_STATE_B_IDLE;
-		else
-			otg->state = OTG_STATE_A_IDLE;
-		break;
-	case OTG_STATE_B_IDLE:
-		if (!fsm->id) {
-			otg->state = OTG_STATE_A_IDLE;
-		} else if (fsm->b_sess_vld) {
-			ret = dwc3_otg_start_gadget(fsm, 1);
-			if (!ret)
-				otg->state = OTG_STATE_B_PERIPHERAL;
-			else
-				dev_err(dev, "OTG SM: cannot start gadget\n");
-		}
-		break;
-	case OTG_STATE_B_PERIPHERAL:
-		if (!fsm->id || !fsm->b_sess_vld) {
-			ret = dwc3_otg_start_gadget(fsm, 0);
-			if (!ret)
-				otg->state = OTG_STATE_B_IDLE;
-			else
-				dev_err(dev, "OTG SM: cannot stop gadget\n");
-		}
-		break;
-	case OTG_STATE_A_IDLE:
-		if (fsm->id) {
-			otg->state = OTG_STATE_B_IDLE;
-		} else {
-			ret = dwc3_otg_start_host(fsm, 1);
-			if (!ret) {
-				otg->state = OTG_STATE_A_HOST;
-			} else {
-				dev_err(dev, "OTG SM: cannot start host\n");
-			}
-		}
-		break;
-	case OTG_STATE_A_HOST:
-		if (fsm->id) {
-			ret = dwc3_otg_start_host(fsm, 0);
-			if (!ret)
-				otg->state = OTG_STATE_A_IDLE;
-			else
-				dev_err(dev, "OTG SM: cannot stop host\n");
-		}
-		break;
-	default:
-		dev_err(dev, "OTG SM: invalid state\n");
+	mutex_lock(&dotg->role_lock);
+	desired_role = dotg->desired_role;
+	current_role = dotg->current_role;
+
+	if (desired_role == current_role) {
+		dev_info(exynos->dev, "role unchanged %s\n",
+			 usb_role_string(current_role));
+		goto out;
 	}
 
-	if (!ret)
-		ret = (otg->state != prev_state);
+	switch (current_role) {
+	case USB_ROLE_NONE:
+		break;
+	case USB_ROLE_HOST:
+		ret = dwc3_otg_start_host(dotg, 0);
+		break;
+	case USB_ROLE_DEVICE:
+		ret = dwc3_otg_start_gadget(dotg, 0);
+		break;
+	default:
+		break;
+	}
 
-	dev_dbg(dev, "OTG SM: %s => %s\n", usb_otg_state_string(prev_state),
-		(ret > 0) ? usb_otg_state_string(otg->state) : "(no change)");
+	if (ret) {
+		dev_err(exynos->dev, "failed to stop %s\n",
+			usb_role_string(current_role));
+		goto out;
+	}
 
-	return ret;
+	switch (desired_role) {
+	case USB_ROLE_NONE:
+		break;
+	case USB_ROLE_HOST:
+		ret = dwc3_otg_start_host(dotg, 1);
+		break;
+	case USB_ROLE_DEVICE:
+		ret = dwc3_otg_start_gadget(dotg, 1);
+
+		break;
+	default:
+		break;
+	}
+
+	if (ret) {
+		dev_err(exynos->dev, "failed to start %s\n",
+			usb_role_string(desired_role));
+		goto out;
+	}
+
+	dotg->current_role = desired_role;
+	dev_info(exynos->dev, "role switched from %s to %s\n",
+		 usb_role_string(current_role), usb_role_string(desired_role));
+
+out:
+	mutex_unlock(&dotg->role_lock);
+}
+
+void dwc3_exynos_set_role(struct dwc3_otg *dotg) {
+	enum usb_role new_role;
+
+	if (dotg->host_on && dotg->device_on) {
+		// Favor host mode in race conditions
+		new_role = USB_ROLE_HOST;
+	} else if (dotg->host_on) {
+		new_role = USB_ROLE_HOST;
+	} else if (dotg->device_on) {
+		new_role = USB_ROLE_DEVICE;
+	} else {
+		new_role = USB_ROLE_NONE;
+	}
+
+	dev_info(dotg->exynos->dev, "set desired role to %s\n",
+		 usb_role_string(new_role));
+
+	dotg->desired_role = new_role;
+	schedule_work(&dotg->work);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -140,24 +168,27 @@ static void dwc3_otg_set_peripheral_mode(struct dwc3_otg *dotg)
 	dwc3_otg_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
 }
 
-void dwc3_otg_phy_tune(struct otg_fsm *fsm)
+void dwc3_otg_phy_tune(struct dwc3 *dwc, bool is_host)
 {
-	struct usb_otg	*otg = fsm->otg;
-	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
-	struct dwc3	*dwc = dotg->dwc;
+	int phy_state;
+
+	// Phy driver maps OTG state to host/device mode.
+	if (is_host) {
+		phy_state = OTG_STATE_A_IDLE;
+	} else {
+		phy_state = OTG_STATE_B_IDLE;
+	}
 
 	exynos_usbdrd_phy_tune(dwc->usb2_generic_phy,
-						dotg->otg.state);
+			       phy_state);
 #ifdef CONFIG_EXYNOS_USBDRD_PHY30
 	exynos_usbdrd_phy_tune(dwc->usb3_generic_phy,
-						dotg->otg.state);
+			       phy_state);
 #endif
 }
 
-int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
+int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 {
-	struct usb_otg	*otg = fsm->otg;
-	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
 	struct dwc3	*dwc = dotg->dwc;
 	struct device	*dev = dotg->dwc->dev;
 	struct dwc3_exynos *exynos = dotg->exynos;
@@ -212,7 +243,7 @@ int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 		exynos->dwc->current_dr_role = DWC3_EXYNOS_IGNORE_CORE_OPS;
 		mutex_unlock(&dotg->lock);
 
-		dwc3_otg_phy_tune(fsm);
+		dwc3_otg_phy_tune(dwc, 1);
 
 		dwc3_exynos_core_init(dwc, exynos);
 		dwc3_otg_set_host_mode(dotg);
@@ -256,10 +287,8 @@ err1:
 	return ret;
 }
 
-int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
+int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 {
-	struct usb_otg	*otg = fsm->otg;
-	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
 	struct dwc3	*dwc = dotg->dwc;
 	struct dwc3_exynos *exynos = dotg->exynos;
 	struct device	*dev = dotg->dwc->dev;
@@ -299,7 +328,7 @@ int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		exynos->need_dr_role = 0;
 		mutex_unlock(&dotg->lock);
 
-		dwc3_otg_phy_tune(fsm);
+		dwc3_otg_phy_tune(dwc, 0);
 		dwc3_exynos_core_init(dwc, exynos);
 
 		/* connect gadget */
@@ -355,46 +384,6 @@ int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 }
 
 /* -------------------------------------------------------------------------- */
-
-void dwc3_otg_run_sm(struct otg_fsm *fsm)
-{
-	struct dwc3_otg	*dotg = container_of(fsm, struct dwc3_otg, fsm);
-	int		state_changed;
-
-	/* Prevent running SM on early system resume */
-	if (!dotg->ready)
-		return;
-
-	mutex_lock(&fsm->lock);
-
-	do {
-		state_changed = dwc3_otg_statemachine(fsm);
-	} while (state_changed > 0);
-
-	mutex_unlock(&fsm->lock);
-}
-
-/**
- * dwc3_otg_start
- * @dwc: pointer to our controller context structure
- */
-int dwc3_otg_start(struct dwc3 *dwc, struct dwc3_exynos *exynos)
-{
-	struct dwc3_otg	*dotg = exynos->dotg;
-	struct otg_fsm	*fsm = &dotg->fsm;
-
-	/* B-device by default */
-	fsm->id = 1;
-	fsm->b_sess_vld = 0;
-
-	dotg->ready = 1;
-
-	dwc3_otg_run_sm(fsm);
-
-	return 0;
-}
-
-/* -------------------------------------------------------------------------- */
 static struct device_node *exynos_dwusb_parse_dt(void)
 {
 	struct device_node *np = NULL;
@@ -434,7 +423,7 @@ static struct dwc3_exynos *exynos_dwusb_get_struct(void)
 int dwc3_otg_host_enable(bool enabled)
 {
 	struct dwc3_exynos *exynos;
-	struct otg_fsm  *fsm;
+	struct dwc3_otg  *dotg;
 
 	exynos = exynos_dwusb_get_struct();
 	if (!exynos) {
@@ -442,11 +431,14 @@ int dwc3_otg_host_enable(bool enabled)
 		return -ENODEV;
 	}
 
-	fsm = &exynos->dotg->fsm;
-	fsm->id = !enabled;
+	dev_info(exynos->dev, "%s: %s host\n", __func__, enabled ? "enable" : "disable");
 
-	dev_dbg(exynos->dev, "%s: %s host\n", __func__, enabled ? "enable" : "disable");
-	dwc3_otg_run_sm(fsm);
+	dotg = exynos->dotg;
+	if (!dotg)
+		return -ENOENT;
+
+	dwc3_exynos_host_event(exynos->dev, enabled);
+	dwc3_exynos_wait_role(dotg);
 
 	return 0;
 }
@@ -599,13 +591,6 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	return NOTIFY_OK;
 }
 
-static void dwc3_exynos_rsw_work(struct work_struct *w)
-{
-	struct dwc3_otg *dotg = container_of(w, struct dwc3_otg, work);
-
-	dwc3_otg_run_sm(&dotg->fsm);
-}
-
 int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 {
 	struct dwc3_otg *dotg;
@@ -634,17 +619,18 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 					  PM_QOS_DEVICE_THROUGHPUT, 0);
 	}
 
-	dotg->otg.state = OTG_STATE_UNDEFINED;
+	dotg->current_role = USB_ROLE_NONE;
+	dotg->desired_role = USB_ROLE_NONE;
+	dotg->host_on = 0;
+	dotg->device_on = 0;
 	dotg->in_shutdown = false;
 
-	mutex_init(&dotg->fsm.lock);
-	dotg->fsm.otg = &dotg->otg;
-
-	INIT_WORK(&dotg->work, dwc3_exynos_rsw_work);
+	INIT_WORK(&dotg->work, dwc3_exynos_set_role_work);
 
 	dotg->wakelock = wakeup_source_register(dwc->dev, "dwc3-otg");
 
 	mutex_init(&dotg->lock);
+	mutex_init(&dotg->role_lock);
 
 	init_completion(&dotg->resume_cmpl);
 	dotg->dwc3_suspended = 0;
@@ -675,7 +661,6 @@ void dwc3_exynos_otg_exit(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 	unregister_pm_notifier(&dotg->pm_nb);
 	cancel_work_sync(&dotg->work);
 	wakeup_source_unregister(dotg->wakelock);
-	dotg->otg.state = OTG_STATE_UNDEFINED;
 	kfree(dotg);
 	exynos->dotg = NULL;
 }
