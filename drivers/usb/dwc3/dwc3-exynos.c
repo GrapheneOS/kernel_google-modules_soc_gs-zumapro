@@ -26,8 +26,6 @@
 #include <linux/usb/dwc3-exynos.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/of.h>
-#include <linux/usb/otg.h>
-#include <linux/usb/otg-fsm.h>
 #include <linux/usb/usb_phy_generic.h>
 #include <linux/workqueue.h>
 
@@ -463,11 +461,7 @@ int dwc3_exynos_set_bus_clock(struct device *dev, int clk_level)
 	return 0;
 }
 
-/**
- * dwc3_exynos_id_event - receive ID pin state change event.
- * @state : New ID pin state.
- */
-int dwc3_exynos_id_event(struct device *dev, int state)
+int dwc3_exynos_host_event(struct device *dev, int action)
 {
 	struct dwc3_exynos	*exynos;
 	struct dwc3_otg *dotg;
@@ -480,19 +474,15 @@ int dwc3_exynos_id_event(struct device *dev, int state)
 	if (!dotg)
 		return -ENOENT;
 
-	if (dotg->fsm.id != state) {
-		dotg->fsm.id = state;
-		schedule_work(&dotg->work);
+	if (dotg->host_on != action) {
+		dotg->host_on = action;
+		dwc3_exynos_set_role(dotg);
 	}
 
 	return 0;
 }
 
-/**
- * dwc3_exynos_vbus_event - receive VBus change event.
- * vbus_active : New VBus state, true if active, false otherwise.
- */
-int dwc3_exynos_vbus_event(struct device *dev, bool vbus_active)
+int dwc3_exynos_device_event(struct device *dev, bool action)
 {
 	struct dwc3_exynos	*exynos;
 	struct dwc3_otg *dotg;
@@ -505,9 +495,9 @@ int dwc3_exynos_vbus_event(struct device *dev, bool vbus_active)
 	if (!dotg)
 		return -ENOENT;
 
-	if (dotg->fsm.b_sess_vld != vbus_active) {
-		dotg->fsm.b_sess_vld = vbus_active;
-		schedule_work(&dotg->work);
+	if (dotg->device_on != action) {
+		dotg->device_on = action;
+		dwc3_exynos_set_role(dotg);
 	}
 
 	return 0;
@@ -745,10 +735,10 @@ void dwc3_exynos_host_exit(struct dwc3_exynos *exynos)
 }
 EXPORT_SYMBOL_GPL(dwc3_exynos_host_exit);
 
-static int dwc3_exynos_vbus_notifier(struct notifier_block *nb,
+static int dwc3_exynos_device_notifier(struct notifier_block *nb,
 				     unsigned long action, void *dev)
 {
-	struct dwc3_exynos *exynos = container_of(nb, struct dwc3_exynos, vbus_nb);
+	struct dwc3_exynos *exynos = container_of(nb, struct dwc3_exynos, device_nb);
 
 	dev_info(exynos->dev, "turn %s USB gadget\n", action ? "on" : "off");
 
@@ -757,15 +747,15 @@ static int dwc3_exynos_vbus_notifier(struct notifier_block *nb,
 		return NOTIFY_OK;
 	}
 
-	dwc3_exynos_vbus_event(exynos->dev, action);
+	dwc3_exynos_device_event(exynos->dev, action);
 
 	return NOTIFY_OK;
 }
 
-static int dwc3_exynos_id_notifier(struct notifier_block *nb,
+static int dwc3_exynos_host_notifier(struct notifier_block *nb,
 				   unsigned long action, void *dev)
 {
-	struct dwc3_exynos *exynos = container_of(nb, struct dwc3_exynos, id_nb);
+	struct dwc3_exynos *exynos = container_of(nb, struct dwc3_exynos, host_nb);
 
 	dev_info(exynos->dev, "turn %s USB host\n", action ? "on" : "off");
 
@@ -774,7 +764,7 @@ static int dwc3_exynos_id_notifier(struct notifier_block *nb,
 		return NOTIFY_OK;
 	}
 
-	dwc3_exynos_id_event(exynos->dev, !action);
+	dwc3_exynos_host_event(exynos->dev, action);
 
 	return NOTIFY_OK;
 }
@@ -793,16 +783,16 @@ static int dwc3_exynos_extcon_register(struct dwc3_exynos *exynos)
 		return exynos->edev ? PTR_ERR(exynos->edev) : -ENODEV;
 	}
 
-	exynos->vbus_nb.notifier_call = dwc3_exynos_vbus_notifier;
-	ret = extcon_register_notifier(exynos->edev, EXTCON_USB, &exynos->vbus_nb);
+	exynos->device_nb.notifier_call = dwc3_exynos_device_notifier;
+	ret = extcon_register_notifier(exynos->edev, EXTCON_USB, &exynos->device_nb);
 
 	if (ret < 0) {
 		dev_err(exynos->dev, "couldn't register notifier for EXTCON_USB\n");
 		return ret;
 	}
 
-	exynos->id_nb.notifier_call = dwc3_exynos_id_notifier;
-	ret = extcon_register_notifier(exynos->edev, EXTCON_USB_HOST, &exynos->id_nb);
+	exynos->host_nb.notifier_call = dwc3_exynos_host_notifier;
+	ret = extcon_register_notifier(exynos->edev, EXTCON_USB_HOST, &exynos->host_nb);
 
 	if (ret < 0)
 		dev_err(exynos->dev, "couldn't register notifier for EXTCON_USB_HOST\n");
@@ -871,10 +861,9 @@ dwc3_exynos_otg_state_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct usb_otg		*otg = &exynos->dotg->otg;
 
 	return sysfs_emit(buf, "%s\n",
-			usb_otg_state_string(otg->state));
+			usb_role_string(exynos->dotg->current_role));
 }
 
 static DEVICE_ATTR_RO(dwc3_exynos_otg_state);
@@ -884,9 +873,8 @@ dwc3_exynos_otg_b_sess_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct otg_fsm	*fsm = &exynos->dotg->fsm;
 
-	return sysfs_emit(buf, "%d\n", fsm->b_sess_vld);
+	return sysfs_emit(buf, "%d\n", exynos->dotg->device_on);
 }
 
 static ssize_t
@@ -894,15 +882,14 @@ dwc3_exynos_otg_b_sess_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t n)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct otg_fsm	*fsm = &exynos->dotg->fsm;
+	struct dwc3_otg		*dotg = exynos->dotg;
 	int		b_sess_vld;
 
 	if (kstrtoint(buf, 10, &b_sess_vld) != 0)
 		return -EINVAL;
 
-	fsm->b_sess_vld = !!b_sess_vld;
-
-	dwc3_otg_run_sm(fsm);
+	dwc3_exynos_device_event(exynos->dev, !!b_sess_vld);
+	dwc3_exynos_wait_role(dotg);
 
 	return n;
 }
@@ -914,9 +901,9 @@ dwc3_exynos_otg_id_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct otg_fsm	*fsm = &exynos->dotg->fsm;
 
-	return sysfs_emit(buf, "%d\n", fsm->id);
+	// id state is true when host mode is off, vice versa.
+	return sysfs_emit(buf, "%d\n", !exynos->dotg->host_on);
 }
 
 static ssize_t
@@ -924,15 +911,14 @@ dwc3_exynos_otg_id_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t n)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct otg_fsm	*fsm = &exynos->dotg->fsm;
+	struct dwc3_otg		*dotg = exynos->dotg;
 	int id;
 
 	if (kstrtoint(buf, 10, &id) != 0)
 		return -EINVAL;
 
-	fsm->id = !!id;
-
-	dwc3_otg_run_sm(fsm);
+	dwc3_exynos_host_event(exynos->dev, !id);
+	dwc3_exynos_wait_role(dotg);
 
 	return n;
 }
@@ -996,8 +982,7 @@ static ssize_t force_speed_store(struct device *dev, struct device_attribute *at
 {
 	struct dwc3_exynos *exynos = dev_get_drvdata(dev);
 	struct dwc3_otg *dotg = exynos->dotg;
-	struct otg_fsm *fsm = &dotg->fsm;
-	int vbus_state = 0;
+	bool toggle_gadget;
 
 	if (sysfs_streq(buf, "super-speed-plus")) {
 		exynos->force_speed = USB_SPEED_SUPER_PLUS;
@@ -1011,18 +996,18 @@ static ssize_t force_speed_store(struct device *dev, struct device_attribute *at
 		return -EINVAL;
 	}
 
-	if (fsm->b_sess_vld == 1) {
-		vbus_state = fsm->b_sess_vld;
-		fsm->b_sess_vld = 0;
-		dwc3_otg_run_sm(fsm);
+	toggle_gadget = dotg->device_on;
+	if (toggle_gadget) {
+		dwc3_exynos_device_event(exynos->dev, 0);
+		dwc3_exynos_wait_role(dotg);
 	}
 
 	exynos->dwc->maximum_speed = exynos->force_speed;
 	exynos->dwc->gadget->max_speed = exynos->dwc->maximum_speed;
 
-	if (vbus_state) {
-		fsm->b_sess_vld = vbus_state;
-		dwc3_otg_run_sm(fsm);
+	if (toggle_gadget) {
+		dwc3_exynos_device_event(exynos->dev, 1);
+		dwc3_exynos_wait_role(dotg);
 	}
 
 	return n;
@@ -1173,8 +1158,6 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 
 	dwc3_exynos_otg_init(exynos->dwc, exynos);
 
-	dwc3_otg_start(exynos->dwc, exynos);
-
 	/* disconnect gadget in probe */
 	usb_udc_vbus_handler(exynos->dwc->gadget, false);
 
@@ -1183,9 +1166,9 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	 * state to run state machine.
 	 */
 	if (extcon_get_state(exynos->edev, EXTCON_USB) > 0)
-		dwc3_exynos_vbus_event(exynos->dev, 1);
+		dwc3_exynos_device_event(exynos->dev, 1);
 	else if (extcon_get_state(exynos->edev, EXTCON_USB_HOST) > 0)
-		dwc3_exynos_id_event(exynos->dev, 0);
+		dwc3_exynos_host_event(exynos->dev, 1);
 
 	return 0;
 
@@ -1194,8 +1177,8 @@ populate_err:
 	platform_device_unregister(exynos->usb3_phy);
 extcon_unregister:
 	if (exynos->edev) {
-		extcon_unregister_notifier(exynos->edev, EXTCON_USB, &exynos->vbus_nb);
-		extcon_unregister_notifier(exynos->edev, EXTCON_USB_HOST, &exynos->id_nb);
+		extcon_unregister_notifier(exynos->edev, EXTCON_USB, &exynos->device_nb);
+		extcon_unregister_notifier(exynos->edev, EXTCON_USB_HOST, &exynos->host_nb);
 	}
 vdd33_err:
 	dwc3_exynos_clk_disable_unprepare(exynos);
@@ -1242,13 +1225,13 @@ static void dwc3_exynos_shutdown(struct platform_device *pdev)
 	 * during the shutdown process.
 	 */
 	if (extcon_get_state(exynos->edev, EXTCON_USB) > 0)
-		dwc3_exynos_vbus_event(exynos->dev, 0);
+		dwc3_exynos_device_event(exynos->dev, 0);
 	else if (extcon_get_state(exynos->edev, EXTCON_USB_HOST) > 0)
-		dwc3_exynos_id_event(exynos->dev, 1);
+		dwc3_exynos_host_event(exynos->dev, 0);
 
 	/* unregister the notifiers for USB and USB_HOST*/
-	extcon_unregister_notifier(exynos->edev, EXTCON_USB, &exynos->vbus_nb);
-	extcon_unregister_notifier(exynos->edev, EXTCON_USB_HOST, &exynos->id_nb);
+	extcon_unregister_notifier(exynos->edev, EXTCON_USB, &exynos->device_nb);
+	extcon_unregister_notifier(exynos->edev, EXTCON_USB_HOST, &exynos->host_nb);
 
 	return;
 }
