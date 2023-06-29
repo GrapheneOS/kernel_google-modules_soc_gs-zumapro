@@ -482,6 +482,8 @@
 		timeout-sec = <30>;
 		samsung,syscon-phandle = <&pmu_system_controller>;
 		index = <0>; /* if little cluster then index is 0*/
+
+		enable-cl0-fiq;
 	};
 
 	watchdog_cl1@10070000 {
