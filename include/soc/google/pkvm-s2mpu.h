@@ -16,6 +16,7 @@ struct s2mpu_data {
 	bool pkvm_registered;
 	bool always_on;
 	bool has_sysmmu;
+	bool has_pd;
 };
 
 /*

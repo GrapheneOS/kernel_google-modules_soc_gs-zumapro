@@ -36,6 +36,7 @@
 #include "tcpci_max77759_vendor_reg.h"
 #include "usb_icl_voter.h"
 #include "usb_psy.h"
+#include "usb_thermal_voter.h"
 
 #define TCPCI_MODE_VOTER	"TCPCI"
 #define LIMIT_SINK_VOTER	"LIMIT_SINK_CURRENT_VOTER"
@@ -484,6 +485,7 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 {
 	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
 	int val, ret = 0;
+	bool enable = false;
 
 	if (kstrtoint(buf, 0, &val) < 0)
 		return -EINVAL;
@@ -493,25 +495,51 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
+		enable = false;
 		break;
 	case 1:
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
+		enable = false;
 		break;
 	case 2:
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
+		enable = true;
 		break;
 	case 3:
 		if (chip->sbu_mux_en_gpio >= 0)
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
-	default:
+		enable = true;
 		break;
+	default:
+		goto set_sbu_state;
 	}
 
+	if ((enable && !chip->dp_regulator_enabled) || (!enable && chip->dp_regulator_enabled)) {
+		ret = enable ? regulator_enable(chip->dp_regulator) : \
+			regulator_disable(chip->dp_regulator);
+		if (ret >= 0)
+			chip->dp_regulator_enabled = enable;
+		dev_info(chip->dev, "dp regulator_%s %s ret:%d", enable ? "enable" : "disable",
+				ret < 0 ? "fail" : "success", ret);
+		ret = enable ? regulator_set_voltage(chip->dp_regulator, VOLTAGE_DP_AUX_DEFAULT_UV,
+							VOLTAGE_DP_AUX_DEFAULT_UV) : \
+				regulator_set_voltage(chip->dp_regulator, chip->dp_regulator_min_uv,
+							chip->dp_regulator_max_uv);
+		dev_info(chip->dev, "dp regulator_set_voltage %s ret:%d",
+				ret < 0 ? "fail" : "success", ret);
+	}
+
+	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, enable ? SBUSW_PATH_1 :
+			      (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "SBU dp switch %s %s ret:%d",
+		       enable ? "enable" : "disable", ret < 0 ? "fail" : "success", ret);
+
+set_sbu_state:
 	dev_info(chip->dev, "dp_debug: sbu_pullup_store: val:%d \n", val);
 	if (!ret)
 		chip->current_sbu_state = val;
@@ -1285,8 +1313,13 @@ static void process_power_status(struct max77759_plat *chip)
 		chip->vbus_present = 0;
 	logbuffer_log(chip->log, "[%s]: vbus_present %d", __func__, chip->vbus_present);
 	tcpm_vbus_change(tcpci->port);
-	/* Check for missing-rp non compliant power source */
-	check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES), chip->cc1, chip->cc2);
+	/*
+	 * Check for missing-rp non compliant power source.
+	 * Skip when usb is throttled due to overheat.
+	 */
+	if (!chip->usb_throttled)
+		check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES), chip->cc1,
+				 chip->cc2);
 
 	if (chip->quick_ramp_vbus_ovp && chip->vbus_present) {
 		kthread_cancel_delayed_work_sync(&chip->reset_ovp_work);
@@ -1620,7 +1653,10 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		 * contaminant detection.
 		 */
 		mutex_lock(&chip->rc_lock);
-		if (chip->contaminant_detection && tcpm_port_is_toggling(tcpci->port)) {
+		logbuffer_log(chip->log, "Servicing TCPC_ALERT_CC_STATUS");
+		if (!chip->usb_throttled && chip->contaminant_detection &&
+		    tcpm_port_is_toggling(tcpci->port)) {
+			logbuffer_log(chip->log, "Invoking process_contaminant_alert");
 			ret = process_contaminant_alert(chip->contaminant, false, true,
 							&contaminant_cc_update_handled,
 							&port_clean);
@@ -1650,8 +1686,13 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				if (contaminant_cc_update_handled) {
 					logbuffer_log(log,
 						      "CC update: Contaminant algorithm responded");
-					if (is_floating_cable_or_sink_detected(chip))
+					if (is_floating_cable_or_sink_detected(chip)) {
 						floating_cable_sink_detected_handler_locked(chip);
+						logbuffer_log(chip->log, "Floating cable detected");
+					} else {
+						chip->floating_cable_or_sink_detected = 0;
+						logbuffer_log(chip->log, "Floating cable counter cleared");
+					}
 				}
 			}
 		} else {
@@ -1659,10 +1700,12 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		}
 
 		if (invoke_tcpm_for_cc_update) {
+			logbuffer_log(chip->log, "invoke_tcpm_for_cc_update");
 			tcpm_cc_change(tcpci->port);
 			max77759_cache_cc(chip);
 			/* Check for missing-rp non compliant power source */
-			if (!regmap_read(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status))
+			if (!regmap_read(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status) &&
+			    !chip->usb_throttled)
 				check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES),
 						 chip->cc1, chip->cc2);
 			/* TCPM has detected valid CC terminations */
@@ -1675,7 +1718,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				if (chip->contaminant_detection_userspace !=
 					CONTAMINANT_DETECT_DISABLE)
 					disable_auto_ultra_low_power_mode(chip, false);
-			} else {
+			} else if (!chip->usb_throttled) {
 				/*
 				 * TCPM has not detected valid CC terminations
 				 * and neither the comparators nor ADC
@@ -1688,6 +1731,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				 * effect as the FLOATING_CABLE_OR_SINK_INSTANCE_THRESHOLD
 				 * is now doubled.
 				 */
+				logbuffer_log(chip->log, "Treating as floating cable");
 				floating_cable_sink_detected_handler_locked(chip);
 			}
 		}
@@ -2320,6 +2364,20 @@ static int tcpci_init(struct tcpci *tcpci, struct tcpci_data *data)
 	return -1;
 }
 
+static int usb_throttle_votable_callback(struct gvotable_election *el,
+					 const char *reason, void *value)
+{
+	struct max77759_plat *chip = gvotable_get_data(el);
+	int throttled = (long)value ? USB_SUSPENDED : USB_RESUMED;
+
+	mutex_lock(&chip->rc_lock);
+	chip->usb_throttled =  throttled;
+	logbuffer_log(chip->log, "%s: reason %s value %ld\n", __func__, reason, (long)value);
+	mutex_unlock(&chip->rc_lock);
+
+	return 0;
+}
+
 static int max77759_toggle_disable_votable_callback(struct gvotable_election *el,
 						    const char *reason, void *value)
 {
@@ -2588,11 +2646,17 @@ static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *
 	int ret = 0;
 
 	mutex_lock(&chip->rc_lock);
+	logbuffer_log(chip->log, "max_tcpci_check_contaminant");
+	if (chip->usb_throttled) {
+		logbuffer_log(chip->log, "usb throttled; port clean");
+		tcpm_port_clean(chip->port);
+		mutex_unlock(&chip->rc_lock);
+		return;
+	}
 	if (chip->contaminant_detection)
 		ret = process_contaminant_alert(chip->contaminant, true, false,
 						&contaminant_cc_status_handled,
 						&port_clean);
-	mutex_unlock(&chip->rc_lock);
 	if (ret < 0) {
 		logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
 		/* Assume clean port */
@@ -2604,6 +2668,7 @@ static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *
 		logbuffer_log(chip->log, "port dirty");
 		chip->check_contaminant = true;
 	}
+	mutex_unlock(&chip->rc_lock);
 }
 
 static void dp_notification_work_item(struct kthread_work *work)
@@ -2968,6 +3033,16 @@ static int max77759_probe(struct i2c_client *client,
 	}
 	gvotable_set_vote2str(chip->toggle_disable_votable, gvotable_v2s_int);
 	gvotable_election_set_name(chip->toggle_disable_votable, "TOGGLE_DISABLE");
+
+	chip->usb_throttle_votable =
+		gvotable_create_bool_election(NULL, usb_throttle_votable_callback, chip);
+	if (IS_ERR_OR_NULL(chip->usb_throttle_votable)) {
+		ret = PTR_ERR(chip->usb_throttle_votable);
+		dev_err(chip->dev, "USB throttle votable (%d) failed to create\n", ret);
+		return ret;
+	}
+	gvotable_set_vote2str(chip->usb_throttle_votable, gvotable_v2s_int);
+	gvotable_election_set_name(chip->usb_throttle_votable, USB_THROTTLE_VOTABLE);
 
 	/* Chip level tcpci callbacks */
 	chip->data.set_vbus = max77759_set_vbus;
