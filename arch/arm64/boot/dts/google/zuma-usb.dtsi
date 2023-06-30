@@ -12,7 +12,7 @@
 	xhci_dma: xhci_dma@97000000 {
 		compatible = "shared-dma-pool";
 		reg = <0x0 0x97000000 0x400000>;
-		reusable;
+		no-map;
 	};
 };
 
