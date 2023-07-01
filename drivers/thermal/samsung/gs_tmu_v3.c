@@ -222,11 +222,11 @@ static u64 acpm_to_kernel_ts(u64 acpm_ts)
 static bool get_bulk_mode_curr_state_buffer(void __iomem *base,
 					    struct gov_trace_data_struct *bulk_trace_buffer)
 {
-	int offset = 0;
+	int offset = offsetof(struct gov_trace_data_struct, buffered_curr_state[0]);
 
-	if(ACPM_BUF_VER > 0) {
+	if(ACPM_BUF_VER == 0) {
 		/* offset for u64 buffer_version field */
-		offset = ACPM_SM_BUFFER_VERSION_SIZE;
+		offset -= ACPM_SM_BUFFER_VERSION_SIZE;
 	}
 
 	if (base) {
@@ -242,13 +242,11 @@ static bool get_bulk_mode_curr_state_buffer(void __iomem *base,
 static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_state *curr_state)
 {
 	if (base) {
-		int cdev_state_offset = 0;
-		if (ACPM_BUF_VER > 0) {
+		int cdev_state_offset = offsetof(struct gov_trace_data_struct, curr_state[id]);
+		if (ACPM_BUF_VER == 0) {
 			/* offset for u64 buffer_version field */
-			cdev_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
+			cdev_state_offset -= ACPM_SM_BUFFER_VERSION_SIZE;
 		}
-		cdev_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN +
-				    sizeof(struct curr_state) * id;
 		memcpy_fromio(curr_state, base + cdev_state_offset,
 			      sizeof(struct curr_state));
 		return true;
@@ -260,12 +258,11 @@ static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_sta
 static bool get_all_curr_state_from_acpm(void __iomem *base, struct curr_state *curr_state[])
 {
 	if (base) {
-		int cdev_state_offset = 0;
-		if (ACPM_BUF_VER > 0) {
+		int cdev_state_offset = offsetof(struct gov_trace_data_struct, curr_state[0]);
+		if (ACPM_BUF_VER == 0) {
 			/* offset for u64 buffer_version field */
-			cdev_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
+			cdev_state_offset -= ACPM_SM_BUFFER_VERSION_SIZE;
 		}
-		cdev_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN;
 		memcpy_fromio(*curr_state, base + cdev_state_offset,
 			      sizeof(struct curr_state) * NR_TZ);
 		return true;
@@ -417,9 +414,7 @@ static int thermal_metrics_reset_stats(tr_handle instance)
 static bool get_thermal_state_from_acpm(void __iomem *base, struct thermal_state *thermal_state)
 {
 	if (base) {
-		int thermal_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
-		thermal_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN +
-					sizeof(struct curr_state) * NR_TZ;
+		int thermal_state_offset = offsetof(struct gov_trace_data_struct, thermal_state);
 		memcpy_fromio(thermal_state, base + thermal_state_offset,
 			      sizeof(struct thermal_state));
 		return true;
@@ -2980,6 +2975,11 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 			pr_err("GOV: shared memory table version mismatch\n");
 			return -EINVAL;
 		}
+
+		if (acpm_gov_common.sm_size != sizeof(struct gov_trace_data_struct)) {
+			pr_err("GOV: shared memory table size mismatch\n");
+			return -EINVAL;
+		}
 	}
 
 	if (exynos_acpm_tmu_cb_init(&cb))
@@ -5286,7 +5286,13 @@ static int gs_tmu_probe(struct platform_device *pdev)
 					pr_err("GOV: shared memory table version mismatch\n");
 					goto err_dtm_dev_list;
 				}
+
+				if (acpm_gov_common.sm_size != sizeof(struct gov_trace_data_struct)) {
+					pr_err("GOV: shared memory table size mismatch\n");
+					goto err_dtm_dev_list;
+				}
 			}
+
 			if (exynos_acpm_tmu_cb_init(&cb))
 				goto err_dtm_dev_list;
 

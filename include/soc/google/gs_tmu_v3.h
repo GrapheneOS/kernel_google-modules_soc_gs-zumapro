@@ -437,8 +437,10 @@ struct buffered_curr_state {
 };
 
 struct gov_trace_data_struct {
+	u64 buffer_version;
 	struct buffered_curr_state buffered_curr_state[BULK_TRACE_DATA_LEN];
 	struct curr_state curr_state[NR_TZ];
+	struct thermal_state thermal_state;
 };
 
 #define SYSREG_CPUCL0_BASE (0x29c20000)
