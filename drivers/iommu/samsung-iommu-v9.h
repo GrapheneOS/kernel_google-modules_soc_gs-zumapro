@@ -176,6 +176,7 @@ struct sysmmu_drvdata {
 	bool hide_page_fault;
 	bool leave_enabled_on_suspend;
 	bool ap_read_implies_write;
+	bool ap_permissive;
 	struct stream_props *props;
 };
 

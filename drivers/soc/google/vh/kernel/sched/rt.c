@@ -76,6 +76,41 @@ static inline void rt_task_fits_capacity(struct task_struct *p, int cpu,
 			 cpu >= MAX_CAPACITY_CPU;
 }
 
+void check_migrate_rt_task(struct rq *rq, struct task_struct *p)
+{
+	bool fits, fits_orig;
+	struct task_struct *push_task = NULL;
+
+	/*
+	 * Since stopper masquerades as RT task with prio 0, we must find
+	 * a better way to detect the RT class.
+	 *
+	 * p->sched_class can be used, but requires exporting stuff from GKI
+	 * that is defined in linker scripts..
+	 */
+	if (!p->prio || !rt_task(p))
+		return;
+
+	rt_task_fits_capacity(p, cpu_of(rq), &fits, &fits_orig);
+
+	/*
+	 * We ignore thermal impact here and just check if fits_orig.
+	 * find_lowest_rq will handle thermal impact.
+	 *
+	 * Of course if this is stuck on big core and it starts to get
+	 * thermally throttled, we might want to consider doing something about
+	 * it then.
+	 */
+	if (!fits_orig) {
+		push_task = get_push_task(rq);
+		if (push_task) {
+			raw_spin_rq_unlock(rq);
+			stop_one_cpu_nowait(cpu_of(rq), push_cpu_stop, push_task, &rq->push_work);
+			raw_spin_rq_lock(rq);
+		}
+	}
+}
+
 static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_mask,
 				 struct cpumask *backup_mask)
 {
@@ -240,34 +275,38 @@ out:
  * functions.
  */
 
-static int find_lowest_rq(struct task_struct *p, struct cpumask *backup_mask)
+static int __find_lowest_rq(struct task_struct *p, struct cpumask *lowest_mask,
+			    struct cpumask *backup_mask)
 {
 	struct sched_domain *sd;
-	struct cpumask lowest_mask;
 	int this_cpu = smp_processor_id();
 	int cpu;
 	int ret;
+
+	/* Make sure the mask is initialized first */
+	if (unlikely(!lowest_mask))
+		return -1;
 
 	if (p->nr_cpus_allowed == 1) {
 		return cpumask_first(p->cpus_ptr);
 	}
 
-	ret = cpupri_find_fitness(&task_rq(p)->rd->cpupri, p, &lowest_mask, NULL);
+	ret = cpupri_find_fitness(&task_rq(p)->rd->cpupri, p, lowest_mask, NULL);
 	if (!ret) {
 		return -1;
 	}
 
-	cpu = find_least_loaded_cpu(p, &lowest_mask, backup_mask);
+	cpu = find_least_loaded_cpu(p, lowest_mask, backup_mask);
 	if (cpu != -1) {
 		return cpu;
 	}
 
 	cpu = task_cpu(p);
-	if (cpumask_test_cpu(cpu, &lowest_mask)) {
+	if (cpumask_test_cpu(cpu, lowest_mask)) {
 		return cpu;
 	}
 
-	if (!cpumask_test_cpu(this_cpu, &lowest_mask))
+	if (!cpumask_test_cpu(this_cpu, lowest_mask))
 		this_cpu = -1;
 
 	rcu_read_lock();
@@ -281,7 +320,7 @@ static int find_lowest_rq(struct task_struct *p, struct cpumask *backup_mask)
 				return this_cpu;
 			}
 
-			best_cpu = cpumask_first_and(&lowest_mask,
+			best_cpu = cpumask_first_and(lowest_mask,
 						     sched_domain_span(sd));
 			if (best_cpu < nr_cpu_ids) {
 				rcu_read_unlock();
@@ -295,12 +334,27 @@ static int find_lowest_rq(struct task_struct *p, struct cpumask *backup_mask)
 		return this_cpu;
 	}
 
-	cpu = cpumask_any(&lowest_mask);
+	cpu = cpumask_any(lowest_mask);
 	if (cpu < nr_cpu_ids) {
 		return cpu;
 	}
 
 	return -1;
+}
+
+static int find_lowest_rq(struct task_struct *p, struct cpumask *backup_mask)
+{
+	struct cpumask lowest_mask;
+	return __find_lowest_rq(p, &lowest_mask, backup_mask);
+}
+
+void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
+				  struct cpumask *lowest_mask,
+				  int ret, int *cpu)
+
+{
+	struct cpumask backup_mask;
+	*cpu = __find_lowest_rq(p, lowest_mask, &backup_mask);
 }
 
 void rvh_select_task_rq_rt_pixel_mod(void *data, struct task_struct *p, int prev_cpu, int sd_flag,
