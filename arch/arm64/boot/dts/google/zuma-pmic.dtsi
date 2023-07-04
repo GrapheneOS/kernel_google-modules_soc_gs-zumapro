@@ -283,7 +283,6 @@
 				regulator-name = "S2MPG14_LDO4";
 				regulator-min-microvolt = <2500000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x24>;
 				schematic-name = "L4M_TS1_AVDD";
@@ -505,7 +504,6 @@
 				regulator-name = "S2MPG14_LDO25";
 				regulator-min-microvolt = <1600000>;
 				regulator-max-microvolt = <1950000>;
-				regulator-always-on;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x39>;
 				schematic-name = "L25M_TS1_DVDD";
