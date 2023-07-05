@@ -283,7 +283,6 @@ struct pixel_cmd_log_entry {
 	u32 seq_num;
 	s32 tag;
 	u8  group_id;
-	ktime_t tstamp;
 	u64 error;
 	u8 queue_eh_work;
 };

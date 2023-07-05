@@ -557,7 +557,6 @@ static void __store_cmd_log(struct ufs_hba *hba, u8 event, u8 lun,
 		return;
 
 	__set_cmd_log_str(hba, event, opcode, entry);
-	entry->tstamp = ktime_get();
 	entry->lun = lun;
 	entry->opcode = opcode;
 	entry->idn = idn;
