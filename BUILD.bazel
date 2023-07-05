@@ -64,9 +64,7 @@ filegroup(
             "**/*.bzl",
             "build.config.*",
         ],
-    ) + [
-        "//private/google-modules/trusty:headers",
-    ],
+    ),
 )
 
 filegroup(
@@ -180,6 +178,7 @@ kernel_module(
     name = "gs101_soc",
     srcs = [
         "//private/google-modules/soc/gs:gs_soc_sources",
+        "//private/google-modules/trusty:headers",
     ],
     outs = [
         # keep sorted
