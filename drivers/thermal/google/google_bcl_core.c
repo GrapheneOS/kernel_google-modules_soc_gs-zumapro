@@ -488,9 +488,6 @@ EXPORT_SYMBOL_GPL(google_bcl_register_ifpmic);
 
 struct bcl_device *google_retrieve_bcl_handle(void)
 {
-#if 1
-    return NULL;
-#else
 	struct device_node *np;
 	struct platform_device *pdev;
 	struct bcl_device *bcl_dev;
@@ -506,7 +503,6 @@ struct bcl_device *google_retrieve_bcl_handle(void)
 		return NULL;
 
 	return bcl_dev;
-#endif
 }
 EXPORT_SYMBOL_GPL(google_retrieve_bcl_handle);
 
