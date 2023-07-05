@@ -278,7 +278,6 @@ struct pixel_cmd_log_entry {
 	u8  idn;
 	sector_t sector;
 	s32 affected_bytes;
-	u64 doorbell;
 	u64 outstanding_reqs;
 	u32 seq_num;
 	s32 tag;

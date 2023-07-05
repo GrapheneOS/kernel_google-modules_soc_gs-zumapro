@@ -562,7 +562,6 @@ static void __store_cmd_log(struct ufs_hba *hba, u8 event, u8 lun,
 	entry->idn = idn;
 	entry->sector = sector;
 	entry->affected_bytes = affected_bytes;
-	entry->doorbell = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
 	entry->outstanding_reqs = hba->outstanding_reqs;
 	entry->tag = tag;
 	entry->group_id = group_id;
@@ -1843,12 +1842,11 @@ void pixel_print_cmd_log(struct ufs_hba *hba)
 						MAX_CMD_ENTRY_NUM];
 		if (!entry->seq_num)
 			break;
-		dev_err(hba->dev, "%u: %s tag: %d cmd: %s sector: %llu len: 0x%x DB: 0x%llx outstanding: 0x%llx GID: 0x%x\n",
+		dev_err(hba->dev, "%u: %s tag: %d cmd: %s sector: %llu len: 0x%x outstanding: 0x%llx GID: 0x%x\n",
 			entry->seq_num, entry->event,
 			entry->tag, entry->cmd,
 			entry->sector, entry->affected_bytes,
-			entry->doorbell, entry->outstanding_reqs,
-			entry->group_id);
+			entry->outstanding_reqs, entry->group_id);
 	}
 }
 
