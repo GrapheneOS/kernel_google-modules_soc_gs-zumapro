@@ -2148,6 +2148,32 @@ static void __maybe_unused exynos_pcie_notify_callback(struct pcie_port *pp, int
 	}
 }
 
+void exynos_pcie_rc_print_aer_register(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+	struct dw_pcie *pci = exynos_pcie->pci;
+	struct pcie_port *pp = &pci->pp;
+	u32 i, val_0, val_4, val_8, val_c;
+	unsigned long flags;
+
+	spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
+
+	dev_err(pci->dev, "[Advanced Error Report]\n");
+	dev_err(pci->dev, "offset:	0x0	0x4	0x8	0xC\n");
+	for (i = 0x100; i < 0x150; i += 0x10) {
+		exynos_pcie_rc_rd_own_conf(pp, i + 0x0, 4, &val_0);
+		exynos_pcie_rc_rd_own_conf(pp, i + 0x4, 4, &val_4);
+		exynos_pcie_rc_rd_own_conf(pp, i + 0x8, 4, &val_8);
+		exynos_pcie_rc_rd_own_conf(pp, i + 0xC, 4, &val_c);
+		dev_err(pci->dev, "DBI %#02x: %#04x %#04x %#04x %#04x\n",
+				i, val_0, val_4, val_8, val_c);
+	}
+	dev_err(pci->dev, "\n");
+
+	spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
+}
+EXPORT_SYMBOL_GPL(exynos_pcie_rc_print_aer_register);
+
 void exynos_pcie_rc_print_msi_register(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
@@ -2458,6 +2484,7 @@ void exynos_pcie_rc_cpl_timeout_work(struct work_struct *work)
 		dev_info(dev, "[%s] pcie_is_linkup = 0\n", __func__);
 		pcie_is_linkup = 0;
 	}
+	exynos_pcie_rc_print_aer_register(exynos_pcie->ch_num);
 
 	/* Reset ATU flag as CPL timeout */
 	exynos_pcie->atu_ok = 0;
