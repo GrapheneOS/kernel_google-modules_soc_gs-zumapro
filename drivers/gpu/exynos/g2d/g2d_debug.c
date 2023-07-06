@@ -318,17 +318,29 @@ static struct regs_info g2d_reg_info_hdr10p_tm[] = {
 	HDR10P_INFO_TM(2), HDR10P_INFO_TM(3)
 };
 
-#define FILTER_REG_INFO_H(n) { 0x6000 + (n) * 0x200, 0x90, "FILTER" #n "_HCOEF" }
-#define FILTER_REG_INFO_V(n) { 0x6000 + (n) * 0x200 + 0x90, 0x120, "FILTER" #n "_VCOEF" }
+#define FILTER_REG_INFO_Y_V(n) { 0x6000 + (n) * 0x400, 0x90, "FILTER" #n "_Y_VCOEF" }
+#define FILTER_REG_INFO_Y_H(n) { 0x6000 + (n) * 0x400 + 0x90, 0x120, "FILTER" #n "_Y_HCOEF" }
+#define FILTER_REG_INFO_C_V(n) { 0x6000 + (n) * 0x400 + 0x200, 0x90, "FILTER" #n "_C_VCOEF" }
+#define FILTER_REG_INFO_C_H(n) { 0x6000 + (n) * 0x400 + 0x290, 0x120, "FILTER" #n "_C_HCOEF" }
 
-static struct regs_info g2d_reg_info_filter_h[] = {
-	FILTER_REG_INFO_H(0), FILTER_REG_INFO_H(1),
-	FILTER_REG_INFO_H(2), FILTER_REG_INFO_H(3)
+static struct regs_info g2d_reg_info_filter_yh[] = {
+	FILTER_REG_INFO_Y_H(0), FILTER_REG_INFO_Y_H(1),
+	FILTER_REG_INFO_Y_H(2), FILTER_REG_INFO_Y_H(3)
 };
 
-static struct regs_info g2d_reg_info_filter_v[] = {
-	FILTER_REG_INFO_V(0), FILTER_REG_INFO_V(1),
-	FILTER_REG_INFO_V(2), FILTER_REG_INFO_V(3)
+static struct regs_info g2d_reg_info_filter_yv[] = {
+	FILTER_REG_INFO_Y_V(0), FILTER_REG_INFO_Y_V(1),
+	FILTER_REG_INFO_Y_V(2), FILTER_REG_INFO_Y_V(3)
+};
+
+static struct regs_info g2d_reg_info_filter_ch[] = {
+	FILTER_REG_INFO_C_H(0), FILTER_REG_INFO_C_H(1),
+	FILTER_REG_INFO_C_H(2), FILTER_REG_INFO_C_H(3)
+};
+
+static struct regs_info g2d_reg_info_filter_cv[] = {
+	FILTER_REG_INFO_C_V(0),FILTER_REG_INFO_C_V(1),
+	FILTER_REG_INFO_C_V(2), FILTER_REG_INFO_C_V(3)
 };
 
 #define G2D_COMP_DEBUG_DATA_COUNT 16
@@ -434,15 +446,18 @@ static void __g2d_dump_filter(void __iomem *reg, unsigned int map)
 	unsigned int i;
 
 	for (i = 0; i < 4; i++) {
-		if (!(map & (1 << i)))
-			continue;
-
-		g2d_dump_sfr_entry(g2d_reg_info_filter_v[i].name, reg,
-				   g2d_reg_info_filter_v[i].start,
-				   g2d_reg_info_filter_v[i].size);
-		g2d_dump_sfr_entry(g2d_reg_info_filter_h[i].name, reg,
-				   g2d_reg_info_filter_h[i].start,
-				   g2d_reg_info_filter_h[i].size);
+		g2d_dump_sfr_entry(g2d_reg_info_filter_yv[i].name, reg,
+				   g2d_reg_info_filter_yv[i].start,
+				   g2d_reg_info_filter_yv[i].size);
+		g2d_dump_sfr_entry(g2d_reg_info_filter_yh[i].name, reg,
+				   g2d_reg_info_filter_yh[i].start,
+				   g2d_reg_info_filter_yh[i].size);
+		g2d_dump_sfr_entry(g2d_reg_info_filter_cv[i].name, reg,
+				   g2d_reg_info_filter_cv[i].start,
+				   g2d_reg_info_filter_cv[i].size);
+		g2d_dump_sfr_entry(g2d_reg_info_filter_ch[i].name, reg,
+				   g2d_reg_info_filter_ch[i].start,
+				   g2d_reg_info_filter_ch[i].size);
 	}
 }
 
