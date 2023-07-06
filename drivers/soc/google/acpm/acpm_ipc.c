@@ -841,7 +841,6 @@ static int log_buffer_init(struct device *dev, struct device_node *node)
 		return PTR_ERR(acpm_debug);
 
 	base = acpm_ipc->sram_base;
-	acpm_debug->time_index = base + acpm_ipc->initdata->ktime_index;
 	acpm_debug->normal.log_buff_rear = acpm_ipc->sram_base +
 	    acpm_ipc->initdata->log_buf_rear;
 	acpm_debug->normal.log_buff_front = acpm_ipc->sram_base +
@@ -887,8 +886,6 @@ static int log_buffer_init(struct device *dev, struct device_node *node)
 
 	pr_info("[ACPM] acpm framework SRAM dump to dram base: 0x%llx\n",
 		virt_to_phys(acpm_debug->dump_dram_base));
-
-	__raw_writel(0xffffffff, acpm_debug->time_index);
 
 	spin_lock_init(&acpm_debug->lock);
 
