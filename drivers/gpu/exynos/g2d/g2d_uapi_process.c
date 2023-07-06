@@ -599,15 +599,15 @@ static unsigned int update_afbc_supblock_size(struct g2d_task *task,
 					      struct g2d_reg regs[])
 {
 	unsigned int i;
-	unsigned int count = 0;
+	unsigned int count = 0, index = task->sec.cmd_count;
 
 	if (!caps_has_afbcv12(task->g2d_dev->caps))
 		return 0;
 
 	if (IS_AFBC(task->target.commands[G2DSFR_IMG_COLORMODE].value) &&
 	    !!(task->target.flags & G2D_LAYERFLAG_AFBC_LANDSCAPE)) {
-		regs[count].offset = TARGET_OFFSET + 0x94;
-		regs[count].value = G2D_AFBC_REG_VALUE_BLK_32x8;
+		regs[count + index].offset = TARGET_OFFSET + 0x94;
+		regs[count + index].value = G2D_AFBC_REG_VALUE_BLK_32x8;
 		count++;
 	}
 
@@ -616,8 +616,8 @@ static unsigned int update_afbc_supblock_size(struct g2d_task *task,
 
 		if (IS_AFBC(layer->commands[G2DSFR_IMG_COLORMODE].value) &&
 		    !!(layer->flags & G2D_LAYERFLAG_AFBC_LANDSCAPE)) {
-			regs[count].offset = LAYER_OFFSET(i) + 0xB4;
-			regs[count].value = G2D_AFBC_REG_VALUE_BLK_32x8;
+			regs[count + index].offset = LAYER_OFFSET(i) + 0xB4;
+			regs[count + index].value = G2D_AFBC_REG_VALUE_BLK_32x8;
 			count++;
 		}
 	}
