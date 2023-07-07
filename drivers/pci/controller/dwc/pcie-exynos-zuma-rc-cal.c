@@ -110,6 +110,7 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 		// External PLL for PCIe PHY
 		val = readl(udbg_base_regs + 0xC700) | (0x1 << 1);
 		writel(val, udbg_base_regs + 0xC700);
+		udelay(10);
 	}
 }
 
@@ -118,6 +119,8 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 {
 	void __iomem *phy_base_regs = exynos_pcie->phy_base;
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
+	void __iomem *phy_pcs_base_regs = exynos_pcie->phy_pcs_base;
+	void __iomem *soc_base_regs = exynos_pcie->soc_base;
 	u32 val, val1, val2;
 
 	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
@@ -162,8 +165,12 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 
 			// 0x2b00 : HSI1_CONFIGURATION
 			// [0] : 0 is off / 1 is on
-			regmap_update_bits(exynos_pcie->pmureg,
-						0x2B00, 0x1, 0x0);
+
+			// setting HSI conf to 0 causes an ITMON
+			// so comment that out.
+			//regmap_update_bits(exynos_pcie->pmureg,
+			//			0x2B00, 0x1, 0x0);
+
 			regmap_update_bits(exynos_pcie->pmureg,
 						0x2B00, 0x1, 0x1);
 
@@ -190,6 +197,24 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 				val, val1, val2);
 
 		}
+
+		/* HSI1 block check routine for ITMON issue */
+		/* 1. check soc_ctrl : it use 'bus_clock' */
+		writel(0x1, soc_base_regs + 0x6004);
+		val = readl(soc_base_regs + 0x6004);
+		writel(0x0, soc_base_regs + 0x6004);
+		val2 = readl(soc_base_regs + 0x6004);
+		dev_info(exynos_pcie->pci->dev, "Check soc %#x, %#x\n",
+			 val2, val);
+
+		/* 2. check pcs: it use clock from mux */
+		val = readl(phy_pcs_base_regs);
+		writel(0xffffffff, phy_pcs_base_regs);
+		val2 = readl(phy_pcs_base_regs);
+		writel(val, phy_pcs_base_regs);
+		val = readl(phy_pcs_base_regs);
+		dev_info(exynos_pcie->pci->dev, "Check PCS %#x, %#x\n",
+			 val2, val);
 
 		val = readl(udbg_base_regs + 0xC700) & ~(0x1 << 1);
 		writel(val, udbg_base_regs + 0xC700);
