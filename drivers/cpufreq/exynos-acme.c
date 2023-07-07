@@ -1335,8 +1335,6 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 		return -ENODEV;
 	}
 
-	register_get_cpu_power_table_ect_offset(exynos_cpufreq_get_power_table_ect_offset);
-
 	/*
 	 * Add OPP table for thermal.
 	 * Thermal CPU cooling is based on the OPP table.
@@ -1432,6 +1430,8 @@ static int exynos_cpufreq_probe(struct platform_device *pdev)
 
 		print_domain_info(domain);
 	}
+
+	register_get_cpu_power_table_ect_offset(exynos_cpufreq_get_power_table_ect_offset);
 
 	if (!domain_id) {
 		pr_err("Failed to initialize cpufreq driver\n");
