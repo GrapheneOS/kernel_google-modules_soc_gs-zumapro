@@ -8,11 +8,11 @@
 	edgetpu: rio@1A000000 {
 		compatible = "google,edgetpu-zuma";
 		#dma-address-cells = <1>;
-		#dma-size-cells = <1>;
+		#dma-size-cells = <2>;
 		/* TPU uses regions under 0x18000000 for special purpose */
-		dma-window = <0x18000000 0xE7FFF000>;
-		/* Window of IOVAs available to each client's page-table */
-		gcip-dma-window = <0x18000000 0xE7FFF000>;
+		/* use 32-bit DMA window for standard path, 36-bit DMA window for GCIP */
+		dma-window = <0x18000000 0x0 0xE7FFF000>;
+		gcip-dma-window = <0x18000000 0xF 0xE7FFF000>;
 		reg = <0x0 0x1A000000 0x300000
 		       0x0 0x1A300000 0x10000
 		       0x0 0x1A3E0000 0x10000
