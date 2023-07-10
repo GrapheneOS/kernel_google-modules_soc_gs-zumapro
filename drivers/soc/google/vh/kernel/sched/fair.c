@@ -2100,6 +2100,8 @@ void initialize_vendor_group_property(void)
 {
 	int i;
 	unsigned int min_val = 0;
+	// Choose an uclamp min for early boot stage boost.
+	unsigned int boot_boost_min_val = 563;
 	unsigned int max_val = SCHED_CAPACITY_SCALE;
 
 	for (i = 0; i < VG_MAX; i++) {
@@ -2126,8 +2128,12 @@ void initialize_vendor_group_property(void)
 		vg[i].uclamp_max_on_nice_high_prio = DEFAULT_PRIO;
 		vg[i].uclamp_min_on_nice_enable = false;
 		vg[i].uclamp_max_on_nice_enable = false;
-		vg[i].uc_req[UCLAMP_MIN].value = min_val;
-		vg[i].uc_req[UCLAMP_MIN].bucket_id = get_bucket_id(min_val);
+		if (i == VG_SYSTEM) {
+			vg[i].uc_req[UCLAMP_MIN].value = boot_boost_min_val;
+		} else {
+			vg[i].uc_req[UCLAMP_MIN].value = min_val;
+		}
+		vg[i].uc_req[UCLAMP_MIN].bucket_id = get_bucket_id(vg[i].uc_req[UCLAMP_MIN].value);
 		vg[i].uc_req[UCLAMP_MIN].user_defined = false;
 		vg[i].uc_req[UCLAMP_MAX].value = max_val;
 		vg[i].uc_req[UCLAMP_MAX].bucket_id = get_bucket_id(max_val);
@@ -2591,10 +2597,11 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	struct task_struct *p = NULL;
 	struct rq_flags src_rf;
 	int this_cpu = this_rq->cpu;
-	struct vendor_rq_struct *vrq = get_vendor_rq_struct(this_rq);
+	struct vendor_rq_struct *this_vrq = get_vendor_rq_struct(this_rq);
+	struct vendor_rq_struct *src_vrq;
 
-	if (SCHED_WARN_ON(atomic_read(&vrq->num_adpf_tasks)))
-		atomic_set(&vrq->num_adpf_tasks, 0);
+	if (SCHED_WARN_ON(atomic_read(&this_vrq->num_adpf_tasks)))
+		atomic_set(&this_vrq->num_adpf_tasks, 0);
 
 
 	/*
@@ -2627,6 +2634,28 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 			continue;
 
 		src_rq = cpu_rq(cpu);
+		src_vrq = get_vendor_rq_struct(src_rq);
+
+		/*
+		 * Don't bother if no latency sensitive tasks on src_rq or if
+		 * there's only one.
+		 *
+		 * If there are too many other tasks on the rq but a single
+		 * latency_sensitive one, we should rely on skip_next_buddy()
+		 * and better wake up placement logic to avoid this situation
+		 * first. We can consider pulling here too in the future if we
+		 * find there are corner cases hard to fix otherwise.
+		 *
+		 * If something with a high nice value is stealing time, then
+		 * we should ask questions about why nice value is set so high.
+		 *
+		 * If an RT task is stealing time, then we should ask why wake
+		 * up path placed the two in the same CPU. We have an avoidance
+		 * strategy for this.
+		 */
+		if (atomic_read(&src_vrq->num_adpf_tasks) <= 1)
+			continue;
+
 		rq_lock_irqsave(src_rq, &src_rf);
 		update_rq_clock(src_rq);
 
