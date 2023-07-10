@@ -49,6 +49,9 @@ enum sbbm_signal_id {
 	SBB_SIG_CAMERA_MISC7, /* Miscellaneous camera area of interest. */
 	SBB_SIG_CAMERA_MISC8, /* Miscellaneous camera area of interest. */
 	SBB_SIG_CAMERA_MISC9, /* Miscellaneous camera area of interest. */
+	SBB_SIG_UFS_ACTIVE_IDLE, /* UFS is active/idle and out of h8 tracking. */
+	SBB_SIG_UFS_POWER_ON, /* UFS powered on tracking. */
+	SBB_SIG_UFS_IO_OUTSTANDING, /* UFS I/O in progress tracking. */
 	SBB_SIG_NUM_SIGNALS /* The total number of signals. Has to be last. */
 };
 
