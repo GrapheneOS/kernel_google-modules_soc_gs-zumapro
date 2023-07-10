@@ -838,7 +838,7 @@ static inline unsigned long cpu_vendor_group_util_est(int cpu, bool with, struct
 
 #if defined(CONFIG_UCLAMP_TASK) && defined(CONFIG_FAIR_GROUP_SCHED)
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-unsigned long cpu_util_cfs_group_mod(int cpu)
+unsigned long __always_inline cpu_util_cfs_group_mod(int cpu)
 {
 	if (likely(sched_feat(UTIL_EST))) {
 		return max(cpu_vendor_group_util(cpu, false, NULL),
