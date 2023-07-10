@@ -35,6 +35,7 @@ function modify_vendor_ramdisk() {
   ln -f init.recovery.gs101.rc init.recovery.whitefin.rc
   ln -f init.recovery.gs101.rc init.recovery.oriole.rc
   ln -f init.recovery.gs101.rc init.recovery.raven.rc
+  ln -f init.recovery.gs101.rc init.recovery.bluejay.rc
 }
 
 if [ -d "${ROOT_DIR}/${UWB_MODULE}" ]; then
@@ -53,6 +54,7 @@ private/google-modules/bms
 private/google-modules/amplifiers/snd_soc_wm_adsp
 private/google-modules/amplifiers/drv2624
 private/google-modules/amplifiers/cs40l25
+private/google-modules/amplifiers/cs40l26
 private/google-modules/amplifiers/cs35l41
 private/google-modules/amplifiers/audiometrics
 private/google-modules/aoc
