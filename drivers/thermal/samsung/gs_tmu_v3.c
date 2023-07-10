@@ -4538,7 +4538,7 @@ MODULE_PARM_DESC(tmu_reg_write,
 
 static int param_tmu_reg_dump_state(char *buf, const struct kernel_param *kp)
 {
-	int i,j;
+	int i;
 	u16 offset;
 	u32 val;
 	int len = 0;
@@ -4561,6 +4561,70 @@ static int param_tmu_reg_dump_state(char *buf, const struct kernel_param *kp)
 		len += sysfs_emit_at(buf, len,
 				  "tmu_reg_val:0x%08x\n", val);
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+		offset = TMU_REG_CONTROL1;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_CONTROL1\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+#endif
+
+		offset = TMU_REG_AVG_CONTROL;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_AVG_CONTROL\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+
+		offset = TMU_REG_TMU_TRIM0;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_TMU_TRIM0\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+
+		offset = TMU_REG_PROBE_EN_CON;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_PROBE_EN_CON\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+
+		offset = TMU_REG_SAMPLING_INTERVAL;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_SAMPLING_INTERVAL\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+		offset = TMU_REG_COUNTER_VALUE;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_COUNTER_VALUE\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+#endif
+
 		offset = TMU_REG_TMU_STATUS;
 		exynos_acpm_tmu_reg_read(i, offset, &val);
 		len += sysfs_emit_at(buf, len, "=======================\n");
@@ -4570,6 +4634,67 @@ static int param_tmu_reg_dump_state(char *buf, const struct kernel_param *kp)
 				  "tmu_reg_offset:0x%04x --> ", offset);
 		len += sysfs_emit_at(buf, len,
 				  "tmu_reg_val:0x%08x\n", val);
+
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+		offset = TMU_REG_TMU_STATUS1;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_TMU_STATUS1\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+
+		offset = TMU_REG_THERM_TRIP_PROBE_STATUS;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_THERM_TRIP_PROBE_STATUS\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+#endif
+	}
+
+	return len;
+}
+
+static const struct kernel_param_ops param_ops_tmu_reg_dump_state = {
+	.get = param_tmu_reg_dump_state,
+};
+
+module_param_cb(tmu_reg_dump_state, &param_ops_tmu_reg_dump_state, NULL, 0444);
+MODULE_PARM_DESC(tmu_reg_dump_state,
+		 "tmu register dump about tmu state");
+
+static int param_tmu_reg_dump_intpend(char *buf, const struct kernel_param *kp)
+{
+	int i,j;
+	u16 offset;
+	u32 val;
+	int len = 0;
+
+	if (suspended_count || atomic_read(&gs_tmu_in_suspend))
+		return sysfs_emit(buf, "in tmu suspending..try again\n");
+
+	for (i = 0; i < TMU_END; i++) {
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				     "tmu_id:0x%02x register dump start\n", i);
+
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+		offset = TMU_REG_INTPEND_PROBE_STATUS;
+		exynos_acpm_tmu_reg_read(i, offset, &val);
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len, "TMU_REG_INTPEND_PROBE_STATUS\n");
+		len += sysfs_emit_at(buf, len, "=======================\n");
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_offset:0x%04x --> ", offset);
+		len += sysfs_emit_at(buf, len,
+				  "tmu_reg_val:0x%08x\n", val);
+#endif
 
 		len += sysfs_emit_at(buf, len, "=======================\n");
 		len += sysfs_emit_at(buf, len, "TMU_REG_INTEN\n");
@@ -4599,13 +4724,13 @@ static int param_tmu_reg_dump_state(char *buf, const struct kernel_param *kp)
 	return len;
 }
 
-static const struct kernel_param_ops param_ops_tmu_reg_dump_state = {
-	.get = param_tmu_reg_dump_state,
+static const struct kernel_param_ops param_ops_tmu_reg_dump_intpend = {
+	.get = param_tmu_reg_dump_intpend,
 };
 
-module_param_cb(tmu_reg_dump_state, &param_ops_tmu_reg_dump_state, NULL, 0444);
-MODULE_PARM_DESC(tmu_reg_dump_state,
-		 "tmu register dump about tmu state");
+module_param_cb(tmu_reg_dump_intpend, &param_ops_tmu_reg_dump_intpend, NULL, 0444);
+MODULE_PARM_DESC(tmu_reg_dump_intpend,
+		 "tmu register dump about tmu INTPEND");
 
 static int param_tmu_reg_dump_current_temp(char *buf,
 					   const struct kernel_param *kp)
