@@ -249,7 +249,7 @@
 				};
 				big_alert1: big-alert1 {
 					temperature = <93000>; /* millicelsius */
-					hysteresis = <100000>; /* 100C to avoid falling edge irq */
+					hysteresis = <93000>; /* 93C to avoid falling edge irq */
 					type = "active";
 				};
 				big_early_throttle: big-early_throttle {
@@ -304,7 +304,7 @@
 				};
 				mid_alert1: mid-alert1 {
 					temperature = <93000>; /* millicelsius */
-					hysteresis = <100000>; /* 100C to avoid falling edge irq */
+					hysteresis = <93000>; /* 93C to avoid falling edge irq */
 					type = "active";
 				};
 				mid_alert2: mid-alert2 {
@@ -359,7 +359,7 @@
 				};
 				little_alert1: little-alert1 {
 					temperature = <97000>; /* millicelsius */
-					hysteresis = <100000>; /* 100C to avoid falling edge irq */
+					hysteresis = <97000>; /* 97C to avoid falling edge irq */
 					type = "active";
 				};
 				little_alert2: little-alert2 {
