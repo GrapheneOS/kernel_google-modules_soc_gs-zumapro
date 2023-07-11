@@ -38,6 +38,26 @@ cleanup_trap() {
 }
 trap 'cleanup_trap' EXIT
 
+function chipset {
+  case $1 in
+  ripcurrentpro)
+    echo zumapro
+  ;;
+  ripcurrent|shusky)
+    echo zuma
+  ;;
+  cloudripper)
+    echo gs201
+  ;;
+  slider)
+    echo gs101
+  ;;
+  *)
+    >&2 echo "Could not find chipset for $1"
+    exit 1
+  esac
+}
+
 function exit_if_error {
   if [ $1 -ne 0 ]; then
     echo "ERROR: $2: retval=$1" >&2
@@ -88,7 +108,9 @@ if [[ -z "${TARGET}" ]] || [[ ! -d "private/devices/google/${TARGET}" ]]; then
   usage 1
 fi
 
-BASE_KERNEL=$(tools/bazel cquery filter\(kernel_aarch64_sources, deps\(//private/devices/google/${TARGET}:zuma_${TARGET}\)\) 2>/dev/null --config=${TARGET})
+CHIPSET=$(chipset ${TARGET})
+
+BASE_KERNEL=$(tools/bazel cquery filter\(kernel_aarch64_sources, deps\(//private/devices/google/${TARGET}:${CHIPSET}_${TARGET}\)\) 2>/dev/null --config=${TARGET})
 if [[ "${BASE_KERNEL}" =~ aosp-staging ]]; then
   KERNEL_DIR="aosp-staging/"
 else
@@ -273,7 +295,7 @@ verify_aosp_tree
 
 if [ "${CONTINUE_AFTER_REBASE}" = "0" ]; then
   # Update the symbol list now
-  tools/bazel run --config=${TARGET} --config=fast //private/devices/google/${TARGET}:zuma_${TARGET}_abi_update_symbol_list
+  tools/bazel run --config=${TARGET} --config=fast //private/devices/google/${TARGET}:${CHIPSET}_${TARGET}_abi_update_symbol_list
   exit_if_error $? "Failed to update the ${TARGET} symbol list"
 
   if [ -z "${BUG}" ]; then
