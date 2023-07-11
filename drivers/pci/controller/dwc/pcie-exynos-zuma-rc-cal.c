@@ -448,6 +448,10 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 			writel(0x2, phy_base_regs + 0x1B1C);
 		}
 
+		val = readl(phy_base_regs + 0x1350);
+		val |= 0x1;
+		writel(val, phy_base_regs + 0x1350);
+
 		/* PCS setting */
 		writel(0x100B0604, phy_pcs_base_regs + 0x190);//New Guide
 
