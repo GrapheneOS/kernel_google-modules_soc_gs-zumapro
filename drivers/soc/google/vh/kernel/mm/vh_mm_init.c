@@ -9,6 +9,61 @@
 #include <linux/kobject.h>
 #include <linux/module.h>
 
+#define VENDOR_MM_RW(_name) \
+	static struct kobj_attribute _name##_attr = __ATTR_RW(_name)
+
+static ssize_t kswapd_cpu_affinity_show(struct kobject *kobj,
+				 struct kobj_attribute *attr, char *buf)
+{
+	struct task_struct *tsk;
+	cpumask_t cpumask;
+
+	rcu_read_lock();
+	for_each_process(tsk) {
+		/* assume we only have 1 kswapd */
+		if (tsk->flags & PF_KSWAPD) {
+			cpumask	= tsk->cpus_mask;
+			break;
+		}
+	}
+	rcu_read_unlock();
+
+	return cpumap_print_to_pagebuf(false, buf, &cpumask);
+}
+
+static ssize_t kswapd_cpu_affinity_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t len)
+{
+	struct task_struct *tsk;
+	cpumask_t requested_cpumask, dest_cpumask;
+	int ret;
+
+	ret = cpumask_parse(buf, &requested_cpumask);
+	if (ret < 0 || cpumask_empty(&requested_cpumask))
+		return -EINVAL;
+
+	cpumask_and(&dest_cpumask, &requested_cpumask, cpu_possible_mask);
+
+	rcu_read_lock();
+	for_each_process(tsk) {
+		/* assume we only have 1 kswapd */
+		if (tsk->flags & PF_KSWAPD) {
+			set_cpus_allowed_ptr(tsk, &dest_cpumask);
+			break;
+		}
+	}
+	rcu_read_unlock();
+
+	return len;
+}
+VENDOR_MM_RW(kswapd_cpu_affinity);
+
+static struct attribute *vendor_mm_attrs[] = {
+	&kswapd_cpu_affinity_attr.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(vendor_mm);
+
 struct kobject *vendor_mm_kobj;
 EXPORT_SYMBOL_GPL(vendor_mm_kobj);
 
@@ -22,10 +77,18 @@ static int vh_mm_init(void)
 	if (!vendor_mm_kobj)
 		return -ENOMEM;
 
+	ret = sysfs_create_groups(vendor_mm_kobj, vendor_mm_groups);
+	if (ret)
+		goto out_err;
+
 	ret = pixel_mm_cma_sysfs(vendor_mm_kobj);
 	if (ret)
-		kobject_put(vendor_mm_kobj);
+		goto out_err;
 
+	return ret;
+
+out_err:
+	kobject_put(vendor_mm_kobj);
 	return ret;
 }
 module_init(vh_mm_init);
