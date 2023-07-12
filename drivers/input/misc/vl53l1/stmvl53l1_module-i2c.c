@@ -373,37 +373,35 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 
 	/* vio power: vio-type is either gpio or regulator */
 	rc = of_property_read_string(dev->of_node, "vio-type", &vio_type);
-	if (rc < 0) {
-		dev_err(dev, "no vio-type in device tree\n");
-		rc = -ENODEV;
-		goto no_vio;
-	}
+	if (!rc) {
+		if (strcmp(vio_type, "gpio") == 0) {
+			vio_gpio = of_get_named_gpio(dev->of_node, "vio-gpio", 0);
 
-	if (strcmp(vio_type, "gpio") == 0) {
-		vio_gpio = of_get_named_gpio(dev->of_node, "vio-gpio", 0);
-
-		if (vio_gpio > 0) {
-			if (!gpio_is_valid(vio_gpio)) {
-				dev_err(dev, "Invalid chip select pin vio\n");
-				return -EPERM;
+			if (vio_gpio > 0) {
+				if (!gpio_is_valid(vio_gpio)) {
+					dev_err(dev, "Invalid chip select pin vio\n");
+					return -EPERM;
+				}
+				i2c_data->vio_gpio = vio_gpio;
+			} else {
+				i2c_data->vio_gpio = -1;
+				dev_warn(dev, "Unable to find vio-gpio %d\n", vio_gpio);
 			}
-			i2c_data->vio_gpio = vio_gpio;
-		} else {
-			i2c_data->vio_gpio = -1;
-			dev_warn(dev, "Unable to find vio-gpio %d\n", vio_gpio);
-		}
-	} else if (strcmp(vio_type, "regulator") == 0) {
-		i2c_data->vio = regulator_get_optional(dev, "vio");
-		if (IS_ERR(i2c_data->vio) || i2c_data->vio == NULL) {
-			i2c_data->vio = NULL;
-			dev_err(dev, "Unable to get vio regulator\n");
-		}
+		} else if (strcmp(vio_type, "regulator") == 0) {
+			i2c_data->vio = regulator_get_optional(dev, "vio");
+			if (IS_ERR(i2c_data->vio) || i2c_data->vio == NULL) {
+				i2c_data->vio = NULL;
+				dev_err(dev, "Unable to get vio regulator\n");
+			}
 
-		if (of_property_read_u32(dev->of_node, "vio-voltage",
-					 &voltage))
-			i2c_data->vio_voltage = VIO_VOLTAGE_MIN_DEFAULT;
-		else
-			i2c_data->vio_voltage = voltage;
+			if (of_property_read_u32(dev->of_node, "vio-voltage",
+						 &voltage))
+				i2c_data->vio_voltage = VIO_VOLTAGE_MIN_DEFAULT;
+			else
+				i2c_data->vio_voltage = voltage;
+		}
+	} else {
+		dev_info(dev, "no vio-type in device tree\n");
 	}
 
 	/* power : AVDD by LDAF_en pin */
@@ -475,9 +473,8 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 	/* configure pinctrl */
 	shared_i2c_data->pinctrl = devm_pinctrl_get(dev->parent->parent);
 	if (IS_ERR(shared_i2c_data->pinctrl)) {
-		dev_err(dev, "Unable to config pinctrl\n");
-		rc = PTR_ERR(shared_i2c_data->pinctrl);
-		goto no_intr;
+		dev_info(dev, "Unable to config shared_i2c_data->pinctrl\n");
+		shared_i2c_data->pinctrl = NULL;
 	}
 
 	return rc;
@@ -497,7 +494,6 @@ no_xsdn:
 		regulator_put(i2c_data->vio);
 		i2c_data->vio = NULL;
 	}
-no_vio:
 	return rc;
 }
 
@@ -715,10 +711,12 @@ int stmvl53l1_power_up_i2c(void *object)
 
 
 	/* Enable shared I2C */
-	rc = shared_i2c_set_state(dev, shared_i2c_data->pinctrl, "on_i2c");
-	if (rc) {
-		dev_err(dev, "Error enabling i2c bus %d\n", rc);
-		return rc;
+	if (shared_i2c_data->pinctrl != NULL) {
+		rc = shared_i2c_set_state(dev, shared_i2c_data->pinctrl, "on_i2c");
+		if (rc) {
+			dev_err(dev, "Error enabling i2c bus %d\n", rc);
+			return rc;
+		}
 	}
 
 	if (data->vl53l1_data != NULL) {
@@ -769,10 +767,12 @@ int stmvl53l1_power_down_i2c(void *i2c_object)
 	}
 
 	/* Disable shared I2C */
-	rc = shared_i2c_set_state(dev, shared_i2c_data->pinctrl, "off_i2c");
-	if (rc) {
-		dev_err(dev, "Error disabling i2c bus %d\n", rc);
-		return rc;
+	if (shared_i2c_data->pinctrl != NULL) {
+		rc = shared_i2c_set_state(dev, shared_i2c_data->pinctrl, "off_i2c");
+		if (rc) {
+			dev_err(dev, "Error disabling i2c bus %d\n", rc);
+			return rc;
+		}
 	}
 
 	if (data->vl53l1_data != NULL) {
