@@ -81,7 +81,6 @@
 		compatible = "samsung,sysmmu-group";
 	};
 
-#if 0
 	sysmmu_bw: sysmmu@1A640000 {
 		compatible = "samsung,sysmmu-v9";
 		reg = <0x0 0x1A640000 0x10000>;
@@ -158,7 +157,6 @@
 			<57 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL8, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_WRITE STR_ID(0x1B) STR_MASK(0x3F)>,
 			<58 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_WRITE STR_ID(0x1C) STR_MASK(0x3F)>;
 	};
-#endif
 
 	sysmmu_g2d: sysmmu@1A870000 {
 		compatible = "samsung,sysmmu-v9";
@@ -173,7 +171,7 @@
 		sysmmu,secure_base = <0x1A880000>;
 
 		power-domains = <&pd_g2d>;
-		/*s2mpus = <&s2mpu_s0_g2d>;*/
+		s2mpus = <&s2mpu_s0_g2d>;
 
 		port-name = "G2D";
 		#iommu-cells = <0>;
@@ -249,7 +247,7 @@
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x19850000>;
 		power-domains = <&pd_dpuf0>;
-		/*s2mpus = <&s2mpu_s0_dpuf0>;*/
+		s2mpus = <&s2mpu_s0_dpuf0>;
 		port-name = "DPU F0";
 		#iommu-cells = <0>;
 
@@ -347,7 +345,7 @@
 		sysmmu,secure_base = <0x19C50000>;
 
 		power-domains = <&pd_dpuf1>;
-		/*s2mpus = <&s2mpu_s0_dpuf1>;*/
+		s2mpus = <&s2mpu_s0_dpuf1>;
 
 		port-name = "DPU F1";
 		#iommu-cells = <0>;
@@ -431,7 +429,6 @@
 			<29 STR_CFG(STR_SPTLB(0x0F, 0x0E), S2_EN, BL2, PREF_PRED, STLB_PREF, PTLB_PREF)	DIR_READ STR_ID(0x5D) STR_MASK(0x7F)>;
 	};
 
-#if 0
 	sysmmu_ispfe_s0: sysmmu@1C110000 {
 		compatible = "samsung,sysmmu-v9";
 		reg = <0x0 0x1C110000 0x10000>;
@@ -1282,5 +1279,4 @@
 			<28 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_RW STR_ID(0x37) STR_MASK(0x3F)>,
 			<29 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_RW STR_ID(0x38) STR_MASK(0x3F)>;
 	};
-#endif
 };
