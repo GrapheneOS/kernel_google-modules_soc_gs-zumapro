@@ -1381,21 +1381,21 @@ compute_energy(struct task_struct *p, int dst_cpu, struct perf_domain *pd, unsig
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 /* If a task_group is over its group limit on a particular CPU with margin considered */
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-static inline bool group_overutilized(int cpu, struct task_struct *p)
+static inline bool group_overutilized(int cpu, struct task_struct *p, unsigned long util)
 {
 	unsigned long group_capacity = cap_scale(get_task_group_throttle(p),
 						 arch_scale_cpu_capacity(cpu));
-	unsigned long util = get_group_util(cpu, p, group_capacity, false);
+
 	return cpu_overutilized(util, group_capacity, cpu);
 }
 #else
-static inline bool group_overutilized(int cpu, struct task_group *tg)
+static inline bool group_overutilized(int cpu, struct task_group *tg, unsigned long util)
 {
 
 	unsigned long group_capacity = cap_scale(get_group_throttle(tg),
 					arch_scale_cpu_capacity(cpu));
-	unsigned long group_util = READ_ONCE(tg->cfs_rq[cpu]->avg.util_avg);
-	return cpu_overutilized(group_util, group_capacity, cpu);
+
+	return cpu_overutilized(util, group_capacity, cpu);
 }
 #endif
 #endif
@@ -1553,7 +1553,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 	int pd_max_spare_cap_cpu, pd_best_idle_cpu, pd_most_unimportant_cpu, pd_best_packing_cpu;
 	int most_spare_cap_cpu = -1, unimportant_max_spare_cap_cpu = -1, idle_max_cap_cpu = -1;
 	struct cpuidle_state *idle_state;
-	unsigned long util, unimportant_max_spare_cap = 0, idle_max_cap = 0;
+	unsigned long unimportant_max_spare_cap = 0, idle_max_cap = 0;
 	bool prefer_fit = prefer_idle && get_vendor_task_struct(p)->uclamp_fork_reset;
 	const cpumask_t *preferred_idle_mask;
 
@@ -1594,10 +1594,10 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 					   arch_scale_cpu_capacity(i));
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 			wake_group_util = get_group_util(i, p, group_capacity, true);
-			group_overutilize = group_overutilized(i, p);
+			group_overutilize = group_overutilized(i, p, wake_group_util);
 #else
 			wake_group_util = group_util_without(i, p, group_capacity);
-			group_overutilize = group_overutilized(i, task_group(p));
+			group_overutilize = group_overutilized(i, task_group(p), wake_group_util);
 #endif
 			spare_cap = min_t(unsigned long, capacity - wake_util,
 					  group_capacity - wake_group_util);
@@ -1606,7 +1606,6 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 #endif
 			task_fits = task_fits_capacity(p, i, sync_boost);
 			exit_lat = 0;
-			util = cpu_util(i);
 
 			if (is_idle) {
 				idle_state = idle_get_state(cpu_rq(i));
@@ -1615,12 +1614,12 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 			}
 
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
-			trace_sched_cpu_util_cfs(i, is_idle, exit_lat, cpu_importance, util,
+			trace_sched_cpu_util_cfs(i, is_idle, exit_lat, cpu_importance, cpu_util(i),
 						 capacity, wake_util, group_capacity,
 						 wake_group_util, spare_cap, task_fits,
 						 group_overutilize);
 #else
-			trace_sched_cpu_util_cfs(i, is_idle, exit_lat, cpu_importance, util,
+			trace_sched_cpu_util_cfs(i, is_idle, exit_lat, cpu_importance, cpu_util(i),
 						 capacity, wake_util, capacity,	wake_util,
 						 spare_cap, task_fits, false);
 #endif
@@ -1654,7 +1653,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 				util_max = max(rq_util_max, p_util_max);
 			}
 
-			util_fits = util_fits_cpu(util, util_min, util_max, i);
+			util_fits = util_fits_cpu(wake_util, util_min, util_max, i);
 
 			if (prefer_idle) {
 				/*
@@ -1762,6 +1761,11 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 					cpumask_set_cpu(i, &max_spare_cap);
 				}
 			} else { /* Below path is for non-prefer idle case */
+				if (spare_cap >= target_max_spare_cap) {
+					target_max_spare_cap = spare_cap;
+					most_spare_cap_cpu = i;
+				}
+
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 				if (group_overutilize || !util_fits)
 					continue;
@@ -1769,11 +1773,6 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 				if (!util_fits)
 					continue;
 #endif
-
-				if (spare_cap >= target_max_spare_cap) {
-					target_max_spare_cap = spare_cap;
-					most_spare_cap_cpu = i;
-				}
 
 				if (!task_fits)
 					continue;
@@ -2101,6 +2100,8 @@ void initialize_vendor_group_property(void)
 {
 	int i;
 	unsigned int min_val = 0;
+	// Choose an uclamp min for early boot stage boost.
+	unsigned int boot_boost_min_val = 563;
 	unsigned int max_val = SCHED_CAPACITY_SCALE;
 
 	for (i = 0; i < VG_MAX; i++) {
@@ -2127,8 +2128,12 @@ void initialize_vendor_group_property(void)
 		vg[i].uclamp_max_on_nice_high_prio = DEFAULT_PRIO;
 		vg[i].uclamp_min_on_nice_enable = false;
 		vg[i].uclamp_max_on_nice_enable = false;
-		vg[i].uc_req[UCLAMP_MIN].value = min_val;
-		vg[i].uc_req[UCLAMP_MIN].bucket_id = get_bucket_id(min_val);
+		if (i == VG_SYSTEM) {
+			vg[i].uc_req[UCLAMP_MIN].value = boot_boost_min_val;
+		} else {
+			vg[i].uc_req[UCLAMP_MIN].value = min_val;
+		}
+		vg[i].uc_req[UCLAMP_MIN].bucket_id = get_bucket_id(vg[i].uc_req[UCLAMP_MIN].value);
 		vg[i].uc_req[UCLAMP_MIN].user_defined = false;
 		vg[i].uc_req[UCLAMP_MAX].value = max_val;
 		vg[i].uc_req[UCLAMP_MAX].bucket_id = get_bucket_id(max_val);
@@ -2592,10 +2597,11 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	struct task_struct *p = NULL;
 	struct rq_flags src_rf;
 	int this_cpu = this_rq->cpu;
-	struct vendor_rq_struct *vrq = get_vendor_rq_struct(this_rq);
+	struct vendor_rq_struct *this_vrq = get_vendor_rq_struct(this_rq);
+	struct vendor_rq_struct *src_vrq;
 
-	if (SCHED_WARN_ON(atomic_read(&vrq->num_adpf_tasks)))
-		atomic_set(&vrq->num_adpf_tasks, 0);
+	if (SCHED_WARN_ON(atomic_read(&this_vrq->num_adpf_tasks)))
+		atomic_set(&this_vrq->num_adpf_tasks, 0);
 
 
 	/*
@@ -2628,6 +2634,28 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 			continue;
 
 		src_rq = cpu_rq(cpu);
+		src_vrq = get_vendor_rq_struct(src_rq);
+
+		/*
+		 * Don't bother if no latency sensitive tasks on src_rq or if
+		 * there's only one.
+		 *
+		 * If there are too many other tasks on the rq but a single
+		 * latency_sensitive one, we should rely on skip_next_buddy()
+		 * and better wake up placement logic to avoid this situation
+		 * first. We can consider pulling here too in the future if we
+		 * find there are corner cases hard to fix otherwise.
+		 *
+		 * If something with a high nice value is stealing time, then
+		 * we should ask questions about why nice value is set so high.
+		 *
+		 * If an RT task is stealing time, then we should ask why wake
+		 * up path placed the two in the same CPU. We have an avoidance
+		 * strategy for this.
+		 */
+		if (atomic_read(&src_vrq->num_adpf_tasks) <= 1)
+			continue;
+
 		rq_lock_irqsave(src_rq, &src_rf);
 		update_rq_clock(src_rq);
 
