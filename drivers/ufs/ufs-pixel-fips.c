@@ -217,10 +217,7 @@ static void ufs_pixel_fips_build_utrd(struct ufs_hba *hba,
 	utrd->header.dword_2 = cpu_to_le32(OCS_INVALID_COMMAND_STATUS);
 	utrd->header.dword_3 = 0;
 
-	utrd->command_desc_base_addr_lo =
-		cpu_to_le32(lower_32_bits(ucd_dma_addr));
-	utrd->command_desc_base_addr_hi =
-		cpu_to_le32(upper_32_bits(ucd_dma_addr));
+	utrd->command_desc_base_addr = cpu_to_le64(ucd_dma_addr);
 
 	if (hba->quirks & UFSHCD_QUIRK_PRDT_BYTE_GRAN) {
 		utrd->response_upiu_length = cpu_to_le16(ALIGNED_UPIU_SIZE);
