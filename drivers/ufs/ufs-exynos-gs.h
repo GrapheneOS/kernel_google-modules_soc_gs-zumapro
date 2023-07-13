@@ -68,6 +68,12 @@ enum exynos_ufs_param_id {
 	UFS_SYSFS_NUM,
 };
 
+enum pixel_ufs_wb_gid {
+	WB_GID_DISABLE = 0,
+	WB_GID_SEL = 1,
+	WB_GID_ALL = 2,
+};
+
 struct exynos_ufs {
 	struct device *dev;
 	struct ufs_hba *hba;
@@ -175,8 +181,8 @@ struct exynos_ufs {
 	u8 enable_cmd_log;
 	struct pixel_cmd_log cmd_log;
 
-	/* Used to enable WB on all write requests */
-	bool always_use_wb;
+	/* enable WriteBooster based on given Group ID mode */
+	enum pixel_ufs_wb_gid set_gid;
 
 	/* auto hibern8 */
 	u32 ah8_ahit;
