@@ -188,8 +188,9 @@ static inline void __sysmmu_set_stream(struct sysmmu_drvdata *data, int pmmu_id)
 	writel_relaxed(MMU_SET_PMMU_INDICATOR(pmmu_id), data->sfrbase + REG_MMU_PMMU_INDICATOR);
 	readl_relaxed(data->sfrbase + REG_MMU_PMMU_INDICATOR);
 
-	writel_relaxed(MMU_STREAM_CFG_MASK(props->default_cfg),
-		       data->sfrbase + REG_MMU_STREAM_CFG(0));
+	if (props->default_cfg != DEFAULT_STREAM_NONE)
+		writel_relaxed(MMU_STREAM_CFG_MASK(props->default_cfg),
+			       data->sfrbase + REG_MMU_STREAM_CFG(0));
 
 	for (i = 0; i < id_cnt; i++) {
 		if (cfg[i].index == UNUSED_STREAM_INDEX)
