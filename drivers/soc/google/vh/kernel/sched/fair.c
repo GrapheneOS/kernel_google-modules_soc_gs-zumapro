@@ -2758,7 +2758,7 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	 * re-start the picking loop.
 	 */
 	rq_unpin_lock(this_rq, rf);
-	raw_spin_unlock(&this_rq->__lock);
+	raw_spin_rq_unlock(this_rq);
 
 	this_cpu = this_rq->cpu;
 	for_each_cpu(cpu, cpu_active_mask) {
@@ -2823,15 +2823,18 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 
 		p = detach_important_task(src_rq, this_cpu);
 
-		rq_unlock_irqrestore(src_rq, &src_rf);
+		rq_unlock(src_rq, &src_rf);
 
 		if (p) {
 			attach_one_task(this_rq, p);
+			local_irq_restore(src_rf.flags);
 			break;
 		}
+
+		local_irq_restore(src_rf.flags);
 	}
 
-	raw_spin_lock(&this_rq->__lock);
+	raw_spin_rq_lock(this_rq);
 	/*
 	 * While browsing the domains, we released the rq lock, a task could
 	 * have been enqueued in the meantime. Since we're not going idle,
