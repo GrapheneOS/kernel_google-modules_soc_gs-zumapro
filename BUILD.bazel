@@ -353,11 +353,8 @@ kernel_images(
     modules_list = "vendor_boot_modules.gs101",
     vendor_dlkm_archive = True,
     vendor_dlkm_modules_blocklist = "vendor_dlkm.blocklist.slider",
-    # No MODULES_BLOCKLIST
-    # Keep the following in sync with build.config.gs101:
     vendor_dlkm_modules_list = "vendor_dlkm_modules.slider",
     vendor_dlkm_props = "vendor_dlkm.props",
-    # VENDOR_RAMDISK_BINARY
     vendor_ramdisk_binaries = ["//prebuilts/boot-artifacts/ramdisks:vendor_ramdisk-oriole.img"],
     deps = [
         # Keep the following in sync with vendor_dlkm.props:
@@ -441,9 +438,8 @@ define_slider_kleaf_tests()
 
 exports_files([
     # keep sorted
-    "build.config.cloudripper",
     "system_dlkm.props",
-    "vendor_dlkm.blocklist.cloudripper",
+    "vendor_dlkm.blocklist.gs201",
     "vendor_dlkm.props",
     "vendor_dlkm_modules.slider",
     "vendor_kernel_boot_modules.gs201",

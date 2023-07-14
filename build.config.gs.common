@@ -1,25 +1,15 @@
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.common
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.aarch64
 
-DEFCONFIG=slider_gki_defconfig
-GKI_FRAGMENT_DEFCONFIG=${GKI_FRAGMENT_DEFCONFIG:-${SOC_DIR}/arch/arm64/configs/slider_gki.fragment}
-PRE_DEFCONFIG_CMDS="mkdir -p \${OUT_DIR}/arch/arm64/configs/ && KCONFIG_CONFIG=\${OUT_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${ROOT_DIR}/${GKI_FRAGMENT_DEFCONFIG}"
-
 KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
 
 MAKE_GOALS=
 KERNEL_BINARY=Image.lz4
 
-BUILD_BOOT_IMG=1
 BUILD_INITRAMFS=1
 INITRAMFS_VENDOR_RAMDISK_FRAGMENT_NAME=dlkm
 LZ4_RAMDISK=1
 BOOT_IMAGE_HEADER_VERSION=4
-VENDOR_DLKM_MODULES_LIST=${SOC_DIR}/vendor_dlkm_modules.slider
-VENDOR_DLKM_MODULES_BLOCKLIST=${SOC_DIR}/vendor_dlkm.blocklist.slider
-VENDOR_DLKM_PROPS=${SOC_DIR}/vendor_dlkm.props
-RAMDISKS_DIR=${ROOT_DIR}/prebuilts/boot-artifacts/ramdisks
-VENDOR_RAMDISK_BINARY=${VENDOR_RAMDISK_BINARY:-${RAMDISKS_DIR}/vendor_ramdisk-oriole.img}
 KERNEL_VENDOR_CMDLINE="earlycon=exynos4210,0x10A00000 console=ttySAC0,115200 androidboot.console=ttySAC0"
 KERNEL_VENDOR_CMDLINE+=" printk.devkmsg=on"
 KERNEL_VENDOR_CMDLINE+=" at24.write_timeout=100 buildvariant=userdebug"
