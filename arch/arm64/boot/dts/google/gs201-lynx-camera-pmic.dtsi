@@ -6,7 +6,7 @@
  *
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 
 &hsi2c_8 {
 	/* SLG51002 */

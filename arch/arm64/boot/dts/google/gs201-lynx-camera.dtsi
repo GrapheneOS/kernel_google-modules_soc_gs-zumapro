@@ -8,7 +8,7 @@
 
 #include <dt-bindings/clock/gs201.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 
 &slg51002_ldo1 {
 	regulator-min-microvolt = <2850000>;

@@ -15,7 +15,7 @@
 #include "gs101-display-timing.dtsi"
 
 / {
-	drmdpp0: drmdpp@0x1C0B0000 {	/* L0 */
+	drmdpp0: drmdpp@1C0B0000 {	/* L0 */
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x1C0B0000 0x1000>,	/* DPU_DMA */
 		      <0x0 0x1C0D0000 0x1000>,	/* DPP */
@@ -41,7 +41,7 @@
 		dpp,id = <0>;
 	};
 
-	drmdpp1: drmdpp@0x1C0B1000 {	/* L1 */
+	drmdpp1: drmdpp@1C0B1000 {	/* L1 */
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x1C0B1000 0x1000>,
 		      <0x0 0x1C0D1000 0x1000>,
@@ -61,7 +61,7 @@
 		dpp,video;
 	};
 
-	drmdpp2: drmdpp@0x1C0B2000 {	/* L2 */
+	drmdpp2: drmdpp@1C0B2000 {	/* L2 */
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x1C0B2000 0x1000>,
 		      <0x0 0x1C0D2000 0x1000>,
@@ -80,7 +80,7 @@
 		dpp,id = <2>;
 	};
 
-	drmdpp3: drmdpp@0x1C0B3000 {	/* L3 */
+	drmdpp3: drmdpp@1C0B3000 {	/* L3 */
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x1C0B3000 0x1000>,
 		      <0x0 0x1C0D3000 0x1000>,
@@ -100,7 +100,7 @@
 		dpp,video;
 	};
 
-	drmdpp4: drmdpp@0x1C0B4000 {	/* L4 */
+	drmdpp4: drmdpp@1C0B4000 {	/* L4 */
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x1C0B4000 0x1000>,
 		      <0x0 0x1C0D4000 0x1000>,
@@ -119,7 +119,7 @@
 		dpp,id = <4>;
 	};
 
-	drmdpp5: drmdpp@0x1C0B5000 {	/* L5 */
+	drmdpp5: drmdpp@1C0B5000 {	/* L5 */
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x1C0B5000 0x1000>,
 		      <0x0 0x1C0D5000 0x1000>,
@@ -139,7 +139,7 @@
 		dpp,video;
 	};
 
-	drmdpp8: drmdpp@0x1C0B8000 {
+	drmdpp8: drmdpp@1C0B8000 {
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x1C0B8000 0x1000>;
 		reg-names = "dma";
@@ -153,7 +153,7 @@
 		dpp,id = <6>;
 	};
 
-	drmdpp9: drmdpp@0x1C0B9000 {
+	drmdpp9: drmdpp@1C0B9000 {
 		compatible = "samsung,exynos-dpp";
 		reg = <0x0 0x1C0B9000 0x1000>;
 		reg-names = "dma";
@@ -167,7 +167,7 @@
 		dpp,id = <7>;
 	};
 
-	drmdpp12: drmdpp@0x1C0BC000 {	/* L12 : WB */
+	drmdpp12: drmdpp@1C0BC000 {	/* L12 : WB */
 		compatible = "samsung,exynos-writeback";
 		reg = <0x0 0x1C0BC000 0x1000>, <0x0 0x1C0DC000 0x1000>;
 		reg-names = "dma", "dpp";
@@ -184,20 +184,20 @@
 		dpp,id = <8>;
 	};
 
-	disp_ss: disp_ss@0x1C221000 {
+	disp_ss: disp_ss@1C221000 {
 		compatible = "samsung,exynos9-disp_ss";
 		reg = <0x0 0x1C221000 0x10>;
 		reg-names = "sys";
 	};
 
-	mipi_phy_dsim0_m4m4: dphy_m4s4_dsim0@0x1C2E0000 {
+	mipi_phy_dsim0_m4m4: dphy_m4s4_dsim0@1C2E0000 {
 		compatible = "samsung,mipi-phy-m4m4";
 		isolation = <0x3eb8>;
 		owner = <0>; /* 0: DSI,  1: CSI */
 		#phy-cells = <1>;
 	};
 
-	drmdsim0: drmdsim@0x1C2C0000 {
+	drmdsim0: drmdsim@1C2C0000 {
 		compatible = "samsung,exynos-dsim";
 		reg = <0x0 0x1C2C0000 0x300>,	/* DSI */
 		      <0x0 0x1C2E0100 0x700>,	/* M4M4S0 PHY */
@@ -228,7 +228,7 @@
 		#size-cells = <0>;
 	};
 
-	drmdsim1: drmdsim@0x1C2D0000 {
+	drmdsim1: drmdsim@1C2D0000 {
 		status = "disabled";
 
 		compatible = "samsung,exynos-dsim";
@@ -260,7 +260,7 @@
 		#size-cells = <0>;
 	};
 
-	drmdecon0: drmdecon@0x1C240000 {
+	drmdecon0: drmdecon@1C240000 {
 		compatible = "samsung,exynos-decon";
 		reg = <0x0 0x1C240000 0x6000>,	/* DECON0_MAIN */
 		      <0x0 0x1C250000 0x6000>,	/* DECON_WIN */
@@ -342,7 +342,7 @@
 		itmon,dest = "DPU", "DISP";
 	};
 
-	drmdecon1: drmdecon@0x1C241000 {
+	drmdecon1: drmdecon@1C241000 {
 		status = "disabled";
 		compatible = "samsung,exynos-decon";
 		reg = <0x0 0x1C241000 0x6000>,	/* DECON1_MAIN */
@@ -424,7 +424,7 @@
 		itmon,dest = "DPU", "DISP";
 	};
 
-	drmdecon2: drmdecon@0x1C242000 {
+	drmdecon2: drmdecon@1C242000 {
 		compatible = "samsung,exynos-decon";
 		reg = <0x0 0x1C242000 0x4000>,	/* DECON2_MAIN */
 		      <0x0 0x1C250000 0x6000>,	/* DECON_WIN */

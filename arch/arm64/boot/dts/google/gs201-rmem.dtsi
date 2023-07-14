@@ -27,22 +27,22 @@
 			reg = <0x0 0x90000000 0x0003A000>;
 		};
 
-		gsa_reserved_protected: gsa@0x90200000 {
+		gsa_reserved_protected: gsa@90200000 {
 			reg = <0x0 0x90200000 0x400000>;
 			no-map;
 		};
 
-		tpu_fw_ctx_reserved: tpu_ctx@0x91E00000 {
+		tpu_fw_ctx_reserved: tpu_ctx@91E00000 {
 			reg = <0x0 0x91E00000 0x1200000>;
 			no-map;
 		};
 
-		tpu_fw_reserved: tpu_fw@0x93000000 {
+		tpu_fw_reserved: tpu_fw@93000000 {
 			reg = <0x0 0x93000000 0x1000000>;
 			no-map;
 		};
 
-		aoc_reserve: aoc@0x94000000 {
+		aoc_reserve: aoc@94000000 {
 			reg = <0x0 0x94000000 0x03000000>;
 			no-map;
 		};

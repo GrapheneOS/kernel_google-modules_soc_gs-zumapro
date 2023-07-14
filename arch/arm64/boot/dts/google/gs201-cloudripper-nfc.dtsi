@@ -30,7 +30,7 @@
 	#size-cells = <0>;
 	clock-frequency = <400000>;
 	status = "okay";
-	st21nfc@08 {
+	st21nfc@8 {
 		compatible = "st,st21nfc";
 		reg = <0x08>;
 		dev-name = "st21nfc";

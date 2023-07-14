@@ -5,7 +5,8 @@
  * Copyright 2020 Google Inc.
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
+#include "gs101-pinctrl.h"
 #include <dt-bindings/interrupt-controller/irq.h>
 
 / {
@@ -41,6 +42,9 @@
 };
 
 &hsi2c_15 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
 	p9222@61 {
 		dev-name = "p9222";
 		compatible = "idt,p9222";

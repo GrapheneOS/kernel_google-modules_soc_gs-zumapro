@@ -40,7 +40,7 @@
 				};
 			};
 
-			virtio_block@0x14630000 {
+			virtio_block@14630000 {
 				compatible = "virtio,mmio";
 				#address-cells = <1>;
 				#size-cells = <1>;

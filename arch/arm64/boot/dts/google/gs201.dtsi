@@ -519,7 +519,7 @@
 		acpm-ipc-channel = <0>;
 	};
 
-	clock: clock-controller@0x1e080000 {
+	clock: clock-controller@1e080000 {
 		compatible = "samsung,gs201-clock";
 		reg = <0x0 0x1e080000 0x8000>;
 		#clock-cells = <1>;

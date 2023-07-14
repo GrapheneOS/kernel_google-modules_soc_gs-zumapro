@@ -53,7 +53,7 @@
 			};
 		};
 
-		cpu0: cpu@0000 {
+		cpu0: cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x0 0x0000>;
@@ -62,7 +62,7 @@
 			capacity-dmips-mhz = <250>;
 			dynamic-power-coefficient = <89>;
 		};
-		cpu1: cpu@0100 {
+		cpu1: cpu@100 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x0 0x0100>;
@@ -71,7 +71,7 @@
 			capacity-dmips-mhz = <250>;
 			dynamic-power-coefficient = <89>;
 		};
-		cpu2: cpu@0200 {
+		cpu2: cpu@200 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x0 0x0200>;
@@ -80,7 +80,7 @@
 			capacity-dmips-mhz = <250>;
 			dynamic-power-coefficient = <89>;
 		};
-		cpu3: cpu@0300 {
+		cpu3: cpu@300 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x0 0x0300>;
@@ -89,7 +89,7 @@
 			capacity-dmips-mhz = <250>;
 			dynamic-power-coefficient = <89>;
 		};
-		cpu4: cpu@0400 {
+		cpu4: cpu@400 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x0 0x0400>;
@@ -98,7 +98,7 @@
 			capacity-dmips-mhz = <927>;
 			dynamic-power-coefficient = <513>;
 		};
-		cpu5: cpu@0500 {
+		cpu5: cpu@500 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x0 0x0500>;
@@ -107,7 +107,7 @@
 			capacity-dmips-mhz = <927>;
 			dynamic-power-coefficient = <513>;
 		};
-		cpu6: cpu@0600 {
+		cpu6: cpu@600 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x0 0x0600>;
@@ -116,7 +116,7 @@
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <757>;
 		};
-		cpu7: cpu@0700 {
+		cpu7: cpu@700 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x0 0x0700>;
@@ -314,9 +314,9 @@
 	};
 
 	dm-tables {
-		lit_mif_perf: dm-table@0000 {
+		lit_mif_perf: dm-table@0 {
 		};
-		med_ank_perf: dm-table@0003 {
+		med_ank_perf: dm-table@3 {
 			const-type = <CONSTRAINT_MIN>;
 			dm-constraint = <DM_CPU_CL0>;
 			driver-cal-id = <ACPM_DVFS_CPUCL1>;
@@ -339,7 +339,7 @@
 				  553000	574000
 				  400000	300000 >;
 		};
-		big_ank_perf: dm-table@0006 {
+		big_ank_perf: dm-table@6 {
 			const-type = <CONSTRAINT_MIN>;
 			dm-constraint = <DM_CPU_CL0>;
 			driver-cal-id = <ACPM_DVFS_CPUCL2>;
