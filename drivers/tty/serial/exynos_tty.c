@@ -334,7 +334,6 @@ static struct notifier_block exynos_uart_panic_block = {
 static void uart_sfr_dump(struct exynos_uart_port *ourport)
 {
 	struct uart_port *port = &ourport->port;
-	u32 val;
 
 	dev_err(ourport->port.dev, " Register dump\n"
 		"ULCON	0x%08x	UCON	0x%08x	UFCON	0x%08x	UMCON	0x%08x\n"
@@ -353,8 +352,6 @@ static void uart_sfr_dump(struct exynos_uart_port *ourport)
 		, readl(port->membase + S3C64XX_UINTP)
 		, readl(port->membase + S3C64XX_UINTM)
 	);
-	regmap_read(ourport->usi_reg, ourport->usi_offset, &val);
-	dev_info(ourport->port.dev, "usi mode - 0x%x\n", val);
 }
 
 static void disable_auto_flow_control(struct exynos_uart_port *ourport)
