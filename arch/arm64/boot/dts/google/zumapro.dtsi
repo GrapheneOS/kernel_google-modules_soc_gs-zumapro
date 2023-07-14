@@ -7,6 +7,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zumapro.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 #include <dt-bindings/clock/zuma.h>
 #include "zumapro-drm-dpu.dtsi"
 #include "zumapro-sysmmu.dtsi"
@@ -471,5 +472,58 @@
 		compatible = "arm,dsu-pmu";
 		interrupts = <GIC_SPI IRQ_CPUCL0_CLUSTERPMUIRQ_CPUCL0 IRQ_TYPE_LEVEL_HIGH>;
 		cpus = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>, <&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
+	};
+
+	g2d: g2d@1A840000 {
+		compatible = "samsung,zuma-g2d";
+		reg = <0x0 0x1A840000 0xA000>;
+		interrupts = <0 IRQ_G2D_G2D IRQ_TYPE_LEVEL_HIGH>;
+		samsung,iommu-group = <&iommu_group_g2d>;
+		iommus = <&sysmmu_g2d>;
+		clocks = <&clock GATE_G2D>;
+		clock-names = "gate";
+		samsung,tzmp;
+		hw_ppc =
+			/* sc_up none x1 x1/4 x1/9 x1/16 */
+			<3900 3600 2000 2900 2300 2900 /* rgb32 non-rotated */
+			3800 3500 3200 3500 3400 3800 /* rgb32 rotated */
+			3400 2200 2400 4300 5000 4500 /* yuv2p non-rotated */
+			2000 2200 3600 4200 4300 3600 /* yuv2p rotated */
+			3300 3200 2800 3000 3500 2900 /* sbwc non-rotated */
+			1900 2200 3100 3200 3200 2800 /* sbwc rotated */
+			3000 3100 2800 2600 3000 3700 /* rgb afbc non-rotated */
+			3800 2100 3200 3200 3500 3400 /* rgb afbc rotated */
+			3300 3000 3300 3100 3200 3400 /* yuv afbc non-rotated */
+			2000 2200 3000 3400 3600 3600 /* yuv afbc rotated */
+			2800>; /* colorfill */
+
+		g2d_dvfs_table = <1066000 711000
+				799000 620000
+				664000 400000
+				533000 332000
+				356000 200000
+				178000 100000
+				>;
+
+		dvfs_mif = <DEVFREQ_MIF>;
+		dvfs_int = <DEVFREQ_INT>;
+
+		itmon,port = "G2D";
+		itmon,dest = "G2D";
+	};
+
+	smfc: smfc@1A860000 {
+		compatible = "samsung,exynos8890-jpeg";
+		reg = <0x0 0x1A860000 0x1000>;
+		interrupts = <0 IRQ_JPEG_G2D IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clock GATE_JPEG>;
+		clock-names = "gate";
+		power-domains = <&pd_g2d>;
+		samsung,iommu-group = <&iommu_group_g2d>;
+		iommus = <&sysmmu_g2d>;
+		dma-coherent;
+		smfc,int_qos_minlock = <356000>;
+		smfc_bpc = <16>;
+		smfc_core_clk = <465000>;
 	};
 };
