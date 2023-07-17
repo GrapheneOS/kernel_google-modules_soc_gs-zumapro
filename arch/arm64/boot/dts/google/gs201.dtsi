@@ -293,8 +293,7 @@
 					<0x101144A4>,
 					<0x101144C4>,
 					<0x101144E4>;
-			// TODO(b/281134549): re-enable DMA WRAPPER.
-			//dma-instwrapper = <0x10114500>;
+			dma-instwrapper = <0x10114500>;
 			dma-mask-bit = <36>;
 			coherent-mask-bit = <36>;
 		};
