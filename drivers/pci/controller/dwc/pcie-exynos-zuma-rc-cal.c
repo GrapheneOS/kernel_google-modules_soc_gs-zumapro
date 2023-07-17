@@ -118,7 +118,7 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 {
 	void __iomem *phy_base_regs = exynos_pcie->phy_base;
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
-	u32 val;
+	u32 val, val1, val2;
 
 	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
@@ -146,6 +146,51 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 		udelay(10);
 	}
 	else { //PCIe GEN3 2 lane channel
+		regmap_read(exynos_pcie->pmureg, 0x2B04, &val);
+		regmap_read(exynos_pcie->pmureg, 0x2B20, &val1);
+		regmap_read(exynos_pcie->pmureg, 0x2B24, &val2);
+		dev_info(exynos_pcie->pci->dev,
+			 "check PMU 0x2B04=%#04x, 0x2B20=%#04x, 0x2B24=%#04x\n",
+			 val, val1, val2);
+
+		// val & HSI1_state
+		// val1 & (GRESETn | GRESETn__CMU)
+		// if either is not released from reset, we have an error condition
+		if ((val & 0x1) != 0x1 || (val1 & 0x60) != 0x60) {
+			int count = 0;
+			dev_err(exynos_pcie->pci->dev, "PMU for HSI1 reset is not released!!!! \n");
+
+			// 0x2b00 : HSI1_CONFIGURATION
+			// [0] : 0 is off / 1 is on
+			regmap_update_bits(exynos_pcie->pmureg,
+						0x2B00, 0x1, 0x0);
+			regmap_update_bits(exynos_pcie->pmureg,
+						0x2B00, 0x1, 0x1);
+
+			while (count < 1000) {
+				regmap_read(exynos_pcie->pmureg, 0x2B04, &val);
+				regmap_read(exynos_pcie->pmureg, 0x2B20, &val1);
+
+				if ((val & 0x1) == 0x1 && (val1 & 0x60) == 0x60)
+					break;
+
+				udelay(100);
+				count++;
+			}
+			if (count >= 1000)
+				dev_err(exynos_pcie->pci->dev, "PMU force reset release failed\n");
+
+			regmap_read(exynos_pcie->pmureg, 0x2B00, &val);
+			dev_err(exynos_pcie->pci->dev, "check PMU 0x2B00=%#04x\n", val);
+			regmap_read(exynos_pcie->pmureg, 0x2B04, &val);
+			regmap_read(exynos_pcie->pmureg, 0x2B20, &val1);
+			regmap_read(exynos_pcie->pmureg, 0x2B24, &val2);
+			dev_err(exynos_pcie->pci->dev,
+				"check PMU 0x2B04=%#04x, 0x2B20=%#04x, 0x2B24=%#04x\n",
+				val, val1, val2);
+
+		}
+
 		val = readl(udbg_base_regs + 0xC700) & ~(0x1 << 1);
 		writel(val, udbg_base_regs + 0xC700);
 		udelay(100);
@@ -402,6 +447,10 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 			/* L1SS exit link down issue in QC */
 			writel(0x2, phy_base_regs + 0x1B1C);
 		}
+
+		val = readl(phy_base_regs + 0x1350);
+		val |= 0x1;
+		writel(val, phy_base_regs + 0x1350);
 
 		/* PCS setting */
 		writel(0x100B0604, phy_pcs_base_regs + 0x190);//New Guide

@@ -101,7 +101,6 @@
 
 	pixel-suspend-diag {
 		compatible = "google,pixel-suspend-diag";
-		memory-region = <&suspend_diag_log_reserved>;
 	};
 
 	pmu@30000000 {
