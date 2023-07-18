@@ -2152,7 +2152,7 @@ void exynos_pcie_rc_print_aer_register(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
-	struct pcie_port *pp = &pci->pp;
+	struct dw_pcie_rp *pp = &pci->pp;
 	u32 i, val_0, val_4, val_8, val_c;
 	unsigned long flags;
 
