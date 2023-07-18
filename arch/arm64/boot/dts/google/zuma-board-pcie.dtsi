@@ -5,6 +5,7 @@
  * Copyright 2022 Google LLC
  */
 #include <dt-bindings/pci/pci.h>
+#include <dt-bindings/soc/samsung_sysmmu_v9.h>
 
 &pcie_0 {       /* pcie ch0 used for the connection with CP */
 	status = "okay";
@@ -15,14 +16,16 @@
 	use-l1ss = "true";
 	phy-power-off = "false";
 	use-pcieon-sleep = "true";
-	use-sysmmu = "disabled";
+	use-sysmmu = "true";
 	perst-delay-us = <18000>;
 	ep-device-type = <EP_SAMSUNG_MODEM>;
 };
 
 &sysmmu_hsi1 {
 	use-map-once = "true";
-	status = "disabled";
+	status = "okay";
+	num_pmmu = <1>;
+	pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE)>;
 };
 
 &pcie_1 {       /* pcie ch1 used for the connection with WiFi */

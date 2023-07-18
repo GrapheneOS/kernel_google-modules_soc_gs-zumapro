@@ -235,9 +235,9 @@ static void *pcie_dma_alloc_attrs(struct device *dev, size_t size,
 				   dma_handle, flag, attrs);
 	if (exynos_pcie->s2mpu) {
 		s2mpu_update_refcnt(dev, *dma_handle, size, true, DMA_BIDIRECTIONAL);
-	} else if (exynos_pcie->use_sysmmu) {
+	} else if (exynos_pcie->use_sysmmu && cpu_addr != NULL) {
 		ret = pcie_iommu_map(*dma_handle, *dma_handle, size,
-				     DMA_BIDIRECTIONAL, pcie_ch_to_hsi(ch_num));
+				DMA_BIDIRECTIONAL, pcie_ch_to_hsi(ch_num));
 		if (ret != 0) {
 			pr_err("Can't map PCIe SysMMU table!\n");
 			dma_free_attrs(&fake_dma_dev, size,
@@ -279,9 +279,9 @@ static dma_addr_t pcie_dma_map_page(struct device *dev, struct page *page,
 				      size, dir, attrs);
 	if (exynos_pcie->s2mpu) {
 		s2mpu_update_refcnt(dev, dma_addr, size, true, dir);
-	} else if (exynos_pcie->use_sysmmu) {
+	} else if (exynos_pcie->use_sysmmu && dma_addr != DMA_MAPPING_ERROR) {
 		ret = pcie_iommu_map(dma_addr, dma_addr, size,
-				     dir, pcie_ch_to_hsi(ch_num));
+				dir, pcie_ch_to_hsi(ch_num));
 		if (ret != 0) {
 			pr_err("DMA map - Can't map PCIe SysMMU table!!!\n");
 			return 0;
@@ -2148,6 +2148,32 @@ static void __maybe_unused exynos_pcie_notify_callback(struct dw_pcie_rp *pp, in
 	}
 }
 
+void exynos_pcie_rc_print_aer_register(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+	struct dw_pcie *pci = exynos_pcie->pci;
+	struct pcie_port *pp = &pci->pp;
+	u32 i, val_0, val_4, val_8, val_c;
+	unsigned long flags;
+
+	spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
+
+	dev_err(pci->dev, "[Advanced Error Report]\n");
+	dev_err(pci->dev, "offset:	0x0	0x4	0x8	0xC\n");
+	for (i = 0x100; i < 0x150; i += 0x10) {
+		exynos_pcie_rc_rd_own_conf(pp, i + 0x0, 4, &val_0);
+		exynos_pcie_rc_rd_own_conf(pp, i + 0x4, 4, &val_4);
+		exynos_pcie_rc_rd_own_conf(pp, i + 0x8, 4, &val_8);
+		exynos_pcie_rc_rd_own_conf(pp, i + 0xC, 4, &val_c);
+		dev_err(pci->dev, "DBI %#02x: %#04x %#04x %#04x %#04x\n",
+				i, val_0, val_4, val_8, val_c);
+	}
+	dev_err(pci->dev, "\n");
+
+	spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
+}
+EXPORT_SYMBOL_GPL(exynos_pcie_rc_print_aer_register);
+
 void exynos_pcie_rc_print_msi_register(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
@@ -2458,6 +2484,7 @@ void exynos_pcie_rc_cpl_timeout_work(struct work_struct *work)
 		dev_info(dev, "[%s] pcie_is_linkup = 0\n", __func__);
 		pcie_is_linkup = 0;
 	}
+	exynos_pcie_rc_print_aer_register(exynos_pcie->ch_num);
 
 	/* Reset ATU flag as CPL timeout */
 	exynos_pcie->atu_ok = 0;
@@ -2601,6 +2628,7 @@ void exynos_pcie_rc_assert_phy_reset(struct dw_pcie_rp *pp)
 
 	ret = exynos_pcie_rc_phy_clock_enable(pp, PCIE_ENABLE_CLOCK);
 	dev_dbg(dev, "phy clk enable, ret value = %d\n", ret);
+
 	if (exynos_pcie->phy_ops.phy_config)
 		exynos_pcie->phy_ops.phy_config(exynos_pcie, exynos_pcie->ch_num);
 

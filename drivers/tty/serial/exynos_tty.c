@@ -337,7 +337,6 @@ static struct notifier_block exynos_uart_panic_block = {
 static void uart_sfr_dump(struct exynos_uart_port *ourport)
 {
 	struct uart_port *port = &ourport->port;
-	u32 val;
 
 	dev_err(ourport->port.dev, " Register dump\n"
 		"ULCON	0x%08x	UCON	0x%08x	UFCON	0x%08x	UMCON	0x%08x\n"
@@ -356,8 +355,6 @@ static void uart_sfr_dump(struct exynos_uart_port *ourport)
 		, readl(port->membase + S3C64XX_UINTP)
 		, readl(port->membase + S3C64XX_UINTM)
 	);
-	regmap_read(ourport->usi_reg, ourport->usi_offset, &val);
-	dev_info(ourport->port.dev, "usi mode - 0x%x\n", val);
 }
 
 static void disable_auto_flow_control(struct exynos_uart_port *ourport)
@@ -2468,17 +2465,13 @@ static void exynos_serial_rx_fifo_wait(struct exynos_uart_port *ourport)
 		exynos_clear_bit(port, S3C64XX_UINTM_RXD, S3C64XX_UINTM);
 		ourport->rx_enabled = 1;
 
-		wait_time = loops_per_jiffy * HZ;
+		wait_time = jiffies + HZ;
 		do {
 			port = &ourport->port;
 			fifo_stat = rd_regl(port, S3C2410_UFSTAT);
 			cpu_relax();
 		} while (exynos_serial_rx_fifocnt(ourport, fifo_stat) &&
-			 --wait_time);
-		if (wait_time == 0) {
-			dev_warn(port->dev, "Timed out flushing RX FIFO\n");
-			uart_sfr_dump(ourport);
-		}
+			 time_before(jiffies, wait_time));
 	}
 
 	if (ourport->rx_enabled)
@@ -2493,17 +2486,13 @@ void exynos_serial_fifo_wait(void)
 	unsigned long wait_time;
 
 	list_for_each_entry(ourport, &drvdata_list, node) {
-		wait_time = loops_per_jiffy / 4 * HZ;
+		wait_time = jiffies + HZ / 4;
 		do {
 			port = &ourport->port;
 			fifo_stat = rd_regl(port, S3C2410_UFSTAT);
 			cpu_relax();
 		} while (exynos_serial_tx_fifocnt(ourport, fifo_stat) &&
-			 --wait_time);
-		if (wait_time == 0) {
-			dev_warn(port->dev, "Timed out flushing FIFO\n");
-			uart_sfr_dump(ourport);
-		}
+			 time_before(jiffies, wait_time));
 	}
 }
 EXPORT_SYMBOL_GPL(exynos_serial_fifo_wait);
