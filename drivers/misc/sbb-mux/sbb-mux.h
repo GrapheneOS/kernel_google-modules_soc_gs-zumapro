@@ -92,6 +92,9 @@ const struct sbb_signal signals[SBB_SIG_NUM_SIGNALS] = {
 	{ SBB_SIG_CAMERA_MISC7, "cam_misc7", USERLAND_DRIVEN },
 	{ SBB_SIG_CAMERA_MISC8, "cam_misc8", USERLAND_DRIVEN },
 	{ SBB_SIG_CAMERA_MISC9, "cam_misc9", USERLAND_DRIVEN },
+	{ SBB_SIG_UFS_ACTIVE_IDLE, "ufs_active_idle", KERNEL_DRIVEN },
+	{ SBB_SIG_UFS_POWER_ON, "ufs_power_on", KERNEL_DRIVEN },
+	{ SBB_SIG_UFS_IO_OUTSTANDING, "ufs_io_outstanding", KERNEL_DRIVEN },
 };
 
 /*

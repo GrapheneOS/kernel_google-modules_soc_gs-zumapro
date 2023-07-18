@@ -218,6 +218,11 @@ static inline void exynos_ufs_ctrl_phy_pwr(struct exynos_ufs *ufs, bool en)
 	struct ext_cxt *cxt = &ufs->cxt_phy_iso;
 
 	exynos_pmu_update(cxt->offset, cxt->mask, (en ? 1 : 0) ? cxt->val : 0);
+
+	if (en)
+		pixel_update_power_event(ufs->hba, PE_SYSTEM_RESUME);
+	else
+		pixel_update_power_event(ufs->hba, PE_SYSTEM_SUSPEND);
 }
 
 static inline void __thaw_cport_logger(struct ufs_vs_handle *handle)
@@ -1672,6 +1677,9 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 	if (ret)
 		goto remove_qos_request;
 	spin_lock_init(&ufs->dbg_lock);
+
+	/* init power event monitoring */
+	spin_lock_init(&ufs->power_event_lock);
 
 	/* store ufs host symbols to analyse later */
 	ufs->id = ufs_host_index++;

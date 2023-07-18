@@ -60,6 +60,10 @@
 		gpu_pmu_status_reg_offset = <0x1C84>;
 		gpu_pmu_status_local_pwr_mask = <0x1>; /*0x1 << 0*/
 		power_policy = "adaptive";
+		firmware_idle_hysteresis_time_ms = <60>;
+		firmware_idle_hysteresis_gpu_sleep_scaler = <60>;
+		cores_suspend_hysteresis_time_ms = <20>;
+		top_suspend_hysteresis_time_ms = <40>;
 
 		/* Memory */
 		physical-memory-group-manager = <&mali_mgm>;
@@ -106,7 +110,7 @@
 			 *------------------------------------------------------------------------------------------------
 			 */
 			950000  940000     85    100      1        0        0        0       0     0         40        100
-			950000  890000     81     97      1        0        0        0       0     0         40        80
+			900000  890000     85    100      1        0        0        0       0     0         40        100
 			900000  850000     76     94      1        0        0        0       0     0         40        60
 			900000  807000     85     96      2        0        0        0       0     0         30        60
 			900000  723000     83     97      3        0        0        0       0     0         25        50
@@ -123,6 +127,9 @@
 
 		/* DVFS step up value */
 		gpu_dvfs_step_up_val = <3>;
+
+		/* Fmax limit */
+		gpu_dvfs_max_freq = <890000>;
 
 		/* QOS */
 		gpu_dvfs_qos_bts_scenario = "g3d_performance";

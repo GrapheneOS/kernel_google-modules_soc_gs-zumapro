@@ -21,8 +21,9 @@ enum acpm_gov_select_bit_offset {
 	STEPWISE = 0,
 	PI_LOOP  = 1,
 	TEMP_LUT = 2,
-	RESERVED = 3,
-	EARLY_THROTTLE = 4
+	HARDLIMIT_VIA_PID = 3,
+	EARLY_THROTTLE = 4,
+	INVALID_GOV_MOD = 8
 };
 
 struct gs_pi_param {
@@ -129,6 +130,7 @@ struct acpm_gov_common {
 	struct gov_trace_data_struct *bulk_trace_buffer;
 	spinlock_t lock;
 	struct thermal_pressure thermal_pressure;
+	time64_t tr_ktime_real_offset;
 };
 
 struct gs_temp_lut_st {
@@ -237,6 +239,7 @@ struct gs_tmu_data {
 	bool use_temp_lut_thermal;
 	u32 temp_state_lut_len;
 	struct gs_temp_lut_st *temp_state_lut;
+	bool use_hardlimit_pid;
 };
 
 enum throttling_stats_type {
@@ -396,7 +399,8 @@ void register_get_cpu_power_table_ect_offset(get_cpu_power_table_ect_offset_cb c
 #define BULK_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20
 #define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
-#define NS_PER_MS 1000000
+#define NS_PER_MS  1000000
+#define NS_PER_SEC 1000000000
 #define acpm_systick_to_ns(acpm_tick)     ((acpm_tick * ACPM_SYSTICK_NUMERATOR) +              \
                                             (acpm_tick / ACPM_SYSTICK_FRACTIONAL_DENOMINATOR))
 #define acpm_systick_to_ms(acpm_tick)     (acpm_systick_to_ns(acpm_tick) / NS_PER_MS)

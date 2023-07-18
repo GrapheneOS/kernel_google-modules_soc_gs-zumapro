@@ -38,6 +38,12 @@
 #define SLC_PLDTRC 0x6a
 #define SLC_STOP  0x6b
 
+#ifdef CONFIG_SOC_ZUMA
+#define SLC_SIZE_MULTIPLIER 8
+#else
+#define SLC_SIZE_MULTIPLIER 4
+#endif
+
 enum pt_property_index {
 	PT_PROPERTY_INDEX_VPTID = 0,
 	PT_PROPERTY_INDEX_SIZE_BITS = 1, // Allowed size
@@ -214,15 +220,15 @@ static void slc_acpm_check(struct slc_acpm_driver_data *driver_data)
 {
 	int ret;
 	ptid_t ptid;
-	int size4kB;
+	int sizeReply;
 	unsigned long flags;
 
 	while ((ret = slc_acpm(driver_data, PT_CHECK, 0, 0, NULL)) > 0) {
-		pt_ptid_data_decode(ret, &ptid, &size4kB);
+		pt_ptid_data_decode(ret, &ptid, &sizeReply);
 		if ((ptid >= PT_PTID_MAX) || (ptid < 0)) {
 			dev_err(&driver_data->pdev->dev,
 				"wrong ptid %d size %dK\n",
-				ptid, 4 * size4kB);
+				ptid, SLC_SIZE_MULTIPLIER * sizeReply);
 			/* An out-of-range PTID could be a sign of an ACPM
 			 * protocol error (e.g. ACPM crash or protocol version
 			 * mismatch). Break out of this loop to avoid a
@@ -232,7 +238,7 @@ static void slc_acpm_check(struct slc_acpm_driver_data *driver_data)
 		}
 		dev_info(&driver_data->pdev->dev,
 			 "ptid %d size %dK\n",
-			 ptid, 4 * size4kB);
+			 ptid, SLC_SIZE_MULTIPLIER * sizeReply);
 		if (!driver_data->ptids[ptid].resize) {
 			/*
 			 * ptid was freed
@@ -243,7 +249,7 @@ static void slc_acpm_check(struct slc_acpm_driver_data *driver_data)
 		if (driver_data->ptids[ptid].resize)
 			driver_data->ptids[ptid].resize(
 				driver_data->ptids[ptid].data,
-				size4kB * 4096);
+				SLC_SIZE_MULTIPLIER * 1024 * sizeReply);
 		spin_unlock_irqrestore(&driver_data->sl, flags);
 	}
 }

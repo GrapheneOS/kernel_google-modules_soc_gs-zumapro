@@ -66,7 +66,7 @@
 
 struct exynos_pcie g_pcie_rc[MAX_RC_NUM];
 int pcie_is_linkup;	/* checkpatch: do not initialise globals to 0 */
-static bool d3_ack_timeout_occurred = 0;
+
 static struct separated_msi_vector sep_msi_vec[MAX_RC_NUM][PCIE_MAX_SEPA_IRQ_NUM];
 static bool is_vhook_registered;
 
@@ -1155,13 +1155,20 @@ void exynos_pcie_rc_print_link_history(struct dw_pcie_rp *pp)
 	}
 }
 
-void exynos_pcie_d3_ack_timeout_set(bool val)
+// In some cases we will prevent config space access during wifi recovery,
+// this flag will be reset when wifi driver call exynos_pcie_pm_resume()
+void exynos_pcie_set_skip_config(int ch_num, bool val)
 {
-	struct exynos_pcie *exynos_pcie = &(g_pcie_rc[1]);
-	d3_ack_timeout_occurred = val;
-	logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR, "D3 ack flag set to %d\n", d3_ack_timeout_occurred);
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+	exynos_pcie->skip_config = val;
+	logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR, "Skip config flag set to %d\n", val);
 }
-EXPORT_SYMBOL_GPL(exynos_pcie_d3_ack_timeout_set);
+EXPORT_SYMBOL_GPL(exynos_pcie_set_skip_config);
+
+static bool exynos_pcie_check_skip_config(struct exynos_pcie *exynos_pcie)
+{
+	return exynos_pcie->skip_config;
+}
 
 static int exynos_pcie_rc_rd_own_conf(struct dw_pcie_rp *pp, int where, int size, u32 *val)
 {
@@ -1173,16 +1180,9 @@ static int exynos_pcie_rc_rd_own_conf(struct dw_pcie_rp *pp, int where, int size
 	u32 __maybe_unused reg_val;
 	unsigned long flags;
 
-	if ((exynos_pcie->ch_num == 1) && d3_ack_timeout_occurred) {
+	if (exynos_pcie_check_skip_config(exynos_pcie)) {
 		*val = 0xffffffff;
-		return PCIBIOS_DEVICE_NOT_FOUND;
-	}
-
-	/* For Wifi, skip reading conf in cpl_timeout_recovery */
-	if ((exynos_pcie->ch_num == 1)
-	    && (exynos_pcie->cpl_timeout_recovery)) {
-		*val = 0xffffffff;
-		dev_err(dev, "Can't read own conf in cpl_timeout_recovery\n");
+		dev_err(dev, "skip rd_own_conf where=%#04x\n", where);
 		return PCIBIOS_DEVICE_NOT_FOUND;
 	}
 
@@ -1232,13 +1232,8 @@ static int exynos_pcie_rc_wr_own_conf(struct dw_pcie_rp *pp, int where, int size
 	u32 __maybe_unused reg_val;
 	unsigned long flags;
 
-	if ((exynos_pcie->ch_num == 1) && d3_ack_timeout_occurred)
-		return PCIBIOS_DEVICE_NOT_FOUND;
-
-	/* For Wifi, skip writing conf in cpl_timeout_recovery */
-	if ((exynos_pcie->ch_num == 1)
-	    && (exynos_pcie->cpl_timeout_recovery)) {
-		dev_err(dev, "Can't write own conf in cpl_timeout_recovery\n");
+	if (exynos_pcie_check_skip_config(exynos_pcie)) {
+		dev_err(dev,"skip wr_own_conf where=%#04x val=%#02x\n", where, val);
 		return PCIBIOS_DEVICE_NOT_FOUND;
 	}
 
@@ -1469,8 +1464,11 @@ static int exynos_pcie_rc_rd_other_conf_new(struct pci_bus *bus,
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	int ret = 0;
 
-	if ((exynos_pcie->ch_num == 1) && d3_ack_timeout_occurred)
+	if (exynos_pcie_check_skip_config(exynos_pcie)) {
+		*val = 0xffffffff;
+		dev_err(pci->dev,"skip rd_other_conf where=%#04x\n", where);
 		return ret;
+	}
 
 	if (exynos_pcie_rc_link_up(pci))
 		ret = exynos_pcie_rc_rd_other_conf(pp, bus, devfn, where, size, val);
@@ -1486,8 +1484,10 @@ static int exynos_pcie_rc_wr_other_conf_new(struct pci_bus *bus,
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	int ret = 0;
 
-	if ((exynos_pcie->ch_num == 1) && d3_ack_timeout_occurred)
+	if (exynos_pcie_check_skip_config(exynos_pcie)) {
+		dev_err(pci->dev,"skip wr_other_conf where=%#04x val=%#02x\n", where, val);
 		return ret;
+	}
 
 	if (exynos_pcie_rc_link_up(pci))
 		ret = exynos_pcie_rc_wr_other_conf(pp, bus, devfn, where, size, val);
@@ -3628,9 +3628,9 @@ int exynos_pcie_pm_resume(int ch_num)
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 
 	logbuffer_log(exynos_pcie->log, "pm_resume api called");
-	if (d3_ack_timeout_occurred) {
-		d3_ack_timeout_occurred = 0;
-		logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR, "reset d3 ack flag\n");
+	if (exynos_pcie_check_skip_config(exynos_pcie)) {
+		exynos_pcie_set_skip_config(ch_num, 0);
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR, "reset skip config access flag\n");
 	}
 	return exynos_pcie_rc_poweron(ch_num);
 }
