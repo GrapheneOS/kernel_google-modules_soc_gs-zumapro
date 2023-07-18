@@ -12,6 +12,7 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <trace/hooks/systrace.h>
 
 #include "sbb-mux.h"
 
@@ -103,10 +104,7 @@ static int sbb_signal_set_value(enum sbbm_signal_id signal_id, int value)
 
 	spin_lock_irqsave(&tracker->lock, flags);
 
-	/*
-	 * TODO: add messages to trace. Should *NOT* call pr_*, as this could
-	 * be called from an interrupt context down the line.
-	 */
+	__ATRACE_INT_PID(1, signals[signal_id].name, value);
 
 	if (tracker->value == value) {
 		spin_unlock_irqrestore(&tracker->lock, flags);
@@ -126,6 +124,7 @@ static int sbb_signal_set_value(enum sbbm_signal_id signal_id, int value)
 		 * The GPIO value is implicitly protected by needing to hold
 		 * the GPIO's signal's lock before changing the tracked signal.
 		 */
+		__ATRACE_INT_PID(1, gpio_trackers[gpio_id].name, tracker->value);
 		gpiod_set_value(gpio_trackers[gpio_id].gd, tracker->value);
 	}
 
