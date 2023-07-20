@@ -45,7 +45,7 @@
 /* Register Map */
 #define HSI2C_CTL		0x00
 #define HSI2C_FIFO_CTL		0x04
-#define HSI2C_TRAILIG_CTL	0x08
+#define HSI2C_TRAILING_CTL	0x08
 #define HSI2C_CLK_CTL		0x0C
 #define HSI2C_CLK_SLOT		0x10
 #define HSI2C_INT_ENABLE	0x20
@@ -347,7 +347,7 @@ static inline void dump_i2c_register(struct exynos5_i2c *i2c)
 		, readl(i2c->regs + HSI2C_TIMING_FS1)
 		, readl(i2c->regs + HSI2C_TIMING_FS2)
 		, readl(i2c->regs + HSI2C_TIMING_FS3)
-		, readl(i2c->regs + HSI2C_TRAILIG_CTL)
+		, readl(i2c->regs + HSI2C_TRAILING_CTL)
 		, readl(i2c->regs + HSI2C_ADDR)
 	);
 
@@ -619,7 +619,7 @@ static void exynos5_i2c_init(struct exynos5_i2c *i2c)
 	u32 i2c_conf = readl(i2c->regs + HSI2C_CONF);
 
 	writel(HSI2C_MASTER, i2c->regs + HSI2C_CTL);
-	writel(HSI2C_TRAILING_COUNT, i2c->regs + HSI2C_TRAILIG_CTL);
+	writel(i2c->trailing_count, i2c->regs + HSI2C_TRAILING_CTL);
 
 	if (i2c->speed_mode == HSI2C_HIGH_SPD) {
 		writel(HSI2C_MASTER_ID(MASTER_ID(i2c->bus_id)),
@@ -1237,6 +1237,11 @@ static int exynos5_i2c_probe(struct platform_device *pdev)
 		i2c->is_no_arbitration = 1;
 	else
 		i2c->is_no_arbitration = 0;
+
+	i2c->trailing_count = HSI2C_TRAILING_COUNT;
+	of_property_read_u32(np, "samsung,trailing-count",
+			     &i2c->trailing_count);
+	dev_info(&pdev->dev, "Trailing count: 0x%x\n", i2c->trailing_count);
 
 	i2c->idle_ip_index = exynos_get_idle_ip_index(dev_name(&pdev->dev));
 
