@@ -439,7 +439,7 @@
 				};
 				mfc_e_qos_variant_6 {
 					thrd_mb = <2625764>;
-					freq_mfc = <664000>;
+					freq_mfc = <465000>;
 					freq_int = <356000>;
 					freq_mif = <1539000>;
 					mo_value = <0>;
@@ -449,7 +449,7 @@
 					time_fw = <479>;
 				};
 				mfc_e_qos_variant_7 {
-					thrd_mb = <3197754>;
+					thrd_mb = <3185240>;
 					freq_mfc = <664000>;
 					freq_int = <533000>;
 					freq_mif = <1539000>;
