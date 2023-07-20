@@ -3339,6 +3339,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 	struct device *dev;
 	int ret;
 	unsigned long flags;
+	u32 val;
 
 	if (!exynos_pcie) {
 		pr_err("%s: ch#%d PCIe device is not loaded\n", __func__, ch_num);
@@ -3471,6 +3472,17 @@ int exynos_pcie_rc_poweron(int ch_num)
 				}
 			}
 		}
+	}
+
+	if(exynos_pcie->ch_num == 0) {
+		/* PLL & BIAS always on
+		 * this is done to provide a more deterministic way to
+		 * turn off the PLLs during L2 entry
+		 */
+		writel(0x300D5, exynos_pcie->phy_pcs_base + 0x150);
+		val = readl(exynos_pcie->phy_pcs_base + 0x150);
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
+			       "pwron: pcs+0x150: %#x", val);
 	}
 
 	dev_info(dev, "end poweron, state: %d\n", exynos_pcie->state);
