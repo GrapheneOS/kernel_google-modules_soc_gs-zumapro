@@ -26,6 +26,7 @@
 #define NTC_UPDATE_MIN_DELAY_US 100
 #define NTC_UPDATE_MAX_DELAY_US 10000
 #define SPMIC_TEMPERATURE_BUF_LEN 5
+#define SPMIC_ERR_READING_IGNORE_TIME_MSEC 30000
 
 struct spmic_temperature_log {
 	ktime_t time;
@@ -299,7 +300,8 @@ static int s2mpg15_spmic_thermal_get_temp(void *data, int *temp)
 {
 	struct s2mpg15_spmic_thermal_sensor *s = data;
 	struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal = s->chip;
-	int raw, ret = 0;
+	struct device *dev = s2mpg15_spmic_thermal->dev;
+	int raw, ret = 0, valid_temp_idx = 0, last_temp_idx = 0;
 	u8 mask = 0x1;
 	u8 data_buf[S2MPG15_METER_NTC_BUF];
 	u8 reg = S2MPG15_METER_LPF_DATA_NTC0_1 +
@@ -329,6 +331,36 @@ static int s2mpg15_spmic_thermal_get_temp(void *data, int *temp)
 
 	if (s2mpg15_spmic_thermal->stats_en & (mask << s->adc_chan))
 		temp_residency_stats_update(s->tr_handle, *temp);
+
+	/* Filter the spurious reading. */
+	if (unlikely(*temp ==
+		     s2mpg15_adc_map[ARRAY_SIZE(s2mpg15_adc_map) - 1].temp)) {
+		/* Get the previous valid reading. */
+		valid_temp_idx = s->log_ct - 2;
+		if (valid_temp_idx < 0)
+			valid_temp_idx += SPMIC_TEMPERATURE_BUF_LEN;
+
+		/* Get the error reading index to get the first occurrence. */
+		last_temp_idx = s->log_ct - 1;
+		if (last_temp_idx < 0)
+			last_temp_idx += SPMIC_TEMPERATURE_BUF_LEN;
+
+		if (ktime_ms_delta(ktime_get_real(),
+				   s->temp_log[last_temp_idx].time) <
+		    SPMIC_ERR_READING_IGNORE_TIME_MSEC) {
+			dev_dbg(dev,
+				"Filtering spurious reading for sensor %s.\n",
+				 s->tzd->type);
+			*temp = s->temp_log[valid_temp_idx].temperature;
+		} else {
+			dev_err(dev,
+				"%s spurious reading persisted %d msec. \
+				Reading actual value.",
+				 s->tzd->type,
+				 SPMIC_ERR_READING_IGNORE_TIME_MSEC);
+		}
+
+	}
 
 	mutex_unlock(&s2mpg15_spmic_thermal->adc_chan_lock);
 	return ret;
