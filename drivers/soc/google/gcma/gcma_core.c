@@ -25,19 +25,19 @@
 #include "gcma_trace.h"
 
 /*
- * page->units : area id
+ * page->page_type : area id
  * page->mapping : struct gcma_inode
  * page->index : page offset from inode
  */
 
 static inline int get_area_id(struct page *page)
 {
-	return page->units;
+	return page->page_type;
 }
 
 static inline void set_area_id(struct page *page, int id)
 {
-	page->units = id;
+	page->page_type = id;
 }
 
 static inline unsigned long get_inode_index(struct page *page)
