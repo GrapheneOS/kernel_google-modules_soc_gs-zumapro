@@ -42,6 +42,8 @@ struct max77759_plat {
 	enum typec_data_role active_data_role;
 	/* Data role from the TCPM stack */
 	enum typec_data_role data_role;
+	/* CC polarity from the TCPM stack */
+	enum typec_cc_polarity polarity;
 	/* protects tcpc_enable_data_path */
 	struct mutex data_path_lock;
 	/* Vote for data from BC1.2 */
@@ -233,6 +235,7 @@ void data_alt_path_active(struct max77759_plat *chip, bool active);
 void register_data_active_callback(void (*callback)(void *data_active_payload,
 						    enum typec_data_role role, bool active),
 				   void *data);
+void register_orientation_callback(void (*callback)(void *orientation_payload), void *data);
 
 /* AICL_OK is tracked with COMPLIANCE_WARNING_OTHER */
 #define COMPLIANCE_WARNING_OTHER 0
