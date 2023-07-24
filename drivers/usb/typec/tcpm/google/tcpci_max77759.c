@@ -65,6 +65,7 @@
 #define GBMS_MODE_VOTABLE "CHARGER_MODE"
 
 #define MAX77759_DEVICE_ID_A1				0x2
+#define MAX77779_PRODUCT_ID				0x79
 
 #define MAX77759_DISABLE_TOGGLE				1
 #define MAX77759_ENABLE_TOGGLE				0
@@ -1691,7 +1692,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				if (chip->contaminant_detection_userspace !=
 					CONTAMINANT_DETECT_DISABLE)
 					disable_auto_ultra_low_power_mode(chip, false);
-			} else if (!chip->usb_throttled) {
+			} else if (!chip->usb_throttled && chip->contaminant_detection) {
 				/*
 				 * TCPM has not detected valid CC terminations
 				 * and neither the comparators nor ADC
@@ -2626,20 +2627,24 @@ static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *
 		mutex_unlock(&chip->rc_lock);
 		return;
 	}
-	if (chip->contaminant_detection)
+	if (chip->contaminant_detection) {
 		ret = process_contaminant_alert(chip->contaminant, true, false,
 						&contaminant_cc_status_handled,
 						&port_clean);
-	if (ret < 0) {
-		logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
-		/* Assume clean port */
-		tcpm_port_clean(chip->port);
-	} else if (port_clean) {
-		logbuffer_log(chip->log, "port clean");
-		tcpm_port_clean(chip->port);
+		if (ret < 0) {
+			logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
+			/* Assume clean port */
+			tcpm_port_clean(chip->port);
+		} else if (port_clean) {
+			logbuffer_log(chip->log, "port clean");
+			tcpm_port_clean(chip->port);
+		} else {
+			logbuffer_log(chip->log, "port dirty");
+			chip->check_contaminant = true;
+		}
 	} else {
-		logbuffer_log(chip->log, "port dirty");
-		chip->check_contaminant = true;
+		logbuffer_log(chip->log, "port clean; Contaminant detection not enabled");
+		tcpm_port_clean(chip->port);
 	}
 	mutex_unlock(&chip->rc_lock);
 }
@@ -2902,7 +2907,7 @@ static int max77759_probe(struct i2c_client *client,
 	struct max77759_plat *chip;
 	char *usb_psy_name;
 	struct device_node *dn, *ovp_dn, *regulator_dn, *conn;
-	u8 power_status;
+	u8 power_status, pid;
 	u16 device_id;
 	u32 ovp_handle, regulator_handle;
 	const char *ovp_status;
@@ -3131,10 +3136,21 @@ static int max77759_probe(struct i2c_client *client,
 		goto dp_regulator_put;
 
 	logbuffer_log(chip->log, "TCPC DEVICE id:%d", device_id);
-	/* Default enable on A1 or higher */
-	chip->contaminant_detection = device_id >= MAX77759_DEVICE_ID_A1;
+
+	ret = max77759_read8(chip->data.regmap, TCPC_PRODUCT_ID, &pid);
+	if (ret < 0)
+		goto dp_regulator_put;
+	logbuffer_log(chip->log, "TCPC PID:%d", pid);
+
+	/* Default enable on A1 or higher on MAX77759 */
+	chip->contaminant_detection = ((pid != MAX77779_PRODUCT_ID) &&
+				       (device_id >= MAX77759_DEVICE_ID_A1));
 	chip->contaminant_detection_userspace = chip->contaminant_detection;
-	chip->contaminant = max77759_contaminant_init(chip, chip->contaminant_detection);
+	if (chip->contaminant_detection) {
+		logbuffer_log(chip->log, "Contaminant detection enabled");
+		chip->data.check_contaminant = max_tcpci_check_contaminant;
+		chip->contaminant = max77759_contaminant_init(chip, chip->contaminant_detection);
+	}
 
 	ret = max77759_setup_data_notifier(chip);
 	if (ret < 0)
