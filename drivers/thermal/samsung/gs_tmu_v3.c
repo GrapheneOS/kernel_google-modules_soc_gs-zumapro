@@ -4985,6 +4985,8 @@ int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on)
 }
 EXPORT_SYMBOL(set_acpm_tj_power_status);
 
+extern void register_tz_id_ignore_genl(int tz_id);
+
 static int parse_acpm_gov_common_dt(void)
 {
 	int ret;
@@ -5308,6 +5310,8 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	spin_lock(&dev_list_spinlock);
 	cpumask_or(&tmu_enabled_mask, &tmu_enabled_mask, &data->mapped_cpus);
 	spin_unlock(&dev_list_spinlock);
+
+	register_tz_id_ignore_genl(data->tzd->id);
 
 	return 0;
 err_dtm_dev_list:
