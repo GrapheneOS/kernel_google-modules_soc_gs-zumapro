@@ -416,6 +416,13 @@
 		};
 	};
 
+	etr-miu@110D0000 {
+		compatible = "google,gs101-etr-miu";
+		reg = <0x0 0x110D0000 0x100>;
+		tmc_buf_addr = <0x00000010 0x00000000>;
+		tmc_buf_size = <0x10000000>;
+	};
+
 	exynos-adv_tracer {
 		compatible = "google,exynos-adv-tracer";
 		reg = <0x0 0x15260000 0x1000>;

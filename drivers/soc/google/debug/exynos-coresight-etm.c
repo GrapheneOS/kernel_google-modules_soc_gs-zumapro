@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/of.h>
 #include <linux/io.h>
+#include <linux/cpuidle.h>
 #include <asm/barrier.h>
 #include <asm/sysreg.h>
 #include <soc/google/debug-snapshot.h>
@@ -372,6 +373,38 @@ static void bdu_etr_disable(void)
 
 static void exynos_etm_smp_enable(void *ununsed);
 void exynos_etm_trace_start(void);
+
+static void smp_disable_idle_states(void *ptr)
+{
+	struct cpuidle_driver *drv;
+	bool disable = *(bool *)ptr;
+	int i;
+
+	drv = cpuidle_get_driver();
+
+	if (!drv) {
+		dev_warn(ee_info->dev, "No idle driver registered.\n");
+		return;
+	}
+
+	for (i = 1; i < drv->state_count; i++) {
+		cpuidle_driver_state_disabled(drv, i, disable);
+	}
+}
+
+/*
+ * TODO: b/286355474 workaround for ETR_MIU dump to disable C2 idle
+ * SMP call each CPU to disable idle states excpet for wfi.
+ */
+static void exynos_disable_idle_states(bool disable)
+{
+	int cpu;
+
+	for_each_possible_cpu(cpu) {
+		smp_call_function_single(cpu, smp_disable_idle_states, &disable, 1);
+	}
+}
+
 int gs_coresight_etm_external_etr_on(u64 buf_addr, u32 buf_size)
 {
 	struct etr_info *etr = &ee_info->etr;
@@ -392,6 +425,8 @@ int gs_coresight_etm_external_etr_on(u64 buf_addr, u32 buf_size)
 
 	etr->aux_buf_addr = buf_addr;
 	ee_info->etr_aux_buf_size = buf_size;
+
+	exynos_disable_idle_states(true);
 
 	if (!bdu_enable) {
 		for_each_possible_cpu(i) {
@@ -449,6 +484,8 @@ int gs_coresight_etm_external_etr_off(void)
 		bdu_etr_disable();
 #endif
 	}
+
+	exynos_disable_idle_states(false);
 
 	return 0;
 }

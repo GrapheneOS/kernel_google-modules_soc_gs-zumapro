@@ -38,6 +38,7 @@
 #include <linux/irqdomain.h>
 
 #include <soc/google/exynos-pm.h>
+#include <soc/google/debug-snapshot.h>
 #if IS_ENABLED(CONFIG_CPU_IDLE)
 #include <soc/google/exynos-powermode.h>
 #include <soc/google/exynos-cpupm.h>
@@ -3337,7 +3338,6 @@ int exynos_pcie_rc_poweron(int ch_num)
 	struct dw_pcie *pci;
 	struct pcie_port *pp;
 	struct device *dev;
-	u32 val, vendor_id, device_id;
 	int ret;
 	unsigned long flags;
 
@@ -3367,6 +3367,15 @@ int exynos_pcie_rc_poweron(int ch_num)
 		ret = exynos_pcie_rc_clock_enable(pp, PCIE_ENABLE_CLOCK);
 		dev_dbg(dev, "pcie clk enable, ret value = %d\n", ret);
 		logbuffer_log(exynos_pcie->log, "pcie clk enable, ret value = %d", ret);
+
+		if (pci_load_saved_state(exynos_pcie->pci_dev,
+					 exynos_pcie->pci_saved_configs)) {
+			logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR,
+				       "Failed to load pcie state");
+			goto poweron_fail;
+		}
+		dev_dbg(dev, "Restoring PCIe root port state");
+		pci_restore_state(exynos_pcie->pci_dev);
 
 #if IS_ENABLED(CONFIG_CPU_IDLE)
 		if (exynos_pcie->use_sicd) {
@@ -3424,21 +3433,6 @@ int exynos_pcie_rc_poweron(int ch_num)
 
 		dev_dbg(dev, "[%s] exynos_pcie->probe_ok : %d\n", __func__, exynos_pcie->probe_ok);
 		if (!exynos_pcie->probe_ok) {
-			exynos_pcie_rc_rd_own_conf(pp, PCI_VENDOR_ID, 4, &val);
-			vendor_id = val & ID_MASK;
-			device_id = (val >> 16) & ID_MASK;
-
-			exynos_pcie->pci_dev = pci_get_device(vendor_id, device_id, NULL);
-			if (!exynos_pcie->pci_dev) {
-				logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR,
-					       "Failed to get pci device");
-
-				goto poweron_fail;
-			}
-			dev_dbg(dev, "(%s):ep_pci_device:vendor/device id = 0x%x\n", __func__, val);
-			logbuffer_log(exynos_pcie->log, "ep_pci_device:vendor/device id = 0x%x",
-				      val);
-
 			pci_rescan_bus(exynos_pcie->pci_dev->bus);
 			if (exynos_pcie->use_msi) {
 				ret = exynos_pcie_rc_msi_init(pp);
@@ -3449,14 +3443,6 @@ int exynos_pcie_rc_poweron(int ch_num)
 					return ret;
 				}
 			}
-
-			if (pci_save_state(exynos_pcie->pci_dev)) {
-				dev_err(dev, "Failed to save pcie state\n");
-
-				goto poweron_fail;
-			}
-			exynos_pcie->pci_saved_configs =
-				pci_store_saved_state(exynos_pcie->pci_dev);
 
 			exynos_pcie->ep_pci_dev = exynos_pcie_get_pci_dev(&pci->pp);
 
@@ -3483,15 +3469,6 @@ int exynos_pcie_rc_poweron(int ch_num)
 					return ret;
 				}
 			}
-
-			if (pci_load_saved_state(exynos_pcie->pci_dev,
-						 exynos_pcie->pci_saved_configs)) {
-				logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR,
-					       "Failed to load pcie state");
-
-				goto poweron_fail;
-			}
-			pci_restore_state(exynos_pcie->pci_dev);
 		}
 	}
 
@@ -3516,6 +3493,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 	struct pcie_port *pp;
 	struct device *dev;
 	unsigned long flags, flags1;
+	struct pci_saved_state *newbackup;
 	u32 val;
 
 	if (!exynos_pcie) {
@@ -3539,6 +3517,16 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		spin_unlock_irqrestore(&exynos_pcie->reg_lock, flags1);
 
 		disable_irq(pp->irq);
+
+		dev_dbg(dev, "Saving PCI state");
+		pci_save_state(exynos_pcie->pci_dev);
+		newbackup = pci_store_saved_state(exynos_pcie->pci_dev);
+		if (newbackup) {
+			kfree(exynos_pcie->pci_saved_configs);
+			exynos_pcie->pci_saved_configs = newbackup;
+		} else {
+			dev_err(dev, "%s: Unable to store saved state\n", __func__);
+		}
 
 		/* disable LINKDOWN irq */
 		if (exynos_pcie->ip_ver == 0x982000) {
@@ -4521,6 +4509,14 @@ int exynos_pcie_rc_itmon_notifier(struct notifier_block *nb, unsigned long actio
 
 			exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
 		}
+		if ((itmon_info->port && !strcmp(itmon_info->port, "HSI1")) ||
+		    (itmon_info->dest && !strcmp(itmon_info->dest, "HSI1"))) {
+			if (exynos_pcie->ch_num == 1)
+				return NOTIFY_DONE;
+
+			// force reset and get dump
+			dbg_snapshot_emergency_reboot("### HSI1 FORCE RESET AND GET S2D DUMP !! ##\n");
+		}
 	} else {
 		dev_info(dev, "skip register dump(ip_ver = 0x%x)\n", exynos_pcie->ip_ver);
 	}
@@ -5018,6 +5014,7 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	int ret = 0;
 	int ch_num;
+	u32 val, vendor_id, device_id;
 #if IS_ENABLED(CONFIG_GS_S2MPU)
 	struct device_node *s2mpu_dn;
 #endif
@@ -5168,6 +5165,21 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 	ret = exynos_pcie_rc_add_port(pdev, pp, ch_num);
 	if (ret)
 		goto probe_fail;
+
+	exynos_pcie_rc_rd_own_conf(pp, PCI_VENDOR_ID, 4, &val);
+	vendor_id = val & ID_MASK;
+	device_id = (val >> 16) & ID_MASK;
+
+	exynos_pcie->pci_dev = pci_get_device(vendor_id, device_id, NULL);
+	if (!exynos_pcie->pci_dev) {
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR,
+			       "Failed to get pci device");
+		goto probe_fail;
+	}
+	dev_dbg(&pdev->dev, "(%s):ep_pci_device:vendor/device id = 0x%x\n", __func__, val);
+	logbuffer_log(exynos_pcie->log, "ep_pci_device:vendor/device id = 0x%x",
+		      val);
+	exynos_pcie->pci_saved_configs = pci_store_saved_state(exynos_pcie->pci_dev);
 
 	if (exynos_pcie->use_cache_coherency)
 		exynos_pcie_rc_set_iocc(pp, 1);
