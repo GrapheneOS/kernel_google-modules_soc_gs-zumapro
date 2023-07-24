@@ -18,9 +18,9 @@ struct vnet {
 };
 
 #if IS_ENABLED(CONFIG_EXYNOS_MODEM_IF)
-extern int modem_force_crash_exit_ext(void);
+extern int modem_force_crash_exit_ext(const char *buf);
 #else
-static inline int modem_force_crash_exit_ext(void) { return 0; }
+static inline int modem_force_crash_exit_ext(const char *buf) { return 0; }
 #endif
 
 #if IS_ENABLED(CONFIG_CP_UART_NOTI)
