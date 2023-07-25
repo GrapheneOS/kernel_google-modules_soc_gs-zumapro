@@ -86,13 +86,11 @@ err_setup:
 	return ret;
 }
 
-static int gnss_spi_remove (struct spi_device *spi)
+static void gnss_spi_remove (struct spi_device *spi)
 {
 	struct gnss_spi *gnss_if = spi_get_drvdata(spi);
 
 	mutex_destroy(&gnss_if->lock);
-
-	return 0;
 }
 
 static const struct of_device_id gnss_spi_dt_match[] = {
