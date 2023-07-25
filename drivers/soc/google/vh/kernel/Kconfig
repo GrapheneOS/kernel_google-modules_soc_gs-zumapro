@@ -30,7 +30,7 @@ config PIXEL_METRICS
 config VH_FS
 	tristate "Vendor hooks for filesystem"
 	depends on VH_KERNEL
-	default m
+	default n
 
 config VH_MM
 	tristate "Vendor hooks for Memory Management"
