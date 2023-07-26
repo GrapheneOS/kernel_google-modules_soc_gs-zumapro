@@ -37,7 +37,8 @@ zumapro_overlays := \
 	zumapro-hybrid.dtbo
 
 zumapro_dtbs := \
-	zumapro-a0-foplp.dtb
+	zumapro-a0-foplp.dtb \
+	zumapro-a0-ipop.dtb
 
 # Usage:
 #   $(call DTBS_overlay_template, overlay, base_dtb, suffix)
