@@ -258,10 +258,6 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		}
 		 */
 
-		/* soc_ctrl setting */
-		//need to update soc_ctrl SFR
-		writel(0x16, soc_base_regs + 0x4000);   //ELBI & Link clock switch TCXO to PCLK
-
 		writel(0x3, phy_base_regs + 0x032C);    //PHY input clock un-gating
 
 		val = readl(udbg_base_regs + 0xC700) | (0x1 << 0);
@@ -483,10 +479,6 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 	}
 	else {
 		num_lanes = 2;
-
-		/* soc_ctrl setting */
-		//need to update soc_ctrl SFR
-		writel(0x16, soc_base_regs + 0x4000);   //ELBI & Link clock switch TCXO to PCLK
 
 		writel(0x3, phy_base_regs + 0x032C);    //PHY input clock un-gating
 

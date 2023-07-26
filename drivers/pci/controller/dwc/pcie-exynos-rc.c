@@ -3400,6 +3400,8 @@ int exynos_pcie_rc_poweron(int ch_num)
 		pinctrl_select_state(exynos_pcie->pcie_pinctrl,
 				     exynos_pcie->pin_state[PCIE_PIN_ACTIVE]);
 
+		exynos_soc_write(exynos_pcie, 0x15, 0x4000);
+
 		/* phy all power down clear */
 		if (exynos_pcie->phy_ops.phy_all_pwrdn_clear)
 			exynos_pcie->phy_ops.phy_all_pwrdn_clear(exynos_pcie, exynos_pcie->ch_num);
@@ -3558,6 +3560,12 @@ void exynos_pcie_rc_poweroff(int ch_num)
 			__func__, gpio_get_value(exynos_pcie->perst_gpio));
 		logbuffer_log(exynos_pcie->log, "%s: Set PERST to LOW, gpio val = %d",
 			      __func__, gpio_get_value(exynos_pcie->perst_gpio));
+
+		// level clk switching for stability
+		val = exynos_soc_read(exynos_pcie, 0x4000);
+		val &= ~(0x3);
+		exynos_soc_write(exynos_pcie, val, 0x4000); //sw mode and select osc_clk
+
 
 		/* LTSSM disable */
 		exynos_elbi_write(exynos_pcie, PCIE_ELBI_LTSSM_DISABLE, PCIE_APP_LTSSM_ENABLE);
