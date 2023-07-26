@@ -137,9 +137,11 @@ struct mfc_buf *mfc_get_del_if_consumed(struct mfc_ctx *ctx, struct mfc_buf_queu
 
 	mfc_debug(2, "addr[0]: 0x%08llx\n", mfc_buf->addr[0][0]);
 
-	strm_size = mfc_dec_get_strm_size(ctx, mfc_buf),
-	remained = strm_size - consumed;
-	if (consumed > strm_size) {
+	strm_size = mfc_dec_get_strm_size(ctx, mfc_buf);
+	if (strm_size >= consumed) {
+		remained = strm_size - consumed;
+	} else {
+		remained = 0;
 		exceed = true;
 		mfc_ctx_err("[MULTIFRAME] consumed (%d) exceeded the strm_size (%d)\n",
 				consumed, strm_size);
