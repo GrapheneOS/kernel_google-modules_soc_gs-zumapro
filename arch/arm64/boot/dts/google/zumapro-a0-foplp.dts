@@ -10,7 +10,7 @@
 	soc_compatible {
 		A0_FOPLP {
 			description = "A0,FOPLP";
-			product_id = <0x09865>;
+			product_id = <0x09875>;
 			major = <0x1>;
 			minor = <0x0>;
 			pkg_mode = <0x0>;
