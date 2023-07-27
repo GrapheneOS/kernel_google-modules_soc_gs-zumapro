@@ -24,6 +24,7 @@
 #include "zumapro-usb.dtsi"
 #include "gs101-dma-heap.dtsi"
 #include "gs101-faceauth-dma-heap.dtsi"
+#include "zumapro-bts.dtsi"
 
 / {
 	compatible = "google,zumapro";
