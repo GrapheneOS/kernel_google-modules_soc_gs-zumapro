@@ -76,6 +76,8 @@ filegroup(
     ] + [
         # List of headers needed by external modules
         "drivers/dma-buf/heaps/samsung/samsung-dma-heap.h",
+        "drivers/usb/typec/tcpm/google/tcpci_max77759.h",
+        "drivers/usb/typec/tcpm/google/usb_psy.h",
 
         # Needed for external modules to include in their makefiles
         "Makefile.include",
