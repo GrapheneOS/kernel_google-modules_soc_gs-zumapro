@@ -277,6 +277,13 @@
 		reg-names = "pmu_alive";
 	};
 
+	exynos-reboot {
+		compatible = "samsung,exynos-reboot";
+		syscon = <&pmu_system_controller>;
+		reboot-cmd-offset = <0x0810>;
+		force-warm-reboot-on-thermal-shutdown;
+	};
+
 	/* GPIO_CUSTOM_ALIVE */
 	pinctrl_1: pinctrl@15060000 {
 		compatible = "google,zumapro-pinctrl";
