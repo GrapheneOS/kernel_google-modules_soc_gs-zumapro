@@ -371,6 +371,10 @@
 		reg = <0x0 0x15460000 0x10000>;
 	};
 
+	gpio_keys: gpio_keys {
+		compatible = "gpio-keys";
+	};
+
 	cal_if: cal_if {
 		compatible = "samsung,exynos_cal_if";
 		reg = <0x0 0x26040000 0x8000>;
