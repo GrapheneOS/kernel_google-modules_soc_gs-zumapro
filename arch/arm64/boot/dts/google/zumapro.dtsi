@@ -270,6 +270,13 @@
 		};
 	};
 
+	exynos-pmu {
+		compatible = "samsung,exynos-pmu";
+		samsung,syscon-phandle = <&pmu_system_controller>;
+		reg = <0x0 0x15460000 0x10000>;
+		reg-names = "pmu_alive";
+	};
+
 	/* GPIO_CUSTOM_ALIVE */
 	pinctrl_1: pinctrl@15060000 {
 		compatible = "google,zumapro-pinctrl";
