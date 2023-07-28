@@ -451,6 +451,22 @@
 		status = "okay";
 	};
 
+	acpm_flexpmu_dbg {
+		compatible = "google,acpm-flexpmu-dbg";
+	};
+
+	acpm_mbox_test: mbox {
+		compatible = "google,acpm-mbox-test";
+		status = "disabled";
+	};
+
+	acpm_tmu {
+		acpm-ipc-channel = <9>;
+		async {
+			acpm-ipc-channel = <15>;
+		};
+	};
+
 	dsu-pmu-0 {
 		compatible = "arm,dsu-pmu";
 		interrupts = <GIC_SPI IRQ_CPUCL0_CLUSTERPMUIRQ_CPUCL0 IRQ_TYPE_LEVEL_HIGH>;
