@@ -93,7 +93,7 @@
 			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>;
-		clock-frequency = <10000000>;
+		clock-frequency = <24576000>;
 	};
 
 	clock: clock-controller@0x26040000 {
@@ -171,7 +171,7 @@
 		interrupts =    <0>, <1>, <2>, <3>,
 				<4>, <5>, <6>, <7>,
 				<8>, <9>, <10>, <11>;
-		clocks = <&ext_24_5m>, <&ext_24_5m>;
+		clocks = <&clock OSCCLK>, <&clock GATE_MCT>;
 		clock-names = "fin_pll", "mct";
 		div = <1>;
 		use-clockevent-only;
