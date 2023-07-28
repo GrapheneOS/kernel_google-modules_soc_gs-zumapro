@@ -7,6 +7,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/zumapro.h>
+#include <dt-bindings/clock/zuma.h>
 #include "zumapro-drm-dpu.dtsi"
 #include "zumapro-sysmmu.dtsi"
 #include "zumapro-dma-heap.dtsi"
@@ -289,44 +290,6 @@
 		};
 	};
 
-	cal_if: cal_if {
-		compatible = "samsung,exynos_cal_if";
-		reg = <0x0 0x26040000 0x8000>;
-		acpm-ipc-channel = <0>;
-	};
-
-	acpm {
-		compatible = "google,gs-acpm";
-		#address-cells = <2>;
-		#size-cells = <1>;
-		acpm-ipc-channel = <4>;
-		reg = <0x0 0x15440000 0x1000>;  /* TIMER_APM */
-		reg-names = "timer_apm";
-		peritimer-cnt = <0xFFFF>;
-	};
-
-	acpm_ipc {
-		compatible = "google,gs-acpm-ipc";
-		#address-cells = <2>;
-		#size-cells = <1>;
-		interrupts = <GIC_SPI IRQ_MAILBOX_APM2AP_ALIVE IRQ_TYPE_LEVEL_HIGH>;
-		reg = <0x0 0x15110000 0x01000>, /* AP2APM MAILBOX */
-		      <0x0 0x15700000 0x58000>, /* APM SRAM region from AP view */
-		      <0x0 0x1542048C 0x00014>; /* SYSREG_APM.ALIVE_FRC_CTRL0 */
-		initdata-base = <0xA000>;
-		debug-log-level = <0>;
-		logging-period = <500>;
-		dump-base = <0x15705000>;       /* Non-secure world base addr */
-		dump-size = <0x53000>;          /* Non-secure SRAM size: 332KB(352-20) */
-		acpm-ipc-channel = <12>;
-		fvmap_addr = <0x31000>;
-		/* panic-action = <GO_PANIC_ID>;*/
-	};
-
-	acpm_stats {
-		compatible = "google,power-stats";
-		timer-frequency-hz = <49152000>;
-	};
 
 	/* GPIO_GSACORE0 */
 	pinctrl_3: pinctrl@16280000 {
@@ -397,4 +360,44 @@
 		compatible = "samsung,gs101-pmu", "syscon";
 		reg = <0x0 0x15460000 0x10000>;
 	};
+
+	cal_if: cal_if {
+		compatible = "samsung,exynos_cal_if";
+		reg = <0x0 0x26040000 0x8000>;
+		acpm-ipc-channel = <0>;
+	};
+
+	acpm {
+		compatible = "google,gs-acpm";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		acpm-ipc-channel = <4>;
+		reg = <0x0 0x15440000 0x1000>;  /* TIMER_APM */
+		reg-names = "timer_apm";
+		peritimer-cnt = <0xFFFF>;
+	};
+
+	acpm_ipc {
+		compatible = "google,gs-acpm-ipc";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		interrupts = <GIC_SPI IRQ_MAILBOX_APM2AP_ALIVE IRQ_TYPE_LEVEL_HIGH>;
+		reg = <0x0 0x15110000 0x01000>, /* AP2APM MAILBOX */
+		      <0x0 0x15700000 0x58000>, /* APM SRAM region from AP view */
+		      <0x0 0x1542048C 0x00014>; /* SYSREG_APM.ALIVE_FRC_CTRL0 */
+		initdata-base = <0xA000>;
+		debug-log-level = <0>;
+		logging-period = <500>;
+		dump-base = <0x15705000>;       /* Non-secure world base addr */
+		dump-size = <0x53000>;          /* Non-secure SRAM size: 332KB(352-20) */
+		acpm-ipc-channel = <12>;
+		fvmap_addr = <0x31000>;
+		/* panic-action = <GO_PANIC_ID>;*/
+	};
+
+	acpm_stats {
+		compatible = "google,power-stats";
+		timer-frequency-hz = <49152000>;
+	};
+
 };
