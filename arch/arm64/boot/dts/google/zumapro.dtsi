@@ -41,6 +41,16 @@
 		uart0 = &serial_0;
 	};
 
+	ect {
+		parameter_address = <0x90000000>;
+		parameter_size = <0x53000>;
+	};
+
+	exynos_ect: exynos-ect {
+		compatible = "samsung,exynos-ect";
+		memory-region = <&ect_binary>;
+	};
+
 	chipid@10000000 {
 		compatible = "google,zuma-chipid";
 		reg = <0x0 0x10000000 0xD000>;

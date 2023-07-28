@@ -23,6 +23,10 @@
 	};
 };
 
+&exynos_ect {
+	status = "disabled";
+};
+
 &serial_0 {
 	status = "okay";
 };

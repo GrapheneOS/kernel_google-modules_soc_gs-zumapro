@@ -30,6 +30,10 @@
 	};
 };
 
+&exynos_ect {
+	status = "disabled";
+};
+
 &serial_0 {
 	status = "okay";
 	clocks = <&console_clock>, <&console_clock>;
