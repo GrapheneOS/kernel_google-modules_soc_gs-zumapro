@@ -153,6 +153,14 @@ do {						\
 		logbuffer_log(LOG, FMT __VA_OPT__(,) __VA_ARGS__); \
 } while (0)
 
+#define OVP_OP_RETRY	3
+
+enum ovp_operation {
+	OVP_RESET,
+	OVP_ON,
+	OVP_OFF
+};
+
 static struct logbuffer *tcpm_log;
 
 static bool modparam_conf_sbu;
@@ -1475,6 +1483,37 @@ static void floating_cable_sink_detected_handler_locked(struct max77759_plat *ch
 	}
 }
 
+static void ovp_operation(struct max77759_plat *chip, int operation)
+{
+	int gpio_val, retry = 0;
+
+	if (operation == OVP_RESET || operation == OVP_OFF) {
+		do {
+			gpio_set_value_cansleep(chip->in_switch_gpio,
+						!chip->in_switch_gpio_active_high);
+			gpio_val = gpio_get_value(chip->in_switch_gpio);
+			LOG(LOG_LVL_DEBUG, chip->log,
+				      "%s: OVP disable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
+				       __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
+		} while ((gpio_val != !chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
+	}
+
+	if (operation == OVP_RESET)
+		mdelay(10);
+
+	if (operation == OVP_RESET || operation == OVP_ON) {
+		retry = 0;
+		do {
+			gpio_set_value_cansleep(chip->in_switch_gpio,
+						chip->in_switch_gpio_active_high);
+			gpio_val = gpio_get_value(chip->in_switch_gpio);
+			LOG(LOG_LVL_DEBUG, chip->log,
+				      "%s: OVP enable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
+				      __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
+		} while ((gpio_val != chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
+	}
+}
+
 static void reset_ovp_work(struct kthread_work *work)
 {
 	struct max77759_plat *chip  =
@@ -1487,9 +1526,7 @@ static void reset_ovp_work(struct kthread_work *work)
 	if (vbus_mv > VBUS_PRESENT_THRESHOLD_MV)
 		return;
 
-	gpio_set_value_cansleep(chip->in_switch_gpio, !chip->in_switch_gpio_active_high);
-	mdelay(10);
-	gpio_set_value_cansleep(chip->in_switch_gpio, chip->in_switch_gpio_active_high);
+	ovp_operation(chip, OVP_RESET);
 	chip->reset_ovp_retry++;
 
 	LOG(LOG_LVL_DEBUG, chip->log, "ovp reset done [%d]", chip->reset_ovp_retry);
@@ -2033,9 +2070,7 @@ static int max77759_start_toggling(struct tcpci *tcpci,
 	/* Kick debug accessory state machine when enabling toggling for the first time */
 	if (chip->first_toggle && chip->in_switch_gpio >= 0) {
 		LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Kick Debug accessory FSM", __func__);
-		gpio_set_value_cansleep(chip->in_switch_gpio, !chip->in_switch_gpio_active_high);
-		mdelay(10);
-		gpio_set_value_cansleep(chip->in_switch_gpio, chip->in_switch_gpio_active_high);
+		ovp_operation(chip, OVP_RESET);
 		chip->first_toggle = false;
 	}
 
@@ -2450,8 +2485,7 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 		disable_contaminant_detection(chip);
 		max77759_enable_toggling_locked(chip, false);
 		if (chip->in_switch_gpio >= 0) {
-			gpio_set_value_cansleep(chip->in_switch_gpio,
-						!chip->in_switch_gpio_active_high);
+			ovp_operation(chip, OVP_OFF);
 			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Disable in-switch set %s / active %s",
 			    __func__, !chip->in_switch_gpio_active_high ? "high" : "low",
 			    chip->in_switch_gpio_active_high ? "high" : "low");
@@ -2463,8 +2497,7 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 		else
 			max77759_enable_toggling_locked(chip, true);
 		if (chip->in_switch_gpio >= 0) {
-			gpio_set_value_cansleep(chip->in_switch_gpio,
-						chip->in_switch_gpio_active_high);
+			ovp_operation(chip, OVP_ON);
 			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Enable in-switch set %s / active %s",
 			    __func__, chip->in_switch_gpio_active_high ? "high" : "low",
 			    chip->in_switch_gpio_active_high ? "high" : "low");
