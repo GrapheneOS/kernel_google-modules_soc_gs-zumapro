@@ -129,6 +129,10 @@ enum gbms_charger_modes {
 #define port_is_sink(cc1, cc2) \
 	(rp_def_detected(cc1, cc2) || rp_1a5_detected(cc1, cc2) || rp_3a_detected(cc1, cc2))
 
+#define is_debug_accessory_detected(cc1, cc2) \
+	((((cc1) == TYPEC_CC_RP_DEF) || ((cc1) == TYPEC_CC_RP_1_5) || ((cc1) == TYPEC_CC_RP_3_0)) && \
+	 (((cc1) == TYPEC_CC_RP_DEF) || ((cc1) == TYPEC_CC_RP_1_5) || ((cc1) == TYPEC_CC_RP_3_0)))
+
 #define FLOATING_CABLE_INSTANCE_THRESHOLD	5
 #define AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS	600000
 
@@ -2033,6 +2037,9 @@ static int max77759_start_toggling(struct tcpci *tcpci,
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
 	u8 reg = TCPC_ROLE_CTRL_DRP, pwr_ctrl;
 	int ret;
+	enum typec_cc_status cc1, cc2;
+
+	max77759_get_cc(chip, &cc1, &cc2);
 
 	switch (cc) {
 	case TYPEC_CC_RP_DEF:
@@ -2068,9 +2075,11 @@ static int max77759_start_toggling(struct tcpci *tcpci,
 		goto unlock;
 
 	/* Kick debug accessory state machine when enabling toggling for the first time */
-	if (chip->first_toggle && chip->in_switch_gpio >= 0) {
-		LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Kick Debug accessory FSM", __func__);
-		ovp_operation(chip, OVP_RESET);
+	if (chip->first_toggle) {
+		if ((chip->in_switch_gpio >= 0) && is_debug_accessory_detected(cc1, cc2)) {
+			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Kick Debug accessory FSM", __func__);
+			ovp_operation(chip, OVP_RESET);
+		}
 		chip->first_toggle = false;
 	}
 
