@@ -121,7 +121,7 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
 	void __iomem *phy_pcs_base_regs = exynos_pcie->phy_pcs_base;
 	void __iomem *soc_base_regs = exynos_pcie->soc_base;
-	u32 val, val1, val2, val3;
+	u32 val, val1, val2;
 
 	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
@@ -152,10 +152,51 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 		regmap_read(exynos_pcie->pmureg, 0x2B04, &val);
 		regmap_read(exynos_pcie->pmureg, 0x2B20, &val1);
 		regmap_read(exynos_pcie->pmureg, 0x2B24, &val2);
-		regmap_read(exynos_pcie->pmureg, 0x2B00, &val3);
 		dev_info(exynos_pcie->pci->dev,
-			 "check PMU 0x2B00=%#04x, 0x2B04=%#04x, 0x2B20=%#04x, 0x2B24=%#04x\n",
-			 val3, val, val1, val2);
+			 "check PMU 0x2B04=%#04x, 0x2B20=%#04x, 0x2B24=%#04x\n",
+			 val, val1, val2);
+
+		// val & HSI1_state
+		// val1 & (GRESETn | GRESETn__CMU)
+		// if either is not released from reset, we have an error condition
+		if ((val & 0x1) != 0x1 || (val1 & 0x60) != 0x60) {
+			int count = 0;
+			dev_err(exynos_pcie->pci->dev, "PMU for HSI1 reset is not released!!!! \n");
+
+			// 0x2b00 : HSI1_CONFIGURATION
+			// [0] : 0 is off / 1 is on
+
+			// setting HSI conf to 0 causes an ITMON
+			// so comment that out.
+			//regmap_update_bits(exynos_pcie->pmureg,
+			//			0x2B00, 0x1, 0x0);
+
+			regmap_update_bits(exynos_pcie->pmureg,
+						0x2B00, 0x1, 0x1);
+
+			while (count < 1000) {
+				regmap_read(exynos_pcie->pmureg, 0x2B04, &val);
+				regmap_read(exynos_pcie->pmureg, 0x2B20, &val1);
+
+				if ((val & 0x1) == 0x1 && (val1 & 0x60) == 0x60)
+					break;
+
+				udelay(100);
+				count++;
+			}
+			if (count >= 1000)
+				dev_err(exynos_pcie->pci->dev, "PMU force reset release failed\n");
+
+			regmap_read(exynos_pcie->pmureg, 0x2B00, &val);
+			dev_err(exynos_pcie->pci->dev, "check PMU 0x2B00=%#04x\n", val);
+			regmap_read(exynos_pcie->pmureg, 0x2B04, &val);
+			regmap_read(exynos_pcie->pmureg, 0x2B20, &val1);
+			regmap_read(exynos_pcie->pmureg, 0x2B24, &val2);
+			dev_err(exynos_pcie->pci->dev,
+				"check PMU 0x2B04=%#04x, 0x2B20=%#04x, 0x2B24=%#04x\n",
+				val, val1, val2);
+
+		}
 
 		/* HSI1 block check routine for ITMON issue */
 		/* 1. check soc_ctrl : it use 'bus_clock' */
