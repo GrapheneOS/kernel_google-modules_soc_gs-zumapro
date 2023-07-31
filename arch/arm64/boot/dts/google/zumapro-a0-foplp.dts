@@ -11,7 +11,7 @@
 		A0_FOPLP {
 			description = "A0,FOPLP";
 			product_id = <0x09875>;
-			major = <0x1>;
+			major = <0x0>;
 			minor = <0x0>;
 			pkg_mode = <0x0>;
 		};
