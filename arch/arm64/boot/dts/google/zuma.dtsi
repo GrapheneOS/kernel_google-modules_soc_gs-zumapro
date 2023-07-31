@@ -1575,7 +1575,9 @@
 		samsung,iommu-group = <&iommu_group_g2d>;
 		iommus = <&sysmmu_g2d>;
 		dma-coherent;
+		/* INT is used for SMFC core clock */
 		smfc,int_qos_minlock = <1066000>;
+		smfc,mif_qos_minlock = <1352000>;
 		smfc_bpc = <16>;
 		smfc_core_clk = <533000>;
 	};
