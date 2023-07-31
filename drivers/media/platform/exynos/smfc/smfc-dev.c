@@ -28,6 +28,11 @@
 #include "smfc.h"
 #include "smfc-sync.h"
 
+#if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
+// timeout in microseconds
+#define SMFC_QOS_TIMEOUT 4000000
+#endif
+
 static atomic_t smfc_hwfc_state;
 static wait_queue_head_t smfc_hwfc_sync_wq;
 static wait_queue_head_t smfc_suspend_wq;
@@ -853,8 +858,8 @@ err_clk:
 #if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
 static void g2d_pm_qos_remove_request(struct smfc_dev *smfc)
 {
-	if (smfc->qosreq_int_level > 0)
-		exynos_pm_qos_remove_request(&smfc->qosreq_int);
+	exynos_pm_qos_remove_request(&smfc->qosreq_int);
+	exynos_pm_qos_remove_request(&smfc->qosreq_mif);
 }
 
 #if IS_ENABLED(CONFIG_EXYNOS_BTS)
@@ -880,11 +885,14 @@ static void g2d_pm_qos_update_request(struct smfc_dev *smfc)
 		bts_update_bw(smfc->bts_id, bw);
 	}
 #endif
-	if (!exynos_pm_qos_request_active(&smfc->qosreq_int))
-		exynos_pm_qos_add_request(&smfc->qosreq_int, PM_QOS_DEVICE_THROUGHPUT, 0);
 
 	if (smfc->qosreq_int_level > 0)
-		exynos_pm_qos_update_request(&smfc->qosreq_int, smfc->qosreq_int_level);
+		exynos_pm_qos_update_request_timeout(&smfc->qosreq_int, smfc->qosreq_int_level,
+						     SMFC_QOS_TIMEOUT);
+
+	if (smfc->qosreq_mif_level > 0)
+		exynos_pm_qos_update_request_timeout(&smfc->qosreq_mif, smfc->qosreq_mif_level,
+						     SMFC_QOS_TIMEOUT);
 }
 
 static void g2d_pm_qos_reset_request(struct smfc_dev *smfc)
@@ -897,6 +905,9 @@ static void g2d_pm_qos_reset_request(struct smfc_dev *smfc)
 #endif
 	if (smfc->qosreq_int_level > 0)
 		exynos_pm_qos_update_request(&smfc->qosreq_int, 0);
+
+	if (smfc->qosreq_mif_level > 0)
+		exynos_pm_qos_update_request(&smfc->qosreq_mif, 0);
 }
 #else
 static void g2d_pm_qos_add_request(struct device *dev, struct smfc_dev *smfc)
@@ -1043,6 +1054,10 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 				 (u32 *)&smfc->qosreq_int_level))
 		smfc->qosreq_int_level = 0;
 
+	if (of_property_read_u32(pdev->dev.of_node, "smfc,mif_qos_minlock",
+				 (u32 *)&smfc->qosreq_mif_level))
+		smfc->qosreq_mif_level = 0;
+
 	if (of_property_read_u32(pdev->dev.of_node, "smfc_core_clk",
 				&smfc->core_clk)) {
 		smfc->core_clk = 0;
@@ -1056,6 +1071,9 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, smfc);
+
+	exynos_pm_qos_add_request(&smfc->qosreq_int, PM_QOS_DEVICE_THROUGHPUT, 0);
+	exynos_pm_qos_add_request(&smfc->qosreq_mif, PM_QOS_BUS_THROUGHPUT, 0);
 
 	ret = smfc_init_v4l2(&pdev->dev, smfc);
 	if (ret < 0)
@@ -1071,9 +1089,11 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 
 	spin_lock_init(&smfc->flag_lock);
 
-	dev_info(&pdev->dev, "Probed H/W Version: %02x.%02x.%04x int_level=%d Core(%d), BPC(%d) \n",
-		 (smfc->hwver >> 24) & 0xFF, (smfc->hwver >> 16) & 0xFF,
-		 smfc->hwver & 0xFFFF, smfc->qosreq_int_level, smfc->core_clk, smfc->bpc);
+	dev_info(
+		&pdev->dev,
+		"Probed H/W Version: %02x.%02x.%04x int_level=%d mif_level=%d Core(%d), BPC(%d) \n",
+		(smfc->hwver >> 24) & 0xFF, (smfc->hwver >> 16) & 0xFF, smfc->hwver & 0xFFFF,
+		smfc->qosreq_int_level, smfc->qosreq_mif_level, smfc->core_clk, smfc->bpc);
 	return 0;
 
 err_hwver:
