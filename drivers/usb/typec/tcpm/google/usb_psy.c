@@ -489,6 +489,7 @@ void usb_psy_set_sink_state(void *usb_psy, bool enabled)
 	if (!usb || !usb->usb_psy)
 		return;
 
+	logbuffer_logk(usb->log, LOGLEVEL_INFO, "sink_enabled: %c", enabled ? 'Y' : 'N');
 	usb->sink_enabled = enabled;
 	power_supply_changed(usb->usb_psy);
 }
