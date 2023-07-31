@@ -25,6 +25,16 @@
 #define SENSOR_WAIT_SLEEP_MS 50
 #define NTC_UPDATE_MIN_DELAY_US 100
 #define NTC_UPDATE_MAX_DELAY_US 10000
+#define SPMIC_TEMPERATURE_BUF_LEN 5
+#define SPMIC_ERR_READING_IGNORE_TIME_MSEC 30000
+
+struct spmic_temperature_log {
+	ktime_t time;
+	int temperature;
+	int raw;
+	u8 raw_reg[S2MPG15_METER_NTC_BUF];
+	int read_ct;
+};
 
 static const int stats_thresholds[MAX_SUPPORTED_THRESHOLDS] = {
 			0, 39000, 43000, 45000, 46500, 52000, 55000, 70000};
@@ -36,6 +46,8 @@ struct s2mpg15_spmic_thermal_sensor {
 	int emul_temperature;
 	int ot_irq;
 	int ut_irq;
+	int log_ct;
+	struct spmic_temperature_log temp_log[SPMIC_TEMPERATURE_BUF_LEN];
 	tr_handle tr_handle;
 };
 
@@ -214,13 +226,82 @@ err:
 }
 
 /*
+ * s2mpg15_spmic_temp_update: Update the temperature history.
+ */
+static void s2mpg15_spmic_temp_update(
+		struct s2mpg15_spmic_thermal_sensor *s,
+		int temp, int raw, u8 *buf)
+{
+	struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal = s->chip;
+	struct device *dev = s2mpg15_spmic_thermal->dev;
+	int ret = 0, ct = 0;
+	u8 data_buf[S2MPG15_METER_NTC_BUF * GTHERM_CHAN_NUM];
+
+	if (unlikely(temp ==
+		     s2mpg15_adc_map[ARRAY_SIZE(s2mpg15_adc_map) - 1].temp)) {
+		ret = s2mpg15_bulk_read(s2mpg15_spmic_thermal->meter_i2c,
+					S2MPG15_METER_LPF_DATA_NTC0_1,
+					S2MPG15_METER_NTC_BUF * GTHERM_CHAN_NUM,
+					data_buf);
+		if (ret) {
+			dev_err(dev, "Error reading all sensor. err %d\n",
+				ret);
+		} else {
+			for (ct = 0;
+			     ct < S2MPG15_METER_NTC_BUF * GTHERM_CHAN_NUM;
+			     ct = ct + 2) {
+				dev_info(dev, "0x%x 0x%x\n",
+					data_buf[ct], data_buf[ct + 1]);
+			}
+		}
+
+		ct = s->log_ct - 1;
+		if (ct < 0)
+			ct += SPMIC_TEMPERATURE_BUF_LEN;
+		if (s->temp_log[ct].temperature == temp) {
+			s->temp_log[ct].read_ct++;
+			goto dump_history;
+		}
+	}
+
+	ct = s->log_ct;
+	s->temp_log[ct].time = ktime_get_real();
+	s->temp_log[ct].raw = raw;
+	s->temp_log[ct].raw_reg[0] = buf[0];
+	s->temp_log[ct].raw_reg[1] = buf[1];
+	s->temp_log[ct].temperature = temp;
+	s->temp_log[ct].read_ct = 1;
+	s->log_ct = (s->log_ct + 1) % SPMIC_TEMPERATURE_BUF_LEN;
+
+dump_history:
+	if (unlikely(temp ==
+		     s2mpg15_adc_map[ARRAY_SIZE(s2mpg15_adc_map) - 1].temp)) {
+		ct = s->log_ct;
+		do {
+			dev_info(dev,
+				"%lld: Raw:%d, temp:%d, Reg:%#x %#x count:%d",
+				s->temp_log[ct].time,
+				s->temp_log[ct].raw,
+				s->temp_log[ct].temperature,
+				s->temp_log[ct].raw_reg[0],
+				s->temp_log[ct].raw_reg[1],
+				s->temp_log[ct].read_ct);
+			ct++;
+			if (ct >= SPMIC_TEMPERATURE_BUF_LEN)
+				ct = 0;
+		} while (ct != s->log_ct);
+	}
+}
+
+/*
  * Get temperature for given tz.
  */
 static int s2mpg15_spmic_thermal_get_temp(void *data, int *temp)
 {
 	struct s2mpg15_spmic_thermal_sensor *s = data;
 	struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal = s->chip;
-	int raw, ret = 0;
+	struct device *dev = s2mpg15_spmic_thermal->dev;
+	int raw, ret = 0, valid_temp_idx = 0, last_temp_idx = 0;
 	u8 mask = 0x1;
 	u8 data_buf[S2MPG15_METER_NTC_BUF];
 	u8 reg = S2MPG15_METER_LPF_DATA_NTC0_1 +
@@ -240,11 +321,46 @@ static int s2mpg15_spmic_thermal_get_temp(void *data, int *temp)
 
 	ret = s2mpg15_bulk_read(s2mpg15_spmic_thermal->meter_i2c, reg,
 				S2MPG15_METER_NTC_BUF, data_buf);
+	if (ret)
+		goto err_exit;
+
 	raw = data_buf[0] + ((data_buf[1] & 0xf) << 8);
 	*temp = s2mpg15_map_volt_temp(raw);
 
+	s2mpg15_spmic_temp_update(s, *temp, raw, data_buf);
+
 	if (s2mpg15_spmic_thermal->stats_en & (mask << s->adc_chan))
 		temp_residency_stats_update(s->tr_handle, *temp);
+
+	/* Filter the spurious reading. */
+	if (unlikely(*temp ==
+		     s2mpg15_adc_map[ARRAY_SIZE(s2mpg15_adc_map) - 1].temp)) {
+		/* Get the previous valid reading. */
+		valid_temp_idx = s->log_ct - 2;
+		if (valid_temp_idx < 0)
+			valid_temp_idx += SPMIC_TEMPERATURE_BUF_LEN;
+
+		/* Get the error reading index to get the first occurrence. */
+		last_temp_idx = s->log_ct - 1;
+		if (last_temp_idx < 0)
+			last_temp_idx += SPMIC_TEMPERATURE_BUF_LEN;
+
+		if (ktime_ms_delta(ktime_get_real(),
+				   s->temp_log[last_temp_idx].time) <
+		    SPMIC_ERR_READING_IGNORE_TIME_MSEC) {
+			dev_dbg(dev,
+				"Filtering spurious reading for sensor %s.\n",
+				 s->tzd->type);
+			*temp = s->temp_log[valid_temp_idx].temperature;
+		} else {
+			dev_err(dev,
+				"%s spurious reading persisted %d msec. \
+				Reading actual value.",
+				 s->tzd->type,
+				 SPMIC_ERR_READING_IGNORE_TIME_MSEC);
+		}
+
+	}
 
 	mutex_unlock(&s2mpg15_spmic_thermal->adc_chan_lock);
 	return ret;
@@ -391,6 +507,7 @@ s2mpg15_spmic_thermal_init(struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_ther
 	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
 		s2mpg15_spmic_thermal->sensor[i].chip = s2mpg15_spmic_thermal;
 		s2mpg15_spmic_thermal->sensor[i].adc_chan = i;
+		s2mpg15_spmic_thermal->sensor[i].log_ct = 0;
 	}
 }
 
