@@ -110,6 +110,7 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 		// External PLL for PCIe PHY
 		val = readl(udbg_base_regs + 0xC700) | (0x1 << 1);
 		writel(val, udbg_base_regs + 0xC700);
+		udelay(10);
 	}
 }
 
