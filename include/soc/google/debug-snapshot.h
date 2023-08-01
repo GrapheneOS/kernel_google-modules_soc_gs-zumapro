@@ -55,6 +55,7 @@ extern void dbg_snapshot_qd_dump_stack(u64 sp);
 extern int dbg_snapshot_get_sjtag_status(void);
 extern bool dbg_snapshot_get_reboot_status(void);
 extern bool dbg_snapshot_get_panic_status(void);
+extern void dbg_snapshot_set_core_cflush_stat(unsigned int val);
 extern bool dbg_snapshot_get_warm_status(void);
 extern void dbg_snapshot_ecc_dump(bool call_panic);
 extern int dbg_snapshot_start_watchdog(int sec);
@@ -82,8 +83,12 @@ extern unsigned int dbg_snapshot_get_freq_size(void);
 extern void *dbg_snapshot_get_suspend_diag(void);
 
 #define dbg_snapshot_get_timestamp()	local_clock()
+extern void dbg_snapshot_task(int cpu, void *v_task);
+extern void dbg_snapshot_work(void *worker, void *v_task, work_func_t fn, int en);
 extern void dbg_snapshot_cpuidle(char *modes, unsigned int state, s64 diff, int en);
 extern void dbg_snapshot_cpuidle_mod(char *modes, unsigned int state, s64 diff, int en);
+extern void dbg_snapshot_irq(int irq, void *fn, void *val, unsigned long long time,
+				int en);
 extern void dbg_snapshot_clk(struct clk_hw *clock, const char *func_name,
 			    unsigned long arg, int mode);
 extern void dbg_snapshot_regulator(unsigned long long timestamp, char *f_name,
@@ -93,6 +98,7 @@ extern void dbg_snapshot_acpm(unsigned long long timestamp, const char *log,
 				unsigned int data);
 extern void dbg_snapshot_thermal(struct exynos_tmu_data *data, unsigned int temp,
 				char *name, unsigned long long max_cooling);
+extern void dbg_snapshot_hrtimer(void *timer, s64 *now, void *fn, int en);
 extern void dbg_snapshot_pmu(int id, const char *func_name, int mode);
 extern void dbg_snapshot_freq(int type, unsigned long old_freq,
 				unsigned long target_freq, int en);

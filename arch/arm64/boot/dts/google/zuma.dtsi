@@ -482,6 +482,8 @@
 		timeout-sec = <30>;
 		samsung,syscon-phandle = <&pmu_system_controller>;
 		index = <0>; /* if little cluster then index is 0*/
+
+		enable-cl0-fiq;
 	};
 
 	watchdog_cl1@10070000 {
@@ -1573,9 +1575,9 @@
 		samsung,iommu-group = <&iommu_group_g2d>;
 		iommus = <&sysmmu_g2d>;
 		dma-coherent;
-		smfc,int_qos_minlock = <356000>;
+		smfc,int_qos_minlock = <1066000>;
 		smfc_bpc = <16>;
-		smfc_core_clk = <465000>;
+		smfc_core_clk = <533000>;
 	};
 
 	acpm_tmu {

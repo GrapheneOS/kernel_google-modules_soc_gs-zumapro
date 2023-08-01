@@ -93,6 +93,13 @@ config_setting(
 )
 
 config_setting(
+    name = "function_tracer",
+    flag_values = {
+        ":debug_fragment": "function_tracer",
+    },
+)
+
+config_setting(
     name = "kasan",
     flag_values = {
         ":debug_fragment": "kasan",
@@ -119,6 +126,7 @@ selects.config_setting_group(
     match_any = [
         # keep sorted
         ":cmdline_lto_is_none",
+        ":function_tracer",
         ":kasan",
     ],
 )

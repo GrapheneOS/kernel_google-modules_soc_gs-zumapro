@@ -100,6 +100,15 @@ static void dbg_snapshot_set_core_panic_stat(unsigned int val, unsigned int cpu)
 		__raw_writel(val, header + DSS_OFFSET_PANIC_STAT + cpu * 4);
 }
 
+void dbg_snapshot_set_core_cflush_stat(unsigned int val)
+{
+	void __iomem *header = dbg_snapshot_get_header_vaddr();
+
+	if (header)
+		__raw_writel(val, header + DSS_OFFSET_CFLUSH_STAT);
+}
+EXPORT_SYMBOL_GPL(dbg_snapshot_set_core_cflush_stat);
+
 void dbg_snapshot_set_core_pmu_val(unsigned int val, unsigned int cpu)
 {
 	void __iomem *header = dbg_snapshot_get_header_vaddr();

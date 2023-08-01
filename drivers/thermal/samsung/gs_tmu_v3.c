@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/debugfs.h>
 #include <uapi/linux/sched/types.h>
+#include <uapi/linux/thermal.h>
 #include <soc/google/bcl.h>
 #include <soc/google/gs_tmu_v3.h>
 #include <soc/google/tmu.h>
@@ -2601,23 +2602,6 @@ static ssize_t acpm_gov_timer_stepwise_gain_store(struct device *dev,
 	return count;
 }
 
-static ssize_t tj_cur_cdev_state_show(struct device *dev, struct device_attribute *devattr, char *buf)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct gs_tmu_data *data = platform_get_drvdata(pdev);
-
-	struct curr_state curr_state;
-	u8 tj_cur_cdev_state_val;
-
-	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
-	    get_curr_state_from_acpm(acpm_gov_common.sm_base, data->id, &curr_state))
-		tj_cur_cdev_state_val = curr_state.cdev_state;
-	else
-		return -EIO;
-
-	return sysfs_emit(buf, "%u\n", tj_cur_cdev_state_val);
-}
-
 static ssize_t thermal_pressure_time_window_store(struct device *dev,
 						  struct device_attribute *devattr, const char *buf,
 						  size_t count)
@@ -4066,7 +4050,6 @@ static DEVICE_ATTR_RW(power_table_ect_offset);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
-static DEVICE_ATTR_RO(tj_cur_cdev_state);
 static DEVICE_ATTR_RW(control_temp_step);
 static DEVICE_ATTR_RW(thermal_pressure_time_window);
 static DEVICE_ATTR_RW(acpm_temp_state_table);
@@ -4111,7 +4094,6 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
-	&dev_attr_tj_cur_cdev_state.attr,
 	&dev_attr_control_temp_step.attr,
 	&dev_attr_thermal_pressure_time_window.attr,
 	&dev_attr_acpm_temp_state_table.attr,
@@ -4165,6 +4147,76 @@ static void pause_stats_setup(struct gs_tmu_data *data)
 	stats->last_time = ktime_get();
 	spin_lock_init(&stats->lock);
 }
+
+/**
+ * tmu_tj_throttle_get_cur_state - Get the current Tj throttling vote.
+ * @cdev: the thermal cooling device.
+ * @state: the target state will be populated in this variable.
+ *
+ * This function fetches the current Tj throttling vote.
+ *
+ * Return: 0 when the Tj vote is successfully fetched otherwise -EIO is
+ * returned.
+ */
+static int tmu_tj_throttle_get_cur_state(struct thermal_cooling_device *cdev,
+					 unsigned long *state)
+{
+	struct gs_tmu_data *tmu_data = cdev->devdata;
+	struct curr_state curr_state;
+
+	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
+	    get_curr_state_from_acpm(acpm_gov_common.sm_base, tmu_data->id, &curr_state))
+		*state = curr_state.cdev_state;
+	else
+		return -EIO;
+
+	return 0;
+}
+
+/**
+ * tmu_tj_throttle_set_cur_state - A NOP.
+ * @cdev: the thermal cooling device.
+ * @state: the target state.
+ *
+ * Tj current state can't be changed from HLOS. So this callback will be a NOP.
+ * This callback will never be called, because the max_state is returned as 0
+ * and hence thermal core will return -EIVAL for any request > max_state.
+ *
+ * Return: Always 0.
+ */
+static int tmu_tj_throttle_set_cur_state(struct thermal_cooling_device *cdev,
+					 unsigned long state)
+{
+	return 0;
+}
+
+/**
+ * tmu_tj_throttle_get_max_state - A NOP, returns 0 always.
+ * @cdev: the thermal cooling device.
+ * @state: the maximum possible state will be populated in this variable.
+ *
+ * This function populates the max possible cooling device state. But this
+ * callback returns 0 always.
+ *
+ * Return: Always 0.
+ */
+static int tmu_tj_throttle_get_max_state(struct thermal_cooling_device *cdev,
+					 unsigned long *state)
+{
+	/*
+	 * TODO (rchandrasekar): These cooling device should be registered by
+	 * their respective drivers and hence they will have the information
+	 * about the max state.
+	 */
+	*state = 0;
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tmu_tj_cooling_ops = {
+	.get_max_state = tmu_tj_throttle_get_max_state,
+	.get_cur_state = tmu_tj_throttle_get_cur_state,
+	.set_cur_state = tmu_tj_throttle_set_cur_state,
+};
 
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 static u8 tmu_id;
@@ -5036,6 +5088,8 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		.reset_stats = thermal_metrics_reset_stats,
 	};
 #endif
+	char cdev_buf[THERMAL_NAME_LENGTH] = "";
+
 	data = devm_kzalloc(&pdev->dev, sizeof(struct gs_tmu_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -5312,6 +5366,11 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	spin_unlock(&dev_list_spinlock);
 
 	register_tz_id_ignore_genl(data->tzd->id);
+	/* Register a cooling device to fetch the Tj throttling request. */
+	scnprintf(cdev_buf, THERMAL_NAME_LENGTH, "%s-tj", data->tmu_name);
+	devm_thermal_of_cooling_device_register(
+			&pdev->dev, pdev->dev.of_node, cdev_buf, data,
+			&tmu_tj_cooling_ops);
 
 	return 0;
 err_dtm_dev_list:
