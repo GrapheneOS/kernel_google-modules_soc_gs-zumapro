@@ -19,7 +19,9 @@
 struct gs_chipid_variant {
 	int product_ver;
 	int unique_id_reg;
-	int rev_reg;
+	int main_rev_reg;
+	int sub_rev_reg;
+	int pkg_rev_reg;
 	int main_rev_bit;
 	int sub_rev_bit;
 	int pkg_rev_bit;
@@ -74,6 +76,7 @@ struct gs_chipid_info {
 #define SOC_TYPE_MASK		0x0000000F
 #define LOTID_MASK		0x001FFFFF
 #define REV_MASK		0xF
+#define PKG_REV_MASK		0x3
 
 #define MAIN_REV_1		0x10
 #define MAIN_REV_2		0x20
@@ -109,30 +112,36 @@ static const char *product_id_to_name(unsigned int product_id)
 static const struct gs_chipid_variant drv_data_gs101 = {
 	.product_ver = 1,
 	.unique_id_reg = 0x04,
-	.rev_reg = 0x10,
-	.main_rev_bit = 20,
-	.sub_rev_bit = 16,
-	.pkg_rev_bit = 24,
+	.main_rev_reg = 0x0,
+	.main_rev_bit = 0, /* product_id.major[3:0] */
+	.sub_rev_reg = 0x10,
+	.sub_rev_bit = 16, /* chipid_rev.minor[19:16] */
+	.pkg_rev_reg = 0x0,
+	.pkg_rev_bit = 8,  /* product_id.pkg_mode[9:8] */
 	.dvfs_version_reg = 0x900C,
 };
 
 static const struct gs_chipid_variant drv_data_gs201 = {
 	.product_ver = 1,
 	.unique_id_reg = 0x04,
-	.rev_reg = 0x10,
-	.main_rev_bit = 20,
-	.sub_rev_bit = 16,
-	.pkg_rev_bit = 24,
+	.main_rev_reg = 0x10,
+	.main_rev_bit = 20, /* chipid_rev.major[23:20] */
+	.sub_rev_reg = 0x10,
+	.sub_rev_bit = 16,  /* chipid_rev.minor[19:16] */
+	.pkg_rev_reg = 0x10,
+	.pkg_rev_bit = 24,  /* chipid_rev.pkg_mode[25:24] */
 	.dvfs_version_reg = 0x900C,
 };
 
 static const struct gs_chipid_variant drv_data_zuma = {
 	.product_ver = 1,
 	.unique_id_reg = 0x04,
-	.rev_reg = 0x10,
-	.main_rev_bit = 20,
-	.sub_rev_bit = 16,
-	.pkg_rev_bit = 24,
+	.main_rev_reg = 0x0,
+	.main_rev_bit = 0,  /* product_id.major[3:0] */
+	.sub_rev_reg = 0x10,
+	.sub_rev_bit = 16,  /* chipid_rev.minor[19:16] */
+	.pkg_rev_reg = 0x10,
+	.pkg_rev_bit = 24,  /* chipid_rev.pkg_mode[25:24] */
 	.dvfs_version_reg = 0x900C,
 };
 
@@ -372,12 +381,14 @@ static void gs_chipid_get_chipid_info(void __iomem *reg)
 	}
 
 
-	val = readl_relaxed(reg + data->rev_reg);
+	val = readl_relaxed(reg + data->main_rev_reg);
 	gs_soc_info.main_rev = (val >> data->main_rev_bit) & REV_MASK;
+	val = readl_relaxed(reg + data->sub_rev_reg);
 	gs_soc_info.sub_rev = (val >> data->sub_rev_bit) & REV_MASK;
 	gs_soc_info.revision = (gs_soc_info.main_rev << 4)
 	    | gs_soc_info.sub_rev;
-	gs_soc_info.pkg_revision = (val >> data->pkg_rev_bit);
+	val = readl_relaxed(reg + data->pkg_rev_reg);
+	gs_soc_info.pkg_revision = (val >> data->pkg_rev_bit) & PKG_REV_MASK;
 
 	uniq_id0 = readl_relaxed(reg + data->unique_id_reg);
 	uniq_id1 = readl_relaxed(reg + data->unique_id_reg + 4);
