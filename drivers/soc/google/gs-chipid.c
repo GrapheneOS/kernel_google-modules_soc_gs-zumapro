@@ -68,6 +68,7 @@ struct gs_chipid_info {
 #define GS101_SOC_ID		0x09845000
 #define GS201_SOC_ID		0x09855000
 #define ZUMA_SOC_ID		0x09865000
+#define ZUMAPRO_SOC_ID		0x09875000
 #define SOC_MASK		0xFFFFF000
 #define SOC_MASK_V2		0x00FFFFFF
 #define SOC_TYPE_MASK		0x0000000F
@@ -95,6 +96,9 @@ static const char *product_id_to_name(unsigned int product_id)
 		break;
 	case ZUMA_SOC_ID:
 		soc_name = "ZUMA";
+		break;
+	case ZUMAPRO_SOC_ID:
+		soc_name = "ZUMAPRO";
 		break;
 	default:
 		soc_name = "UNKNOWN";
