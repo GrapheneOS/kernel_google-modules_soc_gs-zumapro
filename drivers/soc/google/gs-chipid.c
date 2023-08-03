@@ -342,6 +342,15 @@ u32 gs_chipid_get_revision(void)
 }
 EXPORT_SYMBOL_GPL(gs_chipid_get_revision);
 
+u32 gs_chipid_get_product_id(void)
+{
+	if (!gs_soc_info.initialized)
+		return -EPROBE_DEFER;
+
+	return gs_soc_info.product_id;
+}
+EXPORT_SYMBOL_GPL(gs_chipid_get_product_id);
+
 static void gs_chipid_get_chipid_info(void __iomem *reg)
 {
 	const struct gs_chipid_variant *data = gs_soc_info.drv_data;
