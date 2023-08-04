@@ -640,6 +640,303 @@
 		};
 	};
 
+	exynos_devfreq {
+		compatible = "samsung,exynos-devfreq-root";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+		devfreq_0: devfreq_mif@17000010 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000010 0x0>;
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_MIF>;
+			dm-index = <DM_MIF>;
+			clocks = <&clock UMUX_MIF_DDRPHY2X>;
+			clock-names = "DEVFREQ";
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			/* FIXME: limit a max_freq to L1(3172MHz) */
+			freq_info = <421000 421000 421000 421000
+					3744000 1014000>;
+			/* initial_freq, default_qos, suspend_freq,
+			min_freq, max_freq, reboot_freq */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			dfs_id = <ACPM_DVFS_MIF>;
+			acpm-ipc-channel = <1>;
+			use_acpm = "true";
+
+			/* ALT-DVFS */
+			use_get_dev = "true";
+			um_count = <4 4>;
+			um_list = <
+				/* PPC_CPUCL0_D0_EVENT PPC_CPUCL0_D1_EVENT */
+				0x26210000 0x26220000
+				/* PPC_CPUCL0_D2_EVENT PPC_CPUCL0_D3_EVENT */
+				0x26230000 0x26240000
+				/* PPC_NOCL1A_M0_EVENT PPC_NOCL1A_M1_EVENT */
+				0x26260000 0x26270000
+				/* PPC_NOCL1A_M2_EVENT PPC_NOCL1A_M3_EVENT */
+				0x26280000 0x26290000
+			>;
+
+			use_alt_dvfs;
+			polling_ms = <0>;
+			target_load = <20 40>;
+			min_sample_time = <20>;
+			hold_sample_time = <60>;
+			hispeed_load = <100>;
+			hispeed_freq = <1352000>;
+
+			/* boot_info */
+			boot_info = <60 3744000>;
+
+			/* MIF to INT mapping table used in ALT DVFS */
+			mif_int_map = <
+				/*
+				 * mif_clk  int_clk
+				 *-----------------
+				 */
+				   3744000   664000
+				   3172000   533000
+				   1716000   356000
+				   1539000   200000
+				   1352000   178000
+			>;
+		};
+
+		devfreq_1: devfreq_int@17000020 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000020 0x0>;
+			devfreq_type = <DEVFREQ_INT>;
+			devfreq_domain_name = "INT";
+			pm_qos_class = <PM_QOS_DEVICE_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_DEVICE_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_INT>;
+			dm-index = <DM_INT>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <178000 178000 178000 178000
+					1066000 664000>;
+			/* <initial_freq, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			bts_update = "false";
+			dfs_id = <ACPM_DVFS_INT>;
+			acpm-ipc-channel = <1>;
+			use_acpm = "true";
+		};
+
+		devfreq_2: devfreq_intcam@17000030 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000030 0x0>;
+			devfreq_type = <DEVFREQ_INTCAM>;
+			devfreq_domain_name = "INTCAM";
+			pm_qos_class = <PM_QOS_INTCAM_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_INTCAM_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_INTCAM>;
+			dm-index = <DM_INTCAM>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <67000 67000 67000 67000 664000 664000>;
+			/* <initial_freq, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			bts_update = "false";
+			dfs_id = <ACPM_DVFS_INTCAM>;
+		};
+
+		devfreq_3: devfreq_disp@17000040 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000040 0x0>;
+			devfreq_type = <DEVFREQ_DISP>;
+			devfreq_domain_name = "DISP";
+			pm_qos_class = <PM_QOS_DISPLAY_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_DISPLAY_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_DISP>;
+			dm-index = <DM_DISP>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <143000 143000 143000 143000
+					664000 664000>;
+			/* <initial_freq, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			bts_update = "false";
+			dfs_id = <ACPM_DVFS_DISP>;
+		};
+
+		devfreq_4: devfreq_cam@17000050 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000050 0x0>;
+			devfreq_type = <DEVFREQ_CAM>;
+			devfreq_domain_name = "CAM";
+			pm_qos_class = <PM_QOS_CAM_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_CAM_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_ISP>;
+			dm-index = <DM_CAM>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <67000 67000 67000 67000 711000 711000>;
+			/* <initial, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			bts_update = "false";
+
+			dfs_id = <ACPM_DVFS_CAM>;
+		};
+
+		devfreq_5: devfreq_tnr@17000060 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000060 0x0>;
+			devfreq_type = <DEVFREQ_TNR>;
+			devfreq_domain_name = "TNR";
+			pm_qos_class = <PM_QOS_TNR_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_TNR_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_TNR>;
+			dm-index = <DM_TNR>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <67000 67000 67000 67000 664000 664000>;
+			/* <initial_freq, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			bts_update = "false";
+			dfs_id = <ACPM_DVFS_TNR>;
+		};
+
+		devfreq_6: devfreq_mfc@17000070 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000070 0x0>;
+			devfreq_type = <DEVFREQ_MFC>;
+			devfreq_domain_name = "MFC";
+			pm_qos_class = <PM_QOS_MFC_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_MFC_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_MFC>;
+			dm-index = <DM_MFC>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <100000 100000 100000 100000
+					711000 711000>;
+			/* <initial_freq, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			bts_update = "false";
+			dfs_id = <ACPM_DVFS_MFC>;
+		};
+
+		devfreq_7: devfreq_bw@17000080 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000080 0x0>;
+			devfreq_type = <DEVFREQ_BW>;
+			devfreq_domain_name = "BW";
+			pm_qos_class = <PM_QOS_BW_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BW_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_BW>;
+			dm-index = <DM_BW>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <100000 100000 100000 100000
+					711000 711000>;
+			/* <initial_freq, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+			bts_update = "false";
+			dfs_id = <ACPM_DVFS_BW>;
+		};
+
+		devfreq_8: devfreq_dsu@17000090 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x17000090 0x0>;
+			devfreq_type = <DEVFREQ_DSU>;
+			devfreq_domain_name = "DSU";
+			pm_qos_class = <PM_QOS_DSU_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_DSU_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_DSU>;
+			dm-index = <DM_DSU>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <324000 324000 324000 324000
+					1800000 324000>;
+			/* <initial_freq, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			bts_update = "false";
+			dfs_id = <ACPM_DVFS_DSU>;
+		};
+
+		devfreq_9: devfreq_bci@170000A0 {
+			compatible = "samsung,exynos-devfreq";
+			reg = <0x0 0x170000A0 0x0>;
+			devfreq_type = <DEVFREQ_BCI>;
+			devfreq_domain_name = "BCI";
+			pm_qos_class = <PM_QOS_BCI_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BCI_THROUGHPUT_MAX>;
+			ess_flag = <ESS_FLAG_BCI>;
+			dm-index = <DM_BCI>;
+
+			/* Delay time */
+			use_delay_time = "false";
+
+			freq_info = <315000 315000 315000 315000
+					1401000 315000>;
+			/* <initial_freq, default_qos, suspend_freq, min,
+			max, reboot_freq> */
+
+			/* governor data */
+			governor = <SIMPLE_INTERACTIVE>;
+
+			bts_update = "false";
+			dfs_id = <ACPM_DVFS_BCI>;
+		};
+	};
+
 	g2d: g2d@1A840000 {
 		compatible = "samsung,zuma-g2d";
 		reg = <0x0 0x1A840000 0xA000>;
