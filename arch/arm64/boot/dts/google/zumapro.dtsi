@@ -489,6 +489,9 @@
 		compatible = "samsung,exynos_cal_if";
 		reg = <0x0 0x26040000 0x8000>;
 		acpm-ipc-channel = <0>;
+		cpu-remap-from = <8>;
+		cpu-remap-to = <7>;
+		cpu-remap-size = <8>;
 	};
 
 	acpm {
