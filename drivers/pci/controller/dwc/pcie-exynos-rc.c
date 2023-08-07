@@ -38,7 +38,6 @@
 #include <linux/irqdomain.h>
 
 #include <soc/google/exynos-pm.h>
-#include <soc/google/debug-snapshot.h>
 #if IS_ENABLED(CONFIG_CPU_IDLE)
 #include <soc/google/exynos-powermode.h>
 #include <soc/google/exynos-cpupm.h>
@@ -4508,14 +4507,6 @@ int exynos_pcie_rc_itmon_notifier(struct notifier_block *nb, unsigned long actio
 			dev_info(dev, "### PMU PHY Isolation : 0x%x\n", val);
 
 			exynos_pcie_rc_register_dump(exynos_pcie->ch_num);
-		}
-		if ((itmon_info->port && !strcmp(itmon_info->port, "HSI1")) ||
-		    (itmon_info->dest && !strcmp(itmon_info->dest, "HSI1"))) {
-			if (exynos_pcie->ch_num == 1)
-				return NOTIFY_DONE;
-
-			// force reset and get dump
-			dbg_snapshot_emergency_reboot("### HSI1 FORCE RESET AND GET S2D DUMP !! ##\n");
 		}
 	} else {
 		dev_info(dev, "skip register dump(ip_ver = 0x%x)\n", exynos_pcie->ip_ver);

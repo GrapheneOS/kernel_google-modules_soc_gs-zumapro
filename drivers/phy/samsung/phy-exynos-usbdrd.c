@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/kvm_host.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -2093,8 +2094,11 @@ int exynos_usbdrd_s2mpu_manual_control(bool on)
 	if (!phy_drd->s2mpu)
 		return 0;
 
-	return on ? pm_runtime_get_sync(phy_drd->s2mpu)
-		  : pm_runtime_put_sync_suspend(phy_drd->s2mpu);
+	if (is_protected_kvm_enabled())
+		return  on ? pkvm_iommu_resume(phy_drd->s2mpu)
+			   : pkvm_iommu_suspend(phy_drd->s2mpu);
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(exynos_usbdrd_s2mpu_manual_control);
 
