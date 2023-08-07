@@ -340,3 +340,20 @@ int pmucal_cpu_init(void)
 out:
 	return ret;
 }
+
+void pmucal_cpu_remap(int from, int to, int size)
+{
+	pr_debug("%s : cpu remap from %d, to %d, size = %d\n",
+			__func__, from, to, size);
+	cpu_inform_list_size = size;
+	pmucal_cpu_list_size = size;
+	pmucal_cpu_list[to].id = pmucal_cpu_list[from].id;
+	pmucal_cpu_list[to].release = pmucal_cpu_list[from].release;
+	pmucal_cpu_list[to].on  = pmucal_cpu_list[from].on;
+	pmucal_cpu_list[to].off  = pmucal_cpu_list[from].off;
+	pmucal_cpu_list[to].status = pmucal_cpu_list[from].status;
+	pmucal_cpu_list[to].num_release = pmucal_cpu_list[from].num_release;
+	pmucal_cpu_list[to].num_on  = pmucal_cpu_list[from].num_on;
+	pmucal_cpu_list[to].num_off  = pmucal_cpu_list[from].num_off;
+	pmucal_cpu_list[to].num_status = pmucal_cpu_list[from].num_status;
+}

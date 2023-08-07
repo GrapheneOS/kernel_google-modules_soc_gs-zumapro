@@ -525,9 +525,26 @@ int cal_if_init(void *np)
 	int ret, len;
 	const __be32 *prop;
 	unsigned int minmax_idx = 0;
+	unsigned int from, to, remap_size = 0;
 
 	if (cal_initialized == 1)
 		return 0;
+
+
+	prop = of_get_property(np, "cpu-remap-size", NULL);
+	if (prop) {
+		remap_size = be32_to_cpup(prop);
+
+		prop = of_get_property(np, "cpu-remap-from", NULL);
+		if (prop) {
+			from = be32_to_cpup(prop);
+		}
+
+		prop = of_get_property(np, "cpu-remap-to", NULL);
+		if (prop) {
+			to = be32_to_cpup(prop);
+		}
+	}
 
 	prop = of_get_property(np, "minmax_idx", &len);
 	if (prop) {
@@ -557,6 +574,9 @@ int cal_if_init(void *np)
 	ret = pmucal_local_init();
 	if (ret < 0)
 		return ret;
+
+	if (remap_size != 0)
+		pmucal_cpu_remap(from, to, remap_size);
 
 	ret = pmucal_cpu_init();
 	if (ret < 0)
