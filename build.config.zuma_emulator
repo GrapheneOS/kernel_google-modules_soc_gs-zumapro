@@ -41,7 +41,7 @@ MODULES_LIST=${DEVICE_DIR}/vendor_kernel_boot_modules.zuma_zebu
 EXT_MODULES+="
 private/google-modules/bms/misc
 private/google-modules/soc/gs
-private/google-modules/display
+private/google-modules/display_legacy
 private/google-modules/gpu/mali_kbase
 private/google-modules/gpu/mali_pixel
 private/google-modules/lwis
