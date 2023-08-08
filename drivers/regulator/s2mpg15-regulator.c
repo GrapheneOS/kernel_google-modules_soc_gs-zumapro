@@ -398,6 +398,9 @@ static int s2mpg15_pmic_dt_parse_pdata(struct s2mpg15_dev *iodev,
 	ret = of_property_read_u32(pmic_np, "b2_ocp_warn_lvl", &val);
 	pdata->b2_ocp_warn_lvl = ret ? 0 : val;
 
+	ret = of_property_read_u32(pmic_np, "b2_ocp_warn_debounce_clk", &val);
+	pdata->b2_ocp_warn_debounce_clk = ret ? 0 : val;
+
 	/* parse SOFT_OCP_WARN information */
 	pdata->b2_soft_ocp_warn_pin = of_get_gpio(pmic_np, 1);
 	if (pdata->b2_soft_ocp_warn_pin < 0)
@@ -415,6 +418,9 @@ static int s2mpg15_pmic_dt_parse_pdata(struct s2mpg15_dev *iodev,
 
 	ret = of_property_read_u32(pmic_np, "b2_soft_ocp_warn_lvl", &val);
 	pdata->b2_soft_ocp_warn_lvl = ret ? 0 : val;
+
+	ret = of_property_read_u32(pmic_np, "b2_soft_ocp_warn_debounce_clk", &val);
+	pdata->b2_soft_ocp_warn_debounce_clk = ret ? 0 : val;
 
 	/* Set SEL_VGPIO (control_sel) */
 	p = of_get_property(pmic_np, "sel_vgpio", &len);
@@ -702,6 +708,16 @@ int s2mpg15_ocp_warn(struct s2mpg15_pmic *s2mpg15,
 	if (ret)
 		dev_err(s2mpg15->iodev->dev,
 			"i2c write error setting b2s_soft_ocp_warn\n");
+
+	val = (pdata->b2_ocp_warn_debounce_clk << 2) |
+		(pdata->b2_soft_ocp_warn_debounce_clk);
+
+	ret = s2mpg15_write_reg(s2mpg15->i2c, S2MPG15_PM_B2S_OCP_WARN_DEBOUNCE,
+				val);
+
+	if (ret)
+		dev_err(s2mpg15->iodev->dev,
+			"i2c write error setting ocp_warn debounce\n");
 
 	return ret;
 }
