@@ -70,6 +70,8 @@ google-bms.ko
 google-charger.ko
 google-cpm.ko
 google_bcl.ko
+google_dock.ko
+google_dual_batt_gauge.ko
 governor_dsulat.ko
 governor_memlat.ko
 gpu_cooling.ko
