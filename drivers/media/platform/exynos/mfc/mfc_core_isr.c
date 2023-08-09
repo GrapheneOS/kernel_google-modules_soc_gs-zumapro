@@ -1878,6 +1878,7 @@ static inline int __mfc_nal_q_irq(struct mfc_core *core,
 			mfc_core_err("[NALQ] Should not be here! state: %d, int reason : %d\n",
 				nal_q_handle->nal_q_state, reason);
 			mfc_core_clear_int();
+			mfc_core_handle_error(core);
 
 			ret = -1;
 		} else {

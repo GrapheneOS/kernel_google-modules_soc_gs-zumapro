@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/debugfs.h>
 #include <uapi/linux/sched/types.h>
+#include <uapi/linux/thermal.h>
 #include <soc/google/gs_tmu_v3.h>
 #include <soc/google/tmu.h>
 #include <soc/google/ect_parser.h>
@@ -202,6 +203,7 @@ static void sync_kernel_acpm_timestamp(void)
 	ts_after = (u64)ktime_get_boottime_ns();
 
 	acpm_gov_common.kernel_ts = (ts_before + ts_after)>>1;
+	acpm_gov_common.tr_ktime_real_offset = 0;
 }
 
 static u64 acpm_to_kernel_ts(u64 acpm_ts)
@@ -271,36 +273,64 @@ static bool get_all_curr_state_from_acpm(void __iomem *base, struct curr_state *
 	}
 }
 
-#define INVALID_TZID(tzid)          (((tzid) < 0) || ((tzid) >= TZ_END))
-
 #if IS_ENABLED(CONFIG_PIXEL_METRICS)
-static int get_tr_handle_id(tr_handle instance)
+static struct gs_tmu_data* get_tr_handle_tmu_data(tr_handle instance)
 {
 	struct gs_tmu_data *data;
 
 	list_for_each_entry (data, &dtm_dev_list, node) {
 		if (data->tr_handle == instance)
-			return data->id;
+			return data;
 	}
-	return -EINVAL;
+	return NULL;
 }
 
-static int thermal_metrics_get_tr_stats(tr_handle instance, atomic64_t *stats)
+static time64_t acpm_to_ktime_real_seconds(u64 acpm_ts)
 {
-	int i, num_thresholds, acpm_temp, ipc_stat;
-	int tzid = get_tr_handle_id(instance);
-	u64 single_stats;
+	if (acpm_gov_common.tr_ktime_real_offset == 0)
+		acpm_gov_common.tr_ktime_real_offset = ktime_get_real_seconds() -
+		                                                  ktime_get_boottime_seconds();
+	return acpm_gov_common.tr_ktime_real_offset +
+	                                   (time64_t)(acpm_to_kernel_ts(acpm_ts) / NS_PER_SEC);
 
-	if (!stats || INVALID_TZID(tzid))
+}
+
+static int thermal_metrics_get_tr_stats(tr_handle instance, atomic64_t *stats,
+                                               struct tr_sample *max, struct tr_sample *min)
+{
+	int i, num_thresholds, acpm_temp, ipc_stat, ret;
+	struct gs_tmu_data *data = get_tr_handle_tmu_data(instance);
+	u64 single_stats, acpm_ts;
+
+	if (!stats || !data || !max || !min)
 		return -EINVAL;
 
-	exynos_acpm_tmu_ipc_get_tr_num_thresholds(tzid, &num_thresholds);
+	ret = exynos_acpm_tmu_ipc_get_tr_num_thresholds(data->id, &num_thresholds);
+	if (ret)
+		return -EIO;
 	/* force the acpm to update tr stats */
-	exynos_acpm_tmu_set_read_temp(tzid, &acpm_temp, &ipc_stat);
+	ret = exynos_acpm_tmu_set_read_temp(data->id, &acpm_temp, &ipc_stat);
+	if (ret)
+		return -EIO;
+
+	ret = exynos_acpm_tmu_ipc_get_tr_stats_start(data->id);
+	if (ret)
+		return -EIO;
+	/* read stats */
 	for (i = 0; i < num_thresholds + 1; ++i) {
-		exynos_acpm_tmu_ipc_get_tr_stats(tzid, i, &single_stats);
+		exynos_acpm_tmu_ipc_get_tr_stats(data->id, i, &single_stats);
 		atomic64_set(&stats[i], acpm_systick_to_ms(single_stats));
 	}
+	/* read max */
+	exynos_acpm_tmu_ipc_get_tr_stats_max(data->id, &acpm_temp, &acpm_ts);
+	max->temp = acpm_temp * MCELSIUS;
+	max->timestamp = acpm_to_ktime_real_seconds(acpm_ts);
+	/* read min */
+	exynos_acpm_tmu_ipc_get_tr_stats_min(data->id, &acpm_temp, &acpm_ts);
+	min->temp = acpm_temp * MCELSIUS;
+	min->timestamp = acpm_to_ktime_real_seconds(acpm_ts);
+
+	exynos_acpm_tmu_ipc_get_tr_stats_end(data->id);
 	return 0;
 }
 
@@ -308,21 +338,23 @@ static int thermal_metrics_get_tr_stats(tr_handle instance, atomic64_t *stats)
 static int thermal_metrics_get_tr_thresholds(tr_handle instance, int *thresholds,
                                                 int *num_thresholds)
 {
-	int i, j, ipc_cnt;
-	int tzid = get_tr_handle_id(instance);
+	int i, j, ipc_cnt, ret;
+	struct gs_tmu_data *data = get_tr_handle_tmu_data(instance);
 	union {
 		u8 byte[8];
 		u64 qword;
 	} val;
 
-	if (!thresholds || !num_thresholds || INVALID_TZID(tzid))
+	if (!thresholds || !num_thresholds || !data)
 		return -EINVAL;
 
-	exynos_acpm_tmu_ipc_get_tr_num_thresholds(tzid, num_thresholds);
+	ret = exynos_acpm_tmu_ipc_get_tr_num_thresholds(data->id, num_thresholds);
+	if (ret)
+		return -EIO;
 	/* each ipc call sends 8 thresholds. determine num of ipc call*/
 	ipc_cnt = (*num_thresholds + NUM_THRESHOLD_PER_IPC - 1) / NUM_THRESHOLD_PER_IPC;
 	for (i = 0; i < ipc_cnt; ++i) {
-		exynos_acpm_tmu_ipc_get_tr_thresholds(tzid, (u8)i, &val.qword);
+		exynos_acpm_tmu_ipc_get_tr_thresholds(data->id, (u8)i, &val.qword);
 		for (j = 0; j < NUM_THRESHOLD_PER_IPC; ++j) {
 			int thresholds_index = i * NUM_THRESHOLD_PER_IPC + j;
 			if (thresholds_index >= *num_thresholds)
@@ -337,14 +369,16 @@ static int thermal_metrics_set_tr_thresholds(tr_handle instance, const int *thre
                                              int num_thresholds)
 {
 	int i, j, ipc_cnt, acpm_temp, ipc_stat;
-	int tzid = get_tr_handle_id(instance);
+	struct gs_tmu_data *data = get_tr_handle_tmu_data(instance);
 	union {
 		u8 byte[8];
 		u64 qword;
 	} val;
 
-	if (exynos_acpm_tmu_ipc_set_tr_num_thresholds(tzid, num_thresholds))
+	if (!data)
 		return -EINVAL;
+	if (exynos_acpm_tmu_ipc_set_tr_num_thresholds(data->id, num_thresholds))
+		return -EIO;
 
 	/* each ipc call sends 8 thresholds. determine num of ipc call*/
 	ipc_cnt = (num_thresholds + NUM_THRESHOLD_PER_IPC - 1) / NUM_THRESHOLD_PER_IPC;
@@ -356,24 +390,26 @@ static int thermal_metrics_set_tr_thresholds(tr_handle instance, const int *thre
 				break;
 			val.byte[j] = (u8)(thresholds[thresholds_index] / MCELSIUS);
 		}
-		exynos_acpm_tmu_ipc_set_tr_thresholds(tzid, (u8)i, val.qword);
+		exynos_acpm_tmu_ipc_set_tr_thresholds(data->id, (u8)i, val.qword);
 	}
 	/* force the acpm to update tr stats */
-	exynos_acpm_tmu_set_read_temp(tzid, &acpm_temp, &ipc_stat);
+	exynos_acpm_tmu_set_read_temp(data->id, &acpm_temp, &ipc_stat);
 	return 0;
 }
 
 static int thermal_metrics_reset_stats(tr_handle instance)
 {
-	int tzid = get_tr_handle_id(instance);
+	struct gs_tmu_data *data = get_tr_handle_tmu_data(instance);
 	int acpm_temp, ipc_stat, ret;
 
-	if (INVALID_TZID(tzid))
+	if (!data)
 		return -EINVAL;
 
-	ret = exynos_acpm_tmu_ipc_reset_tr_stats(tzid);
+	ret = exynos_acpm_tmu_ipc_reset_tr_stats(data->id);
+	if (ret)
+		return -EIO;
 	/* force the acpm to update tr stats */
-	exynos_acpm_tmu_set_read_temp(tzid, &acpm_temp, &ipc_stat);
+	exynos_acpm_tmu_set_read_temp(data->id, &acpm_temp, &ipc_stat);
 
 	return ret;
 }
@@ -518,7 +554,7 @@ static void capture_bulk_trace(void)
 			(u8)(bulk_trace_buffer->buffered_curr_state[start_idx].temperature),
 			(u8)(bulk_trace_buffer->buffered_curr_state[start_idx].ctrl_temp),
 			(u8)(bulk_trace_buffer->buffered_curr_state[start_idx].cdev_state),
-			(s32)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_err_integral),
+			(s32)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_et_p),
 			(s16)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_power_range),
 			(s16)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_p),
 			(s32)(bulk_trace_buffer->buffered_curr_state[start_idx].pid_i),
@@ -584,7 +620,7 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 					(int)data->id, (u8)curr_state.temperature,
 					(u8)curr_state.ctrl_temp,
 					(u8)curr_state.cdev_state,
-					(s32)curr_state.pid_err_integral,
+					(s32)curr_state.pid_et_p,
 					(s32)frac_to_int(k_p),
 					(s32)frac_to_int(k_i));
 			}
@@ -1100,9 +1136,20 @@ static int gs_tmu_set_trip_temp(struct thermal_zone_device *tz, int trip,
 	}
 	mutex_lock(&data->lock);
 	if (data->enabled) {
-		exynos_acpm_tmu_tz_control(data->id, false);
+		bool acpm_trip_ctrl_available = true;
+
+		if (exynos_acpm_tmu_tz_trip_control(data->id, false)) {
+			/* backwards compatibility with older bootloader */
+			exynos_acpm_tmu_tz_control(data->id, false);
+			acpm_trip_ctrl_available = false;
+		}
+
 		exynos_acpm_tmu_set_threshold(data->id, threshold);
-		exynos_acpm_tmu_tz_control(data->id, true);
+
+		if (acpm_trip_ctrl_available)
+			exynos_acpm_tmu_tz_trip_control(data->id, true);
+		else
+			exynos_acpm_tmu_tz_control(data->id, true);
 	} else {
 		exynos_acpm_tmu_set_threshold(data->id, threshold);
 	}
@@ -2164,6 +2211,28 @@ static int gs_map_dt_data(struct platform_device *pdev)
 		else
 			params->sustainable_power = value;
 
+
+		if (of_property_read_bool(pdev->dev.of_node, "early_throttle_enable")) {
+			ret = of_property_read_u32(pdev->dev.of_node, "early_throttle_offset",
+						   &value);
+			if (ret < 0)
+				dev_err(&pdev->dev, "No input early_throttle_offset\n");
+			else
+				params->early_throttle_offset = int_to_frac(value);
+
+			ret = of_property_read_u32(pdev->dev.of_node, "early_throttle_k_p",
+						   &value);
+			if (ret < 0)
+				dev_err(&pdev->dev, "No input early_throttle_k_p\n");
+			else
+				params->early_throttle_k_p = int_to_frac(value);
+
+			params->early_throttle_enable = true;
+
+		} else {
+			params->early_throttle_enable = false;
+		}
+
 		data->pi_param = params;
 	} else {
 		data->use_pi_thermal = false;
@@ -2201,6 +2270,8 @@ static int gs_map_dt_data(struct platform_device *pdev)
 		data->control_temp_step = 0;
 		dev_err(&pdev->dev, "No input control_temp_step\n");
 	}
+
+	data->use_hardlimit_pid = false;
 
 	data->acpm_gov_params.qword = 0;
 	if (of_property_read_bool(pdev->dev.of_node, "use-acpm-gov")) {
@@ -2278,6 +2349,9 @@ static int gs_map_dt_data(struct platform_device *pdev)
 			// force turning off kernel mpmm throttling
 			data->cpu_hw_throttling_enable = false;
 		}
+
+		if (of_property_read_bool(pdev->dev.of_node, "use-hardlimit-pid"))
+			data->use_hardlimit_pid = true;
 	}
 
 	ret = of_property_read_string(pdev->dev.of_node, "mapped_cpus", &buf);
@@ -2505,23 +2579,6 @@ static ssize_t acpm_gov_timer_stepwise_gain_store(struct device *dev,
 	exynos_acpm_tmu_ipc_set_gov_config(data->id, data->acpm_gov_params.qword);
 
 	return count;
-}
-
-static ssize_t tj_cur_cdev_state_show(struct device *dev, struct device_attribute *devattr, char *buf)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct gs_tmu_data *data = platform_get_drvdata(pdev);
-
-	struct curr_state curr_state;
-	u8 tj_cur_cdev_state_val;
-
-	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
-	    get_curr_state_from_acpm(acpm_gov_common.sm_base, data->id, &curr_state))
-		tj_cur_cdev_state_val = curr_state.cdev_state;
-	else
-		return -EIO;
-
-	return sysfs_emit(buf, "%u\n", tj_cur_cdev_state_val);
 }
 
 static ssize_t thermal_pressure_time_window_store(struct device *dev,
@@ -3964,13 +4021,14 @@ create_s32_param_attr(k_po, K_PO);
 create_s32_param_attr(k_pu, K_PU);
 create_s32_param_attr(k_i, K_I);
 create_s32_param_attr(i_max, I_MAX);
+create_s32_param_attr(early_throttle_offset, EARLY_THROTTLE_OFFSET);
+create_s32_param_attr(early_throttle_k_p, EARLY_THROTTLE_K_P);
 static DEVICE_ATTR_RW(integral_cutoff);
 static DEVICE_ATTR_RW(acpm_gov_select);
 static DEVICE_ATTR_RW(power_table_ect_offset);
 static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
-static DEVICE_ATTR_RO(tj_cur_cdev_state);
 static DEVICE_ATTR_RW(control_temp_step);
 static DEVICE_ATTR_RW(thermal_pressure_time_window);
 static DEVICE_ATTR_RW(acpm_temp_state_table);
@@ -3998,6 +4056,8 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_k_i.attr,
 	&dev_attr_i_max.attr,
 	&dev_attr_integral_cutoff.attr,
+	&dev_attr_early_throttle_offset.attr,
+	&dev_attr_early_throttle_k_p.attr,
 	&dev_attr_pause_time_in_state_ms.attr,
 	&dev_attr_pause_total_count.attr,
 	&dev_attr_pause_reset.attr,
@@ -4013,7 +4073,6 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_fvp_get_target_freq.attr,
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
-	&dev_attr_tj_cur_cdev_state.attr,
 	&dev_attr_control_temp_step.attr,
 	&dev_attr_thermal_pressure_time_window.attr,
 	&dev_attr_acpm_temp_state_table.attr,
@@ -4067,6 +4126,76 @@ static void pause_stats_setup(struct gs_tmu_data *data)
 	stats->last_time = ktime_get();
 	spin_lock_init(&stats->lock);
 }
+
+/**
+ * tmu_tj_throttle_get_cur_state - Get the current Tj throttling vote.
+ * @cdev: the thermal cooling device.
+ * @state: the target state will be populated in this variable.
+ *
+ * This function fetches the current Tj throttling vote.
+ *
+ * Return: 0 when the Tj vote is successfully fetched otherwise -EIO is
+ * returned.
+ */
+static int tmu_tj_throttle_get_cur_state(struct thermal_cooling_device *cdev,
+					 unsigned long *state)
+{
+	struct gs_tmu_data *tmu_data = cdev->devdata;
+	struct curr_state curr_state;
+
+	if (ACPM_BUF_VER == EXPECT_BUF_VER &&
+	    get_curr_state_from_acpm(acpm_gov_common.sm_base, tmu_data->id, &curr_state))
+		*state = curr_state.cdev_state;
+	else
+		return -EIO;
+
+	return 0;
+}
+
+/**
+ * tmu_tj_throttle_set_cur_state - A NOP.
+ * @cdev: the thermal cooling device.
+ * @state: the target state.
+ *
+ * Tj current state can't be changed from HLOS. So this callback will be a NOP.
+ * This callback will never be called, because the max_state is returned as 0
+ * and hence thermal core will return -EIVAL for any request > max_state.
+ *
+ * Return: Always 0.
+ */
+static int tmu_tj_throttle_set_cur_state(struct thermal_cooling_device *cdev,
+					 unsigned long state)
+{
+	return 0;
+}
+
+/**
+ * tmu_tj_throttle_get_max_state - A NOP, returns 0 always.
+ * @cdev: the thermal cooling device.
+ * @state: the maximum possible state will be populated in this variable.
+ *
+ * This function populates the max possible cooling device state. But this
+ * callback returns 0 always.
+ *
+ * Return: Always 0.
+ */
+static int tmu_tj_throttle_get_max_state(struct thermal_cooling_device *cdev,
+					 unsigned long *state)
+{
+	/*
+	 * TODO (rchandrasekar): These cooling device should be registered by
+	 * their respective drivers and hence they will have the information
+	 * about the max state.
+	 */
+	*state = 0;
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tmu_tj_cooling_ops = {
+	.get_max_state = tmu_tj_throttle_get_max_state,
+	.get_cur_state = tmu_tj_throttle_get_cur_state,
+	.set_cur_state = tmu_tj_throttle_set_cur_state,
+};
 
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 static u8 tmu_id;
@@ -4887,6 +5016,8 @@ int set_acpm_tj_power_status(enum tmu_grp_idx_t tzid, bool on)
 }
 EXPORT_SYMBOL(set_acpm_tj_power_status);
 
+extern void register_tz_id_ignore_genl(int tz_id);
+
 static int parse_acpm_gov_common_dt(void)
 {
 	int ret;
@@ -4936,6 +5067,8 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		.reset_stats = thermal_metrics_reset_stats,
 	};
 #endif
+	char cdev_buf[THERMAL_NAME_LENGTH] = "";
+
 	data = devm_kzalloc(&pdev->dev, sizeof(struct gs_tmu_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -5096,10 +5229,19 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, K_I, frac_to_int(data->pi_param->k_i));
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, I_MAX,
 						 frac_to_int(data->pi_param->i_max));
+
 		data->acpm_gov_select |= 1 << PI_LOOP;
+
+		if (data->pi_param->early_throttle_enable) {
+			exynos_acpm_tmu_ipc_set_pi_param(data->id, EARLY_THROTTLE_OFFSET,
+				frac_to_int(data->pi_param->early_throttle_offset));
+			exynos_acpm_tmu_ipc_set_pi_param(data->id, EARLY_THROTTLE_K_P,
+				frac_to_int(data->pi_param->early_throttle_k_p));
+
+			data->acpm_gov_select |= (1 << EARLY_THROTTLE);
+		}
+
 		exynos_acpm_tmu_ipc_set_pi_param(data->id, GOV_SELECT, data->acpm_gov_select);
-	} else {
-		data->acpm_gov_select &= ~(1 << PI_LOOP);
 	}
 
 	if (acpm_gov_common.turn_on) {
@@ -5176,6 +5318,12 @@ static int gs_tmu_probe(struct platform_device *pdev)
 		data->acpm_gov_select &= ~(1 << TEMP_LUT);
 	}
 
+	if (data->use_pi_thermal && data->use_hardlimit_pid) {
+		data->acpm_gov_select |= 1 << HARDLIMIT_VIA_PID;
+	} else {
+		data->acpm_gov_select &= ~(1 << HARDLIMIT_VIA_PID);
+	}
+
 	/* STEPWISE is the default if no other governor configured */
 	if (data->acpm_gov_select == 0)
 		data->acpm_gov_select |= 1 << STEPWISE;
@@ -5195,6 +5343,13 @@ static int gs_tmu_probe(struct platform_device *pdev)
 	spin_lock(&dev_list_spinlock);
 	cpumask_or(&tmu_enabled_mask, &tmu_enabled_mask, &data->mapped_cpus);
 	spin_unlock(&dev_list_spinlock);
+
+	register_tz_id_ignore_genl(data->tzd->id);
+	/* Register a cooling device to fetch the Tj throttling request. */
+	scnprintf(cdev_buf, THERMAL_NAME_LENGTH, "%s-tj", data->tmu_name);
+	devm_thermal_of_cooling_device_register(
+			&pdev->dev, pdev->dev.of_node, cdev_buf, data,
+			&tmu_tj_cooling_ops);
 
 	return 0;
 err_dtm_dev_list:

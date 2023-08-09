@@ -21,6 +21,9 @@ enum acpm_gov_select_bit_offset {
 	STEPWISE = 0,
 	PI_LOOP  = 1,
 	TEMP_LUT = 2,
+	HARDLIMIT_VIA_PID = 3,
+	EARLY_THROTTLE = 4,
+	INVALID_GOV_MOD = 8
 };
 
 struct gs_pi_param {
@@ -33,6 +36,10 @@ struct gs_pi_param {
 	s32 i_max;
 	s32 integral_cutoff;
 
+	u32 early_throttle_enable;
+	u32 early_throttle_offset;
+	s32 early_throttle_k_p;
+
 	bool switched_on;
 };
 
@@ -43,7 +50,9 @@ enum pi_param {
 	K_I = 3,
 	I_MAX = 4,
 	POWER_TABLE_ECT_OFFSET = 5,
-	GOV_SELECT = 6
+	GOV_SELECT = 6,
+	EARLY_THROTTLE_K_P = 7,
+	EARLY_THROTTLE_OFFSET = 8,
 };
 
 #define STEPWISE_GAIN_MIN 0
@@ -58,6 +67,7 @@ enum pi_param {
 #define ACPM_GOV_THERMAL_PRESS_WINDOW_MS_MAX 1000
 #define ACPM_GOV_THERMAL_PRESS_POLLING_DELAY_ON 100
 #define ACPM_GOV_THERMAL_PRESS_POLLING_DELAY_OFF 0
+
 struct acpm_gov_params_st {
 	u8 ctrl_temp_idx;
 	u8 switch_on_temp_idx;
@@ -120,6 +130,7 @@ struct acpm_gov_common {
 	struct gov_trace_data_struct *bulk_trace_buffer;
 	spinlock_t lock;
 	struct thermal_pressure thermal_pressure;
+	time64_t tr_ktime_real_offset;
 };
 
 struct gs_temp_lut_st {
@@ -228,6 +239,7 @@ struct gs_tmu_data {
 	bool use_temp_lut_thermal;
 	u32 temp_state_lut_len;
 	struct gs_temp_lut_st *temp_state_lut;
+	bool use_hardlimit_pid;
 };
 
 enum throttling_stats_type {
@@ -387,7 +399,8 @@ void register_get_cpu_power_table_ect_offset(get_cpu_power_table_ect_offset_cb c
 #define BULK_TRACE_DATA_LEN 240
 #define ACPM_SYSTICK_NUMERATOR 20
 #define ACPM_SYSTICK_FRACTIONAL_DENOMINATOR 3
-#define NS_PER_MS 1000000
+#define NS_PER_MS  1000000
+#define NS_PER_SEC 1000000000
 #define acpm_systick_to_ns(acpm_tick)     ((acpm_tick * ACPM_SYSTICK_NUMERATOR) +              \
                                             (acpm_tick / ACPM_SYSTICK_FRACTIONAL_DENOMINATOR))
 #define acpm_systick_to_ms(acpm_tick)     (acpm_systick_to_ns(acpm_tick) / NS_PER_MS)
@@ -402,8 +415,9 @@ struct curr_state {
 	u8 cdev_state;
 	u8 temperature;
 	u8 ctrl_temp;
-	u8 reserved;
-	u32 pid_err_integral;
+	u8 reserved0;
+	u16 pid_et_p;
+	u16 reserved1;
 };
 
 struct buffered_curr_state {
@@ -412,7 +426,8 @@ struct buffered_curr_state {
 	u8 cdev_state;
 	u8 temperature;
 	u8 ctrl_temp;
-	u32 pid_err_integral;
+	u16 pid_et_p;
+	u16 reserved;
 	u16 pid_power_range;
 	u16 pid_p;
 	u32 pid_i;

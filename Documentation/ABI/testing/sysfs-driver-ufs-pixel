@@ -4,6 +4,12 @@ Contact:	"Randall Huang" <huangrandall@google.com>
 Description:
 		Enable/Disable UFS command logging.
 
+What:		/sys/devices/platform/<....>ufs/pixel/power_event_mode
+Date:		June, 2023
+Contact:	"Konstantin Vyshetsky" <vkon@google.com>
+Description:
+		Enables UFS driver to set Kibble triggers on power events.
+
 What:		/sys/devices/platform/<....>ufs/power_stats
 Date:		April, 2022
 Contact:	"Konstantin Vyshetsky" <vkon@google.com>

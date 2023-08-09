@@ -62,7 +62,6 @@ struct exynos_pm_info {
 	unsigned int wakeup_stat_rtc;
 	unsigned int *wakeup_int_en_offset;
 	unsigned int *wakeup_int_en;
-	unsigned int *usbl2_wakeup_int_en;
 
 	unsigned int num_eint_wakeup_mask;
 	unsigned int *eint_wakeup_mask_offset;

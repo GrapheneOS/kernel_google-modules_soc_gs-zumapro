@@ -49,11 +49,11 @@
 		sustainable_power = <2000>;
 		control_temp_step = <1000>; // mC per second
 
-		use-temp-lut-thermal;
-		temp_state_table =
-			//temp level
-			<  85    2
-			   255   4 >;
+		early_throttle_enable;
+		early_throttle_k_p = <50>;
+		early_throttle_offset = <10>; // in Celsius
+
+		use-hardlimit-pid;
 
 		tmu_work_affinity = "0-8";
 
@@ -193,9 +193,9 @@
 		use-pi-thermal;
 		polling_delay_on = <50>;
 		polling_delay_off = <0>;
-		k_po = <60>;
-		k_pu = <60>;
-		k_i = <20>;
+		k_po = <1>;
+		k_pu = <1>;
+		k_i = <1>;
 		i_max = <5>;
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
@@ -249,7 +249,7 @@
 				};
 				big_alert1: big-alert1 {
 					temperature = <98000>; /* millicelsius */
-					hysteresis = <100000>; /* 100C to avoid falling edge irq */
+					hysteresis = <98000>; /* 98C to avoid falling edge irq */
 					type = "active";
 				};
 				big_early_throttle: big-early_throttle {
@@ -304,7 +304,7 @@
 				};
 				mid_alert1: mid-alert1 {
 					temperature = <98000>; /* millicelsius */
-					hysteresis = <100000>; /* 100C to avoid falling edge irq */
+					hysteresis = <98000>; /* 98C to avoid falling edge irq */
 					type = "active";
 				};
 				mid_alert2: mid-alert2 {
@@ -359,7 +359,7 @@
 				};
 				little_alert1: little-alert1 {
 					temperature = <102000>; /* millicelsius */
-					hysteresis = <100000>; /* 100C to avoid falling edge irq */
+					hysteresis = <102000>; /* 102C to avoid falling edge irq */
 					type = "active";
 				};
 				little_alert2: little-alert2 {
@@ -403,32 +403,32 @@
 					type = "active";
 				};
 				gpu_switch_on: gpu-switch-on {
-					temperature = <65000>; /* millicelsius */
-					hysteresis = <2000>; /* millicelsius */
+					temperature = <80000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				gpu_control_temp: gpu-control-temp {
-					temperature = <85000>; /* millicelsius */
+					temperature = <100000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				gpu_alert1: gpu-alert1 {
-					temperature = <88000>; /* millicelsius */
+					temperature = <102000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				gpu_alert2: gpu-alert2 {
-					temperature = <90000>; /* millicelsius */
-					hysteresis = <1000>; /* millicelsius */
+					temperature = <103000>; /* millicelsius */
+					hysteresis = <103000>; /* 103C to avoid falling edge irq */
 					type = "active";
 				};
-				gpu_alert3: gpu-alert3 {
-					temperature = <92000>; /* millicelsius */
+				gpu_sw_max_effort: gpu-sw_max_effort {
+					temperature = <107000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				gpu_dfs: gpu-dfs {
-					temperature = <95000>; /* millicelsius */
+					temperature = <108000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -460,33 +460,33 @@
 					type = "active";
 				};
 				isp_alert1: isp-alert1 {
-					temperature = <70000>; /* millicelsius */
-					hysteresis = <2000>; /* millicelsius */
+					temperature = <80000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				isp_alert2: isp-alert2 {
-					temperature = <90000>; /* millicelsius */
+					temperature = <100000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				isp_alert3: isp-alert3 {
-					temperature = <94000>; /* millicelsius */
+					temperature = <102000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				isp_alert4: isp-alert4 {
-					temperature = <95000>; /* millicelsius */
-					hysteresis = <1000>; /* millicelsius */
+					temperature = <103000>; /* millicelsius */
+					hysteresis = <103000>; /* 103C to avoid falling edge irq */
 					type = "active";
 				};
 				isp_alert5: isp-alert5 {
-					temperature = <98000>; /* millicelsius */
-					hysteresis = <2000>; /* millicelsius */
+					temperature = <107000>; /* millicelsius */
+					hysteresis = <107000>; /* 107C to avoid falling edge irq */
 					type = "active";
 				};
 				isp_alert6: isp-alert6 {
-					temperature = <103000>; /* millicelsius */
-					hysteresis = <5000>; /* millicelsius */
+					temperature = <108000>; /* millicelsius */
+					hysteresis = <108000>; /* 108C to avoid falling edge irq */
 					type = "active";
 				};
 				isp_hot: isp-hot {
@@ -509,32 +509,32 @@
 					type = "active";
 				};
 				tpu_switch_on: tpu-switch-on {
-					temperature = <65000>; /* millicelsius */
-					hysteresis = <2000>; /* millicelsius */
+					temperature = <80000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				tpu_control_temp: tpu-control-temp {
-					temperature = <85000>; /* millicelsius */
+					temperature = <100000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				tpu_alert1: tpu-alert1 {
-					temperature = <88000>; /* millicelsius */
+					temperature = <102000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				tpu_alert2: tpu-alert2 {
-					temperature = <90000>; /* millicelsius */
-					hysteresis = <1000>; /* millicelsius */
+					temperature = <103000>; /* millicelsius */
+					hysteresis = <103000>; /* 103C to avoid falling edge irq */
 					type = "active";
 				};
-				tpu_alert3: tpu-alert3 {
-					temperature = <92000>; /* millicelsius */
+				tpu_sw_max_effort: tpu-sw-max-effort {
+					temperature = <107000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				tpu_dfs: tpu-dfs {
-					temperature = <95000>; /* millicelsius */
+					temperature = <108000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -564,32 +564,32 @@
 					type = "active";
 				};
 				aur_switch_on: aur-switch-on {
-					temperature = <65000>; /* millicelsius */
-					hysteresis = <2000>; /* millicelsius */
+					temperature = <80000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
 				aur_control_temp: aur-control-temp {
-					temperature = <85000>; /* millicelsius */
+					temperature = <100000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "passive";
 				};
 				aur_alert1: aur-alert1 {
-					temperature = <88000>; /* millicelsius */
+					temperature = <102000>; /* millicelsius */
 					hysteresis = <4000>; /* millicelsius */
 					type = "passive";
 				};
 				aur_alert2: aur-alert2 {
-					temperature = <90000>; /* millicelsius */
-					hysteresis = <1000>; /* millicelsius */
+					temperature = <103000>; /* millicelsius */
+					hysteresis = <103000>; /* 103C to avoid falling edge irq */
 					type = "active";
 				};
-				aur_alert3: aur-alert3 {
-					temperature = <92000>; /* millicelsius */
+				aur_sw_max_effort: aur-sw_max_effort {
+					temperature = <107000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "active";
 				};
 				aur_dfs: aur-dfs {
-					temperature = <95000>; /* millicelsius */
+					temperature = <108000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -810,4 +810,53 @@
 			2914000 989 3465
 			}
 		";
+		idle_power =
+			"
+			cpu0 {
+			324000 1
+			610000 1
+			820000 1
+			955000 1
+			1098000 2
+			1197000 2
+			1328000 2
+			1425000 2
+			1548000 2
+			1704000 2
+			}
+			cpu4 {
+			402000 5
+			578000 5
+			697000 5
+			712000 6
+			910000 7
+			1065000 8
+			1221000 8
+			1328000 9
+			1418000 10
+			1572000 11
+			1836000 14
+			1945000 16
+			2130000 21
+			2245000 25
+			2367000 29
+			}
+			cpu8 {
+			500000 15
+			880000 18
+			1164000 21
+			1298000 23
+			1557000 27
+			1745000 30
+			1885000 33
+			2049000 40
+			2147000 45
+			2294000 52
+			2363000 56
+			2556000 85
+			2687000 105
+			2850000 123
+			2914000 140
+			}
+			";
 };

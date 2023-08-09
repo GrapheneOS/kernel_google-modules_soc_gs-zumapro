@@ -9,6 +9,7 @@
 
 #include <core/ufshcd-priv.h>
 #include <linux/workqueue.h>
+#include <misc/sbbm.h>
 #include "ufs-exynos-gs.h"
 
 #define CREATE_TRACE_POINTS
@@ -24,6 +25,52 @@ enum {
 
 #define ufshcd_eh_in_progress(h) \
 	((h)->eh_flags & UFSHCD_EH_IN_PROGRESS)
+
+void pixel_update_power_event(struct ufs_hba *hba,
+			      enum pixel_power_event_type e)
+{
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	unsigned long flags;
+
+	if (!ufs->power_event_mode)
+		return;
+
+	switch (e) {
+	case PE_H8_EXIT:
+		SBBM_SIGNAL_UPDATE(SBB_SIG_UFS_ACTIVE_IDLE, 1);
+		break;
+	case PE_H8_ENTER:
+		SBBM_SIGNAL_UPDATE(SBB_SIG_UFS_ACTIVE_IDLE, 0);
+		break;
+	case PE_SYSTEM_RESUME:
+		SBBM_SIGNAL_UPDATE(SBB_SIG_UFS_POWER_ON, 1);
+		break;
+	case PE_SYSTEM_SUSPEND:
+		SBBM_SIGNAL_UPDATE(SBB_SIG_UFS_POWER_ON, 0);
+		break;
+	case PE_IO_ISSUE:
+		spin_lock_irqsave(&ufs->power_event_lock, flags);
+		ufs->outstanding_io++;
+		if (ufs->outstanding_io == 1)
+			SBBM_SIGNAL_UPDATE(SBB_SIG_UFS_IO_OUTSTANDING, 1);
+		spin_unlock_irqrestore(&ufs->power_event_lock, flags);
+		break;
+	case PE_IO_COMPLETE:
+		spin_lock_irqsave(&ufs->power_event_lock, flags);
+		/*
+		 * Handle case where feature was enabled while I/O were already in
+		 * flight and unaccounted for
+		 */
+		if (ufs->outstanding_io)
+			ufs->outstanding_io--;
+		if (!ufs->outstanding_io)
+			SBBM_SIGNAL_UPDATE(SBB_SIG_UFS_IO_OUTSTANDING, 0);
+		spin_unlock_irqrestore(&ufs->power_event_lock, flags);
+		break;
+	default:
+		dev_err(hba->dev, "Invalid power event %u\n", e);
+	}
+}
 
 static void pixel_ufs_update_slowio_min_us(struct ufs_hba *hba)
 {
@@ -340,6 +387,11 @@ static void pixel_ufs_update_io_stats(struct ufs_hba *hba,
 	__update_io_stats(hba, is_write, affected_bytes, is_start);
 
 	record_ufs_stats(hba);
+
+	if (is_start)
+		pixel_update_power_event(hba, PE_IO_ISSUE);
+	else
+		pixel_update_power_event(hba, PE_IO_COMPLETE);
 }
 
 void pixel_ufs_record_hibern8(struct ufs_hba *hba, bool is_enter_h8)
@@ -351,6 +403,7 @@ void pixel_ufs_record_hibern8(struct ufs_hba *hba, bool is_enter_h8)
 	if (is_enter_h8) {
 		ufs_stats->last_hibern8_enter_time = curr_t;
 		ufs_stats->hibern8_flag = true;
+		pixel_update_power_event(hba, PE_H8_ENTER);
 	} else {
 		ufs_stats->last_hibern8_exit_time = curr_t;
 		if (ufs_stats->hibern8_flag) {
@@ -360,6 +413,7 @@ void pixel_ufs_record_hibern8(struct ufs_hba *hba, bool is_enter_h8)
 			ufs_stats->hibern8_exit_cnt++;
 		}
 		ufs_stats->hibern8_flag = false;
+		pixel_update_power_event(hba, PE_H8_EXIT);
 	}
 }
 
@@ -557,13 +611,11 @@ static void __store_cmd_log(struct ufs_hba *hba, u8 event, u8 lun,
 		return;
 
 	__set_cmd_log_str(hba, event, opcode, entry);
-	entry->tstamp = ktime_get();
 	entry->lun = lun;
 	entry->opcode = opcode;
 	entry->idn = idn;
 	entry->sector = sector;
 	entry->affected_bytes = affected_bytes;
-	entry->doorbell = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
 	entry->outstanding_reqs = hba->outstanding_reqs;
 	entry->tag = tag;
 	entry->group_id = group_id;
@@ -947,14 +999,6 @@ static ssize_t manual_gc_store(struct device *dev,
 
 	pm_runtime_get_sync(hba->dev);
 
-	if (!ufs->manual_gc.hagc_support) {
-		err = ufshcd_bkops_ctrl(hba, (value == MANUAL_GC_ON) ?
-					BKOPS_STATUS_NON_CRITICAL:
-					BKOPS_STATUS_CRITICAL);
-		if (!hba->auto_bkops_enabled)
-			err = -EAGAIN;
-	}
-
 	/* flush wb buffer */
 	if (hba->dev_info.wspecversion >= 0x0310) {
 		enum query_opcode opcode = (value == MANUAL_GC_ON) ?
@@ -967,6 +1011,14 @@ static ssize_t manual_gc_store(struct device *dev,
 				index, NULL);
 		ufshcd_query_flag_retry(hba, opcode,
 				QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN, index, NULL);
+	}
+
+	if (!ufs->manual_gc.hagc_support) {
+		err = ufshcd_bkops_ctrl(hba, (value == MANUAL_GC_ON) ?
+					BKOPS_STATUS_NON_CRITICAL:
+					BKOPS_STATUS_CRITICAL);
+		if (!hba->auto_bkops_enabled)
+			err = -EAGAIN;
 	}
 
 	if (err || hrtimer_active(&ufs->manual_gc.hrtimer)) {
@@ -1288,10 +1340,39 @@ static ssize_t enable_pixel_ufs_logging_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(enable_pixel_ufs_logging);
 
+static ssize_t power_event_mode_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	return sprintf(buf, "%u\n", ufs->power_event_mode);
+}
+
+static ssize_t power_event_mode_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	u32 value;
+
+	if (kstrtou32(buf, 0, &value))
+		return -EINVAL;
+
+	if (value != ufs->power_event_mode) {
+		ufs->power_event_mode = value;
+		if (ufs->power_event_mode && ufs->h_state != H_SUSPEND)
+			pixel_update_power_event(hba, PE_SYSTEM_RESUME);
+	}
+	return count;
+}
+static DEVICE_ATTR_RW(power_event_mode);
+
 static struct attribute *pixel_sysfs_pixel_attrs[] = {
 	&dev_attr_boot_lun_enabled.attr,
 	&dev_attr_print_cmd_log.attr,
 	&dev_attr_enable_pixel_ufs_logging.attr,
+	&dev_attr_power_event_mode.attr,
 	NULL,
 };
 
@@ -1869,12 +1950,11 @@ void pixel_print_cmd_log(struct ufs_hba *hba)
 						MAX_CMD_ENTRY_NUM];
 		if (!entry->seq_num)
 			break;
-		dev_err(hba->dev, "%u: %s tag: %d cmd: %s sector: %llu len: 0x%x DB: 0x%llx outstanding: 0x%llx GID: 0x%x\n",
+		dev_err(hba->dev, "%u: %s tag: %d cmd: %s sector: %llu len: 0x%x outstanding: 0x%llx GID: 0x%x\n",
 			entry->seq_num, entry->event,
 			entry->tag, entry->cmd,
 			entry->sector, entry->affected_bytes,
-			entry->doorbell, entry->outstanding_reqs,
-			entry->group_id);
+			entry->outstanding_reqs, entry->group_id);
 	}
 }
 

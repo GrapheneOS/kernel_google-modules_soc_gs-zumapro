@@ -1314,6 +1314,39 @@ static ssize_t min_sample_time_store(struct device *dev,
 }
 #endif
 
+static ssize_t ppc_read_reset_disable_show(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf)
+{
+	ssize_t count = 0;
+	struct device *parent = dev->parent;
+	struct platform_device *pdev =
+			container_of(parent, struct platform_device, dev);
+	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
+
+	count += sysfs_emit_at(buf, count, "%s\n",
+              data->um_data.ppc_read_reset_disable==true? "true":"false");
+
+	return count;
+}
+
+static ssize_t ppc_read_reset_disable_store(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf, size_t count)
+{
+	int ret;
+	struct device *parent = dev->parent;
+	struct platform_device *pdev =
+			container_of(parent, struct platform_device, dev);
+	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
+
+	ret = kstrtobool(buf, &data->um_data.ppc_read_reset_disable);
+	if (ret)
+		return ret;
+
+	return count;
+}
+
 static DEVICE_ATTR(use_delay_time, 0640, show_use_delay_time,
 		   store_use_delay_time);
 static DEVICE_ATTR(delay_time, 0640, show_delay_time, store_delay_time);
@@ -1323,6 +1356,7 @@ static DEVICE_ATTR(hold_sample_time, 0640, show_hold_sample_time,
 		   store_hold_sample_time);
 static DEVICE_ATTR_RW(min_sample_time);
 #endif
+static DEVICE_ATTR_RW(ppc_read_reset_disable);
 
 static struct attribute *devfreq_interactive_sysfs_entries[] = {
 	&dev_attr_use_delay_time.attr,
@@ -2536,6 +2570,12 @@ static int exynos_devfreq_probe(struct platform_device *pdev)
 	if (ret)
 		dev_warn(data->dev,
 			 "failed create sysfs for devfreq time_in_state\n");
+
+	ret = sysfs_create_file(&data->devfreq->dev.kobj,
+				&dev_attr_ppc_read_reset_disable.attr);
+	if (ret)
+		dev_warn(data->dev,
+			 "failed create sysfs for devfreq ppc_read_reset_disable\n");
 
 	ret = sysfs_create_group(&data->devfreq->dev.kobj,
 				 &exynos_devfreq_attr_group);

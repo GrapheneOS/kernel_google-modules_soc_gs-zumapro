@@ -71,5 +71,7 @@ struct exynos5_i2c {
 	int			reset_before_trans;
 	unsigned int		runtime_resumed;
 	int			nack_restart;
+
+	unsigned int 		trailing_count;
 };
 #endif /*__I2C_EXYNOS5_H */

@@ -9,10 +9,6 @@
 	status = "okay";
 };
 
-&faceauth_image_heap {
-	status = "okay";
-};
-
 &faceauth_dsp_dma_heap {
 	status = "okay";
 };
@@ -38,10 +34,6 @@
 };
 
 &faceauth_dsp {
-	status = "okay";
-};
-
-&faimg {
 	status = "okay";
 };
 

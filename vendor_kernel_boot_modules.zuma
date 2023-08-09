@@ -46,6 +46,7 @@ exynos-cpupm.ko
 exynos-debug-test.ko
 exynos-dm.ko
 exynos-drm.ko
+exynos-drm-audio.ko
 exynos-ecc-handler.ko
 exynos-hdcp2.ko
 exynos-pd-dbg.ko
@@ -124,6 +125,7 @@ panel-samsung-s6e3hc3.ko
 panel-samsung-s6e3hc4.ko
 panel-samsung-sofef01.ko
 pca9468.ko
+exynos-pcie-iommu.ko
 pcie-exynos-gs.ko
 pcie-exynos-zuma-rc-cal.ko
 perf_trace_counters.ko
@@ -190,10 +192,12 @@ ufs-exynos-gs.ko
 ufs-pixel-fips140.ko
 usb_f_dm.ko
 usb_f_dm1.ko
+usb_f_etr_miu.ko
 usb_f_rndis.ko
 usb_psy.ko
 usbc_cooling_dev.ko
 vh_cgroup.ko
+vh_fs.ko
 vh_mm.ko
 vh_sched.ko
 vh_thermal.ko

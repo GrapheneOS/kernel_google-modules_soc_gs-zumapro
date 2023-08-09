@@ -43,7 +43,6 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 {
 	struct usb_otg *otg = fsm->otg;
 	struct dwc3_otg	*dotg = container_of(otg, struct dwc3_otg, otg);
-	struct dwc3_exynos *exynos = dotg->exynos;
 	struct device *dev = dotg->dwc->dev;
 	enum usb_otg_state prev_state = otg->state;
 	int ret = 0;
@@ -71,7 +70,6 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		if (!fsm->id) {
 			otg->state = OTG_STATE_A_IDLE;
 		} else if (fsm->b_sess_vld) {
-			exynos->retry_cnt = 0;
 			ret = otg_start_gadget(fsm, 1);
 			if (!ret)
 				otg->state = OTG_STATE_B_PERIPHERAL;
@@ -81,7 +79,6 @@ static int dwc3_otg_statemachine(struct otg_fsm *fsm)
 		break;
 	case OTG_STATE_B_PERIPHERAL:
 		if (!fsm->id || !fsm->b_sess_vld) {
-			exynos->retry_cnt = REMOVED_RETRY_CNT;
 			ret = otg_start_gadget(fsm, 0);
 			if (!ret)
 				otg->state = OTG_STATE_B_IDLE;
@@ -353,43 +350,6 @@ err1:
 	return ret;
 }
 
-/*
-static void dwc3_otg_retry_configuration(struct timer_list *t)
-{
-	struct dwc3_exynos *exynos = from_timer(exynos, t, usb_connect_timer);
-	struct usb_gadget *gadget = exynos->dwc->gadget;
-	struct usb_composite_dev *cdev = get_gadget_data(gadget);
-
-	dev_dbg(exynos->dev, "retry start: +++\n");
-
-	if (cdev == NULL || exynos->retry_cnt == REMOVED_RETRY_CNT) {
-		dev_dbg(exynos->dev, "Stop retry configuration(cdev is NULL) or Removed\n");
-		return;
-	}
-
-	if (!cdev->config) {
-		if (exynos->retry_cnt >= MAX_RETRY_CNT) {
-			dev_err(exynos->dev, "%s: Re-try 5 times, But usb enumeration fail\n",
-					__func__);
-			return;
-		}
-
-		dev_dbg(exynos->dev, "%s: retry USB enumeration, retry count : %d\n",
-				__func__, exynos->retry_cnt);
-
-		dwc3_otg_usb_recovery_reconn(exynos);
-
-		exynos->retry_cnt += 1;
-	} else {
-		exynos->retry_cnt = 0;
-		dev_dbg(exynos->dev, "%s: already configuration done!!\n", __func__);
-		return;
-	}
-
-	dev_dbg(exynos->dev, "retry done\n");
-}
-*/
-
 static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 {
 	struct usb_otg	*otg = fsm->otg;
@@ -442,13 +402,6 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 
 		exynos->gadget_state = true;
 		dwc3_otg_set_peripheral_mode(dotg);
-
-		/*
-		dev_dbg(dev, "%s: start check usb configuration timer\n", __func__);
-		timer_setup(&exynos->usb_connect_timer, dwc3_otg_retry_configuration, 0);
-		mod_timer(&exynos->usb_connect_timer,
-				jiffies + CHG_CONNECTED_DELAY_TIME);
-		*/
 	} else {
 		exynos->vbus_state = false;
 
@@ -820,7 +773,6 @@ static int dwc3_otg_reboot_notify(struct notifier_block *nb, unsigned long event
 	case SYS_POWER_OFF:
 		exynos->dwc->current_dr_role = DWC3_EXYNOS_IGNORE_CORE_OPS;
 		dotg->in_shutdown = true;
-		del_timer_sync(&exynos->usb_connect_timer);
 		break;
 	}
 
@@ -858,67 +810,6 @@ int dwc3_otg_get_idle_ip_index(void)
 	return exynos->idle_ip_index;
 }
 EXPORT_SYMBOL_GPL(dwc3_otg_get_idle_ip_index);
-
-static void dwc3_otg_recovery_reconnection(struct work_struct *w)
-{
-	struct dwc3_otg *dotg = container_of(w, struct dwc3_otg,
-					     recov_work);
-	struct dwc3_exynos *exynos = dotg->exynos;
-	struct otg_fsm	*fsm = &dotg->fsm;
-	int ret = 0;
-
-	if (dotg->in_shutdown)
-		return;
-
-	__pm_stay_awake(dotg->reconn_wakelock);
-	/* Lock to avoid real cable insert/remove operation. */
-	mutex_lock(&fsm->lock);
-
-	if (dotg->otg_connection == 1) {
-		pr_err("Recovery Host Reconnection\n");
-		ret = dwc3_otg_start_host(fsm, 0);
-		if (ret < 0) {
-			pr_err("Cable was already disconnected!!\n");
-			goto emeg_out;
-		}
-	} else {
-		pr_err("Recovery Gadget Reconnection\n");
-		if (exynos->vbus_state == false) {
-			pr_err("Cable was already disconnected!!\n");
-			goto emeg_out;
-		}
-		dwc3_otg_start_gadget(fsm, 0);
-	}
-
-	msleep(50);
-	if (dotg->otg_connection == 1)
-		dwc3_otg_start_host(fsm, 1);
-	else
-		dwc3_otg_start_gadget(fsm, 1);
-
-emeg_out:
-	mutex_unlock(&fsm->lock);
-	__pm_relax(dotg->reconn_wakelock);
-}
-
-int dwc3_otg_usb_recovery_reconn(struct dwc3_exynos *exynos)
-{
-	struct dwc3_otg *dotg;
-
-	if (exynos == NULL) {
-		pr_err("WARNING : exynos is NULL\n");
-		return -ENODEV;
-	}
-
-	dotg = exynos->dotg;
-
-	if (dotg->in_shutdown)
-		return -ESHUTDOWN;
-
-	schedule_work(&dotg->recov_work);
-
-	return 0;
-}
 
 static int dwc3_otg_pm_notifier(struct notifier_block *nb,
 		unsigned long action, void *nb_data)
@@ -1025,7 +916,6 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 	dotg->fsm.ops = &dwc3_otg_fsm_ops;
 	dotg->fsm.otg = &dotg->otg;
 
-	INIT_WORK(&dotg->recov_work, dwc3_otg_recovery_reconnection);
 	dotg->vbus_reg = devm_regulator_get(dwc->dev, "dwc3-vbus");
 	if (IS_ERR(dotg->vbus_reg))
 		dev_err(dwc->dev, "failed to obtain vbus regulator\n");
@@ -1040,8 +930,7 @@ int dwc3_exynos_otg_init(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 	}
 
 	dotg->wakelock = wakeup_source_register(dwc->dev, "dwc3-otg");
-	dotg->reconn_wakelock = wakeup_source_register(dwc->dev,
-				"dwc3-reconnection");
+
 	mutex_init(&dotg->lock);
 
 	init_completion(&dotg->resume_cmpl);
@@ -1075,7 +964,6 @@ void dwc3_exynos_otg_exit(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 	dwc3_ext_otg_exit(dotg);
 
 	wakeup_source_unregister(dotg->wakelock);
-	wakeup_source_unregister(dotg->reconn_wakelock);
 	free_irq(dotg->irq, dotg);
 	dotg->otg.state = OTG_STATE_UNDEFINED;
 	kfree(dotg);

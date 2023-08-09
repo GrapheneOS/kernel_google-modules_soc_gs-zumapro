@@ -104,6 +104,9 @@ static inline void task_tick_uclamp(struct rq *rq, struct task_struct *curr)
 	/* Reset clamp idle holding when there is one RUNNABLE task */
 	if (reset_idle_flag && rq->uclamp_flags & UCLAMP_FLAG_IDLE)
 		rq->uclamp_flags &= ~UCLAMP_FLAG_IDLE;
+
+	/* Check if an RT task needs to move to a better fitting CPU */
+	check_migrate_rt_task(rq, rq->curr);
 }
 #else
 static inline void task_tick_uclamp(struct rq *rq, struct task_struct *curr) {}

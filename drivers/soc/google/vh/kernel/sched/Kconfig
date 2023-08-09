@@ -28,7 +28,7 @@ config VH_HIGH_CAPACITY_CPU
 config VH_PREEMPTIRQ_TRACEPOINTS
 	tristate "Vendor hooks for long preemptirq trace points"
 	depends on VH_SCHED
-	default m
+	default n
 
 config UCLAMP_STATS
 	bool "Uclamp stats"
