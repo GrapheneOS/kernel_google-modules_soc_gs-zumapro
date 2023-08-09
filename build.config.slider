@@ -41,7 +41,7 @@ KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
 EXT_MODULES+="
 private/google-modules/bms/misc
 private/google-modules/soc/gs
-private/google-modules/display_legacy
+private/google-modules/display
 private/google-modules/wlan/bcmdhd4389
 private/google-modules/gpu/mali_pixel
 private/google-modules/gpu/mali_kbase
