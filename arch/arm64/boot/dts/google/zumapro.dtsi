@@ -16,6 +16,7 @@
 #include "zumapro-pm-domains.dtsi"
 #include "zumapro-cpu.dtsi"
 #include "zumapro-pinctrl.dtsi"
+#include "zumapro-s2mpu.dtsi"
 #include "zumapro-usi.dtsi"
 #include "zumapro-usb.dtsi"
 #include "gs101-dma-heap.dtsi"
