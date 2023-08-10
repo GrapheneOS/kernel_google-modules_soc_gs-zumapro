@@ -31,12 +31,16 @@
 			reg = <0x0 0x90000000 0x0003A000>;
 		};
 
-		/*
 		gsa_reserved_protected: gsa@0x90200000 {
 			reg = <0x0 0x90200000 0x400000>;
 			no-map;
 		};
 
+		gsa_reserved_log: gsa@0x905FF000 {
+			reg = <0x0 0x905FF000 0x1000>;
+			no-map;
+		};
+		/*
 		gxp_fw_reserved: gxp_fw@91000000 {
 			reg = <0x0 0x91000000 0x00300000>;
 			no-map;
