@@ -284,6 +284,74 @@
 		reboot-cmd-offset = <0x0810>;
 		force-warm-reboot-on-thermal-shutdown;
 	};
+	/* DMA */
+	amba: amba {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		compatible = "arm,amba-bus";
+		interrupt-parent = <&gic>;
+		ranges;
+		pdma0: pdma0@10110000 {
+			compatible = "arm,pl330", "arm,primecell";
+			reg = <0x0 0x10110000 0x1000>;
+			interrupts = <GIC_SPI IRQ_PDMA0_MISC IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ext_200m>;
+			clock-names = "apb_pclk";
+			#dma-cells = <1>;
+			#dma-channels = <8>;
+			#dma-requests = <32>;
+			#dma-multi-irq = <1>;
+			dma-arwrapper = <0x10114400>,
+					<0x10114420>,
+					<0x10114440>,
+					<0x10114460>,
+					<0x10114480>,
+					<0x101144A0>,
+					<0x101144C0>,
+					<0x101144E0>;
+			dma-awwrapper = <0x10114404>,
+					<0x10114424>,
+					<0x10114444>,
+					<0x10114464>,
+					<0x10114484>,
+					<0x101144A4>,
+					<0x101144C4>,
+					<0x101144E4>;
+			dma-instwrapper = <0x10114500>;
+			dma-mask-bit = <36>;
+			coherent-mask-bit = <36>;
+		};
+		pdma1: pdma1@10130000 {
+			compatible = "arm,pl330", "arm,primecell";
+			reg = <0x0 0x10130000 0x1000>;
+			interrupts = <GIC_SPI IRQ_PDMA1_MISC IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ext_200m>;
+			clock-names = "apb_pclk";
+			#dma-cells = <1>;
+			#dma-channels = <8>;
+			#dma-requests = <32>;
+			#dma-multi-irq = <1>;
+			dma-arwrapper = <0x10134400>,
+					<0x10134420>,
+					<0x10134440>,
+					<0x10134460>,
+					<0x10134480>,
+					<0x101344A0>,
+					<0x101344C0>,
+					<0x101344E0>;
+			dma-awwrapper = <0x10134404>,
+					<0x10134424>,
+					<0x10134444>,
+					<0x10134464>,
+					<0x10134484>,
+					<0x101344A4>,
+					<0x101344C4>,
+					<0x101344E4>;
+			dma-instwrapper = <0x10134500>;
+			dma-mask-bit = <36>;
+			coherent-mask-bit = <36>;
+		};
+	};
 
 	/* GPIO_CUSTOM_ALIVE */
 	pinctrl_1: pinctrl@15060000 {
