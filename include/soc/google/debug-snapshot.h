@@ -42,6 +42,7 @@ extern unsigned long dbg_snapshot_get_last_pc(unsigned int cpu);
 extern unsigned long dbg_snapshot_get_last_pc_paddr(void);
 extern unsigned int dbg_snapshot_get_slcdump_base(void);
 extern unsigned int dbg_snapshot_get_pre_slcdump_base(void);
+extern unsigned int dbg_snapshot_get_max_core_num(void);
 
 /* debug-snapshot-dpm functions */
 extern bool dbg_snapshot_get_dpm_status(void);
@@ -186,6 +187,7 @@ static inline void dbg_snapshot_spin_func(void)
 #define dbg_snapshot_get_last_pc_paddr		(0)
 #define dbg_snapshot_get_slcdump_base		(0)
 #define dbg_snapshot_get_pre_slcdump_base	(0)
+#define dbg_snapshot_get_max_core_num		(0)
 
 #define dbg_snapshot_get_dpm_status() 		(0)
 #define dbg_snapshot_qd_add_region(a, b)	(-1)
@@ -366,5 +368,15 @@ struct dbg_snapshot_helper_ops {
 */
 #define ARM_CPU_PART_MAKALU		0xD4D
 #define ARM_CPU_PART_MAKALU_ELP		0xD4E
+
+#define DSS_NR_CPUS_ZUMA		(9)
+#define DSS_NR_CPUS_OTHERS		(8)
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+// ZUMA and ZUMAPRO: max(DSS_NR_CPUS_ZUMA, DSS_NR_CPUS_OTHERS)
+#define DSS_NR_CPUS			DSS_NR_CPUS_ZUMA
+#else
+// GS101 and GS201
+#define DSS_NR_CPUS			DSS_NR_CPUS_OTHERS
+#endif
 
 #endif

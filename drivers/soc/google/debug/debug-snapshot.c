@@ -353,6 +353,15 @@ unsigned int dbg_snapshot_get_pre_slcdump_base(void)
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_get_pre_slcdump_base);
 
+unsigned int dbg_snapshot_get_max_core_num(void)
+{
+	if (nr_cpu_ids > DSS_NR_CPUS)
+		pr_err("unexpected nr_cpu_ids(%u) or DSS_NR_CPUS (%u)\n", nr_cpu_ids, DSS_NR_CPUS);
+
+	return min(nr_cpu_ids, (unsigned int)DSS_NR_CPUS);
+}
+EXPORT_SYMBOL_GPL(dbg_snapshot_get_max_core_num);
+
 static void dbg_snapshot_init_desc(struct device *dev)
 {
 	/* initialize dss_desc */

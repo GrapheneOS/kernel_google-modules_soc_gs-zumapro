@@ -19,7 +19,6 @@
 #include <soc/google/exynos-itmon.h>
 #include <soc/google/debug-snapshot.h>
 
-#define DSS_NR_CPUS (0x9)
 /* #define MULTI_IRQ_SUPPORT_ITMON */
 #define DBG_CTL				(0x1800)
 #define ERR_LOG_STAT			(0x1804)
@@ -1167,7 +1166,7 @@ static int itmon_parse_cpuinfo_by_name(struct itmon_dev *itmon,
 			     strlen(itmon_cpu_node_string[i]))) {
 			if (userbit & BIT(0))
 				el2 = 1;
-			if (DSS_NR_CPUS > 8) {
+			if (nr_cpu_ids > 8) {
 				if (!(userbit & BIT(1)))
 					strong = 1;
 				core_num = ((userbit & (0xF << 2)) >> 2);

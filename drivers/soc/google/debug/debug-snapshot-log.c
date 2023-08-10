@@ -634,9 +634,10 @@ static void dbg_snapshot_print_last_cpuidle(int cpu)
 static void dbg_snapshot_print_lastinfo(void)
 {
 	int cpu;
+	unsigned int nr_cpu = dbg_snapshot_get_max_core_num();
 
 	pr_info("<last info>\n");
-	for (cpu = 0; cpu < DSS_NR_CPUS; cpu++) {
+	for (cpu = 0; cpu < nr_cpu; cpu++) {
 		pr_info("CPU ID: %d ----------------------------------\n", cpu);
 		dbg_snapshot_print_last_task(cpu);
 		dbg_snapshot_print_last_work(cpu);
