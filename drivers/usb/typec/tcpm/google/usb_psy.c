@@ -389,8 +389,9 @@ static int usb_psy_data_get_prop(struct power_supply *psy,
 		 * Report the voted value to reflect TA capability when
 		 * expedite_connect_status isn't set.
 		 */
-		val->intval = usb->expedite_connect_status ? CDP_DCP_ICL_UA :
-			usb->current_max_cache;
+		val->intval = usb->expedite_connect_status ?
+				max(CDP_DCP_ICL_UA, usb->current_max_cache) :
+				usb->current_max_cache;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		/* Report in uv */
