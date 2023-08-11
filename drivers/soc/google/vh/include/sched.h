@@ -41,6 +41,7 @@ enum vendor_group {
 };
 
 struct vendor_binder_task_struct {
+	bool uclamp_fork_reset;
 	bool prefer_idle;
 	bool active;
 };
