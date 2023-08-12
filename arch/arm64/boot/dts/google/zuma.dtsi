@@ -1247,6 +1247,7 @@
 			devfreq_domain_name = "DSU";
 			pm_qos_class = <PM_QOS_DSU_THROUGHPUT>;
 			pm_qos_class_max = <PM_QOS_DSU_THROUGHPUT_MAX>;
+			max-freq = <1800000>;
 			dm-index = <DM_DSU>;
 			clock-names = "DEVFREQ";
 			polling_ms = <10>;
