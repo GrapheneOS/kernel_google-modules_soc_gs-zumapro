@@ -222,11 +222,11 @@ static u64 acpm_to_kernel_ts(u64 acpm_ts)
 static bool get_bulk_mode_curr_state_buffer(void __iomem *base,
 					    struct gov_trace_data_struct *bulk_trace_buffer)
 {
-	int offset = 0;
+	int offset = offsetof(struct gov_trace_data_struct, buffered_curr_state[0]);
 
-	if(ACPM_BUF_VER > 0) {
+	if(ACPM_BUF_VER == 0) {
 		/* offset for u64 buffer_version field */
-		offset = ACPM_SM_BUFFER_VERSION_SIZE;
+		offset -= ACPM_SM_BUFFER_VERSION_SIZE;
 	}
 
 	if (base) {
@@ -242,13 +242,11 @@ static bool get_bulk_mode_curr_state_buffer(void __iomem *base,
 static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_state *curr_state)
 {
 	if (base) {
-		int cdev_state_offset = 0;
-		if (ACPM_BUF_VER > 0) {
+		int cdev_state_offset = offsetof(struct gov_trace_data_struct, curr_state[id]);
+		if (ACPM_BUF_VER == 0) {
 			/* offset for u64 buffer_version field */
-			cdev_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
+			cdev_state_offset -= ACPM_SM_BUFFER_VERSION_SIZE;
 		}
-		cdev_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN +
-				    sizeof(struct curr_state) * id;
 		memcpy_fromio(curr_state, base + cdev_state_offset,
 			      sizeof(struct curr_state));
 		return true;
@@ -260,12 +258,11 @@ static bool get_curr_state_from_acpm(void __iomem *base, int id, struct curr_sta
 static bool get_all_curr_state_from_acpm(void __iomem *base, struct curr_state *curr_state[])
 {
 	if (base) {
-		int cdev_state_offset = 0;
-		if (ACPM_BUF_VER > 0) {
+		int cdev_state_offset = offsetof(struct gov_trace_data_struct, curr_state[0]);
+		if (ACPM_BUF_VER == 0) {
 			/* offset for u64 buffer_version field */
-			cdev_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
+			cdev_state_offset -= ACPM_SM_BUFFER_VERSION_SIZE;
 		}
-		cdev_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN;
 		memcpy_fromio(*curr_state, base + cdev_state_offset,
 			      sizeof(struct curr_state) * NR_TZ);
 		return true;
@@ -417,9 +414,7 @@ static int thermal_metrics_reset_stats(tr_handle instance)
 static bool get_thermal_state_from_acpm(void __iomem *base, struct thermal_state *thermal_state)
 {
 	if (base) {
-		int thermal_state_offset = ACPM_SM_BUFFER_VERSION_SIZE;
-		thermal_state_offset += sizeof(struct buffered_curr_state) * BULK_TRACE_DATA_LEN +
-					sizeof(struct curr_state) * NR_TZ;
+		int thermal_state_offset = offsetof(struct gov_trace_data_struct, thermal_state);
 		memcpy_fromio(thermal_state, base + thermal_state_offset,
 			      sizeof(struct thermal_state));
 		return true;
@@ -2003,7 +1998,7 @@ static int gs_map_dt_data(struct platform_device *pdev)
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 	struct resource res;
 	const char *tmu_name, *buf;
-	int ret;
+	int ret, i;
 
 	if (!data || !pdev->dev.of_node)
 		return -ENODEV;
@@ -2290,6 +2285,22 @@ static int gs_map_dt_data(struct platform_device *pdev)
 		dev_err(&pdev->dev, "No input control_temp_step\n");
 	}
 
+	data->is_offset_enabled = false;
+	ret = of_property_read_variable_u32_array(pdev->dev.of_node,
+						  "junction_offset",
+						  (u32 *)data->junction_offset,
+						  TRIP_LEVEL_NUM,
+						  TRIP_LEVEL_NUM);
+	if (ret < 0) {
+		dev_warn(&pdev->dev, "Invalid junction_offset table, ret=%d\n",
+			 ret);
+	} else {
+		for (i = 0; i < TRIP_LEVEL_NUM; i++) {
+			dev_dbg(&pdev->dev, "junction_offset[%d] = %d\n",
+				i, data->junction_offset[i]);
+		}
+	}
+
 	data->use_hardlimit_pid = false;
 
 	data->acpm_gov_params.qword = 0;
@@ -2491,6 +2502,141 @@ cpu_hw_throttling_trigger_temp_store(struct device *dev, struct device_attribute
 	mutex_unlock(&data->lock);
 
 	return count;
+}
+
+static ssize_t offset_enabled_show(struct device *dev,
+				   struct device_attribute *devattr,
+				   char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int ret;
+
+	mutex_lock(&data->offset_lock);
+	ret = sysfs_emit(buf, "%d\n", !!data->is_offset_enabled);
+	mutex_unlock(&data->offset_lock);
+
+	return ret;
+}
+
+static ssize_t offset_enabled_store(struct device *dev,
+				    struct device_attribute *devattr,
+				    const char *buf,
+				    size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	struct thermal_zone_device *tz = data->tzd;
+	int trip_temp, new_trip_temp, i, ret = 0;
+	bool offset_enabled;
+
+	if (kstrtobool(buf, &offset_enabled))
+		return -EINVAL;
+
+	mutex_lock(&data->offset_lock);
+	if (data->is_offset_enabled == offset_enabled)
+		goto unlock;
+
+	data->is_offset_enabled = offset_enabled;
+
+	for (i = 0; i < TRIP_LEVEL_NUM; i++) {
+		if (data->junction_offset[i] == 0)
+			continue;
+
+		ret = tz->ops->get_trip_temp(tz, i, &trip_temp);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"Failed to get trip_temp_%d on %s\n",
+				i, tz->type);
+			goto unlock;
+		}
+
+		if (data->is_offset_enabled) {
+			new_trip_temp = trip_temp + data->junction_offset[i];
+		} else {
+			new_trip_temp = trip_temp - data->junction_offset[i];
+		}
+		dev_dbg(&pdev->dev, "trip_temp_%d change from %d to %d\n",
+			i, trip_temp, new_trip_temp);
+		ret = tz->ops->set_trip_temp(tz, i, new_trip_temp);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"Failed to set trip_temp_%d on %s\n",
+				i, tz->type);
+			goto unlock;
+		}
+	}
+
+unlock:
+	mutex_unlock(&data->offset_lock);
+
+	return count;
+}
+
+static ssize_t junction_offset_show(struct device *dev,
+				    struct device_attribute *devattr,
+				    char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	int i, len = 0;
+
+	mutex_lock(&data->offset_lock);
+	for (i = 0; i < TRIP_LEVEL_NUM; i++)
+		len += sysfs_emit_at(buf, len, "%d ", data->junction_offset[i]);
+	mutex_unlock(&data->offset_lock);
+
+	len += sysfs_emit_at(buf, len, "\n");
+
+	return len;
+}
+
+static ssize_t junction_offset_store(struct device *dev,
+				    struct device_attribute *devattr,
+				    const char *buf,
+				    size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gs_tmu_data *data = platform_get_drvdata(pdev);
+	char **argv;
+	int argc, i, val, ret = 0;
+
+	argv = argv_split(GFP_KERNEL, buf, &argc);
+	if (!argv) {
+		ret = -ENOMEM;
+		dev_err(&pdev->dev, "memory allocation error, ret=%d", ret);
+		goto out;
+	}
+
+	if (argc != TRIP_LEVEL_NUM) {
+		ret = -EINVAL;
+		dev_err(&pdev->dev, "invalid args count, ret=%d, "
+			"argc=%d, TRIP_LEVEL_NUM=%d",
+			ret, argc, TRIP_LEVEL_NUM);
+	} else {
+		mutex_lock(&data->offset_lock);
+		for (i = 0; i < TRIP_LEVEL_NUM; i++) {
+			ret = kstrtos32(argv[i], 10, &val);
+			if (ret) {
+				dev_err(&pdev->dev,
+					"parse junction_offset error ,ret=%d",
+					ret);
+				mutex_unlock(&data->offset_lock);
+				goto free_arg_out;
+			}
+			dev_dbg(&pdev->dev, "Update junction_offset[%d] "
+				"from %d to %d\n",
+				i, data->junction_offset[i], val);
+			data->junction_offset[i] = val;
+		}
+		mutex_unlock(&data->offset_lock);
+                ret = count;
+	}
+
+free_arg_out:
+	argv_free(argv);
+out:
+	return ret;
 }
 
 static ssize_t control_temp_step_show(struct device *dev, struct device_attribute *devattr,
@@ -2827,6 +2973,11 @@ static int param_acpm_gov_turn_on_set(const char *val, const struct kernel_param
 			      sizeof(acpm_gov_common.buffer_version));
 		if ((acpm_gov_common.buffer_version >> 32) != ACPM_SM_BUFFER_VERSION_UPPER_32b) {
 			pr_err("GOV: shared memory table version mismatch\n");
+			return -EINVAL;
+		}
+
+		if (acpm_gov_common.sm_size != sizeof(struct gov_trace_data_struct)) {
+			pr_err("GOV: shared memory table size mismatch\n");
 			return -EINVAL;
 		}
 	}
@@ -4049,6 +4200,8 @@ static DEVICE_ATTR_RW(fvp_get_target_freq);
 static DEVICE_ATTR_RW(acpm_gov_irq_stepwise_gain);
 static DEVICE_ATTR_RW(acpm_gov_timer_stepwise_gain);
 static DEVICE_ATTR_RW(control_temp_step);
+static DEVICE_ATTR_RW(offset_enabled);
+static DEVICE_ATTR_RW(junction_offset);
 static DEVICE_ATTR_RW(thermal_pressure_time_window);
 static DEVICE_ATTR_RW(acpm_temp_state_table);
 static DEVICE_ATTR_RW(mpmm_clr_throttle_level);
@@ -4093,6 +4246,8 @@ static struct attribute *gs_tmu_attrs[] = {
 	&dev_attr_acpm_gov_irq_stepwise_gain.attr,
 	&dev_attr_acpm_gov_timer_stepwise_gain.attr,
 	&dev_attr_control_temp_step.attr,
+	&dev_attr_offset_enabled.attr,
+	&dev_attr_junction_offset.attr,
 	&dev_attr_thermal_pressure_time_window.attr,
 	&dev_attr_acpm_temp_state_table.attr,
 	&dev_attr_mpmm_clr_throttle_level.attr,
@@ -5091,6 +5246,7 @@ static int gs_tmu_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, data);
 	mutex_init(&data->lock);
+	mutex_init(&data->offset_lock);
 
 	ret = gs_map_dt_data(pdev);
 	if (ret)
@@ -5130,7 +5286,13 @@ static int gs_tmu_probe(struct platform_device *pdev)
 					pr_err("GOV: shared memory table version mismatch\n");
 					goto err_dtm_dev_list;
 				}
+
+				if (acpm_gov_common.sm_size != sizeof(struct gov_trace_data_struct)) {
+					pr_err("GOV: shared memory table size mismatch\n");
+					goto err_dtm_dev_list;
+				}
 			}
+
 			if (exynos_acpm_tmu_cb_init(&cb))
 				goto err_dtm_dev_list;
 

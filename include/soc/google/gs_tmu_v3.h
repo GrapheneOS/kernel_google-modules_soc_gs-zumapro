@@ -202,6 +202,7 @@ struct gs_tmu_data {
 	struct kthread_work cpu_hw_throttle_work;
 	struct kthread_delayed_work cpu_hw_throttle_init_work;
 	struct mutex lock;			/* lock to protect gs tmu */
+	struct mutex offset_lock;	/* lock to protect junction_offset */
 	struct thermal_zone_device *tzd;
 	struct bcl_device *bcl_dev;
 	unsigned int ntrip;
@@ -240,6 +241,8 @@ struct gs_tmu_data {
 	u32 temp_state_lut_len;
 	struct gs_temp_lut_st *temp_state_lut;
 	bool use_hardlimit_pid;
+	bool is_offset_enabled;
+	int junction_offset[TRIP_LEVEL_NUM];
 };
 
 enum throttling_stats_type {
@@ -434,8 +437,10 @@ struct buffered_curr_state {
 };
 
 struct gov_trace_data_struct {
+	u64 buffer_version;
 	struct buffered_curr_state buffered_curr_state[BULK_TRACE_DATA_LEN];
 	struct curr_state curr_state[NR_TZ];
+	struct thermal_state thermal_state;
 };
 
 #define SYSREG_CPUCL0_BASE (0x29c20000)
