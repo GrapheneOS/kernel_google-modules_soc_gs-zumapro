@@ -91,6 +91,10 @@ void check_migrate_rt_task(struct rq *rq, struct task_struct *p)
 	if (!p->prio || !rt_task(p))
 		return;
 
+	raw_spin_rq_lock(rq);
+	if (task_on_rq_migrating(p))
+		goto unlock;
+
 	rt_task_fits_capacity(p, cpu_of(rq), &fits, &fits_orig);
 
 	/*
@@ -106,9 +110,11 @@ void check_migrate_rt_task(struct rq *rq, struct task_struct *p)
 		if (push_task) {
 			raw_spin_rq_unlock(rq);
 			stop_one_cpu_nowait(cpu_of(rq), push_cpu_stop, push_task, &rq->push_work);
-			raw_spin_rq_lock(rq);
+			return;
 		}
 	}
+unlock:
+	raw_spin_rq_unlock(rq);
 }
 
 static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_mask,
