@@ -4,30 +4,13 @@
  *
  * Copyright 2023 Google LLC.
  */
+#include "zuma-usb.dtsi"
+&udc {
+	/delete-property/  power-domains;
+	/delete-property/  s2mpus;
+};
 
-/ {
-	sysreg_hsi0: sysreg_hsi0@11020000 {
-		compatible = "samsung,sysreg-hsi0", "syscon";
-		reg = <0x0 0x11020000 0x10000>;
-	};
-
-	eusb_repeater_tune:hs_tune_eusb {
-                status = "disabled";
-	};
-
-	usb_hs_tune:hs_tune_phy {
-		status = "disabled";
-	};
-	usb_ss_tune:ss_tune {
-		status = "disabled";
-	};
-	udc: usb@11210000 {
-		compatible = "samsung,exynos9-dwusb";
-		status = "disabled";
-
-	};
-	usbdrd_phy0: phy@11100000 {
-		compatible = "samsung,exynos-usbdrd-phy";
-		status = "disabled";
-	};
+&usbdrd_phy0 {
+	/delete-property/  power-domains;
+	/delete-property/  s2mpus;
 };
