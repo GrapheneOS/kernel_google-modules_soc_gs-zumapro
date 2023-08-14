@@ -1201,6 +1201,7 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
+
 	if (!p) {
 		rcu_read_unlock();
 		return -ESRCH;
@@ -1214,9 +1215,10 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 		return -EACCES;
 	}
 
+	rcu_read_unlock();
 	vp = get_vendor_task_struct(p);
-
 	rq = task_rq_lock(p, &rf);
+
 	if (task_on_rq_queued(p)) {
 		vrq = get_vendor_rq_struct(rq);
 
@@ -1238,10 +1240,9 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 		if (vendor_sched_boost_adpf_prio)
 			update_adpf_prio(p, vp, val);
 	}
-	task_rq_unlock(rq, p, &rf);
 
+	task_rq_unlock(rq, p, &rf);
 	put_task_struct(p);
-	rcu_read_unlock();
 
 	return 0;
 }
