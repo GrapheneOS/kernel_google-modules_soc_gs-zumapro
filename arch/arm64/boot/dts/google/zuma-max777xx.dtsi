@@ -112,6 +112,9 @@ max77779_chg:max77779chrg@0x69 {
 
 	interrupt-parent = <&max77779_pmic_irq>;
 	interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+	interrupt-controller;
+	#interrupt-cells = <2>;
 };
 
 max77779_sp:max77779sp@60 {
