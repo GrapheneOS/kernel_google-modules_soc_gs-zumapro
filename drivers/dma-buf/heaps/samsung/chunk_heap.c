@@ -191,6 +191,7 @@ static struct dma_buf *chunk_heap_allocate(struct dma_heap *heap, unsigned long 
 		buffer->priv = chunk_heap_protect(buffer, chunk_size, pages, nr_chunks);
 		if (IS_ERR(buffer->priv)) {
 			ret = PTR_ERR(buffer->priv);
+			buffer->priv = NULL;
 			goto err_prot;
 		}
 	}
