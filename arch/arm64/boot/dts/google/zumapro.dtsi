@@ -12,11 +12,14 @@
 #include "zumapro-sysmmu.dtsi"
 #include "zumapro-dma-heap.dtsi"
 #include "zumapro-rmem.dtsi"
+#include "gs101-trusty.dtsi"
 #include "zumapro-pm-domains.dtsi"
 #include "zumapro-cpu.dtsi"
 #include "zumapro-pinctrl.dtsi"
 #include "zumapro-usi.dtsi"
 #include "zumapro-usb.dtsi"
+#include "gs101-dma-heap.dtsi"
+#include "gs101-faceauth-dma-heap.dtsi"
 
 / {
 	compatible = "google,zumapro";
