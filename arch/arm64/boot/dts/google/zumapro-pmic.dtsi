@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * zuma pmic device tree source
+ *
+ * Copyright 2023 Google LLC.
+ *
+ */
+
+#include "zuma-pmic.dtsi"
+
+&s2mpg14mfd {
+		init_time,year = <123>;
+		init_time,wday = <0>;
+
+		/* PCTRLSEL(VGPIO) 1~11 (CONTROL_SEL#) */
+		sel_vgpio = <0xC3 0x1D 0xE3 0x0C 0x63 0xD6
+			0xE1 0x47 0x4D 0x96 0x09>;
+};
+
