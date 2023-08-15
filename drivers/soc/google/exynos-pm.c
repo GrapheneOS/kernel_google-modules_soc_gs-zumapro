@@ -231,8 +231,8 @@ static void exynos_pm_syscore_resume(void)
 	pm_info->apdn_cnt = acpm_get_apsocdn_count();
 	pm_dbg->mifdn_early_wakeup_cnt = acpm_get_early_wakeup_count();
 
-	pr_info("%s post mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
-		EXYNOS_PM_PREFIX, pm_dbg->mifdn_cnt,
+	pr_info("%s frc:%llu post mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
+		EXYNOS_PM_PREFIX, get_frc_time(), pm_dbg->mifdn_cnt,
 		pm_info->apdn_cnt, pm_dbg->mifdn_early_wakeup_cnt);
 
 	if (pm_info->apdn_cnt == pm_info->apdn_cnt_prev) {
