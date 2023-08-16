@@ -16,6 +16,7 @@
 				compatible = "google,google-bcl";
 				#thermal-sensor-cells = <1>;
 				google,charger = <&max77759_chg>;
+				google,pmic = <&max77759_chg>;
 				google,power-supply = <&max77759_fg>;
 				google,main-power = <&s2mpg12mfd>;
 				google,sub-power = <&s2mpg13mfd>;
@@ -30,9 +31,14 @@
 				cpu2_clkdivstep = <0x1>;
 				cpu1_clkdivstep = <0x1>;
 				cpu0_clkdivstep = <0x1>;
+				batoilo_lower = <3800>;
+				batoilo_upper = <6800>;
 				odpm_ratio = <3>;
 				gpios = <&gpa5 5 0>,		/* VDROOP1 */
 					<&gpa5 6 0>;		/* VDROOP2 */
+				cpu0_cluster = <0>;
+				cpu1_cluster = <4>;
+				cpu2_cluster = <6>;
 			};
 		};
 	};

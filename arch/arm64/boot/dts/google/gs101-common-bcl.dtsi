@@ -16,6 +16,7 @@
 				compatible = "google,google-bcl";
 				#thermal-sensor-cells = <1>;
 				google,charger = <&max77759_chg>;
+				google,pmic = <&max77759_chg>;
 				google,power-supply = <&max77759_fg>;
 				google,main-power = <&s2mpg10mfd>;
 				google,sub-power = <&s2mpg11mfd>;
@@ -30,8 +31,13 @@
 				cpu2_clkdivstep = <0x801>;
 				cpu1_clkdivstep = <0x0>;
 				cpu0_clkdivstep = <0x1>;
+				batoilo_lower = <3800>;
+				batoilo_upper = <6800>;
 				gpios = <&gpa5 5 0>,		/* VDROOP1 */
 					<&gpa5 6 0>;		/* VDROOP2 */
+				cpu0_cluster = <0>;
+				cpu1_cluster = <4>;
+				cpu2_cluster = <6>;
 			};
 		};
 	};
@@ -39,16 +45,15 @@
 
 /* Thermal Zones */
 &thermal_zones {
-	soc {
-		zone_name  = "BATT_SOC_MOD";
-		polling-delay-passive = <0>;
+	batoilo {
+		zone_name  = "BATOILO";
+		polling-delay-passive = <1000>;
 		polling-delay = <0>;
-		thermal-sensors = <&google_mitigation 9>;
-
+		thermal-sensors = <&google_mitigation 12>;
 		trips {
-			soc_trip:soc-trip {
-				temperature = <80>;
-				hysteresis = <0>;
+			batoilo: batoilo{
+				temperature = <5000>;
+				hysteresis = <100>;
 				type = "passive";
 			};
 		};
@@ -82,14 +87,16 @@
 		};
 	};
 
-	batoilo {
-		zone_name  = "BATOILO";
-		polling-delay-passive = <0>;
+	battery_cycle {
+		zone_name  = "BATTERY_CYCLE";
+		polling-delay-passive = <100>;
 		polling-delay = <0>;
-		thermal-sensors = <&google_mitigation 12>;
+		thermal-sensors = <&google_battery>;
+
+		/* TODO(b/251537418): fix this trips entry since it's required */
 		trips {
-			batoilo: batoilo{
-				temperature = <5000>;
+			fake_trip:dud0 {
+				temperature = <9999>;
 				hysteresis = <100>;
 				type = "passive";
 			};
@@ -138,17 +145,16 @@
 		};
 	};
 
-	battery_cycle {
-		zone_name  = "BATTERY_CYCLE";
-		polling-delay-passive = <100>;
+	soc {
+		zone_name  = "BATT_SOC_MOD";
+		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-sensors = <&google_battery>;
+		thermal-sensors = <&google_mitigation 9>;
 
-		/* TODO(b/251537418): fix this trips entry since it's required */
 		trips {
-			fake_trip:dud0 {
-				temperature = <9999>;
-				hysteresis = <100>;
+			soc_trip:soc-trip {
+				temperature = <80>;
+				hysteresis = <0>;
 				type = "passive";
 			};
 		};
