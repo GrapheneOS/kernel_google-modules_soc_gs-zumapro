@@ -78,36 +78,42 @@ struct s2mpg14_platform_data {
 	unsigned int b2_ocp_warn_cnt;
 	unsigned int b2_ocp_warn_dvs_mask;
 	unsigned int b2_ocp_warn_lvl;
+	unsigned int b2_ocp_warn_debounce_clk;
 
 	int b3_ocp_warn_pin;
 	unsigned int b3_ocp_warn_en;
 	unsigned int b3_ocp_warn_cnt;
 	unsigned int b3_ocp_warn_dvs_mask;
 	unsigned int b3_ocp_warn_lvl;
+	unsigned int b3_ocp_warn_debounce_clk;
 
 	int b7_ocp_warn_pin;
 	unsigned int b7_ocp_warn_en;
 	unsigned int b7_ocp_warn_cnt;
 	unsigned int b7_ocp_warn_dvs_mask;
 	unsigned int b7_ocp_warn_lvl;
+	unsigned int b7_ocp_warn_debounce_clk;
 
 	int b2_soft_ocp_warn_pin;
 	unsigned int b2_soft_ocp_warn_en;
 	unsigned int b2_soft_ocp_warn_cnt;
 	unsigned int b2_soft_ocp_warn_dvs_mask;
 	unsigned int b2_soft_ocp_warn_lvl;
+	unsigned int b2_soft_ocp_warn_debounce_clk;
 
 	int b3_soft_ocp_warn_pin;
 	unsigned int b3_soft_ocp_warn_en;
 	unsigned int b3_soft_ocp_warn_cnt;
 	unsigned int b3_soft_ocp_warn_dvs_mask;
 	unsigned int b3_soft_ocp_warn_lvl;
+	unsigned int b3_soft_ocp_warn_debounce_clk;
 
 	int b7_soft_ocp_warn_pin;
 	unsigned int b7_soft_ocp_warn_en;
 	unsigned int b7_soft_ocp_warn_cnt;
 	unsigned int b7_soft_ocp_warn_dvs_mask;
 	unsigned int b7_soft_ocp_warn_lvl;
+	unsigned int b7_soft_ocp_warn_debounce_clk;
 
 	unsigned int buck_ocp_ctrl1;
 	unsigned int buck_ocp_ctrl2;

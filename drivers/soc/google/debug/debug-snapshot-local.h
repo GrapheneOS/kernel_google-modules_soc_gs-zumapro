@@ -19,15 +19,15 @@ struct dbg_snapshot_param {
 
 struct dbg_snapshot_info {
 	size_t size;
-	size_t vaddr;
-	size_t paddr;
+	phys_addr_t vaddr;
+	phys_addr_t paddr;
 	unsigned int enabled;
 };
 
 struct dbg_snapshot_base {
 	size_t size;
-	size_t vaddr;
-	size_t paddr;
+	phys_addr_t vaddr;
+	phys_addr_t paddr;
 	unsigned int enabled;
 	unsigned int version;
 	struct dbg_snapshot_param *param;
