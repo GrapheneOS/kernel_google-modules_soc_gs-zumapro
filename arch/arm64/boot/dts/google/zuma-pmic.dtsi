@@ -983,7 +983,8 @@
 				regulator-name = "S2MPG15_LDO9";
 				regulator-min-microvolt = <725000>;
 				regulator-max-microvolt = <1300000>;
-				regulator-initial-mode = <SEC_OPMODE_OFF>;
+				regulator-always-on;
+				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x29>;
 				schematic-name = "L9S_GNSS_CORE";
 				subsys-name = "GPS";
