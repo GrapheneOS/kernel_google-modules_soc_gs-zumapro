@@ -81,6 +81,8 @@ static int mfc_dec_queue_setup(struct vb2_queue *vq,
 				alloc_devs[i] = dev->device;
 			}
 		}
+		/* Decoder DPB should be read for reference */
+		vq->dma_dir = DMA_BIDIRECTIONAL;
 	} else {
 		mfc_ctx_err("State seems invalid. State = %d, vq->type = %d\n",
 							core_ctx->state, vq->type);

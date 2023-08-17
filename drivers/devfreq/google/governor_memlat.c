@@ -98,11 +98,10 @@ static unsigned long core_to_dev_freq(struct memlat_node *node,
 	if (!map)
 		goto out;
 
-	while (map->core_mhz && map->core_mhz < coref)
+	while (map->core_mhz && map->core_mhz <= coref) {
+		freq = map->target_freq;
 		map++;
-	if (!map->core_mhz)
-		map--;
-	freq = map->target_freq;
+	}
 
 out:
 	pr_debug("freq: %lu -> dev: %lu\n", coref, freq);
@@ -533,10 +532,10 @@ static struct memlat_node *register_common(struct device *dev,
 	if (hw->get_child_of_node) {
 		of_child = hw->get_child_of_node(dev);
 		hw->freq_map = init_core_dev_map(dev, of_child,
-					"core-dev-table");
+					"core-dev-table-v2");
 	} else {
 		hw->freq_map = init_core_dev_map(dev, NULL,
-					"core-dev-table");
+					"core-dev-table-v2");
 	}
 	if (!hw->freq_map) {
 		dev_err(dev, "Couldn't find the core-dev freq table!\n");

@@ -101,7 +101,6 @@
 
 	pixel-suspend-diag {
 		compatible = "google,pixel-suspend-diag";
-		memory-region = <&suspend_diag_log_reserved>;
 	};
 
 	pmu@30000000 {
@@ -415,6 +414,13 @@
 			dbg_trace_addr = <0x1e503010>;
 			dbg_trace_val = <8>;
 		};
+	};
+
+	etr-miu@110D0000 {
+		compatible = "google,gs101-etr-miu";
+		reg = <0x0 0x110D0000 0x100>;
+		tmc_buf_addr = <0x00000010 0x00000000>;
+		tmc_buf_size = <0x10000000>;
 	};
 
 	exynos-adv_tracer {

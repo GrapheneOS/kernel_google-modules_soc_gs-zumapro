@@ -103,6 +103,9 @@ extern void rvh_set_user_nice_pixel_mod(void *data, struct task_struct *p, long 
 					bool *allowed);
 extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
 extern void rvh_prepare_prio_fork_pixel_mod(void *data, struct task_struct *p);
+extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
+					 struct cpumask *lowest_mask,
+					 int ret, int *cpu);
 
 extern struct cpufreq_governor sched_pixel_gov;
 
@@ -364,6 +367,10 @@ static int vh_sched_init(void)
 		return ret;
 
 	ret = register_trace_android_rvh_prepare_prio_fork(rvh_prepare_prio_fork_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_find_lowest_rq(rvh_find_lowest_rq_pixel_mod, NULL);
 	if (ret)
 		return ret;
 

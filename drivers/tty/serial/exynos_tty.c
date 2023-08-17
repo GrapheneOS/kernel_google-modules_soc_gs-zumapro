@@ -60,6 +60,7 @@
 #define DATA_BYTES_PER_LINE     (16)
 
 #include <soc/google/exynos-cpupm.h>
+#include <soc/google/exynos_tty.h>
 
 #define EXYNOS_UART_PORT_LPM			0x5
 
@@ -2495,6 +2496,20 @@ void exynos_serial_fifo_wait(void)
 	}
 }
 EXPORT_SYMBOL_GPL(exynos_serial_fifo_wait);
+
+bool exynos_uart_console_enabled(void)
+{
+	struct exynos_uart_port *ourport;
+	struct uart_port *port;
+
+	list_for_each_entry(ourport, &drvdata_list, node) {
+		port = &ourport->port;
+		if (uart_console_enabled(port))
+			return true;
+	}
+	return false;
+}
+EXPORT_SYMBOL_GPL(exynos_uart_console_enabled);
 
 static int exynos_serial_notifier(struct notifier_block *self,
 				  unsigned long cmd, void *v)

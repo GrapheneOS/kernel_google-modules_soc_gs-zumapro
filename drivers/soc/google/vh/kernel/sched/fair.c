@@ -27,7 +27,7 @@ extern int ___update_load_sum(u64 now, struct sched_avg *sa,
 extern void ___update_load_avg(struct sched_avg *sa, unsigned long load);
 
 static struct vendor_util_group_property ug[UG_MAX];
-static struct vendor_cfs_util vendor_cfs_util[UG_MAX - 1][CPU_NUM];
+static struct vendor_cfs_util vendor_cfs_util[UG_MAX][CPU_NUM];
 #endif
 
 extern int vendor_sched_ug_bg_auto_prio;
@@ -231,7 +231,7 @@ u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 	return slice;
 }
 
-static void set_next_buddy(struct sched_entity *se)
+void set_next_buddy(struct sched_entity *se)
 {
 	if (entity_is_task(se) && unlikely(task_has_idle_policy(task_of(se))))
 		return;
@@ -568,7 +568,7 @@ void init_vendor_group_data(void)
 	for (j = 0; j < CPU_NUM; j++) {
 		rq = cpu_rq(j);
 
-		for (i = 0; i < UG_MAX - 1; i++) {
+		for (i = 0; i < UG_MAX; i++) {
 			raw_spin_lock_init(&vendor_cfs_util[i][j].lock);
 			vendor_cfs_util[i][j].avg.util_avg = 0;
 			vendor_cfs_util[i][j].avg.util_sum = 0;
@@ -579,13 +579,12 @@ void init_vendor_group_data(void)
 		rq_lock_irqsave(rq, &rf);
 		update_rq_clock(rq);
 		last_update_time = rq_clock_pelt(rq);
-		for (i = 0; i < UG_MAX - 1; i++)
+		for (i = 0; i < UG_MAX; i++)
 			vendor_cfs_util[i][j].avg.last_update_time = last_update_time;
 
 		list_for_each_entry(p, &rq->cfs_tasks, se.group_node) {
 			group = get_utilization_group(p, get_vendor_group(p));
-			if (group == UG_FG)
-				continue;
+
 			vendor_cfs_util[group][j].avg.util_avg += READ_ONCE(p->se.avg.util_avg);
 			vendor_cfs_util[group][j].avg.util_sum += READ_ONCE(p->se.avg.util_sum);
 			vendor_cfs_util[group][j].util_est += _task_util_est(p);
@@ -614,39 +613,38 @@ void migrate_vendor_group_util(struct task_struct *p, unsigned int old, unsigned
 	if (old_mapping == UG_BG) {
 		util_avg = min(vendor_cfs_util[old_mapping][cpu].avg.util_avg, p->se.avg.util_avg);
 		util_sum = min(vendor_cfs_util[old_mapping][cpu].avg.util_sum, p->se.avg.util_sum);
-		if (likely(sched_feat(UTIL_EST)))
-			util_est = min(vendor_cfs_util[old_mapping][cpu].util_est,
-				       _task_util_est(p));
+
 	} else {
 		util_avg = p->se.avg.util_avg;
 		util_sum = p->se.avg.util_sum;
-		if (likely(sched_feat(UTIL_EST)))
-			util_est = _task_util_est(p);
 	}
+
+	if (likely(sched_feat(UTIL_EST)))
+		util_est = min(vendor_cfs_util[old_mapping][cpu].util_est, _task_util_est(p));
 
 	//remove util from old group
+	raw_spin_lock_irqsave(&vendor_cfs_util[old_mapping][cpu].lock, flags);
 	if (old_mapping == UG_BG) {
-		raw_spin_lock_irqsave(&vendor_cfs_util[old_mapping][cpu].lock, flags);
 		vendor_cfs_util[old_mapping][cpu].avg.util_avg -= util_avg;
 		vendor_cfs_util[old_mapping][cpu].avg.util_sum -= util_sum;
-		if (likely(sched_feat(UTIL_EST))) {
-			if (p->on_rq)
-				vendor_cfs_util[old_mapping][cpu].util_est -= util_est;
-		}
-		raw_spin_unlock_irqrestore(&vendor_cfs_util[old_mapping][cpu].lock, flags);
 	}
+	if (likely(sched_feat(UTIL_EST))) {
+		if (p->on_rq)
+			vendor_cfs_util[old_mapping][cpu].util_est -= util_est;
+	}
+	raw_spin_unlock_irqrestore(&vendor_cfs_util[old_mapping][cpu].lock, flags);
 
 	//move util to new group
+	raw_spin_lock_irqsave(&vendor_cfs_util[new_mapping][cpu].lock, flags);
 	if (new_mapping == UG_BG) {
-		raw_spin_lock_irqsave(&vendor_cfs_util[new_mapping][cpu].lock, flags);
 		vendor_cfs_util[new_mapping][cpu].avg.util_avg += util_avg;
 		vendor_cfs_util[new_mapping][cpu].avg.util_sum += util_sum;
-		if (likely(sched_feat(UTIL_EST))) {
-			if (p->on_rq)
-				vendor_cfs_util[new_mapping][cpu].util_est += util_est;
-		}
-		raw_spin_unlock_irqrestore(&vendor_cfs_util[new_mapping][cpu].lock, flags);
 	}
+	if (likely(sched_feat(UTIL_EST))) {
+		if (p->on_rq)
+			vendor_cfs_util[new_mapping][cpu].util_est += util_est;
+	}
+	raw_spin_unlock_irqrestore(&vendor_cfs_util[new_mapping][cpu].lock, flags);
 }
 
 /* This function hooks to update_load_avg */
@@ -799,8 +797,8 @@ static inline unsigned long cpu_vendor_group_util(int cpu, bool with, struct tas
 
 static inline unsigned long cpu_vendor_group_util_est(int cpu, bool with, struct task_struct *p)
 {
-	int group = -1;
-	unsigned long fg_group_util_est, util_est;
+	int i, group = -1;
+	unsigned long group_util_est, util_est = 0;
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 	unsigned long scale_cpu = arch_scale_cpu_capacity(cpu);;
 #endif
@@ -808,42 +806,26 @@ static inline unsigned long cpu_vendor_group_util_est(int cpu, bool with, struct
 	if (p)
 		group = get_utilization_group(p, get_vendor_group(p));
 
-	// Get bg group util_est first.
-	util_est = vendor_cfs_util[UG_BG][cpu].util_est;
+	for (i = 0; i < UG_MAX; i++) {
+		group_util_est = vendor_cfs_util[i][cpu].util_est;
 
-	if (group == UG_BG) {
-		if (with) {
-			util_est += _task_util_est(p);
-		} else {
-			lsub_positive(&util_est, _task_util_est(p));
+		if (group == i) {
+			if (with) {
+				group_util_est += _task_util_est(p);
+			} else {
+				lsub_positive(&group_util_est, _task_util_est(p));
+			}
 		}
-	}
 
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
-	util_est = min_t(unsigned long, util_est, cap_scale(ug[UG_BG].group_throttle, scale_cpu));
+		group_util_est = min_t(unsigned long, group_util_est,
+				       cap_scale(ug[i].group_throttle, scale_cpu));
 #endif
-	util_est = min_t(unsigned long, util_est, ug[UG_BG].uc_req[UCLAMP_MAX].value);
+		group_util_est = min_t(unsigned long, group_util_est,
+				       ug[i].uc_req[UCLAMP_MAX].value);
 
-	// For fg group, we use root util_est - bg group util_est.
-	fg_group_util_est = cpu_rq(cpu)->cfs.avg.util_est.enqueued;
-	lsub_positive(&fg_group_util_est, vendor_cfs_util[UG_BG][cpu].util_est);
-
-	if (group == UG_FG) {
-		if (with) {
-			fg_group_util_est += _task_util_est(p);
-		} else {
-			lsub_positive(&fg_group_util_est, _task_util_est(p));
-		}
+		util_est += group_util_est;
 	}
-
-#if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
-		fg_group_util_est = min_t(unsigned long, fg_group_util_est,
-					  cap_scale(ug[UG_FG].group_throttle, scale_cpu));
-#endif
-		fg_group_util_est = min_t(unsigned long, fg_group_util_est,
-					  ug[UG_FG].uc_req[UCLAMP_MAX].value);
-
-		util_est += fg_group_util_est;
 
 	return util_est;
 }
@@ -920,41 +902,29 @@ static inline unsigned long get_group_util(int cpu, struct task_struct *p, unsig
 					   bool subtract)
 {
 	int group = get_utilization_group(p, get_vendor_group(p));
-	unsigned long util = cpu_rq(cpu)->cfs.avg.util_avg;;
+	unsigned long util = cpu_rq(cpu)->cfs.avg.util_avg;
 
 	if (group == UG_BG) {
 		util = vendor_cfs_util[UG_BG][cpu].avg.util_avg;
-
-		if (subtract && (cpu == task_cpu(p) && READ_ONCE(p->se.avg.last_update_time)))
-			lsub_positive(&util, task_util(p));
-
-		if (likely(sched_feat(UTIL_EST))) {
-			unsigned long util_est = vendor_cfs_util[UG_BG][cpu].util_est;
-
-			if (subtract && unlikely(task_on_rq_queued(p) || current == p))
-				lsub_positive(&util_est, _task_util_est(p));
-
-			util = max(util, util_est);
-		}
 	// For fg group, we use root util - bg group util
 	} else if (group == UG_FG) {
 		util = cpu_rq(cpu)->cfs.avg.util_avg;
 		lsub_positive(&util, vendor_cfs_util[UG_BG][cpu].avg.util_avg);
-
-		if (subtract && (cpu == task_cpu(p) && READ_ONCE(p->se.avg.last_update_time)))
-			lsub_positive(&util, task_util(p));
-
-		if (likely(sched_feat(UTIL_EST))) {
-			unsigned long util_est = cpu_rq(cpu)->cfs.avg.util_est.enqueued -
-						 vendor_cfs_util[UG_BG][cpu].util_est;
-
-			if (subtract && unlikely(task_on_rq_queued(p) || current == p))
-				lsub_positive(&util_est, _task_util_est(p));
-
-			util = max(util, util_est);
-		}
 	} else {
 		SCHED_WARN_ON(1);
+		return min(util, max);
+	}
+
+	if (subtract && (cpu == task_cpu(p) && READ_ONCE(p->se.avg.last_update_time)))
+		lsub_positive(&util, task_util(p));
+
+	if (likely(sched_feat(UTIL_EST))) {
+		unsigned long util_est = vendor_cfs_util[group][cpu].util_est;
+
+		if (subtract && unlikely(task_on_rq_queued(p) || current == p))
+		lsub_positive(&util_est, _task_util_est(p));
+
+		util = max(util, util_est);
 	}
 
 	return min(util, max);
@@ -1381,21 +1351,21 @@ compute_energy(struct task_struct *p, int dst_cpu, struct perf_domain *pd, unsig
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 /* If a task_group is over its group limit on a particular CPU with margin considered */
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-static inline bool group_overutilized(int cpu, struct task_struct *p)
+static inline bool group_overutilized(int cpu, struct task_struct *p, unsigned long util)
 {
 	unsigned long group_capacity = cap_scale(get_task_group_throttle(p),
 						 arch_scale_cpu_capacity(cpu));
-	unsigned long util = get_group_util(cpu, p, group_capacity, false);
+
 	return cpu_overutilized(util, group_capacity, cpu);
 }
 #else
-static inline bool group_overutilized(int cpu, struct task_group *tg)
+static inline bool group_overutilized(int cpu, struct task_group *tg, unsigned long util)
 {
 
 	unsigned long group_capacity = cap_scale(get_group_throttle(tg),
 					arch_scale_cpu_capacity(cpu));
-	unsigned long group_util = READ_ONCE(tg->cfs_rq[cpu]->avg.util_avg);
-	return cpu_overutilized(group_util, group_capacity, cpu);
+
+	return cpu_overutilized(util, group_capacity, cpu);
 }
 #endif
 #endif
@@ -1553,7 +1523,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 	int pd_max_spare_cap_cpu, pd_best_idle_cpu, pd_most_unimportant_cpu, pd_best_packing_cpu;
 	int most_spare_cap_cpu = -1, unimportant_max_spare_cap_cpu = -1, idle_max_cap_cpu = -1;
 	struct cpuidle_state *idle_state;
-	unsigned long util, unimportant_max_spare_cap = 0, idle_max_cap = 0;
+	unsigned long unimportant_max_spare_cap = 0, idle_max_cap = 0;
 	bool prefer_fit = prefer_idle && get_vendor_task_struct(p)->uclamp_fork_reset;
 	const cpumask_t *preferred_idle_mask;
 
@@ -1594,10 +1564,10 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 					   arch_scale_cpu_capacity(i));
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 			wake_group_util = get_group_util(i, p, group_capacity, true);
-			group_overutilize = group_overutilized(i, p);
+			group_overutilize = group_overutilized(i, p, wake_group_util);
 #else
 			wake_group_util = group_util_without(i, p, group_capacity);
-			group_overutilize = group_overutilized(i, task_group(p));
+			group_overutilize = group_overutilized(i, task_group(p), wake_group_util);
 #endif
 			spare_cap = min_t(unsigned long, capacity - wake_util,
 					  group_capacity - wake_group_util);
@@ -1606,7 +1576,6 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 #endif
 			task_fits = task_fits_capacity(p, i, sync_boost);
 			exit_lat = 0;
-			util = cpu_util(i);
 
 			if (is_idle) {
 				idle_state = idle_get_state(cpu_rq(i));
@@ -1615,12 +1584,12 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 			}
 
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
-			trace_sched_cpu_util_cfs(i, is_idle, exit_lat, cpu_importance, util,
+			trace_sched_cpu_util_cfs(i, is_idle, exit_lat, cpu_importance, cpu_util(i),
 						 capacity, wake_util, group_capacity,
 						 wake_group_util, spare_cap, task_fits,
 						 group_overutilize);
 #else
-			trace_sched_cpu_util_cfs(i, is_idle, exit_lat, cpu_importance, util,
+			trace_sched_cpu_util_cfs(i, is_idle, exit_lat, cpu_importance, cpu_util(i),
 						 capacity, wake_util, capacity,	wake_util,
 						 spare_cap, task_fits, false);
 #endif
@@ -1654,7 +1623,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 				util_max = max(rq_util_max, p_util_max);
 			}
 
-			util_fits = util_fits_cpu(util, util_min, util_max, i);
+			util_fits = util_fits_cpu(wake_util, util_min, util_max, i);
 
 			if (prefer_idle) {
 				/*
@@ -1762,6 +1731,11 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 					cpumask_set_cpu(i, &max_spare_cap);
 				}
 			} else { /* Below path is for non-prefer idle case */
+				if (spare_cap >= target_max_spare_cap) {
+					target_max_spare_cap = spare_cap;
+					most_spare_cap_cpu = i;
+				}
+
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 				if (group_overutilize || !util_fits)
 					continue;
@@ -1769,11 +1743,6 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 				if (!util_fits)
 					continue;
 #endif
-
-				if (spare_cap >= target_max_spare_cap) {
-					target_max_spare_cap = spare_cap;
-					most_spare_cap_cpu = i;
-				}
 
 				if (!task_fits)
 					continue;
@@ -2101,6 +2070,8 @@ void initialize_vendor_group_property(void)
 {
 	int i;
 	unsigned int min_val = 0;
+	// Choose an uclamp min for early boot stage boost.
+	unsigned int boot_boost_min_val = 563;
 	unsigned int max_val = SCHED_CAPACITY_SCALE;
 
 	for (i = 0; i < VG_MAX; i++) {
@@ -2127,8 +2098,12 @@ void initialize_vendor_group_property(void)
 		vg[i].uclamp_max_on_nice_high_prio = DEFAULT_PRIO;
 		vg[i].uclamp_min_on_nice_enable = false;
 		vg[i].uclamp_max_on_nice_enable = false;
-		vg[i].uc_req[UCLAMP_MIN].value = min_val;
-		vg[i].uc_req[UCLAMP_MIN].bucket_id = get_bucket_id(min_val);
+		if (i == VG_SYSTEM) {
+			vg[i].uc_req[UCLAMP_MIN].value = boot_boost_min_val;
+		} else {
+			vg[i].uc_req[UCLAMP_MIN].value = min_val;
+		}
+		vg[i].uc_req[UCLAMP_MIN].bucket_id = get_bucket_id(vg[i].uc_req[UCLAMP_MIN].value);
 		vg[i].uc_req[UCLAMP_MIN].user_defined = false;
 		vg[i].uc_req[UCLAMP_MAX].value = max_val;
 		vg[i].uc_req[UCLAMP_MAX].bucket_id = get_bucket_id(max_val);
@@ -2592,10 +2567,11 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	struct task_struct *p = NULL;
 	struct rq_flags src_rf;
 	int this_cpu = this_rq->cpu;
-	struct vendor_rq_struct *vrq = get_vendor_rq_struct(this_rq);
+	struct vendor_rq_struct *this_vrq = get_vendor_rq_struct(this_rq);
+	struct vendor_rq_struct *src_vrq;
 
-	if (SCHED_WARN_ON(atomic_read(&vrq->num_adpf_tasks)))
-		atomic_set(&vrq->num_adpf_tasks, 0);
+	if (SCHED_WARN_ON(atomic_read(&this_vrq->num_adpf_tasks)))
+		atomic_set(&this_vrq->num_adpf_tasks, 0);
 
 
 	/*
@@ -2628,6 +2604,28 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 			continue;
 
 		src_rq = cpu_rq(cpu);
+		src_vrq = get_vendor_rq_struct(src_rq);
+
+		/*
+		 * Don't bother if no latency sensitive tasks on src_rq or if
+		 * there's only one.
+		 *
+		 * If there are too many other tasks on the rq but a single
+		 * latency_sensitive one, we should rely on skip_next_buddy()
+		 * and better wake up placement logic to avoid this situation
+		 * first. We can consider pulling here too in the future if we
+		 * find there are corner cases hard to fix otherwise.
+		 *
+		 * If something with a high nice value is stealing time, then
+		 * we should ask questions about why nice value is set so high.
+		 *
+		 * If an RT task is stealing time, then we should ask why wake
+		 * up path placed the two in the same CPU. We have an avoidance
+		 * strategy for this.
+		 */
+		if (atomic_read(&src_vrq->num_adpf_tasks) <= 1)
+			continue;
+
 		rq_lock_irqsave(src_rq, &src_rf);
 		update_rq_clock(src_rq);
 
@@ -2636,7 +2634,19 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 			continue;
 		}
 
-		if (src_rq->nr_running <= 1) {
+		if (cpu_is_idle(cpu)) {
+			rq_unlock_irqrestore(src_rq, &src_rf);
+			continue;
+		}
+
+		/* src_cpu is just waken up by tasks */
+		if (src_rq->curr == src_rq->idle) {
+			rq_unlock_irqrestore(src_rq, &src_rf);
+			continue;
+		}
+
+		/* we assume rt task will release cpu soon */
+		if (src_rq->curr->prio < MAX_RT_PRIO) {
 			rq_unlock_irqrestore(src_rq, &src_rf);
 			continue;
 		}
@@ -2738,18 +2748,22 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
 	bool force_cpufreq_update = false;
 
-	if (vp->uclamp_fork_reset)
+	if (vp->uclamp_fork_reset) {
 		atomic_inc(&vrq->num_adpf_tasks);
+
+		/*
+		 * Tell the scheduler that this tasks really wants to run next
+		 */
+		set_next_buddy(&p->se);
+	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	if (likely(sched_feat(UTIL_EST))) {
 		int group = get_utilization_group(p, get_vendor_group(p));
 
-		if (group == UG_BG) {
-			raw_spin_lock(&vendor_cfs_util[group][rq->cpu].lock);
-			vendor_cfs_util[group][rq->cpu].util_est += _task_util_est(p);
-			raw_spin_unlock(&vendor_cfs_util[group][rq->cpu].lock);
-		}
+		raw_spin_lock(&vendor_cfs_util[group][rq->cpu].lock);
+		vendor_cfs_util[group][rq->cpu].util_est += _task_util_est(p);
+		raw_spin_unlock(&vendor_cfs_util[group][rq->cpu].lock);
 	}
 #endif
 
@@ -2777,15 +2791,13 @@ void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 	if (likely(sched_feat(UTIL_EST))) {
 		int group = get_utilization_group(p, get_vendor_group(p));
 
-		if (group == UG_BG) {
-			raw_spin_lock(&vendor_cfs_util[group][rq->cpu].lock);
-			if (!rq->cfs.h_nr_running)
-				vendor_cfs_util[group][rq->cpu].util_est = 0;
-			else
-				lsub_positive(&vendor_cfs_util[group][rq->cpu].util_est,
-					      _task_util_est(p));
-			raw_spin_unlock(&vendor_cfs_util[group][rq->cpu].lock);
-		}
+		raw_spin_lock(&vendor_cfs_util[group][rq->cpu].lock);
+		if (!rq->cfs.h_nr_running)
+			vendor_cfs_util[group][rq->cpu].util_est = 0;
+		else
+			lsub_positive(&vendor_cfs_util[group][rq->cpu].util_est,
+				      _task_util_est(p));
+		raw_spin_unlock(&vendor_cfs_util[group][rq->cpu].lock);
 	}
 #endif
 

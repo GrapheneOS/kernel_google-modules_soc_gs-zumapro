@@ -30,8 +30,14 @@
 #define MMU_SWALKER_INFO_NUM_PMMU(reg)		((reg) & 0xFFFF)
 #define MMU_PMMU_INFO_NUM_STREAM_TABLE(reg)	(((reg) >> 16) & 0xFFFF)
 
+#define FLPD_AP_READ		BIT(4)
+#define FLPD_AP_WRITE		BIT(5)
 #define FLPD_SHAREABLE_FLAG	BIT(6)
+
+#define SLPD_AP_READ		BIT(2)
+#define SLPD_AP_WRITE		BIT(3)
 #define SLPD_SHAREABLE_FLAG	BIT(4)
+
 #define DEFAULT_QOS_VALUE	-1
 #define DEFAULT_STREAM_NONE	~0U
 #define UNUSED_STREAM_INDEX	~0U
@@ -52,6 +58,8 @@ struct samsung_sysmmu_domain {
 	sysmmu_pte_t *page_table;
 	atomic_t *lv2entcnt;
 	spinlock_t pgtablelock;	/* spinlock to access pagetable	*/
+	bool ap_read_implies_write;
+	bool ap_permissive;
 };
 
 static bool sysmmu_global_init_done;
@@ -207,6 +215,8 @@ static inline void __sysmmu_init_config_attribute(struct sysmmu_drvdata *data, u
 
 	cfg &= ~CFG_PT_CACHEABLE_MASK;
 	cfg |= CFG_PT_CACHEABLE_NORMAL_NC;
+
+	cfg |= CFG_USE_AP;
 
 	if (data->qos != DEFAULT_QOS_VALUE) {
 		cfg &= ~CFG_QOS(0xF);
@@ -484,6 +494,9 @@ static int samsung_sysmmu_attach_dev(struct iommu_domain *dom, struct device *de
 	if (ret)
 		goto err_drvdata_add;
 
+	domain->ap_read_implies_write = drvdata->ap_read_implies_write;
+	domain->ap_permissive = drvdata->ap_permissive;
+
 	dev_info(dev, "attached with pgtable %pap\n", &page_table);
 
 	return 0;
@@ -583,6 +596,14 @@ static int lv1set_section(struct samsung_sysmmu_domain *domain,
 		atomic_set(pgcnt, NUM_LV2ENTRIES);
 	}
 
+	if (prot & IOMMU_READ || domain->ap_permissive) {
+		attr |= FLPD_AP_READ;
+		if (domain->ap_read_implies_write)
+			attr |= FLPD_AP_WRITE;
+	}
+	if (prot & IOMMU_WRITE || domain->ap_permissive)
+		attr |= FLPD_AP_WRITE;
+
 	*sent = make_sysmmu_pte(paddr, SECT_FLAG, attr);
 	pgtable_flush(sent, sent + 1);
 
@@ -599,10 +620,18 @@ static int lv1set_section(struct samsung_sysmmu_domain *domain,
 	return 0;
 }
 
-static int lv2set_page(sysmmu_pte_t *pent, phys_addr_t paddr,
+static int lv2set_page(struct samsung_sysmmu_domain *domain, sysmmu_pte_t *pent, phys_addr_t paddr,
 		       size_t size, int prot, atomic_t *pgcnt)
 {
 	int attr = !!(prot & IOMMU_CACHE) ? SLPD_SHAREABLE_FLAG : 0;
+
+	if (prot & IOMMU_READ || domain->ap_permissive) {
+		attr |= SLPD_AP_READ;
+		if (domain->ap_read_implies_write)
+			attr |= SLPD_AP_WRITE;
+	}
+	if (prot & IOMMU_WRITE || domain->ap_permissive)
+		attr |= SLPD_AP_WRITE;
 
 	if (size == SPAGE_SIZE) {
 		if (WARN_ON(!lv2ent_unmapped(pent)))
@@ -652,7 +681,7 @@ static int samsung_sysmmu_map(struct iommu_domain *dom, unsigned long l_iova, ph
 		if (IS_ERR(pent))
 			ret = PTR_ERR(pent);
 		else
-			ret = lv2set_page(pent, paddr, size, prot, lv2entcnt);
+			ret = lv2set_page(domain, pent, paddr, size, prot, lv2entcnt);
 	}
 
 	if (ret)
@@ -1146,6 +1175,7 @@ static int samsung_sysmmu_set_dev_pasid(struct iommu_domain *dom, struct device 
 	spin_unlock_irqrestore(&drvdata->lock, flags);
 	domain->vm_sysmmu = drvdata;
 	domain->vid = vid;
+	domain->ap_read_implies_write = drvdata->ap_read_implies_write;
 	return 0;
 }
 
@@ -1476,6 +1506,10 @@ static int sysmmu_parse_dt(struct device *sysmmu, struct sysmmu_drvdata *data)
 	data->async_fault_mode = of_property_read_bool(sysmmu->of_node, "sysmmu,async-fault");
 	data->leave_enabled_on_suspend = of_property_read_bool(sysmmu->of_node,
 							       "sysmmu,leave-enabled-on-suspend");
+	data->ap_read_implies_write = of_property_read_bool(sysmmu->of_node,
+							    "sysmmu,ap-read-implies-write");
+	data->ap_permissive = of_property_read_bool(sysmmu->of_node,
+						    "sysmmu,ap-permissive");
 
 	data->vmid_mask = SYSMMU_MASK_VMID;
 	ret = of_property_read_u32_index(sysmmu->of_node, "vmid_mask", 0, &mask);

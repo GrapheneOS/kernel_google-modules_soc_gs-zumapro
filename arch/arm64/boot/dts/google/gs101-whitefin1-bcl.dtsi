@@ -41,6 +41,15 @@
 		polling-delay-passive = <100>;
 		polling-delay = <0>;
 		thermal-sensors = <&google_battery>;
+
+		/* TODO(b/251537418): fix this trips entry since it's required */
+		trips {
+			fake_trip:dud0 {
+				temperature = <9999>;
+				hysteresis = <100>;
+				type = "passive";
+			};
+		};
 	};
 
 	pmic_120c {

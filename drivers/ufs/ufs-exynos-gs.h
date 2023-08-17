@@ -186,6 +186,11 @@ struct exynos_ufs {
 
 	/* auto hibern8 */
 	u32 ah8_ahit;
+
+	/* power event tracing with kibble */
+	spinlock_t power_event_lock;
+	u32 power_event_mode;
+	u32 outstanding_io;
 };
 
 static inline struct exynos_ufs *to_exynos_ufs(struct ufs_hba *hba)

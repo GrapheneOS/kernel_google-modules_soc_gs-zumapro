@@ -176,7 +176,7 @@ static int s2mpu_late_suspend(struct device *dev)
 	 * Do not call pkvm_iommu_suspend() here because that would put them
 	 * in a blocking state.
 	 */
-	if (data->always_on || pm_runtime_status_suspended(dev))
+	if (data->always_on || pm_runtime_status_suspended(dev) || !data->has_pd)
 		return 0;
 
 	dev->power.must_resume = true;
@@ -226,6 +226,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	data->always_on = !!of_get_property(np, "always-on", NULL);
 	off_at_boot = !!of_get_property(np, "off-at-boot", NULL);
 	has_sync = !!of_get_property(np, "built-in-sync", NULL);
+	data->has_pd = !!of_get_property(np, "power-domains", NULL);
 	/*
 	 * Try to parse IRQ information. This is optional as it only affects
 	 * runtime fault reporting, and therefore errors do not fail the whole

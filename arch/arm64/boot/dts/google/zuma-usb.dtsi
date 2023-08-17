@@ -9,9 +9,9 @@
 //#include <dt-bindings/clock/gs101.h>
 
 &reserved_memory {
-	xhci_dma: xhci_dma@17BC0000 {
+	xhci_dma: xhci_dma@97000000 {
 		compatible = "shared-dma-pool";
-		reg = <0x0 0x17BC0000 0x40000>;
+		reg = <0x0 0x97000000 0x400000>;
 		no-map;
 	};
 };
@@ -174,7 +174,7 @@
 		#size-cells = <1>;
 		ranges;
 		status = "okay";
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		samsung,sysreg-hsi0 = <&sysreg_hsi0>;
 
 		interrupts = <GIC_SPI IRQ_USB32DRD_GIC_0_HSI0 IRQ_TYPE_LEVEL_HIGH>;
@@ -183,7 +183,6 @@
 		is_not_vbus_pad = <1>;
 		usb_host_device_timeout = <200>;
 		enable_sprs_transfer = <1>;
-		s2mpus = <&s2mpu_s0_hsi0>;
 
 		samsung,no-extra-delay;
 		xhci_l2_support = <1>;
@@ -242,7 +241,7 @@
 		clocks = <&clock MUX_HSI0_USB20_REF>, <&clock GATE_USB32DRD_LINK>;
 		clock-names = "phy_ref", "aclk";
 		samsung,pmu-syscon = <&pmu_system_controller>;
-		//power-domains = <&pd_hsi0>;
+		power-domains = <&pd_hsi0>;
 		pmu_mask = <0x0>;
 		pmu_offset = <0x3EB0>;
 		pmu_offset_dp = <0x3EB4>;
@@ -255,6 +254,7 @@
 		phyclk_mux = "none";
 		phy_refclk = "phy_ref";
 		phy_ref_clock = <19200000>;
+		s2mpus = <&s2mpu_s0_hsi0>;
 
 		/* if Main phy has the other phy, it must be set to 1. jusf for usbphy_info */
 		has_other_phy = <0>;

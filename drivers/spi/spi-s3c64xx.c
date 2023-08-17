@@ -1950,29 +1950,21 @@ static int s3c64xx_spi_runtime_resume(struct device *dev)
 			usleep_range(10000, 11000);
 	}
 
-	if (sci->domain == NO_POWER_DOMAIN) {
 #ifdef CONFIG_CPU_IDLE
-		exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
+	exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
 #endif
-		clk_prepare_enable(sdd->src_clk);
-		clk_prepare_enable(sdd->clk);
-	}
+	clk_prepare_enable(sdd->src_clk);
+	clk_prepare_enable(sdd->clk);
 
-	else if (sci->domain != NO_POWER_DOMAIN) {
-#ifdef CONFIG_CPU_IDLE
-		exynos_update_ip_idle_status(sdd->idle_ip_index, 0);
-#endif
-		clk_prepare_enable(sdd->src_clk);
-		clk_prepare_enable(sdd->clk);
-
+	if (sci->domain != NO_POWER_DOMAIN) {
 		/* To avoid SW RESET make CS low, change to I2C */
 		regmap_update_bits(sci->usi_reg, sci->usi_offset,
 				USI_SW_CONF_MASK, USI_I2C_SW_CONF);
-		exynos_usi_init(sdd);
-		regmap_update_bits(sci->usi_reg, sci->usi_offset,
-				USI_SW_CONF_MASK, USI_SPI_SW_CONF);
-		s3c64xx_spi_hwinit(sdd, sdd->port_id);
 	}
+	exynos_usi_init(sdd);
+	regmap_update_bits(sci->usi_reg, sci->usi_offset,
+			USI_SW_CONF_MASK, USI_SPI_SW_CONF);
+	s3c64xx_spi_hwinit(sdd, sdd->port_id);
 
 	return 0;
 }
@@ -2004,8 +1996,9 @@ static int s3c64xx_spi_suspend_operation(struct device *dev)
 #endif
 	}
 #endif
-	if (!pm_runtime_status_suspended(dev))
-		s3c64xx_spi_runtime_suspend(dev);
+	ret = pm_runtime_force_suspend(dev);
+	if (ret < 0)
+		return ret;
 
 	sdd->cur_speed = 0; /* Output Clock is stopped */
 
@@ -2019,8 +2012,9 @@ static int s3c64xx_spi_resume_operation(struct device *dev)
 	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 	int ret;
 
-	if (!pm_runtime_status_suspended(dev))
-		s3c64xx_spi_runtime_resume(dev);
+	ret = pm_runtime_force_resume(dev);
+	if (ret < 0)
+		return ret;
 
 	if (sci->domain == NO_POWER_DOMAIN) {
 		/* Enable the clock */
@@ -2066,24 +2060,7 @@ static int s3c64xx_spi_suspend(struct device *dev)
 	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
 	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 
-	if (sci->dma_mode != DMA_MODE)
-		return 0;
-
 	dev_dbg(dev, "spi suspend is handled in device suspend, dma mode = %d\n",
-		sci->dma_mode);
-	return s3c64xx_spi_suspend_operation(dev);
-}
-
-static int s3c64xx_spi_suspend_noirq(struct device *dev)
-{
-	struct spi_master *master = dev_get_drvdata(dev);
-	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
-	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
-
-	if (sci->dma_mode == DMA_MODE)
-		return 0;
-
-	dev_dbg(dev, "spi suspend is handled in suspend_noirq, dma mode = %d\n",
 		sci->dma_mode);
 	return s3c64xx_spi_suspend_operation(dev);
 }
@@ -2094,33 +2071,11 @@ static int s3c64xx_spi_resume(struct device *dev)
 	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
 	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 
-	if (sci->dma_mode != DMA_MODE)
-		return 0;
-
 	dev_dbg(dev, "spi resume is handled in device resume, dma mode = %d\n",
 		sci->dma_mode);
 	return s3c64xx_spi_resume_operation(dev);
 }
 
-static int s3c64xx_spi_resume_noirq(struct device *dev)
-{
-	struct spi_master *master = dev_get_drvdata(dev);
-	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
-	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
-
-	if (sci->secure_mode != SECURE_MODE) {
-		if (!IS_ERR(sci->usi_reg))
-			regmap_update_bits(sci->usi_reg, sci->usi_offset,
-					   USI_SW_CONF_MASK, USI_SPI_SW_CONF);
-	}
-
-	if (sci->dma_mode == DMA_MODE)
-		return 0;
-
-	dev_dbg(dev, "spi resume is handled in resume_noirq, dma mode = %d\n",
-		sci->dma_mode);
-	return s3c64xx_spi_resume_operation(dev);
-}
 #else
 static int s3c64xx_spi_suspend(struct device *dev)
 {
@@ -2135,8 +2090,6 @@ static int s3c64xx_spi_resume(struct device *dev)
 
 static const struct dev_pm_ops s3c64xx_spi_pm = {
 	SET_SYSTEM_SLEEP_PM_OPS(s3c64xx_spi_suspend, s3c64xx_spi_resume)
-	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(s3c64xx_spi_suspend_noirq,
-				      s3c64xx_spi_resume_noirq)
 	SET_RUNTIME_PM_OPS(s3c64xx_spi_runtime_suspend,
 			   s3c64xx_spi_runtime_resume, NULL)
 };

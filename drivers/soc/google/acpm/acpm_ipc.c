@@ -199,6 +199,16 @@ unsigned int acpm_fw_get_log_level(void)
 	return acpm_debug->debug_log_level;
 }
 
+void acpm_fw_set_retry_log_ctrl(bool enable)
+{
+	acpm_debug->retry_log = enable;
+}
+
+unsigned int acpm_fw_get_retry_log_ctrl(void)
+{
+	return acpm_debug->retry_log;
+}
+
 void acpm_ramdump(void)
 {
 	if (acpm_debug->dump_size)
@@ -584,18 +594,32 @@ EXPORT_SYMBOL_GPL(acpm_ipc_send_data_sync);
 
 extern int nr_irqs;
 
+static void acpm_alloc_irq_info(bool usage)
+{
+	kfree(irq_info);
+	if (usage)
+		irq_info = kcalloc(nr_irqs, sizeof(struct cpu_irq_info), GFP_KERNEL);
+	else
+		irq_info = NULL;
+}
+
 static void cpu_irq_info_dump(u32 retry)
 {
 	int i, cpu;
 	u64 sum = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&acpm_debug->lock, flags);
+
+	if (retry == 1)
+		acpm_alloc_irq_info(true);
+	else if (retry == 5)
+		pr_info("<Dump delta of irq counts>\n");
 
 	for_each_possible_cpu(cpu)
 		sum += kstat_cpu_irqs_sum(cpu);
 
 	sum += arch_irq_stat();
-
-	if (retry == 5)
-		pr_info("<Dump delta of irq counts>\n");
 
 	for_each_irq_nr(i) {
 		struct irq_data *data;
@@ -622,12 +646,12 @@ static void cpu_irq_info_dump(u32 retry)
 		else
 			name = "???";
 
-		if (retry == 1) {
+		if (irq_info && retry == 1) {
 			irq_info[i].irq_num = i;
 			irq_info[i].hwirq_num = desc->irq_data.hwirq;
 			irq_info[i].irq_stat = irq_stat;
 			irq_info[i].name = name;
-		} else if (retry == 5) {
+		} else if (irq_info && retry == 5) {
 			delta = irq_stat - irq_info[i].irq_stat;
 			if (delta > 0) {
 				pr_info("irq-%-4d(hwirq-%-3d) delta of irqs: %8u %s\n",
@@ -635,6 +659,7 @@ static void cpu_irq_info_dump(u32 retry)
 			}
 		}
 	}
+	spin_unlock_irqrestore(&acpm_debug->lock, flags);
 }
 
 int __acpm_ipc_send_data(unsigned int channel_id, struct ipc_config *cfg, bool w_mode)
@@ -767,6 +792,13 @@ retry:
 						__raw_readl(acpm_ipc->intr + INTMSR1));
 
 					cpu_irq_info_dump(retry_cnt);
+					if (retry_cnt == 1) {
+						acpm_debug->debug_log_level =
+							acpm_debug->retry_log ?
+								2 : saved_debug_log_level;
+						acpm_log_print();
+						acpm_debug->debug_log_level = saved_debug_log_level;
+					}
 					++retry_cnt;
 
 					goto retry;
@@ -792,14 +824,13 @@ retry:
 			       __func__, now, timeout, channel->id, seq_num,
 			       channel->bitmap_seqnum[0]);
 
-			acpm_debug->debug_log_level = 2;
-			acpm_log_print();
-			acpm_debug->debug_log_level = saved_debug_log_level;
-
 			acpm_ramdump();
 			dump_stack();
 			dbg_snapshot_do_dpm_policy(acpm_ipc->panic_action, "acpm_ipc timeout");
 		}
+		spin_lock_irqsave(&acpm_debug->lock, flags);
+		acpm_alloc_irq_info(false);
+		spin_unlock_irqrestore(&acpm_debug->lock, flags);
 	}
 
 	return 0;
@@ -1080,8 +1111,6 @@ int acpm_ipc_probe(struct platform_device *pdev)
 	}
 
 	ret = plugins_init(node);
-
-	irq_info = kcalloc(nr_irqs, sizeof(struct cpu_irq_info), GFP_KERNEL);
 
 	dev_info(&pdev->dev, "acpm_ipc probe done.\n");
 	return ret;

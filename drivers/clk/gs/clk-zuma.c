@@ -1087,6 +1087,12 @@ struct init_vclk zuma_hsi0_vclks[] = {
 		0,
 		0,
 		NULL),
+	VCLK(UMUX_CLKCMU_HSI0_DPOSC_USER,
+		MUX_CLKCMU_HSI0_DPOSC_USER,
+		"UMUX_CLKCMU_HSI0_DPOSC_USER",
+		0,
+		0,
+		NULL),
 };
 
 struct init_vclk zuma_hsi2_vclks[] = {

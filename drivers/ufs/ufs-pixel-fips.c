@@ -217,10 +217,7 @@ static void ufs_pixel_fips_build_utrd(struct ufs_hba *hba,
 	utrd->header.dword_2 = cpu_to_le32(OCS_INVALID_COMMAND_STATUS);
 	utrd->header.dword_3 = 0;
 
-	utrd->command_desc_base_addr_lo =
-		cpu_to_le32(lower_32_bits(ucd_dma_addr));
-	utrd->command_desc_base_addr_hi =
-		cpu_to_le32(upper_32_bits(ucd_dma_addr));
+	utrd->command_desc_base_addr = cpu_to_le64(ucd_dma_addr);
 
 	if (hba->quirks & UFSHCD_QUIRK_PRDT_BYTE_GRAN) {
 		utrd->response_upiu_length = cpu_to_le16(ALIGNED_UPIU_SIZE);
@@ -334,13 +331,14 @@ static int ufs_pixel_fips_check_response(struct utp_upiu_rsp *resp, u8 ocs)
 		if (response_code == 0x70) {
 			uint8_t key = resp->sr.sense_data[2] & 0xF;
 			uint8_t asc = resp->sr.sense_data[12];
+			uint8_t ascq = resp->sr.sense_data[13];
 			if (!ocs && status == 2 && response == 1 && key == 6 && asc == 0x29)
 				pr_info("UA Reported\n");
 			else
-				pr_warn("I/O Result: OCS=%x status=%X resp=%X key=%X asc=%\n", ocs,
-					status, response, key, asc);
+				pr_warn("I/O Result: OCS=%x status=%X key=%X asc=%X ascq=%X\n",
+					ocs, status, key, asc, ascq);
 		} else {
-			pr_warn("I/O Result: OCS=%x status=%X resp=%X\n", ocs, status, response);
+			pr_warn("I/O Result: OCS=%x status=%X\n", ocs, status);
 		}
 		return -EIO;
 	}
