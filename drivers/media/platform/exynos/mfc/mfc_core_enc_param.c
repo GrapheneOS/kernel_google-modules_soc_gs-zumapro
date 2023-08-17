@@ -433,6 +433,7 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 	reg = MFC_CORE_RAW_READL(MFC_REG_E_RC_MODE);
 	mfc_clear_bits(reg, 0x3, 0);
 	mfc_clear_bits(reg, 0x3, 4);
+	mfc_clear_bits(reg, 0x1, 7);
 	mfc_clear_bits(reg, 0xFF, 8);
 	enc->is_cbr_fix = 0;
 	if (p->rc_frame) {

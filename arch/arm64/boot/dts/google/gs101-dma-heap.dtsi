@@ -84,7 +84,7 @@
 	};
 
 	faceauth_tpu_dma_heap: faceauth_tpu_dma_heap {
-		compatible = "samsung,dma-heap-chunk";
+		compatible = "google,dma-heap-gcma";
 		memory-region = <&faceauth_tpu>;
 		dma-heap,name = "faceauth_tpu";
 		dma-heap,secure;
@@ -198,7 +198,7 @@
 	};
 
 	faceauth_tpu: faceauth_tpu {
-		size = <0x2000000>;
+		size = <0x1000000>; /* 16MB */
 		alignment = <0x0 0x00010000>;
 		alloc-ranges = <0x9 0x80000000 0x80000000>,
 			       <0x9 0x00000000 0x80000000>,
@@ -230,7 +230,7 @@
 	};
 
 	farawimg: farawimg {
-		size = <0x10000000>;
+		size = <0xC800000>; /* 200MB */
 		alignment = <0x0 0x00010000>;
 		alloc-ranges = <0x9 0x80000000 0x80000000>,
 			       <0x9 0x00000000 0x80000000>,
@@ -242,7 +242,7 @@
 	faprev: faprev {
 		compatible = "shared-dma-pool";
 		reusable;
-		size = <0x1800000>;
+		size = <0xC00000>; /* 12MB */
 		alignment = <0x0 0x00010000>;
 		alloc-ranges = <0x9 0x80000000 0x80000000>,
 			       <0x9 0x00000000 0x80000000>,
