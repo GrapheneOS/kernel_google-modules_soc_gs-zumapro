@@ -53,7 +53,7 @@ config USE_GROUP_THROTTLE
 config VH_SCHED_LIB
 	bool "Library with additional scheduler options"
 	depends on VH_SCHED
-	default n
+	default y
 
 config VH_PRIO_INHERITANCE
 	bool "Enable prio inheritance vendor hooks"
