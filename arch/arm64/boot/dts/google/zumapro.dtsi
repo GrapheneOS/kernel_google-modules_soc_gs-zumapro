@@ -31,6 +31,8 @@
 	#size-cells = <1>;
 
 	aliases {
+		i2c7 = &acpm_mfd_bus0;
+		i2c8 = &acpm_mfd_bus1;
 		pinctrl0 = &pinctrl_0;
 		pinctrl1 = &pinctrl_1;
 		pinctrl2 = &pinctrl_2;
@@ -418,6 +420,16 @@
 	acpm_stats {
 		compatible = "google,power-stats";
 		timer-frequency-hz = <49152000>;
+	};
+
+	acpm_mfd_bus1: acpm_mfd_bus@15510000 {
+		compatible = "google,i2c-acpm";
+		status = "okay";
+	};
+
+	acpm_mfd_bus0: acpm_mfd_bus@15500000 {
+		compatible = "google,i2c-acpm";
+		status = "okay";
 	};
 
 };
