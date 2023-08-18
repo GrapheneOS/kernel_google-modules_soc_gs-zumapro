@@ -7,6 +7,7 @@
  */
 #include <kernel/sched/sched.h>
 #include <kernel/sched/pelt.h>
+#include <linux/moduleparam.h>
 #include <trace/events/power.h>
 #include <trace/hooks/systrace.h>
 
@@ -33,6 +34,9 @@ static struct vendor_cfs_util vendor_cfs_util[UG_MAX][CPU_NUM];
 extern int vendor_sched_ug_bg_auto_prio;
 extern unsigned int vendor_sched_util_post_init_scale;
 extern bool vendor_sched_npi_packing;
+
+static unsigned int early_boot_boost_uclamp_min = 563;
+module_param(early_boot_boost_uclamp_min, uint, 0644);
 
 unsigned int sched_capacity_margin[CPU_NUM] = { [0 ... CPU_NUM - 1] = DEF_UTIL_THRESHOLD };
 unsigned int sched_dvfs_headroom[CPU_NUM] = { [0 ... CPU_NUM - 1] = DEF_UTIL_THRESHOLD };
@@ -2070,8 +2074,6 @@ void initialize_vendor_group_property(void)
 {
 	int i;
 	unsigned int min_val = 0;
-	// Choose an uclamp min for early boot stage boost.
-	unsigned int boot_boost_min_val = 563;
 	unsigned int max_val = SCHED_CAPACITY_SCALE;
 
 	for (i = 0; i < VG_MAX; i++) {
@@ -2099,7 +2101,7 @@ void initialize_vendor_group_property(void)
 		vg[i].uclamp_min_on_nice_enable = false;
 		vg[i].uclamp_max_on_nice_enable = false;
 		if (i == VG_SYSTEM) {
-			vg[i].uc_req[UCLAMP_MIN].value = boot_boost_min_val;
+			vg[i].uc_req[UCLAMP_MIN].value = early_boot_boost_uclamp_min;
 		} else {
 			vg[i].uc_req[UCLAMP_MIN].value = min_val;
 		}

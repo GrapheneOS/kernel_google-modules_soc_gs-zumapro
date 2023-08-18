@@ -371,7 +371,6 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		if (!dwc3_otg_check_usb_suspend(exynos))
 			dev_err(dev, "too long to wait for dwc3 suspended\n");
 
-		exynos->vbus_state = true;
 		while (dwc->gadget_driver == NULL) {
 			wait_counter++;
 			usleep_range(100, 200);
@@ -403,8 +402,6 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		exynos->gadget_state = true;
 		dwc3_otg_set_peripheral_mode(dotg);
 	} else {
-		exynos->vbus_state = false;
-
 		evt_buf_cnt = dwc->ev_buf->count;
 
 		/* Wait until gadget stop */
