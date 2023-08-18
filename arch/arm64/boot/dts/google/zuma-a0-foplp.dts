@@ -41,6 +41,7 @@
 		integral_cutoff = <10>;
 		sustainable_power = <2000>;
 		control_temp_step = <1000>; // mC per second
+		junction_offset = <0 (-15000) (-15000) (-15000) 0 0 0 0>; // mC
 
 		early_throttle_enable;
 		early_throttle_k_p = <50>;
@@ -83,6 +84,7 @@
 		integral_cutoff = <20>;
 		sustainable_power = <1000>;
 		control_temp_step = <1000>; // mC per second
+		junction_offset = <0 (-15000) (-15000) (-15000) 0 0 0 0>; // mC
 
 		tmu_work_affinity = "0-8";
 
@@ -119,6 +121,7 @@
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
 		control_temp_step = <1000>; // mC per second
+		junction_offset = <0 (-10000) (-15000) (-15000) 0 0 0 0>; // mC
 
 		tmu_work_affinity = "0-8";
 
@@ -154,6 +157,7 @@
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
 		control_temp_step = <1000>; // mC per second
+		junction_offset = <0 (-20000) (-20000) (-20000) 0 0 0 0>; // mC
 
 		tmu_work_affinity = "0-8";
 
@@ -170,6 +174,7 @@
 		id = <4>;
 		ect_nouse;
 		#thermal-sensor-cells = <0>;
+		junction_offset = <0 (-20000) (-20000) (-20000) 0 0 0 0>; // mC
 
 		tmu_work_affinity = "0-8";
 	};
@@ -193,6 +198,7 @@
 		integral_cutoff = <20>;
 		sustainable_power = <200>;
 		control_temp_step = <1000>; // mC per second
+		junction_offset = <0 (-20000) (-20000) (-20000) 0 0 0 0>; // mC
 
 		tmu_work_affinity = "0-8";
 
@@ -211,6 +217,7 @@
 		#thermal-sensor-cells = <0>;
 		tmu_work_affinity = "0-8";
 		polling_delay_on = <50>;
+		junction_offset = <0 (-20000) (-20000) (-20000) 0 0 0 0>; // mC
 
 		use-acpm-gov;
 		irq_stepwise_gain = <2>;

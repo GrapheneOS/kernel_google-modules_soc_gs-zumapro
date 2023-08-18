@@ -1329,30 +1329,6 @@ static ssize_t print_cmd_log_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(print_cmd_log);
 
-static ssize_t enable_pixel_ufs_logging_show(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
-
-	return sysfs_emit(buf, "%u\n", ufs->enable_cmd_log);
-}
-
-static ssize_t enable_pixel_ufs_logging_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
-	u32 value;
-
-	if (kstrtouint(buf, 0, &value))
-		return -EINVAL;
-	if (value != ufs->enable_cmd_log)
-		WRITE_ONCE(ufs->enable_cmd_log, value);
-	return count;
-}
-static DEVICE_ATTR_RW(enable_pixel_ufs_logging);
-
 static ssize_t power_event_mode_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
@@ -1381,11 +1357,35 @@ static ssize_t power_event_mode_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(power_event_mode);
 
+static ssize_t enable_pixel_ufs_logging_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+
+	return sysfs_emit(buf, "%u\n", ufs->enable_cmd_log);
+}
+
+static ssize_t enable_pixel_ufs_logging_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	u32 value;
+
+	if (kstrtouint(buf, 0, &value))
+		return -EINVAL;
+	if (value != ufs->enable_cmd_log)
+		WRITE_ONCE(ufs->enable_cmd_log, value);
+	return count;
+}
+static DEVICE_ATTR_RW(enable_pixel_ufs_logging);
+
 static struct attribute *pixel_sysfs_pixel_attrs[] = {
 	&dev_attr_boot_lun_enabled.attr,
 	&dev_attr_print_cmd_log.attr,
-	&dev_attr_enable_pixel_ufs_logging.attr,
 	&dev_attr_power_event_mode.attr,
+	&dev_attr_enable_pixel_ufs_logging.attr,
 	NULL,
 };
 
