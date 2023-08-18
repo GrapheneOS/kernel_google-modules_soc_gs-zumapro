@@ -6,7 +6,7 @@
 
 GKI_REMOTE="aosp"
 GKI_SHA=`repo --color=never info aosp | grep "Manifest revision" | sed 's/Manifest revision: //g'`
-GKI_BRANCH=`repo --color=never forall aosp -c git branch -r --list 'aosp/android14-5.15*' --contains ${GKI_SHA} | grep "  aosp/" | sed 's/  aosp\///g'`
+GKI_BRANCH="android14-5.15" # Need to push symbol list changes to the main ACK branch (not release branches)
 GKI_STAGING_REMOTE="partner-common"
 GKI_STAGING_BRANCH=`repo --color=never info aosp-staging | grep "Manifest revision" | sed 's/Manifest revision: //g'`
 TARGET=
