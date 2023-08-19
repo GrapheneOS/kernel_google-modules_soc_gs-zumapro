@@ -26,6 +26,10 @@
 #define BO_LOWER_LIMIT	3800
 #define BO_STEP	200
 #define BO_BAT_OPEN_TO_DEFAULT	1
+#define BO_INT_REL_DEFAULT	3
+#define BO_INT_DET_DEFAULT	3
+#define UV_INT_REL_DEFAULT	2
+#define UV_INT_DET_DEFAULT	1
 
 /* Thermal Limit */
 #define PMIC_OVERHEAT_UPPER_LIMIT	2000
