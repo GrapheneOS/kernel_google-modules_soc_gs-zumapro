@@ -97,6 +97,6 @@ int stmvl53l1_reset_hold_i2c(void *arg);
 void stmvl53l1_clean_up_i2c(void);
 int stmvl53l1_start_intr(void *object, int *poll_mode);
 void *stmvl53l1_get(void *arg);
-void stmvl53l1_put(void *arg);
+int stmvl53l1_put(void *arg);
 
 #endif /* STMVL53L1_I2C_H */
