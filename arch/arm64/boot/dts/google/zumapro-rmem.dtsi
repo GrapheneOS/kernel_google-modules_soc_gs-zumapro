@@ -8,7 +8,7 @@
 #include <dt-bindings/soc/google/debug-snapshot-def.h>
 
 #define SECLOG_LOG_BUF_BASE       0xC3000000
-#define SECLOG_LOG_BUF_TOTAL_SIZE 0x90000
+#define SECLOG_LOG_BUF_TOTAL_SIZE 0x80000
 
 / {
 
@@ -195,11 +195,9 @@
 		*/
 		/* end debug_memory rmem section */
 
-		/*
 		seclog_mem: seclog_mem {
 			compatible = "exynos,seclog";
 			reg = <0 SECLOG_LOG_BUF_BASE SECLOG_LOG_BUF_TOTAL_SIZE>;
 		};
-		*/
 	};
 };
