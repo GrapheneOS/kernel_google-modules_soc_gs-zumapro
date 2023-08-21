@@ -92,7 +92,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A650000>;
-		power-domains = <&pd_bw>;
+		//power-domains = <&pd_bw>;
 		s2mpus = <&s2mpu_s0_bw>;
 		port-name = "BW";
 		#iommu-cells = <0>;
@@ -170,7 +170,7 @@
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A880000>;
 
-		power-domains = <&pd_g2d>;
+		//power-domains = <&pd_g2d>;
 		s2mpus = <&s2mpu_s0_g2d>;
 
 		port-name = "G2D";
@@ -246,7 +246,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x19850000>;
-		power-domains = <&pd_dpuf0>;
+		//power-domains = <&pd_dpuf0>;
 		s2mpus = <&s2mpu_s0_dpuf0>;
 		port-name = "DPU F0";
 		#iommu-cells = <0>;
@@ -344,7 +344,7 @@
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x19C50000>;
 
-		power-domains = <&pd_dpuf1>;
+		//power-domains = <&pd_dpuf1>;
 		s2mpus = <&s2mpu_s0_dpuf1>;
 
 		port-name = "DPU F1";
@@ -440,7 +440,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C120000>;
-		power-domains = <&pd_ispfe>;
+		//power-domains = <&pd_ispfe>;
 		s2mpus = <&s2mpu_s0_ispfe>;
 		port-name = "ISPFE S0";
 		#iommu-cells = <0>;
@@ -476,7 +476,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C160000>;
-		power-domains = <&pd_ispfe>;
+		//power-domains = <&pd_ispfe>;
 		s2mpus = <&s2mpu_s1_ispfe>;
 		port-name = "ISPFE S1";
 		#iommu-cells = <0>;
@@ -495,7 +495,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C1A0000>;
-		power-domains = <&pd_ispfe>;
+		//power-domains = <&pd_ispfe>;
 		s2mpus = <&s2mpu_s2_ispfe>;
 		port-name = "ISPFE S2";
 		#iommu-cells = <0>;
@@ -520,7 +520,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1D880000>;
-		power-domains = <&pd_gse>;
+		//power-domains = <&pd_gse>;
 		s2mpus = <&s2mpu_s0_gse>;
 		port-name = "GSE";
 		#iommu-cells = <0>;
@@ -572,7 +572,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A350000>;
-		power-domains = <&pd_tpu>;
+		//power-domains = <&pd_tpu>;
 		s2mpus = <&s2mpu_s0_tpu>;
 		port-name = "TPU";
 		#iommu-cells = <0>;
@@ -628,7 +628,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C880000>;
-		power-domains = <&pd_yuvp>;
+		//power-domains = <&pd_yuvp>;
 		s2mpus = <&s2mpu_s0_yuvp>;
 		port-name = "YUVP";
 		#iommu-cells = <0>;
@@ -661,7 +661,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1CC90000>;
-		power-domains = <&pd_tnr>;
+		//power-domains = <&pd_tnr>;
 		s2mpus = <&s2mpu_s0_tnr>;
 		port-name = "TNR S0";
 		#iommu-cells = <0>;
@@ -719,7 +719,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1CCD0000>;
-		power-domains = <&pd_tnr>;
+		//power-domains = <&pd_tnr>;
 		s2mpus = <&s2mpu_s1_tnr>;
 		port-name = "TNR S1";
 		#iommu-cells = <0>;
@@ -782,7 +782,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1CD10000>;
-		power-domains = <&pd_tnr>;
+		//power-domains = <&pd_tnr>;
 		s2mpus = <&s2mpu_s2_tnr>;
 		port-name = "TNR S2";
 		#iommu-cells = <0>;
@@ -823,7 +823,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C4B0000>;
-		power-domains = <&pd_rgbp>;
+		//power-domains = <&pd_rgbp>;
 		s2mpus = <&s2mpu_s0_rgbp>;
 		port-name = "RGBP S0";
 		#iommu-cells = <0>;
@@ -864,7 +864,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1C4F0000>;
-		power-domains = <&pd_rgbp>;
+		//power-domains = <&pd_rgbp>;
 		s2mpus = <&s2mpu_s1_rgbp>;
 		port-name = "RGBP S1";
 		#iommu-cells = <0>;
@@ -954,7 +954,7 @@
 		sysmmu,async-fault;
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1A480000>;
-		power-domains = <&pd_mfc>;
+		//power-domains = <&pd_mfc>;
 		s2mpus = <&s2mpu_s0_mfc>;
 		port-name = "MFC";
 		#iommu-cells = <0>;
@@ -973,7 +973,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1D0B0000>;
-		power-domains = <&pd_mcsc>;
+		//power-domains = <&pd_mcsc>;
 		s2mpus = <&s2mpu_s0_mcsc>;
 		port-name = "MCSC";
 		#iommu-cells = <0>;
@@ -1053,7 +1053,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x11050000>;
-		power-domains = <&pd_hsi0>;
+		//power-domains = <&pd_hsi0>;
 		s2mpus = <&s2mpu_s0_hsi0>;
 		port-name = "HSI0";
 		#iommu-cells = <0>;
@@ -1103,7 +1103,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x1D4D0000>;
-		power-domains = <&pd_gdc>;
+		//power-domains = <&pd_gdc>;
 		s2mpus= <&s2mpu_s0_gdc>;
 		port-name = "GDC";
 		#iommu-cells = <0>;
@@ -1180,7 +1180,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x16C50000>;
-		power-domains = <&pd_eh>;
+		//power-domains = <&pd_eh>;
 
 		port-name = "EH";
 		#iommu-cells = <0>;
@@ -1203,7 +1203,7 @@
 
 		sysmmu,secure-irq;
 		sysmmu,secure_base = <0x20A60000>;
-		power-domains = <&pd_aur>;
+		//power-domains = <&pd_aur>;
 		s2mpus = <&s2mpu_s0_aur>;
 		port-name = "AUR";
 		#iommu-cells = <0>;
