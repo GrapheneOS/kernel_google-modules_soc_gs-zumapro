@@ -11,7 +11,7 @@
 #include "zumapro-emul-display.dtsi"
 
 / {
-	board_id = <0x58000>;
+	board_id = <0x68000>;
 	board_rev = <0x1>;
 	fragment@boardbase {
 		target-path="/";
