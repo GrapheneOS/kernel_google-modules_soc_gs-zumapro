@@ -88,6 +88,21 @@ max77779_fg:max77779fg@0x36 {
 	};
 };
 
+
+max77779_vimon:max77779vimon@0x28 {
+	status = "disabled";
+	compatible = "maxim,max77779vimon";
+	reg = <0x28>;
+
+	interrupt-parent = <&max77779_pmic_irq>;
+	interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
+
+	max77779,pmic = <&max77779_pmic>;
+
+	max77779,psy-type-unknown;
+};
+
+
 max77779_chg:max77779chrg@0x69 {
 	status = "disabled";
 	compatible = "maxim,max77779chrg";
