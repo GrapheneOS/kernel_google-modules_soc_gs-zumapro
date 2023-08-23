@@ -18,10 +18,20 @@
 		__overlay__ {
 			model = "ZUMA Emulator based";
 			compatible = "google,ZUMA Emulator", "google,ZUMA";
+			fixed-rate-clocks {
+				console_clock: console-clock {
+					compatible = "fixed-clock";
+					#clock-cells = <0>;
+					clock-frequency = <1843200>;
+					clock-output-names = "console-clock";
+				};
+			};
 		};
 	};
 };
 
 &serial_0 {
 	status = "okay";
+	clocks = <&console_clock>, <&console_clock>;
+	samsung,source-clock-rate = <1843200>;
 };
