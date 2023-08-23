@@ -136,6 +136,8 @@ enum gbms_charger_modes {
 
 #define SRC_CURRENT_LIMIT_MA		0
 
+#define DISCONNECT_DEBOUNCE_MS		1200
+
 #define LOG_LVL_DEBUG				1
 #define LOG_LVL_INFO				2
 
@@ -150,7 +152,6 @@ do {						\
 	if (LOG_LEVEL <= CURRENT_LOG_LEVEL)	\
 		logbuffer_log(LOG, FMT __VA_OPT__(,) __VA_ARGS__); \
 } while (0)
-
 
 static struct logbuffer *tcpm_log;
 
@@ -2106,7 +2107,6 @@ static int max77759_vote_icl(struct max77759_plat *chip, u32 max_ua)
 	int ret = 0;
 	struct usb_vote vote;
 
-	usb_psy_set_sink_state(chip->usb_psy_data, chip->online);
 	/*
 	 * TCPM sets max_ua to zero for Rp-default which needs to be
 	 * ignored. PPS values reflect the requested ones not the max.
@@ -2135,28 +2135,29 @@ static void icl_work_item(struct kthread_work *work)
 	struct max77759_plat *chip  =
 		container_of(container_of(work, struct kthread_delayed_work, work),
 			     struct max77759_plat, icl_work);
-
-	max77759_vote_icl(chip, chip->typec_current_max);
-}
-
-static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
-{
-	struct max77759_plat *chip = container_of(nb, struct max77759_plat, psy_notifier);
-	struct power_supply *psy = ptr;
 	union power_supply_propval current_max = {0}, voltage_max = {0}, online = {0},
 	      usb_type = {0}, val = {0};
 	int ret;
 
-	if (!strstr(psy->desc->name, "tcpm-source") || evt != PSY_EVENT_PROP_CHANGED)
-		return NOTIFY_OK;
-
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_CURRENT_MAX, &current_max);
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &voltage_max);
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE, &online);
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_USB_TYPE, &usb_type);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_CURRENT_MAX, &current_max);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &voltage_max);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_ONLINE, &online);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_USB_TYPE, &usb_type);
 	logbuffer_logk(chip->log, LOGLEVEL_INFO,
-		       "ONLINE:%d USB_TYPE:%d CURRENT_MAX:%d VOLTAGE_MAX:%d",
-		       online.intval, usb_type.intval, current_max.intval, voltage_max.intval);
+		      "%s: ONLINE:%d USB_TYPE:%d CURRENT_MAX:%d VOLTAGE_MAX:%d",
+		      __func__, online.intval, usb_type.intval, current_max.intval, voltage_max.intval);
+
+	/* Debounce disconnect for power adapters that can source at least 1.5A */
+	if (chip->debounce_adapter_disconnect && chip->online && !online.intval &&
+	    chip->typec_current_max >= 1500000) {
+		logbuffer_log(chip->log, "Debouncing disconnect\n");
+		/* Reduce current limit 500mA during debounce */
+		max77759_vote_icl(chip, 500000);
+		chip->debounce_adapter_disconnect = false;
+		kthread_mod_delayed_work(chip->wq, &chip->icl_work,
+					 msecs_to_jiffies(DISCONNECT_DEBOUNCE_MS));
+		return;
+	}
 
 	chip->vbus_mv = voltage_max.intval / 1000;
 	ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
@@ -2167,6 +2168,30 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	chip->online = online.intval;
 	chip->usb_type = usb_type.intval;
 	chip->typec_current_max = current_max.intval;
+	usb_psy_set_sink_state(chip->usb_psy_data, chip->online);
+	max77759_vote_icl(chip, chip->typec_current_max);
+}
+
+static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
+{
+	struct max77759_plat *chip = container_of(nb, struct max77759_plat, psy_notifier);
+	struct power_supply *psy = ptr;
+	union power_supply_propval online = {0}, usb_type = {0};
+
+	if (!strstr(psy->desc->name, "tcpm-source") || evt != PSY_EVENT_PROP_CHANGED)
+		return NOTIFY_OK;
+
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE, &online);
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_USB_TYPE, &usb_type);
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "ONLINE:%d USB_TYPE:%d", online.intval,
+		       usb_type.intval);
+	chip->tcpm_psy = psy;
+
+	if (chip->online && !online.intval && chip->typec_current_max >= 1500000)
+		chip->debounce_adapter_disconnect = true;
+	else
+		chip->debounce_adapter_disconnect = false;
+
 	/* Notifier is atomic, hence offloading */
 	kthread_mod_delayed_work(chip->wq, &chip->icl_work, 0);
 	return NOTIFY_OK;
@@ -3371,6 +3396,7 @@ static void max77759_shutdown(struct i2c_client *client)
 
 	dev_info(&client->dev, "disabling Type-C upon shutdown\n");
 	kthread_cancel_delayed_work_sync(&chip->check_missing_rp_work);
+	kthread_cancel_delayed_work_sync(&chip->icl_work);
 	/* Set current limit to 0. Will eventually happen after hi-Z as well */
 	max77759_vote_icl(chip, 0);
 	/* Prevent re-enabling toggling */

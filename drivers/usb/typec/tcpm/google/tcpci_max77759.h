@@ -35,6 +35,7 @@ struct max77759_plat {
 	struct bc12_status *bc12;
 	struct i2c_client *client;
 	struct power_supply *usb_psy;
+	struct power_supply *tcpm_psy;
 	struct max77759_contaminant *contaminant;
 	struct gvotable_election *usb_icl_proto_el;
 	struct gvotable_election *usb_icl_el;
@@ -196,6 +197,9 @@ struct max77759_plat {
 	struct kthread_work aicl_check_alarm_work;
 	/* AICL status from hardware */
 	bool aicl_active;
+
+	/* When true debounce disconnects to prevent user notifications during brief disconnects */
+	bool debounce_adapter_disconnect;
 
 	/* EXT_BST_EN exposed as GPIO */
 #ifdef CONFIG_GPIOLIB
