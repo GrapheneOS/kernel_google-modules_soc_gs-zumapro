@@ -511,7 +511,7 @@ static int mfc_dec_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 			core_ctx->state, ctx->wait_state);
 
 	mutex_lock(&ctx->drc_wait_mutex);
-	if (dec->disp_res_change) {
+	if (dec->disp_drc.disp_res_change) {
 		__mfc_dec_update_pix_format(ctx, f);
 		mutex_unlock(&ctx->drc_wait_mutex);
 		return 0;
@@ -1461,16 +1461,21 @@ static void __mfc_dec_update_disp_res(struct mfc_ctx *ctx, struct v4l2_selection
 {
 	struct mfc_dec *dec = ctx->dec_priv;
 
-	dec->disp_res_change--;
-	mfc_debug(2, "[DRC] disp_res_change %d cleared\n", dec->disp_res_change);
-
 	s->r.left = 0;
 	s->r.top = 0;
-	s->r.width = ctx->img_width;
-	s->r.height = ctx->img_height;
-	mfc_debug(2, "[FRAME] Composing info: w=%d h=%d fw=%d fh=%d\n",
-			s->r.width, s->r.height,
-			ctx->img_width, ctx->img_height);
+	s->r.width = dec->disp_drc.width[dec->disp_drc.pop_idx];
+	s->r.height = dec->disp_drc.height[dec->disp_drc.pop_idx];
+	mfc_debug(2, "[FRAME] Composing info: w=%d h=%d\n", s->r.width, s->r.height);
+
+	dec->disp_drc.disp_res_change--;
+	mfc_debug(3, "[DRC] disp_res_change[%d] count %d\n",
+			dec->disp_drc.pop_idx, dec->disp_drc.disp_res_change);
+	dec->disp_drc.pop_idx = ++dec->disp_drc.pop_idx % MFC_MAX_DRC_FRAME;
+
+	if (!dec->disp_drc.disp_res_change) {
+		dec->disp_drc.push_idx = 0;
+		dec->disp_drc.pop_idx = 0;
+	}
 
 	/*
 	 * Do not clear WAIT_G_FMT except RUNNING state
@@ -1503,7 +1508,7 @@ static int mfc_dec_g_selection(struct file *file, void *priv,
 	core_ctx = core->core_ctx[ctx->num];
 
 	mutex_lock(&ctx->drc_wait_mutex);
-	if (dec->disp_res_change) {
+	if (dec->disp_drc.disp_res_change) {
 		__mfc_dec_update_disp_res(ctx, s);
 		mutex_unlock(&ctx->drc_wait_mutex);
 		return 0;

@@ -70,6 +70,8 @@
 #define MFC_LOGGING_DATA_SIZE		950
 #define MFC_MAX_DEFAULT_PARAM		100
 #define MFC_NUM_EXTRA_DPB		5
+/* The number of display DRC max frames that can occur continuously in NAL_Q */
+#define MFC_MAX_DRC_FRAME              4
 
 /* OTF */
 #define HWFC_MAX_BUF			10
@@ -2009,6 +2011,14 @@ struct dpb_table {
 	struct sg_table *sgt[MFC_MAX_PLANES];
 };
 
+struct disp_drc_info {
+	int disp_res_change;
+	int push_idx;
+	int pop_idx;
+	int width[MFC_MAX_DRC_FRAME];
+	int height[MFC_MAX_DRC_FRAME];
+};
+
 struct mfc_dec {
 	int total_dpb_count;
 
@@ -2024,7 +2034,7 @@ struct mfc_dec {
 	int is_dts_mode;
 	int stored_tag;
 	int inter_res_change;
-	int disp_res_change;
+	struct disp_drc_info disp_drc;
 
 	int crc_enable;
 	int crc_luma0;
