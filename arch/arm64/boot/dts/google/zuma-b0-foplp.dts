@@ -469,7 +469,7 @@
 				isp_alert1: isp-alert1 {
 					temperature = <80000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
-					type = "active";
+					type = "passive";
 				};
 				isp_alert2: isp-alert2 {
 					temperature = <100000>; /* millicelsius */
@@ -484,17 +484,17 @@
 				isp_alert4: isp-alert4 {
 					temperature = <103000>; /* millicelsius */
 					hysteresis = <103000>; /* 103C to avoid falling edge irq */
-					type = "active";
+					type = "passive";
 				};
 				isp_alert5: isp-alert5 {
 					temperature = <107000>; /* millicelsius */
 					hysteresis = <107000>; /* 107C to avoid falling edge irq */
-					type = "active";
+					type = "passive";
 				};
 				isp_alert6: isp-alert6 {
 					temperature = <108000>; /* millicelsius */
 					hysteresis = <108000>; /* 108C to avoid falling edge irq */
-					type = "active";
+					type = "passive";
 				};
 				isp_hot: isp-hot {
 					temperature = <115000>; /* millicelsius */

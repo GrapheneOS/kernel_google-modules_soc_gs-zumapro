@@ -602,6 +602,9 @@ int mfc_core_cmd_dec_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	case 0:
 		mfc_perf_measure_on(core);
 
+		mfc_perf_trace(ctx, "frame", 1);
+		mfc_perf_trace(ctx, "fps", ctx->framerate / 1000);
+
 		mfc_core_cmd_host2risc(core, MFC_REG_H2R_CMD_NAL_START);
 		break;
 	case 1:
@@ -646,6 +649,9 @@ void mfc_core_cmd_enc_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	switch (last_frame) {
 	case 0:
 		mfc_perf_measure_on(core);
+
+		mfc_perf_trace(ctx, "frame", 1);
+		mfc_perf_trace(ctx, "fps", ctx->framerate / 1000);
 
 		mfc_core_cmd_host2risc(core, MFC_REG_H2R_CMD_NAL_START);
 		break;

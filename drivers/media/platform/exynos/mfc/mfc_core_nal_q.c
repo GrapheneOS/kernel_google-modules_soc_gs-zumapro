@@ -24,6 +24,8 @@
 #include "mfc_queue.h"
 #include "mfc_mem.h"
 
+#include "mfc_perf_measure.h"
+
 #define CBR_I_LIMIT_MAX			5
 int mfc_core_nal_q_check_enable(struct mfc_core *core)
 {
@@ -159,9 +161,11 @@ int mfc_core_nal_q_check_enable(struct mfc_core *core)
 	return 1;
 }
 
-void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_handle)
+void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_handle, int ctx_num)
 {
 	unsigned long flags;
+	struct mfc_core_ctx *core_ctx;
+	struct mfc_ctx *ctx;
 
 	mfc_core_debug_enter();
 
@@ -174,6 +178,19 @@ void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_hand
 		mfc_core_pm_clock_on(core);
 
 	nal_q_handle->nal_q_clk_cnt++;
+
+	core_ctx = core->core_ctx[ctx_num];
+	if (!core_ctx) {
+		mfc_core_err("no mfc context to run\n");
+	} else {
+		ctx = core_ctx->ctx;
+		ctx->nal_q_cnt++;
+		mfc_perf_trace(ctx, "nal_q", ctx->nal_q_cnt);
+		if (ctx->nal_q_cnt == 1) { /* Start a trace point for one frame */
+			mfc_perf_trace(ctx, "frame", 1);
+		}
+	}
+
 	core->continue_clock_on = false;
 
 	mfc_core_debug(2, "[NALQ] nal_q_clk_cnt = %d\n", nal_q_handle->nal_q_clk_cnt);
@@ -183,9 +200,11 @@ void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_hand
 	mfc_core_debug_leave();
 }
 
-void mfc_core_nal_q_clock_off(struct mfc_core *core, nal_queue_handle *nal_q_handle)
+void mfc_core_nal_q_clock_off(struct mfc_core *core, nal_queue_handle *nal_q_handle, int ctx_num)
 {
 	unsigned long flags;
+	struct mfc_core_ctx *core_ctx;
+	struct mfc_ctx *ctx;
 
 	mfc_core_debug_enter();
 
@@ -200,6 +219,21 @@ void mfc_core_nal_q_clock_off(struct mfc_core *core, nal_queue_handle *nal_q_han
 	}
 
 	nal_q_handle->nal_q_clk_cnt--;
+
+	core_ctx = core->core_ctx[ctx_num];
+	if (!core_ctx) {
+		mfc_core_err("no mfc context to run\n");
+	} else {
+		ctx = core_ctx->ctx;
+		ctx->nal_q_cnt--;
+		mfc_perf_trace(ctx, "nal_q", ctx->nal_q_cnt);
+		if (ctx->nal_q_cnt > 0) { /* Restart of trace point for one frame */
+			mfc_perf_trace(ctx, "frame", 0);
+			mfc_perf_trace(ctx, "frame", 1);
+		} else { /* End of trace point for one frame */
+			mfc_perf_trace(ctx, "frame", 0);
+		}
+	}
 
 	if (!nal_q_handle->nal_q_clk_cnt)
 		mfc_core_pm_clock_off(core);
@@ -534,7 +568,7 @@ void mfc_core_nal_q_stop_if_started(struct mfc_core *core)
 		return;
 	}
 
-	mfc_core_nal_q_clock_on(core, nal_q_handle);
+	mfc_core_nal_q_clock_on(core, nal_q_handle, core->curr_core_ctx);
 
 	mfc_core_nal_q_stop(core, nal_q_handle);
 	mfc_core_info("[NALQ] stop NAL QUEUE during get hwlock\n");
@@ -1588,6 +1622,10 @@ static void __mfc_core_nal_q_handle_stream(struct mfc_core *core, struct mfc_cor
 	strm_size = pOutStr->StreamSize;
 	pic_count = pOutStr->EncCnt;
 
+	mfc_perf_trace(ctx, "type", slice_type);
+	mfc_perf_trace(ctx, "size", strm_size);
+	mfc_perf_trace(ctx, "count", pic_count);
+
 	mfc_debug(2, "[NALQ][STREAM] encoded slice type: %d, size: %d, display order: %d\n",
 			slice_type, strm_size, pic_count);
 
@@ -2363,6 +2401,8 @@ void __mfc_core_nal_q_handle_frame(struct mfc_core *core, struct mfc_core_ctx *c
 
 	mfc_debug_enter();
 
+	mfc_perf_trace(ctx, "type", pOutStr->DecodedFrameType & MFC_REG_DECODED_FRAME_MASK);
+
 	dst_frame_status = pOutStr->DisplayStatus
 				& MFC_REG_DISP_STATUS_DISPLAY_STATUS_MASK;
 	need_empty_dpb = (pOutStr->DisplayStatus
@@ -2763,6 +2803,7 @@ int mfc_core_nal_q_enqueue_in_buf(struct mfc_core *core, struct mfc_core_ctx *co
 	if (input_diff == 0)
 		mfc_core_meerkat_start_tick(core);
 	MFC_TRACE_LOG_CORE("N%d", input_diff);
+	mfc_perf_trace(ctx, "fps", ctx->framerate / 1000);
 
 	spin_unlock_irqrestore(&nal_q_in_handle->nal_q_handle->lock, flags);
 

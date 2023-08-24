@@ -682,7 +682,7 @@ static int __mfc_nal_q_just_run(struct mfc_core *core, struct mfc_core_ctx *core
 			/* NAL START */
 			ret = 1;
 		} else {
-			mfc_core_nal_q_clock_on(core, nal_q_handle);
+			mfc_core_nal_q_clock_on(core, nal_q_handle, ctx->num);
 
 			mfc_core_nal_q_init(core, nal_q_handle);
 
@@ -699,7 +699,7 @@ static int __mfc_nal_q_just_run(struct mfc_core *core, struct mfc_core_ctx *core
 
 			if (mfc_core_nal_q_enqueue_in_buf(core, core_ctx, nal_q_handle->nal_q_in_handle)) {
 				mfc_debug(2, "[NALQ] Failed to enqueue input data\n");
-				mfc_core_nal_q_clock_off(core, nal_q_handle);
+				mfc_core_nal_q_clock_off(core, nal_q_handle, ctx->num);
 			}
 
 			mfc_clear_bit(ctx->num, &core->work_bits);
@@ -717,7 +717,7 @@ static int __mfc_nal_q_just_run(struct mfc_core *core, struct mfc_core_ctx *core
 		}
 		break;
 	case NAL_Q_STATE_STARTED:
-		mfc_core_nal_q_clock_on(core, nal_q_handle);
+		mfc_core_nal_q_clock_on(core, nal_q_handle, ctx->num);
 
 		if (mfc_core_nal_q_check_enable(core) == 0 ||
 				nal_q_handle->nal_q_exception) {
@@ -751,7 +751,7 @@ static int __mfc_nal_q_just_run(struct mfc_core *core, struct mfc_core_ctx *core
 			/* NAL QUEUE */
 			if (mfc_core_nal_q_enqueue_in_buf(core, core_ctx, nal_q_handle->nal_q_in_handle)) {
 				mfc_debug(2, "[NALQ] Failed to enqueue input data\n");
-				mfc_core_nal_q_clock_off(core, nal_q_handle);
+				mfc_core_nal_q_clock_off(core, nal_q_handle, ctx->num);
 			}
 
 			mfc_clear_bit(ctx->num, &core->work_bits);

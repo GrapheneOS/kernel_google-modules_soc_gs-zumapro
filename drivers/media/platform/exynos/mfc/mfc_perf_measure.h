@@ -17,6 +17,8 @@
 
 #include "mfc_core_reg_api.h"
 
+#include <trace/hooks/systrace.h>
+
 void mfc_perf_register(struct mfc_core *core);
 void __mfc_measure_init(void);
 void __mfc_measure_on(struct mfc_core *core);
@@ -32,6 +34,21 @@ static inline void mfc_perf_init(struct mfc_core *core) {}
 static inline void mfc_perf_cancel_drv_margin(struct mfc_core *core) {}
 static inline void mfc_perf_measure_on(struct mfc_core *core) {}
 static inline void mfc_perf_measure_off(struct mfc_core *core) {}
+static inline void mfc_perf_trace(struct mfc_ctx *ctx, char* tag, int counter)
+{
+	char trace_name[32];
+	if (ctx->crop_width != 0 && ctx->crop_height != 0) {
+		scnprintf(trace_name, sizeof(trace_name), "mfc-%s-%s-%dx%d#%d-%.*s",
+			ctx->type == MFCINST_ENCODER ? "enc" : "dec",
+			tag,
+			ctx->crop_width,
+			ctx->crop_height,
+			ctx->num,
+			4,
+			ctx->type == MFCINST_ENCODER ? ctx->dst_fmt->name: ctx->src_fmt->name);
+		__ATRACE_INT_PID(0, trace_name, counter);
+	}
+}
 
 #else
 

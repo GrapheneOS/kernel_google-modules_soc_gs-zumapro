@@ -102,7 +102,6 @@ extern void android_vh_use_amu_fie_pixel_mod(void* data, bool *use_amu_fie);
 extern void rvh_set_user_nice_pixel_mod(void *data, struct task_struct *p, long *nice,
 					bool *allowed);
 extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
-extern void rvh_prepare_prio_fork_pixel_mod(void *data, struct task_struct *p);
 extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 					 struct cpumask *lowest_mask,
 					 int ret, int *cpu);
@@ -131,6 +130,7 @@ static int init_vendor_task_data(void *data)
 	struct vendor_task_struct *v_tsk;
 	struct task_struct *p, *t;
 
+	rcu_read_lock();
 	for_each_process_thread(p, t) {
 		get_task_struct(t);
 		v_tsk = get_vendor_task_struct(t);
@@ -138,6 +138,7 @@ static int init_vendor_task_data(void *data)
 		v_tsk->orig_prio = t->static_prio;
 		put_task_struct(t);
 	}
+	rcu_read_unlock();
 
 	/* our module can start handling the initialization now */
 	wait_for_init = false;
@@ -189,7 +190,7 @@ static int vh_sched_init(void)
 	 *
 	 * stop_machine provides atomic way to guarantee this without races.
 	 */
-	ret = stop_machine(init_vendor_task_data, NULL, cpumask_of(smp_processor_id()));
+	ret = stop_machine(init_vendor_task_data, NULL, cpumask_of(raw_smp_processor_id()));
 	if (ret)
 		return ret;
 
@@ -363,10 +364,6 @@ static int vh_sched_init(void)
 		return ret;
 
 	ret = register_trace_android_rvh_setscheduler(rvh_setscheduler_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
-	ret = register_trace_android_rvh_prepare_prio_fork(rvh_prepare_prio_fork_pixel_mod, NULL);
 	if (ret)
 		return ret;
 

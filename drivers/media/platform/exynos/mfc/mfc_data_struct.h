@@ -2316,6 +2316,9 @@ struct mfc_ctx {
 	/* Lazy unmap disable */
 	int skip_lazy_unmap;
 
+	/* Count NAL QUEUE buffer for tracing performance */
+	int nal_q_cnt;
+
 	/* external structure */
 	struct v4l2_fh fh;
 	struct vb2_queue vq_src;

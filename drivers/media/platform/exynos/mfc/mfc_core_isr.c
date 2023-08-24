@@ -984,6 +984,8 @@ static void __mfc_handle_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	struct mfc_buf *mfc_buf = NULL;
 	int i;
 
+	mfc_perf_trace(ctx, "type", mfc_core_get_dec_frame_type());
+
 	dst_frame_status = mfc_core_get_disp_status();
 	res_change = mfc_core_get_res_change();
 	need_dpb_change = mfc_core_get_dpb_change();
@@ -1416,6 +1418,10 @@ static int __mfc_handle_stream(struct mfc_core *core, struct mfc_ctx *ctx, unsig
 	strm_size = mfc_core_get_enc_strm_size();
 	pic_count = mfc_core_get_enc_pic_count();
 
+	mfc_perf_trace(ctx, "type", slice_type);
+	mfc_perf_trace(ctx, "size", strm_size);
+	mfc_perf_trace(ctx, "count", pic_count);
+
 	mfc_debug(2, "[STREAM] encoded slice type: %d, size: %d, display order: %d\n",
 			slice_type, strm_size, pic_count);
 
@@ -1812,6 +1818,12 @@ irqreturn_t mfc_core_top_half_irq(int irq, void *priv)
 
 	mfc_perf_measure_off(core);
 
+	mfc_perf_trace(ctx, "irq", reason);
+
+	if (reason == MFC_REG_R2H_CMD_FRAME_DONE_RET) {
+		mfc_perf_trace(ctx, "frame", 0);
+	}
+
 	return IRQ_WAKE_THREAD;
 }
 
@@ -1850,7 +1862,7 @@ static inline int __mfc_nal_q_irq(struct mfc_core *core,
 		mfc_core_clear_int();
 
 		if (!nal_q_handle->nal_q_exception)
-			mfc_core_nal_q_clock_off(core, nal_q_handle);
+			mfc_core_nal_q_clock_off(core, nal_q_handle, ctx_num);
 
 		if (ctx_num < 0)
 			mfc_core_err("[NALQ] Can't find ctx in nal q\n");
