@@ -8,6 +8,39 @@
 
 #include "zuma-pmic.dtsi"
 
+&m_buck2_reg {
+	schematic-name = "S2M_VDD_CPUCL1";
+	subsys-name = "CPU(MID)";
+};
+
+&m_buck3_reg {
+	schematic-name = "S3M_VDD_CPUCL2";
+	subsys-name = "CPU(BIG)";
+};
+
+&m_buck9_reg {
+	schematic-name = "S9M_VDD_CPUCL1_M";
+	subsys-name = "CPU(MID)";
+
+};
+
+&m_ldo11_reg {
+	schematic-name = "L11M_VDD_CPUCL2_HS_M";
+	subsys-name = "CPU(BIG)";
+};
+
+&m_ldo12_reg {
+	schematic-name = "L12M_VDD_CPUCL0_M";
+	subsys-name = "CPU(LITTLE)";
+	regulator-always-on;
+	regulator-initial-mode = <SEC_OPMODE_SUSPEND>;
+};
+
+&m_ldo17_reg {
+	schematic-name = "L17M_VDD_CPUCL2_HD_M";
+	subsys-name = "CPU(BIG)";
+};
+
 &s2mpg14mfd {
 		init_time,year = <123>;
 		init_time,wday = <0>;
