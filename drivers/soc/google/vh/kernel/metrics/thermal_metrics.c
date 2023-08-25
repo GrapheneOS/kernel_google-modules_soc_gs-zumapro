@@ -28,6 +28,11 @@ struct temperature_bucket_sample {
 	int bucket;
 };
 
+struct thermal_group_entry {
+	struct kobject *kobj;
+	char *name;
+};
+
 struct temperature_residency_stats {
 	spinlock_t lock;
 	int threshold[MAX_SUPPORTED_THRESHOLDS];
@@ -38,18 +43,13 @@ struct temperature_residency_stats {
 	char name[THERMAL_NAME_LENGTH + 1];
 	struct temperature_bucket_sample prev;
 	int num_thresholds;
-	struct kobject *thermal_group_kobj;
+	struct thermal_group_entry *thermal_group;
 	bool use_callback;
 	struct temp_residency_stats_callbacks ops;
 };
 
-struct thermal_group_entry {
-	struct kobject *kobj;
-	char *name;
-};
-
-static struct temperature_residency_stats residency_stat_array[MAX_NUM_SUPPORTED_THERMAL_ZONES];
 static struct thermal_group_entry thermal_group_array[MAX_NUM_SUPPORTED_THERMAL_GROUPS];
+static struct temperature_residency_stats residency_stat_array[MAX_NUM_SUPPORTED_THERMAL_ZONES];
 
 static tr_handle designated_handle;
 static struct kobject *tr_by_group_kobj;
@@ -130,7 +130,7 @@ static int get_next_available_handle(void)
 	return -1;
 }
 
-static struct kobject *get_thermal_group_kobj(char *thermal_group_name)
+static struct thermal_group_entry *get_thermal_group(char *thermal_group_name)
 {
 	struct kobject *thermal_group_kobj;
 	int index;
@@ -140,7 +140,7 @@ static struct kobject *get_thermal_group_kobj(char *thermal_group_name)
 		if (!thermal_group_array[index].name || thermal_group_array[index].name[0] == '\0')
 			break;
 		if (!strcmp(thermal_group_name, thermal_group_array[index].name))
-			return thermal_group_array[index].kobj;
+			return &thermal_group_array[index];
 	}
 	if (index >= MAX_NUM_SUPPORTED_THERMAL_GROUPS) {
 		pr_err("Failed to support more thermal groups\n");
@@ -159,7 +159,7 @@ static struct kobject *get_thermal_group_kobj(char *thermal_group_name)
 	}
 	thermal_group_array[index].name = kstrdup(thermal_group_name, GFP_KERNEL);
 	thermal_group_array[index].kobj = thermal_group_kobj;
-	return thermal_group_kobj;
+	return &thermal_group_array[index];
 }
 
 static int get_tz_cb_threshold(tr_handle instance, struct temperature_residency_stats *stats)
@@ -181,7 +181,7 @@ tr_handle register_temp_residency_stats(const char *name, char *group_name)
 {
 	tr_handle instance;
 	struct temperature_residency_stats *stats;
-	struct kobject *thermal_group_kobj;
+	struct thermal_group_entry *thermal_group;
 
 	if (!name || name[0] == '\0')
 		return -EINVAL;
@@ -199,10 +199,10 @@ tr_handle register_temp_residency_stats(const char *name, char *group_name)
 	stats->use_callback = false;
 	stats->ops = (struct temp_residency_stats_callbacks){NULL, NULL, NULL, NULL};
 
-	thermal_group_kobj = get_thermal_group_kobj(group_name);
-	if (!thermal_group_kobj)
+	thermal_group = get_thermal_group(group_name);
+	if (!thermal_group)
 		return -ENOMEM;
-	stats->thermal_group_kobj = thermal_group_kobj;
+	stats->thermal_group = thermal_group;
 
 	return instance;
 }
@@ -350,7 +350,7 @@ static ssize_t temp_residency_all_stats_show(struct kobject *kobj,
 
 	for (instance = 0 ; instance < MAX_NUM_SUPPORTED_THERMAL_ZONES ; instance++) {
 		stats = &residency_stat_array[instance];
-		if (stats->name[0] == '\0' || kobj != stats->thermal_group_kobj)
+		if (stats->name[0] == '\0' || kobj != stats->thermal_group->kobj)
 			continue;
 
 		if (stats->use_callback) {
@@ -403,7 +403,7 @@ static ssize_t temp_residency_all_stats_reset_store(struct kobject *kobj,
 
 	for (instance = 0 ; instance < MAX_NUM_SUPPORTED_THERMAL_ZONES ; instance++) {
 		if (residency_stat_array[instance].name[0] != '\0' &&
-					kobj == residency_stat_array[instance].thermal_group_kobj)
+		    kobj == residency_stat_array[instance].thermal_group->kobj)
 			reset_residency_stats(instance);
 	}
 	return count;
@@ -519,7 +519,7 @@ static ssize_t temp_residency_all_thresholds_show(struct kobject *kobj,
 
 	for (instance = 0 ; instance < MAX_NUM_SUPPORTED_THERMAL_ZONES ; instance++) {
 		stats = &residency_stat_array[instance];
-		if (stats->name[0] == '\0' || kobj != stats->thermal_group_kobj)
+		if (stats->name[0] == '\0' || kobj != stats->thermal_group->kobj)
 			continue;
 
 		if (stats->use_callback) {
@@ -561,7 +561,7 @@ static ssize_t temp_residency_all_thresholds_store(struct kobject *kobj,
 
 	for (instance = 0 ; instance < MAX_NUM_SUPPORTED_THERMAL_ZONES ; instance++) {
 		stats = &residency_stat_array[instance];
-		if (stats->name[0] != '\0' && kobj == stats->thermal_group_kobj) {
+		if (stats->name[0] != '\0' && kobj == stats->thermal_group->kobj) {
 			stats->num_thresholds = ret;
 			set_residency_thresholds(instance, threshold);
 		}
