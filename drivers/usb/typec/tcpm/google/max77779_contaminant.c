@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright 2020 Google LLC
+ * Copyright 2023 Google LLC
  *
- * USB contaminant detection
+ * MAX77779 USB contaminant detection
  */
 
 #include <linux/device.h>
@@ -16,55 +16,64 @@
 #include "max77759_helper.h"
 #include "max777x9_contaminant.h"
 #include "tcpci_max77759.h"
-#include "tcpci_max77759_vendor_reg.h"
+#include "tcpci_max77779_vendor_reg.h"
 
-/* Updated in MDR2 slide. */
-#define FLADC_1uA_LSB_MV		25
-/* High range CC */
-#define FLADC_CC_HIGH_RANGE_LSB_MV	208
-/* Low range CC */
-#define FLADC_CC_LOW_RANGE_LSB_MV      126
+#define SARADC_1uA_LSB_UV		4900
+/* TODO: High range CC */
+#define SARADC_CC_HIGH_RANGE_LSB_MV	208
+/* TODO: Low range CC */
+#define SARADC_CC_LOW_RANGE_LSB_MV      126
 
 /* 1uA current source */
-#define FLADC_CC_SCALE1			1
+#define SARADC_CC_SCALE1			1
 /* 5 uA current source */
-#define FLADC_CC_SCALE2			5
+#define SARADC_CC_SCALE2			5
 
-#define FLADC_1uA_CC_OFFSET_MV		300
-#define FLADC_CC_HIGH_RANGE_OFFSET_MV	624
-#define FLADC_CC_LOW_RANGE_OFFSET_MV	378
+#define SARADC_1uA_CC_OFFSET_MV		0
+#define SARADC_CC_HIGH_RANGE_OFFSET_MV	624
+#define SARADC_CC_LOW_RANGE_OFFSET_MV	378
 
 /* Actually translates to 18.7K */
 #define ACCESSORY_THRESHOLD_CC_K	25
 #define CONTAMINANT_THRESHOLD_SBU_K	1000
-#define	CONTAMINANT_THRESHOLD_CC_K	1000
+#define CONTAMINANT_THRESHOLD_CC_K	1000
 
-static int adc_to_mv(struct max777x9_contaminant *contaminant, enum adc_select channel,
-		     bool ua_src, u8 fladc)
+static u32 adc_to_uv(struct max777x9_contaminant *contaminant, enum adc_select channel,
+		     bool ua_src, u8 saradc_status)
 {
+	u32 adc_uv = saradc_status;
+
 	/* SBU channels only have 1 scale with 1uA. */
 	if ((ua_src && (channel == CC1_SCALE2 || channel == CC2_SCALE2 || channel == SBU1 ||
 			channel == SBU2)))
 		/* Mean of range */
-		return FLADC_1uA_CC_OFFSET_MV + (fladc * FLADC_1uA_LSB_MV);
+		adc_uv = SARADC_1uA_CC_OFFSET_MV + (saradc_status * SARADC_1uA_LSB_UV);
 	else if (!ua_src && (channel == CC1_SCALE1 || channel == CC2_SCALE1))
-		return FLADC_CC_HIGH_RANGE_OFFSET_MV + (fladc * FLADC_CC_HIGH_RANGE_LSB_MV);
+		adc_uv = SARADC_CC_HIGH_RANGE_OFFSET_MV +
+			 (saradc_status * SARADC_CC_HIGH_RANGE_LSB_MV);
 	else if (!ua_src && (channel == CC1_SCALE2 || channel == CC2_SCALE2))
-		return FLADC_CC_LOW_RANGE_OFFSET_MV + (fladc * FLADC_CC_LOW_RANGE_LSB_MV);
+		adc_uv = SARADC_CC_LOW_RANGE_OFFSET_MV +
+			(saradc_status * SARADC_CC_LOW_RANGE_LSB_MV);
 	else
 		logbuffer_log(contaminant->chip->log, "ADC ERROR: SCALE UNKNOWN");
 
-	return fladc;
+	return adc_uv;
 }
 
-static int read_adc_mv(struct max777x9_contaminant *contaminant,
+static int read_adc_uv(struct max777x9_contaminant *contaminant,
 		       enum adc_select channel, int sleep_msec, bool raw,
 		       bool ua_src)
 {
 	struct regmap *regmap = contaminant->chip->data.regmap;
-	u8 fladc;
+	u8 saradc_status;
 	struct logbuffer *log = contaminant->chip->log;
 	int ret;
+
+	/* Set VBUS_VOLT_MON = 1 for ADC measurement */
+	ret = max77759_update_bits8(regmap, TCPC_POWER_CTRL, TCPC_POWER_CTRL_VBUS_VOLT_MON,
+				    TCPC_POWER_CTRL_VBUS_VOLT_MON);
+	if (ret < 0)
+		return -EIO;
 
 	/* Channel & scale select */
 	ret = max77759_update_bits8(regmap, TCPC_VENDOR_ADC_CTRL1, ADCINSEL_MASK,
@@ -78,12 +87,16 @@ static int read_adc_mv(struct max777x9_contaminant *contaminant,
 		return -EIO;
 
 	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_ADC_CTRL1, log);
+	/* SAR_ADC_STS when set indicated  valid data in ADC */
+	MAX77759_LOG_REGISTER(regmap, VENDOR_CC_STATUS1, log);
 
 	usleep_range(sleep_msec * 1000, (sleep_msec + 1) * 1000);
-	ret = max77759_read8(regmap, TCPC_VENDOR_FLADC_STATUS, &fladc);
+	ret = max77759_read8(regmap, TCPC_VENDOR_SARADC_STATUS, &saradc_status);
 	if (ret < 0)
 		return -EIO;
-	logbuffer_log(log, "Contaminant: ADC %u", fladc);
+	logbuffer_log(log, "Contaminant: ADC %u", saradc_status);
+	/* SAR_ADC_STS when set indicated  valid data in ADC */
+	MAX77759_LOG_REGISTER(regmap, VENDOR_CC_STATUS1, log);
 
 	/* Disable ADC */
 	ret = max77759_update_bits8(regmap, TCPC_VENDOR_ADC_CTRL1, ADCEN, 0);
@@ -94,19 +107,23 @@ static int read_adc_mv(struct max777x9_contaminant *contaminant,
 	if (ret < 0)
 		return -EIO;
 
+	ret = max77759_update_bits8(regmap, TCPC_POWER_CTRL, TCPC_POWER_CTRL_VBUS_VOLT_MON, 0);
+	if (ret < 0)
+		return -EIO;
+
 	if (!raw)
-		return adc_to_mv(contaminant, channel, ua_src, fladc);
+		return adc_to_uv(contaminant, channel, ua_src, saradc_status);
 	else
-		return fladc;
+		return saradc_status;
 }
 
-int max77759_read_resistance_kohm(struct max777x9_contaminant *contaminant,
+int max77779_read_resistance_kohm(struct max777x9_contaminant *contaminant,
 				  enum adc_select channel, int sleep_msec,
 				  bool raw)
 {
 	struct regmap *regmap = contaminant->chip->data.regmap;
 	struct logbuffer *log = contaminant->chip->log;
-	int mv;
+	int uv;
 	u8 switch_setting;
 	int ret;
 
@@ -117,13 +134,6 @@ int max77759_read_resistance_kohm(struct max777x9_contaminant *contaminant,
 					    ULTRA_LOW_POWER_MODE);
 		if (ret < 0)
 			return -EIO;
-		/*
-		 * CC resistive ladder is automatically disabled when
-		 * 1uA source is ON and Flash ADC channel is not CC scale1.
-		 * 1uA soruce is default on here.
-		 *
-		 * REMOVED IN MDR2.0 V2.0
-		 */
 
 		/* Enable 1uA current source */
 		ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL2, CCRPCTRL_MASK, UA_1_SRC);
@@ -137,13 +147,13 @@ int max77759_read_resistance_kohm(struct max777x9_contaminant *contaminant,
 
 		MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL2, log);
 
-		mv = read_adc_mv(contaminant, channel, sleep_msec, raw, true);
+		uv = read_adc_uv(contaminant, channel, sleep_msec, raw, true);
 		/* OVP enable */
 		ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL2, CCOVPDIS, 0);
 		if (ret < 0)
 			return -EIO;
 		/* returns KOhm as 1uA source is used. */
-		return mv;
+		return uv / 1000;
 	}
 
 	logbuffer_log(log, "Contaminant: SBU read");
@@ -151,12 +161,8 @@ int max77759_read_resistance_kohm(struct max777x9_contaminant *contaminant,
 	 * SBU measurement
 	 * OVP disable
 	 */
-	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL2, CCLPMODESEL_MASK,
-				    ULTRA_LOW_POWER_MODE);
-	if (ret < 0)
-		return -EIO;
 
-	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL2, SBUOVPDIS, SBUOVPDIS);
+	ret = max77759_update_bits8(regmap, TCPC_VENDOR_SBU_CTRL1, SBUOVPDIS, SBUOVPDIS);
 	if (ret < 0)
 		return -EIO;
 
@@ -166,16 +172,18 @@ int max77759_read_resistance_kohm(struct max777x9_contaminant *contaminant,
 		return -EIO;
 	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_SBUSW_CTRL, log);
 
-	/* SBU switches auto configure when channel is selected. */
-	/* Enable 1ua current source */
-	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL2, SBURPCTRL, SBURPCTRL);
+	/* 1ua current source enable */
+	ret = max77759_update_bits8(regmap, TCPC_VENDOR_SBU_CTRL1, SBUULPSRCSEL | SBURPCTRL_ULP_EN,
+				    SBUULPSRC_1UA | SBURPCTRL_ULP_EN);
 	if (ret < 0)
 		return -EIO;
-	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL2, log);
 
-	mv = read_adc_mv(contaminant, channel, sleep_msec, raw, true);
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_SBU_CTRL1, log);
+
+	uv = read_adc_uv(contaminant, channel, sleep_msec, raw, true);
 	/* Disable current source */
-	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL2, SBURPCTRL, 0);
+	ret = max77759_update_bits8(regmap, TCPC_VENDOR_SBU_CTRL1, SBUULPSRCSEL | SBURPCTRL_ULP_EN,
+				    0);
 	if (ret < 0)
 		return -EIO;
 	/* Set switch to original setting */
@@ -183,8 +191,8 @@ int max77759_read_resistance_kohm(struct max777x9_contaminant *contaminant,
 	if (ret < 0)
 		return -EIO;
 
-	/* OVP disable */
-	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL2, SBUOVPDIS, 0);
+	/* OVP enable */
+	ret = max77759_update_bits8(regmap, TCPC_VENDOR_SBU_CTRL1, SBUOVPDIS, 0);
 	if (ret < 0)
 		return -EIO;
 
@@ -192,13 +200,13 @@ int max77759_read_resistance_kohm(struct max777x9_contaminant *contaminant,
 	 * 1ua current source on sbu;
 	 * return KOhm
 	 */
-	logbuffer_log(contaminant->chip->log, "Contaminant: SBU read %#x", mv);
-	return mv;
+	logbuffer_log(contaminant->chip->log, "Contaminant: SBU read %#x", uv);
+	return uv / 1000;
 }
-EXPORT_SYMBOL_GPL(max77759_read_resistance_kohm);
+EXPORT_SYMBOL_GPL(max77779_read_resistance_kohm);
 
-int max77759_read_comparators(struct max777x9_contaminant *contaminant,
-			      u8 *vendor_cc_status2_cc1, u8 *vendor_cc_status2_cc2)
+int max77779_read_comparators(struct max777x9_contaminant *contaminant, u8 *vendor_cc_status2_cc1,
+			      u8 *vendor_cc_status2_cc2)
 {
 	struct regmap *regmap = contaminant->chip->data.regmap;
 	struct logbuffer *log = contaminant->chip->log;
@@ -261,9 +269,9 @@ int max77759_read_comparators(struct max777x9_contaminant *contaminant,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(max77759_read_comparators);
+EXPORT_SYMBOL_GPL(max77779_read_comparators);
 
-int max77759_detect_contaminant(struct max777x9_contaminant *contaminant)
+int max77779_detect_contaminant(struct max777x9_contaminant *contaminant)
 {
 	int cc1_k, cc2_k, sbu1_k, sbu2_k, ret;
 	u8 vendor_cc_status2_cc1 = 0xff, vendor_cc_status2_cc2 = 0xff;
@@ -282,14 +290,14 @@ int max77759_detect_contaminant(struct max777x9_contaminant *contaminant)
 		return -EIO;
 
 	/* CCLPMODESEL_AUTO_LOW_POWER in use. */
-	cc1_k = max77759_read_resistance_kohm(contaminant, CC1_SCALE2, READ1_SLEEP_MS, false);
-	cc2_k = max77759_read_resistance_kohm(contaminant, CC2_SCALE2, READ2_SLEEP_MS, false);
+	cc1_k = max77779_read_resistance_kohm(contaminant, CC1_SCALE2, READ1_SLEEP_MS, false);
+	cc2_k = max77779_read_resistance_kohm(contaminant, CC2_SCALE2, READ2_SLEEP_MS, false);
 	logbuffer_log(chip->log, "Contaminant: cc1_k:%u cc2_k:%u", cc1_k, cc2_k);
 
-	sbu1_k = max77759_read_resistance_kohm(contaminant, SBU1, READ1_SLEEP_MS, false);
-	sbu2_k = max77759_read_resistance_kohm(contaminant, SBU2, READ2_SLEEP_MS, false);
+	sbu1_k = max77779_read_resistance_kohm(contaminant, SBU1, READ1_SLEEP_MS, false);
+	sbu2_k = max77779_read_resistance_kohm(contaminant, SBU2, READ2_SLEEP_MS, false);
 	logbuffer_log(chip->log, "Contaminant: sbu1_k:%u sbu2_k:%u", sbu1_k, sbu2_k);
-	ret = max77759_read_comparators(contaminant, &vendor_cc_status2_cc1,
+	ret = max77779_read_comparators(contaminant, &vendor_cc_status2_cc1,
 					&vendor_cc_status2_cc2);
 	if (ret == -EIO)
 		return ret;
@@ -326,9 +334,9 @@ int max77759_detect_contaminant(struct max777x9_contaminant *contaminant)
 
 	return inferred_state;
 }
-EXPORT_SYMBOL_GPL(max77759_detect_contaminant);
+EXPORT_SYMBOL_GPL(max77779_detect_contaminant);
 
-int max77759_enable_dry_detection(struct max777x9_contaminant *contaminant)
+int max77779_enable_dry_detection(struct max777x9_contaminant *contaminant)
 {
 	struct regmap *regmap = contaminant->chip->data.regmap;
 	struct max77759_plat *chip = contaminant->chip;
@@ -337,11 +345,11 @@ int max77759_enable_dry_detection(struct max777x9_contaminant *contaminant)
 
 	/*
 	 * tunable: 1ms water detection debounce
-	 * tunable: 1000mV/1000K thershold for water detection
+	 * tunable: 1000mV/1000K threshold for water detection
 	 * tunable: 4.8s water cycle
 	 */
 	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL3, CCWTRDEB_MASK | CCWTRSEL_MASK
-				    | WTRCYCLE_MASK, CCWTRDEB_1MS << CCWTRDEB_SHIFT |
+				    | WTRCYCLE_MASK | SBU_DET_EN, CCWTRDEB_1MS << CCWTRDEB_SHIFT |
 				    CCWTRSEL_1V << CCWTRSEL_SHIFT | WTRCYCLE_4_8_S <<
 				    WTRCYCLE_SHIFT);
 	if (ret < 0)
@@ -379,12 +387,17 @@ int max77759_enable_dry_detection(struct max777x9_contaminant *contaminant)
 	ret = max77759_write8(regmap, TCPC_COMMAND, TCPC_CMD_LOOK4CONNECTION);
 	if (ret < 0)
 		return -EIO;
-	logbuffer_log(chip->log, "Contaminant: Dry detecion enabled");
+
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL1, chip->log);
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL2, chip->log);
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL3, chip->log);
+
+	logbuffer_log(chip->log, "Contaminant: Dry detection enabled");
 	return 0;
 }
-EXPORT_SYMBOL_GPL(max77759_enable_dry_detection);
+EXPORT_SYMBOL_GPL(max77779_enable_dry_detection);
 
-int max77759_disable_contaminant_detection(struct max77759_plat *chip)
+int max77779_disable_contaminant_detection(struct max77759_plat *chip)
 {
 	struct regmap *regmap = chip->data.regmap;
 	struct max777x9_contaminant *contaminant = chip->contaminant;
@@ -392,10 +405,6 @@ int max77759_disable_contaminant_detection(struct max77759_plat *chip)
 
 	if (!contaminant)
 		return 0;
-
-	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL2, CCLPMODESEL_MASK, 0);
-	if (ret < 0)
-		return -EIO;
 
 	ret = max77759_write8(regmap, TCPC_ROLE_CTRL, TCPC_ROLE_CTRL_DRP |
 			      (TCPC_ROLE_CTRL_CC_RD << TCPC_ROLE_CTRL_CC1_SHIFT) |
@@ -425,17 +434,21 @@ int max77759_disable_contaminant_detection(struct max77759_plat *chip)
 	if (contaminant->state != NOT_DETECTED && contaminant->state != SINK)
 		contaminant->state = NOT_DETECTED;
 
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL1, chip->log);
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL2, chip->log);
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL3, chip->log);
+
 	logbuffer_log(chip->log, "Contaminant: Contaminant detection disabled");
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(max77759_disable_contaminant_detection);
+EXPORT_SYMBOL_GPL(max77779_disable_contaminant_detection);
 
-int max77759_enable_contaminant_detection(struct max77759_plat *chip)
+int max77779_enable_contaminant_detection(struct max77759_plat *chip)
 {
 	struct regmap *regmap = chip->data.regmap;
 	struct max777x9_contaminant *contaminant = chip->contaminant;
-	u8 vcc2, pwr_ctrl;
+	u8 pwr_ctrl;
 	int ret;
 
 	if (!contaminant)
@@ -443,11 +456,12 @@ int max77759_enable_contaminant_detection(struct max77759_plat *chip)
 
 	/*
 	 * tunable: 1ms water detection debounce
-	 * tunable: 1000mV/1000K thershold for water detection
+	 * tunable: 1000mV/1000K threshold for water detection
+	 * tunable: SBU detection disable
 	 * tunable: 4.8s water cycle
 	 */
 	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL3, CCWTRDEB_MASK | CCWTRSEL_MASK
-				    | WTRCYCLE_MASK, CCWTRDEB_1MS << CCWTRDEB_SHIFT |
+				    | WTRCYCLE_MASK | SBU_DET_EN, CCWTRDEB_1MS << CCWTRDEB_SHIFT |
 				    CCWTRSEL_1V << CCWTRSEL_SHIFT | WTRCYCLE_4_8_S <<
 				    WTRCYCLE_SHIFT);
 	if (ret < 0)
@@ -455,10 +469,6 @@ int max77759_enable_contaminant_detection(struct max77759_plat *chip)
 
 	/* Contaminant detection mode: contaminant detection */
 	ret = max77759_update_bits8(regmap, TCPC_VENDOR_CC_CTRL1, CCCONNDRY, 0);
-	if (ret < 0)
-		return -EIO;
-
-	ret = max77759_read8(regmap, TCPC_VENDOR_CC_CTRL2, &vcc2);
 	if (ret < 0)
 		return -EIO;
 
@@ -470,9 +480,9 @@ int max77759_enable_contaminant_detection(struct max77759_plat *chip)
 			return -EIO;
 	}
 
-	ret = max77759_read8(regmap, TCPC_VENDOR_CC_CTRL2, &vcc2);
-	if (ret < 0)
-		return -EIO;
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL1, chip->log);
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL2, chip->log);
+	MAX77759_LOG_REGISTER(regmap, TCPC_VENDOR_CC_CTRL3, chip->log);
 
 	/* Mask flash adc interrupt */
 	ret = max77759_update_bits8(regmap, TCPC_VENDOR_ALERT_MASK2, MSK_FLASH_ADCINT, 0);
@@ -522,9 +532,9 @@ int max77759_enable_contaminant_detection(struct max77759_plat *chip)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(max77759_enable_contaminant_detection);
+EXPORT_SYMBOL_GPL(max77779_enable_contaminant_detection);
 
-void max77759_disable_auto_ultra_low_power_mode(struct max77759_plat *chip, bool disable)
+void max77779_disable_auto_ultra_low_power_mode(struct max77759_plat *chip, bool disable)
 {
 	struct max777x9_contaminant *contaminant = chip->contaminant;
 	int ret;
@@ -546,7 +556,7 @@ void max77759_disable_auto_ultra_low_power_mode(struct max77759_plat *chip, bool
 	if (!ret)
 		contaminant->auto_ultra_low_power_mode_disabled = disable;
 }
-EXPORT_SYMBOL_GPL(max77759_disable_auto_ultra_low_power_mode);
+EXPORT_SYMBOL_GPL(max77779_disable_auto_ultra_low_power_mode);
 
 MODULE_DESCRIPTION("MAX77759_CONTAMINANT Module");
 MODULE_AUTHOR("Badhri Jagan Sridharan <badhri@google.com>");

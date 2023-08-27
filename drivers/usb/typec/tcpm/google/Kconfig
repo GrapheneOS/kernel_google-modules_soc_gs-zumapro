@@ -31,6 +31,18 @@ config TYPEC_MAX77759
 	help
 	  MAX77759 TCPCI driver to interface with TCPM.
 
+config TYPEC_MAX77759_CONTAMINANT
+	tristate "Maxim MAX77759 specific contaminant detection routines"
+	depends on TYPEC_MAX77759
+	help
+	  Maxim MAX77759 specific contaminant detection routines.
+
+config TYPEC_MAX77779_CONTAMINANT
+        tristate "Maxim MAX77779 specific contaminant detection routines"
+        depends on TYPEC_MAX77759
+        help
+          Maxim MAX77779 specific contaminant detection routiness.
+
 endif # TYPEC_TCPCI
 endif # TYPEC_TCPM
 

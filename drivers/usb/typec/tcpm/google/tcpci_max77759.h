@@ -23,7 +23,7 @@
 
 struct gvotable_election;
 struct logbuffer;
-struct max77759_contaminant;
+struct max777x9_contaminant;
 struct max77759_compliance_warnings;
 struct tcpci_data;
 struct max77759_io_error;
@@ -35,7 +35,7 @@ struct max77759_plat {
 	struct bc12_status *bc12;
 	struct i2c_client *client;
 	struct power_supply *usb_psy;
-	struct max77759_contaminant *contaminant;
+	struct max777x9_contaminant *contaminant;
 	struct gvotable_election *usb_icl_proto_el;
 	struct gvotable_election *usb_icl_el;
 	struct gvotable_election *charger_mode_votable;
@@ -220,28 +220,6 @@ struct max77759_plat {
 struct max77759_usb;
 
 void register_tcpc(struct max77759_usb *usb, struct max77759_plat *chip);
-
-#define MAXQ_DETECT_TYPE_CC_AND_SBU	0x10
-#define MAXQ_DETECT_TYPE_SBU_ONLY	0x30
-
-int maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1_raw, u8 sbu2_raw,
-			   u8 cc1_rd, u8 cc2_rd, u8 type, u8 cc_adc_skipped,
-			   u8 *response, u8 length);
-int __attribute__((weak)) maxq_query_contaminant(u8 cc1_raw, u8 cc2_raw, u8 sbu1_raw, u8 sbu2_raw,
-						 u8 cc1_rd, u8 cc2_rd, u8 type, u8 cc_adc_skipped,
-						 u8 *response, u8 length)
-{
-	return -EINVAL;
-}
-
-struct max77759_contaminant *max77759_contaminant_init(struct max77759_plat *plat, bool enable);
-int process_contaminant_alert(struct max77759_contaminant *contaminant, bool debounce_path,
-			      bool tcpm_toggling, bool *cc_status_handled, bool *port_clean);
-int enable_contaminant_detection(struct max77759_plat *chip, bool maxq);
-int disable_contaminant_detection(struct max77759_plat *chip);
-bool is_contaminant_detected(struct max77759_plat *chip);
-bool is_floating_cable_or_sink_detected(struct max77759_plat *chip);
-void disable_auto_ultra_low_power_mode(struct max77759_plat *chip, bool disable);
 
 #define VBUS_VOLTAGE_MASK		0x3ff
 #define VBUS_VOLTAGE_LSB_MV		25

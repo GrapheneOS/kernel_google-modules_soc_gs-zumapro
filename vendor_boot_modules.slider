@@ -106,8 +106,10 @@ max20339.ko
 max77729-pmic.ko
 max77729_charger.ko
 max77729_uic.ko
+max777x9_contaminant.ko
 max77759_charger.ko
 max77759_contaminant.ko
+max77779_contaminant.ko
 max77759_helper.ko
 max77826-gs-regulator.ko
 mcps802154.ko

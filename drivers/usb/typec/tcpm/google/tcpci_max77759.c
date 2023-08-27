@@ -32,6 +32,7 @@
 #include "bc_max77759.h"
 #include <linux/usb/max77759_export.h>
 #include "max77759_helper.h"
+#include "max777x9_contaminant.h"
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
 #include "usb_icl_voter.h"
@@ -65,6 +66,7 @@
 #define GBMS_MODE_VOTABLE "CHARGER_MODE"
 
 #define MAX77759_DEVICE_ID_A1				0x2
+#define MAX77759_PRODUCT_ID				0x59
 #define MAX77779_PRODUCT_ID				0x79
 
 #define MAX77759_DISABLE_TOGGLE				1
@@ -273,10 +275,10 @@ static int update_contaminant_detection_locked(struct max77759_plat *chip, int v
 	chip->contaminant_detection = val;
 
 	if (chip->contaminant_detection)
-		enable_contaminant_detection(chip, chip->contaminant_detection ==
-					     CONTAMINANT_DETECT_MAXQ);
+		max777x9_enable_contaminant_detection(chip, chip->contaminant_detection ==
+						      CONTAMINANT_DETECT_MAXQ);
 	else
-		disable_contaminant_detection(chip);
+		max777x9_disable_contaminant_detection(chip);
 
 	LOG(LOG_LVL_DEBUG, chip->log, "[%s]: %d", __func__, chip->contaminant_detection);
 	return 0;
@@ -341,7 +343,7 @@ static ssize_t contaminant_detection_status_show(struct device *dev, struct devi
 						 char *buf)
 {
 	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
-	struct max77759_contaminant *contaminant;
+	struct max777x9_contaminant *contaminant;
 
 	if (!chip)
 		return -EAGAIN;
@@ -351,7 +353,7 @@ static ssize_t contaminant_detection_status_show(struct device *dev, struct devi
 	if (!contaminant)
 		return -EAGAIN;
 
-	return scnprintf(buf, PAGE_SIZE, "%d\n", is_contaminant_detected(chip));
+	return scnprintf(buf, PAGE_SIZE, "%d\n", max777x9_is_contaminant_detected(chip));
 }
 static DEVICE_ATTR_RO(contaminant_detection_status);
 
@@ -1467,7 +1469,7 @@ static void floating_cable_sink_detected_handler_locked(struct max77759_plat *ch
 	LOG(LOG_LVL_DEBUG, chip->log,
 	    "floating_cable_or_sink_detected count: %d", chip->floating_cable_or_sink_detected);
 	if (chip->floating_cable_or_sink_detected >= FLOATING_CABLE_OR_SINK_INSTANCE_THRESHOLD) {
-		disable_auto_ultra_low_power_mode(chip, true);
+		max777x9_disable_auto_ultra_low_power_mode(chip, true);
 		alarm_start_relative(&chip->reenable_auto_ultra_low_power_mode_alarm,
 				     ms_to_ktime(AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS));
 	}
@@ -1672,9 +1674,9 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		if (!chip->usb_throttled && chip->contaminant_detection &&
 		    tcpm_port_is_toggling(tcpci->port)) {
 			LOG(LOG_LVL_DEBUG, chip->log, "Invoking process_contaminant_alert");
-			ret = process_contaminant_alert(chip->contaminant, false, true,
-							&contaminant_cc_update_handled,
-							&port_clean);
+			ret = max777x9_process_contaminant_alert(chip->contaminant, false, true,
+								 &contaminant_cc_update_handled,
+								 &port_clean);
 			if (ret < 0) {
 				mutex_unlock(&chip->rc_lock);
 				goto reschedule;
@@ -1701,7 +1703,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				if (contaminant_cc_update_handled) {
 					LOG(LOG_LVL_DEBUG, log,
 					    "CC update: Contaminant algorithm responded");
-					if (is_floating_cable_or_sink_detected(chip)) {
+					if (max777x9_is_floating_cable_or_sink_detected(chip)) {
 						floating_cable_sink_detected_handler_locked(chip);
 						LOG(LOG_LVL_DEBUG, chip->log,
 						    "Floating cable detected");
@@ -1734,7 +1736,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				 */
 				if (chip->contaminant_detection_userspace !=
 					CONTAMINANT_DETECT_DISABLE)
-					disable_auto_ultra_low_power_mode(chip, false);
+					max777x9_disable_auto_ultra_low_power_mode(chip, false);
 			} else if (!chip->usb_throttled && chip->contaminant_detection) {
 				/*
 				 * TCPM has not detected valid CC terminations
@@ -2405,7 +2407,7 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 	chip->toggle_disable_status = disable;
 	if (chip->toggle_disable_status) {
 		update_contaminant_detection_locked(chip, CONTAMINANT_DETECT_DISABLE);
-		disable_contaminant_detection(chip);
+		max777x9_disable_contaminant_detection(chip);
 		max77759_enable_toggling_locked(chip, false);
 		if (chip->in_switch_gpio >= 0) {
 			gpio_set_value_cansleep(chip->in_switch_gpio,
@@ -2629,7 +2631,7 @@ static void reenable_auto_ultra_low_power_mode_work_item(struct kthread_work *wo
 						  reenable_auto_ultra_low_power_mode_work);
 
 	chip->floating_cable_or_sink_detected = 0;
-	disable_auto_ultra_low_power_mode(chip, false);
+	max777x9_disable_auto_ultra_low_power_mode(chip, false);
 }
 
 static enum alarmtimer_restart reenable_auto_ultra_low_power_mode_alarm_handler(struct alarm *alarm,
@@ -2638,10 +2640,10 @@ static enum alarmtimer_restart reenable_auto_ultra_low_power_mode_alarm_handler(
 	struct max77759_plat *chip = container_of(alarm, struct max77759_plat,
 						  reenable_auto_ultra_low_power_mode_alarm);
 
-	LOG(LOG_LVL_DEBUG, chip->log, "timer fired: enable_auto_ultra_low_power_mode");
-	if (is_contaminant_detected(chip)) {
+	logbuffer_log(chip->log, "timer fired: enable_auto_ultra_low_power_mode");
+	if (max777x9_is_contaminant_detected(chip)) {
 		LOG(LOG_LVL_DEBUG, chip->log,
-		    "Skipping enable_auto_ultra_low_power_mode. Dry detection in progress");
+			      "Skipping enable_auto_ultra_low_power_mode. Dry detection in progress");
 		goto exit;
 	}
 	kthread_queue_work(chip->wq, &chip->reenable_auto_ultra_low_power_mode_work);
@@ -2666,9 +2668,9 @@ static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *
 		return;
 	}
 	if (chip->contaminant_detection) {
-		ret = process_contaminant_alert(chip->contaminant, true, false,
-						&contaminant_cc_status_handled,
-						&port_clean);
+		ret = max777x9_process_contaminant_alert(chip->contaminant, true, false,
+							 &contaminant_cc_status_handled,
+							 &port_clean);
 		if (ret < 0) {
 			logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
 			/* Assume clean port */
@@ -3180,13 +3182,15 @@ static int max77759_probe(struct i2c_client *client,
 	LOG(LOG_LVL_DEBUG, chip->log, "TCPC PID:%d", pid);
 
 	/* Default enable on A1 or higher on MAX77759 */
-	chip->contaminant_detection = ((pid != MAX77779_PRODUCT_ID) &&
-				       (device_id >= MAX77759_DEVICE_ID_A1));
+	chip->contaminant_detection =
+		((pid == MAX77759_PRODUCT_ID) && (device_id >= MAX77759_DEVICE_ID_A1)) ||
+		(pid == MAX77779_PRODUCT_ID);
 	chip->contaminant_detection_userspace = chip->contaminant_detection;
 	if (chip->contaminant_detection) {
 		LOG(LOG_LVL_DEBUG, chip->log, "Contaminant detection enabled");
 		chip->data.check_contaminant = max_tcpci_check_contaminant;
-		chip->contaminant = max77759_contaminant_init(chip, chip->contaminant_detection);
+		chip->contaminant = max777x9_contaminant_init(chip, chip->contaminant_detection,
+							      pid == MAX77779_PRODUCT_ID);
 	}
 
 	ret = max77759_setup_data_notifier(chip);
