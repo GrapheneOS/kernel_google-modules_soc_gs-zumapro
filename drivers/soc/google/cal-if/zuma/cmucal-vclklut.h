@@ -101,6 +101,7 @@ extern unsigned int div_clk_gsacore_uart_nm_lut_params[];
 extern unsigned int div_clk_hsi0_usix_nm_lut_params[];
 extern unsigned int div_clk_hsi0_usix_200mhz_lut_params[];
 extern unsigned int div_clk_hsi0_usix_100mhz_lut_params[];
+extern unsigned int div_clk_hsi0_usix_80mhz_lut_params[];
 extern unsigned int div_clk_hsi0_usix_50mhz_lut_params[];
 extern unsigned int div_clk_hsi0_usix_40mhz_lut_params[];
 extern unsigned int div_clk_hsi0_usix_24mhz_lut_params[];

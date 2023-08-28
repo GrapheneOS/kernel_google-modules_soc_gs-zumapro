@@ -5294,6 +5294,7 @@ struct vclk_lut cmucal_vclk_div_clk_hsi0_usix_lut[] = {
 	{400000, div_clk_hsi0_usix_nm_lut_params},
 	{200000, div_clk_hsi0_usix_200mhz_lut_params},
 	{100000, div_clk_hsi0_usix_100mhz_lut_params},
+	{80000, div_clk_hsi0_usix_80mhz_lut_params},
 	{50000, div_clk_hsi0_usix_50mhz_lut_params},
 	{40000, div_clk_hsi0_usix_40mhz_lut_params},
 	{24000, div_clk_hsi0_usix_24mhz_lut_params},

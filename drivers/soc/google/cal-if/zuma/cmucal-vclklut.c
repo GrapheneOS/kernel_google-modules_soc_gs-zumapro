@@ -288,6 +288,9 @@ unsigned int div_clk_hsi0_usix_200mhz_lut_params[] = {
 unsigned int div_clk_hsi0_usix_100mhz_lut_params[] = {
 	3, 0,
 };
+unsigned int div_clk_hsi0_usix_80mhz_lut_params[] = {
+	4, 0,
+};
 unsigned int div_clk_hsi0_usix_50mhz_lut_params[] = {
 	7, 0,
 };
