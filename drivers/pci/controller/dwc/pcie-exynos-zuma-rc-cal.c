@@ -39,7 +39,10 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 {
 	void __iomem *phy_base_regs = exynos_pcie->phy_base;
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
+	void __iomem *phy_pcs_base_regs = exynos_pcie->phy_pcs_base;
 	u32 val;
+	u32 pcs_val, pcs_val2, phy_val, phy_val2;
+	int cnt = 0;
 
 	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
@@ -81,6 +84,11 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 		//val = readl(udbg_base_regs + 0xC804) | (0x3 << 8);
 		//writel(val, udbg_base_regs + 0xC804);
 
+		/* PLL off, Bias on */
+		writel(0x300D9, phy_pcs_base_regs + 0x150);
+		udelay(5);
+		pcs_val = readl(phy_pcs_base_regs + 0x150);
+
 		writel(0x2A, phy_base_regs + 0x1044);
 		writel(0xAA, phy_base_regs + 0x1048);
 		writel(0xA8, phy_base_regs + 0x104C);
@@ -104,10 +112,42 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 
 		writel(0x0A, phy_base_regs + 0x000C);
 
-		// For the process time of clock switching from SOC OSCCLK to OSCCLK
-		udelay(100);
+		/* Force PLL Lock Signal off */
+		phy_val = readl(phy_base_regs + 0x600);
+		phy_val2 = phy_val & ~(0x3 << 4);
+		phy_val2 = phy_val | (0x2 << 4);
+		writel(phy_val2, phy_base_regs + 0x600);
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
+			       "pwrdn: pma+0x600: %#x->%#x",
+			       phy_val, phy_val2);
 
-		// External PLL for PCIe PHY
+		/* PLL off, Bias off */
+		writel(0x300DE, phy_pcs_base_regs + 0x150);
+		udelay(5);
+		pcs_val2 = readl(phy_pcs_base_regs + 0x150);
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
+			       "pwrdn: pcs+0x150: %#x->%#x",
+			       pcs_val, pcs_val2);
+
+		/* Check for PMA PLL to be disengaged */
+		while (cnt < 100) {
+			val = readl(phy_base_regs + 0x260);
+			if ((val & 0x4) == 0x0)
+				break;
+			cnt++;
+			udelay(1);
+		}
+
+		/* If PMA didn't disengage log the error but skip turning
+		 * EXT PLL off.
+		 */
+		if (cnt == 100) {
+			logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR,
+				       "pwrdn: PMA PLL did not turn off\n");
+			return;
+		}
+
+		// Turn off External PLL for PCIe PHY
 		val = readl(udbg_base_regs + 0xC700) | (0x1 << 1);
 		writel(val, udbg_base_regs + 0xC700);
 		udelay(10);
@@ -119,7 +159,7 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 {
 	void __iomem *phy_base_regs = exynos_pcie->phy_base;
 	void __iomem *udbg_base_regs = exynos_pcie->udbg_base;
-	u32 val;
+	u32 val, val2;
 
 	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 
@@ -150,6 +190,13 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 		val = readl(udbg_base_regs + 0xC700) & ~(0x1 << 1);
 		writel(val, udbg_base_regs + 0xC700);
 		udelay(100);
+
+		/* Restore PLL Lock signal Off */
+		val = readl(phy_base_regs + 0x600);
+		val2 = val & ~(0x3 << 4);
+		writel(val2, phy_base_regs + 0x600);
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
+			       "pwrdn_clr: pma+0x600: %#x->%#x", val, val2);
 
 		writel(0x00, phy_base_regs + 0x000C);
 
@@ -257,10 +304,6 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		udelay(10);
 		}
 		 */
-
-		/* soc_ctrl setting */
-		//need to update soc_ctrl SFR
-		writel(0x16, soc_base_regs + 0x4000);   //ELBI & Link clock switch TCXO to PCLK
 
 		writel(0x3, phy_base_regs + 0x032C);    //PHY input clock un-gating
 
@@ -483,10 +526,6 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 	}
 	else {
 		num_lanes = 2;
-
-		/* soc_ctrl setting */
-		//need to update soc_ctrl SFR
-		writel(0x16, soc_base_regs + 0x4000);   //ELBI & Link clock switch TCXO to PCLK
 
 		writel(0x3, phy_base_regs + 0x032C);    //PHY input clock un-gating
 

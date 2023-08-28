@@ -64,6 +64,7 @@ static struct dma_buf *cma_heap_allocate(struct dma_heap *heap, unsigned long le
 							  page_to_phys(pages));
 		if (IS_ERR(buffer->priv)) {
 			ret = PTR_ERR(buffer->priv);
+			buffer->priv = NULL;
 			goto free_prot;
 		}
 	}

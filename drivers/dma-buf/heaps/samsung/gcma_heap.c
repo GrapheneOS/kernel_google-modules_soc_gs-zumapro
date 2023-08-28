@@ -271,6 +271,7 @@ static struct dma_buf *gcma_heap_allocate(struct dma_heap *heap, unsigned long l
 							     struct page, lru)));
 		if (IS_ERR(buffer->priv)) {
 			ret = PTR_ERR(buffer->priv);
+			buffer->priv = NULL;
 			goto free_export;
 		}
 	}
