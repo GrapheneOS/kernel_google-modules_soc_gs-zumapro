@@ -76,6 +76,8 @@
                 memory-region = <&aoc_reserve>;
                 samsung,iommu-group = <&iommu_group_aoc>;
 
+                mbox-channels = <48>;
+
                 mbox-names = "aoc2ap";
                 mboxes = <&mbox_aoc_a32  0
                           &mbox_aoc_a32  1
@@ -132,5 +134,20 @@
                 force-vnom = <0>;
 
                 gsa-device = <&gsa>;
+
+                pcu-base = <0x1400000>;
+                gpio-base = <0x1C00000>;
+                pcu-db-set-offset = <0x1F004>;
+                pcu-db-clr-offset = <0x1F008>;
+                cp-aperture-start-offset = <0x7FDF80>;
+                cp-aperture-end-offset = <0x7FFFFF>;
+                clock-divider = <1>;
+
+                channel-max-pending-msgs = <128>;
+                block-channel-threshold = <64>;
+
+                notify-on-state-transition = "true";
+                hotword-supported = "true";
+                chre-supported = "true";
         };
 };
