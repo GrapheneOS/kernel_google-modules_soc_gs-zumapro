@@ -292,3 +292,7 @@
 				}
 			";
 };
+
+&aoc {
+    skip-carveout-map = "true";
+};
