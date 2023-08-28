@@ -190,7 +190,6 @@
 				buck_rail;
 				channel-en-byte-offset = <0>;
 				channel-en-index = <0x10>;
-				odpm_disable_in_sleep;
 			};
 
 			m_buck6_reg: BUCK6M {
