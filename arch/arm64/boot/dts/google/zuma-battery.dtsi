@@ -62,6 +62,8 @@
 				#cooling-cells = <2>;
 				google,dc-irdrop;
 				google,fv-dc-ratio = <30>;
+
+				google,eeprom-pairing;
 			};
 
 			google_bms {
