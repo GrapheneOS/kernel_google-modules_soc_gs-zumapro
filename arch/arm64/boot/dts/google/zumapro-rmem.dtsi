@@ -87,6 +87,7 @@
 			reg = <0x0 0xf8800000 0x02000000>;
 			no-map;
 		};
+		*/
 
 		dss_log_reserved: dss_log_reserved@fd3f0000 {
 			reg = <0 0xfd3f0000 0x0000e000>;
@@ -98,6 +99,7 @@
 			no-map;
 		};
 
+		/*
 		ramoops_mem@fd3ff000 {
 			compatible = "ramoops";
 			reg = <0 0xfd3ff000 0x400000>;
@@ -142,7 +144,6 @@
 
 
 		/* begin debug_snapshot rmem section */
-		/*
 		header: header {
 			reg = <0 DSS_HEADER_ADDR DSS_HEADER_SIZE>;
 			no-map;
@@ -192,7 +193,6 @@
 			reg = <0 DSS_LOG_ITMON_ADDR DSS_LOG_ITMON_SIZE>;
 			no-map;
 		};
-		*/
 		/* end debug_memory rmem section */
 
 		seclog_mem: seclog_mem {
