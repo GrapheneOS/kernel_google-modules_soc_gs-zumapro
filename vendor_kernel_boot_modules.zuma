@@ -134,6 +134,7 @@ odpm.ko
 open-dice.ko
 p9221.ko
 page_pool.ko
+pa_kill.ko
 panel-common.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko

@@ -259,6 +259,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/eh/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/gcma/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/pa_kill/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/s2mpu/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/vh/kernel/Kconfig"
