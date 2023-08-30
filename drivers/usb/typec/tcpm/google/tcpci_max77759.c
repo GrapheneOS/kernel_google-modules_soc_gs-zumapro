@@ -265,9 +265,11 @@ static ssize_t contaminant_detection_show(struct device *dev, struct device_attr
 	return scnprintf(buf, PAGE_SIZE, "%d\n", chip->contaminant_detection_userspace);
 };
 
-static void update_contaminant_detection_locked(struct max77759_plat *chip, int val)
+static int update_contaminant_detection_locked(struct max77759_plat *chip, int val)
 {
 
+	if (!chip->contaminant)
+		return -ENODEV;
 	chip->contaminant_detection = val;
 
 	if (chip->contaminant_detection)
@@ -277,22 +279,24 @@ static void update_contaminant_detection_locked(struct max77759_plat *chip, int 
 		disable_contaminant_detection(chip);
 
 	LOG(LOG_LVL_DEBUG, chip->log, "[%s]: %d", __func__, chip->contaminant_detection);
+	return 0;
 }
 
 static ssize_t contaminant_detection_store(struct device *dev, struct device_attribute *attr,
 					   const char *buf, size_t count)
 {
 	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
-	int val;
+	int val, ret;
 
 	if (kstrtoint(buf, 10, &val) < 0)
 		return -EINVAL;
 
 	mutex_lock(&chip->rc_lock);
-	chip->contaminant_detection_userspace = val;
-	update_contaminant_detection_locked(chip, val);
+	ret = update_contaminant_detection_locked(chip, val);
+	if (!ret)
+		chip->contaminant_detection_userspace = val;
 	mutex_unlock(&chip->rc_lock);
-	return count;
+	return (ret < 0) ? ret : count;
 }
 static DEVICE_ATTR_RW(contaminant_detection);
 
