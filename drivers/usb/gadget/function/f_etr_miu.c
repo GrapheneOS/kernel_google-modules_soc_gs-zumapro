@@ -603,7 +603,9 @@ static int __init etr_miu_mod_init(void)
 	int ret = 0;
 
 	ret = etr_miu_init();
-	if (ret) {
+	if (ret == -ENODEV) {
+		return 0;
+	} else if (ret) {
 		pr_err("fail to init ETR MIU\n");
 		return ret;
 	}
