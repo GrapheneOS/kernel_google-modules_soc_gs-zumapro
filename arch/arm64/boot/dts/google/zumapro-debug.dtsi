@@ -473,31 +473,28 @@
 		};
 
 		cpu0 {
-			dbg-offset = <0x110000>;
+			dbg-offset = <0x90000>;
 		};
 		cpu1 {
-			dbg-offset = <0x210000>;
+			dbg-offset = <0x110000>;
 		};
 		cpu2 {
-			dbg-offset = <0x310000>;
+			dbg-offset = <0x190000>;
 		};
 		cpu3 {
-			dbg-offset = <0x410000>;
+			dbg-offset = <0x210000>;
 		};
 		cpu4 {
-			dbg-offset = <0x510000>;
+			dbg-offset = <0x290000>;
 		};
 		cpu5 {
-			dbg-offset = <0x610000>;
+			dbg-offset = <0x310000>;
 		};
 		cpu6 {
-			dbg-offset = <0x710000>;
+			dbg-offset = <0x390000>;
 		};
 		cpu7 {
-			dbg-offset = <0x810000>;
-		};
-		cpu8 {
-			dbg-offset = <0x910000>;
+			dbg-offset = <0x410000>;
 		};
 	};
 
