@@ -1878,7 +1878,7 @@ static int __init pcie_iommu_init(void)
 		return -ENOMEM;
 #endif
 
-	ret = platform_driver_probe(&exynos_sysmmu_driver, exynos_sysmmu_probe);
+	ret = platform_driver_register(&exynos_sysmmu_driver);
 	if (ret != 0) {
 		kmem_cache_destroy(lv2table_kmem_cache);
 #ifndef USE_DYNAMIC_MEM_ALLOC /* USE gen_pool */
