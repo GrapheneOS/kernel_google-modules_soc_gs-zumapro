@@ -6,6 +6,7 @@
  * Copyright 2020 Google LLC
  */
 
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 #include <linux/cpufreq.h>
 #include <linux/module.h>
