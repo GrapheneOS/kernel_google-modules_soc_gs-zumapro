@@ -247,8 +247,8 @@ void dbg_snapshot_set_enable_log_item(const char *name, int en)
 static unsigned long dbg_snapshot_suspend(const char *log, struct device *dev,
 					  int event, int en)
 {
-	unsigned long i = atomic_fetch_inc(&dss_log_misc.suspend_log_idx) &
-		(ARRAY_SIZE(dss_log->suspend) - 1);
+	unsigned long i = atomic_fetch_inc(&dss_log_misc.suspend_log_idx) %
+		ARRAY_SIZE(dss_log->suspend);
 
 	dss_log->suspend[i].time = local_clock();
 	if (log && dev && dev->driver && dev->driver->name && strlen(dev->driver->name)) {
@@ -271,15 +271,13 @@ static unsigned long dbg_snapshot_suspend(const char *log, struct device *dev,
 static void dbg_snapshot_suspend_resume(void *ignore, const char *action,
 					int event, bool start)
 {
-#if IS_ENABLED(CONFIG_PIXEL_SUSPEND_DIAG)
-	unsigned long curr_index =
-#endif
-	dbg_snapshot_suspend(action, NULL, event,
-			     start ? DSS_FLAG_IN : DSS_FLAG_OUT);
+	unsigned long curr_index;
 
-#if IS_ENABLED(CONFIG_PIXEL_SUSPEND_DIAG)
-	pixel_suspend_diag_suspend_resume(dss_log, action, start, curr_index);
-#endif
+	curr_index = dbg_snapshot_suspend(action, NULL, event,
+					  start ? DSS_FLAG_IN : DSS_FLAG_OUT);
+
+	if (IS_ENABLED(CONFIG_PIXEL_SUSPEND_DIAG))
+		pixel_suspend_diag_suspend_resume(dss_log, action, start, curr_index);
 }
 
 void dbg_snapshot_dev_pm_cb_start(void *ignore, struct device *dev,
@@ -290,10 +288,13 @@ void dbg_snapshot_dev_pm_cb_start(void *ignore, struct device *dev,
 
 void dbg_snapshot_dev_pm_cb_end(void *ignore, struct device *dev, int error)
 {
-#if IS_ENABLED(CONFIG_PIXEL_SUSPEND_DIAG)
-	if (!pixel_suspend_diag_dev_pm_cb_end(dss_log, dss_get_first_suspend_log_idx(),
-					      dss_get_last_suspend_log_idx(), dev))
-#endif
+	int ret = 0;
+
+	if (IS_ENABLED(CONFIG_PIXEL_SUSPEND_DIAG))
+		ret = pixel_suspend_diag_dev_pm_cb_end(dss_log, dss_get_first_suspend_log_idx(),
+						       dss_get_last_suspend_log_idx(), dev);
+
+	if (!ret)
 		dbg_snapshot_suspend(NULL, dev, error, DSS_FLAG_OUT);
 }
 
@@ -307,8 +308,8 @@ void dbg_snapshot_cpuidle_mod(char *modes, unsigned int state, s64 diff, int en)
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_CPUIDLE_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.cpuidle_log_idx[cpu]) &
-		(ARRAY_SIZE(dss_log->cpuidle[0]) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.cpuidle_log_idx[cpu]) %
+		ARRAY_SIZE(dss_log->cpuidle[0]);
 	dss_log->cpuidle[cpu][i].time = local_clock();
 	dss_log->cpuidle[cpu][i].modes = modes;
 	dss_log->cpuidle[cpu][i].state = state;
@@ -323,20 +324,22 @@ void dbg_snapshot_regulator(unsigned long long timestamp, char *f_name,
 			unsigned int rvolt, int en)
 {
 	unsigned long i;
+	int ret = 0;
 
 	if (!dss_log)
 		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_REGULATOR_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.regulator_log_idx) &
-		(ARRAY_SIZE(dss_log->regulator) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.regulator_log_idx) %
+		ARRAY_SIZE(dss_log->regulator);
 
 	dss_log->regulator[i].time = local_clock();
 	dss_log->regulator[i].cpu = raw_smp_processor_id();
 	dss_log->regulator[i].acpm_time = timestamp;
-	strncpy(dss_log->regulator[i].name, f_name,
-			min_t(int, strlen(f_name), SZ_16 - 1));
+	ret = strscpy(dss_log->regulator[i].name, f_name, sizeof(dss_log->regulator[i].name));
+	if (ret)
+		dss_log->regulator[i].name[sizeof(dss_log->regulator[i].name) - 1] = '\0';
 	dss_log->regulator[i].reg = addr;
 	dss_log->regulator[i].en = en;
 	dss_log->regulator[i].voltage = volt;
@@ -354,8 +357,8 @@ void dbg_snapshot_thermal(struct exynos_tmu_data *data, unsigned int temp,
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_THERMAL_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.thermal_log_idx) &
-		(ARRAY_SIZE(dss_log->thermal) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.thermal_log_idx) %
+		ARRAY_SIZE(dss_log->thermal);
 
 	dss_log->thermal[i].time = local_clock();
 	dss_log->thermal[i].cpu = raw_smp_processor_id();
@@ -377,8 +380,8 @@ void dbg_snapshot_clk(struct clk_hw *clock, const char *func_name,
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_CLK_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.clk_log_idx) &
-		(ARRAY_SIZE(dss_log->clk) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.clk_log_idx) %
+		ARRAY_SIZE(dss_log->clk);
 
 	dss_log->clk[i].time = local_clock();
 	dss_log->clk[i].mode = mode;
@@ -397,8 +400,8 @@ void dbg_snapshot_pmu(int id, const char *func_name, int mode)
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_PMU_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.pmu_log_idx) &
-		(ARRAY_SIZE(dss_log->pmu) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.pmu_log_idx) %
+		ARRAY_SIZE(dss_log->pmu);
 
 	dss_log->pmu[i].time = local_clock();
 	dss_log->pmu[i].mode = mode;
@@ -420,8 +423,8 @@ void dbg_snapshot_freq(int type, unsigned long old_freq,
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_FREQ_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.freq_log_idx[type]) &
-		(ARRAY_SIZE(dss_log->freq[0]) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.freq_log_idx[type]) %
+		ARRAY_SIZE(dss_log->freq[0]);
 
 	dss_log->freq[type][i].time = local_clock();
 	dss_log->freq[type][i].cpu = raw_smp_processor_id();
@@ -442,8 +445,8 @@ void dbg_snapshot_dm(int type, unsigned long min, unsigned long max,
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_DM_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.dm_log_idx) &
-		(ARRAY_SIZE(dss_log->dm) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.dm_log_idx) %
+		ARRAY_SIZE(dss_log->dm);
 
 	dss_log->dm[i].time = local_clock();
 	dss_log->dm[i].cpu = raw_smp_processor_id();
@@ -466,8 +469,8 @@ void dbg_snapshot_acpm(unsigned long long timestamp, const char *log,
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_ACPM_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.acpm_log_idx) &
-		(ARRAY_SIZE(dss_log->acpm) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.acpm_log_idx) %
+		ARRAY_SIZE(dss_log->acpm);
 
 	dss_log->acpm[i].time = local_clock();
 	dss_log->acpm[i].acpm_time = timestamp;
@@ -488,8 +491,8 @@ void dbg_snapshot_printk(const char *fmt, ...)
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_PRINTK_ID))
 		return;
 
-	i = atomic_fetch_inc(&dss_log_misc.print_log_idx) &
-		(ARRAY_SIZE(dss_log->print) - 1);
+	i = atomic_fetch_inc(&dss_log_misc.print_log_idx) %
+		ARRAY_SIZE(dss_log->print);
 
 	va_start(args, fmt);
 	vsnprintf(dss_log->print[i].log, sizeof(dss_log->print[i].log),
