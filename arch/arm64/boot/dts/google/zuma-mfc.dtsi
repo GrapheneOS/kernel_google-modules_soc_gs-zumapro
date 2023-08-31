@@ -428,7 +428,7 @@
 				};
 				mfc_e_qos_variant_5 {
 					thrd_mb = <2088750>;
-					freq_mfc = <664000>;
+					freq_mfc = <465000>;
 					freq_int = <200000>;
 					freq_mif = <1539000>;
 					mo_value = <1>;

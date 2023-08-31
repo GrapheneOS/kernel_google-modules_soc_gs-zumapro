@@ -76,24 +76,3 @@
 		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_NONE>;
 	};
 };
-
-&s_ldo9_reg {
-	schematic-name = "L9S_GNSS_CORE";
-	subsys-name = "GPS";
-	regulator-always-on;
-	regulator-initial-mode = <SEC_OPMODE_ON>;
-};
-
-&s_ldo10_reg {
-	schematic-name = "L10S_GNSS_RF";
-	subsys-name = "GPS";
-	regulator-always-on;
-	regulator-initial-mode = <SEC_OPMODE_ON>;
-};
-
-&s_ldo11_reg {
-	schematic-name = "L11S_GNSS_AUX";
-	subsys-name = "GPS";
-	regulator-always-on;
-	regulator-initial-mode = <SEC_OPMODE_ON>;
-};
