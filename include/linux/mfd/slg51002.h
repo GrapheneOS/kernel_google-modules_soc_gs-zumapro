@@ -671,6 +671,7 @@ struct slg51002_dev {
 	struct gpio_desc *cs_gpiod;
 	struct workqueue_struct *slg51002_wq;
 	struct work_struct slg51002_work;
+	struct regulator *chip_bb_reg;
 	int chip_irq;
 	int chip_cs_pin;
 	int chip_buck_pin;
