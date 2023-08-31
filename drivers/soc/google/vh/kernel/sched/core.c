@@ -5,7 +5,9 @@
  *
  * Copyright 2021 Google LLC
  */
+
 #include <linux/sched.h>
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 
 #include "sched_priv.h"

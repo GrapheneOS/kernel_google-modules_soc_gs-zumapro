@@ -9,6 +9,7 @@
 #include <linux/lockdep.h>
 #include <linux/kobject.h>
 #include <linux/sched.h>
+#include <linux/sched/cputime.h>
 #include <linux/sched/signal.h>
 #include <linux/sched/task.h>
 #include <linux/proc_fs.h>
@@ -68,7 +69,7 @@ static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "b
 			struct inode *inode, struct file *file) \
 		{ \
 			return single_open(file,\
-			__name##_show, PDE_DATA(inode));\
+			__name##_show, pde_data(inode));\
 		} \
 		static const struct proc_ops  __name##_proc_ops = { \
 			.proc_open	=  __name##_proc_open, \
@@ -83,7 +84,7 @@ static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "b
 			struct inode *inode, struct file *file) \
 		{ \
 			return single_open(file,\
-			__name##_show, PDE_DATA(inode));\
+			__name##_show, pde_data(inode));\
 		} \
 		static const struct proc_ops __name##_proc_ops = { \
 			.proc_open	= __name##_proc_open, \
@@ -381,6 +382,7 @@ static inline bool check_uclamp_##__uclamp_id##_on_nice_prio(enum vendor_group g
 UCLAMP_ON_NICE_PRIO_CHECK_FUN(min);
 UCLAMP_ON_NICE_PRIO_CHECK_FUN(max);
 
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 static inline bool check_ug(enum vendor_group group)
 {
 	if (vg[group].ug < UG_BG || vg[group].ug > UG_AUTO)
@@ -388,6 +390,7 @@ static inline bool check_ug(enum vendor_group group)
 
 	return true;
 }
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, prefer_idle, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, prefer_high_cap, VG_TOPAPP);
@@ -420,7 +423,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ta, uclamp_max_on_nice_high_prio, VG_TOPAPP, \
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, uclamp_min_on_nice_enable, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, uclamp_max_on_nice_enable, VG_TOPAPP);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ta, ug, VG_TOPAPP, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, prefer_idle, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, prefer_high_cap, VG_FOREGROUND);
@@ -453,7 +458,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(fg, uclamp_max_on_nice_high_prio, VG_FOREGROUN
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, uclamp_min_on_nice_enable, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, uclamp_max_on_nice_enable, VG_FOREGROUND);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(fg, ug, VG_FOREGROUND, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, prefer_idle, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, prefer_high_cap, VG_SYSTEM);
@@ -486,7 +493,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sys, uclamp_max_on_nice_high_prio, VG_SYSTEM, 
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, uclamp_min_on_nice_enable, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, uclamp_max_on_nice_enable, VG_SYSTEM);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sys, ug, VG_SYSTEM, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, prefer_idle, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, prefer_high_cap, VG_CAMERA);
@@ -519,7 +528,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam, uclamp_max_on_nice_high_prio, VG_CAMERA, 
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, uclamp_min_on_nice_enable, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, uclamp_max_on_nice_enable, VG_CAMERA);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam, ug, VG_CAMERA, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, prefer_idle, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, prefer_high_cap, VG_CAMERA_POWER);
@@ -552,7 +563,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam_power, uclamp_max_on_nice_high_prio, VG_CA
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, uclamp_min_on_nice_enable, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, uclamp_max_on_nice_enable, VG_CAMERA_POWER);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam_power, ug, VG_CAMERA_POWER, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, prefer_idle, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, prefer_high_cap, VG_BACKGROUND);
@@ -585,7 +598,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(bg, uclamp_max_on_nice_high_prio, VG_BACKGROUN
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, uclamp_min_on_nice_enable, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, uclamp_max_on_nice_enable, VG_BACKGROUND);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(bg, ug, VG_BACKGROUND, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, prefer_idle, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, prefer_high_cap, VG_SYSTEM_BACKGROUND);
@@ -618,7 +633,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sysbg, uclamp_max_on_nice_high_prio, VG_SYSTEM
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, uclamp_min_on_nice_enable, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, uclamp_max_on_nice_enable, VG_SYSTEM_BACKGROUND);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sysbg, ug, VG_SYSTEM_BACKGROUND, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, prefer_idle, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, prefer_high_cap, VG_NNAPI_HAL);
@@ -651,7 +668,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(nnapi, uclamp_max_on_nice_high_prio, VG_NNAPI_
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, uclamp_min_on_nice_enable, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, uclamp_max_on_nice_enable, VG_NNAPI_HAL);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(nnapi, ug, VG_NNAPI_HAL, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, prefer_idle, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, prefer_high_cap, VG_RT);
@@ -684,7 +703,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(rt, uclamp_max_on_nice_high_prio, VG_RT, \
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, uclamp_min_on_nice_enable, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, uclamp_max_on_nice_enable, VG_RT);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(rt, ug, VG_RT, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, prefer_idle, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, prefer_high_cap, VG_DEX2OAT);
@@ -717,7 +738,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(dex2oat, uclamp_max_on_nice_high_prio, VG_DEX2
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, uclamp_min_on_nice_enable, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, uclamp_max_on_nice_enable, VG_DEX2OAT);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(dex2oat, ug, VG_DEX2OAT, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, prefer_idle, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, prefer_high_cap, VG_OTA);
@@ -750,7 +773,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ota, uclamp_max_on_nice_high_prio, VG_OTA, \
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, uclamp_min_on_nice_enable, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, uclamp_max_on_nice_enable, VG_OTA);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ota, ug, VG_OTA, check_ug);
+#endif
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, prefer_idle, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, prefer_high_cap, VG_SF);
@@ -783,7 +808,9 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sf, uclamp_max_on_nice_high_prio, VG_SF, \
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, uclamp_min_on_nice_enable, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, uclamp_max_on_nice_enable, VG_SF);
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sf, ug, VG_SF, check_ug);
+#endif
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
@@ -1458,7 +1485,7 @@ static int teo_util_threshold_show(struct seq_file *m, void *v)
 	int i;
 
 	for (i = 0; i < CPU_NUM; i++) {
-		seq_printf(m, "%u ", teo_cpu_get_util_threshold(i));
+		seq_printf(m, "%lu ", teo_cpu_get_util_threshold(i));
 	}
 
 	seq_printf(m, "\n");
@@ -2201,7 +2228,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(ta_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(ta_uclamp_min_on_nice_enable),
 	PROC_ENTRY(ta_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(ta_ug),
+#endif
 	// Foreground group attributes
 	PROC_ENTRY(fg_prefer_idle),
 	PROC_ENTRY(fg_prefer_high_cap),
@@ -2228,7 +2257,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(fg_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(fg_uclamp_min_on_nice_enable),
 	PROC_ENTRY(fg_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(fg_ug),
+#endif
 	// System group attributes
 	PROC_ENTRY(sys_prefer_idle),
 	PROC_ENTRY(sys_prefer_high_cap),
@@ -2255,7 +2286,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(sys_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(sys_uclamp_min_on_nice_enable),
 	PROC_ENTRY(sys_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(sys_ug),
+#endif
 	// Camera group attributes
 	PROC_ENTRY(cam_prefer_idle),
 	PROC_ENTRY(cam_prefer_high_cap),
@@ -2282,7 +2315,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(cam_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(cam_uclamp_min_on_nice_enable),
 	PROC_ENTRY(cam_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(cam_ug),
+#endif
 	// Camera_power group attributes
 	PROC_ENTRY(cam_power_prefer_idle),
 	PROC_ENTRY(cam_power_prefer_high_cap),
@@ -2309,7 +2344,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(cam_power_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(cam_power_uclamp_min_on_nice_enable),
 	PROC_ENTRY(cam_power_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(cam_power_ug),
+#endif
 	// Background group attributes
 	PROC_ENTRY(bg_prefer_idle),
 	PROC_ENTRY(bg_prefer_high_cap),
@@ -2336,7 +2373,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(bg_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(bg_uclamp_min_on_nice_enable),
 	PROC_ENTRY(bg_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(bg_ug),
+#endif
 	// System Background group attributes
 	PROC_ENTRY(sysbg_prefer_idle),
 	PROC_ENTRY(sysbg_prefer_high_cap),
@@ -2363,7 +2402,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(sysbg_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(sysbg_uclamp_min_on_nice_enable),
 	PROC_ENTRY(sysbg_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(sysbg_ug),
+#endif
 	// Nnapi-HAL group attributes
 	PROC_ENTRY(nnapi_prefer_idle),
 	PROC_ENTRY(nnapi_prefer_high_cap),
@@ -2390,7 +2431,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(nnapi_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(nnapi_uclamp_min_on_nice_enable),
 	PROC_ENTRY(nnapi_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(nnapi_ug),
+#endif
 	// RT group attributes
 	PROC_ENTRY(rt_prefer_idle),
 	PROC_ENTRY(rt_prefer_high_cap),
@@ -2417,7 +2460,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(rt_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(rt_uclamp_min_on_nice_enable),
 	PROC_ENTRY(rt_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(rt_ug),
+#endif
 	// DEX2OAT group attributes
 	PROC_ENTRY(dex2oat_prefer_idle),
 	PROC_ENTRY(dex2oat_prefer_high_cap),
@@ -2444,7 +2489,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(dex2oat_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(dex2oat_uclamp_min_on_nice_enable),
 	PROC_ENTRY(dex2oat_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(dex2oat_ug),
+#endif
 	// OTA group attributes
 	PROC_ENTRY(ota_prefer_idle),
 	PROC_ENTRY(ota_prefer_high_cap),
@@ -2471,7 +2518,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(ota_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(ota_uclamp_min_on_nice_enable),
 	PROC_ENTRY(ota_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(ota_ug),
+#endif
 	// SF group attributes
 	PROC_ENTRY(sf_prefer_idle),
 	PROC_ENTRY(sf_prefer_high_cap),
@@ -2498,7 +2547,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(sf_uclamp_max_on_nice_high_prio),
 	PROC_ENTRY(sf_uclamp_min_on_nice_enable),
 	PROC_ENTRY(sf_uclamp_max_on_nice_enable),
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	PROC_ENTRY(sf_ug),
+#endif
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	// FG util group attributes
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)

@@ -5,6 +5,9 @@
  *
  * Copyright 2020 Google LLC
  */
+
+#include <linux/cpuidle.h>
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/pelt.h>
 

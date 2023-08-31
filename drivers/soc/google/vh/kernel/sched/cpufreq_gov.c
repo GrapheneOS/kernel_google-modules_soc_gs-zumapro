@@ -8,6 +8,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 
 #include <linux/sched/cpufreq.h>
@@ -15,6 +16,7 @@
 #include <linux/perf_event.h>
 #include <linux/jiffies.h>
 #include <linux/pm_qos.h>
+#include <uapi/linux/sched/types.h>
 
 #include <soc/google/exynos_pm_qos.h>
 #include "../../../../../devfreq/google/governor_memlat.h"

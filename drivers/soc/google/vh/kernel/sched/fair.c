@@ -5,11 +5,15 @@
  *
  * Copyright 2020 Google LLC
  */
+#include <linux/cpuidle.h>
+#include <linux/sched/cputime.h>
+#include <kernel/sched/autogroup.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/pelt.h>
 #include <linux/moduleparam.h>
 #include <trace/events/power.h>
 #include <trace/hooks/systrace.h>
+#include <uapi/linux/sched/types.h>
 
 #include "sched_priv.h"
 #include "sched_events.h"
@@ -2110,7 +2114,9 @@ void initialize_vendor_group_property(void)
 		vg[i].uc_req[UCLAMP_MAX].value = max_val;
 		vg[i].uc_req[UCLAMP_MAX].bucket_id = get_bucket_id(max_val);
 		vg[i].uc_req[UCLAMP_MAX].user_defined = false;
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 		vg[i].ug = UG_AUTO;
+#endif
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -2489,7 +2495,7 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 		if (!cpumask_test_cpu(dst_cpu, p->cpus_ptr))
 			continue;
 
-		if (task_running(src_rq, p))
+		if (task_on_cpu(src_rq, p))
 			continue;
 
 		if (!get_prefer_idle(p))

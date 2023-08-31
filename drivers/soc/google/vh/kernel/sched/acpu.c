@@ -3,6 +3,7 @@
  * Copyright 2022 Google LLC
  */
 
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 #include <trace/events/power.h>
 #include <uapi/linux/acpu.h>
