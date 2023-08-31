@@ -22,10 +22,12 @@
 #include "debug-snapshot-local.h"
 
 #include <trace/events/power.h>
+#include <trace/events/sched.h>
+#include <trace/events/workqueue.h>
 
 struct dbg_snapshot_log_item dss_log_items[] = {
-	[DSS_LOG_TASK_ID]	= {DSS_LOG_TASK,	{0, 0, 0, false}, },
-	[DSS_LOG_WORK_ID]	= {DSS_LOG_WORK,	{0, 0, 0, false}, },
+	[DSS_LOG_TASK_ID]	= {DSS_LOG_TASK,	{0, 0, 0, true}, },
+	[DSS_LOG_WORK_ID]	= {DSS_LOG_WORK,	{0, 0, 0, true}, },
 	[DSS_LOG_CPUIDLE_ID]	= {DSS_LOG_CPUIDLE,	{0, 0, 0, true}, },
 	[DSS_LOG_SUSPEND_ID]	= {DSS_LOG_SUSPEND,	{0, 0, 0, true}, },
 	[DSS_LOG_IRQ_ID]	= {DSS_LOG_IRQ,		{0, 0, 0, false}, },
@@ -296,6 +298,54 @@ void dbg_snapshot_dev_pm_cb_end(void *ignore, struct device *dev, int error)
 
 	if (!ret)
 		dbg_snapshot_suspend(NULL, dev, error, DSS_FLAG_OUT);
+}
+
+static void dbg_snapshot_task(int cpu, struct task_struct *v_task)
+{
+	unsigned long i;
+
+	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_TASK_ID))
+		return;
+
+	i = atomic_fetch_inc(&dss_log_misc.task_log_idx[cpu]) %
+			     ARRAY_SIZE(dss_log->task[0]);
+	dss_log->task[cpu][i].time = cpu_clock(cpu);
+	dss_log->task[cpu][i].task = v_task;
+	dss_log->task[cpu][i].pid = v_task->pid;
+	dss_log->task[cpu][i].se_exec_start = v_task->se.exec_start;
+	strncpy(dss_log->task[cpu][i].task_comm, v_task->comm, TASK_COMM_LEN - 1);
+}
+
+static void dbg_snapshot_sched_switch(void *ignore, bool preempt, struct task_struct *prev,
+				      struct task_struct *next, unsigned int prev_state)
+{
+	dbg_snapshot_task(raw_smp_processor_id(), next);
+}
+
+void dbg_snapshot_work(work_func_t fn, int en)
+{
+	int cpu = raw_smp_processor_id();
+	unsigned long i;
+
+	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_WORK_ID))
+		return;
+
+	i = atomic_fetch_inc(&dss_log_misc.work_log_idx[cpu]) %
+			     ARRAY_SIZE(dss_log->work[0]);
+	dss_log->work[cpu][i].time = cpu_clock(cpu);
+	dss_log->work[cpu][i].fn = fn;
+	dss_log->work[cpu][i].en = en;
+}
+
+static void dbg_snapshot_wq_start(void *ignore, struct work_struct *work)
+{
+	dbg_snapshot_work(work->func, DSS_FLAG_IN);
+}
+
+static void dbg_snapshot_wq_end(void *ignore, struct work_struct *work,
+				work_func_t func)
+{
+	dbg_snapshot_work(func, DSS_FLAG_OUT);
 }
 
 void dbg_snapshot_cpuidle_mod(char *modes, unsigned int state, s64 diff, int en)
@@ -779,6 +829,22 @@ void dbg_snapshot_init_log(void)
 	log_item_set_filed(THERMAL, thermal);
 	log_item_set_filed(ACPM, acpm);
 	log_item_set_filed(PRINTK, print);
+}
+
+void dbg_snapshot_register_vh_log(void)
+{
+	if (dss_log_items[DSS_LOG_TASK_ID].entry.enabled) {
+		if (register_trace_sched_switch(dbg_snapshot_sched_switch, NULL))
+			pr_err("dss task log VH register failed\n");
+	}
+
+	if (dss_log_items[DSS_LOG_WORK_ID].entry.enabled) {
+		if (register_trace_workqueue_execute_start(dbg_snapshot_wq_start, NULL))
+			pr_err("dss wq start log VH register failed\n");
+
+		if (register_trace_workqueue_execute_end(dbg_snapshot_wq_end, NULL))
+			pr_err("dss wq end log VH register failed\n");
+	}
 }
 
 void dbg_snapshot_start_log(void)
