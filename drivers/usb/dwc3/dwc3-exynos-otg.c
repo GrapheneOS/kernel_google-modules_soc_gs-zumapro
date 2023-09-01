@@ -699,10 +699,12 @@ static struct dwc3_exynos *exynos_dwusb_get_struct(void)
 	return NULL;
 }
 
-int dwc3_otg_host_enable(bool enabled)
+int dwc3_otg_fsm_try_reset(bool reset)
 {
 	struct dwc3_exynos *exynos;
 	struct otg_fsm  *fsm;
+	struct usb_otg *otg;
+	struct dwc3_otg	*dotg;
 
 	exynos = exynos_dwusb_get_struct();
 	if (!exynos) {
@@ -711,14 +713,15 @@ int dwc3_otg_host_enable(bool enabled)
 	}
 
 	fsm = &exynos->dotg->fsm;
-	fsm->id = !enabled;
-
-	dev_dbg(exynos->dev, "%s: %s host\n", __func__, enabled ? "enable" : "disable");
-	dwc3_otg_run_sm(fsm);
+	otg = fsm->otg;
+	dotg = container_of(otg, struct dwc3_otg, otg);
+	dotg->fsm_reset = reset;
+	if (!fsm->b_sess_vld)
+		dwc3_otg_run_sm(fsm);
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(dwc3_otg_host_enable);
+EXPORT_SYMBOL_GPL(dwc3_otg_fsm_try_reset);
 
 bool dwc3_otg_check_usb_suspend(struct dwc3_exynos *exynos)
 {
