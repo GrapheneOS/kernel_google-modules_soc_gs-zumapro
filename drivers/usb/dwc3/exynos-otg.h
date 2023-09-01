@@ -29,6 +29,7 @@ struct dwc3_otg {
 
 	bool			host_on;
 	bool			device_on;
+	bool			host_ready;
 	enum usb_role		current_role;
 	enum usb_role		desired_role;
 
