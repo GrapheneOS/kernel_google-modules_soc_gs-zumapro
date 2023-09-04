@@ -62,6 +62,7 @@
 #ifdef CONFIG_SOC_ZUMA
 #include <soc/google/exynos-cpupm.h>
 #endif
+#include <soc/google/pkvm-s2mpu.h>
 
 /* These are the possible values for the status field from the specification */
 enum eh_cdesc_status {
@@ -1291,25 +1292,24 @@ static int eh_of_probe(struct platform_device *pdev)
 {
 	struct eh_device *eh_dev;
 	struct resource *mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	int ret;
+	int ret = 0;
 	int error_irq = 0;
 	unsigned short quirks = 0;
 	struct clk *clk;
 	int sw_fifo_size = EH_SW_FIFO_SIZE;
-	struct device_node *s2mpu_np;
-	struct platform_device *s2mpu_pdev;
 
 	pr_info("starting probing\n");
 
-	s2mpu_np = of_parse_phandle(pdev->dev.of_node, "s2mpus", 0);
-	if (s2mpu_np) {
-		s2mpu_pdev = of_find_device_by_node(s2mpu_np);
-		of_node_put(s2mpu_np);
-		if (s2mpu_pdev) {
-			dev_info(&pdev->dev," link setup with %s\n", dev_name(&s2mpu_pdev->dev));
-			device_link_add(&pdev->dev, &s2mpu_pdev->dev,
-					DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_PM_RUNTIME);
-		}
+#if IS_ENABLED(CONFIG_PKVM_S2MPU_V9)
+	ret = pkvm_s2mpu_of_link_v9(&pdev->dev);
+#elif IS_ENABLED(CONFIG_PKVM_S2MPU)
+	ret = pkvm_s2mpu_of_link(&pdev->dev);
+#endif
+	if (ret == -EAGAIN) {
+		return -EPROBE_DEFER;
+	} else if (ret) {
+		dev_err(&pdev->dev, "can't link with s2mpu, error %d\n", ret);
+		return ret;
 	}
 
 	pm_runtime_enable(&pdev->dev);
