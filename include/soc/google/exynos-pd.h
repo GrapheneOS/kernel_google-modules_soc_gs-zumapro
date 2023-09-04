@@ -105,6 +105,7 @@ static inline int exynos_pd_get_pd_stat(struct exynos_pm_domain *pd,
 extern u32 dwc3_otg_is_connect(void);
 extern void exynos_usbdrd_ldo_manual_control(bool on);
 extern void exynos_usbdrd_s2mpu_manual_control(bool on);
+extern int exynos_usbdrd_set_s2mpu_pm_ops(int (*cb)(struct device *dev, bool on));
 #else
 static inline u32 dwc3_otg_is_connect(void)
 {
@@ -117,6 +118,11 @@ static inline void exynos_usbdrd_ldo_manual_control(bool on)
 static inline void exynos_usbdrd_s2mpu_manual_control(bool on)
 {
 	return;
+}
+
+static inline int exynos_usbdrd_set_s2mpu_pm_ops(int (*cb)(struct device *dev, bool on))
+{
+	return 0;
 }
 #endif
 

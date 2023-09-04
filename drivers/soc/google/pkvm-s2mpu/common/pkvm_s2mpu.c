@@ -16,6 +16,7 @@
 
 #include <linux/kvm_host.h>
 #include "kvm_s2mpu.h"
+#include <soc/google/exynos-pd.h>
 #include <soc/google/pkvm-s2mpu.h>
 
 /* Print caches in s2mpu faults. */
@@ -142,6 +143,9 @@ int __pkvm_s2mpu_suspend(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
 
+	if (!data)
+		return 0;
+
 	if(data->always_on)
 		return 0;
 
@@ -155,7 +159,7 @@ int __pkvm_s2mpu_resume(struct device *dev)
 {
 	struct s2mpu_data *data = s2mpu_dev_data(dev);
 
-	if (data->pkvm_registered)
+	if (data && data->pkvm_registered)
 		return pkvm_iommu_resume(dev);
 
 	/* Need to bypass S2MPU if pKVM is not there (ex: in userspace fastboot). */
@@ -165,6 +169,13 @@ int __pkvm_s2mpu_resume(struct device *dev)
 	writel_relaxed(0, data->base + REG_NS_CTRL0);
 #endif
 	return 0;
+}
+
+int s2mpu_pm_control(struct device *dev, bool on)
+{
+	if (on)
+		return __pkvm_s2mpu_resume(dev);
+	return __pkvm_s2mpu_suspend(dev);
 }
 
 static int s2mpu_late_suspend(struct device *dev)
@@ -294,6 +305,11 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 		if (of_device_is_available(np))
 			nr_devs_total++;
 
+	ret = exynos_usbdrd_set_s2mpu_pm_ops(s2mpu_pm_control);
+	if (ret) {
+		pr_err("Failed to set S2MPU PM OPS\n");
+		return ret;
+	}
 	/* No need to force probe devices if pKVM is not enabled. */
 	if (!is_protected_kvm_enabled())
 		return platform_driver_register(driver);
