@@ -21,9 +21,15 @@ extern void vh_filemap_get_folio_mod(void *data,
 		struct address_space *mapping, pgoff_t index,
 		int fgp_flags, gfp_t gfp_mask, struct folio *folio);
 
+extern int create_mm_procfs_node(void);
+
 static int pixel_stat_mm_init(void)
 {
 	int ret;
+
+	ret = create_mm_procfs_node();
+	if (ret)
+		return ret;
 
 	ret = pixel_mm_sysfs();
 	if (ret)
