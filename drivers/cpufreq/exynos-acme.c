@@ -384,8 +384,10 @@ static int __exynos_cpufreq_target(struct cpufreq_policy *policy,
 		goto out;
 	}
 
-	if (!cpumask_subset(&domain->cpus, &tmu_enabled_mask))
-		return -EINVAL;
+	if (!cpumask_subset(&domain->cpus, &tmu_enabled_mask)) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	if (target_freq > domain->user_max_qos_req.pnode.prio) {
 		ret = -EINVAL;

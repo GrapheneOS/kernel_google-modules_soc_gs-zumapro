@@ -34,6 +34,7 @@ static struct vendor_cfs_util vendor_cfs_util[UG_MAX][CPU_NUM];
 extern int vendor_sched_ug_bg_auto_prio;
 extern unsigned int vendor_sched_util_post_init_scale;
 extern bool vendor_sched_npi_packing;
+extern bool vendor_sched_boost_adpf_prio;
 
 static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
@@ -87,7 +88,7 @@ static void attach_task(struct rq *rq, struct task_struct *p)
  * attach_one_task() -- attaches the task returned from detach_one_task() to
  * its new rq.
  */
-static void __maybe_unused attach_one_task(struct rq *rq, struct task_struct *p)
+static void attach_one_task(struct rq *rq, struct task_struct *p)
 {
 	struct rq_flags rf;
 
@@ -2437,6 +2438,9 @@ void rvh_set_user_nice_pixel_mod(void *data, struct task_struct *p, long *nice, 
 	struct rq_flags rf;
 	struct rq *rq;
 
+	if (!vendor_sched_boost_adpf_prio)
+		return;
+
 	rq = task_rq_lock(p, &rf);
 
 	if (p->prio < MAX_RT_PRIO) {
@@ -2464,6 +2468,9 @@ void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p)
 	struct vendor_task_struct *vp;
 	unsigned long flags;
 
+	if (!vendor_sched_boost_adpf_prio)
+		return;
+
 	if (p->prio < MAX_RT_PRIO)
 		return;
 
@@ -2482,7 +2489,8 @@ void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p)
 
 static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 {
-	struct task_struct *p;
+	struct task_struct *p = NULL, *best_task = NULL, *backup = NULL,
+		*backup_ui = NULL, *backup_unfit = NULL;
 
 	lockdep_assert_held(&src_rq->__lock);
 
@@ -2490,6 +2498,7 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 
 	list_for_each_entry_reverse(p, &src_rq->cfs_tasks, se.group_node) {
 		struct vendor_task_struct *vp = get_vendor_task_struct(p);
+		bool is_ui = false, is_boost = false;
 
 		if (!cpumask_test_cpu(dst_cpu, p->cpus_ptr))
 			continue;
@@ -2497,22 +2506,66 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 		if (task_running(src_rq, p))
 			continue;
 
-		/* if latency sensitive task and dst cpu fits, pull it */
-		if (vp && vp->uclamp_fork_reset &&
-		    task_fits_capacity(p, dst_cpu, false)) {
-			goto found;
+		if (!get_prefer_idle(p))
+			continue;
+
+		if (vp && vp->uclamp_fork_reset)
+			is_ui = true;
+		else if (uclamp_eff_value(p, UCLAMP_MIN) > 0)
+			is_boost = true;
+
+		if (!is_ui && !is_boost)
+			continue;
+
+		if (task_fits_capacity(p, dst_cpu, false)) {
+			if (!task_fits_capacity(p, src_rq->cpu, false)) {
+				// if task is fit for new cpu but not old cpu
+				// stop if we found an ADPF UI task
+				// use it as backup if we found a boost task
+				if (is_ui) {
+					best_task = p;
+					break;
+				}
+
+				backup = p;
+			} else {
+				if (is_ui) {
+					backup_ui = p;
+					continue;
+				}
+
+				if (!backup)
+					backup = p;
+			}
+		} else {
+			// if new idle is not capable, use it as backup but not for UI task.
+			if (!is_ui)
+				backup_unfit = p;
 		}
 	}
 
-	p = NULL;
-	goto out;
+	if (best_task)
+		p = best_task;
+	else if (backup_ui)
+		p = backup_ui;
+	else if (backup)
+		p = backup;
+	else if (backup_unfit)
+		p = backup_unfit;
+	else
+		p = NULL;
 
-found:
-	/* detach_task */
-	deactivate_task(src_rq, p, DEQUEUE_NOCLOCK);
-	set_task_cpu(p, dst_cpu);
+	if (p) {
+		/* detach_task */
+		deactivate_task(src_rq, p, DEQUEUE_NOCLOCK);
+		set_task_cpu(p, dst_cpu);
 
-out:
+		if (backup_unfit)
+			cpu_rq(dst_cpu)->misfit_task_load = p->se.avg.load_avg;
+		else
+			cpu_rq(dst_cpu)->misfit_task_load = 0;
+	}
+
 	rcu_read_unlock();
 	return p;
 }
@@ -2536,7 +2589,6 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	if (SCHED_WARN_ON(atomic_read(&this_vrq->num_adpf_tasks)))
 		atomic_set(&this_vrq->num_adpf_tasks, 0);
 
-	this_rq->misfit_task_load = 0;
 
 	/*
 	 * We must set idle_stamp _before_ calling idle_balance(), such that we
@@ -2550,8 +2602,19 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	if (!cpu_active(this_cpu))
 		return;
 
+	/*
+	 * This is OK, because current is on_cpu, which avoids it being picked
+	 * for load-balance and preemption/IRQs are still disabled avoiding
+	 * further scheduler activity on it and we're being very careful to
+	 * re-start the picking loop.
+	 */
+	rq_unpin_lock(this_rq, rf);
+	raw_spin_unlock(&this_rq->__lock);
+
 	this_cpu = this_rq->cpu;
 	for_each_cpu(cpu, cpu_active_mask) {
+		int cpu_importnace = READ_ONCE(cpu_rq(cpu)->uclamp[UCLAMP_MIN].value) +
+			READ_ONCE(cpu_rq(cpu)->uclamp[UCLAMP_MAX].value);
 
 		if (cpu == this_cpu)
 			continue;
@@ -2587,33 +2650,60 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 			continue;
 		}
 
-		p = detach_important_task(src_rq, this_cpu);
-
-		rq_unlock(src_rq, &src_rf);
-
-		if (p) {
-			*pulled_task = 1;
-			*done = 1;
-			update_rq_clock(this_rq);
-			attach_task(this_rq, p);
-			local_irq_restore(src_rf.flags);
-			goto done;
+		if (cpu_is_idle(cpu)) {
+			rq_unlock_irqrestore(src_rq, &src_rf);
+			continue;
 		}
 
-		local_irq_restore(src_rf.flags);
+		/* src_cpu is just waken up by tasks */
+		if (src_rq->curr == src_rq->idle) {
+			rq_unlock_irqrestore(src_rq, &src_rf);
+			continue;
+		}
+
+		/* we assume rt task will release cpu soon */
+		if (src_rq->curr->prio < MAX_RT_PRIO) {
+			rq_unlock_irqrestore(src_rq, &src_rf);
+			continue;
+		}
+
+		if (cpu_importnace <= DEFAULT_IMPRATANCE_THRESHOLD || !src_rq->cfs.nr_running) {
+			rq_unlock_irqrestore(src_rq, &src_rf);
+			continue;
+		}
+
+		p = detach_important_task(src_rq, this_cpu);
+
+		rq_unlock_irqrestore(src_rq, &src_rf);
+
+		if (p) {
+			attach_one_task(this_rq, p);
+			break;
+		}
 	}
 
-	return;
+	raw_spin_lock(&this_rq->__lock);
+	/*
+	 * While browsing the domains, we released the rq lock, a task could
+	 * have been enqueued in the meantime. Since we're not going idle,
+	 * pretend we pulled a task.
+	 */
+	if (this_rq->cfs.h_nr_running && !*pulled_task)
+		*pulled_task = 1;
 
-done:
 	/* Is there a task of a high priority class? */
 	if (this_rq->nr_running != this_rq->cfs.h_nr_running)
 		*pulled_task = -1;
 
-	this_rq->idle_stamp = 0;
+	if (*pulled_task)
+		this_rq->idle_stamp = 0;
 
-	/* TODO: need implement update_blocked_averages which also requires
-	 * releasing the this_rq lock */
+	if (*pulled_task != 0) {
+		*done = 1;
+		/* TODO: need implement update_blocked_averages */
+	}
+
+	rq_repin_lock(this_rq, rf);
 
 	return;
 }

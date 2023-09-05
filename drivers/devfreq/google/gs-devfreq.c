@@ -687,29 +687,11 @@ static ssize_t show_exynos_devfreq_get_freq(struct device *dev,
 	return count;
 }
 
-static int exynos_devfreq_cmu_dump(struct exynos_devfreq_data *data)
-{
-	mutex_lock(&data->devfreq->lock);
-	cal_vclk_dbg_info(data->dfs_id);
-	mutex_unlock(&data->devfreq->lock);
-
-	return 0;
-}
-
 static ssize_t show_exynos_devfreq_cmu_dump(struct device *dev,
 					    struct device_attribute *attr,
 					    char *buf)
 {
-	struct device *parent = dev->parent;
-	struct platform_device *pdev =
-		container_of(parent, struct platform_device, dev);
-	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
 	ssize_t count = 0;
-
-	mutex_lock(&data->lock);
-	if (exynos_devfreq_cmu_dump(data))
-		dev_err(data->dev, "failed CMU Dump\n");
-	mutex_unlock(&data->lock);
 
 	count = snprintf(buf, PAGE_SIZE, "Done\n");
 
