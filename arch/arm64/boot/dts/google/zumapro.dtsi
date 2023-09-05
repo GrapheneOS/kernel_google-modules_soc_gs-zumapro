@@ -29,6 +29,7 @@
 #include "zumapro-usi.dtsi"
 #include "zumapro-ufs.dtsi"
 #include "zumapro-usb.dtsi"
+#include "zumapro-pcie.dtsi"
 #include "gs101-dma-heap.dtsi"
 #include "gs101-faceauth-dma-heap.dtsi"
 #include "zumapro-bts.dtsi"
