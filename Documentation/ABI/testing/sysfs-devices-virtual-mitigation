@@ -187,3 +187,11 @@ Description:
 		and greater_than_10ms_count.
 		The reported value is print out of the PWRWARN IRQ breaches across all ODPM rails
 		and IFPMIC IRQ.
+
+What:		/sys/devices/virtual/pmic/mitigation/br_stats
+Date:		Sep, 2023
+Contact:	"George Lee" <geolee@google.com>
+		"Sam Ou" <samou@google.com>
+Description:
+		This directory contains the brownout information.
+		- triggered_idx: the brownout event index (support sysfs_notify)
