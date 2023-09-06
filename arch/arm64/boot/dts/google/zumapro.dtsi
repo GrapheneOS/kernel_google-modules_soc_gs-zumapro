@@ -596,6 +596,13 @@
 		smfc_core_clk = <465000>;
 	};
 
+	/* Secure Log */
+	seclog {
+		compatible = "samsung,exynos-seclog";
+		interrupts = <GIC_SPI INTREQ__SECURE_LOG IRQ_TYPE_LEVEL_HIGH>;
+		memory-region = <&seclog_mem>;
+	};
+
 	exynos-pm {
 		compatible = "samsung,exynos-pm";
 		reg = <0x0 0x154D0000 0x1000>,
