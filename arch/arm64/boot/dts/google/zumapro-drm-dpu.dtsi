@@ -9,15 +9,3 @@
 
 #include "zuma-drm-dpu.dtsi"
 
-
-&drmdecon0 {
-	/delete-property/  power-domains;
-};
-
-&drmdecon1 {
-	/delete-property/  power-domains;
-};
-
-&drmdecon2 {
-	/delete-property/  power-domains;
-};

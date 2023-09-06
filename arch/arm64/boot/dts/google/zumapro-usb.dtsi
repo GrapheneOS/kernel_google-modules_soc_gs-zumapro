@@ -5,12 +5,4 @@
  * Copyright 2023 Google LLC.
  */
 #include "zuma-usb.dtsi"
-&udc {
-	/delete-property/  power-domains;
-	/delete-property/  s2mpus;
-};
 
-&usbdrd_phy0 {
-	/delete-property/  power-domains;
-	/delete-property/  s2mpus;
-};
