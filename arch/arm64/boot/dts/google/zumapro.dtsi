@@ -17,6 +17,7 @@
 #include "zumapro-dma-heap.dtsi"
 #include "zumapro-rmem.dtsi"
 #include "zumapro-debug.dtsi"
+#include "zumapro-dpm.dtsi"
 #include "gs101-trusty.dtsi"
 #include "zumapro-pm-domains.dtsi"
 #include "zumapro-cpu.dtsi"
