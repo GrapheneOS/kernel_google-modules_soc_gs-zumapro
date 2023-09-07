@@ -280,8 +280,7 @@
 			<GIC_SPI IRQ_CPUCL0_ERRIRQ_4_CPUCL0 IRQ_TYPE_LEVEL_HIGH>, /* CORE4 */
 			<GIC_SPI IRQ_CPUCL0_ERRIRQ_5_CPUCL0 IRQ_TYPE_LEVEL_HIGH>, /* CORE5 */
 			<GIC_SPI IRQ_CPUCL0_ERRIRQ_6_CPUCL0 IRQ_TYPE_LEVEL_HIGH>, /* CORE6 */
-			<GIC_SPI IRQ_CPUCL0_ERRIRQ_7_CPUCL0 IRQ_TYPE_LEVEL_HIGH>, /* CORE7 */
-			<GIC_SPI IRQ_CPUCL0_ERRIRQ_8_CPUCL0 IRQ_TYPE_LEVEL_HIGH>; /* CORE8 */
+			<GIC_SPI IRQ_CPUCL0_ERRIRQ_7_CPUCL0 IRQ_TYPE_LEVEL_HIGH>; /* CORE7 */
 		interrupt-names = "Uncorrectable errors on the L3 data, tag or snoop filter RAMs",
 			"Core0-1 Complex, Uncorrectable errors on the L2 data or tag RAMs",
 			"Core2-3 Complex, Uncorrectable errors on the L2 data or tag RAMs",
@@ -292,8 +291,7 @@
 			"Core4, Uncorrectable errors on the L1 data, tag or L2 data, tag RAMs",
 			"Core5, Uncorrectable errors on the L1 data, tag or L2 data, tag RAMs",
 			"Core6, Uncorrectable errors on the L1 data, tag or L2 data, tag RAMs",
-			"Core7, Uncorrectable errors on the L1 data, tag or L2 data, tag RAMs",
-			"Core8, Uncorrectable errors on the L1 data, tag or L2 data, tag RAMs";
+			"Core7, Uncorrectable errors on the L1 data, tag or L2 data, tag RAMs";
 		interrupt-affinity = <0x1ff>, <0x3>, <0xc>,
 			<0x1>, <0x2>, <0x4>, <0x8>,
 			<0x10>, <0x20>, <0x40>, <0x80>, <0x100>;
