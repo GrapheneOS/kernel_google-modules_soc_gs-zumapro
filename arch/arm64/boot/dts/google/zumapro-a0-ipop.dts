@@ -30,6 +30,39 @@
 		id = <0>;
 		ect_nouse;
 		#thermal-sensor-cells = <0>;
+
+		use-pi-thermal;
+		polling_delay_on = <25>;
+		polling_delay_off = <0>;
+		k_po = <68>;
+		k_pu = <68>;
+		k_i = <50>;
+		i_max = <5>;
+		integral_cutoff = <10>;
+		sustainable_power = <2000>;
+		control_temp_step = <1000>; // mC per second
+		junction_offset = <0 (-10000) (-10000) (-10000) 5000 0 0 0>; // mC
+
+		early_throttle_enable;
+		early_throttle_k_p = <50>;
+		early_throttle_offset = <10>; // in Celsius
+
+		use-hardlimit-pid;
+
+		tmu_work_affinity = "0-7";
+
+		use-acpm-gov;
+		irq_stepwise_gain = <2>;
+		timer_stepwise_gain = <1>;
+		thermal_pressure_time_window = <100>;
+
+		mapped_cpus = "7";
+		pressure_index = <0>;
+
+		use-acpm-mpmm-throttle;
+		mpmm_enable = <0x1>;
+		mpmm_throttle_level = <0x4>;
+		mpmm_clr_throttle_level = <0x6>;
 	};
 
 	tmuctrl_1: MID@100A0000 {
@@ -40,6 +73,33 @@
 		id = <1>;
 		ect_nouse;
 		#thermal-sensor-cells = <0>;
+
+		use-pi-thermal;
+		polling_delay_on = <25>;
+		polling_delay_off = <0>;
+		k_po = <36>;
+		k_pu = <36>;
+		k_i = <58>;
+		i_max = <5>;
+		integral_cutoff = <20>;
+		sustainable_power = <1000>;
+		control_temp_step = <1000>; // mC per second
+		junction_offset = <0 (-10000) (-10000) (-10000) 0 0 0 0>; // mC
+
+		tmu_work_affinity = "0-7";
+
+		use-acpm-gov;
+		irq_stepwise_gain = <2>;
+		timer_stepwise_gain = <1>;
+		thermal_pressure_time_window = <100>;
+
+		mapped_cpus = "4-6";
+		pressure_index = <1>;
+
+		use-acpm-mpmm-throttle;
+		mpmm_enable = <0xF>;
+		mpmm_throttle_level = <0x100>;
+		mpmm_clr_throttle_level = <0x1AA>;
 	};
 
 	tmuctrl_2: LITTLE@100A0000 {
@@ -50,6 +110,32 @@
 		id = <2>;
 		ect_nouse;
 		#thermal-sensor-cells = <0>;
+
+		use-pi-thermal;
+		polling_delay_on = <50>;
+		polling_delay_off = <0>;
+		k_po = <60>;
+		k_pu = <60>;
+		k_i = <20>;
+		i_max = <5>;
+		integral_cutoff = <20>;
+		sustainable_power = <200>;
+		control_temp_step = <1000>; // mC per second
+		junction_offset = <0 (-5000) (-10000) (-10000) 0 0 0 0>; // mC
+
+		tmu_work_affinity = "0-7";
+
+		use-acpm-gov;
+		irq_stepwise_gain = <2>;
+		timer_stepwise_gain = <1>;
+		thermal_pressure_time_window = <100>;
+
+		mapped_cpus = "0-3";
+		pressure_index = <2>;
+
+		mpmm_enable = <0x0>;
+		mpmm_throttle_level = <0x1AA>;
+		mpmm_clr_throttle_level = <0x1AA>;
 	};
 
 	tmuctrl_3: G3D@100B0000 {
