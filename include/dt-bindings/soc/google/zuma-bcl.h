@@ -159,5 +159,9 @@
 #define CPU1_CLUSTER_MIN 4
 #define CPU2_CLUSTER_MIN 8
 
+/* Event Counter */
+#define EVT_CNT_ENABLE_DEFAULT	1
+#define EVT_CNT_RATE_DEFAULT	0
+
 #endif /* _DT_BINDINGS_ZUMA_BCL_H */
 
