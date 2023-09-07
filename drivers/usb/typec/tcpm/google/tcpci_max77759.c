@@ -1219,7 +1219,7 @@ void disconnect_missing_rp_partner(struct max77759_plat *chip)
 	 */
 	update_compliance_warnings(chip, COMPLIANCE_WARNING_OTHER, false);
 	chip->vbus_mv = 0;
-	/* val.intval does not matter */
+	val.intval = 0;
 	ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
 	if (ret < 0)
 		LOG(LOG_LVL_DEBUG, chip->log,
@@ -1256,11 +1256,11 @@ static void check_missing_rp_work(struct kthread_work *work)
 		if (power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_USB_TYPE, &val))
 			LOG(LOG_LVL_DEBUG, chip->log, "%s: usb_psy set dcp failed", __func__);
 		chip->vbus_mv = 5000;
-		/* val.intval does not matter */
+		val.intval = chip->vbus_mv * 1000;
 		ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
 		if (ret < 0)
 			LOG(LOG_LVL_DEBUG, chip->log, "%s: unable to set max voltage to %d, ret=%d",
-			    chip->vbus_mv, ret, __func__);
+			    chip->vbus_mv * 1000, ret, __func__);
 		update_compliance_warnings(chip, COMPLIANCE_WARNING_MISSING_RP, true);
 		usb_psy_set_sink_state(chip->usb_psy_data, true);
 	} else if (chip->compliance_warnings->missing_rp) {
@@ -2202,10 +2202,11 @@ static void icl_work_item(struct kthread_work *work)
 	}
 
 	chip->vbus_mv = voltage_max.intval / 1000;
+	val.intval = voltage_max.intval;
 	ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
 	if (ret < 0)
 		LOG(LOG_LVL_DEBUG, chip->log,
-		    "unable to set max voltage to %d, ret=%d", chip->vbus_mv, ret);
+		    "unable to set max voltage to %d, ret=%d", voltage_max.intval, ret);
 
 	chip->online = online.intval;
 	chip->usb_type = usb_type.intval;

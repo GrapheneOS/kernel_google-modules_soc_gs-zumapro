@@ -144,22 +144,35 @@ void init_vote(struct usb_vote *vote, const char *reason,
 }
 EXPORT_SYMBOL_GPL(init_vote);
 
+int usb_find_chg_psy(struct usb_psy_data *usb)
+{
+	struct i2c_client *client = usb->tcpc_client;
+
+	if (!usb->chg_psy) {
+		if (!usb->chg_psy_name) {
+			dev_err(&client->dev, "chg_psy_name not found\n");
+			return 0;
+		}
+		usb->chg_psy = power_supply_get_by_name(usb->chg_psy_name);
+		if (IS_ERR_OR_NULL(usb->chg_psy)) {
+			dev_err(&client->dev, "chg psy not up\n");
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
 static int usb_get_current_max_ma(struct usb_psy_data *usb)
 {
 	union power_supply_propval val = {0};
 	int ret;
-	struct i2c_client *client = usb->tcpc_client;
 
 	if (!usb->chg_psy_name)
 		return usb->current_max_cache;
 
-	if (!usb->chg_psy) {
-		usb->chg_psy = power_supply_get_by_name(usb->chg_psy_name);
-		if (IS_ERR_OR_NULL(usb->chg_psy)) {
-			dev_err(&client->dev, "chg psy not up\n");
-			return usb->current_max_cache;
-		}
-	}
+	if (!usb_find_chg_psy(usb))
+		return 0;
 
 	ret = power_supply_get_property(usb->chg_psy,
 					POWER_SUPPLY_PROP_CURRENT_MAX, &val);
@@ -174,19 +187,9 @@ static int usb_set_current_max_ma(struct usb_psy_data *usb,
 {
 	union power_supply_propval val = {0};
 	int ret;
-	struct i2c_client *client = usb->tcpc_client;
 
-	if (!usb->chg_psy) {
-		if (!usb->chg_psy_name) {
-			dev_err(&client->dev, "chg_psy_name not found\n");
-			return 0;
-		}
-		usb->chg_psy = power_supply_get_by_name(usb->chg_psy_name);
-		if (IS_ERR_OR_NULL(usb->chg_psy)) {
-			dev_err(&client->dev, "chg psy not up\n");
-			return 0;
-		}
-	}
+	if (!usb_find_chg_psy(usb))
+		return 0;
 
 	val.intval = current_max;
 	ret = power_supply_set_property(usb->chg_psy,
@@ -429,6 +432,7 @@ static int usb_psy_data_set_prop(struct power_supply *psy,
 	struct usb_psy_data *usb = power_supply_get_drvdata(psy);
 	struct usb_psy_ops *ops = usb->psy_ops;
 	struct i2c_client *client = usb->tcpc_client;
+	int ret;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
@@ -437,7 +441,14 @@ static int usb_psy_data_set_prop(struct power_supply *psy,
 		kthread_mod_delayed_work(usb->wq, &usb->icl_work, 0);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		/* Enough to trigger just the uevent */
+		if (!usb_find_chg_psy(usb))
+			break;
+
+		ret = power_supply_set_property(usb->chg_psy,
+						POWER_SUPPLY_PROP_VOLTAGE_MAX,
+						val);
+		logbuffer_logk(usb->log, LOGLEVEL_INFO, "set voltage max %d to %s, ret=%d",
+			      val->intval, usb->chg_psy_name, ret);
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 		logbuffer_log(usb->log, "POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT lim:%d type:%d",
