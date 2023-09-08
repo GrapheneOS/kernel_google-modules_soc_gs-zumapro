@@ -193,7 +193,7 @@ static int usb_set_current_max_ma(struct usb_psy_data *usb,
 					POWER_SUPPLY_PROP_CURRENT_MAX,
 					&val);
 
-	logbuffer_log(usb->log, "set input max current %d to %s, ret=%d",
+	logbuffer_logk(usb->log, LOGLEVEL_INFO, "set input max current %d to %s, ret=%d",
 		      current_max, usb->chg_psy_name, ret);
 	return ret;
 }

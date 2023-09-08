@@ -1058,7 +1058,7 @@ static void enable_vbus_work(struct kthread_work *work)
 	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
 		chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
 		if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
-			LOG(LOG_LVL_DEBUG, chip->log,
+			logbuffer_logk(chip->log, LOGLEVEL_ERR,
 			    "ERR: GBMS_MODE_VOTABLE lazy get failed with error %ld",
 			    PTR_ERR(chip->charger_mode_votable));
 			return;
@@ -1069,7 +1069,7 @@ static void enable_vbus_work(struct kthread_work *work)
 				 chip->no_external_boost ? (void *)GBMS_USB_OTG_FRS_ON :
 				 (void *)GBMS_USB_OTG_ON, true);
 
-	LOG(LOG_LVL_DEBUG, chip->log, "%s: GBMS_MODE_VOTABLE voting source ret:%d",
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "%s: GBMS_MODE_VOTABLE voting source ret:%d",
 	    ret < 0 ? "Error" : "Success", ret);
 
 	if (ret < 0)
