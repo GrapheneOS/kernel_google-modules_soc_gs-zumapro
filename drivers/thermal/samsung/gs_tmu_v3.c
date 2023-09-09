@@ -24,7 +24,6 @@
 #include <linux/debugfs.h>
 #include <uapi/linux/sched/types.h>
 #include <uapi/linux/thermal.h>
-#include <soc/google/bcl.h>
 #include <soc/google/gs_tmu_v3.h>
 #include <soc/google/tmu.h>
 #include <soc/google/ect_parser.h>
@@ -1573,22 +1572,6 @@ irq_handler_exit:
 	return IRQ_HANDLED;
 }
 
-static void init_bcl_dev(struct kthread_work *work)
-{
-	struct gs_tmu_data *data = container_of(work,
-						   struct gs_tmu_data,
-						   cpu_hw_throttle_init_work.work);
-
-	data->bcl_dev = google_retrieve_bcl_handle();
-
-	if (!data->bcl_dev) {
-		pr_warn_ratelimited("%s: failed to retrieve bcl_dev. Retry.\n", data->tmu_name);
-		kthread_mod_delayed_work(&data->cpu_hw_throttle_worker,
-					 &data->cpu_hw_throttle_init_work,
-					 msecs_to_jiffies(500));
-	}
-}
-
 static void gs_throttle_arm(struct kthread_work *work)
 {
 	struct gs_tmu_data *data = container_of(work,
@@ -1987,10 +1970,6 @@ static int gs_tmu_irq_work_init(struct platform_device *pdev)
 		}
 		wake_up_process(thread);
 
-		kthread_init_delayed_work(&data->cpu_hw_throttle_init_work, init_bcl_dev);
-		kthread_mod_delayed_work(&data->cpu_hw_throttle_worker,
-					 &data->cpu_hw_throttle_init_work,
-					 msecs_to_jiffies(0));
 	}
 
 	if (data->hardlimit_enable) {
