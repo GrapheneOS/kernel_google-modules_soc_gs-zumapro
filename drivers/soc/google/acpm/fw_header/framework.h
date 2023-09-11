@@ -76,7 +76,8 @@ struct acpm_framework {
 	u32 preempt_log_buf_front;
 	u32 preempt_log_data;
 	u32 preempt_log_entry_len;
-	u32 reserved[63];
+	u32 fvmap;
+	u32 reserved[62];
 	u32 err_log_async_channel;
 };
 
