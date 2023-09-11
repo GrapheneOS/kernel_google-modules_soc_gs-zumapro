@@ -156,6 +156,12 @@ static int plugins_init(struct device_node *node)
 				base_addr += offset;
 			}
 
+			if (acpm_ipc->initdata->fvmap) {
+				base_addr = acpm_srambase;
+				offset = acpm_ipc->initdata->fvmap;
+				base_addr += offset;
+			}
+
 			fvmap_base_address = base_addr;
 		}
 	}
