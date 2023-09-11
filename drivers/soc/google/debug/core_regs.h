@@ -105,9 +105,9 @@
 #define FUNPRIORCTRL	(0x4)
 
 #define DBG_OFFSET	(0x0)
-#define CTI_OFFSET	(0x10000)
-#define PMU_OFFSET	(0x20000)
-#define ETM_OFFSET	(0x30000)
+#define CTI_OFFSET	(0xd0000)
+#define PMU_OFFSET	(0x10000)
+#define ETM_OFFSET	(0x20000)
 #define PMUPCSR         (0x200)
 #define PMUPCSR_HI      (0x204)
 

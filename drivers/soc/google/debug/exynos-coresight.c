@@ -126,7 +126,8 @@ static int exynos_cs_get_pc(int cpu, int iter)
 	dbg_base = ecs_info->dbg_base[cpu];
 	pmu_base = ecs_info->pmu_base[cpu];
 	if (!is_power_up(cpu)) {
-		dev_err(ecs_info->dev, "Power down!\n");
+		dev_err(ecs_info->dev, "CPU%d is power down. (PRSR:0x%x)\n",
+			cpu, __raw_readl(dbg_base + DBGPRSR));
 		return -EACCES;
 	}
 

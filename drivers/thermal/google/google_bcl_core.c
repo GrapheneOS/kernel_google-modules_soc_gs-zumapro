@@ -1076,7 +1076,6 @@ static void google_set_intf_pmic_work(struct work_struct *work)
 	google_bcl_parse_qos(bcl_dev);
 	if (google_bcl_setup_qos(bcl_dev) != 0) {
 		dev_err(bcl_dev->device, "Cannot Initiate QOS\n");
-		google_bcl_remove_qos(bcl_dev);
 		bcl_dev->ready = false;
 	}
 
@@ -1633,7 +1632,8 @@ static int google_bcl_remove(struct platform_device *pdev)
 	pmic_device_destroy(bcl_dev->mitigation_dev->devt);
 	debugfs_remove_recursive(bcl_dev->debug_entry);
 	google_bcl_remove_thermal(bcl_dev);
-	google_bcl_remove_qos(bcl_dev);
+	if (bcl_dev->ready)
+		google_bcl_remove_qos(bcl_dev);
 
 	return 0;
 }
