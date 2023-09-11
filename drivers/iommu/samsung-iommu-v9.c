@@ -161,12 +161,6 @@ static inline void __sysmmu_invalidate_vid(struct sysmmu_drvdata *data, unsigned
 		       MMU_VM_ADDR(data->sfrbase + REG_MMU_RANGE_INV_END_VPN_AND_TRIG_VM, vid));
 }
 
-static inline void __sysmmu_disable(struct sysmmu_drvdata *data)
-{
-	__sysmmu_modify_bits_all_vm(data, MMU_CTRL_ENABLE, 0, data->sfrbase + REG_MMU_CTRL_VM);
-	__sysmmu_invalidate_all(data);
-}
-
 static inline void __sysmmu_disable_vid(struct sysmmu_drvdata *data, unsigned int vid)
 {
 	u32 ctrl_val;
@@ -176,6 +170,19 @@ static inline void __sysmmu_disable_vid(struct sysmmu_drvdata *data, unsigned in
 	writel_relaxed(ctrl_val, MMU_VM_ADDR(data->sfrbase + REG_MMU_CTRL_VM, vid));
 	writel_relaxed(0, MMU_VM_ADDR(data->sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM, vid));
 	__sysmmu_invalidate_all_vid(data, vid);
+}
+
+static inline void __sysmmu_disable(struct sysmmu_drvdata *data)
+{
+	unsigned int vid;
+
+	for (vid = 1; vid < MAX_VIDS; vid++) {
+		if (data->pgtable[vid])
+			__sysmmu_disable_vid(data, vid);
+	}
+
+	__sysmmu_modify_bits_all_vm(data, MMU_CTRL_ENABLE, 0, data->sfrbase + REG_MMU_CTRL_VM);
+	__sysmmu_invalidate_all(data);
 }
 
 static inline void __sysmmu_set_stream(struct sysmmu_drvdata *data, int pmmu_id)
@@ -255,12 +262,19 @@ static inline void __sysmmu_enable_vid(struct sysmmu_drvdata *data, unsigned int
 
 static inline void __sysmmu_enable(struct sysmmu_drvdata *data)
 {
+	unsigned int vid;
+
 	__sysmmu_modify_bits_all_vm(data, MMU_CTRL_ENABLE, MMU_CTRL_ENABLE,
 				    data->sfrbase + REG_MMU_CTRL_VM);
 	__sysmmu_write_all_vm(data, data->pgtable[0] / SPAGE_SIZE,
 			      data->sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM);
 	__sysmmu_init_config(data);
 	__sysmmu_invalidate_all(data);
+
+	for (vid = 1; vid < MAX_VIDS; vid++) {
+		if (data->pgtable[vid])
+			__sysmmu_enable_vid(data, vid);
+	}
 }
 
 static struct samsung_sysmmu_domain *to_sysmmu_domain(struct iommu_domain *dom)
