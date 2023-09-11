@@ -33,6 +33,7 @@
 #include "gs101-dma-heap.dtsi"
 #include "gs101-faceauth-dma-heap.dtsi"
 #include "zumapro-bts.dtsi"
+#include "zuma-isp.dtsi"
 
 / {
 	compatible = "google,zumapro";
