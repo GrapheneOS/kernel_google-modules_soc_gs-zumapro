@@ -709,6 +709,9 @@ int stmvl53l1_power_up_i2c(void *object)
 		}
 	}
 
+	/* set sensor on pinctrl state */
+	struct pinctrl *pinctrl = devm_pinctrl_get(dev);
+	stmvl53l1_pinctrl_set_state(dev, pinctrl, "sensor_on");
 
 	/* Enable shared I2C */
 	if (shared_i2c_data->pinctrl != NULL) {
@@ -765,6 +768,10 @@ int stmvl53l1_power_down_i2c(void *i2c_object)
 		if (rc)
 			dev_err(dev, "reg disable vio failed. rc=%d\n", rc);
 	}
+
+	/* set sensor off pinctrl state */
+	struct pinctrl *pinctrl = devm_pinctrl_get(dev);
+	stmvl53l1_pinctrl_set_state(dev, pinctrl, "sensor_off");
 
 	/* Disable shared I2C */
 	if (shared_i2c_data->pinctrl != NULL) {
