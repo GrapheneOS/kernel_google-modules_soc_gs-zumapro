@@ -889,7 +889,7 @@ static inline bool check_cred(struct task_struct *p)
 static int update_sched_capacity_margin(const char *buf, int count)
 {
 	char *tok, *str1, *str2;
-	unsigned int val, tmp[CPU_NUM];
+	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
 	int index = 0;
 
 	str1 = kstrndup(buf, count, GFP_KERNEL);
@@ -913,24 +913,24 @@ static int update_sched_capacity_margin(const char *buf, int count)
 		tmp[index] = val;
 		index++;
 
-		if (index == CPU_NUM)
+		if (index == pixel_cpu_num)
 			break;
 	}
 
 	if (index == 1) {
-		for (index = 0; index < CPU_NUM; index++) {
+		for (index = 0; index < pixel_cpu_num; index++) {
 			sched_capacity_margin[index] = tmp[0];
 		}
-	} else if (index == CLUSTER_NUM) {
-		for (index = MIN_CAPACITY_CPU; index < MID_CAPACITY_CPU; index++)
+	} else if (index == pixel_cluster_num) {
+		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
 			sched_capacity_margin[index] = tmp[0];
 
-		for (index = MID_CAPACITY_CPU; index < MAX_CAPACITY_CPU; index++)
+		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
 			sched_capacity_margin[index] = tmp[1];
 
-		for (index = MAX_CAPACITY_CPU; index < CPU_NUM; index++)
+		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
 			sched_capacity_margin[index] = tmp[2];
-	} else if (index == CPU_NUM) {
+	} else if (index == pixel_cpu_num) {
 		memcpy(sched_capacity_margin, tmp, sizeof(sched_capacity_margin));
 	} else {
 		goto fail;
@@ -946,7 +946,7 @@ fail:
 static int update_sched_dvfs_headroom(const char *buf, int count)
 {
 	char *tok, *str1, *str2;
-	unsigned int val, tmp[CPU_NUM];
+	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
 	int index = 0;
 
 	str1 = kstrndup(buf, count, GFP_KERNEL);
@@ -970,24 +970,24 @@ static int update_sched_dvfs_headroom(const char *buf, int count)
 		tmp[index] = val;
 		index++;
 
-		if (index == CPU_NUM)
+		if (index == pixel_cpu_num)
 			break;
 	}
 
 	if (index == 1) {
-		for (index = 0; index < CPU_NUM; index++) {
+		for (index = 0; index < pixel_cpu_num; index++) {
 			sched_dvfs_headroom[index] = tmp[0];
 		}
-	} else if (index == CLUSTER_NUM) {
-		for (index = MIN_CAPACITY_CPU; index < MID_CAPACITY_CPU; index++)
+	} else if (index == pixel_cluster_num) {
+		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
 			sched_dvfs_headroom[index] = tmp[0];
 
-		for (index = MID_CAPACITY_CPU; index < MAX_CAPACITY_CPU; index++)
+		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
 			sched_dvfs_headroom[index] = tmp[1];
 
-		for (index = MAX_CAPACITY_CPU; index < CPU_NUM; index++)
+		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
 			sched_dvfs_headroom[index] = tmp[2];
-	} else if (index == CPU_NUM) {
+	} else if (index == pixel_cpu_num) {
 		memcpy(sched_dvfs_headroom, tmp, sizeof(sched_dvfs_headroom));
 	} else {
 		goto fail;
@@ -1003,7 +1003,7 @@ fail:
 static int update_teo_util_threshold(const char *buf, int count)
 {
 	char *tok, *str1, *str2;
-	unsigned int val, tmp[CPU_NUM];
+	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
 	int index = 0;
 
 	str1 = kstrndup(buf, count, GFP_KERNEL);
@@ -1027,25 +1027,25 @@ static int update_teo_util_threshold(const char *buf, int count)
 		tmp[index] = val;
 		index++;
 
-		if (index == CPU_NUM)
+		if (index == pixel_cpu_num)
 			break;
 	}
 
 	if (index == 1) {
-		for (index = 0; index < CPU_NUM; index++) {
+		for (index = 0; index < pixel_cpu_num; index++) {
 			teo_cpu_set_util_threshold(index, tmp[0]);
 		}
-	} else if (index == CLUSTER_NUM) {
-		for (index = MIN_CAPACITY_CPU; index < MID_CAPACITY_CPU; index++)
+	} else if (index == pixel_cluster_num) {
+		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
 			teo_cpu_set_util_threshold(index, tmp[0]);
 
-		for (index = MID_CAPACITY_CPU; index < MAX_CAPACITY_CPU; index++)
+		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
 			teo_cpu_set_util_threshold(index, tmp[1]);
 
-		for (index = MAX_CAPACITY_CPU; index < CPU_NUM; index++)
+		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
 			teo_cpu_set_util_threshold(index, tmp[2]);
-	} else if (index == CPU_NUM) {
-		for (index = 0; index < CPU_NUM; index++) {
+	} else if (index == pixel_cpu_num) {
+		for (index = 0; index < pixel_cpu_num; index++) {
 			teo_cpu_set_util_threshold(index, tmp[index]);
 		}
 	} else {
@@ -1062,7 +1062,7 @@ fail:
 static int update_sched_auto_uclamp_max(const char *buf, int count)
 {
 	char *tok, *str1, *str2;
-	unsigned int val, tmp[CPU_NUM];
+	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
 	int index = 0;
 
 	str1 = kstrndup(buf, count, GFP_KERNEL);
@@ -1086,24 +1086,24 @@ static int update_sched_auto_uclamp_max(const char *buf, int count)
 		tmp[index] = val;
 		index++;
 
-		if (index == CPU_NUM)
+		if (index == pixel_cpu_num)
 			break;
 	}
 
 	if (index == 1) {
-		for (index = 0; index < CPU_NUM; index++) {
+		for (index = 0; index < pixel_cpu_num; index++) {
 			sched_auto_uclamp_max[index] = tmp[0];
 		}
-	} else if (index == CLUSTER_NUM) {
-		for (index = MIN_CAPACITY_CPU; index < MID_CAPACITY_CPU; index++)
+	} else if (index == pixel_cluster_num) {
+		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
 			sched_auto_uclamp_max[index] = tmp[0];
 
-		for (index = MID_CAPACITY_CPU; index < MAX_CAPACITY_CPU; index++)
+		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
 			sched_auto_uclamp_max[index] = tmp[1];
 
-		for (index = MAX_CAPACITY_CPU; index < CPU_NUM; index++)
+		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
 			sched_auto_uclamp_max[index] = tmp[2];
-	} else if (index == CPU_NUM) {
+	} else if (index == pixel_cpu_num) {
 		memcpy(sched_auto_uclamp_max, tmp, sizeof(sched_auto_uclamp_max));
 	} else {
 		goto fail;
@@ -1422,7 +1422,7 @@ static int util_threshold_show(struct seq_file *m, void *v)
 {
 	int i;
 
-	for (i = 0; i < CPU_NUM; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		seq_printf(m, "%u ", sched_capacity_margin[i]);
 	}
 
@@ -1454,7 +1454,7 @@ static int dvfs_headroom_show(struct seq_file *m, void *v)
 {
 	int i;
 
-	for (i = 0; i < CPU_NUM; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		seq_printf(m, "%u ", sched_dvfs_headroom[i]);
 	}
 
@@ -1484,7 +1484,7 @@ static int teo_util_threshold_show(struct seq_file *m, void *v)
 {
 	int i;
 
-	for (i = 0; i < CPU_NUM; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		seq_printf(m, "%lu ", teo_cpu_get_util_threshold(i));
 	}
 
@@ -1637,7 +1637,7 @@ static int uclamp_stats_show(struct seq_file *m, void *v)
 	struct uclamp_stats *stats;
 
 	seq_printf(m, "V, T(ms), %%\n");
-	for (i = 0; i < CONFIG_VH_SCHED_CPU_NR; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		stats = &per_cpu(uclamp_stats, i);
 		seq_printf(m, "CPU %d - total time: %llu ms\n", i, stats->total_time \
 		/ NSEC_PER_MSEC);
@@ -1669,7 +1669,7 @@ static int uclamp_effective_stats_show(struct seq_file *m, void *v)
 	struct uclamp_stats *stats;
 
 	seq_printf(m, "V, T(ms), %%(Based on T in uclamp_stats)\n");
-	for (i = 0; i < CONFIG_VH_SCHED_CPU_NR; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		stats = &per_cpu(uclamp_stats, i);
 
 		seq_printf(m, "CPU %d\n", i);
@@ -1701,7 +1701,7 @@ static int uclamp_util_diff_stats_show(struct seq_file *m, void *v)
 	struct uclamp_stats *stats;
 
 	seq_printf(m, "V, T(ms), %%\n");
-	for (i = 0; i < CONFIG_VH_SCHED_CPU_NR; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		stats = &per_cpu(uclamp_stats, i);
 		seq_printf(m, "CPU %d - total time: %llu ms\n",
 				 i, stats->total_time / NSEC_PER_MSEC);
@@ -1939,7 +1939,7 @@ static int auto_uclamp_max_show(struct seq_file *m, void *v)
 {
 	int i;
 
-	for (i = 0; i < CPU_NUM; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		seq_printf(m, "%u ", sched_auto_uclamp_max[i]);
 	}
 

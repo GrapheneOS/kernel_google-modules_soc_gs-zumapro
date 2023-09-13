@@ -45,12 +45,12 @@ struct  resume_latency {
 };
 
 struct long_irq {
-	ktime_t softirq_start[CONFIG_VH_SCHED_CPU_NR][NR_SOFTIRQS];
-	ktime_t irq_start[CONFIG_VH_SCHED_CPU_NR][MAX_IRQ_NUM];
+	ktime_t softirq_start[CONFIG_VH_SCHED_MAX_CPU_NR][NR_SOFTIRQS];
+	ktime_t irq_start[CONFIG_VH_SCHED_MAX_CPU_NR][MAX_IRQ_NUM];
 	atomic64_t long_softirq_count;
 	atomic64_t long_irq_count;
-	atomic64_t long_softirq_count_arr[CONFIG_VH_SCHED_CPU_NR];
-	atomic64_t long_irq_count_arr[CONFIG_VH_SCHED_CPU_NR];
+	atomic64_t long_softirq_count_arr[CONFIG_VH_SCHED_MAX_CPU_NR];
+	atomic64_t long_irq_count_arr[CONFIG_VH_SCHED_MAX_CPU_NR];
 	s64 long_softirq_arr[NR_SOFTIRQS];
 	s64 long_irq_arr[MAX_IRQ_NUM];
 	struct irq_storm_data irq_storms[MAX_IRQ_NUM];

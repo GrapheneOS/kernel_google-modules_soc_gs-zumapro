@@ -34,6 +34,8 @@
 static int dsulat_use_cnt;
 static DEFINE_MUTEX(state_lock);
 
+extern int *pixel_cluster_start_cpu;
+
 #define show_attr(name) \
 static ssize_t show_##name(struct device *dev,                          \
 			struct device_attribute *attr, char *buf)       \
@@ -138,13 +140,13 @@ static unsigned long core_to_dev_freq(int cpu, struct dsulat_node *node,
 	struct core_dev_map *map;
 	unsigned long freq = 0;
 
-	if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
+	if (cpu < pixel_cluster_start_cpu[1]) {
 		if (latency_mode)
 			map = node->freq_map_cl0_low_latency;
 		else
 			map = node->freq_map_cl0_base;
 	}
-	else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
+	else if (cpu < pixel_cluster_start_cpu[2]) {
 		if (latency_mode)
 			map = node->freq_map_cl1_low_latency;
 		else
@@ -314,13 +316,13 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 		latency_mode = false;
 
 		trace_name[3] = '0' + cpu;
-		if (cpu < CONFIG_VH_MID_CAPACITY_CPU) {
+		if (cpu < pixel_cluster_start_cpu[1]) {
 			ratio_ceil = node->ratio_ceil_cl0;
 			wb_pct_thres = node->wb_pct_thres_cl0;
 			wb_filter_ratio = node->wb_filter_ratio_cl0;
 			mem_stall_floor = node->mem_stall_floor_cl0;
 			dsulat_cpuidle_state_aware = node->dsulat_cpuidle_state_aware_cl0;
-		} else if (cpu < CONFIG_VH_MAX_CAPACITY_CPU) {
+		} else if (cpu < pixel_cluster_start_cpu[2]) {
 			ratio_ceil = node->ratio_ceil_cl1;
 			wb_pct_thres = node->wb_pct_thres_cl1;
 			wb_filter_ratio = node->wb_filter_ratio_cl1;
