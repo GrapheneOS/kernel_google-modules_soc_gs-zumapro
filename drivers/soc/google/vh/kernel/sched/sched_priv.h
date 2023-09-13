@@ -2,12 +2,6 @@
 #include "../../include/sched.h"
 #include <asm/atomic.h>
 
-#define MIN_CAPACITY_CPU    CONFIG_VH_MIN_CAPACITY_CPU
-#define MID_CAPACITY_CPU    CONFIG_VH_MID_CAPACITY_CPU
-#define MAX_CAPACITY_CPU    CONFIG_VH_MAX_CAPACITY_CPU
-#define HIGH_CAPACITY_CPU   CONFIG_VH_HIGH_CAPACITY_CPU
-#define CPU_NUM             CONFIG_VH_SCHED_CPU_NR
-#define CLUSTER_NUM         3
 #define UCLAMP_STATS_SLOTS  21
 #define UCLAMP_STATS_STEP   (100 / (UCLAMP_STATS_SLOTS - 1))
 #define DEF_UTIL_THRESHOLD  1280
@@ -46,9 +40,13 @@
 		      __val / DIV_ROUND_CLOSEST(SCHED_CAPACITY_SCALE, UCLAMP_BUCKETS),	      \
 		      UCLAMP_BUCKETS - 1)
 
-extern unsigned int sched_capacity_margin[CPU_NUM];
-extern unsigned int sched_dvfs_headroom[CPU_NUM];
-extern unsigned int sched_auto_uclamp_max[CPU_NUM];
+extern unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR];
+extern unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR];
+extern unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR];
+
+extern int pixel_cpu_num;
+extern int pixel_cluster_num;
+extern int *pixel_cluster_start_cpu;
 
 #define cpu_overutilized(cap, max, cpu)	\
 		((cap) * sched_capacity_margin[cpu] > (max) << SCHED_CAPACITY_SHIFT)

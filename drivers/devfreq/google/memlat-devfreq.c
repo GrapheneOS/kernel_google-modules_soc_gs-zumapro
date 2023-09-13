@@ -23,9 +23,9 @@
 #define MEMLAT_DEVFREQ_MODULE_NAME	"gs101-memlat-devfreq"
 #define HZ_PER_KHZ	1000
 
-static struct device  *memlat_dev_array[CONFIG_VH_SCHED_CPU_NR];
-static struct exynos_pm_qos_request *memlat_cpu_qos_array[CONFIG_VH_SCHED_CPU_NR];
-static int memlat_cpuidle_state_aware[CONFIG_VH_SCHED_CPU_NR];
+static struct device  *memlat_dev_array[CONFIG_VH_SCHED_MAX_CPU_NR];
+static struct exynos_pm_qos_request *memlat_cpu_qos_array[CONFIG_VH_SCHED_MAX_CPU_NR];
+static int memlat_cpuidle_state_aware[CONFIG_VH_SCHED_MAX_CPU_NR];
 static spinlock_t memlat_cpu_lock;
 
 struct device **get_memlat_dev_array(void)

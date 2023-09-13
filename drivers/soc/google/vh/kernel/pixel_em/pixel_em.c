@@ -38,7 +38,10 @@ extern void vh_arch_set_freq_scale_pixel_mod(void *data,
 extern struct pixel_em_profile **exynos_cpu_cooling_pixel_em_profile;
 #endif
 
-static int pixel_em_num_clusters;
+extern int pixel_cpu_num;
+extern int pixel_cluster_num;
+extern int *pixel_cluster_start_cpu;
+extern bool pixel_cpu_init;
 
 static struct mutex profile_list_lock;
 static LIST_HEAD(profile_list);
@@ -55,37 +58,19 @@ static void pixel_em_free_profile(struct pixel_em_profile *);
 static int pixel_em_publish_profile(struct pixel_em_profile *);
 static void pixel_em_unpublish_profile(struct pixel_em_profile *);
 
-
-static int pixel_em_count_clusters(void)
+static int pixel_em_init_cpu_layout(void)
 {
-	int res = 0;
+	int i;
 
-	cpumask_t unmatched_cpus;
+	if (!pixel_cpu_init)
+		return -EPROBE_DEFER;
 
-	cpumask_copy(&unmatched_cpus, cpu_possible_mask);
-
-	while (!cpumask_empty(&unmatched_cpus)) {
-		int first_cpu = cpumask_first(&unmatched_cpus);
-		struct em_perf_domain *pd = em_cpu_get(first_cpu);
+	for (i = 0; i < pixel_cluster_num; i++) {
+		struct em_perf_domain *pd = em_cpu_get(pixel_cluster_start_cpu[i]);
 
 		if (!pd)
 			return -EPROBE_DEFER;
-
-		cpumask_xor(&unmatched_cpus, &unmatched_cpus, em_span_cpus(pd));
-		res++;
 	}
-
-	return res;
-}
-
-static int pixel_em_init_cpu_layout(void)
-{
-	int num_clusters;
-
-	num_clusters = pixel_em_count_clusters();
-	if (num_clusters <= 0)
-		return num_clusters;
-	pixel_em_num_clusters = num_clusters;
 
 	return 0;
 }
@@ -383,7 +368,7 @@ static int parse_profile(const char *profile_input, int profile_input_length)
 				res = -EINVAL;
 				goto early_return;
 			}
-			if (current_cpu_id < 0 || current_cpu_id >= CONFIG_VH_SCHED_CPU_NR) {
+			if (current_cpu_id < 0 || current_cpu_id >= pixel_cpu_num) {
 				pr_err("Invalid CPU specified on line '%s'!\n", skipped_blanks);
 				res = -EINVAL;
 				goto early_return;
@@ -499,13 +484,13 @@ static struct pixel_em_profile *generate_default_em_profile(const char *name)
 	if (!res->name)
 		goto failed_name_allocation;
 
-	res->num_clusters = pixel_em_num_clusters;
+	res->num_clusters = pixel_cluster_num;
 
 	res->clusters = kcalloc(res->num_clusters, sizeof(*res->clusters), GFP_KERNEL);
 	if (!res->clusters)
 		goto failed_clusters_allocation;
 
-	res->cpu_to_cluster = kcalloc(CONFIG_VH_SCHED_CPU_NR,
+	res->cpu_to_cluster = kcalloc(pixel_cpu_num,
 				      sizeof(*res->cpu_to_cluster),
 				      GFP_KERNEL);
 	if (!res->cpu_to_cluster)
@@ -565,13 +550,13 @@ static struct pixel_idle_em *generate_idle_em(void)
 	if (!idle_em)
 		goto failed_idle_em_allocation;
 
-	idle_em->num_clusters = pixel_em_num_clusters;
+	idle_em->num_clusters = pixel_cluster_num;
 
-	idle_em->clusters = kcalloc(pixel_em_num_clusters, sizeof(*idle_em->clusters), GFP_KERNEL);
+	idle_em->clusters = kcalloc(pixel_cluster_num, sizeof(*idle_em->clusters), GFP_KERNEL);
 	if (!idle_em->clusters)
 		goto failed_clusters_allocation;
 
-	idle_em->cpu_to_cluster = kcalloc(CONFIG_VH_SCHED_CPU_NR, sizeof(*idle_em->cpu_to_cluster),
+	idle_em->cpu_to_cluster = kcalloc(pixel_cpu_num, sizeof(*idle_em->cpu_to_cluster),
 					  GFP_KERNEL);
 	if (!idle_em->cpu_to_cluster)
 		goto failed_cpu_to_cluster_allocation;
@@ -642,7 +627,7 @@ static bool parse_idle_em_body(struct pixel_idle_em *idle_em, const char *idle_e
 				ret = -EINVAL;
 				goto early_return;
 			}
-			if (current_cpu_id < 0 || current_cpu_id >= CONFIG_VH_SCHED_CPU_NR) {
+			if (current_cpu_id < 0 || current_cpu_id >= pixel_cpu_num) {
 				pr_err("Invalid CPU specified on line '%s'!\n", skipped_blanks);
 				ret = -EINVAL;
 				goto early_return;
