@@ -62,13 +62,13 @@
 	};
 };
 
-/*
+
 &aoc {
 	sensor_1v8-supply = <&s_ldo7_reg>;
 	sensor_3v3-supply = <&s_ldo5_reg>;
 	sensor_power_list = "sensor_1v8", "sensor_3v3";
 };
-*/
+
 &usbdrd_phy0 {
     vdd075-supply = <&m_ldo8_reg>;
     vdd12-supply = <&m_ldo9_reg>;
