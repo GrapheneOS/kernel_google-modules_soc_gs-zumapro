@@ -1083,15 +1083,19 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = dwc3_exynos_extcon_register(exynos);
-	if (ret < 0) {
-		if (ret == -EINVAL)
-			dev_warn(dev, "no extcon found\n");
-		else {
+	/*
+	 * Directly check for the property as EIVAL and other err values can be returned in extcon
+	 * APIs in which case we want to defer probe.
+	 */
+	if (of_property_read_bool(dev->of_node, "extcon")) {
+		ret = dwc3_exynos_extcon_register(exynos);
+		if (ret < 0) {
 			dev_err(dev, "failed to register extcon (%d)\n", ret);
 			ret = -EPROBE_DEFER;
 			goto vdd33_err;
 		}
+	} else {
+		dev_warn(dev, "no extcon found\n");
 	}
 
 	ret = dwc3_exynos_register_phys(exynos);
@@ -1165,15 +1169,16 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	/* disconnect gadget in probe */
 	usb_udc_vbus_handler(exynos->dwc->gadget, false);
 
-	/*
-	 * To avoid missing notification in kernel booting check extcon
-	 * state to run state machine.
-	 */
-	if (extcon_get_state(exynos->edev, EXTCON_USB) > 0)
-		dwc3_exynos_device_event(exynos->dev, 1);
-	else if (extcon_get_state(exynos->edev, EXTCON_USB_HOST) > 0)
-		dwc3_exynos_host_event(exynos->dev, 1);
-	else {
+	if (of_property_read_bool(dev->of_node, "extcon")) {
+		/*
+		 * To avoid missing notification in kernel booting check extcon state to run state
+		 * machine.
+		 */
+		if (extcon_get_state(exynos->edev, EXTCON_USB) > 0)
+			dwc3_exynos_device_event(exynos->dev, 1);
+		else if (extcon_get_state(exynos->edev, EXTCON_USB_HOST) > 0)
+			dwc3_exynos_host_event(exynos->dev, 0);
+	} else {
 		dev_warn(exynos->dev, "Couldn't find extcon. Enable vbus event forcibly.");
 		dwc3_exynos_device_event(exynos->dev, 1);
 	}
