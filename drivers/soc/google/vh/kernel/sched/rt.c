@@ -68,7 +68,7 @@ static inline void rt_task_fits_capacity(struct task_struct *p, int cpu,
 	unsigned long uclamp_max = uclamp_eff_value(p, UCLAMP_MAX);
 	unsigned long util = task_util(p);
 
-	if (get_prefer_high_cap(p) && cpu < MID_CAPACITY_CPU) {
+	if (get_prefer_high_cap(p) && cpu < pixel_cluster_start_cpu[1]) {
 		*fits = false;
 		*fits_original = false;
 		return;
@@ -76,7 +76,7 @@ static inline void rt_task_fits_capacity(struct task_struct *p, int cpu,
 
 	*fits = util_fits_cpu(util, uclamp_min, uclamp_max, cpu);
 	*fits_original = capacity_orig_of(cpu) >= clamp(util, uclamp_min, uclamp_max) ||
-			 cpu >= MAX_CAPACITY_CPU;
+			 cpu >= pixel_cluster_start_cpu[2];
 }
 
 void check_migrate_rt_task(struct rq *rq, struct task_struct *p)
@@ -123,14 +123,14 @@ unlock:
 static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_mask,
 				 struct cpumask *backup_mask)
 {
-	unsigned long util[CPU_NUM] = { 0 };
-	unsigned long capacity[CPU_NUM] = { 0 };
-	unsigned int cpu_importance[CPU_NUM] = { 0 };
-	unsigned int exit_lat[CPU_NUM] = { 0 };
-	bool task_fits[CPU_NUM] = { 0 };
-	bool task_fits_original[CPU_NUM] = { 0 };
-	bool overutilize[CPU_NUM] = { 0 };
-	bool candidates[CPU_NUM] = { 0 };
+	unsigned long util[CONFIG_VH_SCHED_MAX_CPU_NR] = { 0 };
+	unsigned long capacity[CONFIG_VH_SCHED_MAX_CPU_NR] = { 0 };
+	unsigned int cpu_importance[CONFIG_VH_SCHED_MAX_CPU_NR] = { 0 };
+	unsigned int exit_lat[CONFIG_VH_SCHED_MAX_CPU_NR] = { 0 };
+	bool task_fits[CONFIG_VH_SCHED_MAX_CPU_NR] = { 0 };
+	bool task_fits_original[CONFIG_VH_SCHED_MAX_CPU_NR] = { 0 };
+	bool overutilize[CONFIG_VH_SCHED_MAX_CPU_NR] = { 0 };
+	bool candidates[CONFIG_VH_SCHED_MAX_CPU_NR] = { 0 };
 	int cpu, best_cpu = -1;
 	unsigned long min_cpu_util;
 	unsigned long min_cpu_capacity;
