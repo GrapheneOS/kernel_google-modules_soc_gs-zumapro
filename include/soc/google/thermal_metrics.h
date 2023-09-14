@@ -9,6 +9,28 @@
 
 #define MAX_SUPPORTED_THRESHOLDS             8
 typedef int tr_handle;
+
+enum abnormality_type {
+	UNKNOWN = 0,
+	SENSOR_STUCK,
+	EXTREME_HIGH_TEMP,
+	EXTREME_LOW_TEMP,
+	ABNORMALITY_TYPE_END,
+};
+
+static const char * const abnormality_type_str[] = {
+	[UNKNOWN] = "UNKNOWN",
+	[SENSOR_STUCK] = "SENSOR_STUCK",
+	[EXTREME_HIGH_TEMP] = "EXTREME_HIGH_TEMP",
+	[EXTREME_LOW_TEMP] = "EXTREME_LOW_TEMP",
+	[ABNORMALITY_TYPE_END] = "ABNORMALITY_TYPE_END"
+};
+
+struct temp_validity_config {
+	int min_temp;
+	int max_temp;
+};
+
 struct tr_sample {
 	int temp;
 	// real timestamp in seconds

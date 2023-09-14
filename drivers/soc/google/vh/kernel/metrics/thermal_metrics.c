@@ -17,10 +17,16 @@
 
 #define MAX_NUM_SUPPORTED_THERMAL_ZONES        36
 #define MAX_NUM_SUPPORTED_THERMAL_GROUPS       10
+#define ABNORMAL_UEVENT_TIMEOUT_SEC            1200
 
 
 static const int default_thresholds[MAX_SUPPORTED_THRESHOLDS] = {
 			60000, 80000, 90000, 100000, 103000, 105000, 110000, 115000};
+
+static const struct temp_validity_config default_temp_validity_config = {
+	.min_temp = -20000,
+	.max_temp = 131000,
+};
 
 struct temperature_bucket_sample {
 	int temp;
@@ -29,8 +35,10 @@ struct temperature_bucket_sample {
 };
 
 struct thermal_group_entry {
+	rwlock_t lock;
 	struct kobject *kobj;
 	char *name;
+	struct temp_validity_config temp_validity_config;
 };
 
 struct temperature_residency_stats {
@@ -50,10 +58,12 @@ struct temperature_residency_stats {
 
 static struct thermal_group_entry thermal_group_array[MAX_NUM_SUPPORTED_THERMAL_GROUPS];
 static struct temperature_residency_stats residency_stat_array[MAX_NUM_SUPPORTED_THERMAL_ZONES];
+static time64_t last_abnormal_uevent_time[MAX_NUM_SUPPORTED_THERMAL_ZONES][ABNORMALITY_TYPE_END];
 
 static tr_handle designated_handle;
 static struct kobject *tr_by_group_kobj;
-static struct attribute_group temp_residency_all_attr_group;
+static struct attribute_group temp_residency_all_attr_group,
+				temp_abnormality_all_attr_group;
 
 /*********************************************************************
  *                          HELPER FUNCTIONS                         *
@@ -130,7 +140,40 @@ static int get_next_available_handle(void)
 	return -1;
 }
 
-static struct thermal_group_entry *get_thermal_group(char *thermal_group_name)
+/**
+ * get_thermal_group_by_kobj() - Find thermal group with given kobject member.
+ * @kobj: Kobject corresponding to the thermal group sysfs.
+ *
+ * Find thermal_group_entry in thermal_group_array having the given kobj.
+ *
+ * Return: Pointer to thermal_group_entry if found else NULL.
+ */
+static struct thermal_group_entry *get_thermal_group_by_kobj(struct kobject *kobj)
+{
+	int idx;
+
+	if (!kobj)
+		return NULL;
+
+	for (idx = 0; idx < MAX_NUM_SUPPORTED_THERMAL_GROUPS; idx++)
+		if (kobj == thermal_group_array[idx].kobj)
+			return &thermal_group_array[idx];
+
+	return NULL;
+}
+
+/**
+ * create_thermal_group() - Find thermal group with given name if exists
+ *                          else create a new thermal_group with given name.
+ * @name: name assigned to the thermal group.
+ *
+ * Find thermal_group_entry in thermal_group_array having the given name. Since
+ * entries are added sequentially, empty name indicates end of entries. So add
+ * a new entry at the index with the given name.
+ *
+ * Return: Pointer to thermal_group_entry if success else NULL on error.
+ */
+static struct thermal_group_entry *create_thermal_group(char *name)
 {
 	struct kobject *thermal_group_kobj;
 	int index;
@@ -139,27 +182,39 @@ static struct thermal_group_entry *get_thermal_group(char *thermal_group_name)
 	for (index = 0; index < MAX_NUM_SUPPORTED_THERMAL_GROUPS; index++) {
 		if (!thermal_group_array[index].name || thermal_group_array[index].name[0] == '\0')
 			break;
-		if (!strcmp(thermal_group_name, thermal_group_array[index].name))
+		if (!strncmp(name, thermal_group_array[index].name, THERMAL_NAME_LENGTH))
 			return &thermal_group_array[index];
 	}
 	if (index >= MAX_NUM_SUPPORTED_THERMAL_GROUPS) {
 		pr_err("Failed to support more thermal groups\n");
 		return NULL;
 	}
-	thermal_group_kobj = kobject_create_and_add(thermal_group_name, tr_by_group_kobj);
+	thermal_group_kobj = kobject_create_and_add(name, tr_by_group_kobj);
 	if (!thermal_group_kobj) {
 		pr_err("Failed to create thermal_group folder!\n");
 		return NULL;
 	}
 	err = sysfs_create_group(thermal_group_kobj, &temp_residency_all_attr_group);
 	if (err) {
-		kobject_put(thermal_group_kobj);
-		pr_err("failed to create temp_residency_all files\n");
-		return NULL;
+		pr_err("ERR:%d failed to create temp_residency_all files\n", err);
+		goto put_thermal_kobj;
 	}
-	thermal_group_array[index].name = kstrdup(thermal_group_name, GFP_KERNEL);
+	err = sysfs_create_group(thermal_group_kobj, &temp_abnormality_all_attr_group);
+	if (err) {
+		pr_err("ERR:%d failed to create temp_abnormality_all files\n", err);
+		goto remove_residency_sysfs;
+	}
+	thermal_group_array[index].name = kstrdup(name, GFP_KERNEL);
 	thermal_group_array[index].kobj = thermal_group_kobj;
+	thermal_group_array[index].temp_validity_config = default_temp_validity_config;
+	rwlock_init(&thermal_group_array[index].lock);
 	return &thermal_group_array[index];
+
+remove_residency_sysfs:
+	sysfs_remove_group(thermal_group_kobj, &temp_residency_all_attr_group);
+put_thermal_kobj:
+	kobject_put(thermal_group_kobj);
+	return NULL;
 }
 
 static int get_tz_cb_threshold(tr_handle instance, struct temperature_residency_stats *stats)
@@ -171,6 +226,81 @@ static int get_tz_cb_stats(tr_handle instance, struct temperature_residency_stat
 {
 	return stats->ops.get_stats(instance, stats->time_in_state_ms,
 					&stats->max_sample, &stats->min_sample);
+}
+
+/**
+ * report_thermal_abnormal_uevent() - Send uevent to notify thermal abnormality.
+ * @instance: tr_handle for the index of tz in residency_stat_array.
+ * @type: type of abnormality_type detected.
+ * @temp: temperature for which abnormality detected.
+ *
+ * Send uevent with environment parameters:
+ *  THERMAL_ABNORMAL_TYPE(type)
+ *  THERMAL_ABNORMAL_INFO(sensor, temp)
+ * Rate limit logging to have time gap of at least ABNORMAL_UEVENT_TIMEOUT_SEC
+ * between uevents of same abnormality_type.
+ */
+int report_thermal_abnormal_uevent(tr_handle instance, enum abnormality_type type,
+					 int temp)
+{
+	time64_t now = ktime_get_seconds();
+	struct kobject mod_kobj = (((struct module *)(THIS_MODULE))->mkobj).kobj;
+	char env_abnormality_type[64], env_abnormality_info[64];
+	char *envp[] = {env_abnormality_type, env_abnormality_info, NULL};
+	const char *sensor;
+
+	if (instance < 0 || instance >= MAX_NUM_SUPPORTED_THERMAL_ZONES)
+		return -EINVAL;
+	if (type < 0 || type >= ABNORMALITY_TYPE_END)
+		return -EINVAL;
+
+	sensor = residency_stat_array[instance].name;
+	if (last_abnormal_uevent_time[instance][type] &&
+		now - last_abnormal_uevent_time[instance][type] < ABNORMAL_UEVENT_TIMEOUT_SEC) {
+		pr_debug("Thermal abnormal uevent rate limited for type:%s sensor:%s temp:%d",
+			abnormality_type_str[type], sensor, temp);
+		return 0;
+	}
+
+	snprintf(env_abnormality_type, sizeof(env_abnormality_type),
+		"THERMAL_ABNORMAL_TYPE=%s", abnormality_type_str[type]);
+	snprintf(env_abnormality_info, sizeof(env_abnormality_info),
+		"THERMAL_ABNORMAL_INFO=name:%s,val:%d", sensor, temp);
+	kobject_uevent_env(&mod_kobj, KOBJ_CHANGE, envp);
+	last_abnormal_uevent_time[instance][type] = now;
+	return 0;
+}
+
+/**
+ * verify_temp_range() - Verify if temp is within valid range.
+ * @instance: tr_handle for the index of tz in residency_stat_array.
+ * @abnormality_type: pointer to abnormality_type to be set if any abnormality detected.
+ *
+ * verify if temperature within expected range, if not report thermal abnormal uevent.
+ *
+ * Return: 0 if temperature within range else 1
+ */
+static int verify_temp_range(tr_handle instance, enum abnormality_type *abnormality_type)
+{
+	struct temperature_residency_stats *stats = &residency_stat_array[instance];
+	struct thermal_group_entry *thermal_group = stats->thermal_group;
+	int temp = stats->prev.temp;
+
+	read_lock(&thermal_group->lock);
+	if (unlikely(thermal_group->temp_validity_config.min_temp > temp)) {
+		*abnormality_type = EXTREME_LOW_TEMP;
+		goto err;
+	} else if (unlikely(thermal_group->temp_validity_config.max_temp < temp)) {
+		*abnormality_type = EXTREME_HIGH_TEMP;
+		goto err;
+	}
+	read_unlock(&thermal_group->lock);
+	return 0;
+
+err:
+	read_unlock(&thermal_group->lock);
+	report_thermal_abnormal_uevent(instance, *abnormality_type, temp);
+	return 1;
 }
 
 /*********************************************************************
@@ -199,7 +329,7 @@ tr_handle register_temp_residency_stats(const char *name, char *group_name)
 	stats->use_callback = false;
 	stats->ops = (struct temp_residency_stats_callbacks){NULL, NULL, NULL, NULL};
 
-	thermal_group = get_thermal_group(group_name);
+	thermal_group = create_thermal_group(group_name);
 	if (!thermal_group)
 		return -ENOMEM;
 	stats->thermal_group = thermal_group;
@@ -269,12 +399,27 @@ int temp_residency_stats_set_thresholds(tr_handle instance,
 }
 EXPORT_SYMBOL_GPL(temp_residency_stats_set_thresholds);
 
-/* Linear Model to approximate temperature residency */
+/**
+ * temp_residency_stats_update() - Update thermal metrics & verify abnormality.
+ * @instance: tr_handle for the index of tz in residency_stat_array.
+ * @temp: temperature reading.
+ *
+ * For new temperature reading, update the residency stats array, daily min/max
+ * temperature.
+ * Verify if temperature is within valid range.
+ *
+ * Return:
+ *  0 on success.
+ *  -EINVAL if given instance doesn't exist.
+ *  enum abnormality_type if any abnormality detected.
+ */
 int temp_residency_stats_update(tr_handle instance, int temp)
 {
 	int index, k, last_temp, curr_bucket, stride_len;
+	int abnormality_detected = 0;
 	ktime_t curr_time = ktime_get();
 	s64 latency_ms;
+	enum abnormality_type abnormality_type;
 	struct temperature_residency_stats *stats;
 	struct temperature_bucket_sample *prev_sample;
 
@@ -330,8 +475,10 @@ end:
 		set_temperature_sample(&stats->max_sample, temp);
 	if (temp < stats->min_sample.temp)
 		set_temperature_sample(&stats->min_sample, temp);
+	abnormality_detected = verify_temp_range(instance, &abnormality_type);
+	if (abnormality_detected)
+		return abnormality_type;
 	return 0;
-
 }
 EXPORT_SYMBOL_GPL(temp_residency_stats_update);
 
@@ -569,6 +716,90 @@ static ssize_t temp_residency_all_thresholds_store(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t abnormal_temp_max_threshold_show(struct kobject *kobj,
+					 struct kobj_attribute *attr,
+					 char *buf)
+{
+	int ret = 0;
+	struct thermal_group_entry *thermal_group = get_thermal_group_by_kobj(kobj);
+
+	if (!thermal_group)
+		return -EINVAL;
+
+	read_lock(&thermal_group->lock);
+	ret = sysfs_emit(buf, "%d\n", thermal_group->temp_validity_config.max_temp);
+	read_unlock(&thermal_group->lock);
+	return ret;
+}
+
+static ssize_t abnormal_temp_max_threshold_store(struct kobject *kobj,
+					  struct kobj_attribute *attr,
+					  const char *buf,
+					  size_t count)
+{
+	struct thermal_group_entry *thermal_group;
+	int ret, max_temp;
+
+	ret = kstrtoint(buf, 0, &max_temp);
+	if (ret)
+		return -EINVAL;
+
+	thermal_group = get_thermal_group_by_kobj(kobj);
+	if (!thermal_group)
+		return -EINVAL;
+
+	write_lock(&thermal_group->lock);
+	if (thermal_group->temp_validity_config.min_temp > max_temp) {
+		write_unlock(&thermal_group->lock);
+		return -EINVAL;
+	}
+	thermal_group->temp_validity_config.max_temp = max_temp;
+	write_unlock(&thermal_group->lock);
+	return count;
+}
+
+static ssize_t abnormal_temp_min_threshold_show(struct kobject *kobj,
+					 struct kobj_attribute *attr,
+					 char *buf)
+{
+	int ret = 0;
+	struct thermal_group_entry *thermal_group = get_thermal_group_by_kobj(kobj);
+
+	if (!thermal_group)
+		return -EINVAL;
+
+	read_lock(&thermal_group->lock);
+	ret = sysfs_emit(buf, "%d\n", thermal_group->temp_validity_config.min_temp);
+	read_unlock(&thermal_group->lock);
+	return ret;
+}
+
+static ssize_t abnormal_temp_min_threshold_store(struct kobject *kobj,
+					  struct kobj_attribute *attr,
+					  const char *buf,
+					  size_t count)
+{
+	struct thermal_group_entry *thermal_group;
+	int ret, min_temp;
+
+	ret = kstrtoint(buf, 0, &min_temp);
+	if (ret)
+		return -EINVAL;
+
+	thermal_group = get_thermal_group_by_kobj(kobj);
+	if (!thermal_group)
+		return -EINVAL;
+
+	write_lock(&thermal_group->lock);
+	if (thermal_group->temp_validity_config.max_temp < min_temp) {
+		write_unlock(&thermal_group->lock);
+		return -EINVAL;
+	}
+	thermal_group->temp_validity_config.min_temp = min_temp;
+	write_unlock(&thermal_group->lock);
+	return count;
+}
+
 static ssize_t temp_residency_name_thresholds_show(struct kobject *kobj,
 					 struct kobj_attribute *attr,
 					 char *buf)
@@ -676,6 +907,18 @@ static struct kobj_attribute temp_residency_all_thresholds_attr = __ATTR(
 							temp_residency_all_thresholds_show,
 							temp_residency_all_thresholds_store);
 
+static struct kobj_attribute abnormal_min_temp_threshold_attr = __ATTR(
+							min_temp_threshold,
+							0664,
+							abnormal_temp_min_threshold_show,
+							abnormal_temp_min_threshold_store);
+
+static struct kobj_attribute abnormal_max_temp_threshold_attr = __ATTR(
+							max_temp_threshold,
+							0664,
+							abnormal_temp_max_threshold_show,
+							abnormal_temp_max_threshold_store);
+
 static struct kobj_attribute temp_residency_name_thresholds_attr = __ATTR(
 							name_thresholds,
 							0664,
@@ -692,6 +935,12 @@ static struct attribute *temp_residency_all_attrs[] = {
 	&temp_residency_all_stats_attr.attr,
 	&temp_residency_all_stats_reset_attr.attr,
 	&temp_residency_all_thresholds_attr.attr,
+	NULL
+};
+
+static struct attribute *temp_abnormality_all_attrs[] = {
+	&abnormal_max_temp_threshold_attr.attr,
+	&abnormal_min_temp_threshold_attr.attr,
 	NULL
 };
 
@@ -735,6 +984,10 @@ int thermal_metrics_init(struct kobject *metrics_kobj)
 	}
 	temp_residency_all_attr_group = (struct attribute_group) {
 		.attrs = temp_residency_all_attrs
+	};
+	temp_abnormality_all_attr_group = (struct attribute_group) {
+		.attrs = temp_abnormality_all_attrs,
+		.name = "abnormality"
 	};
 	err = sysfs_create_group(secondary_sysfs_folder, &temp_residency_name_attr_group);
 	if (err) {
