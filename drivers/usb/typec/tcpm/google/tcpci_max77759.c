@@ -3194,8 +3194,8 @@ static int max77759_probe(struct i2c_client *client,
 		goto dp_regulator_put;
 	max77759_init_regs(chip->data.regmap, chip->log);
 
-	/* Default enable on A1 or higher */
-	if (device_id >= MAX77759_DEVICE_ID_A1) {
+	/* Default enable on MAX77759 A1 or higher. Default enable on MAX77779 */
+	if (pid == MAX77779_PRODUCT_ID || device_id >= MAX77759_DEVICE_ID_A1) {
 		chip->data.auto_discharge_disconnect = true;
 		chip->frs = true;
 	}
