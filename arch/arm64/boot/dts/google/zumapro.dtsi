@@ -26,6 +26,8 @@
 #include "zumapro-s2mpu.dtsi"
 #include "zumapro-gsa.dtsi"
 #include "zumapro-gpu.dtsi"
+#include "zumapro-tpu.dtsi"
+#include "zumapro-gxp.dtsi"
 #include "zumapro-usi.dtsi"
 #include "zumapro-ufs.dtsi"
 #include "zumapro-usb.dtsi"
