@@ -99,7 +99,6 @@
 			no-map;
 		};
 
-		/*
 		ramoops_mem@fd3ff000 {
 			compatible = "ramoops";
 			reg = <0 0xfd3ff000 0x400000>;
@@ -107,6 +106,7 @@
 			pmsg-size = <0x200000>;
 		};
 
+		/*
 		bldr_log_reserved: bldr_log_reserved@fd800000 {
 			reg = <0 0xfd800000 0x00100000>;
 			no-map;
