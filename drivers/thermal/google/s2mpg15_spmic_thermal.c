@@ -368,9 +368,6 @@ static int s2mpg15_spmic_thermal_get_temp(void *data, int *temp)
 emul_temp_exit:
 	*temp = s->emul_temperature;
 
-	if (s2mpg15_spmic_thermal->stats_en & (mask << s->adc_chan))
-		temp_residency_stats_update(s->tr_handle, *temp);
-
 err_exit:
 	mutex_unlock(&s2mpg15_spmic_thermal->adc_chan_lock);
 	return ret;
