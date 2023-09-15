@@ -494,6 +494,9 @@ static inline bool uclamp_can_ignore_uclamp_min(struct rq *rq,
 	if (task_on_rq_migrating(p))
 		return false;
 
+	if (get_uclamp_fork_reset(p, true))
+		return false;
+
 	if (rt_task(p))
 		return task_util(p) < sysctl_sched_uclamp_min_filter_rt;
 
@@ -564,6 +567,9 @@ static inline bool uclamp_can_ignore_uclamp_max(struct rq *rq,
 		return false;
 
 	if (task_on_rq_migrating(p))
+		return false;
+
+	if (get_uclamp_fork_reset(p, true))
 		return false;
 
 	/*
