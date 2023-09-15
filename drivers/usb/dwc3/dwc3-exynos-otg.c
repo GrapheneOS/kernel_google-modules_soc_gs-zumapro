@@ -716,7 +716,9 @@ int dwc3_otg_fsm_try_reset(bool reset)
 	otg = fsm->otg;
 	dotg = container_of(otg, struct dwc3_otg, otg);
 	dotg->fsm_reset = reset;
-	if (!fsm->b_sess_vld)
+
+	// Skip role switch when we are resetting in gadget state
+	if (!(dotg->fsm_reset && fsm->b_sess_vld))
 		dwc3_otg_run_sm(fsm);
 
 	return 0;
