@@ -204,7 +204,7 @@
 			target-residency = <10000>;
 			type = <POWERMODE_TYPE_SYSTEM>;
 			siblings = CPU_ALL;
-			// entry-allowed = CPU_ALL; // b/299326014 Disable for bring-up
+			entry-allowed = CPU_ALL;
 		};
 
 		wakeup-mask {
