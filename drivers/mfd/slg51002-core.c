@@ -346,8 +346,6 @@ static void slg51002_clear_fault_log(struct slg51002_dev *chip)
 
 static int slg51002_power_on(struct slg51002_dev *chip)
 {
-	int ret;
-
 	if (chip == NULL)
 		return -EINVAL;
 
@@ -358,15 +356,6 @@ static int slg51002_power_on(struct slg51002_dev *chip)
 	if (gpio_is_valid(chip->chip_bb_pin)) {
 		gpio_set_value_cansleep(chip->chip_bb_pin, 1);
 		usleep_range(2000, 2020);
-	}
-
-	if (!IS_ERR(chip->chip_bb_reg)) {
-		ret = regulator_enable(chip->chip_bb_reg);
-		if (ret < 0) {
-			dev_err(chip->dev, "Failed to enable bb regulator: %d\n", ret);
-		} else {
-			usleep_range(2000, 2020);
-		}
 	}
 
 	if (gpio_is_valid(chip->chip_buck_pin)) {
@@ -447,14 +436,6 @@ static int slg51002_power_off(struct slg51002_dev *chip)
 		usleep_range(1000, 1020);
 	}
 
-	if (!IS_ERR(chip->chip_bb_reg)) {
-		ret = regulator_disable(chip->chip_bb_reg);
-		if (ret < 0) {
-			dev_err(chip->dev, "Failed to disable bb regulator: %d\n", ret);
-		} else {
-			usleep_range(1000, 1020);
-		}
-	}
 
 	chip->is_power_on = false;
 	dev_dbg(chip->dev, "power off\n");
@@ -657,27 +638,6 @@ static int slg51002_i2c_probe(struct i2c_client *client,
 		usleep_range(2000, 2020);
 	} else {
 		slg51002->chip_bb_pin = -1;
-	}
-
-	/* optional property */
-	slg51002->chip_bb_reg = devm_regulator_get_optional(&client->dev, "dlg,bb");
-	if (PTR_ERR(slg51002->chip_bb_reg) != -ENODEV) {
-		if (IS_ERR(slg51002->chip_bb_reg)) {
-			dev_err(&client->dev, "Error on request regulator bb: %d\n", PTR_ERR(slg51002->chip_bb_reg));
-			return PTR_ERR(slg51002->chip_bb_reg);
-		}
-		ret = regulator_enable(slg51002->chip_bb_reg);
-		if (ret < 0) {
-			dev_err(&client->dev, "Failed to enable bb regulator: %d\n", ret);
-			return ret;
-		}
-		usleep_range(2000, 2020);
-	}
-
-	/* Device shouldn't hold both buck-boost regulator and it's enable gpios */
-	if (gpio_is_valid(gpio) && !IS_ERR(slg51002->chip_bb_reg)) {
-		dev_err(&client->dev, "Holding both buck-boost regulator and it's enable gpios is forbidden!\n");
-		return -EINVAL;
 	}
 
 	/* optional property */
