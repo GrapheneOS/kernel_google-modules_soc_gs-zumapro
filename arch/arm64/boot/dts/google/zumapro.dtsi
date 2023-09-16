@@ -36,6 +36,8 @@
 #include "zuma-isp.dtsi"
 #include "zuma-aoc.dtsi"
 #include "zuma-audio.dtsi"
+#include "zuma-mfc.dtsi"
+#include "zuma-bigw.dtsi"
 
 / {
 	compatible = "google,zumapro";
