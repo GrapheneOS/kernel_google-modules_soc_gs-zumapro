@@ -40,11 +40,6 @@
 			reg = <0x0 0x905FF000 0x1000>;
 			no-map;
 		};
-		/*
-		gxp_fw_reserved: gxp_fw@91000000 {
-			reg = <0x0 0x91000000 0x00300000>;
-			no-map;
-		};
 
 		gxp_scratchpad_reserved: gxp_scratchpad@91300000 {
 			reg = <0x0 0x91300000 0x00100000>;
@@ -53,6 +48,11 @@
 
 		gxp_secure_data_reserved: gxp_secure_data@91400000 {
 			reg = <0x0 0x91400000 0x00c00000>;
+			no-map;
+		};
+
+		gxp_fw_reserved: gxp_fw@91D00000 {
+			reg = <0x0 0x91D00000 0x00300000>;
 			no-map;
 		};
 
@@ -70,7 +70,6 @@
 			reg = <0x0 0x98000000 0x03600000>;
 			no-map;
 		};
-		*/
 
 		aoc_reserve: aoc@0x94000000 {
 			reg = <0x0 0x94000000 0x03000000>;
