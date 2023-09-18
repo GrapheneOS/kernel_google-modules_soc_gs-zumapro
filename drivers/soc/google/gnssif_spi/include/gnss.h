@@ -90,4 +90,6 @@ struct gnss_gpio {
 		printk(KERN_DEBUG "gif: %s: %d: called(%pF): " fmt, \
 				__func__, __LINE__, __builtin_return_address(0), ##__VA_ARGS__)
 
+int gnss_set_coredump(const char *buf, int buf_len, const char *info);
+
 #endif /* __GNSS_IF_H__ */
