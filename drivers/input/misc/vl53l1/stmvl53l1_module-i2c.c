@@ -1033,11 +1033,11 @@ static void memory_release(struct kref *kref)
 	kfree(data);
 }
 
-void stmvl53l1_put(void *object)
+int stmvl53l1_put(void *object)
 {
 	struct i2c_data *data = (struct i2c_data *)object;
 
-	kref_put(&data->ref, memory_release);
+	return kref_put(&data->ref, memory_release);
 }
 
 void __exit stmvl53l1_exit_i2c(void *i2c_object)

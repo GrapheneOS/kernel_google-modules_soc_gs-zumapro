@@ -3195,7 +3195,7 @@ retry:
 	/* set #PERST high */
 	gpio_set_value(exynos_pcie->perst_gpio, 1);
 
-	dev_err(dev, "%s: Set PERST to HIGH, gpio val = %d\n",
+	dev_dbg(dev, "%s: Set PERST to HIGH, gpio val = %d\n",
 		__func__, gpio_get_value(exynos_pcie->perst_gpio));
 
 	usleep_range(exynos_pcie->perst_delay_us,
@@ -3407,7 +3407,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 	pp = &pci->pp;
 	dev = pci->dev;
 
-	dev_info(dev, "start poweron, state: %d\n", exynos_pcie->state);
+	dev_dbg(dev, "start poweron, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "start poweron, state: %d", exynos_pcie->state);
 
 	if (exynos_pcie->state == STATE_LINK_DOWN) {
@@ -3541,7 +3541,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 			       "pwron: pcs+0x150: %#x", val);
 	}
 
-	dev_info(dev, "end poweron, state: %d\n", exynos_pcie->state);
+	dev_dbg(dev, "end poweron, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "end poweron, state: %d\n", exynos_pcie->state);
 	mutex_unlock(&exynos_pcie->power_onoff_lock);
 
@@ -3576,7 +3576,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 	pp = &pci->pp;
 	dev = pci->dev;
 
-	dev_err(dev, "start poweroff, state: %d\n", exynos_pcie->state);
+	dev_dbg(dev, "start poweroff, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "start poweroff, state: %d", exynos_pcie->state);
 
 	if (exynos_pcie->state == STATE_LINK_UP ||
@@ -3624,7 +3624,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
 
 		gpio_set_value(exynos_pcie->perst_gpio, 0);
-		dev_err(dev, "%s: Set PERST to LOW, gpio val = %d\n",
+		dev_dbg(dev, "%s: Set PERST to LOW, gpio val = %d\n",
 			__func__, gpio_get_value(exynos_pcie->perst_gpio));
 		logbuffer_log(exynos_pcie->log, "%s: Set PERST to LOW, gpio val = %d",
 			      __func__, gpio_get_value(exynos_pcie->perst_gpio));
@@ -3687,7 +3687,7 @@ void exynos_pcie_rc_poweroff(int ch_num)
 		pcie_is_linkup = 0;
 	}
 
-	dev_err(dev, "end poweroff, state: %d\n", exynos_pcie->state);
+	dev_dbg(dev, "end poweroff, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "end poweroff, state: %d\n", exynos_pcie->state);
 
 	mutex_unlock(&exynos_pcie->power_onoff_lock);
@@ -3861,7 +3861,7 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct pcie_port *pp, int id)
 
 	dev_dbg(dev, "%s:L1SS_START: l1ss_ctrl_id_state = 0x%x\n",
 		__func__, exynos_pcie->l1ss_ctrl_id_state);
-	dev_err(dev, "%s:\tid = 0x%x, enable=%d, exynos_pcie=%pK\n",
+	dev_dbg(dev, "%s:\tid = 0x%x, enable=%d, exynos_pcie=%pK\n",
 		__func__, id, enable, exynos_pcie);
 
 	if (exynos_pcie->state != STATE_LINK_UP || exynos_pcie->atu_ok == 0) {
@@ -4148,7 +4148,7 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct pcie_port *pp, int id)
 
 	spin_unlock_irqrestore(&exynos_pcie->conf_lock, flags);
 
-	dev_err(dev, "%s:L1SS_END(l1ss_ctrl_id_state=0x%x, id=0x%x, enable=%d)\n",
+	dev_dbg(dev, "%s:L1SS_END(l1ss_ctrl_id_state=0x%x, id=0x%x, enable=%d)\n",
 		__func__, exynos_pcie->l1ss_ctrl_id_state, id, enable);
 
 	return 0;
@@ -4179,7 +4179,7 @@ int exynos_pcie_poweron(int ch_num, int spd)
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
 
-	dev_err(pci->dev, "%s requested with link speed GEN%d\n", __func__, spd);
+	dev_dbg(pci->dev, "%s requested with link speed GEN%d\n", __func__, spd);
 	exynos_pcie->max_link_speed = spd;
 
 	return exynos_pcie_rc_poweron(ch_num);
