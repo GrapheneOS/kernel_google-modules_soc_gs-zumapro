@@ -177,7 +177,7 @@
 	};
 
 	gcma_camera: gcma_camera {
-		size = <0xC800000>;
+		size = <0x6400000>; /* 100MB */
 		alignment = <0x0 0x0001000>;
 		alloc-ranges = <0x9 0x80000000 0x80000000>,
 			       <0x9 0x00000000 0x80000000>,
@@ -230,7 +230,7 @@
 	};
 
 	farawimg: farawimg {
-		size = <0x6400000>; /* 100MB */
+		size = <0xC800000>; /* 200MB */
 		alignment = <0x0 0x00010000>;
 		alloc-ranges = <0x9 0x80000000 0x80000000>,
 			       <0x9 0x00000000 0x80000000>,
