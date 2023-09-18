@@ -123,8 +123,8 @@ static inline u64 cfs_rq_last_update_time(struct cfs_rq *cfs_rq)
 static inline unsigned long uclamp_task_util(struct task_struct *p)
 {
 	return clamp(task_util_est(p),
-		     uclamp_eff_value(p, UCLAMP_MIN),
-		     uclamp_eff_value(p, UCLAMP_MAX));
+		     uclamp_eff_value_pixel_mod(p, UCLAMP_MIN),
+		     uclamp_eff_value_pixel_mod(p, UCLAMP_MAX));
 }
 #else
 static inline unsigned long uclamp_task_util(struct task_struct *p)
@@ -838,7 +838,7 @@ static inline unsigned long cpu_vendor_group_util_est(int cpu, bool with, struct
 
 #if defined(CONFIG_UCLAMP_TASK) && defined(CONFIG_FAIR_GROUP_SCHED)
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-unsigned long cpu_util_cfs_group_mod(int cpu)
+unsigned long __always_inline cpu_util_cfs_group_mod(int cpu)
 {
 	if (likely(sched_feat(UTIL_EST))) {
 		return max(cpu_vendor_group_util(cpu, false, NULL),
@@ -1069,8 +1069,8 @@ struct vendor_util_group_property *get_vendor_util_group_property(enum utilizati
 
 static bool task_fits_capacity(struct task_struct *p, int cpu,  bool sync_boost)
 {
-	unsigned long uclamp_min = uclamp_eff_value(p, UCLAMP_MIN);
-	unsigned long uclamp_max = uclamp_eff_value(p, UCLAMP_MAX);
+	unsigned long uclamp_min = uclamp_eff_value_pixel_mod(p, UCLAMP_MIN);
+	unsigned long uclamp_max = uclamp_eff_value_pixel_mod(p, UCLAMP_MAX);
 	unsigned long task_util = task_util_est(p);
 
 	if (cpu >= MAX_CAPACITY_CPU)
@@ -1504,8 +1504,8 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 		  candidates = { CPU_BITS_NONE };
 	int i, weight, best_energy_cpu = -1, this_cpu = smp_processor_id();
 	long cur_energy, best_energy = LONG_MAX;
-	unsigned long p_util_min = uclamp_is_used() ? uclamp_eff_value(p, UCLAMP_MIN) : 0;
-	unsigned long p_util_max = uclamp_is_used() ? uclamp_eff_value(p, UCLAMP_MAX) : 1024;
+	unsigned long p_util_min = uclamp_is_used() ? uclamp_eff_value_pixel_mod(p, UCLAMP_MIN) : 0;
+	unsigned long p_util_max = uclamp_is_used() ? uclamp_eff_value_pixel_mod(p, UCLAMP_MAX) : 1024;
 	unsigned long spare_cap, target_max_spare_cap = 0;
 	unsigned long task_importance = ((p->prio <= DEFAULT_PRIO) ? p_util_min : 0) + p_util_max;
 	unsigned int exit_lat, pd_best_exit_lat, best_exit_lat;
@@ -1522,7 +1522,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 	int most_spare_cap_cpu = -1, unimportant_max_spare_cap_cpu = -1, idle_max_cap_cpu = -1;
 	struct cpuidle_state *idle_state;
 	unsigned long unimportant_max_spare_cap = 0, idle_max_cap = 0;
-	bool prefer_fit = prefer_idle && get_vendor_task_struct(p)->uclamp_fork_reset;
+	bool prefer_fit = prefer_idle && get_uclamp_fork_reset(p, true);
 	const cpumask_t *preferred_idle_mask;
 
 	rd = cpu_rq(this_cpu)->rd;
@@ -1963,7 +1963,8 @@ void rvh_cpu_overutilized_pixel_mod(void *data, int cpu, int *overutilized)
  * running on the CPU don't go to sleep, they'll grow in that additional
  * headroom until we do the next frequency update to a higher one.
  */
-unsigned long apply_dvfs_headroom(unsigned long util, int cpu, bool tapered)
+unsigned long __always_inline
+apply_dvfs_headroom(unsigned long util, int cpu, bool tapered)
 {
 	if (tapered && static_branch_unlikely(&tapered_dvfs_headroom_enable)) {
 		unsigned long capacity = capacity_orig_of(cpu);
@@ -2204,7 +2205,7 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	// However it may
 	// 1) over grow by the group limit
 	// 2) out of sync when task migrated between cgroups (cfs_rq)
-	ue.enqueued = min((unsigned long)ue.enqueued, uclamp_eff_value(p, UCLAMP_MAX));
+	ue.enqueued = min((unsigned long)ue.enqueued, uclamp_eff_value_pixel_mod(p, UCLAMP_MAX));
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 	ue.enqueued = min_t(unsigned long, ue.enqueued,
 			cap_scale(get_group_throttle(task_group(p)), scale_cpu));
@@ -2255,7 +2256,7 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	ue.ewma  += last_ewma_diff;
 	ue.ewma >>= UTIL_EST_WEIGHT_SHIFT;
 #ifdef CONFIG_UCLAMP_TASK
-	ue.ewma = min((unsigned long)ue.ewma, uclamp_eff_value(p, UCLAMP_MAX));
+	ue.ewma = min((unsigned long)ue.ewma, uclamp_eff_value_pixel_mod(p, UCLAMP_MAX));
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 	ue.ewma = min_t(unsigned long, ue.ewma,
 			cap_scale(get_group_throttle(task_group(p)), scale_cpu));
@@ -2350,11 +2351,8 @@ void vh_sched_setscheduler_uclamp_pixel_mod(void *data, struct task_struct *tsk,
 static inline void uclamp_fork_pixel_mod(struct task_struct *p, struct task_struct *orig)
 {
 	enum uclamp_id clamp_id;
-	struct vendor_task_struct *v_orig;
 
-	v_orig = get_vendor_task_struct(orig);
-
-	if (likely(!v_orig->uclamp_fork_reset))
+	if (likely(!get_uclamp_fork_reset(orig, false)))
 		return;
 
 	for_each_clamp_id(clamp_id) {
@@ -2429,8 +2427,8 @@ out:
 		trace_sched_select_task_rq_fair(p, task_util_est(p),
 						sync_wakeup, prefer_prev, sync_boost,
 						get_vendor_group(p),
-						uclamp_eff_value(p, UCLAMP_MIN),
-						uclamp_eff_value(p, UCLAMP_MAX),
+						uclamp_eff_value_pixel_mod(p, UCLAMP_MIN),
+						uclamp_eff_value_pixel_mod(p, UCLAMP_MAX),
 						prev_cpu, *target_cpu);
 }
 
@@ -2452,7 +2450,7 @@ void rvh_set_user_nice_pixel_mod(void *data, struct task_struct *p, long *nice, 
 	}
 
 	vp = get_vendor_task_struct(p);
-	if (vp->uclamp_fork_reset) {
+	if (get_uclamp_fork_reset(p, false)) {
 		raw_spin_lock_irqsave(&vp->lock, flags);
 		p->normal_prio = p->static_prio = vp->orig_prio = NICE_TO_PRIO(*nice);
 		raw_spin_unlock_irqrestore(&vp->lock, flags);
@@ -2478,7 +2476,7 @@ void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p)
 		return;
 
 	vp = get_vendor_task_struct(p);
-	if (vp->uclamp_fork_reset) {
+	if (get_uclamp_fork_reset(p, false)) {
 		raw_spin_lock_irqsave(&vp->lock, flags);
 		vp->orig_prio = p->static_prio;
 		raw_spin_unlock_irqrestore(&vp->lock, flags);
@@ -2492,8 +2490,7 @@ void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p)
 
 static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 {
-	struct task_struct *p = NULL, *best_task = NULL, *backup = NULL,
-		*backup_ui = NULL, *backup_unfit = NULL;
+	struct task_struct *p;
 
 	lockdep_assert_held(&src_rq->__lock);
 
@@ -2501,7 +2498,6 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 
 	list_for_each_entry_reverse(p, &src_rq->cfs_tasks, se.group_node) {
 		struct vendor_task_struct *vp = get_vendor_task_struct(p);
-		bool is_ui = false, is_boost = false;
 
 		if (!cpumask_test_cpu(dst_cpu, p->cpus_ptr))
 			continue;
@@ -2509,66 +2505,22 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 		if (task_running(src_rq, p))
 			continue;
 
-		if (!get_prefer_idle(p))
-			continue;
-
-		if (vp && vp->uclamp_fork_reset)
-			is_ui = true;
-		else if (uclamp_eff_value(p, UCLAMP_MIN) > 0)
-			is_boost = true;
-
-		if (!is_ui && !is_boost)
-			continue;
-
-		if (task_fits_capacity(p, dst_cpu, false)) {
-			if (!task_fits_capacity(p, src_rq->cpu, false)) {
-				// if task is fit for new cpu but not old cpu
-				// stop if we found an ADPF UI task
-				// use it as backup if we found a boost task
-				if (is_ui) {
-					best_task = p;
-					break;
-				}
-
-				backup = p;
-			} else {
-				if (is_ui) {
-					backup_ui = p;
-					continue;
-				}
-
-				if (!backup)
-					backup = p;
-			}
-		} else {
-			// if new idle is not capable, use it as backup but not for UI task.
-			if (!is_ui)
-				backup_unfit = p;
+		/* if latency sensitive task and dst cpu fits, pull it */
+		if (vp && vp->uclamp_fork_reset &&
+		    task_fits_capacity(p, dst_cpu, false)) {
+			goto found;
 		}
 	}
 
-	if (best_task)
-		p = best_task;
-	else if (backup_ui)
-		p = backup_ui;
-	else if (backup)
-		p = backup;
-	else if (backup_unfit)
-		p = backup_unfit;
-	else
-		p = NULL;
+	p = NULL;
+	goto out;
 
-	if (p) {
-		/* detach_task */
-		deactivate_task(src_rq, p, DEQUEUE_NOCLOCK);
-		set_task_cpu(p, dst_cpu);
+found:
+	/* detach_task */
+	deactivate_task(src_rq, p, DEQUEUE_NOCLOCK);
+	set_task_cpu(p, dst_cpu);
 
-		if (backup_unfit)
-			cpu_rq(dst_cpu)->misfit_task_load = p->se.avg.load_avg;
-		else
-			cpu_rq(dst_cpu)->misfit_task_load = 0;
-	}
-
+out:
 	rcu_read_unlock();
 	return p;
 }
@@ -2592,6 +2544,7 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	if (SCHED_WARN_ON(atomic_read(&this_vrq->num_adpf_tasks)))
 		atomic_set(&this_vrq->num_adpf_tasks, 0);
 
+	this_rq->misfit_task_load = 0;
 
 	/*
 	 * We must set idle_stamp _before_ calling idle_balance(), such that we
@@ -2612,12 +2565,10 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	 * re-start the picking loop.
 	 */
 	rq_unpin_lock(this_rq, rf);
-	raw_spin_unlock(&this_rq->__lock);
+	raw_spin_rq_unlock(this_rq);
 
 	this_cpu = this_rq->cpu;
 	for_each_cpu(cpu, cpu_active_mask) {
-		int cpu_importnace = READ_ONCE(cpu_rq(cpu)->uclamp[UCLAMP_MIN].value) +
-			READ_ONCE(cpu_rq(cpu)->uclamp[UCLAMP_MAX].value);
 
 		if (cpu == this_cpu)
 			continue;
@@ -2653,59 +2604,36 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 			continue;
 		}
 
-		if (cpu_is_idle(cpu)) {
-			rq_unlock_irqrestore(src_rq, &src_rf);
-			continue;
-		}
-
-		/* src_cpu is just waken up by tasks */
-		if (src_rq->curr == src_rq->idle) {
-			rq_unlock_irqrestore(src_rq, &src_rf);
-			continue;
-		}
-
-		/* we assume rt task will release cpu soon */
-		if (src_rq->curr->prio < MAX_RT_PRIO) {
-			rq_unlock_irqrestore(src_rq, &src_rf);
-			continue;
-		}
-
-		if (cpu_importnace <= DEFAULT_IMPRATANCE_THRESHOLD || !src_rq->cfs.nr_running) {
-			rq_unlock_irqrestore(src_rq, &src_rf);
-			continue;
-		}
-
 		p = detach_important_task(src_rq, this_cpu);
 
-		rq_unlock_irqrestore(src_rq, &src_rf);
+		rq_unlock(src_rq, &src_rf);
 
 		if (p) {
+			*pulled_task = 1;
+			*done = 1;
 			attach_one_task(this_rq, p);
+			local_irq_restore(src_rf.flags);
 			break;
 		}
+
+		local_irq_restore(src_rf.flags);
 	}
 
-	raw_spin_lock(&this_rq->__lock);
-	/*
-	 * While browsing the domains, we released the rq lock, a task could
-	 * have been enqueued in the meantime. Since we're not going idle,
-	 * pretend we pulled a task.
-	 */
-	if (this_rq->cfs.h_nr_running && !*pulled_task)
-		*pulled_task = 1;
+	raw_spin_rq_lock(this_rq);
+
+	/* If we did nothing, let GKI do the work */
+	if (!*done)
+		goto out;
 
 	/* Is there a task of a high priority class? */
 	if (this_rq->nr_running != this_rq->cfs.h_nr_running)
 		*pulled_task = -1;
 
-	if (*pulled_task)
-		this_rq->idle_stamp = 0;
+	this_rq->idle_stamp = 0;
 
-	if (*pulled_task != 0) {
-		*done = 1;
-		/* TODO: need implement update_blocked_averages */
-	}
+	/* TODO: need implement update_blocked_averages */
 
+out:
 	rq_repin_lock(this_rq, rf);
 
 	return;
@@ -2714,10 +2642,9 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 void rvh_can_migrate_task_pixel_mod(void *data, struct task_struct *mp,
 	int dst_cpu, int *can_migrate)
 {
-	struct vendor_task_struct *mvp = get_vendor_task_struct(mp);
 	struct vendor_rq_struct *vrq = get_vendor_rq_struct(cpu_rq(dst_cpu));
 
-	if (!mvp->uclamp_fork_reset || !get_prefer_idle(mp))
+	if (get_uclamp_fork_reset(mp, true) || !get_prefer_idle(mp))
 		return;
 
 	lockdep_assert_rq_held(cpu_rq(dst_cpu));
@@ -2763,11 +2690,10 @@ void rvh_update_blocked_fair_pixel_mod(void *data, struct rq *rq)
 
 void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
-	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
 	bool force_cpufreq_update = false;
 
-	if (vp->uclamp_fork_reset) {
+	if (get_uclamp_fork_reset(p, true)) {
 		atomic_inc(&vrq->num_adpf_tasks);
 
 		/*
@@ -2800,10 +2726,9 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 
 void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
-	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
 
-	if (vp->uclamp_fork_reset)
+	if (get_uclamp_fork_reset(p, true))
 		atomic_dec(&vrq->num_adpf_tasks);
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)

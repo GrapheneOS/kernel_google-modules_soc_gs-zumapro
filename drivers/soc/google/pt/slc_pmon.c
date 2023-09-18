@@ -16,6 +16,7 @@
 
 #include <linux/atomic.h>
 #include <linux/device.h>
+#include <linux/debugfs.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -36,6 +37,7 @@
 
 static struct slc_pmon_global_state slc_pmon_state = { 0 };
 static struct pt_acpm_closure acpm_pt;
+static struct dentry *slc_pmon_dir;
 
 static struct attribute *slc_pmon_pmu_format_attrs[] = {
 	SLC_PMON_FORMAT_ATTR("event", "config:0-31"),
@@ -107,6 +109,57 @@ static struct pmu slc_pmon_pmu = {
 	.stop = slc_pmon_pmu_stop,
 	.read = slc_pmon_pmu_read,
 	.attr_groups = slc_pmon_attr_groups,
+};
+
+static ssize_t slc_pmon_refresh_write(struct file *file, const char __user *ubf,
+				      size_t count, loff_t *ppos)
+{
+	/* implement refresh code (load event list) */
+	int res = count;
+
+	mutex_lock(&slc_pmon_state.lock);
+
+	// cleanup the events and counters
+	if (acpm_pt.driver_data) {
+		perf_pmu_unregister(&slc_pmon_pmu);
+		slc_pmon_event_cleanup();
+		slc_pmon_counter_cleanup();
+	}
+
+	// re-initialize the events and counters
+	res = slc_pmon_counter_init();
+	if (res) {
+		pr_err("Fail to re-init counters\n");
+		goto refresh_counter_cleanup;
+	}
+
+	res = slc_pmon_event_init();
+	if (res) {
+		pr_err("Fail to re-init events\n");
+		goto refresh_event_cleanup;
+	}
+
+	res = perf_pmu_register(&slc_pmon_pmu, slc_pmon_pmu.name, -1);
+	if (res < 0) {
+		pr_err("Fail to re-register PMU driver\n");
+		goto refresh_event_cleanup;
+	}
+
+	goto refresh_finish;
+
+refresh_event_cleanup:
+	slc_pmon_event_cleanup();
+
+refresh_counter_cleanup:
+	slc_pmon_counter_cleanup();
+
+refresh_finish:
+	mutex_unlock(&slc_pmon_state.lock);
+	return count;
+}
+
+static const struct file_operations slc_pmon_refresh_fops = {
+	.write = slc_pmon_refresh_write,
 };
 
 static int slc_pmon_acpm(enum slc_pmon_command command, int arg,
@@ -309,6 +362,23 @@ static int slc_pmon_pmu_event_init(struct perf_event *event)
 	return 0;
 }
 
+static void slc_pmon_init_debugfs(const char *dir_name)
+{
+	struct dentry *refresh;
+
+	slc_pmon_dir = debugfs_create_dir(dir_name, NULL);
+	if (!slc_pmon_dir) {
+		pr_err("slc_pmon debugfs init failed\n");
+		return;
+	}
+
+	refresh = debugfs_create_file("refresh", 0220, slc_pmon_dir, NULL, &slc_pmon_refresh_fops);
+	if (!refresh)
+		pr_err("Failed to create slc_pmon refresh node\n");
+
+	return;
+}
+
 int slc_pmon_init(struct slc_acpm_driver_data *driver_data,
 		  int (*slc_acpm)(struct slc_acpm_driver_data *, unsigned int,
 				  unsigned int, unsigned long, uint32_t *))
@@ -340,6 +410,8 @@ int slc_pmon_init(struct slc_acpm_driver_data *driver_data,
 	pr_info("Loaded! (%d counters, %d events).",
 		slc_pmon_state.counters.num_counters,
 		slc_pmon_state.events.num_events);
+
+	slc_pmon_init_debugfs("slc_pmon");
 
 	return 0;
 
@@ -492,6 +564,10 @@ void slc_pmon_exit(void)
 		slc_pmon_counter_cleanup();
 		pr_info("Unloaded!");
 	}
+
+	if (slc_pmon_dir)
+		debugfs_remove_recursive(slc_pmon_dir);
+
 }
 EXPORT_SYMBOL_GPL(slc_pmon_exit);
 
