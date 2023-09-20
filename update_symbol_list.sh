@@ -39,26 +39,6 @@ cleanup_trap() {
 }
 trap 'cleanup_trap' EXIT
 
-function chipset {
-  case $1 in
-  ripcurrentpro)
-    echo zumapro
-  ;;
-  ripcurrent|shusky)
-    echo zuma
-  ;;
-  cloudripper)
-    echo gs201
-  ;;
-  slider)
-    echo gs101
-  ;;
-  *)
-    >&2 echo "Could not find chipset for $1"
-    exit 1
-  esac
-}
-
 function exit_if_error {
   if [ $1 -ne 0 ]; then
     echo "ERROR: $2: retval=$1" >&2
@@ -109,7 +89,13 @@ if [[ -z "${TARGET}" ]] || [[ ! -d "private/devices/google/${TARGET}" ]]; then
   usage 1
 fi
 
-CHIPSET=$(chipset ${TARGET})
+CHIPSET=`sed -n 's/.*:gs_soc_module=\/\/private\/devices\/google\/'$TARGET':\.*//p' private/devices/google/$TARGET/device.bazelrc | sed 's/_soc.'$TARGET\.*'//g' | head -1`
+if [[ -n "${CHIPSET}" ]]; then
+  echo "$TARGET -> $CHIPSET"
+else
+  echo "Could not find chipset for $TARGET"
+  exit 1
+fi
 
 BASE_KERNEL=$(tools/bazel cquery filter\(kernel_aarch64_sources, deps\(//private/devices/google/${TARGET}:${CHIPSET}_${TARGET}\)\) 2>/dev/null --config=${TARGET})
 if [[ "${BASE_KERNEL}" =~ aosp-staging ]]; then
