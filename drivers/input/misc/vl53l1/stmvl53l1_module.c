@@ -3551,6 +3551,7 @@ static int stmvl53l1_ioctl_handler(
 
 	case VL53L1_IOCTL_POWER_DOWN:
 		dev_dbg(dev, "VL53L1_IOCTL_POWER_DOWN\n");
+		reset_hold(data);
 		rc = ctrl_power_down(data);
 		break;
 
