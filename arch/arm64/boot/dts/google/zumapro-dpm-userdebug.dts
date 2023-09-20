@@ -3,5 +3,5 @@
 /dts-v1/;
 /plugin/;
 
-#include "zumapro-dpm-userdebug.dtsi"
+#include "zuma-dpm-userdebug.dtsi"
 #include "avf-dpm-userdebug.dtsi"

@@ -3,5 +3,5 @@
 /dts-v1/;
 /plugin/;
 
-#include "zumapro-dpm-eng.dtsi"
+#include "zuma-dpm-eng.dtsi"
 #include "avf-dpm-eng.dtsi"
