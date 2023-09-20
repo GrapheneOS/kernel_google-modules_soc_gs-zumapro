@@ -8,6 +8,8 @@ blocklist mali_kutf
 blocklist mali_kutf_clk_rate_trace_test_portal
 blocklist nvt_touch
 blocklist sec_touch
+blocklist sscoredump_sample_test.ko
+blocklist sscoredump_test.ko
 blocklist syna_touch
 blocklist uwb_desense.ko
 blocklist uwb-hal.ko
