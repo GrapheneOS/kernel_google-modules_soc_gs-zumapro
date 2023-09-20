@@ -62,8 +62,8 @@ struct long_irq {
 
 struct rt_runnable {
 	u64 latency;
-	char *comm;
-	char *prev_comm;
+	char comm[TASK_COMM_LEN];
+	char prev_comm[TASK_COMM_LEN];
 	pid_t pid;
 };
 
@@ -128,8 +128,8 @@ static void update_min_latency(struct task_struct *prev, struct task_struct *nex
 	if (!in_arr){
 		rt_runnable = &trr->rt_runnable[trr->min_idx];
 		rt_runnable->latency = latency;
-		rt_runnable->comm = kstrdup(next->comm, GFP_KERNEL);
-		rt_runnable->prev_comm = kstrdup(prev->comm, GFP_KERNEL);
+		strlcpy(rt_runnable->comm, next->comm, TASK_COMM_LEN);
+		strlcpy(rt_runnable->prev_comm, prev->comm, TASK_COMM_LEN);
 		rt_runnable->pid = next->pid;
 	}
 
@@ -704,8 +704,9 @@ static ssize_t long_runnable_metrics_show(struct kobject *kobj,
 
 		for (i = 0; i < RT_RUNNABLE_ARR_SIZE; i++) {
 			long_rt_runnable = trr.rt_runnable[i];
-			sorted_trr[i].comm = kstrdup(long_rt_runnable.comm, GFP_KERNEL);
-			sorted_trr[i].prev_comm = kstrdup(long_rt_runnable.prev_comm, GFP_KERNEL);
+			strlcpy(sorted_trr[i].comm, long_rt_runnable.comm, TASK_COMM_LEN);
+			strlcpy(sorted_trr[i].prev_comm, long_rt_runnable.prev_comm,
+				TASK_COMM_LEN);
 			sorted_trr[i].latency = long_rt_runnable.latency;
 		}
 		sort(sorted_trr, RT_RUNNABLE_ARR_SIZE, sizeof(struct rt_runnable),
