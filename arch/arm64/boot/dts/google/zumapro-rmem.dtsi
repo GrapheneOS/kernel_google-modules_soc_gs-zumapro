@@ -11,16 +11,6 @@
 #define SECLOG_LOG_BUF_TOTAL_SIZE 0x80000
 
 / {
-
-	/*
-	bootloader_log {
-		compatible = "google,bldr_log";
-		reg = <0x0 0xfd800000 0x80000>, <0x0 0xfd880000 0x80000>;
-		reg-names = "bl_log", "bl_old_log";
-		memory-region = <&bldr_log_reserved>;
-	};
-	*/
-
 	reserved_memory: reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <1>;
@@ -81,13 +71,6 @@
 			reg = <0x0 0xbff80000 0x03080000>;
 		};
 
-		/*
-		abl_reserved: abl@f8800000 {
-			reg = <0x0 0xf8800000 0x02000000>;
-			no-map;
-		};
-		*/
-
 		dss_log_reserved: dss_log_reserved@fd3f0000 {
 			reg = <0 0xfd3f0000 0x0000e000>;
 			no-map;
@@ -105,17 +88,10 @@
 			pmsg-size = <0x200000>;
 		};
 
-		/*
 		bldr_log_reserved: bldr_log_reserved@fd800000 {
 			reg = <0 0xfd800000 0x00100000>;
 			no-map;
 		};
-
-		bldr_log_hist_reserved: bldr_log_hist_reserved@fd900000 {
-			reg = <0 0xfd900000 0x00002000>;
-			no-map;
-		};
-		*/
 
 		cp_rmem: cp_rmem {
 			compatible = "exynos,modem_if";
