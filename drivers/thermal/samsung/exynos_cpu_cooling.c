@@ -19,6 +19,7 @@
 #include <linux/pm_qos.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
+#include <linux/units.h>
 
 #include <soc/google/tmu.h>
 #include <soc/google/cal-if.h>
@@ -441,7 +442,7 @@ static u32 cpu_freq_to_power(struct exynos_cpu_cooling_device *cpufreq_cdev,
 					if (freq <= cluster->opps[opp_id].freq)
 						break;
 				}
-				return cluster->opps[opp_id].power;
+				return cluster->opps[opp_id].power / MICROWATT_PER_MILLIWATT;
 			}
 		}
 	}
@@ -473,7 +474,7 @@ static u32 cpu_power_to_freq(struct exynos_cpu_cooling_device *cpufreq_cdev,
 				struct pixel_em_cluster *cluster = profile->cpu_to_cluster[cpu];
 				int opp_id;
 				for (opp_id = 0; opp_id < (cluster->num_opps - 1); opp_id++) {
-					if (power <= cluster->opps[opp_id].power)
+					if (power <= cluster->opps[opp_id].power / MICROWATT_PER_MILLIWATT)
 						break;
 				}
 				return cluster->opps[opp_id].freq;
