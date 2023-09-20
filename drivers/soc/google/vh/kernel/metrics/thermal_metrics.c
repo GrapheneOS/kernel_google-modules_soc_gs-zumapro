@@ -26,12 +26,16 @@ static const int default_thresholds[MAX_SUPPORTED_THRESHOLDS] = {
 static const struct temp_validity_config default_temp_validity_config = {
 	.min_temp = -20000,
 	.max_temp = 131000,
+	.min_repeat_count = 8,
+	.min_repeat_msecs = 120000,
 };
 
 struct temperature_bucket_sample {
 	int temp;
 	ktime_t update_time;
+	ktime_t start_time;
 	int bucket;
+	int repeat_ct;
 };
 
 struct thermal_group_entry {
@@ -276,7 +280,8 @@ int report_thermal_abnormal_uevent(tr_handle instance, enum abnormality_type typ
  * @instance: tr_handle for the index of tz in residency_stat_array.
  * @abnormality_type: pointer to abnormality_type to be set if any abnormality detected.
  *
- * verify if temperature within expected range, if not report thermal abnormal uevent.
+ * verify if temperature within expected range, if not report thermal abnormal
+ * uevent provided it's not same reading repeated.
  *
  * Return: 0 if temperature within range else 1
  */
@@ -299,8 +304,54 @@ static int verify_temp_range(tr_handle instance, enum abnormality_type *abnormal
 
 err:
 	read_unlock(&thermal_group->lock);
-	report_thermal_abnormal_uevent(instance, *abnormality_type, temp);
+	if (stats->prev.repeat_ct == 1)
+		report_thermal_abnormal_uevent(instance, *abnormality_type, temp);
 	return 1;
+}
+
+/**
+ * verify_temp_stuck() - Verify if sensor temp reading is stuck.
+ * @instance: tr_handle for the index of tz in residency_stat_array.
+ * @abnormality_type: pointer to abnormality_type to be set if any abnormality detected.
+ *
+ * Verify if sensor reporting same temp for temp_validity_config.min_repeat_count
+ * consecutive times and for temp_validity_config.min_repeat_msecs duration.
+ * If so:
+ *  1) print abnormality info.
+ *  2) report thermal abnormal uevent.
+ *  3) Reset stats prev sample repeat count and start time to last update time to
+ *     restart stuck verification.
+ *
+ * Return: 1 if sensor stuck else 0.
+ */
+static int verify_temp_stuck(tr_handle instance, enum abnormality_type *abnormality_type)
+{
+	struct temperature_residency_stats *stats = &residency_stat_array[instance];
+	struct temperature_bucket_sample *temp_sample = &stats->prev;
+	struct thermal_group_entry *thermal_group = stats->thermal_group;
+	s64 repeat_msecs;
+
+	read_lock(&thermal_group->lock);
+	if (likely(temp_sample->repeat_ct < thermal_group->temp_validity_config.min_repeat_count))
+		goto ret;
+	repeat_msecs = ktime_to_ms(ktime_sub(temp_sample->update_time,
+						temp_sample->start_time));
+	if (repeat_msecs < thermal_group->temp_validity_config.min_repeat_msecs)
+		goto ret;
+	read_unlock(&thermal_group->lock);
+
+	*abnormality_type = SENSOR_STUCK;
+	pr_debug("Thermal Abnormality Detected: sensor:%s temp:%d stuck %d cnt %d ms",
+		stats->name, temp_sample->temp, temp_sample->repeat_ct, repeat_msecs);
+	report_thermal_abnormal_uevent(instance, *abnormality_type, temp_sample->temp);
+
+	temp_sample->start_time = temp_sample->update_time;
+	temp_sample->repeat_ct = 1;
+	return 1;
+
+ret:
+	read_unlock(&thermal_group->lock);
+	return 0;
 }
 
 /*********************************************************************
@@ -407,6 +458,7 @@ EXPORT_SYMBOL_GPL(temp_residency_stats_set_thresholds);
  * For new temperature reading, update the residency stats array, daily min/max
  * temperature.
  * Verify if temperature is within valid range.
+ * Verify if temperature stuck.
  *
  * Return:
  *  0 on success.
@@ -437,6 +489,14 @@ int temp_residency_stats_update(tr_handle instance, int temp)
 	latency_ms = ktime_to_ms(ktime_sub(curr_time, prev_sample->update_time));
 	if (curr_bucket == prev_sample->bucket) {
 		atomic64_add(latency_ms, &(stats->time_in_state_ms[curr_bucket]));
+		if (temp == prev_sample->temp) {
+			prev_sample->update_time = curr_time;
+			prev_sample->repeat_ct++;
+			abnormality_detected = verify_temp_stuck(instance, &abnormality_type);
+			if (abnormality_detected)
+				return abnormality_type;
+			goto outlier_check;
+		}
 		goto end;
 	}
 
@@ -468,13 +528,15 @@ int temp_residency_stats_update(tr_handle instance, int temp)
 		&(stats->time_in_state_ms[index]));
 
 end:
-	prev_sample->update_time = curr_time;
+	prev_sample->update_time = prev_sample->start_time = curr_time;
 	prev_sample->temp = temp;
 	prev_sample->bucket = curr_bucket;
+	prev_sample->repeat_ct = 1;
 	if (temp > stats->max_sample.temp)
 		set_temperature_sample(&stats->max_sample, temp);
 	if (temp < stats->min_sample.temp)
 		set_temperature_sample(&stats->min_sample, temp);
+outlier_check:
 	abnormality_detected = verify_temp_range(instance, &abnormality_type);
 	if (abnormality_detected)
 		return abnormality_type;
@@ -800,6 +862,83 @@ static ssize_t abnormal_temp_min_threshold_store(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t abnormal_temp_stuck_count_show(struct kobject *kobj,
+					 struct kobj_attribute *attr,
+					 char *buf)
+{
+	int ret = 0;
+	struct thermal_group_entry *thermal_group = get_thermal_group_by_kobj(kobj);
+
+	if (!thermal_group)
+		return -EINVAL;
+
+	read_lock(&thermal_group->lock);
+	ret = sysfs_emit(buf, "%d\n", thermal_group->temp_validity_config.min_repeat_count);
+	read_unlock(&thermal_group->lock);
+	return ret;
+}
+
+static ssize_t abnormal_temp_stuck_count_store(struct kobject *kobj,
+					  struct kobj_attribute *attr,
+					  const char *buf,
+					  size_t count)
+{
+	struct thermal_group_entry *thermal_group;
+	int ret;
+	u8 repeat_count;
+
+	ret = kstrtou8(buf, 0, &repeat_count);
+	if (ret || !repeat_count)
+		return -EINVAL;
+
+	thermal_group = get_thermal_group_by_kobj(kobj);
+	if (!thermal_group)
+		return -EINVAL;
+
+	write_lock(&thermal_group->lock);
+	thermal_group->temp_validity_config.min_repeat_count = repeat_count;
+	write_unlock(&thermal_group->lock);
+	return count;
+}
+
+static ssize_t abnormal_temp_stuck_duration_show(struct kobject *kobj,
+					 struct kobj_attribute *attr,
+					 char *buf)
+{
+	int ret = 0;
+	struct thermal_group_entry *thermal_group = get_thermal_group_by_kobj(kobj);
+
+	if (!thermal_group)
+		return -EINVAL;
+
+	read_lock(&thermal_group->lock);
+	ret = sysfs_emit(buf, "%d\n", thermal_group->temp_validity_config.min_repeat_msecs);
+	read_unlock(&thermal_group->lock);
+	return ret;
+}
+
+static ssize_t abnormal_temp_stuck_duration_store(struct kobject *kobj,
+					  struct kobj_attribute *attr,
+					  const char *buf,
+					  size_t count)
+{
+	struct thermal_group_entry *thermal_group;
+	int ret, repeat_msecs;
+
+	ret = kstrtoint(buf, 0, &repeat_msecs);
+	if (ret || repeat_msecs <= 0)
+		return -EINVAL;
+
+	thermal_group = get_thermal_group_by_kobj(kobj);
+	if (!thermal_group)
+		return -EINVAL;
+
+	write_lock(&thermal_group->lock);
+	thermal_group->temp_validity_config.min_repeat_msecs = repeat_msecs;
+	write_unlock(&thermal_group->lock);
+	return count;
+}
+
 static ssize_t temp_residency_name_thresholds_show(struct kobject *kobj,
 					 struct kobj_attribute *attr,
 					 char *buf)
@@ -919,6 +1058,18 @@ static struct kobj_attribute abnormal_max_temp_threshold_attr = __ATTR(
 							abnormal_temp_max_threshold_show,
 							abnormal_temp_max_threshold_store);
 
+static struct kobj_attribute abnormal_temp_stuck_count_attr = __ATTR(
+							temp_stuck_repeat_cnt,
+							0664,
+							abnormal_temp_stuck_count_show,
+							abnormal_temp_stuck_count_store);
+
+static struct kobj_attribute abnormal_temp_stuck_duration_attr = __ATTR(
+							temp_stuck_repeat_ms,
+							0664,
+							abnormal_temp_stuck_duration_show,
+							abnormal_temp_stuck_duration_store);
+
 static struct kobj_attribute temp_residency_name_thresholds_attr = __ATTR(
 							name_thresholds,
 							0664,
@@ -941,6 +1092,8 @@ static struct attribute *temp_residency_all_attrs[] = {
 static struct attribute *temp_abnormality_all_attrs[] = {
 	&abnormal_max_temp_threshold_attr.attr,
 	&abnormal_min_temp_threshold_attr.attr,
+	&abnormal_temp_stuck_count_attr.attr,
+	&abnormal_temp_stuck_duration_attr.attr,
 	NULL
 };
 
