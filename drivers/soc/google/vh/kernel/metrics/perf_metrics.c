@@ -18,6 +18,8 @@
 #include <linux/sysfs.h>
 #include <linux/kobject.h>
 #include <linux/device.h>
+#include <linux/sched/clock.h>
+#include <linux/sched/cputime.h>
 #include <trace/events/power.h>
 #include <trace/events/irq.h>
 #include <trace/hooks/suspend.h>
@@ -350,7 +352,8 @@ void vh_sched_wakeup_pixel_mod(void *data, struct task_struct *p)
 
 void vh_sched_switch_pixel_mod(void *data, bool preempt,
 		struct task_struct *prev,
-		struct task_struct *next)
+		struct task_struct *next,
+		unsigned int prev_state)
 {
 	struct vendor_task_struct *vnext, *vprev;
 	u64 now, runnable_delta;
