@@ -125,7 +125,7 @@ enum vendor_procfs_type {
  * Keep the old group procfs nodes temporarily for compatiblility with current platform
  * usage. Once platform usage updated, they will be removed.
  */
-#define PROC_GROUP_ENTRIES(__group_name, __vg)	\
+#define __PROC_GROUP_ENTRIES(__group_name, __vg)	\
 		__PROC_GROUP_ENTRY(prefer_idle, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(prefer_high_cap, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(task_spreading, __group_name, __vg),	\
@@ -148,7 +148,6 @@ enum vendor_procfs_type {
 		__PROC_GROUP_ENTRY(uclamp_max_on_nice_low_prio, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(uclamp_max_on_nice_mid_prio, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(uclamp_max_on_nice_high_prio, __group_name, __vg),	\
-		__PROC_GROUP_ENTRY(ug, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_task_group, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_proc_group, __group_name, __vg),	\
 		PROC_ENTRY(__group_name##_prefer_idle),	\
@@ -173,9 +172,20 @@ enum vendor_procfs_type {
 		PROC_ENTRY(__group_name##_uclamp_max_on_nice_low_prio),	\
 		PROC_ENTRY(__group_name##_uclamp_max_on_nice_mid_prio),	\
 		PROC_ENTRY(__group_name##_uclamp_max_on_nice_high_prio),	\
-		PROC_ENTRY(__group_name##_ug),	\
 		PROC_ENTRY(set_task_group_##__group_name),	\
 		PROC_ENTRY(set_proc_group_##__group_name)
+
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+#define PROC_GROUP_ENTRIES(__group_name, __vg)	\
+		__PROC_GROUP_ENTRIES(__group_name, __vg),	\
+		__PROC_GROUP_ENTRY(ug, __group_name, __vg),	\
+		PROC_ENTRY(__group_name##_ug)
+#else
+#define PROC_GROUP_ENTRIES(__group_name, __vg)	\
+		__PROC_GROUP_ENTRIES(__group_name, __vg),	\
+		__PROC_GROUP_ENTRY(group_throttle, __group_name, __vg),	\
+		PROC_ENTRY(__group_name##_group_throttle)
+#endif
 
 #define SET_VENDOR_GROUP_STORE(__grp, __vg)						      \
 		static ssize_t set_task_group_##__grp##_store(struct file *filp, \
@@ -2254,37 +2264,6 @@ static struct pentry entries[] = {
 	PROC_GROUP_ENTRIES(dex2oat, VG_DEX2OAT),
 	PROC_GROUP_ENTRIES(ota, VG_OTA),
 	PROC_GROUP_ENTRIES(sf, VG_SF),
-#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-	__PROC_GROUP_ENTRY(group_throttle, sys, VG_SYSTEM),
-	__PROC_GROUP_ENTRY(group_throttle, ta, VG_TOPAPP),
-	__PROC_GROUP_ENTRY(group_throttle, fg, VG_FOREGROUND),
-	__PROC_GROUP_ENTRY(group_throttle, cam, VG_CAMERA),
-	__PROC_GROUP_ENTRY(group_throttle, cam_power, VG_CAMERA_POWER),
-	__PROC_GROUP_ENTRY(group_throttle, bg, VG_BACKGROUND),
-	__PROC_GROUP_ENTRY(group_throttle, sysbg, VG_SYSTEM_BACKGROUND),
-	__PROC_GROUP_ENTRY(group_throttle, nnapi, VG_NNAPI_HAL),
-	__PROC_GROUP_ENTRY(group_throttle, rt, VG_RT),
-	__PROC_GROUP_ENTRY(group_throttle, dex2oat, VG_DEX2OAT),
-	__PROC_GROUP_ENTRY(group_throttle, ota, VG_OTA),
-	__PROC_GROUP_ENTRY(group_throttle, sf, VG_SF),
-	/*
-	 * Keep the old procfs nodes temporarily for compatiblility
-	 * with current platform usage. Once platform usage updated, they
-	 * will be removed.
-	 */
-	PROC_ENTRY(sys_group_throttle),
-	PROC_ENTRY(ta_group_throttle),
-	PROC_ENTRY(fg_group_throttle),
-	PROC_ENTRY(cam_group_throttle),
-	PROC_ENTRY(cam_power_group_throttle),
-	PROC_ENTRY(bg_group_throttle),
-	PROC_ENTRY(sysbg_group_throttle),
-	PROC_ENTRY(nnapi_group_throttle),
-	PROC_ENTRY(rt_group_throttle),
-	PROC_ENTRY(dex2oat_group_throttle),
-	PROC_ENTRY(ota_group_throttle),
-	PROC_ENTRY(sf_group_throttle),
-#endif
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	// FG util group attributes
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
