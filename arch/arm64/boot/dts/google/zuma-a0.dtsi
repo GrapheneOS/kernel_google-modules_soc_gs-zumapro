@@ -296,3 +296,7 @@
 &aoc {
     skip-carveout-map = "true";
 };
+
+&bigwave {
+	ip_ver = <0x0>;
+};
