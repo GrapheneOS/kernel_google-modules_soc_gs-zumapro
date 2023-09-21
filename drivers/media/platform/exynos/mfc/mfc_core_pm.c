@@ -16,6 +16,7 @@
 
 #include "mfc_core_qos.h"
 #include "mfc_core_pm.h"
+#include "mfc_perf_measure.h"
 
 #include "mfc_core_hw_reg_api.h"
 
@@ -296,4 +297,68 @@ int mfc_core_pm_power_off(struct mfc_core *core)
 	MFC_TRACE_LOG_CORE("p-%d", mfc_core_pm_get_pwr_ref_cnt(core));
 
 	return ret;
+}
+
+void mfc_core_pm_idle_suspend(struct mfc_core *core)
+{
+	struct device_driver *drv = &mfc_core_driver.driver;
+	int ret = 0;
+
+	if ((core->sleep == 1) || !idle_suspend_enable)
+		return;
+
+	mfc_perf_core_trace("sleep", 1);
+
+	mfc_core_debug(2, "MFC core idle suspend is called\n");
+
+	ret = drv->pm->suspend(core->pm.device);
+
+	if (ret < 0) {
+		mfc_core_err("MFC core failed to suspend: ret(%d)\n", ret);
+		return;
+	}
+
+	ret = mfc_core_pm_power_off(core);
+
+	if (ret < 0) {
+		mfc_core_err("MFC core failed to power off: ret(%d)\n", ret);
+		return;
+	}
+
+	mfc_perf_core_trace("sleep", 0);
+
+	mfc_core_debug(2, "MFC core idle suspend is completed\n");
+
+}
+
+void mfc_core_pm_idle_resume(struct mfc_core *core)
+{
+	struct device_driver *drv = &mfc_core_driver.driver;
+	int ret = 0;
+
+	if (core->sleep == 0)
+		return;
+
+	mfc_perf_core_trace("wakeup", 1);
+
+	mfc_core_debug(2, "MFC core idle resume is called\n");
+
+	ret = mfc_core_pm_power_on(core);
+
+	if (ret < 0) {
+		mfc_core_err("MFC core failed to power on: ret(%d)\n", ret);
+		return;
+	}
+
+	ret = drv->pm->resume(core->pm.device);
+
+	if (ret < 0) {
+		mfc_core_err("MFC core failed to resume: ret(%d)\n", ret);
+		return;
+	}
+
+	mfc_perf_core_trace("wakeup", 0);
+
+	mfc_core_debug(2, "MFC core idle resume is completed\n");
+
 }

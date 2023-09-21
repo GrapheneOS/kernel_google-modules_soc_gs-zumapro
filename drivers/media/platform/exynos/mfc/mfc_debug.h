@@ -42,6 +42,7 @@ extern unsigned int core_balance;
 extern unsigned int sbwc_disable;
 extern unsigned int sscd_report;
 extern unsigned int hdr_dump;
+extern unsigned int idle_suspend_enable;
 
 #define mfc_debug(level, fmt, args...)					\
 	do {								\
