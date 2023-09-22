@@ -6,7 +6,7 @@
  *		https://www.google.com
  */
 
-#include "zuma-ripcurrent24-bcl.dtsi"
+#include "zuma-board-bcl.dtsi"
 
 
 &google_mitigation {
