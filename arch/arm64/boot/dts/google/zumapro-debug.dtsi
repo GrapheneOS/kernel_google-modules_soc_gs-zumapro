@@ -345,11 +345,6 @@
 			offset = <0x1830000>;
 			funnel-port = <0 0>;
 		};
-		etm8 {
-			device_type = "etm";
-			offset = <0x1930000>;
-			funnel-port = <0 0>;
-		};
 		etf0@4000 {
 			device_type = "etf";
 			offset = <0x4000>;
