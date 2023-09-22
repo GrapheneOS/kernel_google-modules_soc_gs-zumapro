@@ -74,10 +74,10 @@ extern void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct
 extern void vh_dump_throttled_rt_tasks_mod(void *data, int cpu, u64 clock, ktime_t rt_period,
 					   u64 rt_runtime, s64 rt_period_timer_expires);
 
-#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
-extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
-					const struct cpumask *in_mask, bool *skip);
-#endif /* IS_ENABLED(CONFIG_VH_SCHED_LIB) */
+#if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
+extern void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
+					const struct cpumask *in_mask, int *res);
+#endif /* IS_ENABLED(CONFIG_RVH_SCHED_LIB) */
 
 extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
 	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
@@ -380,12 +380,12 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
+#if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 
-	ret = register_trace_android_vh_sched_setaffinity_early(vh_sched_setaffinity_mod, NULL);
+	ret = register_trace_android_rvh_sched_setaffinity(rvh_sched_setaffinity_mod, NULL);
 	if (ret)
 		return ret;
-#endif /* IS_ENABLED(CONFIG_VH_SCHED_LIB) */
+#endif /* IS_ENABLED(CONFIG_RVH_SCHED_LIB) */
 
 	ret = register_trace_android_vh_binder_set_priority(
 		vh_binder_set_priority_pixel_mod, NULL);
