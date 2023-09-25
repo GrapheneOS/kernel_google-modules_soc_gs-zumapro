@@ -498,6 +498,9 @@ static inline bool uclamp_can_ignore_uclamp_min(struct rq *rq,
 	if (get_uclamp_fork_reset(p, true))
 		return false;
 
+	if (p->in_iowait && uclamp_boosted(p))
+		return false;
+
 	if (rt_task(p))
 		return task_util(p) < sysctl_sched_uclamp_min_filter_rt;
 
@@ -571,6 +574,9 @@ static inline bool uclamp_can_ignore_uclamp_max(struct rq *rq,
 		return false;
 
 	if (get_uclamp_fork_reset(p, true))
+		return false;
+
+	if (p->in_iowait && uclamp_boosted(p))
 		return false;
 
 	/*
