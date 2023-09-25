@@ -1290,16 +1290,10 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 	if (task_on_rq_queued(p)) {
 		vrq = get_vendor_rq_struct(rq);
 
-		if (!vp->uclamp_fork_reset && val) {
-			atomic_inc(&vrq->num_adpf_tasks);
-
-			/*
-			 * Tell the scheduler that this tasks really wants to run next
-			 */
-			set_next_buddy(&p->se);
-		} else if (vp->uclamp_fork_reset && !val) {
-			atomic_dec(&vrq->num_adpf_tasks);
-		}
+		if (!vp->uclamp_fork_reset && val)
+			inc_adpf_counter(p, &vrq->num_adpf_tasks);
+		else if (vp->uclamp_fork_reset && !val)
+			dec_adpf_counter(p, &vrq->num_adpf_tasks);
 	}
 
 	if (vp->uclamp_fork_reset != val) {
@@ -2107,7 +2101,7 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 
 PROC_OPS_RW(pmu_poll_enable);
 
-#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
+#if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 extern unsigned long sched_lib_mask_out_val;
 
 static int sched_lib_mask_out_show(struct seq_file *m, void *v)
@@ -2179,7 +2173,7 @@ extern ssize_t sched_lib_name_store(struct file *filp,
 extern int sched_lib_name_show(struct seq_file *m, void *v);
 
 PROC_OPS_RW(sched_lib_name);
-#endif /* CONFIG_VH_SCHED_LIB */
+#endif /* CONFIG_RVH_SCHED_LIB */
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 static int ug_bg_auto_prio_show(struct seq_file *m, void *v)
@@ -2299,12 +2293,12 @@ static struct pentry entries[] = {
 	PROC_ENTRY(prefer_idle_clear),
 	PROC_ENTRY(uclamp_fork_reset_set),
 	PROC_ENTRY(uclamp_fork_reset_clear),
-#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
+#if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 	// sched lib
 	PROC_ENTRY(sched_lib_mask_out),
 	PROC_ENTRY(sched_lib_mask_in),
 	PROC_ENTRY(sched_lib_name),
-#endif /* CONFIG_VH_SCHED_LIB */
+#endif /* CONFIG_RVH_SCHED_LIB */
 	// uclamp filter
 	PROC_ENTRY(uclamp_min_filter_enable),
 	PROC_ENTRY(uclamp_min_filter_us),

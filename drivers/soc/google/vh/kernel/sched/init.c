@@ -74,10 +74,10 @@ extern void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct
 extern void vh_dump_throttled_rt_tasks_mod(void *data, int cpu, u64 clock, ktime_t rt_period,
 					   u64 rt_runtime, s64 rt_period_timer_expires);
 
-#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
-extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
-					const struct cpumask *in_mask, bool *skip);
-#endif /* IS_ENABLED(CONFIG_VH_SCHED_LIB) */
+#if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
+extern void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
+					const struct cpumask *in_mask, int *res);
+#endif /* IS_ENABLED(CONFIG_RVH_SCHED_LIB) */
 
 extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
 	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
@@ -103,12 +103,61 @@ extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
 extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 					 struct cpumask *lowest_mask,
 					 int ret, int *cpu);
+extern void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p,
+			struct rq *rq, bool *need_update);
 
 extern struct cpufreq_governor sched_pixel_gov;
 
 extern int pmu_poll_init(void);
 
 extern bool wait_for_init;
+
+/*
+ * @tsk: Remote task we want to access its info
+ * @saved_nice: Pointer to save the old nice value if we inherited a new one.
+ * @prio_inherited: Returns whether we performed prio inheritance or not
+ *
+ * This function helps promote current prio to that of @tsk.
+ *
+ * We only do such for CFS tasks. Used to handle priority inversion when
+ * holding mmap_sem in GKI.
+ *
+ * Returns true when inheritance was performed and saved_nice was updated.
+ * False if no inheritance was necessary.
+ */
+static void vh_prio_inheritance(void *data, struct task_struct *tsk,
+				int *saved_nice, bool *prio_inherited)
+{
+	int current_nice = task_nice(current);
+	int target_nice;
+
+	*prio_inherited = false;
+
+	if (tsk == current)
+		return;
+
+	if (dl_task(current) || rt_task(current))
+		return;
+
+	if (dl_task(tsk) || rt_task(tsk))
+		target_nice = 0;
+	else
+		target_nice = task_nice(tsk);
+
+	/* Only promote, don't demote */
+	if (current_nice <= target_nice)
+		return;
+
+	*saved_nice = current_nice;
+	set_user_nice(current, target_nice);
+
+	*prio_inherited = true;
+}
+
+static void vh_prio_restore(void *data, int nice)
+{
+	set_user_nice(current, nice);
+}
 
 static void init_vendor_rt_rq(void)
 {
@@ -288,6 +337,11 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
+	ret = register_trace_android_rvh_update_misfit_status(
+		rvh_update_misfit_status_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
 	ret = register_trace_android_rvh_post_init_entity_util_avg(
 		rvh_post_init_entity_util_avg_pixel_mod, NULL);
 	if (ret)
@@ -333,12 +387,12 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
+#if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 
-	ret = register_trace_android_vh_sched_setaffinity_early(vh_sched_setaffinity_mod, NULL);
+	ret = register_trace_android_rvh_sched_setaffinity(rvh_sched_setaffinity_mod, NULL);
 	if (ret)
 		return ret;
-#endif /* IS_ENABLED(CONFIG_VH_SCHED_LIB) */
+#endif /* IS_ENABLED(CONFIG_RVH_SCHED_LIB) */
 
 	ret = register_trace_android_vh_binder_set_priority(
 		vh_binder_set_priority_pixel_mod, NULL);
@@ -363,6 +417,14 @@ static int vh_sched_init(void)
 		return ret;
 
 	ret = register_trace_android_rvh_find_lowest_rq(rvh_find_lowest_rq_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_vh_prio_inheritance(vh_prio_inheritance, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_vh_prio_restore(vh_prio_restore, NULL);
 	if (ret)
 		return ret;
 

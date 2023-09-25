@@ -39,16 +39,20 @@ static ssize_t force_empty_store(struct kobject *kobj,
 	struct cma *cma = node->cma;
 	struct page *page;
 	int nr_retry;
+	unsigned int req_pages;
+
+	if (kstrtouint(buf, 0, &req_pages))
+		return -EINVAL;
 
 	for (nr_retry = 0; nr_retry < 5; nr_retry++) {
-		page = cma_alloc(cma, cma_get_size(cma) >> PAGE_SHIFT, 0, GFP_KERNEL);
-		pr_info("%s force_empty %s\n", cma_get_name(cma),
-					       page ? "succeeded" : "failed");
+		page = cma_alloc(cma, req_pages, 0, GFP_KERNEL);
+		pr_info("%s req_pages %d force_empty %s\n", cma_get_name(cma),
+					req_pages, page ? "succeeded" : "failed");
 		if (page)
 			break;
 	}
 
-	cma_release(cma, page, cma_get_size(cma) >> PAGE_SHIFT);
+	cma_release(cma, page, req_pages);
 	return page ? len : -ENOMEM;
 }
 CMA_ATTR_WO(force_empty);
