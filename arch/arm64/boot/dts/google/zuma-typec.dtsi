@@ -100,7 +100,7 @@
 				};
 
 				port@1 {
-					reg = <0>;
+					reg = <1>;
 					mode_notification_source_2: endpoint {
 						remote-endpoint = <&mode_notification_sink_2>;
 					};
@@ -119,7 +119,7 @@
 				};
 			};
 			port@1 {
-				reg = <0>;
+				reg = <1>;
 				mode_notification_sink_2: endpoint {
 					remote-endpoint = <&mode_notification_source_2>;
 				};
