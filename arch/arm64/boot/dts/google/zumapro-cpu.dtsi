@@ -251,7 +251,6 @@
 
 			min-freq = <324000>;
 			max-freq = <1950000>;
-			soft-max-freq = <1950000>; /* cap to UD for bring up */
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <2>;
@@ -285,7 +284,6 @@
 
 			min-freq = <357000>;
 			max-freq = <2600000>;
-			soft-max-freq = <1328000>; /* cap to UD for bring up */
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <1>;
@@ -302,7 +300,6 @@
 
 			min-freq = <500000>;
 			max-freq = <3105000>;
-			soft-max-freq = <1396000>; /* cap to UD for bring up */
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <0>;
