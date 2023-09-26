@@ -6,7 +6,7 @@
  */
 
 #include <dt-bindings/interrupt-controller/zumapro.h>
-//#include "zuma-ppmu.dtsi"
+#include "zumapro-ppmu.dtsi"
 / {
 	dss: dss {
 		compatible = "google,debug-snapshot";
