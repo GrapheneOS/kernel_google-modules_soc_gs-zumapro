@@ -35,7 +35,8 @@ struct gs_chipid_variant {
 #define HPM_ASV_HEX_STR_SIZE 128
 #define GS101_HPM_ASV_END_ADDR 0xA024
 #define GS201_HPM_ASV_END_ADDR 0xA02C
-#define HPM_ASV_END_ADDR 0xA040
+#define ZUMA_HPM_ASV_END_ADDR 0xA040
+#define ZUMAPRO_HPM_ASV_END_ADDR 0xA03C
 
 static void gs_chipid_get_asv_tbl_str(void __iomem *reg);
 static void gs_chipid_get_hpm_asv_str(void __iomem *reg);
@@ -424,8 +425,10 @@ static void gs_chipid_get_raw_str(void __iomem *reg)
 		addr_end = GS101_HPM_ASV_END_ADDR;
 	} else if (gs_soc_info.product_id == GS201_SOC_ID) {
 		addr_end = GS201_HPM_ASV_END_ADDR;
+	} else if (gs_soc_info.product_id == ZUMA_SOC_ID) {
+		addr_end = ZUMA_HPM_ASV_END_ADDR;
 	} else {
-		addr_end = HPM_ASV_END_ADDR;
+		addr_end = ZUMAPRO_HPM_ASV_END_ADDR;
 	}
 
 	for (addr = 0xA000; addr < addr_end; addr++) {
