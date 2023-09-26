@@ -83,6 +83,8 @@
 		stride_type = <1>;
 		/* Encoder 8K entropy mode (0: CABAC fix, 1: selectable) */
 		support_8K_cavlc = <1>;
+		/* Encoder time stamp delta */
+		enc_ts_delta = <1 0x211027>;
 
 		/* Formats */
 		support_10bit = <1>;
