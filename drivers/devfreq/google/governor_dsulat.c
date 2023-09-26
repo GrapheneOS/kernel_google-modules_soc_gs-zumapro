@@ -310,8 +310,7 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 		return 0;
 	}
 
-	for (cpu = 0; cpu < CONFIG_VH_SCHED_CPU_NR; cpu++)
-	{
+	for_each_possible_cpu(cpu) {
 		latency_mode = false;
 
 		trace_name[3] = '0' + cpu;
