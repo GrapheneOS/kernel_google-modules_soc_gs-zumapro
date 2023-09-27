@@ -251,7 +251,7 @@
 
 			min-freq = <324000>;
 			max-freq = <1950000>;
-			soft-max-freq = <1197000>; /* cap to UD for bring up */
+			soft-max-freq = <1950000>; /* cap to UD for bring up */
 
 			#cooling-cells = <2>; /* min followed by max */
 			ect-coeff-index = <2>;
@@ -273,6 +273,9 @@
 				820000  1328000 1205000
 				610000  1328000 1205000
 				324000  970000  1050000 >;
+			dm-constraints {
+				list = <&dsu_constraint>;
+			};
 		};
 
 		cpufreq_domain1: domain@1 {
@@ -307,6 +310,28 @@
 			skip-boot-pmqos;
 			use-em-coeff;
 			need-awake;
+		};
+	};
+
+	dm-tables {
+		dsu_constraint: dm-table@0000 {
+			const-type = <CONSTRAINT_MIN>;
+			dm-constraint = <DM_DSU>;
+			driver-cal-id = <ACPM_DVFS_CPUCL0>;
+			constraint-cal-id = <ACPM_DVFS_DSU>;
+
+			table = < 1950000 610000
+				1849000 324000
+				1696000 324000
+				1548000 324000
+				1425000 324000
+				1328000 324000
+				1197000 324000
+				1098000 324000
+				955000  324000
+				820000  324000
+				610000  324000
+				324000  324000  >;
 		};
 	};
 
