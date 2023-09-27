@@ -8,7 +8,6 @@
 #include <linux/device.h>
 #include <linux/irqreturn.h>
 #include <linux/module.h>
-#include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <misc/logbuffer.h>
@@ -17,6 +16,7 @@
 #include "max777x9_contaminant.h"
 #include "tcpci_max77759.h"
 #include "tcpci_max77779_vendor_reg.h"
+#include "google_tcpci_shim.h"
 
 #define SARADC_1uA_LSB_UV		4900
 /* TODO: High range CC */

@@ -19,7 +19,7 @@
 #include <linux/power_supply.h>
 #include <linux/usb/tcpm.h>
 
-#include "../tcpci.h"
+#include "google_tcpci_shim.h"
 #include "tcpci_max77759.h"
 
 #define POGO_TIMEOUT_MS 10000

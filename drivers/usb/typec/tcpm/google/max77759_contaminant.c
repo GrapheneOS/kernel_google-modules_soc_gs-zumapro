@@ -8,7 +8,6 @@
 #include <linux/device.h>
 #include <linux/irqreturn.h>
 #include <linux/module.h>
-#include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <misc/logbuffer.h>
@@ -17,6 +16,7 @@
 #include "max777x9_contaminant.h"
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
+#include "google_tcpci_shim.h"
 
 /* Updated in MDR2 slide. */
 #define FLADC_1uA_LSB_MV		25

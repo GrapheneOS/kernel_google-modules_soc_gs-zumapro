@@ -18,13 +18,13 @@
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/role.h>
-#include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec_mux.h>
 #include <misc/gvotable.h>
 #include <misc/logbuffer.h>
 
 #include "tcpci_otg_helper.h"
+#include "google_tcpci_shim.h"
 #include "usb_icl_voter.h"
 #include "usb_psy.h"
 
@@ -42,8 +42,8 @@ enum tcpm_psy_online_states {
 };
 
 struct fusb307b_plat {
-	struct tcpci_data data;
-	struct tcpci *tcpci;
+	struct google_shim_tcpci_data data;
+	struct google_shim_tcpci *tcpci;
 	struct device *dev;
 
 	/* Optional: vbus regulator to turn on if set in device tree */
@@ -153,7 +153,7 @@ int fusb307b_update_bits8(struct fusb307b_plat *chip, unsigned int reg,
 }
 EXPORT_SYMBOL_GPL(fusb307b_update_bits8);
 
-static struct fusb307b_plat *tdata_to_fusb307b(struct tcpci_data *tdata)
+static struct fusb307b_plat *tdata_to_fusb307b(struct google_shim_tcpci_data *tdata)
 {
 	return container_of(tdata, struct fusb307b_plat, data);
 }
@@ -165,7 +165,7 @@ static const struct regmap_config fusb307b_regmap_config = {
 	.max_register = 0x7F,
 };
 
-static struct fusb307b_plat *tdata_to_fusb307(struct tcpci_data *tdata)
+static struct fusb307b_plat *tdata_to_fusb307(struct google_shim_tcpci_data *tdata)
 {
 	return container_of(tdata, struct fusb307b_plat, data);
 }
@@ -179,7 +179,7 @@ static irqreturn_t fusb307b_irq(int irq, void *dev_id)
 	if (!chip->tcpci)
 		return IRQ_HANDLED;
 
-	return tcpci_irq(chip->tcpci);
+	return google_tcpci_shim_irq(chip->tcpci);
 }
 
 static int fusb307b_init_alert(struct fusb307b_plat *chip,
@@ -248,7 +248,7 @@ static int enable_external_boost(struct fusb307b_plat *chip, bool enable)
 	return ret;
 }
 
-static int fusb307_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata,
+static int fusb307_set_vbus(struct google_shim_tcpci *tcpci, struct google_shim_tcpci_data *tdata,
 			    bool source, bool sink)
 {
 	struct fusb307b_plat *chip = tdata_to_fusb307(tdata);
@@ -417,7 +417,8 @@ static void enable_data_path_locked(struct fusb307b_plat *chip)
 	}
 }
 
-static void fusb307b_set_pd_data_capable(struct tcpci *tcpci, struct tcpci_data *data, bool capable)
+static void fusb307b_set_pd_data_capable(struct google_shim_tcpci *tcpci,
+					 struct google_shim_tcpci_data *data, bool capable)
 {
 	struct fusb307b_plat *chip = tdata_to_fusb307b(data);
 
@@ -792,7 +793,7 @@ static int fusb307b_probe(struct i2c_client *client,
 		goto destroy_worker;
 	}
 
-	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
+	chip->tcpci = google_tcpci_shim_register_port(chip->dev, &chip->data);
 	if (IS_ERR_OR_NULL(chip->tcpci)) {
 		dev_err(&client->dev, "TCPCI register failed: %ld\n",
 			PTR_ERR(chip->tcpci));
@@ -824,7 +825,7 @@ static void fusb307b_remove(struct i2c_client *client)
 	struct fusb307b_plat *chip = i2c_get_clientdata(client);
 
 	logbuffer_unregister(chip->log);
-	tcpci_unregister_port(chip->tcpci);
+	google_tcpci_shim_unregister_port(chip->tcpci);
 	power_supply_put(chip->usb_psy);
 	usb_psy_teardown(chip->usb_psy_data);
 	kthread_destroy_worker(chip->wq);

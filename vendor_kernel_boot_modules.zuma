@@ -191,6 +191,7 @@ sscoredump.ko
 st21nfc.ko
 st54spi.ko
 systrace.ko
+google_tcpci_shim.ko
 tcpci_max77759.ko
 touch_bus_negotiator.ko
 touch_offload.ko

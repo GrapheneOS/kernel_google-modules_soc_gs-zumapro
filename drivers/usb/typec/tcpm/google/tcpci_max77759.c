@@ -21,7 +21,6 @@
 #include <linux/spinlock.h>
 #include <linux/usb/pd.h>
 #include <linux/usb/pd_vdo.h>
-#include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_dp.h>
@@ -35,6 +34,7 @@
 #include "max777x9_contaminant.h"
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
+#include "google_tcpci_shim.h"
 #include "usb_icl_voter.h"
 #include "usb_psy.h"
 #include "usb_thermal_voter.h"
@@ -187,16 +187,6 @@ void (*data_active_callback)(void *data_active_payload);
 void *data_active_payload;
 
 static bool hooks_installed;
-
-struct tcpci {
-	struct device *dev;
-	struct tcpm_port *port;
-	struct regmap *regmap;
-	bool controls_vbus;
-
-	struct tcpc_dev tcpc;
-	struct tcpci_data *data;
-};
 
 struct dp_notification_event {
 	struct max77759_plat *chip;
@@ -734,7 +724,7 @@ static int ext_bst_en_gpio_init(struct max77759_plat *chip)
 }
 #endif
 
-static struct max77759_plat *tdata_to_max77759(struct tcpci_data *tdata)
+static struct max77759_plat *tdata_to_max77759(struct google_shim_tcpci_data *tdata)
 {
 	return container_of(tdata, struct max77759_plat, data);
 }
@@ -1134,7 +1124,8 @@ static void enable_vbus_work(struct kthread_work *work)
 		chip->sourcing_vbus = 1;
 }
 
-static int max77759_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool source, bool sink)
+static int max77759_set_vbus(struct google_shim_tcpci *tcpci, struct google_shim_tcpci_data *tdata,
+			     bool source, bool sink)
 {
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
 	int ret;
@@ -1185,7 +1176,8 @@ static int max77759_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool
 	return 0;
 }
 
-static void max77759_frs_sourcing_vbus(struct tcpci *tcpci, struct tcpci_data *tdata)
+static void max77759_frs_sourcing_vbus(struct google_shim_tcpci *tcpci,
+				       struct google_shim_tcpci_data *tdata)
 {
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
 	int ret;
@@ -1222,7 +1214,7 @@ static void vsafe0v_debounce_work(struct kthread_work *work)
 	struct max77759_plat *chip  =
 		container_of(container_of(work, struct kthread_delayed_work, work),
 			     struct max77759_plat, vsafe0v_work);
-	struct tcpci *tcpci = chip->tcpci;
+	struct google_shim_tcpci *tcpci = chip->tcpci;
 
 	/* update to TCPM only if it is still Vsafe0V */
 	if (!chip->vsafe0v)
@@ -1325,7 +1317,7 @@ static void check_missing_rp(struct max77759_plat *chip, bool vbus_present,
 
 static void process_power_status(struct max77759_plat *chip)
 {
-	struct tcpci *tcpci = chip->tcpci;
+	struct google_shim_tcpci *tcpci = chip->tcpci;
 	struct logbuffer *log = chip->log;
 	unsigned int pwr_status;
 	int ret;
@@ -1431,7 +1423,7 @@ static void process_power_status(struct max77759_plat *chip)
 	}
 }
 
-static void process_tx(struct tcpci *tcpci, u16 status, struct logbuffer *log)
+static void process_tx(struct google_shim_tcpci *tcpci, u16 status, struct logbuffer *log)
 {
 	if (status & TCPC_ALERT_TX_SUCCESS) {
 		LOG(LOG_LVL_DEBUG, log, "TCPC_ALERT_TX_SUCCESS");
@@ -1589,7 +1581,7 @@ static void reset_ovp_work(struct kthread_work *work)
 static void max77759_get_cc(struct max77759_plat *chip, enum typec_cc_status *cc1,
 			    enum typec_cc_status *cc2)
 {
-	struct tcpci *tcpci = chip->tcpci;
+	struct google_shim_tcpci *tcpci = chip->tcpci;
 	u8 reg, role_control;
 	int ret;
 
@@ -1642,7 +1634,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 					struct logbuffer *log)
 {
 	u16 vendor_status = 0, vendor_status2 = 0, raw;
-	struct tcpci *tcpci = chip->tcpci;
+	struct google_shim_tcpci *tcpci = chip->tcpci;
 	int ret;
 	const u16 mask = status & TCPC_ALERT_RX_BUF_OVF ? status &
 		~(TCPC_ALERT_RX_STATUS | TCPC_ALERT_RX_BUF_OVF) :
@@ -2056,8 +2048,9 @@ static void max77759_enable_toggling_locked(struct max77759_plat *chip, bool ena
 	if (ret < 0)
 		LOG(LOG_LVL_DEBUG, chip->log, "%s: Enable LK4CONN failed ret:%d", __func__, ret);
 }
-static int max77759_start_toggling(struct tcpci *tcpci,
-				   struct tcpci_data *tdata,
+
+static int max77759_start_toggling(struct google_shim_tcpci *tcpci,
+				   struct google_shim_tcpci_data *tdata,
 				   enum typec_cc_status cc)
 {
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
@@ -2144,8 +2137,8 @@ unlock:
 	return 0;
 }
 
-static void max77759_set_partner_usb_comm_capable(struct tcpci *tcpci, struct tcpci_data *data,
-						  bool capable)
+static void max77759_set_partner_usb_comm_capable(struct google_shim_tcpci *tcpci,
+						  struct google_shim_tcpci_data *data, bool capable)
 {
 	struct max77759_plat *chip = tdata_to_max77759(data);
 
@@ -2290,22 +2283,26 @@ static int max77759_set_vbus_voltage_max_mv(struct i2c_client *tcpc_client,
 	return 0;
 }
 
-static void max77759_get_vbus(void *unused, struct tcpci *tcpci, struct tcpci_data *data, int *vbus,
-			      int *bypass)
+static int max77759_get_vbus(struct google_shim_tcpci *tcpci, struct google_shim_tcpci_data *data)
 {
 	struct max77759_plat *chip = tdata_to_max77759(data);
 	u8 pwr_status;
 	int ret;
 
 	ret = max77759_read8(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status);
+	if (ret < 0) {
+		LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Unable to fetch power status, ret=%d\n",
+		    __func__, ret);
+		return ret;
+	}
+
 	if (!ret && !chip->vbus_present && (pwr_status & TCPC_POWER_STATUS_VBUS_PRES)) {
 		LOG(LOG_LVL_DEBUG, chip->log, "[%s]: syncing vbus_present", __func__);
 		chip->vbus_present = 1;
 	}
 
 	LOG(LOG_LVL_DEBUG, chip->log, "[%s]: vbus_present %d", __func__, chip->vbus_present);
-	*vbus = chip->vbus_present;
-	*bypass = 1;
+	return chip->vbus_present;
 }
 
 static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
@@ -2482,7 +2479,7 @@ static const unsigned int usbpd_extcon_cable[] = {
 	EXTCON_NONE,
 };
 
-static int tcpci_init(struct tcpci *tcpci, struct tcpci_data *data)
+static int tcpci_init(struct google_shim_tcpci *tcpci, struct google_shim_tcpci_data *data)
 {
 	/*
 	 * Generic TCPCI overwrites the regs once this driver initializes
@@ -2614,13 +2611,6 @@ static const struct file_operations force_device_mode_on_fops = {
 };
 #endif
 
-static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *tcpci,
-						   struct tcpci_data *data,
-						   int *override_toggling)
-{
-	*override_toggling = 1;
-}
-
 static void max77759_get_timer_value(void *unused, const char *state, enum typec_timer timer,
 				     unsigned int *val)
 {
@@ -2681,23 +2671,6 @@ static int max77759_register_vendor_hooks(struct i2c_client *client)
 
 	if (hooks_installed)
 		return 0;
-
-	ret = register_trace_android_vh_typec_tcpci_override_toggling(
-			max77759_typec_tcpci_override_toggling, NULL);
-
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpci_override_toggling failed ret:%d",
-			ret);
-		return ret;
-	}
-
-	ret = register_trace_android_rvh_typec_tcpci_get_vbus(max77759_get_vbus, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_rvh_typec_tcpci_get_vbus failed ret:%d\n", ret);
-		return ret;
-	}
 
 	ret = register_trace_android_vh_typec_store_partner_src_caps(
 			max77759_store_partner_src_caps, NULL);
@@ -2764,7 +2737,8 @@ exit:
 	return ALARMTIMER_NORESTART;
 }
 
-static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *tdata)
+static void max_tcpci_check_contaminant(struct google_shim_tcpci *tcpci,
+					struct google_shim_tcpci_data *tdata)
 {
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
 	bool contaminant_cc_status_handled = false, port_clean = false;
@@ -3190,6 +3164,7 @@ static int max77759_probe(struct i2c_client *client,
 	chip->data.init = tcpci_init;
 	chip->data.frs_sourcing_vbus = max77759_frs_sourcing_vbus;
 	chip->data.check_contaminant = max_tcpci_check_contaminant;
+	chip->data.get_vbus = max77759_get_vbus;
 
 	chip->compliance_warnings = init_compliance_warnings(chip);
 	if (IS_ERR_OR_NULL(chip->compliance_warnings)) {
@@ -3386,13 +3361,13 @@ static int max77759_probe(struct i2c_client *client,
 	}
 	gvotable_set_vote2str(chip->aicl_active_el, gvotable_v2s_int);
 
-	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
+	chip->tcpci = google_tcpci_shim_register_port(chip->dev, &chip->data);
 	if (IS_ERR_OR_NULL(chip->tcpci)) {
 		dev_err(&client->dev, "TCPCI port registration failed");
 		ret = PTR_ERR(chip->tcpci);
 		goto unreg_aicl_el;
 	}
-	chip->port = tcpci_get_tcpm_port(chip->tcpci);
+	chip->port = google_tcpci_shim_get_tcpm_port(chip->tcpci);
 
 	max77759_enable_voltage_alarm(chip, true, true);
 
@@ -3439,7 +3414,7 @@ remove_files:
 	for (i = 0; max77759_device_attrs[i]; i++)
 		device_remove_file(&client->dev, max77759_device_attrs[i]);
 unreg_port:
-	tcpci_unregister_port(chip->tcpci);
+	google_tcpci_shim_unregister_port(chip->tcpci);
 unreg_aicl_el:
 	gvotable_destroy_election(chip->aicl_active_el);
 unreg_notifier:
@@ -3475,7 +3450,7 @@ static void max77759_remove(struct i2c_client *client)
 	for (i = 0; max77759_device_attrs[i]; i++)
 		device_remove_file(&client->dev, max77759_device_attrs[i]);
 	if (!IS_ERR_OR_NULL(chip->tcpci))
-		tcpci_unregister_port(chip->tcpci);
+		google_tcpci_shim_unregister_port(chip->tcpci);
 	if (!IS_ERR_OR_NULL(chip->dp_regulator))
 		devm_regulator_put(chip->dp_regulator);
 	if (!IS_ERR_OR_NULL(chip->aicl_active_el))

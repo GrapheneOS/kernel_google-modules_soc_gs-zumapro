@@ -185,6 +185,7 @@ systrace.ko
 sysrq-hook.ko
 tcpci_fusb307.ko
 tcpci_max77759.ko
+google_tcpci_shim.ko
 touch_bus_negotiator.ko
 touch_offload.ko
 trusty-core.ko

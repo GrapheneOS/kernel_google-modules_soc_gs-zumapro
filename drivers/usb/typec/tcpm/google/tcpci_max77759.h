@@ -15,22 +15,22 @@
 #include <linux/gpio/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/role.h>
-#include <linux/usb/tcpci.h>
 #include <linux/usb/typec_mux.h>
 #include <misc/gvotable.h>
 
+#include "google_tcpci_shim.h"
 #include "usb_psy.h"
 
 struct gvotable_election;
 struct logbuffer;
 struct max777x9_contaminant;
 struct max77759_compliance_warnings;
-struct tcpci_data;
+struct google_shim_tcpci_data;
 struct max77759_io_error;
 
 struct max77759_plat {
-	struct tcpci_data data;
-	struct tcpci *tcpci;
+	struct google_shim_tcpci_data data;
+	struct google_shim_tcpci *tcpci;
 	struct device *dev;
 	struct bc12_status *bc12;
 	struct i2c_client *client;
