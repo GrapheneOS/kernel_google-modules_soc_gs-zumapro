@@ -1,0 +1,125 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Google Zumapro RipcurrentPro-specific bcl device tree source
+ *
+ * Copyright (c) 2023 Google, LLC
+ *		https://www.google.com
+ */
+
+#include "zuma-ripcurrent24-bcl.dtsi"
+
+
+&google_mitigation {
+	google,charger = <&max77779_chg>;
+	google,pmic = <&max77779_pmic>;
+	google,power-supply = <&max77779_fg>;
+	batoilo_lower = <1800>;
+	batoilo_upper = <8000>;
+	batoilo2_lower = <3800>;
+	batoilo2_upper = <10000>;
+	batoilo_wlc_trig_lvl = <2200>;
+	batoilo2_wlc_trig_lvl = <5200>;
+	batoilo_trig_lvl = <5000>;
+	batoilo2_trig_lvl = <8000>;
+	batoilo_bat_open_to = <0x8>;    /* 36ms */
+	batoilo2_bat_open_to = <0x3>;   /* 12ms */
+	batoilo_rel = <0x3>;   /* 10ms */
+	batoilo2_rel = <0x3>;   /* 10ms */
+	batoilo_det = <0x0>;   /* 0ms */
+	batoilo2_det = <0x0>;   /* 0ms */
+	uvlo1_rel = <0x2>;   /* 10ms */
+	uvlo2_rel = <0x2>;   /* 10ms */
+	uvlo1_det = <0x1>;   /* 30us */
+	uvlo2_det = <0x1>;   /* 30us */
+	evt_cnt_enable = <0x1>;
+	evt_cnt_rate = <0x0>;   /* 16k */
+	cpu0_cluster = <0>;
+	cpu1_cluster = <4>;
+	cpu2_cluster = <7>;
+
+	interrupt-parent = <&max77779_pmic_irq>;
+	interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
+
+	freq_qos {
+		batoilo2 {
+			cpucl0 = <1704000>;
+			cpucl1 = <1945000>;
+			cpucl2 = <2294000>;
+			gpu = <723000>;
+			tpu = <845000>;
+		};
+		batoilo {
+			cpucl0 = <1704000>;
+			cpucl1 = <1945000>;
+			cpucl2 = <2294000>;
+			gpu = <723000>;
+			tpu = <845000>;
+		};
+		vdroop1 {
+			cpucl0 = <1704000>;
+			cpucl1 = <1945000>;
+			cpucl2 = <2294000>;
+			gpu = <890000>;
+			tpu = <845000>;
+		};
+		vdroop2 {
+			cpucl0 = <1704000>;
+			cpucl1 = <1945000>;
+			cpucl2 = <2294000>;
+			gpu = <649000>;
+			tpu = <627000>;
+		};
+		smpl_gm {
+			cpucl0 = <1704000>;
+			cpucl1 = <1945000>;
+			cpucl2 = <2294000>;
+			gpu = <649000>;
+			tpu = <627000>;
+		};
+		ocp_cpu2 {
+			cpucl0 = <1704000>;
+			cpucl1 = <2367000>;
+			cpucl2 = <2914000>;
+			gpu = <890000>;
+			tpu = <1119000>;
+		};
+		ocp_cpu1 {
+			cpucl0 = <1704000>;
+			cpucl1 = <2367000>;
+			cpucl2 = <2914000>;
+			gpu = <890000>;
+			tpu = <1119000>;
+		};
+		ocp_gpu {
+			cpucl0 = <1704000>;
+			cpucl1 = <2367000>;
+			cpucl2 = <2914000>;
+			gpu = <890000>;
+			tpu = <1119000>;
+		};
+		ocp_tpu {
+			cpucl0 = <1704000>;
+			cpucl1 = <2367000>;
+			cpucl2 = <2914000>;
+			gpu = <890000>;
+			tpu = <1119000>;
+		};
+	};
+};
+
+&thermal_zones {
+	batoilo2 {
+		zone_name  = "BATOILO2";
+		polling-delay-passive = <THERMAL_DELAY_INIT_MS>;
+		polling-delay = <0>;
+		thermal-sensors = <&google_mitigation BATOILO2>;
+		trips {
+			batoilo2: batoilo2{
+				temperature = <BO_LIMIT>;
+				hysteresis = <THERMAL_HYST_LEVEL>;
+				type = "passive";
+			};
+		};
+	};
+
+};
