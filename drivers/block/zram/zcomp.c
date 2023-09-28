@@ -19,7 +19,6 @@
 
 #include "zcomp.h"
 
-#define ZCOMP_ALGO_NAME_MAX 64
 /* The 32 is align with SWAP_CLUSTER_MAX and BLK_MAX_REQUEST_COUNT */
 #define ZRAM_BLK_MAX_REQUEST_COUNT 32
 

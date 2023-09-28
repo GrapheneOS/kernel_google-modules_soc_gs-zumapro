@@ -12,6 +12,7 @@
 struct zcomp;
 struct bio;
 
+#define ZCOMP_ALGO_NAME_MAX 64
 #define BATCH_ZCOMP_REQUEST (128)
 
 /*
@@ -52,10 +53,10 @@ struct zcomp {
 	struct zcomp_cookie_pool cookie_pool;
 	unsigned long pend_request;
 	struct list_head request_list;
-	spinlock_t request_lock;;
+	spinlock_t request_lock;
 
 	struct hlist_node node;
-	char algo_name[64];
+	char algo_name[ZCOMP_ALGO_NAME_MAX];
 };
 
 ssize_t zcomp_available_show(const char *comp, char *buf);
