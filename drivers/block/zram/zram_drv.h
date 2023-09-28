@@ -28,16 +28,15 @@
 
 
 /*
- * The lower ZRAM_FLAG_SHIFT bits of table.flags is for
- * object size (excluding header), the higher bits is for
- * zram_pageflags.
+ * ZRAM is mainly used for memory efficiency so we want to keep memory
+ * footprint small and thus squeeze size and zram pageflags into a flags
+ * member. The lower ZRAM_FLAG_SHIFT bits is for object size (excluding
+ * header), which cannot be larger than PAGE_SIZE (requiring PAGE_SHIFT
+ * bits), the higher bits are for zram_pageflags.
  *
- * zram is mainly used for memory efficiency so we want to keep memory
- * footprint small so we can squeeze size and flags into a field.
- * The lower ZRAM_FLAG_SHIFT bits is for object size (excluding header),
- * the higher bits is for zram_pageflags.
+ * We use BUILD_BUG_ON() to make sure that zram pageflags don't overflow.
  */
-#define ZRAM_FLAG_SHIFT 24
+#define ZRAM_FLAG_SHIFT (PAGE_SHIFT + 1)
 
 /* Flags for zram pages (table[page_no].flags) */
 enum zram_pageflags {
@@ -68,8 +67,8 @@ struct zram_table_entry {
 
 enum zram_stat_item {
 	COMPRESSED_SIZE,	/* compressed size of pages stored */
-	NR_READ,		/* No. of reads */
-	NR_WRITE,		/* No. of writes */
+	NR_READ,		/* No. of reads: failed + successful */
+	NR_WRITE,		/* No. of writes: --do-- */
 	NR_FAILED_READ,		/* can happen when memory is too low */
 	NR_FAILED_WRITE,	/* can happen when memory is too low */
 	NR_INVALID_IO, 		/* non-page-aligned I/O requests */
@@ -80,9 +79,11 @@ enum zram_stat_item {
 	NR_PAGE_STORED,		/* no. of pages currently stored */
 	NR_WRITESTALL,		/* no. of write slow paths */
 	NR_MISS_FREE,		/* no. of missed free */
+#ifdef	CONFIG_ZRAM_WRITEBACK
 	NR_BD_COUNT,		/* no. of pages in backing device */
 	NR_BD_READ,		/* no. of reads from backing device */
 	NR_BD_WRITE,		/* no. of writes from backing device */
+#endif
 	NR_ZRAM_STAT_ITEM,
 };
 
@@ -103,7 +104,7 @@ struct zram {
 	unsigned long limit_pages;
 
 	struct zram_stats __percpu *pcp_stats;
-	atomic_long_t max_used_pages;
+	atomic_long_t max_used_pages; /* no. of maximum pages stored */
 
 	/*
 	 * This is the limit on amount of *uncompressed* worth of data
@@ -115,13 +116,12 @@ struct zram {
 	 * zram is claimed so open request will be failed
 	 */
 	bool claim; /* Protected by disk->open_mutex */
-	struct file *backing_dev;
 #ifdef CONFIG_ZRAM_WRITEBACK
+	struct file *backing_dev;
 	spinlock_t wb_limit_lock;
 	bool wb_limit_enable;
 	u64 bd_wb_limit;
 	struct block_device *bdev;
-	unsigned int old_block_size;
 	unsigned long *bitmap;
 	unsigned long nr_pages;
 #endif
