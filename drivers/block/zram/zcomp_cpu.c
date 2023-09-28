@@ -9,13 +9,12 @@
 #include "zcomp.h"
 
 static const char * const backends[] = {
+#if IS_ENABLED(CONFIG_CRYPTO_LZO)
 	"lzo",
 	"lzo-rle",
+#endif
 #if IS_ENABLED(CONFIG_CRYPTO_LZ4)
 	"lz4",
-#endif
-#if IS_ENABLED(CONFIG_CRYPTO_DEFLATE)
-	"deflate",
 #endif
 #if IS_ENABLED(CONFIG_CRYPTO_LZ4HC)
 	"lz4hc",
@@ -78,7 +77,7 @@ int zcomp_cpu_compress(struct zcomp *comp, struct page *page,
 	err = crypto_comp_compress(stream->tfm, src, PAGE_SIZE,
 					stream->buffer, &comp_len);
 	kunmap_atomic(src);
-	if (err) {
+	if (unlikely(err)) {
 		zcomp_stream_put(comp);
 		pr_err("Compression failed! err=%d\n", err);
 	}
@@ -93,12 +92,11 @@ int zcomp_cpu_decompress(struct zcomp *comp, void *src,
 			unsigned int src_len, struct page *page)
 {
 	void *dst;
-	unsigned int dst_len;
+	unsigned int dst_len = PAGE_SIZE;
 	struct zcomp_strm *stream;
 	int ret;
 
 	dst = kmap_atomic(page);
-	dst_len = PAGE_SIZE;
 	stream = zcomp_stream_get(comp);
 	ret = crypto_comp_decompress(stream->tfm, src, src_len,
 							dst, &dst_len);
@@ -181,7 +179,6 @@ int zcomp_cpu_up_prepare(unsigned int cpu, struct hlist_node *node)
 	ret = zcomp_strm_init(zstrm, comp);
 	if (ret)
 		pr_err("Can't allocate a compression stream\n");
-
 	return ret;
 }
 
