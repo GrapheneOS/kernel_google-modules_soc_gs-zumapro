@@ -3,8 +3,8 @@ DEVICE_MODULES_DIR=${KERNEL_DIR}
 KERNEL_DIR="aosp"
 # Compute the path of this project relative to KERNEL_DIR
 DEVICE_MODULES_REL_DIR=$(realpath ${DEVICE_MODULES_DIR} --relative-to ${KERNEL_DIR})
-KCONFIG_EXT_PREFIX=${DEVICE_MODULES_DIR}
 
+FRAGMENT_CONFIG=${DEVICE_MODULES_DIR}/arch/arm64/configs/slider_gki.fragment
 . ${ROOT_DIR}/${DEVICE_MODULES_DIR}/build.config.gs101
 
 MAKE_GOALS="$MAKE_GOALS
@@ -37,7 +37,7 @@ function modify_vendor_ramdisk() {
   ln -f init.recovery.gs101.rc init.recovery.raven.rc
 }
 
-KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
+KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${ROOT_DIR}/${KERNEL_DIR})/
 EXT_MODULES+="
 private/google-modules/bms/misc
 private/google-modules/soc/gs
