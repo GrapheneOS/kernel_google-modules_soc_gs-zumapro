@@ -9,6 +9,7 @@ GKI_SHA=`repo --color=never info aosp | grep "Manifest revision" | sed 's/Manife
 GKI_BRANCH="android14-6.1" # Need to push symbol list changes to the main ACK branch (not release branches)
 GKI_STAGING_REMOTE="partner-common"
 GKI_STAGING_BRANCH=`repo --color=never info aosp-staging | grep "Manifest revision" | sed 's/Manifest revision: //g'`
+PIXEL_SYMBOL_LIST="android/abi_gki_aarch64_pixel"
 TARGET=
 FOR_AOSP_PUSH_BRANCH="update_symbol_list-delete-after-push"
 CONTINUE_AFTER_REBASE=0
@@ -170,7 +171,7 @@ function apply_to_aosp_symbol_list {
 
   # Only apply the new symbol additions. This makes sure that we don't copy
   # over any symbols that are only found in the aosp-staging branch.
-  git -C $1 diff ${GKI_STAGING_REMOTE}/${GKI_STAGING_BRANCH}..HEAD | grep "^+  " >> ${TMP_LIST}
+  git -C $1 diff ${GKI_STAGING_REMOTE}/${GKI_STAGING_BRANCH}..HEAD ${PIXEL_SYMBOL_LIST} | grep "^+  " >> ${TMP_LIST}
 
   # Remove leading plus signs from the `git show`
   sed -i 's:^+  \(.\+\):  \1:g' ${TMP_LIST}
@@ -185,12 +186,11 @@ function apply_to_aosp_symbol_list {
 
 function commit_the_symbol_list {
   local aosp_dir="$1"
-  local pixel_symbol_list="android/abi_gki_aarch64_pixel"
 
   echo "Committing symbol list: ${aosp_dir}"
 
-  NEW_SYMS=$(git -C "${aosp_dir}" diff ${pixel_symbol_list} 2>/dev/null | sed -n 's/^+\s\+\(.*\)/\1\n/p')
-  OLD_SYMS=$(git -C "${aosp_dir}" diff ${pixel_symbol_list} 2>/dev/null | sed -n 's/^-\s\+\(.*\)/\1\n/p')
+  NEW_SYMS=$(git -C "${aosp_dir}" diff ${PIXEL_SYMBOL_LIST} 2>/dev/null | sed -n 's/^+\s\+\(.*\)/\1\n/p')
+  OLD_SYMS=$(git -C "${aosp_dir}" diff ${PIXEL_SYMBOL_LIST} 2>/dev/null | sed -n 's/^-\s\+\(.*\)/\1\n/p')
 
   ADDING=$(for s in ${NEW_SYMS}; do [[ ! "${OLD_SYMS}" =~ ${s} ]] && echo "${s}"; done)
   REMOVING=$(for s in ${OLD_SYMS}; do [[ ! "${NEW_SYMS}" =~ ${s} ]] && echo "${s}"; done)
@@ -218,7 +218,7 @@ function commit_the_symbol_list {
   if [ -n "${CHANGE_ID}" ]; then
     echo "Change-Id: ${CHANGE_ID}" >> ${COMMIT_TEXT}
   fi
-  git -C "${aosp_dir}" commit --quiet -s -F ${COMMIT_TEXT} -- "${pixel_symbol_list}"
+  git -C "${aosp_dir}" commit --quiet -s -F ${COMMIT_TEXT} -- "${PIXEL_SYMBOL_LIST}"
   if [[ "$?" != 0 ]] && [[ ${aosp_dir} =~ aosp-staging ]]; then
     rm -f ${COMMIT_TEXT}
     echo "No symbol list changes detected in ${aosp_dir}."
@@ -229,7 +229,6 @@ function commit_the_symbol_list {
 }
 
 function update_aosp_to_tot {
-  local pixel_symbol_list="android/abi_gki_aarch64_pixel"
 
   # Rebase to ${GKI_REMOTE}/${GKI_BRANCH} ToT before copying over the symbol list
   pushd aosp/ >/dev/null
@@ -267,9 +266,9 @@ function update_aosp_to_tot {
     # Note: we are NOT copying over the aosp-staging/ symbol list to the aosp/
     # symbol list in order to avoid pulling in symbols that only exist on the
     # aosp-staging branch.
-    git -C aosp show --quiet ${GKI_REMOTE}/${GKI_BRANCH}:"${pixel_symbol_list}" \
-      > aosp/"${pixel_symbol_list}"
-    apply_to_aosp_symbol_list ${KERNEL_DIR} "aosp/${pixel_symbol_list}"
+    git -C aosp show --quiet ${GKI_REMOTE}/${GKI_BRANCH}:"${PIXEL_SYMBOL_LIST}" \
+      > aosp/"${PIXEL_SYMBOL_LIST}"
+    apply_to_aosp_symbol_list ${KERNEL_DIR} "aosp/${PIXEL_SYMBOL_LIST}"
 
     # Create the AOSP symbol list commit
     commit_the_symbol_list "aosp"
