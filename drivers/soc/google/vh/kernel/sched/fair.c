@@ -2714,7 +2714,7 @@ void rvh_can_migrate_task_pixel_mod(void *data, struct task_struct *mp,
 {
 	struct vendor_rq_struct *vrq = get_vendor_rq_struct(cpu_rq(dst_cpu));
 
-	if (get_uclamp_fork_reset(mp, true) || !get_prefer_idle(mp))
+	if (!get_uclamp_fork_reset(mp, true) || !get_prefer_idle(mp))
 		return;
 
 	lockdep_assert_rq_held(cpu_rq(dst_cpu));
