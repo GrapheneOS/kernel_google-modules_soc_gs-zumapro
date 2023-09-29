@@ -509,6 +509,7 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
 	int val, ret = 0;
 	bool enable = false;
+	bool crossbar_reverse = false;
 
 	if (kstrtoint(buf, 0, &val) < 0)
 		return -EINVAL;
@@ -537,6 +538,7 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
 		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
 		enable = true;
+		crossbar_reverse = true;
 		break;
 	default:
 		goto set_sbu_state;
@@ -557,8 +559,17 @@ static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *att
 				ret < 0 ? "fail" : "success", ret);
 	}
 
-	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, enable ? SBUSW_PATH_1 :
-			      (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+	if (chip->product_id == MAX77779_PRODUCT_ID) {
+		ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, enable ?
+				      (crossbar_reverse ? SBUSW_XBAR_POL_REVERSE :
+				      SBUSW_XBAR_POL_NORMAL) : (modparam_conf_sbu ?
+				      SBUSW_SERIAL_UART : 0));
+		LOG(LOG_LVL_DEBUG, chip->log, "SBU Cross Bar SW %s %s, ret:%d",
+		    enable ? "Enable" : "Disable", ret < 0 ? "fail" : "success", ret);
+	} else {
+		ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, enable ?
+				      SBUSW_PATH_1 : (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+	}
 	logbuffer_logk(chip->log, LOGLEVEL_INFO, "SBU dp switch %s %s ret:%d",
 		       enable ? "enable" : "disable", ret < 0 ? "fail" : "success", ret);
 
@@ -2740,10 +2751,18 @@ static void dp_notification_work_item(struct kthread_work *work)
 		    "dp regulator_set_voltage %s ret:%d", ret < 0 ? "fail" : "success", ret);
 	}
 
-	ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL,
-			      dp ? SBUSW_PATH_1 : (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
-	LOG(LOG_LVL_DEBUG, chip->log, "SBU dp switch %s %s ret:%d", dp ? "enable" : "disable",
-	    ret < 0 ? "fail" : "success", ret);
+	if (chip->product_id == MAX77779_PRODUCT_ID) {
+		ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ?
+				      (chip->orientation == TYPEC_ORIENTATION_REVERSE ?
+				      SBUSW_XBAR_POL_REVERSE : SBUSW_XBAR_POL_NORMAL) :
+				      (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+		LOG(LOG_LVL_DEBUG, chip->log, "SBU Cross Bar SW %s %s, orientation:%d ret:%d",
+		    dp ? "Enable" : "Disable", ret < 0 ? "fail" : "success", chip->orientation,
+		    ret);
+	} else {
+		ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ? SBUSW_PATH_1 :
+				      (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+	}
 
 	LOG(LOG_LVL_DEBUG, chip->log, "%s Signaling dp altmode: %s ret:%d",
 	    ret < 0 ? "Failed" : "Succeeded", dp ? "on" : "off", ret);
@@ -3192,6 +3211,9 @@ static int max77759_probe(struct i2c_client *client,
 		chip->contaminant = max777x9_contaminant_init(chip, chip->contaminant_detection,
 							      pid == MAX77779_PRODUCT_ID);
 	}
+
+	/* Cache product_id to determine dp_regulator handling */
+	chip->product_id = pid;
 
 	ret = max77759_setup_data_notifier(chip);
 	if (ret < 0)

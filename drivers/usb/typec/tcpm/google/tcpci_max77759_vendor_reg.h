@@ -102,5 +102,7 @@
 #define FLADC_SELECT_SBU2			(4 << 3)
 #define SBUSW_SERIAL_UART			0x12
 #define SBUSW_PATH_1				0x9
+#define SBUSW_XBAR_POL_NORMAL			BIT(7)
+#define SBUSW_XBAR_POL_REVERSE			0xC0
 
 #endif /* __TCPCI_MAX77759_VENDOR_REG_H */

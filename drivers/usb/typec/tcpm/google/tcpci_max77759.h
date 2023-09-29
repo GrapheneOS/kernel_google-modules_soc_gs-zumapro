@@ -200,6 +200,9 @@ struct max77759_plat {
 	/* Hold while calling start_toggle and in probe to guard NULL chip->tcpci */
 	struct mutex toggle_lock;
 
+	int device_id;
+	int product_id;
+
 	/* EXT_BST_EN exposed as GPIO */
 #ifdef CONFIG_GPIOLIB
 	struct gpio_chip gpio;
