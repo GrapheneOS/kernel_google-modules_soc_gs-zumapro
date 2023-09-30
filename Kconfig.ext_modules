@@ -2,6 +2,8 @@
 
 source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/bms/misc/Kconfig"
 source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/display/common/Kconfig"
+source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/display/samsung/Kconfig"
+source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/display/samsung/panel/Kconfig"
 source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/touch/common/Kconfig"
 source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/touch/fts/ftm5/Kconfig"
 source "$(KCONFIG_EXT_MODULES_PREFIX)private/google-modules/touch/sec/Kconfig"

@@ -26,6 +26,7 @@ cpif_page.ko
 debug-reboot.ko
 debug-snapshot-debug-kinfo.ko
 deferred-free-helper.ko
+drm_display_helper.ko
 dss.ko
 dsulat-devfreq.ko
 dwc3-exynos-usb.ko
