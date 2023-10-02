@@ -208,13 +208,9 @@ void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
 
 	/* Inherit uclamp_fork_reset form get_vendor_binder_task_struct(current)->uclamp_fork_reset
 	 * or get_vendor_task_struct(current)->uclamp_fork_reset.
-	 *
-	 * If one of these two uclamp_fork_reset is true, binder p will have this inheritance.
-	 *
-	 * If both of these two uclamp_fork_reset are false, binder p will not have this inheritance.
 	 */
-	if (get_uclamp_fork_reset(current, true) != get_uclamp_fork_reset(p, true))
-		vbinder->uclamp_fork_reset = get_uclamp_fork_reset(current, true);
+	if (get_uclamp_fork_reset(current, true) && !get_uclamp_fork_reset(p, true))
+		vbinder->uclamp_fork_reset = true;
 }
 
 void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction *t,
