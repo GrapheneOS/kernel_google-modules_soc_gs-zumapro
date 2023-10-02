@@ -427,13 +427,13 @@ static inline bool get_prefer_idle(struct task_struct *p)
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
 
-	if (vendor_sched_reduce_prefer_idle && !vp->uclamp_fork_reset)
-		return (vg[vp->group].prefer_idle && p->prio <= DEFAULT_PRIO &&
-			uclamp_eff_value_pixel_mod(p, UCLAMP_MAX) == SCHED_CAPACITY_SCALE) ||
-			vp->prefer_idle || vbinder->prefer_idle;
+	if (get_uclamp_fork_reset(p, true) || vp->prefer_idle || vbinder->prefer_idle)
+		return true;
+	else if (vendor_sched_reduce_prefer_idle)
+		return vg[vp->group].prefer_idle && p->prio <= DEFAULT_PRIO &&
+			uclamp_eff_value_pixel_mod(p, UCLAMP_MAX) == SCHED_CAPACITY_SCALE;
 	else
-		return vg[vp->group].prefer_idle || vp->prefer_idle || vbinder->prefer_idle ||
-		       vp->uclamp_fork_reset;
+		return vg[vp->group].prefer_idle;
 }
 
 static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
@@ -495,6 +495,9 @@ static inline bool uclamp_can_ignore_uclamp_min(struct rq *rq,
 		return false;
 
 	if (get_uclamp_fork_reset(p, true))
+		return false;
+
+	if (p->in_iowait && uclamp_boosted(p))
 		return false;
 
 	if (rt_task(p))
@@ -570,6 +573,9 @@ static inline bool uclamp_can_ignore_uclamp_max(struct rq *rq,
 		return false;
 
 	if (get_uclamp_fork_reset(p, true))
+		return false;
+
+	if (p->in_iowait && uclamp_boosted(p))
 		return false;
 
 	/*

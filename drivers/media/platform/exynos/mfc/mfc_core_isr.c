@@ -1824,6 +1824,12 @@ irqreturn_t mfc_core_top_half_irq(int irq, void *priv)
 		mfc_perf_trace(ctx, "frame", 0);
 	}
 
+	/* Reset trace counter when NAL QUEUE be stopped */
+	if (reason == MFC_REG_R2H_CMD_COMPLETE_QUEUE_RET) {
+		mfc_perf_trace(ctx, "frame", 0);
+		ctx->nal_q_cnt = 0;
+	}
+
 	return IRQ_WAKE_THREAD;
 }
 

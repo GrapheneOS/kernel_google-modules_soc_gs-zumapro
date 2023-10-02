@@ -2499,7 +2499,6 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 	rcu_read_lock();
 
 	list_for_each_entry_reverse(p, &src_rq->cfs_tasks, se.group_node) {
-		struct vendor_task_struct *vp = get_vendor_task_struct(p);
 		bool is_ui = false, is_boost = false;
 
 		if (!cpumask_test_cpu(dst_cpu, p->cpus_ptr))
@@ -2511,9 +2510,9 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 		if (!get_prefer_idle(p))
 			continue;
 
-		if (vp && vp->uclamp_fork_reset)
+		if (get_uclamp_fork_reset(p, true))
 			is_ui = true;
-		else if (uclamp_eff_value(p, UCLAMP_MIN) > 0)
+		else if (uclamp_eff_value_pixel_mod(p, UCLAMP_MIN) > 0)
 			is_boost = true;
 
 		if (!is_ui && !is_boost)
