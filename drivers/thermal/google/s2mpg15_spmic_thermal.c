@@ -60,6 +60,7 @@ struct s2mpg15_spmic_thermal_chip {
 	struct s2mpg15_spmic_thermal_sensor sensor[GTHERM_CHAN_NUM];
 	u8 adc_chan_en;
 	u8 stats_en;
+	bool filter_spurious_samples;
 	struct kobject *kobjs[GTHERM_CHAN_NUM];
 	struct kthread_worker *wq;
 	struct kthread_delayed_work wait_sensor_work;
@@ -319,7 +320,6 @@ static int get_filtered_temp(const struct s2mpg15_spmic_thermal_sensor *s)
 				s->tzd->type, SPMIC_ERR_READING_IGNORE_TIME_MSEC);
 	return s->temp_log[last_temp_idx].temperature;
 }
-
 /*
  * Get temperature for given tz.
  */
@@ -360,7 +360,7 @@ static int s2mpg15_spmic_thermal_get_temp(struct thermal_zone_device *tz, int *t
 	if (s2mpg15_spmic_thermal->stats_en & (mask << s->adc_chan)) {
 		metrics_ret = temp_residency_stats_update(s->tr_handle, *temp);
 		/* Filter the spurious reading. */
-		if (unlikely(metrics_ret == EXTREME_HIGH_TEMP)) {
+		if (s2mpg15_spmic_thermal->filter_spurious_samples && unlikely(metrics_ret == EXTREME_HIGH_TEMP)) {
 			dump_thermal_history(s);
 			*temp = get_filtered_temp(s);
 		}
@@ -715,7 +715,9 @@ static int s2mpg15_spmic_thermal_get_dt_data(struct platform_device *pdev,
 		s2mpg15_spmic_thermal->stats_en = 0;
 	}
 
-	return 0;
+    s2mpg15_spmic_thermal->filter_spurious_samples =
+        of_property_read_bool(node, "filter_spurious_samples");
+    return 0;
 }
 
 static ssize_t
