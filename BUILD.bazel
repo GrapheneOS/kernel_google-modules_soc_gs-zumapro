@@ -96,6 +96,7 @@ kernel_module_group(
         "//private/google-modules/gpu/mali_kbase",
         "//private/google-modules/gpu/mali_pixel",
         "//private/google-modules/lwis",
+        "//private/google-modules/misc/sscoredump",
         "//private/google-modules/edgetpu/abrolhos/drivers/edgetpu:edgetpu.abrolhos",
         "//private/google-modules/bms",
         "//private/google-modules/amplifiers/snd_soc_wm_adsp:snd-soc-wm-adsp",
