@@ -172,10 +172,10 @@ static bool check_sg_policy_initialized(void)
 	struct cpufreq_policy *policy = NULL;
 	struct sugov_policy *sg_policy = NULL;
 
-	if (cpumask_weight(&pixel_sched_governor_mask) != CPU_NUM)
+	if (cpumask_weight(&pixel_sched_governor_mask) != pixel_cpu_num)
 		return false;
 
-	while (cpu < CPU_NUM) {
+	while (cpu < pixel_cpu_num) {
 		policy = cpufreq_cpu_get(cpu);
 		if (!policy) {
 			pr_err("no cpufreq policy for cpu %d\n", cpu);
@@ -265,7 +265,7 @@ void reset_uclamp_stats(void)
 {
 	int i;
 
-	for (i = 0; i < CONFIG_VH_SCHED_CPU_NR; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		unsigned long flags;
 		u64 time;
 		struct rq_flags rf;
@@ -299,7 +299,7 @@ void init_uclamp_stats(void)
 {
 	int i;
 
-	for (i = 0; i < CONFIG_VH_SCHED_CPU_NR; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		struct uclamp_stats *stats = &per_cpu(uclamp_stats, i);
 		spin_lock_init(&stats->lock);
 	}
@@ -978,7 +978,7 @@ void pmu_poll_disable(void)
 		spin_unlock(&pmu_poll_enable_lock);
 		kthread_cancel_work_sync(&pmu_work);
 
-		while (cpu < CPU_NUM) {
+		while (cpu < pixel_cpu_num) {
 			policy = cpufreq_cpu_get(cpu);
 			sg_policy = policy->governor_data;
 
@@ -1014,7 +1014,7 @@ static void pmu_limit_work(struct kthread_work *work)
 	bool pmu_throttle = false;
 	cpumask_t local_pmu_ignored_mask = CPU_MASK_NONE;
 
-	while (cpu < CPU_NUM) {
+	while (cpu < pixel_cpu_num) {
 		policy = cpufreq_cpu_get(cpu);
 		sg_policy = policy->governor_data;
 		next_max_freq = policy->cpuinfo.max_freq;

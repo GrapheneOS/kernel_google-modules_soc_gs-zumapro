@@ -28,7 +28,7 @@ extern int ___update_load_sum(u64 now, struct sched_avg *sa,
 extern void ___update_load_avg(struct sched_avg *sa, unsigned long load);
 
 static struct vendor_util_group_property ug[UG_MAX];
-static struct vendor_cfs_util vendor_cfs_util[UG_MAX][CPU_NUM];
+static struct vendor_cfs_util vendor_cfs_util[UG_MAX][CONFIG_VH_SCHED_MAX_CPU_NR];
 #endif
 
 extern int vendor_sched_ug_bg_auto_prio;
@@ -39,14 +39,13 @@ extern bool vendor_sched_boost_adpf_prio;
 static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
 
-unsigned int sched_capacity_margin[CPU_NUM] = { [0 ... CPU_NUM - 1] = DEF_UTIL_THRESHOLD };
-unsigned int sched_dvfs_headroom[CPU_NUM] = { [0 ... CPU_NUM - 1] = DEF_UTIL_THRESHOLD };
+unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR] =
+	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = DEF_UTIL_THRESHOLD };
+unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
+	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = DEF_UTIL_THRESHOLD };
 
-unsigned int sched_auto_uclamp_max[CPU_NUM] = {
-	[MIN_CAPACITY_CPU ... MID_CAPACITY_CPU - 1] = 100,
-	[MID_CAPACITY_CPU ... MAX_CAPACITY_CPU - 1] = 500,
-	[MAX_CAPACITY_CPU ... CPU_NUM - 1] = 700
-};
+unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
+	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = 1024 };
 
 struct vendor_group_property vg[VG_MAX];
 
@@ -570,7 +569,7 @@ void init_vendor_group_data(void)
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-	for (j = 0; j < CPU_NUM; j++) {
+	for (j = 0; j < pixel_cpu_num; j++) {
 		rq = cpu_rq(j);
 
 		for (i = 0; i < UG_MAX; i++) {
@@ -1073,10 +1072,10 @@ static bool task_fits_capacity(struct task_struct *p, int cpu,  bool sync_boost)
 	unsigned long uclamp_max = uclamp_eff_value_pixel_mod(p, UCLAMP_MAX);
 	unsigned long task_util = task_util_est(p);
 
-	if (cpu >= MAX_CAPACITY_CPU)
+	if (cpu >= pixel_cluster_start_cpu[2])
 		return true;
 
-	if ((get_prefer_high_cap(p) || sync_boost) && cpu < MID_CAPACITY_CPU)
+	if ((get_prefer_high_cap(p) || sync_boost) && cpu < pixel_cluster_start_cpu[1])
 		return false;
 
 	/*
@@ -1101,9 +1100,9 @@ static inline bool cpu_is_in_target_set(struct task_struct *p, int cpu)
 	int first_cpu, next_usable_cpu;
 
 	if (get_prefer_high_cap(p)) {
-		first_cpu = HIGH_CAPACITY_CPU;
+		first_cpu = pixel_cluster_start_cpu[1];
 	} else {
-		first_cpu = MIN_CAPACITY_CPU;
+		first_cpu = pixel_cluster_start_cpu[0];
 	}
 
 	next_usable_cpu = cpumask_next(first_cpu - 1, p->cpus_ptr);
@@ -1548,7 +1547,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 		pd_least_cpu_importantce = SCHED_CAPACITY_SCALE << 2;
 
 		for_each_cpu_and(i, perf_domain_span(pd), valid_mask ? valid_mask : p->cpus_ptr) {
-			if (i >= CPU_NUM)
+			if (i >= pixel_cpu_num)
 				break;
 
 			if (!cpu_active(i))
@@ -1707,7 +1706,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 				if (importance_target_found)
 					continue;
 
-				if (prefer_high_cap && i < HIGH_CAPACITY_CPU)
+				if (prefer_high_cap && i < pixel_cluster_start_cpu[1])
 					continue;
 
 				/*
@@ -2404,7 +2403,7 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 		goto out;
 	}
 
-	sync_boost = sync && cpu >= HIGH_CAPACITY_CPU;
+	sync_boost = sync && cpu >= pixel_cluster_start_cpu[1];
 
 	/* prefer prev cpu */
 	if (cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) &&
