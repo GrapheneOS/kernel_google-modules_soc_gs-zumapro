@@ -1931,6 +1931,7 @@ static const struct of_device_id exynos_bts_match[] = {
 	{
 		.compatible = "samsung,exynos-bts",
 	},
+	{ },
 };
 
 static struct platform_driver bts_pdrv = {

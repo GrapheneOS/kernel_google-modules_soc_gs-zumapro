@@ -126,12 +126,18 @@ enum gbms_charger_modes {
 #define port_is_sink(cc1, cc2) \
 	(rp_def_detected(cc1, cc2) || rp_1a5_detected(cc1, cc2) || rp_3a_detected(cc1, cc2))
 
+#define is_debug_accessory_detected(cc1, cc2) \
+	((((cc1) == TYPEC_CC_RP_DEF) || ((cc1) == TYPEC_CC_RP_1_5) || ((cc1) == TYPEC_CC_RP_3_0)) && \
+	 (((cc1) == TYPEC_CC_RP_DEF) || ((cc1) == TYPEC_CC_RP_1_5) || ((cc1) == TYPEC_CC_RP_3_0)))
+
 #define FLOATING_CABLE_INSTANCE_THRESHOLD	5
 #define AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS	600000
 
 #define VOLTAGE_DP_AUX_DEFAULT_UV	3300000
 
 #define SRC_CURRENT_LIMIT_MA		0
+
+#define DISCONNECT_DEBOUNCE_MS		1200
 
 #define LOG_LVL_DEBUG				1
 #define LOG_LVL_INFO				2
@@ -148,6 +154,13 @@ do {						\
 		logbuffer_log(LOG, FMT __VA_OPT__(,) __VA_ARGS__); \
 } while (0)
 
+#define OVP_OP_RETRY	3
+
+enum ovp_operation {
+	OVP_RESET,
+	OVP_ON,
+	OVP_OFF
+};
 
 static struct logbuffer *tcpm_log;
 
@@ -1486,6 +1499,37 @@ static void floating_cable_sink_detected_handler_locked(struct max77759_plat *ch
 	}
 }
 
+static void ovp_operation(struct max77759_plat *chip, int operation)
+{
+	int gpio_val, retry = 0;
+
+	if (operation == OVP_RESET || operation == OVP_OFF) {
+		do {
+			gpio_set_value_cansleep(chip->in_switch_gpio,
+						!chip->in_switch_gpio_active_high);
+			gpio_val = gpio_get_value(chip->in_switch_gpio);
+			LOG(LOG_LVL_DEBUG, chip->log,
+				      "%s: OVP disable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
+				       __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
+		} while ((gpio_val != !chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
+	}
+
+	if (operation == OVP_RESET)
+		mdelay(10);
+
+	if (operation == OVP_RESET || operation == OVP_ON) {
+		retry = 0;
+		do {
+			gpio_set_value_cansleep(chip->in_switch_gpio,
+						chip->in_switch_gpio_active_high);
+			gpio_val = gpio_get_value(chip->in_switch_gpio);
+			LOG(LOG_LVL_DEBUG, chip->log,
+				      "%s: OVP enable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
+				      __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
+		} while ((gpio_val != chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
+	}
+}
+
 static void reset_ovp_work(struct kthread_work *work)
 {
 	struct max77759_plat *chip  =
@@ -1498,9 +1542,7 @@ static void reset_ovp_work(struct kthread_work *work)
 	if (vbus_mv > VBUS_PRESENT_THRESHOLD_MV)
 		return;
 
-	gpio_set_value_cansleep(chip->in_switch_gpio, !chip->in_switch_gpio_active_high);
-	mdelay(10);
-	gpio_set_value_cansleep(chip->in_switch_gpio, chip->in_switch_gpio_active_high);
+	ovp_operation(chip, OVP_RESET);
 	chip->reset_ovp_retry++;
 
 	LOG(LOG_LVL_DEBUG, chip->log, "ovp reset done [%d]", chip->reset_ovp_retry);
@@ -1990,6 +2032,9 @@ static int max77759_start_toggling(struct tcpci *tcpci,
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
 	u8 reg = TCPC_ROLE_CTRL_DRP, pwr_ctrl;
 	int ret;
+	enum typec_cc_status cc1, cc2;
+
+	max77759_get_cc(chip, &cc1, &cc2);
 
 	switch (cc) {
 	case TYPEC_CC_RP_DEF:
@@ -2025,11 +2070,11 @@ static int max77759_start_toggling(struct tcpci *tcpci,
 		goto unlock;
 
 	/* Kick debug accessory state machine when enabling toggling for the first time */
-	if (chip->first_toggle && chip->in_switch_gpio >= 0) {
-		LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Kick Debug accessory FSM", __func__);
-		gpio_set_value_cansleep(chip->in_switch_gpio, !chip->in_switch_gpio_active_high);
-		mdelay(10);
-		gpio_set_value_cansleep(chip->in_switch_gpio, chip->in_switch_gpio_active_high);
+	if (chip->first_toggle) {
+		if ((chip->in_switch_gpio >= 0) && is_debug_accessory_detected(cc1, cc2)) {
+			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Kick Debug accessory FSM", __func__);
+			ovp_operation(chip, OVP_RESET);
+		}
 		chip->first_toggle = false;
 	}
 
@@ -2104,7 +2149,6 @@ static int max77759_vote_icl(struct max77759_plat *chip, u32 max_ua)
 	int ret = 0;
 	struct usb_vote vote;
 
-	usb_psy_set_sink_state(chip->usb_psy_data, chip->online);
 	/*
 	 * TCPM sets max_ua to zero for Rp-default which needs to be
 	 * ignored. PPS values reflect the requested ones not the max.
@@ -2133,28 +2177,29 @@ static void icl_work_item(struct kthread_work *work)
 	struct max77759_plat *chip  =
 		container_of(container_of(work, struct kthread_delayed_work, work),
 			     struct max77759_plat, icl_work);
-
-	max77759_vote_icl(chip, chip->typec_current_max);
-}
-
-static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
-{
-	struct max77759_plat *chip = container_of(nb, struct max77759_plat, psy_notifier);
-	struct power_supply *psy = ptr;
 	union power_supply_propval current_max = {0}, voltage_max = {0}, online = {0},
 	      usb_type = {0}, val = {0};
 	int ret;
 
-	if (!strstr(psy->desc->name, "tcpm-source") || evt != PSY_EVENT_PROP_CHANGED)
-		return NOTIFY_OK;
-
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_CURRENT_MAX, &current_max);
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &voltage_max);
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE, &online);
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_USB_TYPE, &usb_type);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_CURRENT_MAX, &current_max);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &voltage_max);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_ONLINE, &online);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_USB_TYPE, &usb_type);
 	logbuffer_logk(chip->log, LOGLEVEL_INFO,
-		       "ONLINE:%d USB_TYPE:%d CURRENT_MAX:%d VOLTAGE_MAX:%d",
-		       online.intval, usb_type.intval, current_max.intval, voltage_max.intval);
+		      "%s: ONLINE:%d USB_TYPE:%d CURRENT_MAX:%d VOLTAGE_MAX:%d",
+		      __func__, online.intval, usb_type.intval, current_max.intval, voltage_max.intval);
+
+	/* Debounce disconnect for power adapters that can source at least 1.5A */
+	if (chip->debounce_adapter_disconnect && chip->online && !online.intval &&
+	    chip->typec_current_max >= 1500000) {
+		logbuffer_log(chip->log, "Debouncing disconnect\n");
+		/* Reduce current limit 500mA during debounce */
+		max77759_vote_icl(chip, 500000);
+		chip->debounce_adapter_disconnect = false;
+		kthread_mod_delayed_work(chip->wq, &chip->icl_work,
+					 msecs_to_jiffies(DISCONNECT_DEBOUNCE_MS));
+		return;
+	}
 
 	chip->vbus_mv = voltage_max.intval / 1000;
 	ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
@@ -2165,6 +2210,30 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	chip->online = online.intval;
 	chip->usb_type = usb_type.intval;
 	chip->typec_current_max = current_max.intval;
+	usb_psy_set_sink_state(chip->usb_psy_data, chip->online);
+	max77759_vote_icl(chip, chip->typec_current_max);
+}
+
+static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
+{
+	struct max77759_plat *chip = container_of(nb, struct max77759_plat, psy_notifier);
+	struct power_supply *psy = ptr;
+	union power_supply_propval online = {0}, usb_type = {0};
+
+	if (!strstr(psy->desc->name, "tcpm-source") || evt != PSY_EVENT_PROP_CHANGED)
+		return NOTIFY_OK;
+
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE, &online);
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_USB_TYPE, &usb_type);
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "ONLINE:%d USB_TYPE:%d", online.intval,
+		       usb_type.intval);
+	chip->tcpm_psy = psy;
+
+	if (chip->online && !online.intval && chip->typec_current_max >= 1500000)
+		chip->debounce_adapter_disconnect = true;
+	else
+		chip->debounce_adapter_disconnect = false;
+
 	/* Notifier is atomic, hence offloading */
 	kthread_mod_delayed_work(chip->wq, &chip->icl_work, 0);
 	return NOTIFY_OK;
@@ -2421,8 +2490,7 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 		max777x9_disable_contaminant_detection(chip);
 		max77759_enable_toggling_locked(chip, false);
 		if (chip->in_switch_gpio >= 0) {
-			gpio_set_value_cansleep(chip->in_switch_gpio,
-						!chip->in_switch_gpio_active_high);
+			ovp_operation(chip, OVP_OFF);
 			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Disable in-switch set %s / active %s",
 			    __func__, !chip->in_switch_gpio_active_high ? "high" : "low",
 			    chip->in_switch_gpio_active_high ? "high" : "low");
@@ -2434,8 +2502,7 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 		else
 			max77759_enable_toggling_locked(chip, true);
 		if (chip->in_switch_gpio >= 0) {
-			gpio_set_value_cansleep(chip->in_switch_gpio,
-						chip->in_switch_gpio_active_high);
+			ovp_operation(chip, OVP_ON);
 			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Enable in-switch set %s / active %s",
 			    __func__, chip->in_switch_gpio_active_high ? "high" : "low",
 			    chip->in_switch_gpio_active_high ? "high" : "low");
@@ -3404,6 +3471,7 @@ static void max77759_shutdown(struct i2c_client *client)
 
 	dev_info(&client->dev, "disabling Type-C upon shutdown\n");
 	kthread_cancel_delayed_work_sync(&chip->check_missing_rp_work);
+	kthread_cancel_delayed_work_sync(&chip->icl_work);
 	/* Set current limit to 0. Will eventually happen after hi-Z as well */
 	max77759_vote_icl(chip, 0);
 	/* Prevent re-enabling toggling */

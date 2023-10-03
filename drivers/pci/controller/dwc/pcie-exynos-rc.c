@@ -221,18 +221,48 @@ void s2mpu_update_refcnt(struct device *dev,
 	spin_unlock_irqrestore(&exynos_pcie->s2mpu_refcnt_lock, flags);
 }
 #endif
+
+static void exynos_pcie_mem_copy_epdev(struct exynos_pcie *exynos_pcie)
+{
+	struct device *epdev = &exynos_pcie->ep_pci_dev->dev;
+
+	dev_info(epdev,"COPY ep_dev to PCIe memory struct\n");
+	memcpy(&exynos_pcie->dup_ep_dev, epdev,
+			sizeof(exynos_pcie->dup_ep_dev));
+	exynos_pcie->dup_ep_dev.dma_ops = NULL;
+
+	return;
+}
+
 static void *pcie_dma_alloc_attrs(struct device *dev, size_t size,
 				  dma_addr_t *dma_handle, gfp_t flag,
 				  unsigned long attrs)
 {
 	void *cpu_addr;
 	struct pci_dev *epdev = to_pci_dev_from_dev(dev);
-	int ch_num = pci_domain_nr(epdev->bus);
-	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
-	int ret;
+	int ch_num = 0;
+	struct exynos_pcie *exynos_pcie;
+	int ret = 0;
 
-	cpu_addr = dma_alloc_attrs(&fake_dma_dev, size,
+	if (unlikely(dev == NULL)) {
+		pr_err("EP device is NULL!!!\n");
+		return NULL;
+	}
+	ch_num = pci_domain_nr(epdev->bus);
+
+	exynos_pcie = &g_pcie_rc[ch_num];
+
+	/* Some EP device need to copy EP device structure again. */
+	if (exynos_pcie->copy_dup_ep == 0) {
+		memcpy(&exynos_pcie->dup_ep_dev, dev,
+				sizeof(exynos_pcie->dup_ep_dev));
+		exynos_pcie->dup_ep_dev.dma_ops = NULL;
+		exynos_pcie->copy_dup_ep = 1;
+	}
+
+	cpu_addr = dma_alloc_attrs(&exynos_pcie->dup_ep_dev, size,
 				   dma_handle, flag, attrs);
+
 	if (exynos_pcie->s2mpu) {
 		s2mpu_update_refcnt(dev, *dma_handle, size, true, DMA_BIDIRECTIONAL);
 	} else if (exynos_pcie->use_sysmmu && cpu_addr != NULL) {
@@ -240,7 +270,7 @@ static void *pcie_dma_alloc_attrs(struct device *dev, size_t size,
 				DMA_BIDIRECTIONAL, pcie_ch_to_hsi(ch_num));
 		if (ret != 0) {
 			pr_err("Can't map PCIe SysMMU table!\n");
-			dma_free_attrs(&fake_dma_dev, size,
+			dma_free_attrs(&exynos_pcie->dup_ep_dev, size,
 				       cpu_addr, *dma_handle, attrs);
 			return NULL;
 		}
@@ -254,10 +284,18 @@ static void pcie_dma_free_attrs(struct device *dev, size_t size,
 				unsigned long attrs)
 {
 	struct pci_dev *epdev = to_pci_dev_from_dev(dev);
-	int ch_num = pci_domain_nr(epdev->bus);
-	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+	int ch_num = 0;
+	struct exynos_pcie *exynos_pcie;
 
-	dma_free_attrs(&fake_dma_dev, size, cpu_addr, dma_addr, attrs);
+	if (unlikely(dev == NULL)) {
+		pr_err("EP device is NULL!!!\n");
+		return;
+	}
+	ch_num = pci_domain_nr(epdev->bus);
+
+	exynos_pcie = &g_pcie_rc[ch_num];
+
+	dma_free_attrs(&exynos_pcie->dup_ep_dev, size, cpu_addr, dma_addr, attrs);
 	if (exynos_pcie->s2mpu)
 		s2mpu_update_refcnt(dev, dma_addr, size, false, DMA_BIDIRECTIONAL);
 	else if (exynos_pcie->use_sysmmu)
@@ -270,12 +308,20 @@ static dma_addr_t pcie_dma_map_page(struct device *dev, struct page *page,
 				    unsigned long attrs)
 {
 	struct pci_dev *epdev = to_pci_dev_from_dev(dev);
-	int ch_num = pci_domain_nr(epdev->bus);
-	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+	int ch_num = 0;
+	struct exynos_pcie *exynos_pcie;
 	dma_addr_t dma_addr;
-	int ret;
+	int ret = 0;
 
-	dma_addr = dma_map_page_attrs(&fake_dma_dev, page, offset,
+	if (unlikely(dev == NULL)) {
+		pr_err("EP device is NULL!!!\n");
+		return -EINVAL;
+	}
+	ch_num = pci_domain_nr(epdev->bus);
+
+	exynos_pcie = &g_pcie_rc[ch_num];
+
+	dma_addr = dma_map_page_attrs(&exynos_pcie->dup_ep_dev, page, offset,
 				      size, dir, attrs);
 	if (exynos_pcie->s2mpu) {
 		s2mpu_update_refcnt(dev, dma_addr, size, true, dir);
@@ -295,10 +341,18 @@ static void pcie_dma_unmap_page(struct device *dev, dma_addr_t dma_addr,
 				unsigned long attrs)
 {
 	struct pci_dev *epdev = to_pci_dev_from_dev(dev);
-	int ch_num = pci_domain_nr(epdev->bus);
-	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+	int ch_num = 0;
+	struct exynos_pcie *exynos_pcie;
 
-	dma_unmap_page_attrs(&fake_dma_dev, dma_addr, size, dir, attrs);
+	if (unlikely(dev == NULL)) {
+		pr_err("EP device is NULL!!!\n");
+		return;
+	}
+	ch_num = pci_domain_nr(epdev->bus);
+
+	exynos_pcie = &g_pcie_rc[ch_num];
+
+	dma_unmap_page_attrs(&exynos_pcie->dup_ep_dev, dma_addr, size, dir, attrs);
 
 	if (exynos_pcie->s2mpu)
 		s2mpu_update_refcnt(dev, dma_addr, size, false, dir);
@@ -2727,7 +2781,7 @@ void exynos_pcie_rc_resumed_phydown(struct dw_pcie_rp *pp)
 		exynos_pcie->phy_ops.phy_all_pwrdn(exynos_pcie, exynos_pcie->ch_num);
 
 	if (exynos_pcie->ch_num == 1) {
-		dev_dbg(dev, "Disable PCIE2 PHY\n");
+		dev_info(dev, "Disable PCIE2 PHY\n");
 		exynos_pcie_ch2_phy_disable(exynos_pcie);
 	}
 
@@ -3366,6 +3420,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 	struct device *dev;
 	int ret;
 	unsigned long flags;
+	u32 val;
 
 	if (!exynos_pcie) {
 		pr_err("%s: ch#%d PCIe device is not loaded\n", __func__, ch_num);
@@ -3427,6 +3482,8 @@ int exynos_pcie_rc_poweron(int ch_num)
 		pinctrl_select_state(exynos_pcie->pcie_pinctrl,
 				     exynos_pcie->pin_state[PCIE_PIN_ACTIVE]);
 
+		exynos_soc_write(exynos_pcie, 0x15, 0x4000);
+
 		/* phy all power down clear */
 		if (exynos_pcie->phy_ops.phy_all_pwrdn_clear)
 			exynos_pcie->phy_ops.phy_all_pwrdn_clear(exynos_pcie, exynos_pcie->ch_num);
@@ -3473,6 +3530,8 @@ int exynos_pcie_rc_poweron(int ch_num)
 			exynos_pcie->ep_pci_dev = exynos_pcie_get_pci_dev(&pci->pp);
 
 #if IS_ENABLED(CONFIG_GS_S2MPU) || IS_ENABLED(CONFIG_EXYNOS_PCIE_IOMMU)
+			exynos_pcie_mem_copy_epdev(exynos_pcie);
+
 			if (exynos_pcie->s2mpu || exynos_pcie->use_sysmmu) {
 				if (exynos_pcie->ep_device_type == EP_BCM_WIFI) {
 					set_dma_ops(&exynos_pcie->ep_pci_dev->dev, &pcie_dma_ops);
@@ -3496,6 +3555,17 @@ int exynos_pcie_rc_poweron(int ch_num)
 				}
 			}
 		}
+	}
+
+	if(exynos_pcie->ch_num == 0) {
+		/* PLL & BIAS always on
+		 * this is done to provide a more deterministic way to
+		 * turn off the PLLs during L2 entry
+		 */
+		writel(0x300D5, exynos_pcie->phy_pcs_base + 0x150);
+		val = readl(exynos_pcie->phy_pcs_base + 0x150);
+		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
+			       "pwron: pcs+0x150: %#x", val);
 	}
 
 	dev_info(dev, "end poweron, state: %d\n", exynos_pcie->state);
@@ -3585,6 +3655,12 @@ void exynos_pcie_rc_poweroff(int ch_num)
 			__func__, gpio_get_value(exynos_pcie->perst_gpio));
 		logbuffer_log(exynos_pcie->log, "%s: Set PERST to LOW, gpio val = %d",
 			      __func__, gpio_get_value(exynos_pcie->perst_gpio));
+
+		// level clk switching for stability
+		val = exynos_soc_read(exynos_pcie, 0x4000);
+		val &= ~(0x3);
+		exynos_soc_write(exynos_pcie, val, 0x4000); //sw mode and select osc_clk
+
 
 		/* LTSSM disable */
 		exynos_elbi_write(exynos_pcie, PCIE_ELBI_LTSSM_DISABLE, PCIE_APP_LTSSM_ENABLE);
@@ -5276,7 +5352,7 @@ static int exynos_pcie_rc_suspend_noirq(struct device *dev)
 
 	logbuffer_log(exynos_pcie->log, "pm_suspend_no_irq called");
 	if (exynos_pcie->state == STATE_LINK_DOWN) {
-		dev_dbg(dev, "PCIe PMU ISOLATION\n");
+		dev_info(dev, "PCIe PMU ISOLATION\n");
 		exynos_pcie_phy_isolation(exynos_pcie, PCIE_PHY_ISOLATION);
 
 		return 0;

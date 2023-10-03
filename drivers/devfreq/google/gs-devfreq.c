@@ -687,29 +687,11 @@ static ssize_t show_exynos_devfreq_get_freq(struct device *dev,
 	return count;
 }
 
-static int exynos_devfreq_cmu_dump(struct exynos_devfreq_data *data)
-{
-	mutex_lock(&data->devfreq->lock);
-	cal_vclk_dbg_info(data->dfs_id);
-	mutex_unlock(&data->devfreq->lock);
-
-	return 0;
-}
-
 static ssize_t show_exynos_devfreq_cmu_dump(struct device *dev,
 					    struct device_attribute *attr,
 					    char *buf)
 {
-	struct device *parent = dev->parent;
-	struct platform_device *pdev =
-		container_of(parent, struct platform_device, dev);
-	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
 	ssize_t count = 0;
-
-	mutex_lock(&data->lock);
-	if (exynos_devfreq_cmu_dump(data))
-		dev_err(data->dev, "failed CMU Dump\n");
-	mutex_unlock(&data->lock);
 
 	count = snprintf(buf, PAGE_SIZE, "Done\n");
 
@@ -1404,7 +1386,7 @@ static struct devfreq *find_exynos_devfreq_device(void *devdata)
 int exynos_devfreq_parse_ect(struct exynos_devfreq_data *data,
 				    const char *dvfs_domain_name)
 {
-	int i;
+	int i, start_index;
 	void *dvfs_block;
 	struct ect_dvfs_domain *dvfs_domain;
 
@@ -1416,7 +1398,17 @@ int exynos_devfreq_parse_ect(struct exynos_devfreq_data *data,
 	if (!dvfs_domain)
 		return -ENODEV;
 
-	data->max_state = dvfs_domain->num_of_level;
+	for (i = 0; i < dvfs_domain->num_of_level; i++) {
+		if (data->max_freq >= dvfs_domain->list_level[i].level)
+			break;
+	}
+	start_index = i;
+
+	if (start_index >= dvfs_domain->num_of_level)
+		return -EINVAL;
+
+	data->max_state = dvfs_domain->num_of_level - start_index;
+
 	data->opp_list = kcalloc(data->max_state,
 				 sizeof(struct exynos_devfreq_opp_table),
 				 GFP_KERNEL);
@@ -1425,9 +1417,9 @@ int exynos_devfreq_parse_ect(struct exynos_devfreq_data *data,
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < dvfs_domain->num_of_level; ++i) {
+	for (i = 0; i < data->max_state; i++) {
 		data->opp_list[i].idx = i;
-		data->opp_list[i].freq = dvfs_domain->list_level[i].level;
+		data->opp_list[i].freq = dvfs_domain->list_level[i + start_index].level;
 		data->opp_list[i].volt = 0;
 	}
 
@@ -1477,6 +1469,17 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	if (of_property_read_u32(np, "ess_flag", &data->ess_flag))
 		return -ENODEV;
 
+	if (of_property_read_u32_array(np, "freq_info", (u32 *)&freq_array,
+				       (size_t)(ARRAY_SIZE(freq_array))))
+		return -ENODEV;
+
+	data->devfreq_profile.initial_freq = freq_array[0];
+	data->default_qos = freq_array[1];
+	data->suspend_freq = freq_array[2];
+	data->min_freq = freq_array[3];
+	data->max_freq = freq_array[4];
+	data->reboot_freq = freq_array[5];
+
 #if IS_ENABLED(CONFIG_ECT)
 	if (of_property_read_string(np, "devfreq_domain_name",
 				    &devfreq_domain_name))
@@ -1504,17 +1507,6 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	else
 		data->clk = NULL;
 #endif
-
-	if (of_property_read_u32_array(np, "freq_info", (u32 *)&freq_array,
-				       (size_t)(ARRAY_SIZE(freq_array))))
-		return -ENODEV;
-
-	data->devfreq_profile.initial_freq = freq_array[0];
-	data->default_qos = freq_array[1];
-	data->suspend_freq = freq_array[2];
-	data->min_freq = freq_array[3];
-	data->max_freq = freq_array[4];
-	data->reboot_freq = freq_array[5];
 
 	if (of_property_read_u32(np, "dfs_id", &data->dfs_id) &&
 	    of_property_match_string(np, "clock-names", buf))

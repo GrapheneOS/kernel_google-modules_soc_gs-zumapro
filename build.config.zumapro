@@ -1,18 +1,11 @@
-KCONFIG_EXT_PREFIX=${SOC_DIR}
-KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${KERNEL_DIR})/
+KCONFIG_EXT_MODULES_PREFIX=$(realpath ${ROOT_DIR} --relative-to ${ROOT_DIR}/{KERNEL_DIR})/
 
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.common
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.aarch64
 
 DEFCONFIG=zumapro_gki_defconfig
-PRE_DEFCONFIG_CMDS="mkdir -p \${OUT_DIR}/arch/arm64/configs/ && KCONFIG_CONFIG=\${OUT_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${ROOT_DIR}/${GKI_FRAGMENT_DEFCONFIG}"
-POST_DEFCONFIG_CMDS="update_config_zumapro"
-
-function update_config_zumapro() {
-       ${KERNEL_DIR}/scripts/config --file ${OUT_DIR}/.config -d WERROR
-       (cd ${OUT_DIR} && \
-        make O=${OUT_DIR} $archsubarch CROSS_COMPILE=${CROSS_COMPILE} ${TOOL_ARGS} ${MAKE_ARGS} olddefconfig)
-}
+PRE_DEFCONFIG_CMDS="mkdir -p \${OUT_DIR}/arch/arm64/configs/ && KCONFIG_CONFIG=\${OUT_DIR}/arch/arm64/configs/${DEFCONFIG} ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m -r ${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig ${ROOT_DIR}/${FRAGMENT_CONFIG} && true"
+POST_DEFCONFIG_CMDS=""
 
 MAKE_GOALS=
 

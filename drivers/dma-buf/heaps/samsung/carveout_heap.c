@@ -65,6 +65,7 @@ static struct dma_buf *carveout_heap_allocate(struct dma_heap *heap, unsigned lo
 		buffer->priv = samsung_dma_buffer_protect(buffer, size, 1, paddr);
 		if (IS_ERR(buffer->priv)) {
 			ret = PTR_ERR(buffer->priv);
+			buffer->priv = NULL;
 			goto free_prot;
 		}
 	}

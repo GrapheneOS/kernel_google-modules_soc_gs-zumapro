@@ -75,12 +75,10 @@ extern void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct
 extern void vh_dump_throttled_rt_tasks_mod(void *data, int cpu, u64 clock, ktime_t rt_period,
 					   u64 rt_runtime, s64 rt_period_timer_expires);
 
-#if IS_ENABLED(CONFIG_SCHED_LIB)
-extern void android_rvh_show_max_freq(void *unused, struct cpufreq_policy *policy,
-						unsigned int *max_freq);
+#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
 extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
-					const struct cpumask *in_mask, int *skip);
-#endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
+					const struct cpumask *in_mask, bool *skip);
+#endif /* IS_ENABLED(CONFIG_VH_SCHED_LIB) */
 
 extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
 	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
@@ -103,7 +101,6 @@ extern void android_vh_use_amu_fie_pixel_mod(void* data, bool *use_amu_fie);
 extern void rvh_set_user_nice_pixel_mod(void *data, struct task_struct *p, long *nice,
 					bool *allowed);
 extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
-extern void rvh_prepare_prio_fork_pixel_mod(void *data, struct task_struct *p);
 extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 					 struct cpumask *lowest_mask,
 					 int ret, int *cpu);
@@ -142,6 +139,7 @@ static int init_vendor_task_data(void *data)
 	struct vendor_task_struct *v_tsk;
 	struct task_struct *p, *t;
 
+	rcu_read_lock();
 	for_each_process_thread(p, t) {
 		get_task_struct(t);
 		v_tsk = get_vendor_task_struct(t);
@@ -149,6 +147,7 @@ static int init_vendor_task_data(void *data)
 		v_tsk->orig_prio = t->static_prio;
 		put_task_struct(t);
 	}
+	rcu_read_unlock();
 
 	/* our module can start handling the initialization now */
 	wait_for_init = false;
@@ -241,7 +240,7 @@ static int vh_sched_init(void)
 	 *
 	 * stop_machine provides atomic way to guarantee this without races.
 	 */
-	ret = stop_machine(init_vendor_task_data, NULL, cpumask_of(smp_processor_id()));
+	ret = stop_machine(init_vendor_task_data, NULL, cpumask_of(raw_smp_processor_id()));
 	if (ret)
 		return ret;
 
@@ -386,15 +385,12 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-#if IS_ENABLED(CONFIG_SCHED_LIB)
-	ret = register_trace_android_rvh_show_max_freq(android_rvh_show_max_freq, NULL);
-	if (ret)
-		return ret;
+#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
 
 	ret = register_trace_android_vh_sched_setaffinity_early(vh_sched_setaffinity_mod, NULL);
 	if (ret)
 		return ret;
-#endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
+#endif /* IS_ENABLED(CONFIG_VH_SCHED_LIB) */
 
 	ret = register_trace_android_vh_binder_set_priority(
 		vh_binder_set_priority_pixel_mod, NULL);
@@ -415,10 +411,6 @@ static int vh_sched_init(void)
 		return ret;
 
 	ret = register_trace_android_rvh_setscheduler(rvh_setscheduler_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
-	ret = register_trace_android_rvh_prepare_prio_fork(rvh_prepare_prio_fork_pixel_mod, NULL);
 	if (ret)
 		return ret;
 

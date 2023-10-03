@@ -353,7 +353,7 @@ extern struct dma_map_ops exynos_pcie_dma_ops;
 
 static void __maybe_unused pcie_sysmmu_enable(int hsi_block_num)
 {
-	pr_err("PCIe SysMMU is NOT Enabled!!!\n");
+	pr_err("PCIe SysMMU is Enabled!!!\n");
 }
 
 static void __maybe_unused pcie_sysmmu_disable(int hsi_block_num)
@@ -364,14 +364,14 @@ static void __maybe_unused pcie_sysmmu_disable(int hsi_block_num)
 static int __maybe_unused pcie_iommu_map(unsigned long iova, phys_addr_t paddr,
 					 size_t size, int prot, int hsi_block_num)
 {
-	pr_err("PCIe SysMMU is NOT Enabled!!!\n");
+	pr_err("PCIe SysMMU is Mapped!!!\n");
 	return -ENODEV;
 }
 
 static size_t __maybe_unused pcie_iommu_unmap(unsigned long iova, size_t size,
 					    int hsi_block_num)
 {
-	pr_err("PCIe SysMMU is NOT Enabled!!!\n");
+	pr_err("PCIe SysMMU is Unmapped!!!\n");
 	return 0;
 }
 #endif

@@ -1028,7 +1028,7 @@ void exynos_pm_qos_update_request_async(struct exynos_pm_qos_request *req,
 		return;
 	}
 
-	if (req->async_vote.target_freq != new_value) {
+	if (req->node.prio != new_value) {
 		req->async_vote.target_freq = new_value;
 		queue_work(async_vote_wq, &req->async_vote.work);
 	}

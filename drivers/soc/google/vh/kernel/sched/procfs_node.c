@@ -1228,6 +1228,7 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
+
 	if (!p) {
 		rcu_read_unlock();
 		return -ESRCH;
@@ -1241,9 +1242,10 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 		return -EACCES;
 	}
 
+	rcu_read_unlock();
 	vp = get_vendor_task_struct(p);
-
 	rq = task_rq_lock(p, &rf);
+
 	if (task_on_rq_queued(p)) {
 		vrq = get_vendor_rq_struct(rq);
 
@@ -1265,10 +1267,9 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 		if (vendor_sched_boost_adpf_prio)
 			update_adpf_prio(p, vp, val);
 	}
-	task_rq_unlock(rq, p, &rf);
 
+	task_rq_unlock(rq, p, &rf);
 	put_task_struct(p);
-	rcu_read_unlock();
 
 	return 0;
 }
@@ -2065,20 +2066,20 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 
 PROC_OPS_RW(pmu_poll_enable);
 
-#if IS_ENABLED(CONFIG_SCHED_LIB)
-extern unsigned int sched_lib_cpu_freq_cached_val;
+#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
+extern unsigned long sched_lib_mask_out_val;
 
-static int sched_lib_cpu_freq_cached_show(struct seq_file *m, void *v)
+static int sched_lib_mask_out_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%u\n", sched_lib_cpu_freq_cached_val);
+	seq_printf(m, "0x%x\n", sched_lib_mask_out_val);
 	return 0;
 }
 
-static ssize_t sched_lib_cpu_freq_cached_store(struct file *filp,
+static ssize_t sched_lib_mask_out_store(struct file *filp,
 					const char __user *ubuf,
 					size_t count, loff_t *pos)
 {
-	int dup_sched_lib_cpu_freq_cached_val = 0;
+	unsigned long val = 0;
 	char buf[MAX_PROC_SIZE];
 
 	if (count >= sizeof(buf))
@@ -2089,28 +2090,28 @@ static ssize_t sched_lib_cpu_freq_cached_store(struct file *filp,
 
 	buf[count] = '\0';
 
-	if (kstrtoint(buf, 10, &dup_sched_lib_cpu_freq_cached_val))
+	if (kstrtoul(buf, 0, &val))
 		return -EINVAL;
 
-	sched_lib_cpu_freq_cached_val = dup_sched_lib_cpu_freq_cached_val;
+	sched_lib_mask_out_val = val;
 	return count;
 
 }
 
-PROC_OPS_RW(sched_lib_cpu_freq_cached);
+PROC_OPS_RW(sched_lib_mask_out);
 
-extern unsigned int sched_lib_freq_val;
-static int sched_lib_freq_show(struct seq_file *m, void *v)
+extern unsigned long sched_lib_mask_in_val;
+static int sched_lib_mask_in_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%d\n", sched_lib_freq_val);
+	seq_printf(m, "0x%x\n", sched_lib_mask_in_val);
 	return 0;
 }
 
-static ssize_t sched_lib_freq_store(struct file *filp,
+static ssize_t sched_lib_mask_in_store(struct file *filp,
 							const char __user *ubuf,
 							size_t count, loff_t *pos)
 {
-	int dup_sched_lib_freq_val = 0;
+	unsigned long val = 0;
 	char buf[MAX_PROC_SIZE];
 
 	if (count >= sizeof(buf))
@@ -2121,45 +2122,15 @@ static ssize_t sched_lib_freq_store(struct file *filp,
 
 	buf[count] = '\0';
 
-	if (kstrtoint(buf, 10, &dup_sched_lib_freq_val))
+	if (kstrtoul(buf, 0, & val))
 		return -EINVAL;
 
-	sched_lib_freq_val = dup_sched_lib_freq_val;
+	sched_lib_mask_in_val = val;
 	return count;
 }
 
-PROC_OPS_RW(sched_lib_freq);
+PROC_OPS_RW(sched_lib_mask_in);
 
-extern unsigned int sched_lib_affinity_val;
-static int sched_lib_affinity_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%d\n", sched_lib_affinity_val);
-	return 0;
-}
-
-static ssize_t sched_lib_affinity_store(struct file *filp,
-							const char __user *ubuf,
-							size_t count, loff_t *pos)
-{
-	int dup_sched_lib_affinity_val = 0;
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtoint(buf, 10, &dup_sched_lib_affinity_val))
-		return -EINVAL;
-
-	sched_lib_affinity_val = dup_sched_lib_affinity_val;
-	return count;
-}
-
-PROC_OPS_RW(sched_lib_affinity);
 
 extern ssize_t sched_lib_name_store(struct file *filp,
 				const char __user *ubuffer, size_t count,
@@ -2167,7 +2138,7 @@ extern ssize_t sched_lib_name_store(struct file *filp,
 extern int sched_lib_name_show(struct seq_file *m, void *v);
 
 PROC_OPS_RW(sched_lib_name);
-#endif /* CONFIG_SCHED_LIB */
+#endif /* CONFIG_VH_SCHED_LIB */
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 static int ug_bg_auto_prio_show(struct seq_file *m, void *v)
@@ -2611,13 +2582,12 @@ static struct pentry entries[] = {
 	PROC_ENTRY(prefer_idle_clear),
 	PROC_ENTRY(uclamp_fork_reset_set),
 	PROC_ENTRY(uclamp_fork_reset_clear),
-#if IS_ENABLED(CONFIG_SCHED_LIB)
+#if IS_ENABLED(CONFIG_VH_SCHED_LIB)
 	// sched lib
-	PROC_ENTRY(sched_lib_cpu_freq_cached),
-	PROC_ENTRY(sched_lib_freq),
-	PROC_ENTRY(sched_lib_affinity),
+	PROC_ENTRY(sched_lib_mask_out),
+	PROC_ENTRY(sched_lib_mask_in),
 	PROC_ENTRY(sched_lib_name),
-#endif /* CONFIG_SCHED_LIB */
+#endif /* CONFIG_VH_SCHED_LIB */
 	// uclamp filter
 	PROC_ENTRY(uclamp_min_filter_enable),
 	PROC_ENTRY(uclamp_min_filter_us),

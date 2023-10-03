@@ -26,6 +26,7 @@ cpif_page.ko
 debug-reboot.ko
 debug-snapshot-debug-kinfo.ko
 deferred-free-helper.ko
+drm_display_helper.ko
 dss.ko
 dsulat-devfreq.ko
 dwc3-exynos-usb.ko
@@ -142,7 +143,6 @@ pinctrl-exynos-gs.ko
 pixel-boot-metrics.ko
 pixel-debug-test.ko
 pixel-suspend-diag.ko
-pixel_em.ko
 pixel_stat_mm.ko
 pixel_stat_sysfs.ko
 pkvm-s2mpu-v9.ko
@@ -205,8 +205,8 @@ usbc_cooling_dev.ko
 vh_cgroup.ko
 vh_fs.ko
 vh_mm.ko
-vh_sched.ko
 vh_thermal.ko
+vh_sched.ko
 virtio_balloon.ko
 virtio_blk.ko
 virtio_crypto.ko

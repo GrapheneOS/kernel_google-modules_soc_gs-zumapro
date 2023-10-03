@@ -32,7 +32,7 @@ config USE_GROUP_THROTTLE
 config VH_SCHED_LIB
 	bool "Library with additional scheduler options"
 	depends on VH_SCHED
-	default n
+	default y
 
 config USE_UPDATE_SINGLE
 	bool "Use sugov_update_single function for single-cpu cluster"

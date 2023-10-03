@@ -9,6 +9,8 @@ build:pixel_debug_common --config=no_download_gki
 
 build:blktest --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=blktest \
     --gki_build_config_fragment=//private/google-modules/soc/gs:build.config.slider.blktest
+build:debug_all --config=pixel_debug_common
+build:debug_all --defconfig_fragment=//private/google-modules/soc/gs:debug_all_defconfig
 build:debug_api --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=debug_api \
     --gki_build_config_fragment=//private/google-modules/soc/gs:build.config.slider.debug_api
 build:debug_kmemleak --config=pixel_debug_common --//private/google-modules/soc/gs:debug_fragment=debug_kmemleak \
@@ -40,7 +42,10 @@ build:no_download_gki --use_prebuilt_gki=false
 build --config=use_source_tree_aosp_staging
 
 # disable GKI prebuilts by default
-build --config=no_download_gki
+#build --config=no_download_gki
+
+# enable GKI prebuilts by default
+build --config=download_gki
 
 # enable GKI prebuilts by default
 #build --config=download_gki
