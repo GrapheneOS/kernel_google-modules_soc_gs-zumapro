@@ -112,6 +112,16 @@ extern int pmu_poll_init(void);
 
 extern bool wait_for_init;
 
+int pixel_cpu_num;
+int pixel_cluster_num = 0;
+int *pixel_cluster_start_cpu;
+bool pixel_cpu_init = false;
+
+EXPORT_SYMBOL_GPL(pixel_cpu_num);
+EXPORT_SYMBOL_GPL(pixel_cluster_num);
+EXPORT_SYMBOL_GPL(pixel_cluster_start_cpu);
+EXPORT_SYMBOL_GPL(pixel_cpu_init);
+
 /*
  * @tsk: Remote task we want to access its info
  * @saved_nice: Pointer to save the old nice value if we inherited a new one.
@@ -164,7 +174,7 @@ static void init_vendor_rt_rq(void)
 	int i;
 	struct vendor_rq_struct *vrq;
 
-	for (i = 0; i < CPU_NUM; i++) {
+	for (i = 0; i < pixel_cpu_num; i++) {
 		vrq = get_vendor_rq_struct(cpu_rq(i));
 		raw_spin_lock_init(&vrq->lock);
 		vrq->util_removed = 0;
@@ -193,9 +203,50 @@ static int init_vendor_task_data(void *data)
 	return 0;
 }
 
+static int init_pixel_cpu(void)
+{
+	int i, j = 0;
+	unsigned long cur_capacity = 0;
+
+	pixel_cpu_num = cpumask_weight(cpu_possible_mask);
+
+	if (!pixel_cpu_num)
+		return -EPROBE_DEFER;
+
+	for_each_possible_cpu(i) {
+		if (arch_scale_cpu_capacity(i) > cur_capacity) {
+			cur_capacity = arch_scale_cpu_capacity(i);
+			pixel_cluster_num++;
+		}
+	}
+
+	pixel_cluster_start_cpu = kcalloc(pixel_cluster_num, sizeof(int), GFP_KERNEL);
+
+	if (!pixel_cluster_start_cpu)
+		return -ENOMEM;
+
+	cur_capacity = 0;
+	for_each_possible_cpu(i) {
+		if (arch_scale_cpu_capacity(i) > cur_capacity) {
+			pixel_cluster_start_cpu[j++] = i;
+			cur_capacity = arch_scale_cpu_capacity(i);
+		}
+	}
+
+	pixel_cpu_init = true;
+
+	return 0;
+}
+
 static int vh_sched_init(void)
 {
 	int ret;
+
+	ret = init_pixel_cpu();
+	if (ret) {
+		pr_err("pixel cpu init failed\n");
+		return ret;
+	}
 
 	ret = pmu_poll_init();
 	if (ret) {
