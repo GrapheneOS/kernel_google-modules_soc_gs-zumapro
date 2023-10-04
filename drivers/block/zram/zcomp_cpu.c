@@ -192,7 +192,7 @@ int zcomp_cpu_dead(unsigned int cpu, struct hlist_node *node)
 	return 0;
 }
 
-static int zcomp_cpu_init(void)
+static int __init zcomp_cpu_init(void)
 {
 	int ret;
 	int i;
