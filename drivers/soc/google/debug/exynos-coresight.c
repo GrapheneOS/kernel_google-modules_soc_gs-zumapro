@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/panic_notifier.h>
+#include <linux/irqchip/arm-gic-v3.h>
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
 
@@ -43,6 +44,7 @@ struct exynos_coresight_info {
 	void __iomem **dbg_base;
 	void __iomem **cti_base;
 	void __iomem **pmu_base;
+	void __iomem **sgi_base;
 	bool halt_enabled;
 	void __iomem *gpr_base;
 	unsigned int dbgack_mask;
@@ -207,6 +209,8 @@ static int exynos_cs_lockup_handler(struct notifier_block *nb,
 		return 0;
 	}
 
+	dev_err(ecs_info->dev, "CPU[%d] GICR_ISPENDR0: 0x%08x\n", *cpu,
+		__raw_readl(ecs_info->sgi_base[*cpu] + GICR_ISPENDR0));
 	dev_err(ecs_info->dev, "CPU[%d] saved pc value\n", *cpu);
 	for (iter = 0; iter < ITERATION; iter++) {
 #if IS_ENABLED(CONFIG_EXYNOS_PMU_IF)
@@ -518,6 +522,11 @@ static int exynos_cs_parsing_dt(struct device *dev)
 	if (!ecs_info->pmu_base)
 		return -ENOMEM;
 
+	ecs_info->sgi_base = devm_kcalloc(dev, num_possible_cpus(),
+			sizeof(void *), GFP_KERNEL);
+	if (!ecs_info->sgi_base)
+		return -ENOMEM;
+
 	of_property_for_each_u32(np, "dbg_base", prop, cur, val) {
 		if (i >= num_possible_cpus() || !val)
 			return -EINVAL;
@@ -550,6 +559,19 @@ static int exynos_cs_parsing_dt(struct device *dev)
 			return -EINVAL;
 		ecs_info->pmu_base[i] = devm_ioremap(dev, val, SZ_4K);
 		if (!ecs_info->pmu_base[i]) {
+			dev_err(ecs_info->dev, "fail property %s(%d) ioremap\n",
+					prop->name, i);
+			return -ENOMEM;
+		}
+		i++;
+	}
+
+	i = 0;
+	of_property_for_each_u32(np, "sgi_base", prop, cur, val) {
+		if (i >= num_possible_cpus() || !val)
+			return -EINVAL;
+		ecs_info->sgi_base[i] = devm_ioremap(dev, val, SZ_64K);
+		if (!ecs_info->sgi_base[i]) {
 			dev_err(ecs_info->dev, "fail property %s(%d) ioremap\n",
 					prop->name, i);
 			return -ENOMEM;
