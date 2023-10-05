@@ -115,6 +115,12 @@ max77779_chg:max77779chrg@0x69 {
 
 	interrupt-controller;
 	#interrupt-cells = <2>;
+
+	max77779_gpio: max77779_gpio {
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <1>;
+	};
 };
 
 max77779_sp:max77779sp@60 {
