@@ -254,7 +254,7 @@
 					type = "active";
 				};
 				big_early_throttle: big-early_throttle {
-					temperature = <60000>; /* millicelsius */
+					temperature = <65000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
