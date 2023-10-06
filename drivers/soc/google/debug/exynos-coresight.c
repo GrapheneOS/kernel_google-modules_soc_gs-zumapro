@@ -270,6 +270,8 @@ static int exynos_cs_panic_handler(struct notifier_block *np,
 
 	local_irq_restore(flags);
 	for_each_possible_cpu(cpu) {
+		dev_err(ecs_info->dev, "CPU[%d] GICR_ISPENDR0: 0x%08x\n", cpu,
+			__raw_readl(ecs_info->sgi_base[cpu] + GICR_ISPENDR0));
 		dev_err(ecs_info->dev, "CPU[%d] saved pc value\n", cpu);
 		for (iter = 0; iter < ITERATION; iter++) {
 			val = exynos_cs_pc[cpu][iter].pc;
