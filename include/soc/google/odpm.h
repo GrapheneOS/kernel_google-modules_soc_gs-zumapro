@@ -66,13 +66,13 @@ struct odpm_chip {
 	const u32 *sampling_rate_ext_uhz;
 	int sampling_rate_ext_count;
 
-	enum s2mpg1415_int_samp_rate int_config_sampling_rate_i;
-	enum s2mpg1415_ext_samp_rate ext_config_sampling_rate_i;
+	s2mpg1415_int_samp_rate int_config_sampling_rate_i;
+	s2mpg1415_ext_samp_rate ext_config_sampling_rate_i;
 
 	/* Data */
 	u64 acc_timestamp_ms;
-	enum s2mpg1415_int_samp_rate int_sampling_rate_i;
-	enum s2mpg1415_ext_samp_rate ext_sampling_rate_i;
+	s2mpg1415_int_samp_rate int_sampling_rate_i;
+	s2mpg1415_ext_samp_rate ext_sampling_rate_i;
 
 	bool rx_ext_config_confirmation;
 };
@@ -108,7 +108,7 @@ struct odpm_info {
 	bool sleeping;
 };
 
-void odpm_get_raw_lpf_values(struct odpm_info *info, enum s2mpg1415_meter_mode mode,
+void odpm_get_raw_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
                              u32 micro_unit[ODPM_CHANNEL_MAX]);
 
 #endif /* __ODPM_H */

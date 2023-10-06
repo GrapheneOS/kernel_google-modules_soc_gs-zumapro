@@ -16,7 +16,7 @@
 #define S2MPG1415_METER_CHANNEL_MAX METER_CHANNEL_MAX
 #define MASK(width, shift) GENMASK(shift + width - 1, shift)
 
-enum s2mpg1415_meter_muxsel {
+typedef enum {
 	MUXSEL_NONE,
 
 	BUCK1 = 0x1,
@@ -87,7 +87,7 @@ enum s2mpg1415_meter_muxsel {
 	VSEN_C4 = 0x5C,
 	VSEN_C5 = 0x5D,
 	VSEN_C6 = 0x5E
-};
+} s2mpg1415_meter_muxsel;
 
 /**
  * sec_opmode_data - regulator operation mode data
@@ -128,42 +128,32 @@ struct sec_wtsr_smpl {
 			break;		\
 	}
 
-enum s2mpg1415_int_samp_rate {
-	INT_7P_8125HZ,
+typedef enum {
+	INT_7P_8125HZ = 0,
 	INT_15P_625HZ,
 	INT_31P_25HZ,
 	INT_62P_5HZ,
 	INT_125HZ,
 	INT_250HZ,
 	INT_1000HZ,
-	INT_FREQ_COUNT,
-	INT_FREQ_NONE,
-};
+	S2MPG1415_INT_FREQ_COUNT,
+	S2MPG1415_INT_FREQ_NONE,
+} s2mpg1415_int_samp_rate;
 
-enum s2mpg1415_ext_samp_rate {
-	EXT_7P_8125HZ,
+typedef enum {
+	EXT_7P_8125HZ = 0,
 	EXT_15P_625HZ,
 	EXT_31P_25HZ,
 	EXT_62P_5HZ,
 	EXT_125HZ,
-	EXT_FREQ_COUNT,
-	EXT_FREQ_NONE,
-};
+	S2MPG1415_EXT_FREQ_COUNT,
+	S2MPG1415_EXT_FREQ_NONE,
+} s2mpg1415_ext_samp_rate;
 
-enum s2mpg1415_int_acquisition_time_us {
-	INT_7P_8125HZ_ACQUISITION_TIME_US = 128000,
-	INT_15P_625HZ_ACQUISITION_TIME_US = 64000,
-	INT_31P_25HZ_ACQUISITION_TIME_US = 32000,
-	INT_62P_5HZ_ACQUISITION_TIME_US = 16000,
-	INT_125HZ_ACQUISITION_TIME_US = 8000,
-	INT_250HZ_ACQUISITION_TIME_US = 4000,
-	INT_1000HZ_ACQUISITION_TIME_US = 1000,
-};
-
-enum s2mpg1415_meter_mode {
-	S2MPG1415_METER_POWER,
-	S2MPG1415_METER_CURRENT,
-};
+typedef enum {
+	S2MPG1415_METER_POWER = 0,
+	S2MPG1415_METER_CURRENT = 1,
+} s2mpg1415_meter_mode;
 
 /* MUXSEL0~7 */
 #define MUXSEL_MASK 0x7F

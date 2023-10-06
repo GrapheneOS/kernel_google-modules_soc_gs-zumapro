@@ -37,7 +37,7 @@ static struct mfd_cell s2mpg15_meter_devs[] = {
 };
 #endif
 
-u32 s2mpg15_muxsel_to_current_resolution(enum s2mpg1415_meter_muxsel m)
+u32 s2mpg15_muxsel_to_current_resolution(s2mpg1415_meter_muxsel m)
 {
 	switch (m) {
 	case MUXSEL_NONE:
@@ -105,7 +105,7 @@ u32 s2mpg15_muxsel_to_current_resolution(enum s2mpg1415_meter_muxsel m)
 }
 EXPORT_SYMBOL_GPL(s2mpg15_muxsel_to_current_resolution);
 
-u32 s2mpg15_muxsel_to_power_resolution(enum s2mpg1415_meter_muxsel m)
+u32 s2mpg15_muxsel_to_power_resolution(s2mpg1415_meter_muxsel m)
 {
 	switch (m) {
 	case MUXSEL_NONE:
@@ -173,7 +173,7 @@ u32 s2mpg15_muxsel_to_power_resolution(enum s2mpg1415_meter_muxsel m)
 }
 EXPORT_SYMBOL_GPL(s2mpg15_muxsel_to_power_resolution);
 
-static const char *muxsel_to_str(enum s2mpg1415_meter_muxsel m)
+static const char *muxsel_to_str(s2mpg1415_meter_muxsel m)
 {
 	char *ret;
 
@@ -254,7 +254,7 @@ int s2mpg15_ext_meter_onoff(struct s2mpg15_meter *s2mpg15, bool onoff)
 EXPORT_SYMBOL_GPL(s2mpg15_ext_meter_onoff);
 
 int s2mpg15_meter_set_muxsel(struct s2mpg15_meter *s2mpg15, int channel,
-			     enum s2mpg1415_meter_muxsel m)
+			     s2mpg1415_meter_muxsel m)
 {
 	int reg = S2MPG15_METER_MUXSEL0;
 	int ret = -EPERM;
@@ -387,7 +387,7 @@ static ssize_t s2mpg15_lpf_current_show(struct device *dev,
 					  s2mpg15->lpf_data);
 
 	for (i = 0; i < S2MPG1415_METER_CHANNEL_MAX; i++) {
-		enum s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
+		s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
 
 		count += s2mpg1415_meter_format_channel(buf, count, i,
 			muxsel_to_str(muxsel), "(mA)",
@@ -413,7 +413,7 @@ static ssize_t s2mpg15_lpf_power_show(struct device *dev,
 					  s2mpg15->lpf_data);
 
 	for (i = 0; i < S2MPG1415_METER_CHANNEL_MAX; i++) {
-		enum s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
+		s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
 
 		count += s2mpg1415_meter_format_channel(buf, count, i,
 			muxsel_to_str(muxsel), "(mW)",
@@ -442,7 +442,7 @@ static ssize_t s2mpg15_acc_current_show(struct device *dev,
 				    &acc_count, NULL, INT_125HZ);
 
 	for (i = 0; i < S2MPG1415_METER_CHANNEL_MAX; i++) {
-		enum s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
+		s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
 
 		count += s2mpg1415_meter_format_channel(buf, count, i,
 			muxsel_to_str(muxsel), "(mA)",
@@ -470,7 +470,7 @@ static ssize_t s2mpg15_acc_power_show(struct device *dev,
 				    &acc_count, NULL, INT_125HZ);
 
 	for (i = 0; i < S2MPG1415_METER_CHANNEL_MAX; i++) {
-		enum s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
+		s2mpg1415_meter_muxsel muxsel = s2mpg15->chg_mux_sel[i];
 
 		count += s2mpg1415_meter_format_channel(buf, count, i,
 			muxsel_to_str(muxsel), "(mW)",
