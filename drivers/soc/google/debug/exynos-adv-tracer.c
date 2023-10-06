@@ -518,6 +518,8 @@ static int adv_tracer_ipc_init(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
 	int ret = 0;
+	struct cpumask aff_mask;
+	const char *buf;
 
 	eat_ipc = devm_kzalloc(&pdev->dev,
 			sizeof(struct adv_tracer_ipc_main), GFP_KERNEL);
@@ -541,6 +543,15 @@ static int adv_tracer_ipc_init(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register interrupt: %d\n", ret);
 		return ret;
+	}
+	ret = of_property_read_string(node, "irq_affinity", &buf);
+	if (!ret) {
+		cpulist_parse(buf, &aff_mask);
+		ret = irq_set_affinity_hint(eat_ipc->irq, &aff_mask);
+		if (ret) {
+			dev_err(&pdev->dev, "failed to set interrupt affinity: %d\n", ret);
+			return ret;
+		}
 	}
 	eat_ipc->dev = &pdev->dev;
 
