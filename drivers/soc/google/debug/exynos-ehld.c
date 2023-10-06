@@ -41,6 +41,8 @@
 #define ehld_err(f, str...)  do { if (f == 1) pr_err(str); } while (0)
 #endif
 
+#define EHLD_PCSR_RES0_MAGIC	(0x5cULL << 56)
+#define EHLD_PCSR_SELF		(EHLD_PCSR_RES0_MAGIC | 0xbb0ce1a1d05e1fULL)
 #define MSB_MASKING		(0x0000FF0000000000)
 #define MSB_PADDING		(0xFFFFFF0000000000)
 #define DBG_UNLOCK(base)	\
@@ -426,6 +428,8 @@ void exynos_ehld_event_raw_update(unsigned int cpu, bool update_val)
 		val = __raw_readq(ctrl->dbg_base + PMU_OFFSET + PMUPCSR);
 		if (MSB_MASKING == (MSB_MASKING & val))
 			val |= MSB_PADDING;
+		if (cpu == raw_smp_processor_id())
+			val = EHLD_PCSR_SELF;
 		data->pmpcsr[count] = val;
 		val = __raw_readl(ctrl->dbg_base + PMU_OFFSET);
 		data->event[count] = val;
@@ -465,6 +469,7 @@ void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
 	struct exynos_ehld_data *data;
 	unsigned long flags, count;
 	int i;
+	char buf[128];
 
 	if (sjtag_is_locked()) {
 		ehld_err(1, "EHLD trace requires SJTAG authentication\n");
@@ -479,9 +484,15 @@ void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
 	data = &ctrl->data;
 	for (i = 0; i < NUM_TRACE; i++) {
 		count = ++data->data_ptr % NUM_TRACE;
-		ehld_err(1, "      %03u    %03d     %015llu      %#015llx      %#016llx(%pS)\n",
+		if (data->pmpcsr[count] == EHLD_PCSR_SELF) {
+			strlcpy(buf, "(self)", sizeof(buf));
+		} else {
+			snprintf(buf, sizeof(buf), "%#016llx(%pS)",
+				 data->pmpcsr[count], (void *)data->pmpcsr[count]);
+		}
+		ehld_err(1, "      %03u    %03d     %015llu      %#015llx      %s\n",
 					cpu, i + 1, data->time[count], data->event[count],
-					data->pmpcsr[count], (void *)data->pmpcsr[count]);
+					buf);
 	}
 	raw_spin_unlock_irqrestore(&ctrl->lock, flags);
 	ehld_err(1, "--------------------------------------------------------------------------\n");
