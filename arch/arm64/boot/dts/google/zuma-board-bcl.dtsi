@@ -66,33 +66,33 @@
 
 				main_limit {
 					pmic = "main_limit";
-					ch1 { setting = <209>; };
-					ch2 { setting = <157>; };
-					ch3 { setting = <182>; };
-					ch4 { setting = <202>; };
-					ch5 { setting = <143>; };
-					ch6 { setting = <89>; };
-					ch7 { setting = <238>; };
-					ch8 { setting = <74>; };
-					ch9 { setting = <177>; };
-					ch10 { setting = <171>; };
-					ch11 { setting = <60>; };
-					ch12 { setting = <60>; };
+					ch1 { setting = <255>; };
+					ch2 { setting = <255>; };
+					ch3 { setting = <222>; };
+					ch4 { setting = <251>; };
+					ch5 { setting = <181>; };
+					ch6 { setting = <126>; };
+					ch7 { setting = <255>; };
+					ch8 { setting = <105>; };
+					ch9 { setting = <224>; };
+					ch10 { setting = <207>; };
+					ch11 { setting = <83>; };
+					ch12 { setting = <83>; };
 				};
 				sub_limit {
 					pmic = "sub_limit";
-					ch1 { setting = <85>; };
-					ch2 { setting = <144>; };
-					ch3 { setting = <107>; };
-					ch4 { setting = <25>; };
-					ch5 { setting = <40>; };
-					ch6 { setting = <34>; };
-					ch7 { setting = <199>; };
-					ch8 { setting = <113>; };
-					ch9 { setting = <85>; };
-					ch10 { setting = <114>; };
-					ch11 { setting = <137>; };
-					ch12 { setting = <106>; };
+					ch1 { setting = <106>; };
+					ch2 { setting = <180>; };
+					ch3 { setting = <151>; };
+					ch4 { setting = <36>; };
+					ch5 { setting = <51>; };
+					ch6 { setting = <56>; };
+					ch7 { setting = <253>; };
+					ch8 { setting = <126>; };
+					ch9 { setting = <195>; };
+					ch10 { setting = <125>; };
+					ch11 { setting = <166>; };
+					ch12 { setting = <166>; };
 				};
 				freq_qos {
 					batoilo {
