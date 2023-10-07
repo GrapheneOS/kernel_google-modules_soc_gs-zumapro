@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 
 #include "samsung-iommu-v9.h"
+#include <soc/google/debug-snapshot.h>
 #include <soc/google/pkvm-s2mpu.h>
 
 #define REG_MMU_NUM_CONTEXT			0x0100
@@ -1533,6 +1534,8 @@ static int sysmmu_parse_dt(struct device *sysmmu, struct sysmmu_drvdata *data)
 							    "sysmmu,ap-read-implies-write");
 	data->ap_permissive = of_property_read_bool(sysmmu->of_node,
 						    "sysmmu,ap-permissive");
+	if (of_property_read_u32(sysmmu->of_node, "panic-action", &data->panic_action))
+		data->panic_action = GO_PANIC_ID;
 
 	data->vmid_mask = SYSMMU_MASK_VMID;
 	ret = of_property_read_u32_index(sysmmu->of_node, "vmid_mask", 0, &mask);
