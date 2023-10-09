@@ -25,12 +25,12 @@ struct s2mpg14_meter {
 
 /* Public s2mpg14 Meter functions */
 int s2mpg14_meter_set_muxsel(struct s2mpg14_meter *s2mpg14, int channel,
-			     s2mpg1415_meter_muxsel m);
+			     enum s2mpg1415_meter_muxsel m);
 
 int s2mpg14_meter_onoff(struct s2mpg14_meter *s2mpg14, bool onoff);
 int s2mpg14_ext_meter_onoff(struct s2mpg14_meter *s2mpg14, bool onoff);
-u32 s2mpg14_muxsel_to_power_resolution(s2mpg1415_meter_muxsel m);
-u32 s2mpg14_muxsel_to_current_resolution(s2mpg1415_meter_muxsel m);
+u32 s2mpg14_muxsel_to_power_resolution(enum s2mpg1415_meter_muxsel m);
+u32 s2mpg14_muxsel_to_current_resolution(enum s2mpg1415_meter_muxsel m);
 void s2mpg14_meter_read_lpf_data_reg(struct s2mpg14_meter *s2mpg14,
 				     u32 *data);
 
