@@ -98,8 +98,8 @@
 
 		use-acpm-mpmm-throttle;
 		mpmm_enable = <0xF>;
-		mpmm_throttle_level = <0x1AA>;
-		mpmm_clr_throttle_level = <0x100>;
+		mpmm_throttle_level = <0x100>;
+		mpmm_clr_throttle_level = <0x1AA>;
 	};
 
 	tmuctrl_2: LITTLE@100A0000 {
