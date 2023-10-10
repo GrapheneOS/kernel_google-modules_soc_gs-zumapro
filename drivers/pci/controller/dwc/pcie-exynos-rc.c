@@ -3196,6 +3196,7 @@ static int exynos_pcie_rc_establish_link(struct dw_pcie_rp *pp)
 	u32 val, busdev;
 	int count = 0, try_cnt = 0;
 	unsigned int save_before_state = 0xff;
+	u32 cur_link_width = 0;
 	//u32 i;
 	//u32 pll_lock = 0, cdr_lock = 0, oc_done = 0;
 retry:
@@ -3284,6 +3285,25 @@ retry:
 	val |= HISTORY_BUFFER_ENABLE;
 	exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
 
+	/* Set dynamic lane-width according the request link speed */
+	if (exynos_pcie->num_lanes == 2) {
+		val = dw_pcie_readl_dbi(pci, PCIE_PORT_LINK_CONTROL);
+		val &= ~PORT_LINK_MODE_MASK;
+		if (exynos_pcie->max_link_speed == LINK_SPEED_GEN1)
+			val |= PORT_LINK_MODE_1_LANES;
+		else
+			val |= PORT_LINK_MODE_2_LANES;
+		dw_pcie_writel_dbi(pci, PCIE_PORT_LINK_CONTROL, val);
+
+		val = dw_pcie_readl_dbi(pci, PCIE_LINK_WIDTH_SPEED_CONTROL);
+		val &= ~PORT_LOGIC_LINK_WIDTH_MASK;
+		if (exynos_pcie->max_link_speed == LINK_SPEED_GEN1)
+			val |= PORT_LOGIC_LINK_WIDTH_1_LANES;
+		else
+			val |= PORT_LOGIC_LINK_WIDTH_2_LANES;
+		dw_pcie_writel_dbi(pci, PCIE_LINK_WIDTH_SPEED_CONTROL, val);
+	}
+
 	/* assert LTSSM enable */
 	exynos_elbi_write(exynos_pcie, PCIE_ELBI_LTSSM_ENABLE, PCIE_APP_LTSSM_ENABLE);
 	count = 0;
@@ -3354,11 +3374,14 @@ retry:
 		usleep_range(2800, 3000); /* 3 ms - OK */
 
 		exynos_pcie_rc_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &val);
+		cur_link_width = (val >> 20) & (0x3F);
 		val = (val >> 16) & 0xf;
-		dev_dbg(dev, "Current Link Speed is GEN%d (MAX GEN%d)\n",
-			val, exynos_pcie->max_link_speed);
-		logbuffer_log(exynos_pcie->log, "Current Link Speed is GEN%d (MAX GEN%d)",
-			      val, exynos_pcie->max_link_speed);
+		dev_dbg(dev, "Current Link Speed is GEN%d (MAX GEN%d), Current link-width is %d (MAX link-width%d)\n",
+				val, exynos_pcie->max_link_speed, cur_link_width, exynos_pcie->num_lanes);
+		logbuffer_log(exynos_pcie->log,
+				"Current Link Speed is GEN%d (MAX GEN%d), Current link-width is %d (MAX link-width%d)\n",
+				val, exynos_pcie->max_link_speed, cur_link_width, exynos_pcie->num_lanes);
+
 
 		/* check link training result(speed) */
 		if (exynos_pcie->ip_ver >= 0x982000 && val < exynos_pcie->max_link_speed) {
