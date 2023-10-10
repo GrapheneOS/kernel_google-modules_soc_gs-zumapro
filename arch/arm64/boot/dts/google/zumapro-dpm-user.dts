@@ -3,5 +3,9 @@
 /dts-v1/;
 /plugin/;
 
+/ {
+	compatible = "google,ZUMAPRO DPM-user", "google,ZUMAPRO DPM-user";
+};
+
 #include "zuma-dpm-user.dtsi"
 #include "avf-dpm-user.dtsi"
