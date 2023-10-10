@@ -307,42 +307,42 @@
 		/* funnel-port = <(funnel num) (port num)>; */
 		etm0 {
 			device_type = "etm";
-			offset = <0x1130000>;
+			offset = <0x10B0000>;
 			funnel-port = <0 0>;
 		};
 		etm1 {
 			device_type = "etm";
-			offset = <0x1230000>;
+			offset = <0x1130000>;
 			funnel-port = <0 0>;
 		};
 		etm2 {
 			device_type = "etm";
-			offset = <0x1330000>;
+			offset = <0x11B0000>;
 			funnel-port = <0 0>;
 		};
 		etm3 {
 			device_type = "etm";
-			offset = <0x1430000>;
+			offset = <0x1230000>;
 			funnel-port = <0 0>;
 		};
 		etm4 {
 			device_type = "etm";
-			offset = <0x1530000>;
+			offset = <0x12B0000>;
 			funnel-port = <0 0>;
 		};
 		etm5 {
 			device_type = "etm";
-			offset = <0x1630000>;
+			offset = <0x1330000>;
 			funnel-port = <0 0>;
 		};
 		etm6 {
 			device_type = "etm";
-			offset = <0x1730000>;
+			offset = <0x13B0000>;
 			funnel-port = <0 0>;
 		};
 		etm7 {
 			device_type = "etm";
-			offset = <0x1830000>;
+			offset = <0x1430000>;
 			funnel-port = <0 0>;
 		};
 		etf0@4000 {
