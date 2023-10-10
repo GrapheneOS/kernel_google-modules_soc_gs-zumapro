@@ -369,6 +369,9 @@ struct dbg_snapshot_helper_ops {
 */
 #define ARM_CPU_PART_MAKALU		0xD4D
 #define ARM_CPU_PART_MAKALU_ELP		0xD4E
+#define ARM_CPU_PART_HAYDEN		0xD80
+#define ARM_CPU_PART_HUNTER		0xD81
+#define ARM_CPU_PART_HUNTER_ELP		0xD82
 
 #define DSS_NR_CPUS_ZUMA		(9)
 #define DSS_NR_CPUS_OTHERS		(8)

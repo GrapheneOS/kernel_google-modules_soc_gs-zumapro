@@ -164,6 +164,9 @@ static int exynos_cs_get_pc(int cpu, int iter)
 	case ARM_CPU_PART_CORTEX_X2:
 	case ARM_CPU_PART_MAKALU:
 	case ARM_CPU_PART_MAKALU_ELP:
+	case ARM_CPU_PART_HAYDEN:
+	case ARM_CPU_PART_HUNTER:
+	case ARM_CPU_PART_HUNTER_ELP:
 		DBG_UNLOCK(dbg_base);
 		dbg_os_unlock(dbg_base);
 		DBG_UNLOCK(pmu_base);
