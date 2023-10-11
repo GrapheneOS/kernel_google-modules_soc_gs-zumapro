@@ -188,6 +188,9 @@ kernel_module(
     ],
     outs = [
         # keep sorted
+        "drivers/block/zram/zcomp_cpu.ko",
+        "drivers/block/zram/zcomp_eh.ko",
+        "drivers/block/zram/zram_gs.ko",
         "drivers/bts/bts.ko",
         "drivers/char/hw_random/exyswd-rng.ko",
         "drivers/clk/gs/clk_exynos_gs.ko",
@@ -373,7 +376,6 @@ kernel_images(
 
 _gki_modules = [
     # keep sorted
-    "//common:kernel_aarch64/drivers/block/zram/zram.ko",
     "//common:kernel_aarch64/lib/crypto/libarc4.ko",
     "//common:kernel_aarch64/mm/zsmalloc.ko",
     "//common:kernel_aarch64/net/ieee802154/ieee802154.ko",

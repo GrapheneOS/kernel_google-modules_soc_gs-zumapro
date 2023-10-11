@@ -194,5 +194,5 @@ videobuf2-dma-sg.ko
 xhci-exynos.ko
 zcomp_cpu.ko
 zcomp_eh.ko
-zram.ko
+zram_gs.ko
 zsmalloc.ko

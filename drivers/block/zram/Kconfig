@@ -18,7 +18,7 @@ config ZRAM_GS
 config ZCOMP_CPU
 	tristate "CPU compression"
 	depends on ZRAM_GS
-	default y
+	default n
 	help
 	  Support CPU compressor. User should configuire it via echo
 	  "lzo" > /sys/block/zramX/comp_algorithm
@@ -27,7 +27,7 @@ config ZCOMP_EH
 	tristate "Support Emerald Hill HW compressor"
 	depends on ZRAM_GS
 	select GOOGLE_EH
-	default y
+	default n
 	help
 	  Support Emerald Hill HW compressor. User should configure it via
 	  echo "lz77eh" > /sys/block/zramX/comp_algorithm
