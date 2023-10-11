@@ -191,3 +191,10 @@ config BOOKERCI
 	default n
 	help
 	  This is BOOKER-CI driver.
+
+config ETM2DRAM
+	tristate "ETM to DRAM driver"
+	default n
+	help
+	  This driver exposes interfaces to access debugcore for controlling
+	  ETM2DRAM functions.

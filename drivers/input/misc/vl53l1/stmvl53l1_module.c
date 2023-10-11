@@ -244,7 +244,7 @@ struct stmvl53l1_module_fn_t {
 	void *(*get)(void *object);
 
 	/* decrement reference counter and deallocate memory when zero */
-	void (*put)(void *object);
+	int (*put)(void *object);
 };
 
 /** i2c module interface*/
@@ -271,6 +271,11 @@ static void stmvl53l1_input_push_data(struct stmvl53l1_data *data);
  * Mutex to handle device id add/removal
  */
 static DEFINE_MUTEX(dev_table_mutex);
+
+/*
+ * Mutex to handle device open/release
+ */
+static DEFINE_MUTEX(dev_open_mutex);
 
 /**
  * in-used device LUT
@@ -3624,7 +3629,9 @@ static int stmvl53l1_open(struct inode *inode, struct file *file)
 	struct stmvl53l1_data *data = container_of(file->private_data,
 		struct stmvl53l1_data, miscdev);
 
+	mutex_lock(&dev_open_mutex);
 	stmvl53l1_module_func_tbl.get(data->client_object);
+	mutex_unlock(&dev_open_mutex);
 
 	return 0;
 }
@@ -3633,8 +3640,36 @@ static int stmvl53l1_release(struct inode *inode, struct file *file)
 {
 	struct stmvl53l1_data *data = container_of(file->private_data,
 		struct stmvl53l1_data, miscdev);
+	struct i2c_data *i2c_data = (struct i2c_data *)data->client_object;
+	struct device *dev = &i2c_data->client->dev;
+	int rc;
 
-	stmvl53l1_module_func_tbl.put(data->client_object);
+	mutex_lock(&dev_open_mutex);
+	/* Return 1 if the object was removed, otherwise return 0 after kref_put */
+	if (stmvl53l1_module_func_tbl.put(data->client_object)) {
+		mutex_unlock(&dev_open_mutex);
+		return 0;
+	}
+	/*
+	 * Kref count showing 1 after kref_put means that thers's no more reference
+	 * to this object. Add a check here to ensure sensor is stopped and powered
+	 * down properly.
+	 */
+	if (kref_read(&i2c_data->ref) == 1) {
+		if (data->enable_sensor) {
+			rc = ctrl_stop(data);
+			if (rc) {
+				dev_err(dev, "fail to stop sensor, rc %d\n", rc);
+			}
+		}
+		if (data->is_power_up) {
+			rc = ctrl_power_down(data);
+			if (rc) {
+				dev_err(dev, "fail to power down, rc %d\n", rc);
+			}
+		}
+	}
+	mutex_unlock(&dev_open_mutex);
 
 	return 0;
 }

@@ -199,11 +199,13 @@ static inline u32 mfc_dec_get_strm_size(struct mfc_ctx *ctx, struct mfc_buf *src
 	 * And the dec->consumed is cumulate-decoded size.
 	 */
 	vb_plane = &src_mb->vb.vb2_buf.planes[0];
-	if (vb_plane->bytesused > vb_plane->data_offset) {
+	if (!vb_plane->bytesused) {
+		strm_size = 0;
+	} else if (vb_plane->bytesused > vb_plane->data_offset) {
 		strm_size = vb_plane->bytesused - vb_plane->data_offset;
 	} else {
 		strm_size = vb_plane->bytesused;
-		mfc_ctx_err("[STREAM] invalid offset (bytesused %d, data_offset: %d)\n",
+		mfc_ctx_info("[STREAM] invalid offset (bytesused %d, data_offset: %d)\n",
 				vb_plane->bytesused, vb_plane->data_offset);
 	}
 
@@ -211,8 +213,7 @@ static inline u32 mfc_dec_get_strm_size(struct mfc_ctx *ctx, struct mfc_buf *src
 		if (strm_size > dec->consumed) {
 			strm_size -= dec->consumed;
 		} else {
-			dec->consumed = 0;
-			mfc_ctx_err("[STREAM] invalid consumed (strm_size: %d, consumed: %d)",
+			mfc_ctx_info("[STREAM] invalid consumed (strm_size: %d, consumed: %d)",
 					strm_size, dec->consumed);
 		}
 	}

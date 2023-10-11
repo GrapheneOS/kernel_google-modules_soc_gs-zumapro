@@ -56,6 +56,8 @@
 #define EXPECT_BUF_VER 4
 #define ACPM_BUF_VER (acpm_gov_common.buffer_version & 0xff)
 
+#define MAX_TRACE_SUFFIX_STR_LEN (13)
+
 enum tmu_type_t {
 	TMU_TYPE_CPU,
 	TMU_TYPE_GPU,
@@ -194,6 +196,40 @@ static struct acpm_gov_common acpm_gov_common = {
 	.buffer_version = -1,
 	.bulk_trace_buffer = NULL,
 };
+
+static const char * const trace_suffix[] = {
+	[CPU_THROTTLE] = "cpu_throttle",
+	[HARD_LIMIT] = "hard_limit",
+	[HOTPLUG] = "hotplug",
+	[PAUSE] = "pause",
+	[DFS] = "dfs",
+};
+
+/**
+ * update_thermal_trace_internal() - Adds a trace
+ * @pdata: TMU data pointer for the current TZ
+ * @feature: feature choice from the thermal_feature enum list
+ * @value: Trace value to be added
+ *
+ * Return: void
+ */
+static void update_thermal_trace_internal(struct gs_tmu_data *pdata,
+					  enum thermal_feature feature, int value)
+{
+	char clock_name[THERMAL_NAME_LENGTH + MAX_TRACE_SUFFIX_STR_LEN + 1];
+
+	scnprintf(clock_name,
+		  (THERMAL_NAME_LENGTH + MAX_TRACE_SUFFIX_STR_LEN + 1), "%s_%s",
+		  pdata->tmu_name, trace_suffix[feature]);
+	trace_clock_set_rate(clock_name, value, raw_smp_processor_id());
+}
+
+static void update_thermal_trace(struct gs_tmu_data *pdata,
+					  enum thermal_feature feature, int value)
+{
+	if (unlikely(trace_clock_set_rate_enabled()))
+		update_thermal_trace_internal(pdata, feature, value);
+}
 
 static void sync_kernel_acpm_timestamp(void)
 {
@@ -649,12 +685,19 @@ static void acpm_irq_cb(unsigned int *cmd, unsigned int size)
 
 		list_for_each_entry (data, &dtm_dev_list, node) {
 			struct curr_state curr_state = curr_state_all[data->id];
-			if ((!(dfs_status_changed & (1 << data->id))) ||
-			    (!(thermal_state.dfs_on & (1 << data->id))))
+
+			if (!test_bit(data->id, (unsigned long *)&dfs_status_changed))
 				continue;
-			pr_info_ratelimited("%s DFS on: temperature = %dC, cdev_state = %d\n",
-					    data->tmu_name, curr_state.temperature,
-					    curr_state.cdev_state);
+
+			if (test_bit(data->id, (unsigned long *)&thermal_state.dfs_on))
+				pr_info_ratelimited(
+					"%s DFS on: temperature = %dC, cdev_state = %d\n",
+					data->tmu_name, curr_state.temperature,
+					curr_state.cdev_state);
+
+			update_thermal_trace(data, DFS,
+					     test_bit(data->id,
+						      (unsigned long *)&thermal_state.dfs_on));
 		}
 	}
 }
@@ -852,29 +895,6 @@ static int gs_tmu_tz_config_init(struct platform_device *pdev)
 	}
 
 	return 0;
-}
-
-static const char * const trace_suffix[] = {
-	[CPU_THROTTLE] = "cpu_throttle",
-	[HARD_LIMIT] = "hard_limit",
-	[HOTPLUG] = "hotplug",
-	[PAUSE] = "pause",
-};
-#define MAX_TRACE_SUFFIX_STR_LEN (13)
-
-#define update_thermal_trace(pdata, feature, value)                                                \
-	do {                                                                                       \
-		if (unlikely(trace_clock_set_rate_enabled()))                                      \
-			update_thermal_trace_internal(pdata, feature, value);                      \
-	} while (0);
-
-static void update_thermal_trace_internal(struct gs_tmu_data *pdata,
-					  enum thermal_feature feature, int value)
-{
-	char clock_name[THERMAL_NAME_LENGTH + MAX_TRACE_SUFFIX_STR_LEN + 1];
-	scnprintf(clock_name, (THERMAL_NAME_LENGTH + 1 + strlen(trace_suffix[feature])),
-		 "%s_%s", pdata->tmu_name, trace_suffix[feature]);
-	trace_clock_set_rate(clock_name, value, raw_smp_processor_id());
 }
 
 static bool has_tz_pending_irq(struct gs_tmu_data *pdata)

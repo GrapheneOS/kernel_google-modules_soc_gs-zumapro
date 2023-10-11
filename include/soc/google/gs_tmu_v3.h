@@ -356,6 +356,7 @@ enum thermal_feature {
 	HARD_LIMIT = 1,
 	HOTPLUG = 2,
 	PAUSE = 3,
+	DFS = 4
 };
 
 struct sensor_data {
