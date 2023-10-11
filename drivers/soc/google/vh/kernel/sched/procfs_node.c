@@ -1257,7 +1257,6 @@ static int update_prefer_idle(const char *buf, bool val)
 
 static int update_uclamp_fork_reset(const char *buf, bool val)
 {
-	struct vendor_rq_struct *vrq;
 	struct vendor_task_struct *vp;
 	struct task_struct *p;
 	struct rq_flags rf;
@@ -1288,15 +1287,17 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 	rq = task_rq_lock(p, &rf);
 
 	if (task_on_rq_queued(p)) {
-		vrq = get_vendor_rq_struct(rq);
-
-		if (!vp->uclamp_fork_reset && val)
-			inc_adpf_counter(p, &vrq->num_adpf_tasks);
-		else if (vp->uclamp_fork_reset && !val)
-			dec_adpf_counter(p, &vrq->num_adpf_tasks);
+		if (!get_uclamp_fork_reset(p, true) && val)
+			inc_adpf_counter(p, rq);
+		else if (get_uclamp_fork_reset(p, false) && !val)
+			dec_adpf_counter(p, rq);
 	}
 
 	if (vp->uclamp_fork_reset != val) {
+		/* force reset uclamp_fork_reset inheritance */
+		if (val)
+			vp->binder_task.uclamp_fork_reset = false;
+
 		vp->uclamp_fork_reset = val;
 
 		if (vendor_sched_boost_adpf_prio)
@@ -1343,7 +1344,7 @@ static int update_vendor_group_attribute(const char *buf, enum vendor_group_attr
 		vp = get_vendor_task_struct(p);
 		raw_spin_lock_irqsave(&vp->lock, flags);
 		old = vp->group;
-		if (old == new) {
+		if (old == new || p->flags & PF_EXITING) {
 			raw_spin_unlock_irqrestore(&vp->lock, flags);
 			break;
 		}
@@ -1368,7 +1369,7 @@ static int update_vendor_group_attribute(const char *buf, enum vendor_group_attr
 			vp = get_vendor_task_struct(t);
 			raw_spin_lock_irqsave(&vp->lock, flags);
 			old = vp->group;
-			if (old == new) {
+			if (old == new || t->flags & PF_EXITING) {
 				raw_spin_unlock_irqrestore(&vp->lock, flags);
 				put_task_struct(t);
 				continue;
