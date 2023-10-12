@@ -42,11 +42,11 @@
 
 	freq_qos {
 		batoilo2 {
-			cpucl0 = <1704000>;
-			cpucl1 = <1945000>;
-			cpucl2 = <2294000>;
-			gpu = <723000>;
-			tpu = <845000>;
+			cpucl0 = <955000>;
+			cpucl1 = <1065000>;
+			cpucl2 = <1298000>;
+			gpu = <419000>;
+			tpu = <455000>;
 		};
 		batoilo {
 			cpucl0 = <1704000>;
