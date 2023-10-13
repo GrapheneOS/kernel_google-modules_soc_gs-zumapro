@@ -5,6 +5,9 @@
  *
  * Copyright 2020 Google LLC
  */
+
+#include <linux/cpuidle.h>
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/pelt.h>
 
@@ -18,9 +21,9 @@ extern int cpu_is_idle(int cpu);
 extern int sched_cpu_idle(int cpu);
 extern bool get_prefer_high_cap(struct task_struct *p);
 
-extern ___update_load_sum(u64 now, struct sched_avg *sa,
+extern int ___update_load_sum(u64 now, struct sched_avg *sa,
 			  unsigned long load, unsigned long runnable, int running);
-extern ___update_load_avg(struct sched_avg *sa, unsigned long load);
+extern void ___update_load_avg(struct sched_avg *sa, unsigned long load);
 
 /*****************************************************************************/
 /*                       Upstream Code Section                               */

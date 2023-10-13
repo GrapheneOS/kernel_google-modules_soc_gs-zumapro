@@ -5,10 +5,12 @@
  *
  * Copyright 2021 Google LLC
  */
+
 #include <linux/sched.h>
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 
-#include "../../../../../android/binder_internal.h"
+#include "drivers/android/binder_internal.h"
 #include "sched_events.h"
 #include "sched_priv.h"
 
@@ -174,10 +176,6 @@ void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
 		return;
 
 	vbinder->active = true;
-
-	/* inherit uclamp */
-	vbinder->uclamp[UCLAMP_MIN] = uclamp_eff_value(current, UCLAMP_MIN);
-	vbinder->uclamp[UCLAMP_MAX] = uclamp_eff_value(current, UCLAMP_MAX);
 
 	/* inherit prefer_idle */
 	vbinder->prefer_idle = get_prefer_idle(current);

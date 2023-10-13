@@ -8,6 +8,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 
 #include <linux/sched/cpufreq.h>
@@ -15,6 +16,7 @@
 #include <linux/perf_event.h>
 #include <linux/jiffies.h>
 #include <linux/pm_qos.h>
+#include <uapi/linux/sched/types.h>
 
 #include <soc/google/exynos_pm_qos.h>
 #include "../../../../../devfreq/google/governor_memlat.h"
@@ -482,7 +484,7 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
  * required to meet deadlines.
  */
 unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
-				 unsigned long max, enum schedutil_type type,
+				 unsigned long max, enum cpu_util_type type,
 				 struct task_struct *p)
 {
 	unsigned long dl_util, util, irq;
@@ -1370,7 +1372,7 @@ int pmu_poll_init(void)
 	struct sched_attr attr = {0};
 
 	attr.sched_policy = SCHED_FIFO;
-	attr.sched_priority = MAX_USER_RT_PRIO / 2;
+	attr.sched_priority = MAX_RT_PRIO / 2;
 
 	init_irq_work(&pmu_irq_work, pmu_poll_irq_work);
 	kthread_init_work(&pmu_work, pmu_limit_work);

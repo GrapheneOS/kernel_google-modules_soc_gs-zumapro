@@ -170,7 +170,7 @@ static void apply_profile(struct pixel_em_profile *profile)
 								 max_freq,
 								 &new_freq_scale);
 				for_each_cpu(cpu, &cluster->cpus) {
-					WRITE_ONCE(per_cpu(freq_scale, cpu), new_freq_scale);
+					WRITE_ONCE(per_cpu(arch_freq_scale, cpu), new_freq_scale);
 				}
 			}
 #endif

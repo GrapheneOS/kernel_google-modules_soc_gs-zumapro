@@ -6,6 +6,7 @@
  * Copyright 2020 Google LLC
  */
 
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 #include <linux/cpufreq.h>
 #include <linux/module.h>
@@ -48,7 +49,7 @@ extern void rvh_check_preempt_wakeup_pixel_mod(void *data, struct rq *rq, struct
 			bool *preempt, bool *nopreempt, int wake_flags, struct sched_entity *se,
 			struct sched_entity *pse, int next_buddy_marked, unsigned int granularity);
 extern void vh_sched_uclamp_validate_pixel_mod(void *data, struct task_struct *tsk,
-					       const struct sched_attr *attr,
+					       const struct sched_attr *attr,  bool user,
 					       int *ret, bool *done);
 extern void vh_sched_setscheduler_uclamp_pixel_mod(void *data, struct task_struct *tsk,
 						   int clamp_id, unsigned int value);

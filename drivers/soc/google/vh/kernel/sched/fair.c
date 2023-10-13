@@ -5,11 +5,15 @@
  *
  * Copyright 2020 Google LLC
  */
+#include <linux/cpuidle.h>
+#include <linux/sched/cputime.h>
+#include <kernel/sched/autogroup.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/pelt.h>
 #include <linux/moduleparam.h>
 #include <trace/events/power.h>
 #include <trace/hooks/systrace.h>
+#include <uapi/linux/sched/types.h>
 
 #include "sched_priv.h"
 #include "sched_events.h"
@@ -58,7 +62,7 @@ extern inline unsigned int uclamp_none(enum uclamp_id clamp_id);
 bool wait_for_init = true;
 
 unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
-				 unsigned long max, enum schedutil_type type,
+				 unsigned long max, enum cpu_util_type type,
 				 struct task_struct *p);
 unsigned int map_scaling_freq(int cpu, unsigned int freq);
 
@@ -80,7 +84,7 @@ extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum
 
 static void attach_task(struct rq *rq, struct task_struct *p)
 {
-	lockdep_assert_held(&rq->lock);
+	lockdep_assert_held(&rq->__lock);
 
 	BUG_ON(task_rq(p) != rq);
 	activate_task(rq, p, ENQUEUE_NOCLOCK);
@@ -140,7 +144,7 @@ static unsigned long capacity_curr_of(int cpu)
 {
 	unsigned long max_cap = cpu_rq(cpu)->cpu_capacity_orig;
 
-	return cap_scale(max_cap, per_cpu(freq_scale, cpu));
+	return cap_scale(max_cap, per_cpu(arch_freq_scale, cpu));
 }
 
 /* Runqueue only has SCHED_IDLE tasks enqueued */
@@ -651,13 +655,13 @@ static inline unsigned long cpu_vendor_group_util_est(int cpu, bool with, struct
 
 #if defined(CONFIG_UCLAMP_TASK) && defined(CONFIG_FAIR_GROUP_SCHED)
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-unsigned long cpu_util_cfs_group_mod(struct rq *rq)
+unsigned long cpu_util_cfs_group_mod(int cpu)
 {
 	if (likely(sched_feat(UTIL_EST))) {
-		return max(cpu_vendor_group_util(rq->cpu, false, NULL),
-			   cpu_vendor_group_util_est(rq->cpu, false, NULL));
+		return max(cpu_vendor_group_util(cpu, false, NULL),
+			   cpu_vendor_group_util_est(cpu, false, NULL));
 	} else {
-		return cpu_vendor_group_util(rq->cpu, false, NULL);
+		return cpu_vendor_group_util(cpu, false, NULL);
 	}
 }
 #else
@@ -710,7 +714,7 @@ unsigned long cpu_util_cfs_group_mod(int cpu)
 
 unsigned long cpu_util(int cpu)
 {
-       return min(cpu_util_cfs_group_mod(cpu_rq(cpu)), capacity_of(cpu));
+       return min(cpu_util_cfs_group_mod(cpu), capacity_of(cpu));
 }
 
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
@@ -1393,7 +1397,7 @@ inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
 	struct uclamp_se *uc_se = &p->uclamp[clamp_id];
 	struct uclamp_bucket *bucket;
 
-	lockdep_assert_held(&rq->lock);
+	lockdep_assert_held(&rq->__lock);
 
 	if(SCHED_WARN_ON(!uclamp_is_used()))
 		return;
@@ -1436,7 +1440,7 @@ inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
 	unsigned int bkt_clamp;
 	unsigned int rq_clamp;
 
-	lockdep_assert_held(&rq->lock);
+	lockdep_assert_held(&rq->__lock);
 
 	if(SCHED_WARN_ON(!uclamp_is_used()))
 		return;
@@ -1595,7 +1599,6 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
 						 capacity, wake_util, capacity,	wake_util,
 						 spare_cap, task_fits, false);
 #endif
-
 
 			/*
 			 * Consider auto_uclamp_max based on placing the task
@@ -1925,6 +1928,7 @@ out:
 	trace_sched_find_energy_efficient_cpu(p, prefer_idle, prefer_high_cap, task_importance,
 				     &idle_fit, &idle_unfit, &unimportant_fit, &unimportant_unfit,
 				     &packing, &max_spare_cap, &idle_unpreferred, best_energy_cpu);
+
 	return best_energy_cpu;
 }
 
@@ -1960,7 +1964,8 @@ void vh_arch_set_freq_scale_pixel_mod(void *data, const struct cpumask *cpus,
 EXPORT_SYMBOL_GPL(vh_arch_set_freq_scale_pixel_mod);
 #endif
 
-void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, int *should_iowait_boost)
+void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
+			      int *should_iowait_boost)
 {
 	*should_iowait_boost = p->in_iowait && uclamp_boosted(p);
 }
@@ -2144,7 +2149,9 @@ void initialize_vendor_group_property(void)
 		vg[i].uc_req[UCLAMP_MAX].value = max_val;
 		vg[i].uc_req[UCLAMP_MAX].bucket_id = get_bucket_id(max_val);
 		vg[i].uc_req[UCLAMP_MAX].user_defined = false;
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 		vg[i].ug = UG_AUTO;
+#endif
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -2334,7 +2341,7 @@ void rvh_post_init_entity_util_avg_pixel_mod(void *data, struct sched_entity *se
 }
 
 void vh_sched_uclamp_validate_pixel_mod(void *data, struct task_struct *tsk,
-					const struct sched_attr *attr,
+					const struct sched_attr *attr, bool user,
 					int *ret, bool *done)
 {
 	struct vendor_task_struct *vtsk = get_vendor_task_struct(tsk);
@@ -2516,7 +2523,7 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 	struct task_struct *p = NULL, *best_task = NULL, *backup = NULL,
 		*backup_ui = NULL, *backup_unfit = NULL;
 
-	lockdep_assert_held(&src_rq->lock);
+	lockdep_assert_held(&src_rq->__lock);
 
 	rcu_read_lock();
 
@@ -2527,7 +2534,7 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 		if (!cpumask_test_cpu(dst_cpu, p->cpus_ptr))
 			continue;
 
-		if (task_running(src_rq, p))
+		if (task_on_cpu(src_rq, p))
 			continue;
 
 		if (!get_prefer_idle(p))
@@ -2635,7 +2642,7 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	 * re-start the picking loop.
 	 */
 	rq_unpin_lock(this_rq, rf);
-	raw_spin_unlock(&this_rq->lock);
+	raw_spin_unlock(&this_rq->__lock);
 
 	this_cpu = this_rq->cpu;
 	for_each_cpu(cpu, cpu_active_mask) {
@@ -2708,7 +2715,7 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 		}
 	}
 
-	raw_spin_lock(&this_rq->lock);
+	raw_spin_lock(&this_rq->__lock);
 	/*
 	 * While browsing the domains, we released the rq lock, a task could
 	 * have been enqueued in the meantime. Since we're not going idle,
@@ -2743,7 +2750,7 @@ void rvh_can_migrate_task_pixel_mod(void *data, struct task_struct *mp,
 	if (!mvp->uclamp_fork_reset || !get_prefer_idle(mp))
 		return;
 
-	lockdep_assert_held(&cpu_rq(dst_cpu)->lock);
+	lockdep_assert_rq_held(cpu_rq(dst_cpu));
 
 	if (atomic_read(&vrq->num_adpf_tasks))
 		*can_migrate = 0;
@@ -2843,5 +2850,5 @@ void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 	}
 #endif
 
-/* Resetting uclamp filter is handled in dequeue_task() */
+	/* Resetting uclamp filter is handled in dequeue_task() */
 }

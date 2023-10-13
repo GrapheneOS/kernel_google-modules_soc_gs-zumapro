@@ -111,7 +111,9 @@ struct vendor_group_property {
 	unsigned int uclamp_max_on_nice_high_prio;
 	bool uclamp_min_on_nice_enable;
 	bool uclamp_max_on_nice_enable;
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	enum utilization_group ug;
+#endif
 	struct uclamp_se uc_req[UCLAMP_CNT];
 };
 
@@ -211,17 +213,6 @@ static inline unsigned long _task_util_est(struct task_struct *p)
 static inline unsigned long task_util_est(struct task_struct *p)
 {
 	return max(task_util(p), _task_util_est(p));
-}
-
-static inline unsigned long uclamp_rq_get(struct rq *rq,
-					  enum uclamp_id clamp_id)
-{
-	return READ_ONCE(rq->uclamp[clamp_id].value);
-}
-
-static inline bool uclamp_rq_is_idle(struct rq *rq)
-{
-	return rq->uclamp_flags & UCLAMP_FLAG_IDLE;
 }
 
 static inline unsigned int uclamp_none(enum uclamp_id clamp_id)
@@ -371,32 +362,6 @@ static inline int util_fits_cpu(unsigned long util,
 
 	return fits;
 }
-
-#if IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
-static inline struct task_struct *task_of(struct sched_entity *se)
-{
-	SCHED_WARN_ON(!entity_is_task(se));
-	return container_of(se, struct task_struct, se);
-}
-
-static inline struct cfs_rq *cfs_rq_of(struct sched_entity *se)
-{
-	return se->cfs_rq;
-}
-#else
-static inline struct task_struct *task_of(struct sched_entity *se)
-{
-	return container_of(se, struct task_struct, se);
-}
-
-static inline struct cfs_rq *cfs_rq_of(struct sched_entity *se)
-{
-	struct task_struct *p = task_of(se);
-	struct rq *rq = task_rq(p);
-
-	return &rq->cfs;
-}
-#endif
 
 /*****************************************************************************/
 /*                       New Code Section                                    */

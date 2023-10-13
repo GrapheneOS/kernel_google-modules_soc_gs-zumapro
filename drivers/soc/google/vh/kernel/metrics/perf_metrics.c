@@ -22,7 +22,7 @@
 #include <trace/events/irq.h>
 #include <trace/hooks/suspend.h>
 #include "perf_metrics.h"
-#include "../systrace.h"
+#include <trace/hooks/systrace.h>
 
 struct irq_entry {
 	int irq_num;

@@ -3,6 +3,7 @@
  * Copyright 2022 Google LLC
  */
 
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 #include <trace/events/power.h>
 #include <uapi/linux/acpu.h>
@@ -80,7 +81,7 @@ static ssize_t read_acpu(struct file *file, char __user *buf, size_t count, loff
 }
 
 static void sched_switch_cb(void *data, bool preempt, struct task_struct *prev,
-			    struct task_struct *next)
+			    struct task_struct *next, unsigned int prev_state)
 {
 	struct acpu_idle_priv *stats = this_cpu_ptr(&idle_stats);
 	u64 t = ktime_get_ns();

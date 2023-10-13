@@ -5,7 +5,9 @@
  *
  * Copyright 2021 Google LLC
  */
+
 #include <linux/sched.h>
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 
 #define LIB_PATH_LENGTH 512
@@ -36,7 +38,7 @@ ssize_t sched_lib_name_store(struct file *filp,
 	return count;
 }
 
-sched_lib_name_show(struct seq_file *m, void *v)
+int sched_lib_name_show(struct seq_file *m, void *v)
 {
 	spin_lock(&__sched_lib_name_lock);
 	seq_printf(m, "%s\n", sched_lib_name);
