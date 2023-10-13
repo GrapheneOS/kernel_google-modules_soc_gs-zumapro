@@ -186,6 +186,8 @@ struct exynos_uart_port {
 	unsigned int			uart_logging;
 	struct uart_local_buf		uart_local_buf;
 	struct logbuffer *log;
+	unsigned int ioctl_support;
+	unsigned int skip_suspend;
 };
 
 /* conversion functions */
@@ -520,6 +522,18 @@ uart_dbg_store(struct device *dev, struct device_attribute *attr,
 			dev_err(dev, "Change UART%d to normal mode\n",
 				ourport->port.line);
 			ourport->dbg_mode = 0;
+			break;
+		case 8:
+			if (ourport->ioctl_support) {
+				dev_err(dev, "skip exynos_serial suspend/resume\n");
+				ourport->skip_suspend = 1;
+			}
+			break;
+		case 9:
+			if (ourport->ioctl_support) {
+				dev_err(dev, "disable skip exynos_serial suspend/resume\n");
+				ourport->skip_suspend = 0;
+			}
 			break;
 		default:
 			dev_err(dev, "Wrong Command!(0/1/2)\n");
@@ -2753,6 +2767,11 @@ static int exynos_serial_probe(struct platform_device *pdev)
 	else
 		ourport->uart_logging = 0;
 
+	if (of_get_property(pdev->dev.of_node, "goog,ioctl-suspend", NULL))
+		ourport->ioctl_support = 1;
+	else
+		ourport->ioctl_support = 0;
+
 	if (of_find_property(pdev->dev.of_node,
 			     "samsung,use-default-irq", NULL))
 		ourport->use_default_irq = 1;
@@ -2846,6 +2865,9 @@ static int exynos_serial_suspend(struct device *dev)
 	unsigned int ucon;
 
 	if (port) {
+		if (ourport->skip_suspend) {
+			return 0;
+		}
 		/*
 		 * If rts line must be protected while suspending
 		 * we change the gpio pad as output high
@@ -2892,6 +2914,12 @@ static int exynos_serial_suspend_noirq(struct device *dev)
 	struct exynos_uart_port *ourport = to_ourport(port);
 	unsigned int ucon;
 
+	if (port) {
+		if (ourport->skip_suspend) {
+			return 0;
+		}
+	}
+
 	if (ourport->dbg_uart_ch && !console_suspend_enabled) {
 		uart_clock_enable(ourport);
 		/* disable Tx, Rx mode bit for suspend in case of HWACG */
@@ -2913,6 +2941,9 @@ static int exynos_serial_resume(struct device *dev)
 	struct exynos_uart_port *ourport = to_ourport(port);
 
 	if (port) {
+		if (ourport->skip_suspend) {
+			return 0;
+		}
 		if (!IS_ERR(ourport->usi_reg))
 			regmap_update_bits(ourport->usi_reg,
 					   ourport->usi_offset,
@@ -2954,6 +2985,9 @@ static int exynos_serial_resume_noirq(struct device *dev)
 	struct exynos_uart_port *ourport = to_ourport(port);
 
 	if (port) {
+		if (ourport->skip_suspend) {
+			return 0;
+		}
 		/* restore IRQ mask */
 		if (exynos_serial_has_interrupt_mask(port)) {
 			unsigned int uintm = 0xf;
