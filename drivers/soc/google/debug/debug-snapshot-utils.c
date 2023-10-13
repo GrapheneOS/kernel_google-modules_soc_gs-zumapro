@@ -498,6 +498,9 @@ void dbg_snapshot_ecc_dump(bool call_panic)
 		break;
 	case ARM_CPU_PART_MAKALU:
 	case ARM_CPU_PART_MAKALU_ELP:
+	case ARM_CPU_PART_HAYDEN:
+	case ARM_CPU_PART_HUNTER:
+	case ARM_CPU_PART_HUNTER_ELP:
 		_dbg_snapshot_ecc_dump(call_panic, ecc_sel_str_dsu_core);
 		break;
 	default:
