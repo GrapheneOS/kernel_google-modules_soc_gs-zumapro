@@ -20,7 +20,9 @@
 #include <linux/hrtimer.h>
 #include <linux/reboot.h>
 #include <linux/io.h>
+#include <linux/time64.h>
 
+#include <soc/google/acpm_ipc_ctrl.h>
 #include <soc/google/exynos-ehld.h>
 #include <soc/google/exynos-coresight.h>
 #include <soc/google/debug-snapshot.h>
@@ -87,6 +89,7 @@ static struct exynos_ehld_main ehld_main = {
 
 struct exynos_ehld_data {
 	unsigned long long		time[NUM_TRACE];
+	unsigned long long		alive_time[NUM_TRACE];
 	unsigned long long		event[NUM_TRACE];
 	unsigned long long		pmpcsr[NUM_TRACE];
 	unsigned long			data_ptr;
@@ -413,6 +416,7 @@ void exynos_ehld_event_raw_update(unsigned int cpu, bool update_val)
 	data = &ctrl->data;
 	count = ++data->data_ptr & (NUM_TRACE - 1);
 	data->time[count] = cpu_clock(cpu);
+	data->alive_time[count] = get_frc_time() / NSEC_PER_MSEC;
 	if (sjtag_is_locked() || cpu_is_offline(cpu) || !ctrl->ehld_running ||
 	    ctrl->ehld_cpupm) {
 		val = EHLD_VAL_PM;
@@ -444,8 +448,10 @@ void exynos_ehld_event_raw_update(unsigned int cpu, bool update_val)
 			cpu_is_offline(cpu));
 
 	raw_spin_unlock_irqrestore(&ctrl->lock, flags);
-	ehld_info(0, "%s: cpu%u - time:%llu, event:%#llx\n",
-		__func__, cpu, data->time[count], data->event[count]);
+	ehld_info(0, "%s: cpu%u - time:%llu(%llu.%03llu), event:%#llx\n",
+		__func__, cpu, data->time[count],
+		data->alive_time[count] / MSEC_PER_SEC, data->alive_time[count] % MSEC_PER_SEC,
+		data->event[count]);
 }
 
 void exynos_ehld_event_raw_update_allcpu(void)
@@ -458,9 +464,9 @@ void exynos_ehld_event_raw_update_allcpu(void)
 
 static void print_ehld_header(void)
 {
-	ehld_err(1, "--------------------------------------------------------------------------\n");
+	ehld_err(1, "-------------------------------------------------------------------------------------------\n");
 	ehld_err(1, "      Exynos Early Lockup Detector Information\n\n");
-	ehld_err(1, "      CPU    NUM     TIME                 Value                PC\n\n");
+	ehld_err(1, "      CPU    NUM     TIME:sys(alive)                      Value                PC\n\n");
 }
 
 void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
@@ -490,9 +496,11 @@ void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
 			snprintf(buf, sizeof(buf), "%#016llx(%pS)",
 				 data->pmpcsr[count], (void *)data->pmpcsr[count]);
 		}
-		ehld_err(1, "      %03u    %03d     %015llu      %#015llx      %s\n",
-					cpu, i + 1, data->time[count], data->event[count],
-					buf);
+		ehld_err(1, "      %03u    %03d     %015llu(%010llu.%03llu)      %#015llx      %s\n",
+					cpu, i + 1, data->time[count],
+					data->alive_time[count] / MSEC_PER_SEC,
+					data->alive_time[count] % MSEC_PER_SEC,
+					data->event[count], buf);
 	}
 	raw_spin_unlock_irqrestore(&ctrl->lock, flags);
 	ehld_err(1, "--------------------------------------------------------------------------\n");
