@@ -410,7 +410,6 @@ static inline struct vendor_rq_struct *get_vendor_rq_struct(struct rq *rq)
 
 static inline bool get_uclamp_fork_reset(struct task_struct *p, bool inherited)
 {
-
 	if (inherited)
 		return get_vendor_task_struct(p)->uclamp_fork_reset ||
 			get_vendor_binder_task_struct(p)->uclamp_fork_reset;
