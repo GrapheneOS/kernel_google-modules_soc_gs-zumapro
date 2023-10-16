@@ -190,7 +190,7 @@ static int eusb_repeater_ctrl(int value)
 
 	ret = gpio_direction_output(tud->gpio_eusb_resetb, value);
 	if (ret)
-		dev_err(tud->dev, "Failed to control gpio: %s\n", ret);
+		dev_err(tud->dev, "Failed to control gpio: %d\n", ret);
 
 	if (value)
 		ret = pinctrl_select_state(tud->pinctrl, tud->power_on_state);

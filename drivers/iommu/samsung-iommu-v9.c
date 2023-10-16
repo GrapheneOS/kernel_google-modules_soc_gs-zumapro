@@ -441,7 +441,6 @@ static int samsung_sysmmu_set_domain_range(struct iommu_domain *dom,
 static struct samsung_sysmmu_domain *attach_helper(struct iommu_domain *dom, struct device *dev)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
-	struct samsung_sysmmu_domain *domain;
 
 	if (!fwspec || fwspec->ops != &samsung_sysmmu_ops) {
 		dev_err(dev, "failed to attach, IOMMU instance data %s.\n",

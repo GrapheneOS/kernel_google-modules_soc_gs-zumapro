@@ -497,7 +497,7 @@ static u32 exynos_devfreq_nudge_freq(struct device *dev, u32 freq, bool find_hig
 					     &tmp_freq,
 					     flags);
 	if (IS_ERR(target_opp)) {
-		dev_err(dev, "No valid OPP to nudge freq %lu to!\n", freq);
+		dev_err(dev, "No valid OPP to nudge freq %u to!\n", freq);
 		return 0;
 	}
 
@@ -506,7 +506,7 @@ static u32 exynos_devfreq_nudge_freq(struct device *dev, u32 freq, bool find_hig
 
 	if (freq != tmp_freq) {
 		dev_info(dev,
-			 "Nudged %lu KHz to the %s %lu KHz freq.\n",
+			 "Nudged %u KHz to the %s %lu KHz freq.\n",
 			 freq,
 			 freq > tmp_freq ? "higher" : "lower",
 			 tmp_freq);

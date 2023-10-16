@@ -621,7 +621,7 @@ static void simulate_ECC_INJECTION(void *info)
 	struct arm_smccc_res res;
 
 	dev_info(exynos_debug_desc.dev,
-		 "CPU%d: Level%d: ECC error injection!\n",
+		 "CPU%d: Level%ld: ECC error injection!\n",
 		 raw_smp_processor_id(), lev);
 
 	arm_smccc_smc(SIP_SVD_GS_DEBUG_CMD, CMD_ECC, lev, count, ctrl, 0, 0, 0, &res);

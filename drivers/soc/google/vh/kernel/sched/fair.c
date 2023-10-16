@@ -1224,7 +1224,7 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 				unsigned long max_util, unsigned long sum_util, bool count_idle,
 				int dst_cpu)
 {
-	unsigned long freq, scale_cpu, cost;
+	unsigned long freq, scale_cpu;
 	struct em_perf_state *ps;
 	int i, cpu;
 

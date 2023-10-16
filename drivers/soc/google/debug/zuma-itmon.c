@@ -1251,7 +1251,7 @@ static void _itmon_report_timeout(struct itmon_dev *itmon,
 	}
 
 	if (valid)
-		log_dev_err(itmon->dev, "> %03d|%05s|%16s|%16s|%5u|%5x|%06x|%6s|%4u|%4s|%016zx|%08x|%08x|%08x|%08x|%08x|%08x\n",
+		log_dev_err(itmon->dev, "> %03d|%5s|%16s|%16s|%5u|%5x|%06x|%6s|%4llu|%4s|%016zx|%08x|%08x|%08x|%08x|%08x|%08x\n",
 			    num, (trans_type == TRANS_TYPE_READ) ? "READ" : "WRITE",
 			    port ? port->port_name : NO_NAME,
 			    client_name ? client_name : NO_NAME,
@@ -1284,7 +1284,7 @@ static void itmon_report_timeout(struct itmon_dev *itmon,
 	if (tmout_frz_stat == 0x0)
 		return;
 
-	log_dev_err(itmon->dev, "TIMEOUT_FREEZE_STATUS 0x%08x", tmout_frz_stat);
+	log_dev_err(itmon->dev, "TIMEOUT_FREEZE_STATUS 0x%08lx", tmout_frz_stat);
 
 	for_each_set_bit(bit, &tmout_frz_stat, group->nodesize) {
 		tmout_offset = (1 << bit) >> 1;
@@ -1492,7 +1492,7 @@ static void itmon_enable_nodepolicy(struct itmon_dev *itmon,
 		return;
 
 	if (group->pd_support && !group->pd_status) {
-		dev_err(g_itmon->dev, "%s group - %s node NOT pd on\n",
+		dev_err(g_itmon->dev, "%p group - %p node NOT pd on\n",
 			group, node);
 	}
 
@@ -1555,7 +1555,7 @@ int itmon_en_by_name(const char *name, bool en)
 	}
 
 	if (group->pd_support && !group->pd_status) {
-		log_dev_err(g_itmon->dev, "%s group - %s node NOT pd on\n",
+		log_dev_err(g_itmon->dev, "%p group - %p node NOT pd on\n",
 			group, node);
 		return -EIO;
 	}
@@ -1972,7 +1972,7 @@ static void itmon_report_traceinfo(struct itmon_dev *itmon,
 			  info->dest ? info->dest : NO_NAME);
 
 	log_dev_err(itmon->dev, "\n----------------------------------------------------------------------------------\n"
-	       "\t> Size           : %u bytes x %u burst => %u bytes\n"
+	       "\t> Size           : %llu bytes x %u burst => %llu bytes\n"
 	       "\t> Burst Type     : %u (0:FIXED, 1:INCR, 2:WRAP)\n"
 	       "\t> Level          : %s\n"
 	       "\t> Protection     : %s\n"

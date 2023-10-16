@@ -522,7 +522,7 @@ static int spmi_bb_probe(struct platform_device *pdev)
 	spmi_bb_info->gpio_clk = devm_gpiod_get(&pdev->dev, "clk", GPIOD_IN);
 	if (IS_ERR(spmi_bb_info->gpio_clk)) {
 		ret = PTR_ERR(spmi_bb_info->gpio_clk);
-		dev_err(&pdev->dev, "spmi_clk ERROR %ld\n", ret);
+		dev_err(&pdev->dev, "spmi_clk ERROR %d\n", ret);
 		goto err_put_controller;
 	}
 
@@ -530,7 +530,7 @@ static int spmi_bb_probe(struct platform_device *pdev)
 	spmi_bb_info->gpio_dat = devm_gpiod_get(&pdev->dev, "dat", GPIOD_IN);
 	if (IS_ERR(spmi_bb_info->gpio_dat)) {
 		ret = PTR_ERR(spmi_bb_info->gpio_dat);
-		dev_err(&pdev->dev, "spmi_dat ERROR %ld\n", ret);
+		dev_err(&pdev->dev, "spmi_dat ERROR %d\n", ret);
 		goto err_put_controller;
 	}
 
