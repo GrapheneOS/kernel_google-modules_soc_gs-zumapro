@@ -26,7 +26,7 @@
 
 #define PT_SYSCTL_ENTRY 9
 #define PT_COMMAND_SIZE 128
-#define PT_COMMAND_SIZE_STR "128"
+#define PT_COMMAND_SIZE_STR "127"
 
 struct pt_pts {
 	bool enabled;

@@ -24,6 +24,8 @@
 #define DSULAT_DEVFREQ_MODULE_NAME      "gs-dsulat-devfreq"
 #define HZ_PER_KHZ      1000
 
+extern bool pixel_cpu_init;
+
 static int gs_dsulat_devfreq_target(struct device *parent,
 				    unsigned long *target_freq, u32 flags)
 {
@@ -198,6 +200,9 @@ static int gs_dsulat_devfreq_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct dev_pm_opp;
 	struct exynos_devfreq_data *dsu_data;
+
+	if (!pixel_cpu_init)
+		return -EPROBE_DEFER;
 
 	dsu_data = kzalloc(sizeof(*dsu_data), GFP_KERNEL);
 	if (!dsu_data) {

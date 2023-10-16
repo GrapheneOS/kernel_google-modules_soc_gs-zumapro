@@ -433,6 +433,7 @@
 		pmu-dbgcore-config = <0x3080>;
 		pmu-dbgcore-status = <0x3084>;
 		intr-bitoffset = <0>;
+		irq_affinity = "2-3";
 		status = "okay";
 	};
 

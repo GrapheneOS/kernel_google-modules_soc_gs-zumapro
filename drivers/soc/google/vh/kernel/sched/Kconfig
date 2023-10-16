@@ -5,25 +5,9 @@ config VH_SCHED
 	depends on VH_KERNEL
 	default m
 
-config VH_SCHED_CPU_NR
+config VH_SCHED_MAX_CPU_NR
 	int "CPU number on this platform"
 	default 9
-
-config VH_MIN_CAPACITY_CPU
-	int "Starting cpu of min capacity cluster"
-	default 0
-
-config VH_MID_CAPACITY_CPU
-	int "Starting cpu of mid capacity cluster"
-	default 4
-
-config VH_MAX_CAPACITY_CPU
-	int "Starting cpu of max capacity cluster"
-	default 8
-
-config VH_HIGH_CAPACITY_CPU
-	int "Starting cpu of high capacity cluster"
-	default 4
 
 config VH_PREEMPTIRQ_TRACEPOINTS
 	tristate "Vendor hooks for long preemptirq trace points"
