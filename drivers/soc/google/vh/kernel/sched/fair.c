@@ -912,6 +912,13 @@ static bool task_fits_capacity(struct task_struct *p, int cpu,  bool sync_boost)
 	return util_fits_cpu(task_util, uclamp_min, uclamp_max, cpu);
 }
 
+void rvh_util_fits_cpu_pixel_mod(void *data, unsigned long util, unsigned long uclamp_min,
+	unsigned long uclamp_max, int cpu, bool *fits, bool *done)
+{
+	*fits = util_fits_cpu(util, uclamp_min, uclamp_max, cpu);
+	*done = true;
+}
+
 static inline bool cpu_is_in_target_set(struct task_struct *p, int cpu)
 {
 	int first_cpu, next_usable_cpu;
