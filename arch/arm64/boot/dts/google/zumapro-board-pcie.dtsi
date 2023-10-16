@@ -17,7 +17,7 @@
 	use-l1ss = "true";
 	phy-power-off = "false";
 	use-pcieon-sleep = "true";
-	use-sysmmu = "true";
+	use-sysmmu = "false";
 	/* TODO(b/282615388): Update to x2 lanes when compatible */
 	num-lanes = <1>;
 	perst-delay-us = <18000>;
@@ -26,7 +26,7 @@
 
 &sysmmu_hsi1 {
 	use-map-once = "true";
-	status = "okay";
+	status = "disabled";
 	num_pmmu = <1>;
 	pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE)>;
 };
