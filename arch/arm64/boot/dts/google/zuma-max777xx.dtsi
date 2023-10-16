@@ -109,6 +109,7 @@ max77779_chg:max77779chrg@0x69 {
 	reg = <0x69>;
 
 	max77779,psy-name = "main-charger";
+	max77779,pmic = <&max77779_pmic>;
 
 	interrupt-parent = <&max77779_pmic_irq>;
 	interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
