@@ -546,7 +546,7 @@
 		dump-size = <0x53000>;          /* Non-secure SRAM size: 332KB(352-20) */
 		acpm-ipc-channel = <12>;
 		fvmap_addr = <0x31000>;
-		/* panic-action = <GO_PANIC_ID>;*/
+		panic-action = <GO_PANIC_ID>;
 	};
 
 	acpm_stats {
