@@ -9,13 +9,13 @@
 #include <dt-bindings/thermal/thermal.h>
 #include <dt-bindings/soc/google/zuma-bcl.h>
 
-&pinctrl_12 {
+&pinctrl_11 {
 	bcl_rffe_modem: bcl-rffe-modem {
-		samsung,pins = "gpp22-2";
+		samsung,pins = "gpp11-0";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 	};
 	bcl_batoilo_modem: bcl-batoilo-modem {
-		samsung,pins = "gpp22-3";
+		samsung,pins = "gpp13-0";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 	};
 };
@@ -51,11 +51,9 @@
 				batoilo_upper = <6800>;
 				odpm_ratio = <3>;
 				gpios = <&gpa9 5 0>,		/* VDROOP1 */
-					<&gpa9 6 0>;		/* VDROOP2 */
-					/* b/298138576 Temporary disable Modem connection
-					<&gpp22 2 0>,
-					<&gpp22 3 0>;
-					*/
+					<&gpa9 6 0>,		/* VDROOP2 */
+					<&gpp11 0 0>,
+					<&gpp13 0 0>;
 				rffe_channel = <11>;
 				pinctrl-names = "bcl-rffe-modem", "bcl-batoilo-modem";
 				pinctrl-0 = <&bcl_rffe_modem>;
