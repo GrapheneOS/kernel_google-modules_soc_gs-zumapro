@@ -190,8 +190,22 @@ free_buffer:
 	return ERR_PTR(ret);
 }
 
+static long system_heap_get_pool_size(struct dma_heap *heap)
+{
+	/*
+	 * All system heaps share the same page pool. Return the size of the pool
+	 * only for *the* system heap (required by VTS). Otherwise, the heap pool
+	 * use will be overcalculated by the number of registered system heaps.
+	 */
+	if (strcmp(dma_heap_get_name(heap), "system"))
+		return 0;
+
+	return dma_heap_pool_bytes();
+}
+
 static const struct dma_heap_ops system_heap_ops = {
 	.allocate = system_heap_allocate,
+	.get_pool_size = system_heap_get_pool_size,
 };
 
 static void system_heap_free(struct deferred_freelist_item *item, enum df_reason reason)
