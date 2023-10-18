@@ -117,17 +117,13 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 		phy_val2 = phy_val & ~(0x3 << 4);
 		phy_val2 = phy_val | (0x2 << 4);
 		writel(phy_val2, phy_base_regs + 0x600);
-		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
-			       "pwrdn: pma+0x600: %#x->%#x",
-			       phy_val, phy_val2);
+		dev_dbg(exynos_pcie->pci->dev, "pwrdn: pma+0x600: %#x->%#x\n", phy_val, phy_val2);
 
 		/* PLL off, Bias off */
 		writel(0x300DE, phy_pcs_base_regs + 0x150);
 		udelay(5);
 		pcs_val2 = readl(phy_pcs_base_regs + 0x150);
-		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
-			       "pwrdn: pcs+0x150: %#x->%#x",
-			       pcs_val, pcs_val2);
+		dev_dbg(exynos_pcie->pci->dev, "pwrdn: pcs+0x150: %#x->%#x\n", pcs_val, pcs_val2);
 
 		/* Check for PMA PLL to be disengaged */
 		while (cnt < 100) {
@@ -195,8 +191,7 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 		val = readl(phy_base_regs + 0x600);
 		val2 = val & ~(0x3 << 4);
 		writel(val2, phy_base_regs + 0x600);
-		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
-			       "pwrdn_clr: pma+0x600: %#x->%#x", val, val2);
+		dev_dbg(exynos_pcie->pci->dev, "pwrdn_clr: pma+0x600: %#x->%#x\n", val, val2);
 
 		writel(0x00, phy_base_regs + 0x000C);
 

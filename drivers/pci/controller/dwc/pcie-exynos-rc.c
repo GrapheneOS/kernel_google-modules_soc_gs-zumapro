@@ -3537,8 +3537,7 @@ int exynos_pcie_rc_poweron(int ch_num)
 		 */
 		writel(0x300D5, exynos_pcie->phy_pcs_base + 0x150);
 		val = readl(exynos_pcie->phy_pcs_base + 0x150);
-		logbuffer_logk(exynos_pcie->log, LOGLEVEL_INFO,
-			       "pwron: pcs+0x150: %#x", val);
+		dev_dbg(dev, "pwron: pcs+0x150: %#x\n", val);
 	}
 
 	dev_dbg(dev, "end poweron, state: %d\n", exynos_pcie->state);
@@ -4453,8 +4452,9 @@ int exynos_pcie_rc_set_enable_wake(struct irq_data *data, unsigned int enable)
 {
 	int ret = 0;
 	struct pcie_port *pp = data->parent_data->domain->host_data;
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 
-	pr_info("%s: enable = %d\n", __func__, enable);
+	dev_dbg(pci->dev, "%s: enable = %d\n", __func__, enable);
 
 	if (pp == NULL) {
 		pr_err("Warning: exynos_pcie_rc_set_enable_wake: not exist pp\n");
