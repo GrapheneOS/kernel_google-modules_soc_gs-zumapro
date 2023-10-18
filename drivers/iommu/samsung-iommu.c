@@ -1076,7 +1076,6 @@ static int samsung_sysmmu_of_xlate(struct device *dev,
 	ret = iommu_fwspec_add_ids(dev, &fwid, 1);
 	if (ret) {
 		dev_err(dev, "failed to add fwspec. (err:%d)\n", ret);
-		iommu_device_unlink(&data->iommu, dev);
 		return ret;
 	}
 
