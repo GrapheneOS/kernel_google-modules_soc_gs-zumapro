@@ -57,6 +57,8 @@
 #define DBG_OS_LOCK(base)	\
 	do { __raw_writel(0x1, base + DBGOSLAR); isb(); } while (0)
 
+#define ALIVE_FRC_FREQ_49_152_MHZ (49152000) /* 49.152 MHz crystal */
+
 #if IS_ENABLED(CONFIG_HARDLOCKUP_WATCHDOG)
 extern struct atomic_notifier_head hardlockup_notifier_list;
 #endif
@@ -418,7 +420,7 @@ void exynos_ehld_event_raw_update(unsigned int cpu, bool update_val)
 	data = &ctrl->data;
 	count = ++data->data_ptr & (NUM_TRACE - 1);
 	data->time[count] = cpu_clock(cpu);
-	data->alive_time[count] = get_frc_time() / NSEC_PER_MSEC;
+	data->alive_time[count] = get_frc_time() * MSEC_PER_SEC / ALIVE_FRC_FREQ_49_152_MHZ;
 	if (sjtag_is_locked() || cpu_is_offline(cpu) || !ctrl->ehld_running ||
 	    ctrl->ehld_cpupm) {
 		val = EHLD_VAL_PM;
