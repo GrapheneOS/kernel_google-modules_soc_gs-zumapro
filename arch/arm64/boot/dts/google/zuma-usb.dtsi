@@ -260,7 +260,8 @@
 		has_other_phy = <0>;
 		/* if combo phy is used, it must be set to 1. usbphy_sub_info is enabled */
 		has_combo_phy = <1>;
-		sub_phy_version = <0x800>;
+		sub_phy_version = <0x801>;
+		usbdp_mode = <1>;
 
 		/* ip type */
 		/* USB3DRD = 0 */
