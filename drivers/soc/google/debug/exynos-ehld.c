@@ -21,6 +21,7 @@
 #include <linux/reboot.h>
 #include <linux/io.h>
 #include <linux/time64.h>
+#include <linux/irqchip/arm-gic-v3.h>
 
 #include <soc/google/acpm_ipc_ctrl.h>
 #include <soc/google/exynos-ehld.h>
@@ -81,6 +82,7 @@ struct exynos_ehld_main {
 	bool				suspending;
 	bool				resuming;
 	struct exynos_ehld_dbgc		dbgc;
+	void __iomem			**sgi_base;
 };
 
 static struct exynos_ehld_main ehld_main = {
@@ -462,6 +464,17 @@ void exynos_ehld_event_raw_update_allcpu(void)
 		exynos_ehld_event_raw_update(cpu, true);
 }
 
+static void print_gicr_regs(void)
+{
+	unsigned int cpu;
+
+	for_each_possible_cpu(cpu)
+		ehld_err(1, "cpu%u: gicr: is-enabled:%08x, is-pending:%08x\n",
+			 cpu,
+			 __raw_readl(ehld_main.sgi_base[cpu] + GICR_ISENABLER0),
+			 __raw_readl(ehld_main.sgi_base[cpu] + GICR_ISPENDR0));
+}
+
 static void print_ehld_header(void)
 {
 	ehld_err(1, "-------------------------------------------------------------------------------------------\n");
@@ -482,8 +495,10 @@ void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
 		return;
 	}
 
-	if (header)
+	if (header) {
+		print_gicr_regs();
 		print_ehld_header();
+	}
 
 	ctrl = per_cpu_ptr(&ehld_ctrl, cpu);
 	raw_spin_lock_irqsave(&ctrl->lock, flags);
@@ -515,6 +530,7 @@ void exynos_ehld_event_raw_dump_allcpu(void)
 		return;
 	}
 
+	print_gicr_regs();
 	print_ehld_header();
 	for_each_possible_cpu(cpu)
 		exynos_ehld_event_raw_dump(cpu, false);
@@ -770,12 +786,16 @@ static struct notifier_block exynos_ehld_nb = {
 	.notifier_call = exynos_ehld_pm_notifier,
 };
 
-static int exynos_ehld_init_dt(struct device_node *np)
+static int exynos_ehld_init_dt(struct device *dev)
 {
+	struct device_node *np = dev->of_node;
 	struct device_node *child;
 	int ret = 0;
 	unsigned int cpu = 0, offset, base;
 	struct exynos_ehld_ctrl *ctrl;
+	u32 val, i;
+	struct property *prop;
+	const __be32 *cur;
 
 	if (of_property_read_u32(np, "cs_base", &base)) {
 		ehld_info(1, "ehld: no cs_base addr in device tree\n");
@@ -783,6 +803,20 @@ static int exynos_ehld_init_dt(struct device_node *np)
 	}
 	ehld_main.cs_base = base;
 	ehld_main.dbgc.use_tick_timer = true;
+	ehld_main.sgi_base = devm_kcalloc(dev, num_possible_cpus(),
+			sizeof(void *), GFP_KERNEL);
+	if (!ehld_main.sgi_base)
+		return -ENOMEM;
+
+	i = 0;
+	of_property_for_each_u32(np, "sgi_base", prop, cur, val) {
+		if (i >= num_possible_cpus() || !val)
+			return -EINVAL;
+		ehld_main.sgi_base[i] = devm_ioremap(dev, val, SZ_4K);
+		if (!ehld_main.sgi_base[i])
+			return -ENOMEM;
+		i++;
+	}
 
 	child = of_get_child_by_name(np, "dbgc");
 	if (child) {
@@ -946,7 +980,7 @@ static int ehld_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	err = exynos_ehld_init_dt(pdev->dev.of_node);
+	err = exynos_ehld_init_dt(&pdev->dev);
 	if (err) {
 		ehld_err(1, "ehld: fail device tree for ehld:%d\n", err);
 		return err;
