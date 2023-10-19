@@ -571,8 +571,8 @@ static int gs_get_trend(struct thermal_zone_device *tz, int trip,
 	struct gs_tmu_data *data = tz->devdata;
 	int trip_temp, ret = 0;
 
-	if (!tz)
-		return ret;
+	if (!data)
+		return -EINVAL;
 
 	ret = tz->ops->get_trip_temp(tz, trip, &trip_temp);
 	if (ret < 0)
