@@ -8,9 +8,10 @@
 
 static atomic64_t total_gcma_pages = ATOMIC64_INIT(0);
 
-static void vh_gcma_si_meminfo_fixup(void *data, struct sysinfo *val)
+static void vh_gcma_si_meminfo_fixup(void *data, unsigned long *totalram,
+				unsigned long *freeram)
 {
-	val->totalram += (u64)atomic64_read(&total_gcma_pages);
+	*totalram += (u64)atomic64_read(&total_gcma_pages);
 }
 
 void inc_gcma_total_pages(unsigned long page_count)
@@ -20,6 +21,5 @@ void inc_gcma_total_pages(unsigned long page_count)
 
 int __init gcma_vh_init(void)
 {
-
-	return register_trace_android_vh_si_meminfo(vh_gcma_si_meminfo_fixup, NULL);
+	return register_trace_android_vh_si_meminfo_adjust(vh_gcma_si_meminfo_fixup, NULL);
 }
