@@ -13,6 +13,9 @@
 #include <linux/file.h>
 #include <linux/types.h>
 
+/* Flags for struct edgetpu_ext_client_info. */
+#define EDGETPU_EXT_SECURE_CLIENT BIT(0)
+
 /*
  * Data structures to be used for ALLOCATE_EXTERNAL_MAILBOX command
  */
@@ -29,7 +32,8 @@ struct edgetpu_ext_client_info {
 	 * -1. To prevent fd swapping attack, it is encouraged to use this.
 	 */
 	struct file *tpu_file;
-	u8 reserved[40]; /* Reserved for future compatibility. */
+	u32 flags;
+	u8 reserved[36]; /* Reserved for future compatibility. */
 } __packed;
 
 /*
