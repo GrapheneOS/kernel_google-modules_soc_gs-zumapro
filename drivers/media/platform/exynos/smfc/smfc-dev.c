@@ -889,14 +889,6 @@ void smfc_get_bandwidth(struct smfc_dev *smfc, struct bts_bw *bw)
 /* Helper function to request PM QoS */
 static void g2d_pm_qos_update_request(struct smfc_dev *smfc)
 {
-#if IS_ENABLED(CONFIG_EXYNOS_BTS)
-	__maybe_unused struct bts_bw bw = { 0 };
-
-	if (smfc->bts_id >= 0) {
-		smfc_get_bandwidth(smfc, &bw);
-		bts_update_bw(smfc->bts_id, bw);
-	}
-#endif
 	cancel_delayed_work_sync(&smfc->qos_work);
 
 	if (smfc->qosreq_int_level > 0)
@@ -917,12 +909,6 @@ static void smfc_qos_release(struct work_struct *qos_work)
 /* Helper function to release PM QoS */
 static void g2d_pm_qos_reset_request(struct smfc_dev *smfc)
 {
-#if IS_ENABLED(CONFIG_EXYNOS_BTS)
-	if (smfc->bts_id >= 0) {
-		__maybe_unused struct bts_bw bw = { 0 };
-		bts_update_bw(smfc->bts_id, bw);
-	}
-#endif
 	/* TODO: Optimise delay time or initialise it using DT property */
 	mod_delayed_work(system_wq, &smfc->qos_work, msecs_to_jiffies(SMFC_QOS_WAIT));
 }
