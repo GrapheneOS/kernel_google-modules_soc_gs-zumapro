@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-only
 /*
- * Google Zuma Ripcurrent24-specific bcl device tree source
+ * Google Zuma specific bcl device tree source
  *
- * Copyright (c) 2023 Google, LLC
+ * Copyright (c) 2024 Google, LLC
  *		https://www.google.com
  */
 
@@ -11,11 +11,11 @@
 
 &pinctrl_11 {
 	bcl_rffe_modem: bcl-rffe-modem {
-		samsung,pins = "gpp11-0";
+		samsung,pins = "gpp22-2";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 	};
 	bcl_batoilo_modem: bcl-batoilo-modem {
-		samsung,pins = "gpp13-0";
+		samsung,pins = "gpp22-3";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 	};
 };
@@ -50,10 +50,10 @@
 				batoilo_lower = <3800>;
 				batoilo_upper = <6800>;
 				odpm_ratio = <3>;
-				gpios = <&gpa9 5 0>,		/* VDROOP1 */
-					<&gpa9 6 0>,		/* VDROOP2 */
-					<&gpp11 0 0>,
-					<&gpp13 0 0>;
+				gpios = <&gpa9 5 GPIO_ACTIVE_HIGH>,		/* VDROOP1 */
+					<&gpa9 6 GPIO_ACTIVE_HIGH>,		/* VDROOP2 */
+					<&gpp22 2 GPIO_ACTIVE_HIGH>,
+					<&gpp22 3 GPIO_ACTIVE_HIGH>;
 				rffe_channel = <11>;
 				pinctrl-names = "bcl-rffe-modem", "bcl-batoilo-modem";
 				pinctrl-0 = <&bcl_rffe_modem>;
