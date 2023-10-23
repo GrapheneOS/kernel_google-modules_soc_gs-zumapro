@@ -243,34 +243,38 @@ out:
  * functions.
  */
 
-static int find_lowest_rq(struct task_struct *p, struct cpumask *backup_mask)
+static int __find_lowest_rq(struct task_struct *p, struct cpumask *lowest_mask,
+			    struct cpumask *backup_mask)
 {
 	struct sched_domain *sd;
-	struct cpumask lowest_mask;
 	int this_cpu = smp_processor_id();
 	int cpu;
 	int ret;
+
+	/* Make sure the mask is initialized first */
+	if (unlikely(!lowest_mask))
+		return -1;
 
 	if (p->nr_cpus_allowed == 1) {
 		return cpumask_first(p->cpus_ptr);
 	}
 
-	ret = cpupri_find_fitness(&task_rq(p)->rd->cpupri, p, &lowest_mask, NULL);
+	ret = cpupri_find_fitness(&task_rq(p)->rd->cpupri, p, lowest_mask, NULL);
 	if (!ret) {
 		return -1;
 	}
 
-	cpu = find_least_loaded_cpu(p, &lowest_mask, backup_mask);
+	cpu = find_least_loaded_cpu(p, lowest_mask, backup_mask);
 	if (cpu != -1) {
 		return cpu;
 	}
 
 	cpu = task_cpu(p);
-	if (cpumask_test_cpu(cpu, &lowest_mask)) {
+	if (cpumask_test_cpu(cpu, lowest_mask)) {
 		return cpu;
 	}
 
-	if (!cpumask_test_cpu(this_cpu, &lowest_mask))
+	if (!cpumask_test_cpu(this_cpu, lowest_mask))
 		this_cpu = -1;
 
 	rcu_read_lock();
@@ -284,7 +288,7 @@ static int find_lowest_rq(struct task_struct *p, struct cpumask *backup_mask)
 				return this_cpu;
 			}
 
-			best_cpu = cpumask_first_and(&lowest_mask,
+			best_cpu = cpumask_first_and(lowest_mask,
 						     sched_domain_span(sd));
 			if (best_cpu < nr_cpu_ids) {
 				rcu_read_unlock();
@@ -298,12 +302,27 @@ static int find_lowest_rq(struct task_struct *p, struct cpumask *backup_mask)
 		return this_cpu;
 	}
 
-	cpu = cpumask_any(&lowest_mask);
+	cpu = cpumask_any(lowest_mask);
 	if (cpu < nr_cpu_ids) {
 		return cpu;
 	}
 
 	return -1;
+}
+
+static int find_lowest_rq(struct task_struct *p, struct cpumask *backup_mask)
+{
+	struct cpumask lowest_mask;
+	return __find_lowest_rq(p, &lowest_mask, backup_mask);
+}
+
+void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
+				  struct cpumask *lowest_mask,
+				  int ret, int *cpu)
+
+{
+	struct cpumask backup_mask;
+	*cpu = __find_lowest_rq(p, lowest_mask, &backup_mask);
 }
 
 void rvh_select_task_rq_rt_pixel_mod(void *data, struct task_struct *p, int prev_cpu, int sd_flag,
