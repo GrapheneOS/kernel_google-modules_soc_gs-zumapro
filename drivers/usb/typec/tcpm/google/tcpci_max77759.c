@@ -1795,7 +1795,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				if (chip->contaminant_detection_userspace !=
 					CONTAMINANT_DETECT_DISABLE)
 					disable_auto_ultra_low_power_mode(chip, false);
-			} else if (!chip->usb_throttled) {
+			} else if (!chip->usb_throttled && chip->contaminant_detection) {
 				/*
 				 * TCPM has not detected valid CC terminations
 				 * and neither the comparators nor ADC
@@ -2749,20 +2749,24 @@ static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *
 		mutex_unlock(&chip->rc_lock);
 		return;
 	}
-	if (chip->contaminant_detection)
+	if (chip->contaminant_detection) {
 		ret = process_contaminant_alert(chip->contaminant, true, false,
 						&contaminant_cc_status_handled,
 						&port_clean);
-	if (ret < 0) {
-		logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
-		/* Assume clean port */
-		tcpm_port_clean(chip->port);
-	} else if (port_clean) {
-		LOG(LOG_LVL_DEBUG, chip->log, "port clean");
-		tcpm_port_clean(chip->port);
+		if (ret < 0) {
+			logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
+			/* Assume clean port */
+			tcpm_port_clean(chip->port);
+		} else if (port_clean) {
+			LOG(LOG_LVL_DEBUG, chip->log, "port clean");
+			tcpm_port_clean(chip->port);
+		} else {
+			LOG(LOG_LVL_DEBUG, chip->log, "port dirty");
+			chip->check_contaminant = true;
+		}
 	} else {
-		LOG(LOG_LVL_DEBUG, chip->log, "port dirty");
-		chip->check_contaminant = true;
+		LOG(LOG_LVL_DEBUG, chip->log, "port clean; Contaminant detection not enabled");
+		tcpm_port_clean(chip->port);
 	}
 	mutex_unlock(&chip->rc_lock);
 }
@@ -3250,7 +3254,11 @@ static int max77759_probe(struct i2c_client *client,
 	/* Default enable on A1 or higher */
 	chip->contaminant_detection = device_id >= MAX77759_DEVICE_ID_A1;
 	chip->contaminant_detection_userspace = chip->contaminant_detection;
-	chip->contaminant = max77759_contaminant_init(chip, chip->contaminant_detection);
+	if (chip->contaminant_detection) {
+		LOG(LOG_LVL_DEBUG, chip->log, "Contaminant detection enabled");
+		chip->data.check_contaminant = max_tcpci_check_contaminant;
+		chip->contaminant = max77759_contaminant_init(chip, chip->contaminant_detection);
+	}
 
 	ret = max77759_setup_data_notifier(chip);
 	if (ret < 0)
