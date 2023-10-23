@@ -54,3 +54,8 @@ config VH_SCHED_LIB
 	bool "Library with additional scheduler options"
 	depends on VH_SCHED
 	default n
+
+config VH_PRIO_INHERITANCE
+	bool "Enable prio inheritance vendor hooks"
+	depends on VH_SCHED
+	default n
