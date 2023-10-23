@@ -152,6 +152,7 @@ static int send_betp(struct link_device *ld, struct io_device *iod, char *buff,
 	ret = wait_for_completion_timeout(&gc->gnss_rdy_cmpl, GNSS_RDY_TIMEOUT);
 	if (ret == 0) {
 		gif_err("TIMEOUT(%lu): gnss ready signal not came from kepler\n", GNSS_RDY_TIMEOUT);
+		dev_kfree_skb_any(skb);
 		ret = -EBUSY;
 		goto exit;
 	}

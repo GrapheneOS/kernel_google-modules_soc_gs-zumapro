@@ -29,7 +29,7 @@ config USE_GROUP_THROTTLE
 	depends on VH_SCHED
 	default y
 
-config VH_SCHED_LIB
+config RVH_SCHED_LIB
 	bool "Library with additional scheduler options"
 	depends on VH_SCHED
 	default y

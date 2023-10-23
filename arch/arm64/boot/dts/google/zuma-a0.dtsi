@@ -294,7 +294,7 @@
 };
 
 &aoc {
-    skip-carveout-map = "true";
+	skip-carveout-map = "true";
 };
 
 &bigwave {

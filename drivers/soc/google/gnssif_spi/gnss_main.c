@@ -3,18 +3,77 @@
  * Copyright (C) 2022 Samsung Electronics.
  *
  */
-
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/platform_data/sscoredump.h>
 
 #include "gnss_prj.h"
 #include "gnss_utils.h"
 
+#define DEVICE_NAME "gnss"
 
-static int parse_dt_common_pdata(struct device_node *np,
-					struct gnss_pdata *pdata)
+static void sscd_release(struct device *dev);
+
+static struct sscd_platform_data sscd_pdata;
+
+static struct platform_device sscd_dev = {
+	.name            = DEVICE_NAME,
+	.driver_override = SSCD_NAME,
+	.id              = -1,
+	.dev             = {
+		.platform_data = &sscd_pdata,
+		.release       = sscd_release,
+		},
+};
+
+static void sscd_release(struct device *dev)
+{
+	gif_info("%s: enter\n", __FUNCTION__);
+}
+
+static ssize_t coredump_store(struct device *dev, struct device_attribute *attr, const char *buf,
+			      size_t count)
+{
+	int symbol = (int)';';
+	const char *next = NULL;
+	char *coredump = NULL;
+
+	char *reason = NULL;
+	int length = 0;
+
+	gif_err("Trigger Coredump string: %s\n", buf);
+	next = strchr(buf, symbol);
+	if (next) {
+		length = (int)(next - buf);
+		reason = kmalloc(length + 1, GFP_KERNEL);
+		if (!reason) {
+			gif_err("Allocate crash reason failed\n");
+			goto clean;
+		}
+		memcpy(reason, buf, length);
+		reason[length] = '\0';
+		length = strlen(next + 1);
+		coredump = kmalloc(length, GFP_KERNEL);
+		if (!coredump) {
+			gif_err("Allocate crash coredump failed\n");
+			goto clean;
+		}
+		memcpy(coredump, next + 1, length);
+		gnss_set_coredump(coredump, length, reason);
+	}
+clean:
+	if (reason)
+		kfree(reason);
+	if (coredump)
+		kfree(coredump);
+	return count;
+}
+
+static DEVICE_ATTR_WO(coredump);
+
+static int parse_dt_common_pdata(struct device_node *np, struct gnss_pdata *pdata)
 {
 	gif_dt_read_string(np, "device,name", pdata->name);
 	gif_dt_read_string(np, "device_node_name", pdata->node_name);
@@ -22,6 +81,7 @@ static int parse_dt_common_pdata(struct device_node *np,
 	gif_info("device name: %s node name: %s\n", pdata->name, pdata->node_name);
 	return 0;
 }
+
 static struct gnss_pdata *gnss_if_parse_dt_pdata(struct device *dev)
 {
 	struct gnss_pdata *pdata;
@@ -96,6 +156,11 @@ static int gnss_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, gc);
 
+	platform_device_register(&sscd_dev);
+
+	if (device_create_file(dev, &dev_attr_coredump))
+		gif_err("Unable to create sysfs coredump entry");
+
 	/* wa: to prevent wrong irq handling during probe */
 	gif_enable_irq(&gc->irq_gnss2ap_spi);
 
@@ -111,11 +176,12 @@ probe_fail:
 	gif_err("%s: xxx\n", pdata->name);
 
 	return -ENOMEM;
-
 }
 
 static const struct of_device_id gnss_dt_match[] = {
-	{ .compatible = "samsung,exynos-gnss", },
+	{
+		.compatible = "samsung,exynos-gnss",
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, gnss_dt_match);
@@ -133,6 +199,19 @@ static struct platform_driver gnss_driver = {
 
 module_platform_driver(gnss_driver);
 
+int gnss_set_coredump(const char *buf, int buf_len, const char *info)
+{
+	struct sscd_platform_data *pdata = dev_get_platdata(&sscd_dev.dev);
+	struct sscd_segment seg;
+
+	if (pdata->sscd_report) {
+		memset(&seg, 0, sizeof(seg));
+		seg.addr = (void *)buf;
+		seg.size = buf_len;
+		pdata->sscd_report(&sscd_dev, &seg, 1, 0, info);
+	}
+	return 0;
+}
+
 MODULE_DESCRIPTION("Exynos GNSS interface driver");
 MODULE_LICENSE("GPL");
-

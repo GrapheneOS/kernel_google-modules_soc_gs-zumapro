@@ -16,7 +16,7 @@ static char sched_lib_name[LIB_PATH_LENGTH];
 unsigned long sched_lib_mask_out_val;
 unsigned long sched_lib_mask_in_val;
 
-static DEFINE_SPINLOCK(__sched_lib_name_lock);
+static DEFINE_MUTEX(__sched_lib_name_mutex);
 
 ssize_t sched_lib_name_store(struct file *filp,
 			     const char __user *ubuffer, size_t count,
@@ -25,24 +25,24 @@ ssize_t sched_lib_name_store(struct file *filp,
 	if (count >= sizeof(sched_lib_name))
 		return -EINVAL;
 
-	spin_lock(&__sched_lib_name_lock);
+	mutex_lock(&__sched_lib_name_mutex);
 
 	if (copy_from_user(sched_lib_name, ubuffer, count)) {
 		sched_lib_name[0] = '\0';
-		spin_unlock(&__sched_lib_name_lock);
+		mutex_unlock(&__sched_lib_name_mutex);
 		return -EFAULT;
 	}
 
 	sched_lib_name[count] = '\0';
-	spin_unlock(&__sched_lib_name_lock);
+	mutex_unlock(&__sched_lib_name_mutex);
 	return count;
 }
 
 int sched_lib_name_show(struct seq_file *m, void *v)
 {
-	spin_lock(&__sched_lib_name_lock);
+	mutex_lock(&__sched_lib_name_mutex);
 	seq_printf(m, "%s\n", sched_lib_name);
-	spin_unlock(&__sched_lib_name_lock);
+	mutex_unlock(&__sched_lib_name_mutex);
 	return 0;
 }
 
@@ -69,9 +69,11 @@ static bool is_sched_lib_based_app(pid_t pid)
 		goto put_task_struct;
 
 	// Copy lib name for thread safe access
+	mutex_lock(&__sched_lib_name_mutex);
 	if (strnlen(sched_lib_name, LIB_PATH_LENGTH) == 0)
 		goto put_task_struct;
 	strlcpy(tmp_lib_name, sched_lib_name, LIB_PATH_LENGTH);
+	mutex_unlock(&__sched_lib_name_mutex);
 
 	mm = get_task_mm(p);
 	if (!mm)
@@ -100,9 +102,12 @@ put_task_struct:
 	return found;
 }
 
-void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
-				struct cpumask *in_mask, bool *skip)
+void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
+				struct cpumask *in_mask, int *res)
 {
+	if (*res != 0)
+		return;
+
 	if (!(sched_lib_mask_in_val && sched_lib_mask_out_val))
 		return;
 
@@ -113,6 +118,7 @@ void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
 		return;
 
 	in_mask->bits[0] = sched_lib_mask_out_val;
+	set_cpus_allowed_ptr(task, in_mask);
 
 	pr_debug("schedlib setaff tid: %d, mask out: %*pb\n",
 		 task_pid_nr(task), cpumask_pr_args(in_mask));

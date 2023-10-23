@@ -42,10 +42,7 @@ build:no_download_gki --use_prebuilt_gki=false
 build --config=use_source_tree_aosp_staging
 
 # disable GKI prebuilts by default
-#build --config=no_download_gki
-
-# enable GKI prebuilts by default
-build --config=download_gki
+build --config=no_download_gki
 
 # enable GKI prebuilts by default
 #build --config=download_gki

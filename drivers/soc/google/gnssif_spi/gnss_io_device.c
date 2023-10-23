@@ -128,9 +128,11 @@ static ssize_t misc_write(struct file *filp, const char __user *data,
 	if (ret < 0) {
 		gif_err("%s->%s: ERR! ld->send fail (err %d, count %ld)\n",
 			iod->name, ld->name, ret, count);
+		kfree(buff);
 		return ret;
 	}
 
+	kfree(buff);
 	return count;
 }
 

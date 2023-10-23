@@ -488,6 +488,7 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
  * based on the task model parameters and gives the minimal utilization
  * required to meet deadlines.
  */
+__always_inline
 unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
 				 unsigned long max, enum cpu_util_type type,
 				 struct task_struct *p)
@@ -581,7 +582,8 @@ unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
 	return min(max, util);
 }
 
-static unsigned long sugov_get_util(struct sugov_cpu *sg_cpu)
+static unsigned long __always_inline
+sugov_get_util(struct sugov_cpu *sg_cpu)
 {
 	struct rq *rq = cpu_rq(sg_cpu->cpu);
 	unsigned long util = cpu_util_cfs_group_mod(sg_cpu->cpu);
@@ -839,13 +841,10 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	unsigned int next_f;
-	unsigned long util;
 
 	raw_spin_lock(&sg_policy->update_lock);
 
 	sg_policy->limits_changed |= flags & SCHED_PIXEL_FORCE_UPDATE;
-
-	util = sugov_get_util(sg_cpu);
 
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 	update_uclamp_stats(sg_cpu->cpu, time);
@@ -861,7 +860,10 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	if (sugov_should_update_freq(sg_policy, time)) {
 		next_f = sugov_next_freq_shared(sg_cpu, time);
 
-		trace_sugov_util_update(sg_cpu->cpu, util, sg_cpu->max, flags);
+		if (trace_sugov_util_update_enabled()) {
+			unsigned long util = sugov_get_util(sg_cpu);
+			trace_sugov_util_update(sg_cpu->cpu, util, sg_cpu->max, flags);
+		}
 
 		if (sg_policy->policy->fast_switch_enabled)
 			sugov_fast_switch(sg_policy, time, next_f);
@@ -977,8 +979,6 @@ void pmu_poll_disable(void)
 		pmu_poll_cancelling = true;
 		spin_unlock(&pmu_poll_enable_lock);
 		kthread_cancel_work_sync(&pmu_work);
-		spin_lock(&pmu_poll_enable_lock);
-		pmu_poll_cancelling = false;
 
 		while (cpu < pixel_cpu_num) {
 			policy = cpufreq_cpu_get(cpu);
@@ -993,6 +993,9 @@ void pmu_poll_disable(void)
 			cpu = cpumask_last(policy->related_cpus) + 1;
 			cpufreq_cpu_put(policy);
 		}
+
+		spin_lock(&pmu_poll_enable_lock);
+		pmu_poll_cancelling = false;
 	}
 
 	spin_unlock(&pmu_poll_enable_lock);
@@ -1038,18 +1041,23 @@ static void pmu_limit_work(struct kthread_work *work)
 		raw_spin_unlock_irqrestore(&sg_policy->update_lock, flags);
 
 		for_each_cpu(ccpu, policy->cpus) {
+			if (!cpu_online(ccpu)) {
+				pr_info_ratelimited("cpu %d is offline, pmu read fail\n", ccpu);
+				goto update_next_max_freq;
+			}
+
 			ret = get_ev_data(ccpu, &inst, &cyc, &stall, &l2_cachemiss,
 					  &l3_cachemiss, &mem_stall, &l2_cache_wb,
 					  &l3_cache_access, &mem_count, &cpu_freq);
 
 			if (ret) {
 				sg_policy->tunables->pmu_limit_enable = false;
-				pr_err("ev_data read fail\n");
+				pr_err_ratelimited("pmu ev_data read fail\n");
 				goto update_next_max_freq;
 			}
 
 			if (inst == 0 || cyc == 0) {
-				pr_err("error in pmu read for cpu %d\n", ccpu);
+				pr_err_ratelimited("pmu read fail for cpu %d\n", ccpu);
 				goto update_next_max_freq;
 			}
 
