@@ -38,3 +38,8 @@ config USE_UPDATE_SINGLE
 	bool "Use sugov_update_single function for single-cpu cluster"
 	depends on VH_SCHED
 	default n
+
+config VH_PRIO_INHERITANCE
+	bool "Enable prio inheritance vendor hooks"
+	depends on VH_SCHED
+	default n
