@@ -80,8 +80,6 @@ extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
 					const struct cpumask *in_mask, int *skip);
 #endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
 extern void vh_try_to_freeze_todo_logging_pixel_mod(void *data, bool *logging_on);
-extern void rvh_cpumask_any_and_distribute(void *data, struct task_struct *p,
-	const struct cpumask *cpu_valid_mask, const struct cpumask *new_mask, int *dest_cpu);
 
 void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_flags *rf,
 		int *pulled_task, int *done);
@@ -338,11 +336,6 @@ static int vh_sched_init(void)
 
 	ret = register_trace_android_vh_try_to_freeze_todo_logging(
 		vh_try_to_freeze_todo_logging_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
-	ret = register_trace_android_rvh_cpumask_any_and_distribute(
-		rvh_cpumask_any_and_distribute, NULL);
 	if (ret)
 		return ret;
 
