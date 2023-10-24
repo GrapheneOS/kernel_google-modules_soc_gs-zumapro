@@ -1839,7 +1839,7 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 
 PROC_OPS_RW(pmu_poll_enable);
 
-
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 extern unsigned int sched_lib_cpu_freq_cached_val;
 
 static sched_lib_cpu_freq_cached_show(struct seq_file *m, void *v)
@@ -1942,6 +1942,7 @@ extern sched_lib_name_show(struct seq_file *m, void *v);
 
 
 PROC_OPS_RW(sched_lib_name);
+#endif /* CONFIG_SCHED_LIB */
 
 /* uclamp filters controls */
 static uclamp_min_filter_enable_show(struct seq_file *m, void *v)
@@ -2512,11 +2513,13 @@ static struct pentry entries[] = {
 	PROC_ENTRY(prefer_idle_clear),
 	PROC_ENTRY(uclamp_fork_reset_set),
 	PROC_ENTRY(uclamp_fork_reset_clear),
+#if IS_ENABLED(CONFIG_SCHED_LIB)
 	// sched lib
 	PROC_ENTRY(sched_lib_cpu_freq_cached),
 	PROC_ENTRY(sched_lib_freq_cpumask),
 	PROC_ENTRY(sched_lib_affinity),
 	PROC_ENTRY(sched_lib_name),
+#endif /* CONFIG_SCHED_LIB */
 	// uclamp filter
 	PROC_ENTRY(uclamp_min_filter_enable),
 	PROC_ENTRY(uclamp_min_filter_us),

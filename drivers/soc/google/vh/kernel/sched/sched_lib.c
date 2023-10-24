@@ -121,7 +121,7 @@ static bool is_sched_lib_based_app(pid_t pid)
 	return found;
 }
 
-void android_vh_show_max_freq(void *unused, struct cpufreq_policy *policy,
+void android_rvh_show_max_freq(void *unused, struct cpufreq_policy *policy,
 				     unsigned int *max_freq)
 {
 	bool is_app;

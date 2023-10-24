@@ -73,10 +73,12 @@ extern void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct
 	struct task_struct *pi_task);
 extern void vh_dump_throttled_rt_tasks_mod(void *data, int cpu, u64 clock, ktime_t rt_period,
 					   u64 rt_runtime, s64 rt_period_timer_expires);
-extern void android_vh_show_max_freq(void *unused, struct cpufreq_policy *policy,
+#if IS_ENABLED(CONFIG_SCHED_LIB)
+extern void android_rvh_show_max_freq(void *unused, struct cpufreq_policy *policy,
 						unsigned int *max_freq);
 extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
 					const struct cpumask *in_mask, int *skip);
+#endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
 extern void vh_try_to_freeze_todo_logging_pixel_mod(void *data, bool *logging_on);
 extern void rvh_cpumask_any_and_distribute(void *data, struct task_struct *p,
 	const struct cpumask *cpu_valid_mask, const struct cpumask *new_mask, int *dest_cpu);
@@ -324,13 +326,15 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_vh_show_max_freq(android_vh_show_max_freq, NULL);
+#if IS_ENABLED(CONFIG_SCHED_LIB)
+	ret = register_trace_android_rvh_show_max_freq(android_rvh_show_max_freq, NULL);
 	if (ret)
 		return ret;
 
 	ret = register_trace_android_vh_sched_setaffinity_early(vh_sched_setaffinity_mod, NULL);
 	if (ret)
 		return ret;
+#endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
 
 	ret = register_trace_android_vh_try_to_freeze_todo_logging(
 		vh_try_to_freeze_todo_logging_pixel_mod, NULL);
