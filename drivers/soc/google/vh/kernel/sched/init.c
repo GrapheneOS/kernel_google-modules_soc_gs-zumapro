@@ -10,7 +10,6 @@
 #include <kernel/sched/sched.h>
 #include <linux/cpufreq.h>
 #include <linux/module.h>
-#include <trace/hooks/power.h>
 #include <trace/hooks/binder.h>
 #include <trace/hooks/sched.h>
 #include <trace/hooks/topology.h>
@@ -80,8 +79,6 @@ extern void android_rvh_show_max_freq(void *unused, struct cpufreq_policy *polic
 extern void vh_sched_setaffinity_mod(void *data, struct task_struct *task,
 					const struct cpumask *in_mask, int *skip);
 #endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
-extern void vh_try_to_freeze_todo_logging_pixel_mod(void *data, bool *logging_on);
-
 void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_flags *rf,
 		int *pulled_task, int *done);
 extern void rvh_can_migrate_task_pixel_mod(void *data, struct task_struct *p, int dst_cpu,
@@ -337,11 +334,6 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 #endif /* IS_ENABLED(CONFIG_SCHED_LIB) */
-
-	ret = register_trace_android_vh_try_to_freeze_todo_logging(
-		vh_try_to_freeze_todo_logging_pixel_mod, NULL);
-	if (ret)
-		return ret;
 
 	ret = register_trace_android_vh_binder_set_priority(
 		vh_binder_set_priority_pixel_mod, NULL);
