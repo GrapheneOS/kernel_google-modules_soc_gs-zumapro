@@ -1177,7 +1177,7 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 		if (extcon_get_state(exynos->edev, EXTCON_USB) > 0)
 			dwc3_exynos_device_event(exynos->dev, 1);
 		else if (extcon_get_state(exynos->edev, EXTCON_USB_HOST) > 0)
-			dwc3_exynos_host_event(exynos->dev, 0);
+			dwc3_exynos_host_event(exynos->dev, 1);
 	} else {
 		dev_warn(exynos->dev, "Couldn't find extcon. Enable vbus event forcibly.");
 		dwc3_exynos_device_event(exynos->dev, 1);
