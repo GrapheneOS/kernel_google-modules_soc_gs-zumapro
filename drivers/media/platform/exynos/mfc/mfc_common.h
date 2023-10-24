@@ -220,9 +220,13 @@
 #define MFC_UHD_RES		(3840 * 2160)
 #define OVER_UHD_RES(ctx)	(((ctx)->crop_width * (ctx)->crop_height) >= MFC_UHD_RES)
 
-/* FHD resoluition */
+/* FHD resolution */
 #define MFC_FHD_RES		(1920 * 1088)
 #define UNDER_FHD_RES(ctx)	(((ctx)->crop_width * (ctx)->crop_height) <= MFC_FHD_RES)
+
+/* HD resolution */
+#define MFC_HD_RES		(1280 * 720)
+#define UNDER_HD_RES(ctx)	(((ctx)->crop_width * (ctx)->crop_height) <= MFC_HD_RES)
 
 #define IS_BLACKBAR_OFF(ctx)	((ctx)->crop_height > 2160)
 #define IS_SUPER64_BFRAME(ctx, size, type)	((ctx->is_10bit) && (size >= 2) && (type == 3))

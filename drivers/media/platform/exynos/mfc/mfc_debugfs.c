@@ -33,6 +33,8 @@ unsigned int perf_measure_option;
 unsigned int sfr_dump;
 unsigned int llc_disable;
 unsigned int slc_disable;
+unsigned int slc_option;
+unsigned int slc_partial_height_ratio;
 unsigned int perf_boost_mode;
 unsigned int drm_predict_disable;
 unsigned int reg_test;
@@ -518,6 +520,10 @@ void mfc_init_debugfs(struct mfc_dev *dev)
 			0644, debugfs->root, &llc_disable);
 	debugfs_create_u32("slc_disable",
 			0644, debugfs->root, &slc_disable);
+	debugfs_create_u32("slc_option",
+			0644, debugfs->root, &slc_option);
+	debugfs_create_u32("slc_partial_height_ratio",
+			0644, debugfs->root, &slc_partial_height_ratio);
 	debugfs_create_u32("perf_boost_mode",
 			0644, debugfs->root, &perf_boost_mode);
 	debugfs_create_u32("drm_predict_disable",

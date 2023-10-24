@@ -73,6 +73,9 @@
 /* The number of display DRC max frames that can occur continuously in NAL_Q */
 #define MFC_MAX_DRC_FRAME              4
 
+/* SLC */
+#define MFC_MAX_SLC_PARTITIONS		3
+
 /* OTF */
 #define HWFC_MAX_BUF			10
 #define OTF_MAX_BUF			30
@@ -1352,13 +1355,18 @@ struct mfc_core {
 	struct resource		*mfc_mem;
 #if IS_ENABLED(CONFIG_SLC_PARTITION_MANAGER)
 	struct pt_handle	*pt_handle;
-	int			ptid;
+
+	/* 0: internal buffer, 1: DPB reference write, 2:Reference pixel read */
+	int			ptid[MFC_MAX_SLC_PARTITIONS];
 
 	/* num of slc partition from device tree */
 	int 			num_slc_pt;
 
 	/* index of current slc partition which be enabled */
-	int 			curr_slc_pt_idx;
+	int			curr_slc_pt_idx[MFC_MAX_SLC_PARTITIONS];
+
+	/* current slc option be used */
+	int			curr_slc_option;
 #endif
 
 	struct mfc_variant	*variant;
