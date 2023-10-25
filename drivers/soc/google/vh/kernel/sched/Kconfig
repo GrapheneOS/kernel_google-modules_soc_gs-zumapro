@@ -42,4 +42,4 @@ config USE_UPDATE_SINGLE
 config VH_PRIO_INHERITANCE
 	bool "Enable prio inheritance vendor hooks"
 	depends on VH_SCHED
-	default n
+	default y
