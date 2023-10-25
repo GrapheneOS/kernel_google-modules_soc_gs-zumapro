@@ -54,3 +54,4 @@ try-import %workspace%/.d3.bazelrc
 try-import %workspace%/.d4.bazelrc
 try-import %workspace%/.d5.bazelrc
 try-import %workspace%/.d6.bazelrc
+try-import %workspace%/.d7.bazelrc
