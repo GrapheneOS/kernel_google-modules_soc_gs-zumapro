@@ -194,8 +194,6 @@ void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction 
 	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
 
 	if (vbinder->active) {
-		vbinder->uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
-		vbinder->uclamp[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
 		vbinder->prefer_idle = false;
 		vbinder->active = false;
 	}
