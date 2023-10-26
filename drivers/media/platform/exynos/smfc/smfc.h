@@ -122,8 +122,6 @@ struct smfc_dev {
 	s32 qosreq_int_level;
 	s32 qosreq_mif_level;
 
-	struct delayed_work qos_work;
-
 };
 
 #define SMFC_CTX_COMPRESS	BIT(0)
