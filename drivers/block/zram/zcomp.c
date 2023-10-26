@@ -500,8 +500,8 @@ int zcomp_copy_buffer(int err, void *buffer, int comp_len,
 			__GFP_HIGHMEM |
 			__GFP_MOVABLE |
 			__GFP_CMA);
-	if (!handle) {
-		err = -ENOMEM;
+	if (IS_ERR((void *)handle)) {
+		err = PTR_ERR((void *)handle);
 		goto out;
 	}
 
