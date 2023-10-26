@@ -13,6 +13,7 @@
 #include "drivers/android/binder_internal.h"
 #include "sched_events.h"
 #include "sched_priv.h"
+#include "sched_events.h"
 
 struct vendor_group_list vendor_group_list[VG_MAX];
 
@@ -55,6 +56,9 @@ DEFINE_STATIC_KEY_FALSE(uclamp_min_filter_enable);
 DEFINE_STATIC_KEY_FALSE(uclamp_max_filter_enable);
 
 DEFINE_STATIC_KEY_FALSE(tapered_dvfs_headroom_enable);
+
+extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost,
+		cpumask_t *valid_mask);
 
 /*****************************************************************************/
 /*                       New Code Section                                    */
@@ -238,4 +242,28 @@ void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
 
 	vp->uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 	vp->uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
+}
+
+void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
+	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu)
+{
+	cpumask_t valid_mask;
+	int best_energy_cpu = -1;
+
+	cpumask_and(&valid_mask, cpu_valid_mask, new_mask);
+
+	/* find a cpu again for the running/runnable/waking tasks
+	 * if their current cpu are not allowed
+	 */
+	if ((p->on_cpu || p->__state == TASK_WAKING || task_on_rq_queued(p)) &&
+		!cpumask_test_cpu(task_cpu(p), new_mask)) {
+		best_energy_cpu = find_energy_efficient_cpu(p, task_cpu(p), false, &valid_mask);
+
+		if (best_energy_cpu != -1)
+			*dest_cpu = best_energy_cpu;
+	}
+
+	trace_set_cpus_allowed_by_task(p, &valid_mask, *dest_cpu);
+
+	return;
 }

@@ -101,6 +101,9 @@ extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 					 struct cpumask *lowest_mask,
 					 int ret, int *cpu);
 
+extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
+	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
+
 extern struct cpufreq_governor sched_pixel_gov;
 
 extern int pmu_poll_init(void);
@@ -297,6 +300,11 @@ static int vh_sched_init(void)
 
 	ret = register_trace_android_rvh_select_task_rq_fair(rvh_select_task_rq_fair_pixel_mod,
 							     NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_set_cpus_allowed_by_task(
+		rvh_set_cpus_allowed_by_task, NULL);
 	if (ret)
 		return ret;
 
