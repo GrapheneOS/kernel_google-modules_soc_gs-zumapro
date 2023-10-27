@@ -53,6 +53,7 @@
 #define ODPM_MIN_INTERVAL_ACC_COUNT 20 /* accumulator counts */
 
 #define UHZ_PER_HZ 1000000
+#define PICO_PER_MILLI 1000000000
 
 #define str(val) #val
 #define xstr(s) str(s)
@@ -86,14 +87,56 @@
 		.info_mask_separate = BIT(IIO_CHAN_INFO_AVERAGE_RAW),          \
 		.info_mask_shared_by_dir = BIT(IIO_CHAN_INFO_SAMP_FREQ),       \
 	}
+#define ODPM_CURRENT_BIT_RES_CHANNEL(_index)                                               \
+	{                                                                      \
+		.type = IIO_CURRENT, .indexed = 1, .channel = (_index),         \
+		.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),          \
+		.info_mask_shared_by_dir = BIT(IIO_CHAN_INFO_SAMP_FREQ),       \
+	}
+#define ODPM_POWER_BIT_RES_CHANNEL(_index)                                               \
+	{                                                                      \
+		.type = IIO_POWER, .indexed = 1, .channel = (_index),         \
+		.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),          \
+		.info_mask_shared_by_dir = BIT(IIO_CHAN_INFO_SAMP_FREQ),       \
+	}
 
-static const struct iio_chan_spec s2mpg1415_single_channel[ODPM_CHANNEL_MAX] = {
+static const struct iio_chan_spec s2mpg1415_single_channel[ODPM_CHANNEL_MAX * 3] = {
 	ODPM_ACC_CHANNEL(0), ODPM_ACC_CHANNEL(1),
 	ODPM_ACC_CHANNEL(2), ODPM_ACC_CHANNEL(3),
 	ODPM_ACC_CHANNEL(4), ODPM_ACC_CHANNEL(5),
 	ODPM_ACC_CHANNEL(6), ODPM_ACC_CHANNEL(7),
 	ODPM_ACC_CHANNEL(8), ODPM_ACC_CHANNEL(9),
 	ODPM_ACC_CHANNEL(10), ODPM_ACC_CHANNEL(11),
+	ODPM_CURRENT_BIT_RES_CHANNEL(0), ODPM_CURRENT_BIT_RES_CHANNEL(1),
+	ODPM_CURRENT_BIT_RES_CHANNEL(2), ODPM_CURRENT_BIT_RES_CHANNEL(3),
+	ODPM_CURRENT_BIT_RES_CHANNEL(4), ODPM_CURRENT_BIT_RES_CHANNEL(5),
+	ODPM_CURRENT_BIT_RES_CHANNEL(6), ODPM_CURRENT_BIT_RES_CHANNEL(7),
+	ODPM_CURRENT_BIT_RES_CHANNEL(8), ODPM_CURRENT_BIT_RES_CHANNEL(9),
+	ODPM_CURRENT_BIT_RES_CHANNEL(10), ODPM_CURRENT_BIT_RES_CHANNEL(11),
+	ODPM_POWER_BIT_RES_CHANNEL(0), ODPM_POWER_BIT_RES_CHANNEL(1),
+	ODPM_POWER_BIT_RES_CHANNEL(2), ODPM_POWER_BIT_RES_CHANNEL(3),
+	ODPM_POWER_BIT_RES_CHANNEL(4), ODPM_POWER_BIT_RES_CHANNEL(5),
+	ODPM_POWER_BIT_RES_CHANNEL(6), ODPM_POWER_BIT_RES_CHANNEL(7),
+	ODPM_POWER_BIT_RES_CHANNEL(8), ODPM_POWER_BIT_RES_CHANNEL(9),
+	ODPM_POWER_BIT_RES_CHANNEL(10), ODPM_POWER_BIT_RES_CHANNEL(11),
+};
+
+static const u32 s2mpg1415_int_sample_rate_uhz[INT_FREQ_COUNT] = {
+	7812500,
+	15625000,
+	31250000,
+	62500000,
+	125000000,
+	250000000,
+	1000000000,
+};
+
+static const u32 s2mpg1415_ext_sample_rate_uhz[EXT_FREQ_COUNT] = {
+	7812500,
+	15625000,
+	31250000,
+	62500000,
+	125000000,
 };
 
 static int odpm_take_snapshot(struct odpm_info *info);
@@ -123,23 +166,23 @@ static int odpm_io_set_channel(struct odpm_info *info, int channel)
 }
 
 static int odpm_io_set_int_sampling_rate(struct odpm_info *info,
-					 s2mpg1415_int_samp_rate hz)
+					 enum s2mpg1415_int_samp_rate samp_rate_sel)
 {
-	if (hz >= S2MPG1415_INT_FREQ_COUNT)
+	if (samp_rate_sel >= INT_FREQ_COUNT)
 		return -1;
 
-	info->chip.int_sampling_rate_i = hz;
-	return s2mpg1415_meter_set_int_samp_rate(info->chip.hw_id, info->i2c, hz);
+	info->chip.int_sampling_rate_i = samp_rate_sel;
+	return s2mpg1415_meter_set_int_samp_rate(info->chip.hw_id, info->i2c, samp_rate_sel);
 }
 
 static int odpm_io_set_ext_sampling_rate(struct odpm_info *info,
-					 s2mpg1415_ext_samp_rate hz)
+					 enum s2mpg1415_ext_samp_rate samp_rate_sel)
 {
-	if (hz >= S2MPG1415_EXT_FREQ_COUNT)
+	if (samp_rate_sel >= EXT_FREQ_COUNT)
 		return -1;
 
-	info->chip.ext_sampling_rate_i = hz;
-	return s2mpg1415_meter_set_ext_samp_rate(info->chip.hw_id, info->i2c, hz);
+	info->chip.ext_sampling_rate_i = samp_rate_sel;
+	return s2mpg1415_meter_set_ext_samp_rate(info->chip.hw_id, info->i2c, samp_rate_sel);
 }
 
 static int odpm_io_set_meter_on(struct odpm_info *info, bool is_on)
@@ -215,7 +258,7 @@ static int odpm_io_update_bucken_enable_bits(struct odpm_info *info,
 					    ODPM_BUCK_EN_BYTES);
 }
 
-static void odpm_io_set_lpf_mode(struct odpm_info *info, s2mpg1415_meter_mode mode)
+static void odpm_io_set_lpf_mode(struct odpm_info *info, enum s2mpg1415_meter_mode mode)
 {
 	s2mpg1415_meter_set_lpf_mode(info->chip.hw_id, info->i2c, mode);
 }
@@ -655,7 +698,7 @@ static int odpm_parse_dt(struct device *dev, struct odpm_info *info)
  *	the resolution doesn't exist.
  */
 static u32 odpm_get_resolution_milli_iq30(struct odpm_info *info, int rail_i,
-					  s2mpg1415_meter_mode mode)
+					  enum s2mpg1415_meter_mode mode)
 {
 	u32 ret = 0;
 
@@ -1109,8 +1152,8 @@ static void odpm_print_new_sampling_rate(struct odpm_info *info, int ret,
 
 static void odpm_set_sampling_rate(struct odpm_info *info,
 				   enum odpm_sampling_rate_type type,
-				   s2mpg1415_int_samp_rate int_sampling_rate_i,
-				   s2mpg1415_ext_samp_rate ext_sampling_rate_i)
+				   enum s2mpg1415_int_samp_rate int_samp_rate_sel,
+				   enum s2mpg1415_ext_samp_rate ext_samp_rate_sel)
 {
 	int ret = 0;
 
@@ -1124,13 +1167,13 @@ static void odpm_set_sampling_rate(struct odpm_info *info,
 
 	if (type == ODPM_SAMPLING_RATE_INTERNAL ||
 	    type == ODPM_SAMPLING_RATE_ALL) {
-		ret = odpm_io_set_int_sampling_rate(info, int_sampling_rate_i);
+		ret = odpm_io_set_int_sampling_rate(info, int_samp_rate_sel);
 		odpm_print_new_sampling_rate(info, ret,
 					     ODPM_SAMPLING_RATE_INTERNAL);
 	}
 	if (type == ODPM_SAMPLING_RATE_EXTERNAL ||
 	    type == ODPM_SAMPLING_RATE_ALL) {
-		ret = odpm_io_set_ext_sampling_rate(info, ext_sampling_rate_i);
+		ret = odpm_io_set_ext_sampling_rate(info, ext_samp_rate_sel);
 		odpm_print_new_sampling_rate(info, ret,
 					     ODPM_SAMPLING_RATE_EXTERNAL);
 	}
@@ -1183,7 +1226,7 @@ static ssize_t sampling_rate_store(struct device *dev,
 	}
 
 	odpm_set_sampling_rate(info, ODPM_SAMPLING_RATE_INTERNAL,
-			       new_sampling_rate_i, S2MPG1415_EXT_FREQ_NONE);
+			       new_sampling_rate_i, EXT_FREQ_NONE);
 
 	return count;
 }
@@ -1223,7 +1266,7 @@ static ssize_t ext_sampling_rate_store(struct device *dev,
 	}
 
 	odpm_set_sampling_rate(info, ODPM_SAMPLING_RATE_EXTERNAL,
-			       S2MPG1415_INT_FREQ_NONE, new_sampling_rate_i);
+			       INT_FREQ_NONE, new_sampling_rate_i);
 
 	return count;
 }
@@ -1485,11 +1528,11 @@ static ssize_t measurement_stop_show(struct device *dev,
 	return count;
 }
 
-void odpm_get_raw_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
+void odpm_get_raw_lpf_values(struct odpm_info *info, enum s2mpg1415_meter_mode mode,
 			     u32 micro_unit[ODPM_CHANNEL_MAX])
 {
-	const int samp_rate = info->chip.int_sampling_rate_i;
-	u32 acquisition_time_us = s2mpg1415_meter_get_acquisition_time_us(samp_rate);
+	const int samp_rate_sel = info->chip.int_sampling_rate_i;
+	u32 acquisition_time_us = s2mpg1415_meter_get_acquisition_time_us(samp_rate_sel);
 
 	odpm_io_set_lpf_mode(info, mode);
 	usleep_range(acquisition_time_us, acquisition_time_us + 100);
@@ -1497,7 +1540,7 @@ void odpm_get_raw_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
 }
 EXPORT_SYMBOL_GPL(odpm_get_raw_lpf_values);
 
-static void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mode,
+static void odpm_get_lpf_values(struct odpm_info *info, enum s2mpg1415_meter_mode mode,
 				u64 micro_unit[ODPM_CHANNEL_MAX])
 {
 	int ch;
@@ -1525,7 +1568,7 @@ static void odpm_get_lpf_values(struct odpm_info *info, s2mpg1415_meter_mode mod
 
 static ssize_t odpm_show_lpf_values(struct device *dev,
 				    struct device_attribute *attr, char *buf,
-				    s2mpg1415_meter_mode mode)
+				    enum s2mpg1415_meter_mode mode)
 {
 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct odpm_info *info = iio_priv(indio_dev);
@@ -1648,13 +1691,40 @@ static int odpm_read_raw(struct iio_dev *indio_dev,
 			 struct iio_chan_spec const *chan, int *val, int *val2,
 			 long mask)
 {
+	struct odpm_info *info = iio_priv(indio_dev);
+	const int rail_i = info->channels[chan->channel].rail_i;
 	int ret = 0;
+	u64 milli_res_iq30;
 
 	switch (mask) {
 	case IIO_CHAN_INFO_AVERAGE_RAW:
 		switch (chan->type) {
 		case IIO_ENERGY:
 			break;
+		default:
+			break;
+		}
+		break;
+	case IIO_CHAN_INFO_SCALE:
+		switch (chan->type) {
+		case IIO_CURRENT:
+			mutex_lock(&info->lock);
+			milli_res_iq30 = odpm_get_resolution_milli_iq30(info,
+									rail_i,
+									S2MPG1415_METER_CURRENT);
+			mutex_unlock(&info->lock);
+			*val = (u32)_IQ30_to_int(milli_res_iq30);
+			*val2 = (u32)_IQ30_to_int(milli_res_iq30 * PICO_PER_MILLI) % PICO_PER_MILLI;
+			return IIO_VAL_INT_PLUS_NANO;
+		case IIO_POWER:
+			mutex_lock(&info->lock);
+			milli_res_iq30 = odpm_get_resolution_milli_iq30(info,
+									rail_i,
+									S2MPG1415_METER_POWER);
+			mutex_unlock(&info->lock);
+			*val = (u32)_IQ30_to_int(milli_res_iq30);
+			*val2 = (u32)_IQ30_to_int(milli_res_iq30 * PICO_PER_MILLI) % PICO_PER_MILLI;
+			return IIO_VAL_INT_PLUS_NANO;
 		default:
 			break;
 		}
@@ -1715,12 +1785,10 @@ static void odpm_probe_init_device_specific(struct odpm_info *info, int id)
 {
 	info->chip.hw_id = id;
 
-	info->chip.sampling_rate_int_uhz =
-	    s2mpg1415_meter_get_int_samping_rate_table();
-	info->chip.sampling_rate_int_count = S2MPG1415_INT_FREQ_COUNT;
-	info->chip.sampling_rate_ext_uhz =
-	    s2mpg1415_meter_get_ext_samping_rate_table();
-	info->chip.sampling_rate_ext_count = S2MPG1415_EXT_FREQ_COUNT;
+	info->chip.sampling_rate_int_uhz = s2mpg1415_int_sample_rate_uhz;
+	info->chip.sampling_rate_int_count = INT_FREQ_COUNT;
+	info->chip.sampling_rate_ext_uhz = s2mpg1415_ext_sample_rate_uhz;
+	info->chip.sampling_rate_ext_count = EXT_FREQ_COUNT;
 
 	switch (id) {
 	case ID_S2MPG14: {
