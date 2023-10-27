@@ -58,7 +58,6 @@ exynos-pd.ko
 exynos-pd_el3.ko
 exynos-pm.ko
 exynos-pmu-if.ko
-exynos-reboot.ko
 exynos-seclog.ko
 exynos_devfreq.ko
 exynos_dit.ko
@@ -136,6 +135,7 @@ phy-exynos-usbdrd-super.ko
 pinctrl-exynos-gs.ko
 pixel-boot-metrics.ko
 pixel-debug-test.ko
+pixel-reboot.ko
 pixel-suspend-diag.ko
 pixel_em.ko
 pixel_stat_mm.ko
