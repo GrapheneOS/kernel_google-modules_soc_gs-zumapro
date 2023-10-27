@@ -434,8 +434,8 @@
 		cpus = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>, <&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
 	};
 
-	exynos-reboot {
-		compatible = "samsung,exynos-reboot";
+	pixel-reboot {
+		compatible = "google,pixel-reboot";
 		syscon = <&pmu_system_controller>;
 		pshold-control-offset = <0x3E9C>;
 		pshold-control-trigger = <0x100>;

@@ -345,8 +345,8 @@
 		reg-names = "pmu_alive";
 	};
 
-	exynos-reboot {
-		compatible = "samsung,exynos-reboot";
+	pixel-reboot {
+		compatible = "google,pixel-reboot";
 		syscon = <&pmu_system_controller>;
 		reboot-cmd-offset = <0x0810>;
 		force-warm-reboot-on-thermal-shutdown;

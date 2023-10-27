@@ -296,8 +296,8 @@
 			<0x300>, <0x380>, <0x400>, <0x600>;
 	};
 
-	exynos-reboot {
-		compatible = "samsung,exynos-reboot";
+	pixel-reboot {
+		compatible = "google,pixel-reboot";
 		syscon = <&pmu_system_controller>;
 		reboot-cmd-offset = <0x0810>;
 		force-warm-reboot-on-thermal-shutdown;
