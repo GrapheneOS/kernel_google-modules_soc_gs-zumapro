@@ -4386,7 +4386,6 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
 	struct dw_pcie_rp *pp = &pci->pp;
-	struct pci_bus *ep_pci_bus;
 	int i;
 	u32 val, new_speed;
 
@@ -4395,7 +4394,8 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 		return -EINVAL;
 	}
 
-	if (target_speed > 3 || target_speed < 1) {
+	if (target_speed > exynos_pcie->max_link_speed
+		|| target_speed < LINK_SPEED_GEN1) {
 		dev_err(pci->dev, "Invalid target speed: Unable to change\n");
 
 		return -EINVAL;
@@ -4404,20 +4404,12 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 	if (target_speed == exynos_pcie->target_link_speed)
 		return 0;
 
-	/* make sure that the link state is L0 by accessing ep config register
-	 * such as 'PCI_VENDOR_ID'.
-	 */
-	ep_pci_bus = pci_find_bus(exynos_pcie->pci_dev->bus->domain_nr, 1);
-	exynos_pcie_rc_rd_other_conf(pp, ep_pci_bus, 0, PCI_VENDOR_ID, 4, &val);
+	dev_dbg(pci->dev, "%s: force l1ss disable\n", __func__);
+	exynos_pcie_rc_l1ss_ctrl(0, PCIE_L1SS_CTRL_SPEED, ch_num);
 
 	/* modify registers to change link speed:
 	 * 1. PCIe_LINK_CTRL2_STAT2(offset: 0xA0)
 	 */
-	exynos_pcie_rc_rd_other_conf(pp, ep_pci_bus, 0, PCIE_LINK_CTRL2_STAT2, 4, &val);
-	val = val & PCIE_LINK_CTRL2_TARGET_LINK_SPEED_MASK;
-	val = val | 0x3;
-	exynos_pcie_rc_wr_other_conf(pp, ep_pci_bus, 0, PCIE_LINK_CTRL2_STAT2, 4, val);
-
 	exynos_pcie_rc_rd_own_conf(pp, PCIE_LINK_CTRL2_STAT2, 4, &val);
 	val = val & PCIE_LINK_CTRL2_TARGET_LINK_SPEED_MASK;
 	val = val | target_speed;
@@ -4439,7 +4431,7 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 		      & PCIE_ELBI_LTSSM_STATE_MASK;
 		if (val >= S_L0 && val <= S_L1_IDLE)
 			break;
-		usleep_range(80, 100);
+		udelay(10);
 	}
 
 	for (i = 0; i < MAX_TIMEOUT_SPEEDCHANGE; i++) {
@@ -4448,11 +4440,14 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 		new_speed &= PCIE_LINK_CTRL_LINK_SPEED_MASK;
 		if (new_speed == target_speed)
 			break;
-		usleep_range(80, 100);
+		udelay(10);
 	}
 
 	if (new_speed != target_speed) {
 		dev_err(pci->dev, "Fail: Unable to change to GEN%d\n", target_speed);
+
+		dev_dbg(pci->dev, "%s: restore l1ss status\n", __func__);
+		exynos_pcie_rc_l1ss_ctrl(1, PCIE_L1SS_CTRL_SPEED, ch_num);
 
 		return -EINVAL;
 	}
@@ -4462,8 +4457,12 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 
 	exynos_pcie->target_link_speed = new_speed;
 
+	dev_dbg(pci->dev, "%s: restore l1ss status\n", __func__);
+	exynos_pcie_rc_l1ss_ctrl(1, PCIE_L1SS_CTRL_SPEED, ch_num);
+
 	return 0;
 }
+EXPORT_SYMBOL(exynos_pcie_rc_change_link_speed);
 
 int exynos_pcie_register_event(struct exynos_pcie_register_event *reg)
 {
