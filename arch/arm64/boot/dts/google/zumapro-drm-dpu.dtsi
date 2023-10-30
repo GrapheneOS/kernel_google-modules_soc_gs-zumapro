@@ -9,3 +9,9 @@
 
 #include "zuma-drm-dpu.dtsi"
 
+&drmdsim0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	/* EINT for TOUT (TE2) */
+	tout-gpio = <&gpp14 1 0>;
+};
