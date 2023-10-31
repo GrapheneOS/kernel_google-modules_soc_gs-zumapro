@@ -48,6 +48,7 @@ struct dwc3_otg {
 	struct wakeup_source	*reconn_wakelock;
 
 	unsigned		ready:1;
+	bool			host_ready;
 	int			otg_connection;
 
 	struct regulator	*vbus_reg;
