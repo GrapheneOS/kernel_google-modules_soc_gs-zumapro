@@ -9,17 +9,6 @@
 #include <dt-bindings/thermal/thermal.h>
 #include <dt-bindings/soc/google/zumapro-bcl.h>
 
-&pinctrl_11 {
-	bcl_rffe_modem: bcl-rffe-modem {
-		samsung,pins = "gpp11-0";
-		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
-	};
-	bcl_batoilo_modem: bcl-batoilo-modem {
-		samsung,pins = "gpp13-0";
-		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
-	};
-};
-
 / {
 	fragment@battery {
 		target-path = "/";
@@ -71,14 +60,6 @@
 				cpu1_cluster = <4>;
 				cpu2_cluster = <7>;
 				odpm_ratio = <3>;
-				gpios = <&gpa9 5 GPIO_ACTIVE_HIGH>,		/* VDROOP1 */
-					<&gpa9 6 GPIO_ACTIVE_HIGH>,		/* VDROOP2 */
-					<&gpp11 0 GPIO_ACTIVE_HIGH>,
-					<&gpp13 0 GPIO_ACTIVE_HIGH>;
-				rffe_channel = <11>;
-				pinctrl-names = "bcl-rffe-modem", "bcl-batoilo-modem";
-				pinctrl-0 = <&bcl_rffe_modem>;
-				pinctrl-1 = <&bcl_batoilo_modem>;
 
 				interrupt-parent = <&max77779_pmic_irq>;
 				interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
