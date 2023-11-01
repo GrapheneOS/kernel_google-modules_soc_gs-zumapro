@@ -85,6 +85,7 @@
 	hsi2c_1: hsi2c@10880000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -106,6 +107,7 @@
 	hsi2c_2: hsi2c@10890000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -127,6 +129,7 @@
 	hsi2c_3: hsi2c@108A0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -148,6 +151,7 @@
 	hsi2c_4: hsi2c@108B0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -169,6 +173,7 @@
 	hsi2c_5: hsi2c@108C0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -189,6 +194,7 @@
 	hsi2c_6: hsi2c@108D0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -209,6 +215,7 @@
 	hsi2c_0: hsi2c@10C80000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -229,6 +236,7 @@
 	hsi2c_9: hsi2c@10C90000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -249,6 +257,7 @@
 	hsi2c_10: hsi2c@10CA0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -269,6 +278,7 @@
 	hsi2c_11: hsi2c@10CB0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -289,6 +299,7 @@
 	hsi2c_12: hsi2c@10CC0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -309,6 +320,7 @@
 	hsi2c_13: hsi2c@10CE0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -329,6 +341,7 @@
 	hsi2c_14: hsi2c@10980000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		default-clk = <200000000>;
@@ -349,7 +362,8 @@
 	/* BLK_HSI0 USI0_HSI0 */
 	hsi2c_15: hsi2c@111B0000 {
 		compatible = "samsung,exynos5-hsi2c";
-			samsung,check-transdone-int;
+		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		reg = <0x00000000 0x111b0000 0x00001000>;
@@ -369,6 +383,7 @@
 	hsi2c_16: hsi2c@111C0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		reg = <0x00000000 0x111c0000 0x00001000>;
@@ -388,6 +403,7 @@
 	hsi2c_17: hsi2c@111D0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		reg = <0x00000000 0x111d0000 0x00001000>;
@@ -407,6 +423,7 @@
 	hsi2c_18: hsi2c@111E0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		reg = <0x00000000 0x111e0000 0x00001000>;
@@ -426,6 +443,7 @@
 	hsi2c_19: hsi2c@111F0000 {
 		compatible = "samsung,exynos5-hsi2c";
 		samsung,check-transdone-int;
+		samsung,hybrid-polling-mode;
 		#address-cells = <0x00000001>;
 		#size-cells = <0x00000000>;
 		reg = <0x00000000 0x111f0000 0x00001000>;
