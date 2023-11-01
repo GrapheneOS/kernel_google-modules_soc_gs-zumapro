@@ -131,6 +131,12 @@ void dwc3_exynos_set_role(struct dwc3_otg *dotg) {
 		 usb_role_string(new_role));
 
 	dotg->desired_role = new_role;
+	if (!dotg->desired_role_kn)
+		dotg->desired_role_kn = sysfs_get_dirent(dotg->exynos->dev->kobj.sd,
+							 "new_data_role");
+	if (dotg->desired_role_kn)
+		sysfs_notify_dirent(dotg->desired_role_kn);
+
 	schedule_work(&dotg->work);
 }
 
@@ -658,6 +664,7 @@ void dwc3_exynos_otg_exit(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 {
 	struct dwc3_otg *dotg = exynos->dotg;
 
+	sysfs_put(dotg->desired_role_kn);
 	unregister_pm_notifier(&dotg->pm_nb);
 	cancel_work_sync(&dotg->work);
 	wakeup_source_unregister(dotg->wakelock);

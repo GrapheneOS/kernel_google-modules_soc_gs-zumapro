@@ -31,7 +31,9 @@ struct dwc3_otg {
 	bool			device_on;
 	bool			host_ready;
 	enum usb_role		current_role;
+	/* New data role that is updated before the data role change is executed */
 	enum usb_role		desired_role;
+	struct kernfs_node	*desired_role_kn;
 
 	int			otg_connection;
 
