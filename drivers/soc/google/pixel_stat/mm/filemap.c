@@ -18,11 +18,11 @@ DECLARE_PER_CPU(unsigned long, pgcache_hit);
  * This part of code is vendor hook functions, which modify or extend the
  * original functions.
  */
-void vh_pagecache_get_page_mod(void *data, struct address_space *mapping,
+void vh_filemap_get_folio_mod(void *data, struct address_space *mapping,
 			pgoff_t index, int fgp_flags,
-			gfp_t gfp_mask, struct page *page)
+			gfp_t gfp_mask, struct folio *folio)
 {
-	if (!page)
+	if (!folio)
 		this_cpu_inc(pgcache_miss);
 	else
 		this_cpu_inc(pgcache_hit);
