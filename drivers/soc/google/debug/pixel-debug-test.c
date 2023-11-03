@@ -51,7 +51,6 @@
 #include <linux/string.h>
 #include <linux/fs.h>
 #include <linux/suspend.h>
-#include <linux/soc/samsung/exynos-smc.h>
 #include <soc/google/debug-test.h>
 
 /*
@@ -59,7 +58,7 @@
  */
 static inline void infinite_loop(void)
 {
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm("b .");
 #else
 	for (;;)
@@ -69,7 +68,7 @@ static inline void infinite_loop(void)
 
 void pull_down_other_cpus(void)
 {
-#ifdef CONFIG_HOTPLUG_CPU
+#if IS_ENABLED(CONFIG_HOTPLUG_CPU)
 	int cpu, ret, curr_cpu;
 
 	curr_cpu = smp_processor_id();
@@ -159,7 +158,7 @@ static void simulate_null(char *arg)
 static void (*undefined_function)(void) = (void *)0x1234;
 static void simulate_undefined_function(char *arg)
 {
-	pr_crit("function address=[%px]\n", undefined_function);
+	pr_crit("function address=[%p]\n", undefined_function);
 
 	undefined_function();
 
@@ -371,7 +370,7 @@ static void simulate_register_access(char *arg)
 static void simulate_svc(char *arg)
 {
 	pr_crit("called!\n");
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm("svc #0x0");
 
 	/* Should not reach here */
@@ -383,7 +382,7 @@ static void simulate_undefined_memory(char *arg)
 {
 	pr_crit("called!\n");
 
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm volatile(".word 0xe7f001f2\n\t");
 
 	/* Should not reach here */
@@ -395,7 +394,7 @@ static void simulate_pc_abort(char *arg)
 {
 	pr_crit("called!\n");
 
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm("add x30, x30, #0x1\n\t"
 	    "ret"
 	    ::: "x30");
@@ -409,7 +408,7 @@ static void simulate_sp_abort(char *arg)
 {
 	pr_crit("called!\n");
 
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	/* X29(FP) or SP cannot be added to the clobber list */
 	asm("mov x29, #0xff00\n\t"
 	    "mov sp, #0xff00\n\t"
@@ -424,7 +423,7 @@ static void simulate_jump_zero(char *arg)
 {
 	pr_crit("called!\n");
 
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm("mov x0, #0x0\n\t"
 	    "br x0"
 	    ::: "x0");
@@ -432,6 +431,34 @@ static void simulate_jump_zero(char *arg)
 	/* Should not reach here */
 	pr_crit("failed!\n");
 #endif
+}
+
+static int suspend_valid(suspend_state_t state)
+{
+	return 1;
+}
+
+static int suspend_begin(suspend_state_t state)
+{
+	pr_crit("called!\n");
+	schedule_timeout_interruptible(msecs_to_jiffies(9000000));
+	return -EINVAL;
+}
+
+static int suspend_enter(suspend_state_t state)
+{
+	return -EINVAL;
+}
+
+static const struct platform_suspend_ops suspend_ops = {
+	.valid = suspend_valid,
+	.begin = suspend_begin,
+	.enter = suspend_enter,
+};
+
+static void simulate_suspend_hang(char *arg)
+{
+	suspend_set_ops(&suspend_ops);
 }
 
 /*
@@ -443,14 +470,14 @@ void debug_trigger_register(struct debug_trigger *soc_trigger, char *arch_name)
 {
 	pr_info("DEBUG TEST: [%s] test triggers are registered!", arch_name);
 	soc_test_trigger.hard_lockup = soc_trigger->hard_lockup;
-#if IS_ENABLED(CONFIG_SOC_GS101)
 	soc_test_trigger.cold_reset = soc_trigger->cold_reset;
-#endif
 	soc_test_trigger.watchdog_emergency_reset =
 		soc_trigger->watchdog_emergency_reset;
 	soc_test_trigger.halt = soc_trigger->halt;
 	soc_test_trigger.arraydump = soc_trigger->arraydump;
 	soc_test_trigger.scandump = soc_trigger->scandump;
+	soc_test_trigger.el3_assert = soc_trigger->el3_assert;
+	soc_test_trigger.el3_panic = soc_trigger->el3_panic;
 }
 EXPORT_SYMBOL_GPL(debug_trigger_register);
 
@@ -472,7 +499,6 @@ static void simulate_hardlockup(char *arg)
 
 }
 
-#if IS_ENABLED(CONFIG_SOC_GS101)
 static void simulate_cold_reset(char *arg)
 {
 	pr_crit("called!\n");
@@ -486,7 +512,6 @@ static void simulate_cold_reset(char *arg)
 	/* Should not reach here */
 	pr_crit("failed!\n");
 }
-#endif
 
 static void simulate_watchdog_emergency_reset(char *arg)
 {
@@ -538,45 +563,28 @@ static void simulate_scandump(char *arg)
 	(*soc_test_trigger.scandump)(arg);
 }
 
-static int suspend_valid(suspend_state_t state)
-{
-	return 1;
-}
-
-static int suspend_begin(suspend_state_t state)
-{
-	pr_crit("called!\n");
-	schedule_timeout_interruptible(msecs_to_jiffies(9000000));
-	return -EINVAL;
-}
-
-static int suspend_enter(suspend_state_t state)
-{
-	return -EINVAL;
-}
-
-static const struct platform_suspend_ops suspend_ops = {
-	.valid = suspend_valid,
-	.begin = suspend_begin,
-	.enter = suspend_enter,
-};
-
-static void simulate_suspend_hang(char *arg)
-{
-	suspend_set_ops(&suspend_ops);
-}
-
-#if !IS_ENABLED(CONFIG_SOC_GS101)
 static void simulate_el3_assert(char *arg)
 {
-	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_ASSERT, 0, 0);
+	pr_crit("called!\n");
+	if (!soc_test_trigger.el3_assert) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.el3_assert)(arg);
 }
 
 static void simulate_el3_panic(char *arg)
 {
-	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_PANIC, 0, 0);
+	pr_crit("called!\n");
+	if (!soc_test_trigger.el3_panic) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.el3_panic)(arg);
 }
-#endif
+
 /*
  * Error trigger definitions
  */
@@ -588,6 +596,7 @@ struct force_error_item {
 };
 
 static const struct force_error_item force_error_vector[] = {
+	/* General debug triggers */
 	{ "panic",		&simulate_panic },
 	{ "bug",		&simulate_bug },
 	{ "warn",		&simulate_warn },
@@ -610,18 +619,15 @@ static const struct force_error_item force_error_vector[] = {
 	{ "pcabort",		&simulate_pc_abort },
 	{ "spabort",		&simulate_sp_abort },
 	{ "jumpzero",		&simulate_jump_zero },
-#if IS_ENABLED(CONFIG_SOC_GS101)
+	{ "suspend_hang",	&simulate_suspend_hang },
+	/* SOC dependent triggers */
 	{ "cold_reset",		&simulate_cold_reset },
-#endif
 	{ "emerg_reset",	&simulate_watchdog_emergency_reset },
 	{ "halt",		&simulate_halt },
 	{ "arraydump",		&simulate_arraydump },
 	{ "scandump",		&simulate_scandump },
-	{ "suspend_hang",	&simulate_suspend_hang },
-#if !IS_ENABLED(CONFIG_SOC_GS101)
-	{ "el3_assert",	&simulate_el3_assert },
-	{ "el3_panic",	&simulate_el3_panic },
-#endif
+	{ "el3_assert",		&simulate_el3_assert },
+	{ "el3_panic",		&simulate_el3_panic },
 };
 
 static void parse_and_trigger(const char *buf)
@@ -665,27 +671,19 @@ static void parse_and_trigger(const char *buf)
 static struct kobject *pixel_debug_kobj;
 static char *trigger;
 
-static void replace_newline_with_null(char *input)
-{
-	char *newline = strchr(input, '\n');
-
-	if (newline != NULL)
-		*newline = '\0';
-}
-
 static ssize_t trigger_write(struct kobject *kobj, struct kobj_attribute *attr,
 			     const char *buf, size_t count)
 {
+	char *token;
 	pr_crit("count=%zu, buf=%s", count, buf);
-	strlcpy(trigger, buf, PAGE_SIZE);
+	strscpy(trigger, buf, PAGE_SIZE);
 
 	/*
 	 * "echo" command appends a newline char by default. Replacing the
 	 * newline char with '\0' because it is not part of the command.
 	 */
-	replace_newline_with_null(trigger);
-
-	parse_and_trigger(trigger);
+	token = strsep(&trigger, "\n");
+	parse_and_trigger(token);
 	return count;
 }
 

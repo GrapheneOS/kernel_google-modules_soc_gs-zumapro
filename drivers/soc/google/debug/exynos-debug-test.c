@@ -613,6 +613,18 @@ static void simulate_SCANDUMP(char *arg)
 	dbg_snapshot_do_dpm_policy(GO_SCANDUMP_ID, "TEST");
 }
 
+#if !IS_ENABLED(CONFIG_SOC_GS101)
+static void simulate_el3_assert(char *arg)
+{
+	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_ASSERT, 0, 0);
+}
+
+static void simulate_el3_panic(char *arg)
+{
+	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_PANIC, 0, 0);
+}
+#endif
+
 static void simulate_ECC_INJECTION(void *info)
 {
 	unsigned long lev = *((unsigned long *)info);
@@ -858,6 +870,10 @@ static struct debug_trigger exynos_debug_test_trigger = {
 	.halt = simulate_HALT,
 	.arraydump = simulate_ARRAYDUMP,
 	.scandump = simulate_SCANDUMP,
+#if !IS_ENABLED(CONFIG_SOC_GS101)
+	.el3_assert = simulate_el3_assert,
+	.el3_panic = simulate_el3_panic,
+#endif
 };
 
 static int exynos_debug_test_probe(struct platform_device *pdev)
