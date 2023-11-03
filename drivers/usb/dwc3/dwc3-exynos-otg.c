@@ -444,7 +444,6 @@ int dwc3_otg_host_ready(bool ready)
 	dwc3_exynos_set_role(dotg);
 	dwc3_exynos_wait_role(dotg);
 
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(dwc3_otg_host_ready);
