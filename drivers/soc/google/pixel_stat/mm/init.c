@@ -38,6 +38,7 @@ static int pixel_stat_mm_init(void)
 	if (ret)
 		return ret;
 
+        /* TODO: Should enable once the cma_alloc vendor hooks are merged in AOSP
 	ret = register_trace_android_vh_cma_alloc_start(vh_cma_alloc_start, NULL);
 	if (ret)
 		return ret;
@@ -45,6 +46,7 @@ static int pixel_stat_mm_init(void)
 	ret = register_trace_android_vh_cma_alloc_finish(vh_cma_alloc_finish, NULL);
 	if (ret)
 		return ret;
+        */
 
 	ret = register_trace_android_vh_meminfo_proc_show(vh_meminfo_proc_show, NULL);
 	if (ret)
