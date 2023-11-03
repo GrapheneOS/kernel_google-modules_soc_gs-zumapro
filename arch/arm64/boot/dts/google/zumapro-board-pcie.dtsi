@@ -18,7 +18,6 @@
 	phy-power-off = "false";
 	use-pcieon-sleep = "true";
 	use-sysmmu = "false";
-	/* TODO(b/282615388): Update to x2 lanes when compatible */
 	num-lanes = <1>;
 	perst-delay-us = <18000>;
 	ep-device-type = <EP_SAMSUNG_MODEM>;
