@@ -11,6 +11,8 @@
 #include <linux/device.h>
 #include <linux/iommu.h>
 
+#include <soc/google/debug-snapshot.h>
+
 #define MAX_VIDS				8U
 
 #define SYSMMU_VM_OFFSET	0x1000
@@ -178,6 +180,7 @@ struct sysmmu_drvdata {
 	bool ap_read_implies_write;
 	bool ap_permissive;
 	struct stream_props *props;
+	unsigned int panic_action;
 };
 
 struct sysmmu_clientdata {
