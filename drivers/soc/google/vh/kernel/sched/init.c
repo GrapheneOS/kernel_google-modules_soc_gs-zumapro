@@ -123,6 +123,7 @@ EXPORT_SYMBOL_GPL(pixel_cluster_num);
 EXPORT_SYMBOL_GPL(pixel_cluster_start_cpu);
 EXPORT_SYMBOL_GPL(pixel_cpu_init);
 
+#if IS_ENABLED(CONFIG_VH_PRIO_INHERITANCE)
 /*
  * @tsk: Remote task we want to access its info
  * @saved_nice: Pointer to save the old nice value if we inherited a new one.
@@ -169,6 +170,7 @@ static void vh_prio_restore(void *data, int nice)
 {
 	set_user_nice(current, nice);
 }
+#endif
 
 static void init_vendor_rt_rq(void)
 {
@@ -472,6 +474,7 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
+#if IS_ENABLED(CONFIG_VH_PRIO_INHERITANCE)
 	ret = register_trace_android_vh_prio_inheritance(vh_prio_inheritance, NULL);
 	if (ret)
 		return ret;
@@ -479,6 +482,7 @@ static int vh_sched_init(void)
 	ret = register_trace_android_vh_prio_restore(vh_prio_restore, NULL);
 	if (ret)
 		return ret;
+#endif
 
 	ret = acpu_init();
 	if (ret)

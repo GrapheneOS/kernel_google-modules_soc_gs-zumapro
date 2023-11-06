@@ -51,16 +51,16 @@ static const struct xhci_driver_overrides xhci_exynos_overrides __initconst = {
 
 static void xhci_exynos_early_stop_set(struct xhci_hcd_exynos *xhci_exynos, struct usb_hcd *hcd)
 {
-	struct usb_device *hdev = hcd->self.root_hub;
+	struct usb_device *rhdev = hcd->self.root_hub;
 	struct usb_hub *hub;
 	struct usb_port *port_dev;
 
-	if (!hdev || !hdev->actconfig || !hdev->maxchild) {
-		dev_info(xhci_exynos->dev, "no hdev to set early_stop\n");
+	if (!rhdev || !rhdev->actconfig || !rhdev->maxchild) {
+		dev_info(xhci_exynos->dev, "no rhdev to set early_stop\n");
 		return;
 	}
 
-	hub = usb_get_intfdata(hdev->actconfig->interface[0]);
+	hub = usb_get_intfdata(rhdev->actconfig->interface[0]);
 
 	if (!hub) {
 		dev_info(xhci_exynos->dev, "can't get usb_hub\n");
@@ -194,13 +194,12 @@ int xhci_exynos_port_power_set(struct xhci_hcd_exynos *exynos, u32 on, u32 prt)
 }
 EXPORT_SYMBOL_GPL(xhci_exynos_port_power_set);
 
-static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_device *dev, bool on)
+static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_device *udev, bool on)
 {
-	struct usb_device *hdev;
-	struct usb_device *udev = dev;
+	struct usb_device *rhdev;
 	struct usb_host_config *config;
 	struct usb_interface_descriptor *desc;
-	struct device *ddev = &udev->dev;
+	struct device *dev = &udev->dev;
 	struct xhci_hcd_exynos	*xhci_exynos = exynos;
 	enum usb_port_state pre_state;
 	int usb3_hub_detect = 0;
@@ -209,30 +208,30 @@ static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_dev
 	int bInterfaceClass = 0;
 
 	if (udev->bus->root_hub == udev) {
-		dev_dbg(ddev, "this dev is a root hub\n");
+		dev_dbg(dev, "this dev is a root hub\n");
 		goto skip;
 	}
 
 	pre_state = xhci_exynos->port_state;
 
 	/* Find root hub */
-	hdev = udev->parent;
-	if (!hdev)
+	rhdev = udev->parent;
+	if (!rhdev)
 		goto skip;
 
-	hdev = dev->bus->root_hub;
-	if (!hdev)
+	rhdev = udev->bus->root_hub;
+	if (!rhdev)
 		goto skip;
-	dev_dbg(ddev, "root hub maxchild = %d\n", hdev->maxchild);
+	dev_dbg(dev, "root hub maxchild = %d\n", rhdev->maxchild);
 
 	/* check all ports */
-	usb_hub_for_each_child(hdev, port, udev) {
-		dev_dbg(ddev, "%s, class = %d, speed = %d\n",
+	usb_hub_for_each_child(rhdev, port, udev) {
+		dev_dbg(dev, "%s, class = %d, speed = %d\n",
 			__func__, udev->descriptor.bDeviceClass,
 						udev->speed);
-		dev_dbg(ddev, "udev = %pK, state = %d\n", udev, udev->state);
+		dev_dbg(dev, "udev = %pK, state = %d\n", udev, udev->state);
 		if (udev && udev->state == USB_STATE_CONFIGURED) {
-			if (!dev->config->interface[0])
+			if (!udev->config->interface[0])
 				continue;
 
 			bInterfaceClass	= udev->config->interface[0]
@@ -246,13 +245,13 @@ static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_dev
 							(udev->config->desc.bmAttributes &
 								USB_CONFIG_ATT_WAKEUP) ? 1 : 0;
 						if (udev->do_remote_wakeup == 1) {
-							dev_info(ddev, "%s: enable auto-suspend",
+							dev_info(dev, "%s: enable auto-suspend",
 								 __func__);
-							device_init_wakeup(ddev, 1);
-							usb_enable_autosuspend(dev);
+							device_init_wakeup(dev, 1);
+							usb_enable_autosuspend(udev);
 							xhci_exynos->rewa_supported = true;
 						}
-						dev_dbg(ddev, "%s, remote_wakeup = %d\n",
+						dev_dbg(dev, "%s, remote_wakeup = %d\n",
 							__func__, udev->do_remote_wakeup);
 						break;
 					}
@@ -277,7 +276,7 @@ static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_dev
 				usb2_detect = 1;
 			}
 		} else {
-			dev_dbg(ddev, "not configured, state = %d\n", udev->state);
+			dev_dbg(dev, "not configured, state = %d\n", udev->state);
 		}
 	}
 
@@ -290,7 +289,7 @@ static int xhci_exynos_check_port(struct xhci_hcd_exynos *exynos, struct usb_dev
 		__pm_relax(xhci_exynos->shared_wakelock);
 	}
 
-	dev_dbg(ddev, "%s %s state pre=%d now=%d\n", __func__,
+	dev_dbg(dev, "%s %s state pre=%d now=%d\n", __func__,
 		on ? "on" : "off", pre_state, xhci_exynos->port_state);
 
 	return xhci_exynos->port_state;
@@ -304,11 +303,11 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 	struct usb_hcd *hcd = container_of(udev->bus, struct usb_hcd, self);
 	struct xhci_exynos_priv *priv = hcd_to_xhci_exynos_priv(hcd);
 	struct xhci_hcd_exynos *xhci_exynos = priv->xhci_exynos;
-	struct device *ddev = &udev->dev;
+	struct device *dev = &udev->dev;
 	int check_port;
 
 	if (!xhci_exynos) {
-		dev_err(ddev, "Couldn't get exynos xhci!\n");
+		dev_err(dev, "Couldn't get exynos xhci!\n");
 		return;
 	} else
 		udev->dev.platform_data  = xhci_exynos;
@@ -319,27 +318,27 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 
 	switch (check_port) {
 	case PORT_EMPTY:
-		dev_dbg(ddev, "Port check empty\n");
+		dev_dbg(dev, "Port check empty\n");
 		xhci_exynos->is_otg_only = 1;
 		if (xhci_exynos->port_ctrl_allowed)
 			xhci_exynos_port_power_set(xhci_exynos, 1, 1);
 		break;
 	case PORT_USB2:
-		dev_dbg(ddev, "Port check usb2\n");
+		dev_dbg(dev, "Port check usb2\n");
 		xhci_exynos->is_otg_only = 0;
 		if (xhci_exynos->port_ctrl_allowed)
 			xhci_exynos_port_power_set(xhci_exynos, 0, 1);
 		break;
 	case PORT_USB3:
 		xhci_exynos->is_otg_only = 0;
-		dev_dbg(ddev, "Port check usb3\n");
+		dev_dbg(dev, "Port check usb3\n");
 		break;
 	case PORT_HUB:
-		dev_dbg(ddev, "Port check hub\n");
+		dev_dbg(dev, "Port check hub\n");
 		xhci_exynos->is_otg_only = 0;
 		break;
 	case PORT_DP:
-		dev_dbg(ddev, "Port check DP\n");
+		dev_dbg(dev, "Port check DP\n");
 		xhci_exynos->is_otg_only = 0;
 		break;
 	default:

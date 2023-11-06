@@ -8,6 +8,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/sscoredump.h>
+#include <linux/time.h>
 
 #include "gnss_prj.h"
 #include "gnss_utils.h"
@@ -39,9 +40,16 @@ static ssize_t coredump_store(struct device *dev, struct device_attribute *attr,
 	int symbol = (int)';';
 	const char *next = NULL;
 	char *coredump = NULL;
-
 	char *reason = NULL;
 	int length = 0;
+	static time64_t last_trigger_time = 0;
+	time64_t trigger_time = ktime_get_seconds();
+
+	// Ignore the trigger time less than 30 seconds
+	if (trigger_time - last_trigger_time < 30) {
+		goto clean;
+	}
+	last_trigger_time = trigger_time;
 
 	gif_err("Trigger Coredump string: %s\n", buf);
 	next = strchr(buf, symbol);
@@ -109,6 +117,19 @@ parse_dt_pdata_err:
 	dev->platform_data = NULL;
 
 	return ERR_PTR(-EINVAL);
+}
+
+static int gnss_remove(struct platform_device *pdev)
+{
+	struct gnss_ctl *gc = platform_get_drvdata(pdev);
+
+	gif_disable_irq_sync(&gc->irq_gnss2ap_spi);
+
+	platform_device_unregister(&sscd_dev);
+
+	device_remove_file(&pdev->dev, &dev_attr_coredump);
+
+	return 0;
 }
 
 static int gnss_probe(struct platform_device *pdev)
@@ -188,6 +209,7 @@ MODULE_DEVICE_TABLE(of, gnss_dt_match);
 
 static struct platform_driver gnss_driver = {
 		.probe = gnss_probe,
+		.remove = gnss_remove,
 		.driver = {
 				.name = "gnss_interface",
 				.owner = THIS_MODULE,
