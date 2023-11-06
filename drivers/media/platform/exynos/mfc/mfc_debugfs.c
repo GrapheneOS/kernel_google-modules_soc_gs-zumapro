@@ -45,6 +45,7 @@ unsigned int core_balance;
 unsigned int sbwc_disable;
 unsigned int sscd_report;
 unsigned int hdr_dump;
+unsigned int idle_suspend_enable = 1;
 
 static int __mfc_info_show(struct seq_file *s, void *unused)
 {
@@ -535,6 +536,8 @@ void mfc_init_debugfs(struct mfc_dev *dev)
 			0644, debugfs->root, &logging_option);
 	debugfs_create_u32("sbwc_disable",
 			0644, debugfs->root, &sbwc_disable);
+	debugfs_create_u32("idle_suspend_enable",
+			0644, debugfs->root, &idle_suspend_enable);
 #ifdef CONFIG_MFC_USE_COREDUMP
 	debugfs_create_u32("sscd_report",
 			0644, debugfs->root, &sscd_report);

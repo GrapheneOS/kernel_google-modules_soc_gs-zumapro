@@ -741,8 +741,11 @@ void mfc_core_idle_checker(struct timer_list *t)
 
 	if (atomic_read(&core->qos_req_cur) == 0) {
 		mfc_core_debug(6, "[MFCIDLE] MFC QoS not started yet\n");
-		mfc_core_idle_checker_start_tick(core);
-		return;
+		/* do not skip idle control when idle suspend is enable */
+		if (!idle_suspend_enable) {
+			mfc_core_idle_checker_start_tick(core);
+			return;
+		}
 	}
 
 	if (atomic_read(&core->hw_run_cnt)) {

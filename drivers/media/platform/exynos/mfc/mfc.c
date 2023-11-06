@@ -573,6 +573,9 @@ static int mfc_release(struct file *file)
 	v4l2_fh_del(&ctx->fh);
 	v4l2_fh_exit(&ctx->fh);
 
+	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
+
 	/*
 	 * mfc_release() can be called without a streamoff
 	 * when the application is forcibly terminated.
