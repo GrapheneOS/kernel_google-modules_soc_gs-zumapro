@@ -49,7 +49,11 @@
 
 #define I2C_WRITE_BUFFER_SIZE		(32 - 1)//10
 #define TUSB_I2C_RETRY_CNT		3
+#define TUSB_MODE_CONTROL_RETRY_CNT	3
 #define EXYNOS_USB_TUNE_LAST		0xEF
+#define I2C_GLOBAL_CONFIG		0xB2
+
+#define REG_DISABLE_P1			BIT(6)
 
 struct eusb_repeater_tune_param {
 	char name[32];

@@ -187,13 +187,28 @@ static int eusb_repeater_ctrl(int value)
 {
 	struct eusb_repeater_data *tud = g_tud;
 	int ret = 0;
+	u8 read_data, write_data;
+
+	ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
+	if (ret < 0)
+		goto err;
+
+	write_data = value ? (read_data & ~REG_DISABLE_P1) : (read_data | REG_DISABLE_P1);
+	ret = eusb_repeater_write_reg(tud, I2C_GLOBAL_CONFIG, &write_data, 1);
+	if (ret < 0)
+		goto err;
+
+	ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
+	dev_dbg(tud->dev, "%s: i2c global config = %x, ret=%d\n", __func__, read_data, ret);
 
 	if (!ret)
 		tud->ctrl_sel_status = value;
 
-	if (ret)
-		dev_err(tud->dev, "Failed to select %s state\n", value ? "power on" : "power off");
+	return ret;
 
+err:
+
+	dev_err(tud->dev, "Failed to %s Disabled state\n", value ? "Exit" : "Enter");
 	return ret;
 }
 
@@ -230,7 +245,11 @@ eusb_repeater_store(struct device *dev,
 		return -EINVAL;
 
 	if (tud->ctrl_sel_status == false) {
-		eusb_repeater_ctrl(true);
+		for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
+			ret = eusb_repeater_ctrl(true);
+			if (ret >= 0)
+				break;
+		}
 		mdelay(3);
 	}
 
@@ -299,11 +318,17 @@ static const struct of_device_id eusb_repeater_match_table[] = {
 int eusb_repeater_power_off(void)
 {
 	struct eusb_repeater_data *tud = g_tud;
+	int i, ret;
 
 	if (!tud)
 		return -EEXIST;
 
-	eusb_repeater_ctrl(false);
+	for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
+		ret = eusb_repeater_ctrl(false);
+		if (ret >= 0)
+			break;
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(eusb_repeater_power_off);
@@ -317,7 +342,11 @@ int eusb_repeater_power_on(void)
 	if (!tud)
 		return -EEXIST;
 
-	eusb_repeater_ctrl(true);
+	for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
+		ret = eusb_repeater_ctrl(true);
+		if (ret >= 0)
+			break;
+	}
 
 	mdelay(3);
 

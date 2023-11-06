@@ -1904,6 +1904,14 @@ int exynos_usbdrd_ldo_manual_control(bool on)
 	}
 	exynos_usbdrd_ldo_control(phy_drd, on);
 
+#if IS_ENABLED(CONFIG_PHY_EXYNOS_EUSB_REPEATER)
+	if (on) {
+		if (extcon_get_state(phy_drd->edev, EXTCON_USB) <= 0 ||
+		    extcon_get_state(phy_drd->edev, EXTCON_USB_HOST) <= 0)
+			eusb_repeater_power_off();
+	}
+#endif
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(exynos_usbdrd_ldo_manual_control);
