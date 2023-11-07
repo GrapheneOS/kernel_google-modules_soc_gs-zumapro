@@ -144,31 +144,31 @@ static ssize_t cpuidle_histogram_show(struct kobject *kobj, struct kobj_attribut
 	struct power_stats cpu_stat;
 
 	// output header
-	ret += snprintf(
+	ret += scnprintf(
 		buf + ret, PAGE_SIZE - ret,
 		"\nFormat: target_histogram bins: min = 0 %%, max = %d %%, increment = %d %%\n\n",
 		NUM_TARGET_BINS * PERCENT_INCREMENT, PERCENT_INCREMENT);
 
 	// iterate over all idle states
 	for (i = 0; i <= cpuidle_state_max; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[state%d]\n", i);
+		ret += scnprintf(buf + ret, PAGE_SIZE - ret, "[state%d]\n", i);
 		for_each_possible_cpu (cpu) {
 			// output fixed_time_histogram
 			spin_lock(&per_cpu(cpu_spinlocks, cpu));
 			cpu_stat = per_cpu(all_cpu_stats, cpu);
-			ret += snprintf(buf + ret, PAGE_SIZE - ret,
-					"cpu%d, target_residency = %lld us\n", cpu,
+			ret += scnprintf(buf + ret, PAGE_SIZE - ret,
+					"cpu%d, target_residency = %d us\n", cpu,
 					cpu_stat.target_residency);
 
 			// output target time histogram
 			for (j = 0; j <= NUM_TARGET_BINS; j++) {
-				ret += snprintf(buf + ret, PAGE_SIZE - ret, "%d, ",
+				ret += scnprintf(buf + ret, PAGE_SIZE - ret, "%d, ",
 						cpu_stat.hist_stats[i].target_time_histogram[j]);
 			}
-			ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+			ret += scnprintf(buf + ret, PAGE_SIZE - ret, "\n");
 			spin_unlock(&per_cpu(cpu_spinlocks, cpu));
 		}
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+		ret += scnprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	}
 
 	return ret;
@@ -182,27 +182,27 @@ static ssize_t cpucluster_histogram_show(struct kobject *kobj, struct kobj_attri
 	int ret = 0;
 	struct power_stats cluster_stat;
 
-	ret += snprintf(
+	ret += scnprintf(
 		buf + ret, PAGE_SIZE - ret,
 		"\nFormat: target_histogram bins: min = 0 %%, max = %d %%, increment = %d %%\n\n",
 		NUM_TARGET_BINS * PERCENT_INCREMENT, PERCENT_INCREMENT);
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "[modes]\n");
+	ret += scnprintf(buf + ret, PAGE_SIZE - ret, "[modes]\n");
 	for (i = 0; i < MAX_CLUSTERS; i++) {
 		spin_lock(&cluster_spinlocks[i]);
 		if (all_cluster_stats[i].initialized) {
 			cluster_stat = all_cluster_stats[i];
-			ret += snprintf(buf + ret, PAGE_SIZE - ret,
-					"%-7s, target_residency = %lld us: \n", cluster_stat.name,
+			ret += scnprintf(buf + ret, PAGE_SIZE - ret,
+					"%-7s, target_residency = %d us: \n", cluster_stat.name,
 					cluster_stat.target_residency);
 			// output the target time histogram
-			ret += snprintf(buf + ret, PAGE_SIZE - ret, "target: ");
+			ret += scnprintf(buf + ret, PAGE_SIZE - ret, "target: ");
 			for (j = 0; j <= NUM_TARGET_BINS; j++) {
-				ret += snprintf(
+				ret += scnprintf(
 					buf + ret, PAGE_SIZE - ret, "%d, ",
 					cluster_stat.hist_stats[0].target_time_histogram[j]);
 			}
-			ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+			ret += scnprintf(buf + ret, PAGE_SIZE - ret, "\n");
 		}
 		spin_unlock(&cluster_spinlocks[i]);
 	}
