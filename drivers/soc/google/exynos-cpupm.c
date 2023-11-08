@@ -92,7 +92,7 @@ struct power_mode {
 	char		name[NAME_LEN];
 
 	/* unique identifier for power mode */
-	int		uid;
+	int		cluster_id;
 
 	/* file node name of target_residency */
 	char		target_residency_name[NAME_LEN];
@@ -405,7 +405,7 @@ static void cpupm_profile_begin(struct cpupm_stats *stat)
 	stat->entry_count++;
 }
 
-static void cpupm_profile_end(struct cpupm_stats *stat, int cancel, int uid)
+static void cpupm_profile_end(struct cpupm_stats *stat, int cancel, int cluster_id)
 {
 	s64 time_delta;
 	if (!stat->entry_time)
@@ -418,7 +418,7 @@ static void cpupm_profile_end(struct cpupm_stats *stat, int cancel, int uid)
 
 	time_delta = ktime_to_us(ktime_sub(ktime_get(), stat->entry_time));
 
-	cpuidle_metrics_histogram_append(uid, time_delta);
+	cpuidle_metrics_histogram_append(cluster_id, time_delta);
 
 	stat->residency_time += time_delta;
 	stat->entry_time = 0;
@@ -882,7 +882,7 @@ static void enter_power_mode(int cpu, struct power_mode *mode)
 
 static void exit_power_mode(int cpu, struct power_mode *mode, int cancel)
 {
-	cpupm_profile_end(&mode->stat, cancel, mode->uid);
+	cpupm_profile_end(&mode->stat, cancel, mode->cluster_id);
 
 	/*
 	 * Configure settings to exit power mode. This is executed by the
@@ -1261,7 +1261,7 @@ fail:
 
 static int exynos_cpupm_mode_init(struct platform_device *pdev)
 {
-	int uid = 0;
+	int cluster_id = 0;
 	struct device_node *dn = pdev->dev.of_node;
 
 	cpupm = alloc_percpu(struct exynos_cpupm);
@@ -1318,10 +1318,11 @@ static int exynos_cpupm_mode_init(struct platform_device *pdev)
 			mode->user_request = true;
 		}
 
-		// set uid and register with cpuidle metrics histogram
-		mode->uid = uid;
-		uid += 1;
-		cpuidle_metrics_histogram_register(mode->name, mode->uid, mode->target_residency);
+		/* set cluster_id and register with cpuidle metrics histogram */
+		mode->cluster_id = cluster_id;
+		cluster_id += 1;
+		cpuidle_metrics_histogram_register(mode->name, mode->cluster_id,
+							mode->target_residency);
 
 		/*
 		 * Initialize attribute for sysfs.
