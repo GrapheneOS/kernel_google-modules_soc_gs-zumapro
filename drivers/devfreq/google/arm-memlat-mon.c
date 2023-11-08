@@ -921,7 +921,7 @@ static int memlat_mon_probe(struct platform_device *pdev)
 		cpu_grp->num_inited_mons++;
 
 unlock_out:
-	if (arm_mon_probe_count == CONFIG_VH_SCHED_MAX_CPU_NR)
+	if (arm_mon_probe_count == num_possible_cpus())
 		set_arm_mon_probe_done(true);
 	mutex_unlock(&cpu_grp->mons_lock);
 	return ret;
