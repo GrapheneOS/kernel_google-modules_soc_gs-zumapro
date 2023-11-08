@@ -122,11 +122,13 @@ int samsung_dma_buffer_unprotect(struct samsung_dma_buffer *buffer)
 	struct buffer_prot_info *protdesc = buffer->priv;
 	struct samsung_dma_heap *heap = buffer->heap;
 	struct device *dev;
-	unsigned long buf_size = protdesc->chunk_count * protdesc->chunk_size;
+	unsigned long buf_size;
 	int ret = 0;
 
 	if (!protdesc || !heap)
 		return 0;
+
+	buf_size = protdesc->chunk_count * protdesc->chunk_size;
 
 	dev = dma_heap_get_dev(heap->dma_heap);
 
