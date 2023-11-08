@@ -988,12 +988,12 @@ static int mfc_enc_streamoff(struct file *file, void *priv,
 		return -EINVAL;
 	}
 
+	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
+
 	if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		mfc_debug(4, "enc src streamoff\n");
 		mfc_qos_reset_last_framerate(ctx);
-
-		/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
-		mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
 		ret = vb2_streamoff(&ctx->vq_src, type);
 		if (!ret)
