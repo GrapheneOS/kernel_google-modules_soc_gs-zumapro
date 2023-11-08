@@ -29,6 +29,38 @@
 #include <soc/google/exynos-cpupm.h>
 #include <trace/hooks/ufshcd.h>
 
+static unsigned int desired_power_mode_gear;
+module_param(desired_power_mode_gear, uint, 0444);
+MODULE_PARM_DESC(desired_power_mode_gear, "Target UFS HS/PWM Gear, "
+					  "0 ( = not set) "
+					  "1-4 ( = use specified gear)");
+#define POWER_MODE_GEAR_VALID(x) (0x1E & (1 << (x)))
+
+static unsigned int desired_power_mode_lane;
+module_param(desired_power_mode_lane, uint, 0444);
+MODULE_PARM_DESC(desired_power_mode_lane, "Target UFS Number of Lanes, "
+					  "0 ( = not set)"
+					  "1-2 ( = use specified num lanes)");
+#define POWER_MODE_LANE_VALID(x) (0x6 & (1 << (x)))
+
+static unsigned int desired_power_mode_pwr;
+module_param(desired_power_mode_pwr, uint, 0444);
+MODULE_PARM_DESC(desired_power_mode_pwr, "Target UFS PA Power Mode, "
+					 "0 ( = not set) "
+					 "1 ( = FAST_MODE) "
+					 "2 ( = SLOW_MODE) "
+					 "4 ( = FASTAUTO_MODE) "
+					 "5 ( = SLOWAUTO_MODE)");
+#define POWER_MODE_PWR_VALID(x) (0x36 & (1 << (x)))
+
+static unsigned int desired_power_mode_hs_rate;
+module_param(desired_power_mode_hs_rate, uint, 0444);
+MODULE_PARM_DESC(desired_power_mode_hs_rate, "Target UFS HS Series, "
+					     "0 ( = not set) "
+					     "1 ( = HS Series A) "
+					     "2 ( = HS Series B)");
+#define POWER_MODE_HS_RATE_VALID(x) (0x6 & (1 << (x)))
+
 #define IS_C_STATE_ON(h) ((h)->c_state == C_ON)
 #define PRINT_STATES(h)						\
 	dev_err((h)->dev, "%s: prev h_state %d, cur c_state %d\n",	\
@@ -1240,15 +1272,25 @@ static int exynos_ufs_get_pwr_mode(struct device_node *np,
 {
 	struct uic_pwr_mode *pmd = &ufs->req_pmd_parm;
 
-	pmd->mode = FAST_MODE;
+	if (POWER_MODE_PWR_VALID(desired_power_mode_pwr))
+		pmd->mode = desired_power_mode_pwr;
+	else
+		pmd->mode = FAST_MODE;
 
-	if (of_property_read_u8(np, "ufs,pmd-attr-lane", &pmd->lane))
+	if (POWER_MODE_LANE_VALID(desired_power_mode_lane))
+		pmd->lane = desired_power_mode_lane;
+	else if (of_property_read_u8(np, "ufs,pmd-attr-lane", &pmd->lane))
 		pmd->lane = 1;
 
-	if (of_property_read_u8(np, "ufs,pmd-attr-gear", &pmd->gear))
+	if (POWER_MODE_GEAR_VALID(desired_power_mode_gear))
+		pmd->gear = desired_power_mode_gear;
+	else if (of_property_read_u8(np, "ufs,pmd-attr-gear", &pmd->gear))
 		pmd->gear = 1;
 
-	pmd->hs_series = PA_HS_MODE_B;
+	if (POWER_MODE_HS_RATE_VALID(desired_power_mode_hs_rate))
+		pmd->hs_series = desired_power_mode_hs_rate;
+	else
+		pmd->hs_series = PA_HS_MODE_B;
 
 	return 0;
 }
