@@ -33,7 +33,6 @@
 #include <linux/usb/phy.h>
 
 #include <soc/google/exynos-cpupm.h>
-#include <trace/hooks/sound.h>
 #include <trace/hooks/usb.h>
 
 #include "xhci-exynos.h"
