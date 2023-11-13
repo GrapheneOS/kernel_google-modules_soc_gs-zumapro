@@ -993,6 +993,10 @@ int mfc_rm_instance_init(struct mfc_dev *dev, struct mfc_ctx *ctx)
 
 	mfc_debug(2, "[RM] init instance core-%d\n",
 			ctx->op_core_num[MFC_CORE_MAIN]);
+
+	/* Trigger idle resume if core is in the idle mode for initializing hardware */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
+
 	ret = core->core_ops->instance_init(core, ctx);
 	if (ret) {
 		ctx->op_core_num[MFC_CORE_MAIN] = MFC_CORE_INVALID;
