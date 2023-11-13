@@ -677,15 +677,6 @@ static inline bool apply_uclamp_filters(struct rq *rq, struct task_struct *p)
 		/* update uclamp_max if set to auto */
 		uclamp_se_set(&p->uclamp_req[UCLAMP_MAX],
 			      sched_auto_uclamp_max[task_cpu(p)], true);
-	}
-
-	if (uclamp_can_ignore_uclamp_max(rq, p)) {
-		uclamp_set_ignore_uclamp_max(p);
-		if (!auto_uclamp_max) {
-			/* GKI has incremented it already, undo that */
-			uclamp_rq_dec_id(rq, p, UCLAMP_MAX);
-		}
-	} else if (auto_uclamp_max) {
 		/*
 		 * re-apply uclamp_max applying the potentially new
 		 * auto value
@@ -697,10 +688,26 @@ static inline bool apply_uclamp_filters(struct rq *rq, struct task_struct *p)
 			rq->uclamp_flags &= ~UCLAMP_FLAG_IDLE;
 	}
 
-	if (uclamp_can_ignore_uclamp_min(rq, p)) {
+	/*
+	 * We can't ignore uclamp_min or uclamp_max individually without side
+	 * effects due to the way UCLAMP_FLAG_IDLE Is handled. It'll cause
+	 * confusions and spit out warnings due to imbalances.
+	 *
+	 * If one of them needs to be ignored, then we assume the other must be
+	 * ignored too.
+	 *
+	 * This should keep some implicit assumptions about how these values
+	 * are inc/dec and how the flag is handled correct.
+	 */
+	if (uclamp_can_ignore_uclamp_min(rq, p) ||
+	    uclamp_can_ignore_uclamp_max(rq, p)) {
+
 		uclamp_set_ignore_uclamp_min(p);
+		uclamp_set_ignore_uclamp_max(p);
+
 		/* GKI has incremented it already, undo that */
 		uclamp_rq_dec_id(rq, p, UCLAMP_MIN);
+		uclamp_rq_dec_id(rq, p, UCLAMP_MAX);
 	}
 
 	/*
