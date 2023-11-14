@@ -40,6 +40,7 @@
 #include "zuma-audio.dtsi"
 #include "zuma-mfc.dtsi"
 #include "zuma-bigw.dtsi"
+#include "zuma-pwm.dtsi"
 
 / {
 	compatible = "google,zumapro";
