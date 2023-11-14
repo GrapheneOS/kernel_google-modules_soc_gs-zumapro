@@ -964,7 +964,7 @@ static SIMPLE_DEV_PM_OPS(pwm_samsung_pm_ops, pwm_samsung_suspend,
 
 static struct platform_driver pwm_samsung_driver = {
 	.driver		= {
-		.name	= "samsung-pwm",
+		.name	= "exynos-pwm",
 		.pm	= &pwm_samsung_pm_ops,
 		.of_match_table = of_match_ptr(samsung_pwm_matches),
 	},
