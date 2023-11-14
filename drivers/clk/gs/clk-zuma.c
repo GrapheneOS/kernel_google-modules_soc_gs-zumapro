@@ -891,6 +891,13 @@ struct init_vclk zuma_peric1_hwacg_vclks[] = {
 		0,
 		VCLK_GATE,
 		NULL),
+	HWACG_VCLK(GATE_PERIC1_TOP0_PWM,
+		PWM_QCH,
+		"GATE_PERIC1_TOP0_PWM",
+		"UMUX_CLKCMU_PERIC1_NOC",
+		0,
+		VCLK_GATE,
+		NULL),
 };
 
 struct init_vclk zuma_tpu_hwacg_vclks[] = {
