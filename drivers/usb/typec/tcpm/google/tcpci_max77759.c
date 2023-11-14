@@ -655,6 +655,7 @@ void register_data_active_callback(void (*callback)(void *data_active_payload), 
 }
 EXPORT_SYMBOL_GPL(register_data_active_callback);
 
+static void ovp_operation(struct max77759_plat *chip, int operation);
 #ifdef CONFIG_GPIOLIB
 static int ext_bst_en_gpio_get_direction(struct gpio_chip *chip, unsigned int offset)
 {
@@ -676,13 +677,34 @@ static int ext_bst_en_gpio_get(struct gpio_chip *gpio, unsigned int offset)
 
 static void ext_bst_en_gpio_set(struct gpio_chip *gpio, unsigned int offset, int value)
 {
-	int ret;
 	struct max77759_plat *chip = gpiochip_get_data(gpio);
 	struct regmap *regmap = chip->data.regmap;
+	bool vsafe0v, toggle_ovp = false;
+	int ret;
+	u8 raw;
+
+	ret = max77759_read8(regmap, TCPC_EXTENDED_STATUS, &raw);
+	if (ret < 0)
+		vsafe0v = chip->vsafe0v;
+	else
+		vsafe0v = !!(raw & TCPC_EXTENDED_STATUS_VSAFE0V);
+
+	/* b/309900468 toggle ovp to make sure that Vbus is vSafe0V when setting EXT_BST_EN. */
+	if (chip->in_switch_gpio >= 0 && value && !vsafe0v)
+		toggle_ovp = true;
+
+	if (toggle_ovp)
+		ovp_operation(chip, OVP_OFF);
 
 	ret = max77759_write8(regmap, TCPC_VENDOR_EXTBST_CTRL, value ? EXT_BST_EN : 0);
-	LOG(LOG_LVL_DEBUG, chip->log,
-	    "%s: TCPC_VENDOR_EXTBST_CTRL value%d ret:%d", __func__, value, ret);
+	LOG(LOG_LVL_DEBUG, chip->log, "%s: TCPC_VENDOR_EXTBST_CTRL value:%d ret:%d", __func__,
+	    value, ret);
+
+	if (toggle_ovp) {
+		mdelay(10);
+
+		ovp_operation(chip, OVP_ON);
+	}
 }
 
 static int ext_bst_en_gpio_init(struct max77759_plat *chip)
