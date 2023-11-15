@@ -65,3 +65,5 @@ source "$(KCONFIG_EXT_PREFIX)drivers/bts/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/block/zram/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)Kconfig.ext_modules"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/pwm/Kconfig"
