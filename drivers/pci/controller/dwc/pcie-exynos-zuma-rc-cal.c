@@ -249,7 +249,7 @@ static int check_exynos_pcie_reg_status(struct exynos_pcie *exynos_pcie,
 	u32 status;
 	ktime_t timestamp = ktime_get();
 
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < 10000; i++) {
 		udelay(10);
 		status = readl(base + offset) & BIT(bit);
 		if (status != 0)
