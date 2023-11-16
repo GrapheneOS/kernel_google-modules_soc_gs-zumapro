@@ -1126,3 +1126,47 @@ int acpm_ipc_remove(struct platform_device *pdev)
 {
 	return 0;
 }
+
+bool acpm_ipc_get_rx_buffer_properties(unsigned int channel_id, void __iomem **base,
+				       unsigned int *size)
+{
+	struct acpm_ipc_ch *channel;
+
+	if (channel_id < acpm_ipc->num_channels) {
+		channel = &acpm_ipc->channel[channel_id];
+		if (channel->type == TYPE_BUFFER) {
+			*base = channel->rx_ch.base;
+			*size = channel->rx_ch.size * channel->rx_ch.len;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+EXPORT_SYMBOL_GPL(acpm_ipc_get_rx_buffer_properties);
+
+bool acpm_ipc_get_tx_buffer_properties(unsigned int channel_id, void __iomem **base,
+				       unsigned int *size)
+{
+	struct acpm_ipc_ch *channel;
+
+	if (channel_id < acpm_ipc->num_channels) {
+		channel = &acpm_ipc->channel[channel_id];
+		if (channel->type == TYPE_BUFFER) {
+			*base = channel->tx_ch.base;
+			*size = channel->tx_ch.size * channel->tx_ch.len;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+EXPORT_SYMBOL_GPL(acpm_ipc_get_tx_buffer_properties);
+
+void acpm_ipc_ring_doorbell(unsigned int channel_id)
+{
+	apm_interrupt_gen(channel_id);
+}
+EXPORT_SYMBOL_GPL(acpm_ipc_ring_doorbell);

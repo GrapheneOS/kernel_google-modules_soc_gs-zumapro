@@ -15,11 +15,6 @@ static inline int cal_qch_init(unsigned int vclkid, unsigned int use_qch)
 {
 	return 0;
 }
-
-static inline int cal_if_init(void)
-{
-	return 0;
-}
 #else
 #include <soc/google/pmucal_system.h>
 
@@ -115,7 +110,6 @@ extern void cal_cp_enable_dump_pc_no_pg(void);
 extern void cal_cp_disable_dump_pc_no_pg(void);
 
 extern int cal_init(void);
-extern int cal_if_init(void *np);
 
 extern void cal_register_pd_lookup_cmu_id(void *(*func)(u32 cmu_id));
 #endif

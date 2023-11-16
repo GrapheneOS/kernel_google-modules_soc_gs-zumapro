@@ -49,6 +49,7 @@
 #include <trace/events/power.h>
 
 #include <soc/google/exynos_pm_qos.h>
+#include "cal-if/acpm_dvfs.h"
 
 # define plist_check_head(h)	do { } while (0)
 /**
@@ -1023,7 +1024,7 @@ void exynos_pm_qos_update_request_async(struct exynos_pm_qos_request *req,
 	if (!req)
 		return;
 
-	if (!async_vote_wq) {
+	if (!async_vote_wq || exynos_acpm_async_dvfs_enabled()) {
 		exynos_pm_qos_update_request(req, new_value);
 		return;
 	}

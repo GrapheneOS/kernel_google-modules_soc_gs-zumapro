@@ -70,6 +70,11 @@ void exynos_acpm_reboot(void);
 void acpm_stop_log_and_dumpram(void);
 u64 get_frc_time(void);
 bool is_acpm_ipc_flushed(void);
+bool acpm_ipc_get_rx_buffer_properties(unsigned int channel_id, void __iomem **base,
+				       unsigned int *size);
+bool acpm_ipc_get_tx_buffer_properties(unsigned int channel_id, void __iomem **base,
+				       unsigned int *size);
+void acpm_ipc_ring_doorbell(unsigned int channel_id);
 #else
 
 static inline int acpm_ipc_request_channel(struct device_node *np,

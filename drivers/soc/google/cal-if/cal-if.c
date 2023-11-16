@@ -534,7 +534,7 @@ void cal_cp_disable_dump_pc_no_pg(void)
 EXPORT_SYMBOL_GPL(cal_cp_disable_dump_pc_no_pg);
 #endif
 
-int cal_if_init(void *np)
+int cal_if_init(struct platform_device *pdev)
 {
 	static int cal_initialized;
 	struct resource res;
@@ -542,6 +542,7 @@ int cal_if_init(void *np)
 	const __be32 *prop;
 	unsigned int minmax_idx = 0;
 	unsigned int from, to, remap_size = 0;
+	struct device_node *np = pdev->dev.of_node;
 
 	if (cal_initialized == 1)
 		return 0;
@@ -610,7 +611,7 @@ int cal_if_init(void *np)
 		return ret;
 #endif
 
-	exynos_acpm_set_device(np);
+	exynos_acpm_set_device(&pdev->dev);
 
 	if (of_address_to_resource(np, 0, &res) == 0)
 		cmucal_dbg_set_cmu_top_base(res.start);
@@ -629,10 +630,9 @@ int cal_if_init(void *np)
 
 static int cal_if_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
 	int ret;
 
-	ret = cal_if_init(np);
+	ret = cal_if_init(pdev);
 	if (ret)
 		goto out;
 
