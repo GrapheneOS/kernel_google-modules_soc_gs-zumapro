@@ -994,6 +994,8 @@ int mfc_rm_instance_init(struct mfc_dev *dev, struct mfc_ctx *ctx)
 	mfc_debug(2, "[RM] init instance core-%d\n",
 			ctx->op_core_num[MFC_CORE_MAIN]);
 
+	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
+	atomic_inc(&core->hw_run_cnt);
 	/* Trigger idle resume if core is in the idle mode for initializing hardware */
 	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
