@@ -737,7 +737,8 @@ static ssize_t runnable_stats_reset_store(struct kobject *kobj,
 		spin_lock(&per_cpu(rt_runnable_lock, cpu));
 		trr = &per_cpu(top_rt_runnable, cpu);
 		atomic64_set(&(trr->count), 0);
-		memset(trr->rt_runnable, 0, sizeof(struct top_rt_runnable));
+		memset(trr->rt_runnable, 0, sizeof(struct rt_runnable) *
+							RT_RUNNABLE_ARR_SIZE);
 		spin_unlock(&per_cpu(rt_runnable_lock, cpu));
 	}
 	return count;
