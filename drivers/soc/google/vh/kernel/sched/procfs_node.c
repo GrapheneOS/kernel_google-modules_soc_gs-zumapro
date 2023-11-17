@@ -119,10 +119,6 @@ enum vendor_procfs_type {
 #define __PROC_SET_GROUP_ENTRY(__name, __group_name, __vg) \
 		{__stringify(__name), GROUPED_CONTROL, __vg, &__name##_##__group_name##_proc_ops}
 
-/*
- * Keep the old group procfs nodes temporarily for compatiblility with current platform
- * usage. Once platform usage updated, they will be removed.
- */
 #define __PROC_GROUP_ENTRIES(__group_name, __vg)	\
 		__PROC_GROUP_ENTRY(prefer_idle, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(prefer_high_cap, __group_name, __vg),	\
@@ -147,42 +143,16 @@ enum vendor_procfs_type {
 		__PROC_GROUP_ENTRY(uclamp_max_on_nice_mid_prio, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(uclamp_max_on_nice_high_prio, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_task_group, __group_name, __vg),	\
-		__PROC_SET_GROUP_ENTRY(set_proc_group, __group_name, __vg),	\
-		PROC_ENTRY(__group_name##_prefer_idle),	\
-		PROC_ENTRY(__group_name##_prefer_high_cap),	\
-		PROC_ENTRY(__group_name##_task_spreading),	\
-		PROC_ENTRY(__group_name##_preferred_idle_mask_low),	\
-		PROC_ENTRY(__group_name##_preferred_idle_mask_mid),	\
-		PROC_ENTRY(__group_name##_preferred_idle_mask_high),	\
-		PROC_ENTRY(__group_name##_uclamp_min),	\
-		PROC_ENTRY(__group_name##_uclamp_min_on_nice_enable),	\
-		PROC_ENTRY(__group_name##_uclamp_min_on_nice_low_value),	\
-		PROC_ENTRY(__group_name##_uclamp_min_on_nice_mid_value),	\
-		PROC_ENTRY(__group_name##_uclamp_min_on_nice_high_value),	\
-		PROC_ENTRY(__group_name##_uclamp_min_on_nice_low_prio),	\
-		PROC_ENTRY(__group_name##_uclamp_min_on_nice_mid_prio),	\
-		PROC_ENTRY(__group_name##_uclamp_min_on_nice_high_prio),	\
-		PROC_ENTRY(__group_name##_uclamp_max),	\
-		PROC_ENTRY(__group_name##_uclamp_max_on_nice_enable),	\
-		PROC_ENTRY(__group_name##_uclamp_max_on_nice_low_value),	\
-		PROC_ENTRY(__group_name##_uclamp_max_on_nice_mid_value),	\
-		PROC_ENTRY(__group_name##_uclamp_max_on_nice_high_value),	\
-		PROC_ENTRY(__group_name##_uclamp_max_on_nice_low_prio),	\
-		PROC_ENTRY(__group_name##_uclamp_max_on_nice_mid_prio),	\
-		PROC_ENTRY(__group_name##_uclamp_max_on_nice_high_prio),	\
-		PROC_ENTRY(set_task_group_##__group_name),	\
-		PROC_ENTRY(set_proc_group_##__group_name)
+		__PROC_SET_GROUP_ENTRY(set_proc_group, __group_name, __vg)
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 #define PROC_GROUP_ENTRIES(__group_name, __vg)	\
 		__PROC_GROUP_ENTRIES(__group_name, __vg),	\
-		__PROC_GROUP_ENTRY(ug, __group_name, __vg),	\
-		PROC_ENTRY(__group_name##_ug)
+		__PROC_GROUP_ENTRY(ug, __group_name, __vg)
 #else
 #define PROC_GROUP_ENTRIES(__group_name, __vg)	\
 		__PROC_GROUP_ENTRIES(__group_name, __vg),	\
-		__PROC_GROUP_ENTRY(group_throttle, __group_name, __vg),	\
-		PROC_ENTRY(__group_name##_group_throttle)
+		__PROC_GROUP_ENTRY(group_throttle, __group_name, __vg)
 #endif
 
 #define SET_VENDOR_GROUP_STORE(__grp, __vg)						      \
