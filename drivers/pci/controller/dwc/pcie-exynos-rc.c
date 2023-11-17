@@ -2268,6 +2268,14 @@ static void __maybe_unused exynos_pcie_notify_callback(struct dw_pcie_rp *pp, in
 	}
 }
 
+bool exynos_pcie_is_sysmmu_enabled(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie  = &g_pcie_rc[ch_num];
+
+	return exynos_pcie->use_sysmmu;
+}
+EXPORT_SYMBOL_GPL(exynos_pcie_is_sysmmu_enabled);
+
 void exynos_pcie_rc_print_aer_register(int ch_num)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
