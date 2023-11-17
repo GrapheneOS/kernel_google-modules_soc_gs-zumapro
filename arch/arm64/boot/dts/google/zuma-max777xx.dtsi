@@ -105,7 +105,7 @@ max77779_vimon:max77779vimon@0x28 {
 
 max77779_chg:max77779chrg@0x69 {
 	status = "disabled";
-	compatible = "maxim,max77779chrg";
+	compatible = "maxim,max77779chrg_i2c";
 	reg = <0x69>;
 
 	max77779,psy-name = "main-charger";
