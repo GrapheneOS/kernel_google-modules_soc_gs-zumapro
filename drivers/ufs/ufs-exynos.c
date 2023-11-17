@@ -34,14 +34,14 @@ module_param(desired_power_mode_gear, uint, 0444);
 MODULE_PARM_DESC(desired_power_mode_gear, "Target UFS HS/PWM Gear, "
 					  "0 ( = not set) "
 					  "1-4 ( = use specified gear)");
-#define POWER_MODE_GEAR_VALID(x) (0x1E & (1 << (x)))
+#define POWER_MODE_GEAR_VALID(x) ((x) && ((x) <= 4))
 
 static unsigned int desired_power_mode_lane;
 module_param(desired_power_mode_lane, uint, 0444);
 MODULE_PARM_DESC(desired_power_mode_lane, "Target UFS Number of Lanes, "
-					  "0 ( = not set)"
+					  "0 ( = not set) "
 					  "1-2 ( = use specified num lanes)");
-#define POWER_MODE_LANE_VALID(x) (0x6 & (1 << (x)))
+#define POWER_MODE_LANE_VALID(x) ((x) && ((x) <= 2))
 
 static unsigned int desired_power_mode_pwr;
 module_param(desired_power_mode_pwr, uint, 0444);
@@ -51,7 +51,7 @@ MODULE_PARM_DESC(desired_power_mode_pwr, "Target UFS PA Power Mode, "
 					 "2 ( = SLOW_MODE) "
 					 "4 ( = FASTAUTO_MODE) "
 					 "5 ( = SLOWAUTO_MODE)");
-#define POWER_MODE_PWR_VALID(x) (0x36 & (1 << (x)))
+#define POWER_MODE_PWR_VALID(x) (((x) <= 5) && (0x36 & (1 << (x))))
 
 static unsigned int desired_power_mode_hs_rate;
 module_param(desired_power_mode_hs_rate, uint, 0444);
@@ -59,7 +59,7 @@ MODULE_PARM_DESC(desired_power_mode_hs_rate, "Target UFS HS Series, "
 					     "0 ( = not set) "
 					     "1 ( = HS Series A) "
 					     "2 ( = HS Series B)");
-#define POWER_MODE_HS_RATE_VALID(x) (0x6 & (1 << (x)))
+#define POWER_MODE_HS_RATE_VALID(x) ((x) && ((x) <= 2))
 
 #define IS_C_STATE_ON(h) ((h)->c_state == C_ON)
 #define PRINT_STATES(h)						\
