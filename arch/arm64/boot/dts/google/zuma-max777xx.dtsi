@@ -126,7 +126,7 @@ max77779_chg:max77779chrg@0x69 {
 
 max77779_sp:max77779sp@60 {
 	status = "disabled";
-	compatible = "adi,max77779_sp";
+	compatible = "maxim,max77779sp_i2c";
 	reg = <0x60>;
 };
 
