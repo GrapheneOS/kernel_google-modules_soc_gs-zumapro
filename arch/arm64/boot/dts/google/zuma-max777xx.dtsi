@@ -74,7 +74,7 @@ max77759_chg:max77759chrg@0x69 {
 	/* max77779 nodes */
 max77779_fg:max77779fg@0x36 {
 	status = "disabled";
-	compatible = "maxim,max77779fg";
+	compatible = "maxim,max77779fg_i2c";
 	reg = <0x36>;
 
 	interrupt-parent = <&max77779_pmic_irq>;
