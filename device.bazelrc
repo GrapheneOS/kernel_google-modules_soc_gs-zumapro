@@ -35,7 +35,7 @@ build:use_source_tree_aosp_staging --//private/google-modules/soc/gs:gki_kernel_
 
 build:download_gki --use_prebuilt_gki
 build:download_gki --use_signed_prebuilts
-build:download_gki --action_env=KLEAF_DOWNLOAD_BUILD_NUMBER_MAP="gki_prebuilts=10968245"
+build:download_gki --action_env=KLEAF_DOWNLOAD_BUILD_NUMBER_MAP="gki_prebuilts=11032421"
 build:no_download_gki --use_prebuilt_gki=false
 
 # enable Pixel Staging Kernel (go/pixel-staging) by default
