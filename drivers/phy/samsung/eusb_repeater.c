@@ -186,20 +186,34 @@ static int eusb_repeater_fill_tune_param(struct eusb_repeater_data *tud,
 static int eusb_repeater_ctrl(int value)
 {
 	struct eusb_repeater_data *tud = g_tud;
-	int ret = 0;
+	int i, ret = 0;
 	u8 read_data, write_data;
 
-	ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
-	if (ret < 0)
-		goto err;
+	for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
+		ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
+		if (ret < 0)
+			goto retry;
 
-	write_data = value ? (read_data & ~REG_DISABLE_P1) : (read_data | REG_DISABLE_P1);
-	ret = eusb_repeater_write_reg(tud, I2C_GLOBAL_CONFIG, &write_data, 1);
-	if (ret < 0)
-		goto err;
+		write_data = value ? (read_data & ~REG_DISABLE_P1) : (read_data | REG_DISABLE_P1);
+		ret = eusb_repeater_write_reg(tud, I2C_GLOBAL_CONFIG, &write_data, 1);
+		if (ret < 0)
+			goto retry;
 
-	ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
-	dev_dbg(tud->dev, "%s: i2c global config = %x, ret=%d\n", __func__, read_data, ret);
+		ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
+		if (ret < 0)
+			goto retry;
+
+		break;
+
+retry:
+		if (i > 1)
+			goto err;
+
+		usleep_range(30 * 1000, 80 * 1000);
+	}
+
+
+	dev_info(tud->dev, "%s Disabled mode, reg = %x\n", value ? "Exit" : "Enter", read_data);
 
 	if (!ret)
 		tud->ctrl_sel_status = value;
@@ -208,7 +222,7 @@ static int eusb_repeater_ctrl(int value)
 
 err:
 
-	dev_err(tud->dev, "Failed to %s Disabled state\n", value ? "Exit" : "Enter");
+	dev_err(tud->dev, "Failed to %s Disabled state, ret:%d\n", value ? "Exit" : "Enter", ret);
 	return ret;
 }
 
@@ -245,11 +259,10 @@ eusb_repeater_store(struct device *dev,
 		return -EINVAL;
 
 	if (tud->ctrl_sel_status == false) {
-		for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
-			ret = eusb_repeater_ctrl(true);
-			if (ret >= 0)
-				break;
-		}
+		ret = eusb_repeater_ctrl(true);
+		if (ret < 0)
+			return -EBUSY;
+
 		mdelay(3);
 	}
 
@@ -318,18 +331,11 @@ static const struct of_device_id eusb_repeater_match_table[] = {
 int eusb_repeater_power_off(void)
 {
 	struct eusb_repeater_data *tud = g_tud;
-	int i, ret;
 
 	if (!tud)
 		return -EEXIST;
 
-	for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
-		ret = eusb_repeater_ctrl(false);
-		if (ret >= 0)
-			break;
-	}
-
-	return 0;
+	return eusb_repeater_ctrl(false);
 }
 EXPORT_SYMBOL_GPL(eusb_repeater_power_off);
 
@@ -342,11 +348,9 @@ int eusb_repeater_power_on(void)
 	if (!tud)
 		return -EEXIST;
 
-	for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
-		ret = eusb_repeater_ctrl(true);
-		if (ret >= 0)
-			break;
-	}
+	ret = eusb_repeater_ctrl(true);
+	if (ret < 0)
+		goto err;
 
 	mdelay(3);
 
