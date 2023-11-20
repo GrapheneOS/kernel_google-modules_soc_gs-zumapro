@@ -131,7 +131,7 @@ max77779_sp:max77779sp@60 {
 };
 
 max77779_pmic:max77779pmic@66 {
-	compatible = "max77779_pmic";
+	compatible = "maxim,max77779pmic_i2c";
 	reg = <0x66>;
 	status = "disabled";
 
