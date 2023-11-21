@@ -211,7 +211,7 @@ static bool rt6160_is_accessible_reg(struct device *dev, unsigned int reg)
 
 static bool rt6160_is_volatile_reg(struct device *dev, unsigned int reg)
 {
-	if (reg == RT6160_REG_STATUS)
+	if (reg == RT6160_REG_STATUS || reg == RT6160_REG_DEVID)
 		return true;
 	return false;
 }
@@ -239,7 +239,11 @@ static struct attribute_group attr_group = {
 	.attrs = attrs,
 };
 
-static const struct regmap_config rt6160_regmap_config = {
+static const unsigned int default_regs[] = {
+	RT6160_REG_CNTL, RT6160_REG_VSELL, RT6160_REG_VSELH};
+#define NUM_REG_DEFAULTS ARRAY_SIZE(default_regs)
+
+static struct regmap_config rt6160_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
 	.max_register = RT6160_REG_VSELH,
@@ -257,6 +261,8 @@ static int rt6160_probe(struct i2c_client *i2c)
 	struct regulator_config regulator_cfg = {};
 	struct regulator_dev *rdev;
 	bool vsel_active_low;
+	unsigned int reg_values[NUM_REG_DEFAULTS];
+	struct reg_default reg_defaults[NUM_REG_DEFAULTS];
 	unsigned int devid;
 	int ret;
 
@@ -275,6 +281,25 @@ static int rt6160_probe(struct i2c_client *i2c)
 	priv->enable_state = true;
 
 	usleep_range(RT6160_I2CRDY_TIMEUS, RT6160_I2CRDY_TIMEUS + 100);
+
+	ret = device_property_read_u32_array(&i2c->dev,
+		"register-defaults", reg_values, NUM_REG_DEFAULTS);
+	if (ret) {
+		dev_info(&i2c->dev,
+			"Failed to parse reg_defaults from device tree (%d), init from hw\n", ret);
+	} else {
+		int i;
+
+		for (i = 0; i < NUM_REG_DEFAULTS; i++) {
+			reg_defaults[i].reg = default_regs[i];
+			reg_defaults[i].def = reg_values[i];
+		}
+		rt6160_regmap_config.reg_defaults = reg_defaults;
+		rt6160_regmap_config.num_reg_defaults = NUM_REG_DEFAULTS;
+		rt6160_regmap_config.num_reg_defaults_raw = 0;
+
+		dev_info(&i2c->dev, "Setup reg_defaults from device tree\n");
+	}
 
 	priv->regmap = devm_regmap_init_i2c(i2c, &rt6160_regmap_config);
 	if (IS_ERR(priv->regmap)) {
