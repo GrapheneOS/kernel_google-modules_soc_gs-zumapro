@@ -1498,6 +1498,7 @@ static void ovp_operation(struct max77759_plat *chip, int operation)
 {
 	int gpio_val, retry = 0;
 
+	mutex_lock(&chip->ovp_lock);
 	if (operation == OVP_RESET || operation == OVP_OFF) {
 		do {
 			gpio_set_value_cansleep(chip->in_switch_gpio,
@@ -1523,6 +1524,7 @@ static void ovp_operation(struct max77759_plat *chip, int operation)
 				      __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
 		} while ((gpio_val != chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
 	}
+	mutex_unlock(&chip->ovp_lock);
 }
 
 static void reset_ovp_work(struct kthread_work *work)
@@ -3110,6 +3112,7 @@ static int max77759_probe(struct i2c_client *client,
 	mutex_init(&chip->rc_lock);
 	mutex_init(&chip->irq_status_lock);
 	mutex_init(&chip->toggle_lock);
+	mutex_init(&chip->ovp_lock);
 	spin_lock_init(&g_caps_lock);
 	chip->first_toggle = true;
 	chip->first_rp_missing_timeout = true;
