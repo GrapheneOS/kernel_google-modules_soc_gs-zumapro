@@ -91,7 +91,7 @@ max77779_fg:max77779fg@0x36 {
 
 max77779_vimon:max77779vimon@0x28 {
 	status = "disabled";
-	compatible = "maxim,max77779vimon";
+	compatible = "maxim,max77779vimon_i2c";
 	reg = <0x28>;
 
 	interrupt-parent = <&max77779_pmic_irq>;
