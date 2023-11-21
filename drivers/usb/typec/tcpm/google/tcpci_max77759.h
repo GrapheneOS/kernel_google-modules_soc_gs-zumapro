@@ -85,6 +85,7 @@ struct max77759_plat {
 	/* Indicate that the Vbus OVP is restricted to quick ramp-up time for incoming voltage. */
 	bool quick_ramp_vbus_ovp;
 	int reset_ovp_retry;
+	struct mutex ovp_lock;
 	/* Set true to vote "limit_accessory_current" on USB ICL */
 	bool limit_accessory_enable;
 	/* uA */
