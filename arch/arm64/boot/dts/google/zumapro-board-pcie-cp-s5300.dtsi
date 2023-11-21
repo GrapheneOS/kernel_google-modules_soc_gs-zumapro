@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Board-common PCIe config.
+ *
+ * Copyright 2023 Google LLC
+ */
+#include <dt-bindings/pci/pci.h>
+
+&pcie_0 {
+	#address-cells = <3>;
+	#size-cells = <2>;
+	num-lanes = <2>;
+	ranges = <0x82000000 0 0x14E00000 0 0x40000000 0 0xFF0000>;
+};
