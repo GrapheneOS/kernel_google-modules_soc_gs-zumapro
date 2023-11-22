@@ -174,7 +174,7 @@ max77779_i2cm:max77779i2cm@64 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	compatible = "max77779_i2cm";
+	compatible = "maxim,max77779i2cm_i2c";
 	status = "disabled";
 
 	interrupt-parent = <&max77779_pmic_irq>;
