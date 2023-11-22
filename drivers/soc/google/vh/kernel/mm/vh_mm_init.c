@@ -9,6 +9,8 @@
 #include <linux/kobject.h>
 #include <linux/module.h>
 
+#include "../../include/mm.h"
+
 #define VENDOR_MM_RW(_name) \
 	static struct kobj_attribute _name##_attr = __ATTR_RW(_name)
 
@@ -83,6 +85,11 @@ static int vh_mm_init(void)
 
 	ret = pixel_mm_cma_sysfs(vendor_mm_kobj);
 	if (ret)
+		goto out_err;
+
+	ret = register_trace_android_vh_ptep_clear_flush_young(
+			vh_ptep_clear_flush_young, NULL);
+	if(ret)
 		goto out_err;
 
 	return ret;
