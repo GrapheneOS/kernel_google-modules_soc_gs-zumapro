@@ -111,6 +111,7 @@ max77779-fg.ko
 max77779-sp-i2c.ko
 max77779-sp.ko
 max77779_i2cm.ko
+max77779_i2cm_i2c.ko
 max77779_pmic.ko
 max77779_pmic_i2c.ko
 max77779_pmic_irq.ko
