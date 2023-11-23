@@ -32,7 +32,17 @@
 		};
 
 		gxp_scratchpad_reserved: gxp_scratchpad@91300000 {
-			reg = <0x0 0x91300000 0x00100000>;
+			reg = <0x0 0x91300000 0x00060000>;
+			no-map;
+		};
+
+		iif_wait_table_reserved: iif_wait_table@0x91360000 {
+			reg = <0x0 0x91360000 0x0020000>;
+			no-map;
+		};
+
+		iif_signal_table_reserved: iif_signal_table@0x91380000 {
+			reg = <0x0 0x91380000 0x0020000>;
 			no-map;
 		};
 

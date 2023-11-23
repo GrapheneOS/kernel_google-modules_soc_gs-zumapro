@@ -68,6 +68,8 @@
 			 256000   16
 			 178000   13
 		>;
+		iif-fence-wait-table-region = <&iif_wait_table_reserved>;
+		iif-fence-signal-table-region = <&iif_signal_table_reserved>;
 	};
 	gxp_cooling: gxp-cooling {
 		#cooling-cells = <2>;
