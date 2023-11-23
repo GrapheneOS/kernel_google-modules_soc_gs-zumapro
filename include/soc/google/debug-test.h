@@ -12,10 +12,13 @@ struct debug_trigger {
 	void (*cold_reset)(char *arg);
 	void (*watchdog_emergency_reset)(char *arg);
 	void (*halt)(char *arg);
+	void (*cacheflush)(char *arg);
+	void (*cpucontext)(char *arg);
 	void (*arraydump)(char *arg);
 	void (*scandump)(char *arg);
 	void (*el3_assert)(char *arg);
 	void (*el3_panic)(char *arg);
+	void (*ecc)(char *arg);
 };
 
 #if IS_ENABLED(CONFIG_PIXEL_DEBUG_TEST)

@@ -474,10 +474,13 @@ void debug_trigger_register(struct debug_trigger *soc_trigger, char *arch_name)
 	soc_test_trigger.watchdog_emergency_reset =
 		soc_trigger->watchdog_emergency_reset;
 	soc_test_trigger.halt = soc_trigger->halt;
+	soc_test_trigger.cacheflush = soc_trigger->cacheflush,
+	soc_test_trigger.cpucontext = soc_trigger->cpucontext,
 	soc_test_trigger.arraydump = soc_trigger->arraydump;
 	soc_test_trigger.scandump = soc_trigger->scandump;
 	soc_test_trigger.el3_assert = soc_trigger->el3_assert;
 	soc_test_trigger.el3_panic = soc_trigger->el3_panic;
+	soc_test_trigger.ecc = soc_trigger->ecc;
 }
 EXPORT_SYMBOL_GPL(debug_trigger_register);
 
@@ -541,6 +544,28 @@ static void simulate_halt(char *arg)
 	pr_crit("failed!\n");
 }
 
+static void simulate_cacheflush(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.cacheflush) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.cacheflush)(arg);
+}
+
+static void simulate_cpucontext(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.cpucontext) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.cpucontext)(arg);
+}
+
 static void simulate_arraydump(char *arg)
 {
 	pr_crit("called!\n");
@@ -585,6 +610,17 @@ static void simulate_el3_panic(char *arg)
 	(*soc_test_trigger.el3_panic)(arg);
 }
 
+static void simulate_ecc(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.ecc) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.ecc)(arg);
+}
+
 /*
  * Error trigger definitions
  */
@@ -624,10 +660,13 @@ static const struct force_error_item force_error_vector[] = {
 	{ "cold_reset",		&simulate_cold_reset },
 	{ "emerg_reset",	&simulate_watchdog_emergency_reset },
 	{ "halt",		&simulate_halt },
+	{ "cacheflush",		&simulate_cacheflush },
+	{ "cpucontext",		&simulate_cpucontext },
 	{ "arraydump",		&simulate_arraydump },
 	{ "scandump",		&simulate_scandump },
 	{ "el3_assert",		&simulate_el3_assert },
 	{ "el3_panic",		&simulate_el3_panic },
+	{ "ecc",		&simulate_ecc },
 };
 
 static void parse_and_trigger(const char *buf)

@@ -614,12 +614,12 @@ static void simulate_SCANDUMP(char *arg)
 }
 
 #if !IS_ENABLED(CONFIG_SOC_GS101)
-static void simulate_el3_assert(char *arg)
+static void simulate_EL3_ASSERT(char *arg)
 {
 	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_ASSERT, 0, 0);
 }
 
-static void simulate_el3_panic(char *arg)
+static void simulate_EL3_PANIC(char *arg)
 {
 	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_PANIC, 0, 0);
 }
@@ -868,12 +868,15 @@ static struct debug_trigger exynos_debug_test_trigger = {
 #endif
 	.watchdog_emergency_reset = simulate_QDP,
 	.halt = simulate_HALT,
+	.cacheflush = simulate_CACHE_FLUSH,
+	.cpucontext = simulate_CPU_CONTEXT,
 	.arraydump = simulate_ARRAYDUMP,
 	.scandump = simulate_SCANDUMP,
 #if !IS_ENABLED(CONFIG_SOC_GS101)
-	.el3_assert = simulate_el3_assert,
-	.el3_panic = simulate_el3_panic,
+	.el3_assert = simulate_EL3_ASSERT,
+	.el3_panic = simulate_EL3_PANIC,
 #endif
+	.ecc = simulate_ECC,
 };
 
 static int exynos_debug_test_probe(struct platform_device *pdev)
