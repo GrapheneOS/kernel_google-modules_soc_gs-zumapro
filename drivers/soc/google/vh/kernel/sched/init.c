@@ -98,8 +98,7 @@ extern void rvh_remove_entity_load_avg_pixel_mod(void *data, struct cfs_rq *cfs_
 extern void rvh_update_blocked_fair_pixel_mod(void *data, struct rq *rq);
 #endif
 extern void android_vh_use_amu_fie_pixel_mod(void* data, bool *use_amu_fie);
-extern void rvh_set_user_nice_pixel_mod(void *data, struct task_struct *p, long *nice,
-					bool *allowed);
+extern void rvh_set_user_nice_locked_pixel_mod(void *data, struct task_struct *p, long *nice);
 extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
 extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 					 struct cpumask *lowest_mask,
@@ -464,7 +463,8 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_rvh_set_user_nice(rvh_set_user_nice_pixel_mod, NULL);
+	ret = register_trace_android_rvh_set_user_nice_locked(rvh_set_user_nice_locked_pixel_mod,
+		NULL);
 	if (ret)
 		return ret;
 
