@@ -64,6 +64,17 @@ enum edgetpu_ext_commands {
 	FREE_EXTERNAL_MAILBOX,
 	/* in_data: edgetpu_ext_client_info, out_data: edgetpu_ext_offload_info */
 	START_OFFLOAD,
+	/*
+	 * out_data: iif_manager pointer
+	 *
+	 * E.g.,
+	 * struct iif_manager *mgr;
+	 * edgetpu_ext_driver_cmd(..., NULL, &mgr);
+	 *
+	 * If it succeeds in getting the IIF manager, the refcount of it will be incremented by 1
+	 * and it is the responsibility of the caller side to decrement it back.
+	 */
+	GET_IIF_MANAGER,
 };
 
 enum edgetpu_ext_client_type {
