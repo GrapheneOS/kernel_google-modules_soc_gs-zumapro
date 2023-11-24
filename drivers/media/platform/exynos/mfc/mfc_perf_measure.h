@@ -50,6 +50,13 @@ static inline void mfc_perf_trace(struct mfc_ctx *ctx, char* tag, int counter)
 	}
 }
 
+static inline void mfc_perf_core_trace(char* tag, int counter)
+{
+	char trace_name[32];
+	scnprintf(trace_name, sizeof(trace_name), "mfc-core-%s", tag);
+	__ATRACE_INT_PID(0, trace_name, counter);
+}
+
 #else
 
 extern unsigned int perf_measure_option;

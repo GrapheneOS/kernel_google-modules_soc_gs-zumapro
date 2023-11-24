@@ -19,7 +19,6 @@
 #include <linux/ctype.h>
 #include <linux/delay.h>
 #include <linux/firmware.h>
-#include <linux/gpio.h>
 #include <linux/hrtimer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
@@ -29,9 +28,9 @@
 #include <linux/irq.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/slab.h>
 #include <linux/timekeeping.h>
 #include <linux/uaccess.h>
@@ -50,7 +49,11 @@
 
 #define I2C_WRITE_BUFFER_SIZE		(32 - 1)//10
 #define TUSB_I2C_RETRY_CNT		3
+#define TUSB_MODE_CONTROL_RETRY_CNT	3
 #define EXYNOS_USB_TUNE_LAST		0xEF
+#define I2C_GLOBAL_CONFIG		0xB2
+
+#define REG_DISABLE_P1			BIT(6)
 
 struct eusb_repeater_tune_param {
 	char name[32];
@@ -70,10 +73,8 @@ struct eusb_repeater_data {
 	/* Tune Parma list */
 	struct eusb_repeater_tune_param *tune_param;
 	u32 tune_cnt;
-	int gpio_eusb_resetb;
 	struct pinctrl *pinctrl;
-	struct pinctrl_state *power_on_state;
-	struct pinctrl_state *power_off_state;
+	struct pinctrl_state *init_state;
 	int ctrl_sel_status;
 };
 

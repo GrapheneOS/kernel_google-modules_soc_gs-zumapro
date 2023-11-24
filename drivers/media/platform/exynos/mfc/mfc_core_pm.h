@@ -34,5 +34,7 @@ int mfc_core_pm_clock_on(struct mfc_core *core);
 void mfc_core_pm_clock_off(struct mfc_core *core);
 int mfc_core_pm_power_on(struct mfc_core *core);
 int mfc_core_pm_power_off(struct mfc_core *core);
+void mfc_core_pm_idle_suspend(struct mfc_core *core);
+void mfc_core_pm_idle_resume(struct mfc_core *core);
 
 #endif /* __MFC_CORE_PM_H */

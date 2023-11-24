@@ -74,7 +74,7 @@ max77759tcpc: max77759tcpc@25 {
 		altmodes {
 			displayport {
 				svid = <0xff01>;
-				vdo = <0x14c6>;
+				vdo = <0x1cc6>;
 			};
 		};
 		ports {
