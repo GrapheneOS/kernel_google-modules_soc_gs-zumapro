@@ -17,7 +17,7 @@
 #include <linux/usb/role.h>
 #include <linux/usb/typec_mux.h>
 #include <misc/gvotable.h>
-#include <tcpm/tcpci.h>
+#include <linux/usb/tcpci.h>
 
 #include "usb_psy.h"
 
