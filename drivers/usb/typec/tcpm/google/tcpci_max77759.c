@@ -32,7 +32,7 @@
 #include <linux/usb/max77759_export.h>
 #include "max77759_helper.h"
 /* This header comes from the GKI kernel tree */
-#include <tcpm/tcpci.h>
+#include <linux/usb/tcpci.h>
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
 #include "usb_icl_voter.h"

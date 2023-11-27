@@ -17,7 +17,7 @@
 #include "bc_max77759.h"
 #include "max77759_helper.h"
 /* This header comes from the GKI kernel tree */
-#include <tcpm/tcpci.h>
+#include <linux/usb/tcpci.h>
 #include "tcpci_max77759.h"
 
 struct bc12_status {
