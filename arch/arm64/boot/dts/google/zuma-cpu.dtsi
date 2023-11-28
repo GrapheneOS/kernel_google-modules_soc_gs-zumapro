@@ -46,7 +46,7 @@
 			};
 		};
 
-		cpu0: cpu@0000 {
+		cpu0: cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0000>;
@@ -55,7 +55,7 @@
 			capacity-dmips-mhz = <193>;
 			dynamic-power-coefficient = <70>;
 		};
-		cpu1: cpu@0100 {
+		cpu1: cpu@100 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0100>;
@@ -64,7 +64,7 @@
 			capacity-dmips-mhz = <193>;
 			dynamic-power-coefficient = <70>;
 		};
-		cpu2: cpu@0200 {
+		cpu2: cpu@200 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0200>;
@@ -73,7 +73,7 @@
 			capacity-dmips-mhz = <193>;
 			dynamic-power-coefficient = <70>;
 		};
-		cpu3: cpu@0300 {
+		cpu3: cpu@300 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0300>;
@@ -82,7 +82,7 @@
 			capacity-dmips-mhz = <193>;
 			dynamic-power-coefficient = <70>;
 		};
-		cpu4: cpu@0400 {
+		cpu4: cpu@400 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0400>;
@@ -91,7 +91,7 @@
 			capacity-dmips-mhz = <927>;
 			dynamic-power-coefficient = <513>;
 		};
-		cpu5: cpu@0500 {
+		cpu5: cpu@500 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0500>;
@@ -100,7 +100,7 @@
 			capacity-dmips-mhz = <927>;
 			dynamic-power-coefficient = <513>;
 		};
-		cpu6: cpu@0600 {
+		cpu6: cpu@600 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0600>;
@@ -109,7 +109,7 @@
 			capacity-dmips-mhz = <927>;
 			dynamic-power-coefficient = <513>;
 		};
-		cpu7: cpu@0700 {
+		cpu7: cpu@700 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0700>;
@@ -118,7 +118,7 @@
 			capacity-dmips-mhz = <927>;
 			dynamic-power-coefficient = <513>;
 		};
-		cpu8: cpu@0800 {
+		cpu8: cpu@800 {
 			device_type = "cpu";
 			compatible = "arm,armv9";
 			reg = <0x0 0x0800>;

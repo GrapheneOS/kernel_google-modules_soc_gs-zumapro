@@ -24,7 +24,7 @@
 
 				delay_us = <10>;
 
-				s5910: s5910@05 {
+				s5910: s5910@5 {
 					reg = <0x05 0>;
 					compatible = "google,s5910-spmi";
 

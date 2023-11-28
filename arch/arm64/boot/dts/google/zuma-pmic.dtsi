@@ -25,7 +25,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	status = "okay";
-	s2mpg14mfd: s2mpg14mfd@00 {
+	s2mpg14mfd: s2mpg14mfd@0 {
 		compatible = "samsung,s2mpg14mfd";
 		dev-name = "s2mpg14mfd";
 		acpm-ipc-channel = <2>;
@@ -628,7 +628,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	status = "okay";
-	s2mpg15mfd: s2mpg15mfd@00 {
+	s2mpg15mfd: s2mpg15mfd@0 {
 		compatible = "samsung,s2mpg15mfd";
 		dev-name = "s2mpg15mfd";
 		acpm-ipc-channel = <2>;
