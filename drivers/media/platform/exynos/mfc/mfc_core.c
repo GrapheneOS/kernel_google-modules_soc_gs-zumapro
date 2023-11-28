@@ -22,6 +22,7 @@
 #include <linux/poll.h>
 #include <linux/vmalloc.h>
 #include <linux/iommu.h>
+#include <linux/pm_runtime.h>
 
 #include "mfc_common.h"
 
@@ -893,6 +894,9 @@ static int mfc_core_suspend(struct device *device)
 	struct mfc_core *core = platform_get_drvdata(to_platform_device(device));
 	int ret;
 
+	if (pm_runtime_status_suspended(device))
+		return 0;
+
 	if (!core) {
 		dev_err(device, "no mfc device to run\n");
 		return -EINVAL;
@@ -901,7 +905,12 @@ static int mfc_core_suspend(struct device *device)
 	if (core->num_inst == 0)
 		return 0;
 
-	mfc_core_info("MFC core suspend is called\n");
+	if (core->sleep == 1) {
+		mfc_core_info("MFC core is slept\n");
+		return 0;
+	}
+
+	mfc_core_debug(2, "MFC core suspend is called\n");
 
 	ret = mfc_core_get_hwlock_dev(core);
 	if (ret < 0) {
@@ -936,7 +945,7 @@ static int mfc_core_suspend(struct device *device)
 
 	mfc_core_release_hwlock_dev(core);
 
-	mfc_core_info("MFC suspend is completed\n");
+	mfc_core_debug(2, "MFC suspend is completed\n");
 
 	return 0;
 }
@@ -948,6 +957,9 @@ static int mfc_core_resume(struct device *device)
 	struct mfc_dev *dev;
 	int ret;
 
+	if (pm_runtime_status_suspended(device))
+		return 0;
+
 	if (!core) {
 		dev_err(device, "no mfc core to run\n");
 		return -EINVAL;
@@ -957,7 +969,12 @@ static int mfc_core_resume(struct device *device)
 	if (core->num_inst == 0)
 		return 0;
 
-	mfc_core_info("MFC core resume is called\n");
+	if (core->sleep == 0) {
+		mfc_core_info("MFC core is not slept\n");
+		return 0;
+	}
+
+	mfc_core_debug(2, "MFC core resume is called\n");
 
 	ret = mfc_core_get_hwlock_dev(core);
 	if (ret < 0) {
@@ -988,7 +1005,7 @@ static int mfc_core_resume(struct device *device)
 
 	mfc_core_release_hwlock_dev(core);
 
-	mfc_core_info("MFC resume is completed\n");
+	mfc_core_debug(2, "MFC resume is completed\n");
 
 	return 0;
 }

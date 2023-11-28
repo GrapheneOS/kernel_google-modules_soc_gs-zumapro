@@ -76,7 +76,7 @@ static inline void task_tick_uclamp(struct rq *rq, struct task_struct *curr)
 {
 	bool can_ignore;
 	bool is_ignored;
-	bool reset_idle_flag = false;
+	bool reset_filters = false;
 
 	if (!uclamp_is_used())
 		return;
@@ -88,23 +88,25 @@ static inline void task_tick_uclamp(struct rq *rq, struct task_struct *curr)
 	can_ignore = uclamp_can_ignore_uclamp_max(rq, curr);
 	is_ignored = uclamp_is_ignore_uclamp_max(curr);
 
-	if (is_ignored && !can_ignore) {
-		uclamp_reset_ignore_uclamp_max(curr);
-		uclamp_rq_inc_id(rq, curr, UCLAMP_MAX);
-		reset_idle_flag = true;
-	}
+	if (is_ignored && !can_ignore)
+		reset_filters = true;
 
 	can_ignore = uclamp_can_ignore_uclamp_min(rq, curr);
 	is_ignored = uclamp_is_ignore_uclamp_min(curr);
 
-	if (is_ignored && !can_ignore) {
+	if (is_ignored && !can_ignore)
+		reset_filters = true;
+
+	if (reset_filters) {
 		uclamp_reset_ignore_uclamp_min(curr);
+		uclamp_reset_ignore_uclamp_max(curr);
+
 		uclamp_rq_inc_id(rq, curr, UCLAMP_MIN);
-		reset_idle_flag = true;
+		uclamp_rq_inc_id(rq, curr, UCLAMP_MAX);
 	}
 
 	/* Reset clamp idle holding when there is one RUNNABLE task */
-	if (reset_idle_flag && rq->uclamp_flags & UCLAMP_FLAG_IDLE)
+	if (reset_filters && rq->uclamp_flags & UCLAMP_FLAG_IDLE)
 		rq->uclamp_flags &= ~UCLAMP_FLAG_IDLE;
 }
 #else

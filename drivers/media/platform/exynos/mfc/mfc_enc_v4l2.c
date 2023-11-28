@@ -520,6 +520,9 @@ static int mfc_enc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
 	enc->dst_buf_size = pix_fmt_mp->plane_fmt[0].sizeimage;
 	pix_fmt_mp->plane_fmt[0].bytesperline = 0;
 
+	/* Trigger idle resume if core is in the idle mode for starting NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
+
 	ret = mfc_rm_instance_open(dev, ctx);
 	if (ret) {
 		mfc_ctx_err("Failed to instance open\n");
@@ -998,6 +1001,9 @@ static int mfc_enc_streamoff(struct file *file, void *priv,
 		mfc_ctx_err("Invalid V4L2 Buffer for driver: type(%d)\n", type);
 		return -EINVAL;
 	}
+
+	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
 	if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		mfc_debug(4, "enc src streamoff\n");
