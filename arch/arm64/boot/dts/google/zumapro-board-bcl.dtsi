@@ -17,7 +17,7 @@
 				compatible = "google,google-bcl";
 				#thermal-sensor-cells = <1>;
 				google,charger = <&max77779_chg>;
-				google,pmic = <&max77779_chg>;
+				google,pmic = <&max77779_pmic>;
 				google,power-supply = <&max77779_fg>;
 				google,main-power = <&s2mpg14mfd>;
 				google,sub-power = <&s2mpg15mfd>;
@@ -60,9 +60,6 @@
 				cpu1_cluster = <4>;
 				cpu2_cluster = <7>;
 				odpm_ratio = <3>;
-
-				interrupt-parent = <&max77779_pmic_irq>;
-				interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
 
 				main_limit {
 					pmic = "main_limit";
