@@ -80,8 +80,8 @@
 				offset_srinfo_offset = <0x64>;
 				offset_capability_offset = <0x70>;
 
-				srinfo_offset = <0x300>;
-				srinfo_size = <0x400>;
+				srinfo_offset = <0x400000>;
+				srinfo_size = <0x300000>;
 				capability_offset = <0xA0>;
 
 				/* capability value */
