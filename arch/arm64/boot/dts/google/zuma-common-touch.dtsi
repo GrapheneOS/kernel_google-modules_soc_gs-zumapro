@@ -14,7 +14,7 @@
  * AVDD = PP3300_L4M_TS1_AVDD  = VLDO4M
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 
 / {
 	fragment@touch_bus_negotiator {

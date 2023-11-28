@@ -15,7 +15,7 @@
  * AVDD = PP3300_L26M_TS_AVDD  = E13 = VLDO26M
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 #include <dt-bindings/pinctrl/gs101.h>
 
 / {

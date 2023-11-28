@@ -5,7 +5,7 @@
  * Wireless Charger device tree entries.
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 #include <dt-bindings/pinctrl/gs101.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 

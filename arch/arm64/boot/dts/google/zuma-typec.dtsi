@@ -7,7 +7,7 @@
 #include <dt-bindings/usb/pd.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/zuma.h>
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 
 &hsi2c_11{
 	#address-cells = <1>;

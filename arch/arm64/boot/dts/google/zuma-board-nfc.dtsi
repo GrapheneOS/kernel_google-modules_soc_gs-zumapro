@@ -6,7 +6,7 @@
  *
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 
 &pinctrl_8 {
 	nfc_rst: nfc-rst {

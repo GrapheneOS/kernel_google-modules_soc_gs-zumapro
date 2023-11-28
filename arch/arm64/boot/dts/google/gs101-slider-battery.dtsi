@@ -5,7 +5,7 @@
  * Copyright 2019 Google LLC
  */
 
-#include <dt-bindings/pinctrl/samsung.h>
+#include <arm64/exynos/exynos-pinctrl.h>
 #include <dt-bindings/pinctrl/gs101.h>
 
 / {
