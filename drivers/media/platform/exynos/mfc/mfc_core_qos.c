@@ -905,7 +905,7 @@ void mfc_core_qos_idle_worker(struct work_struct *work)
 
 	mfc_core_change_idle_mode(core, MFC_IDLE_MODE_IDLE);
 
-	/* trigger idle suspend in QoS idle mode*/
+	/* trigger idle suspend in QoS idle mode */
 	mfc_core_pm_idle_suspend(core);
 
 	mutex_unlock(&core->idle_qos_mutex);
@@ -919,10 +919,10 @@ bool mfc_core_qos_idle_trigger(struct mfc_core *core, struct mfc_ctx *ctx)
 	if (core->idle_mode == MFC_IDLE_MODE_IDLE) {
 		mfc_debug(2, "[QoS][MFCIDLE] restart QoS control\n");
 
-		/* trigger idle resume before restart QoS control */
-		mfc_core_pm_idle_resume(core);
-
 		mfc_core_change_idle_mode(core, MFC_IDLE_MODE_NONE);
+
+		/* trigger idle resume when exiting QoS idle mode */
+		mfc_core_pm_idle_resume(core);
 		update_idle = true;
 	} else if (core->idle_mode == MFC_IDLE_MODE_RUNNING) {
 		mfc_debug(2, "[QoS][MFCIDLE] restart QoS control, cancel idle\n");
