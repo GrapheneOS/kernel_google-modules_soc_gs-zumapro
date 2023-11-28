@@ -309,6 +309,8 @@ struct exynos_pcie {
 	int			work_l1ss_cnt;
 	int			ep_device_type;
 	int			max_link_speed;
+	int			target_link_speed;
+	int			target_link_width;
 	int			perst_delay_us;
 	struct power_stats	link_up;
 	struct power_stats	link_down;

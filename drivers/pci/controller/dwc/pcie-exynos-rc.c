@@ -696,7 +696,7 @@ static ssize_t link_speed_show(struct device *dev,
 {
 	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
 
-	return scnprintf(buf, PAGE_SIZE, "GEN%d\n", exynos_pcie->max_link_speed);
+	return scnprintf(buf, PAGE_SIZE, "GEN%d\n", exynos_pcie->target_link_speed);
 }
 
 static ssize_t link_speed_store(struct device *dev,
@@ -709,13 +709,42 @@ static ssize_t link_speed_store(struct device *dev,
 	if (sscanf(buf, "%10d", &link_speed) == 0)
 		return -EINVAL;
 
-	if (link_speed < 1 || link_speed > 3) {
-		dev_info(dev, "Value needs to be between 1-3\n");
+	if (link_speed < LINK_SPEED_GEN1 || link_speed > exynos_pcie->max_link_speed) {
+		dev_info(dev, "Value needs to be between 1-%d\n", exynos_pcie->max_link_speed);
 		return -EINVAL;
 	}
 
 	dev_info(dev, "Change Link Speed: Target Link Speed = GEN%d\n", link_speed);
-	exynos_pcie->max_link_speed = link_speed;
+	exynos_pcie->target_link_speed = link_speed;
+
+	return count;
+}
+
+static ssize_t link_width_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "link width: %d\n", exynos_pcie->target_link_width);
+}
+
+static ssize_t link_width_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	int link_width;
+	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
+
+	if (!buf || sscanf(buf, "%10d", &link_width) != 1)
+		return -EINVAL;
+
+	if (link_width < 1 || link_width > exynos_pcie->num_lanes) {
+		dev_info(dev, "Value needs to be between 1-%d\n", exynos_pcie->num_lanes);
+		return -EINVAL;
+	}
+
+	dev_info(dev, "Change Link Width: Target Link Width = %d\n", link_width);
+	exynos_pcie->target_link_width = link_width;
 
 	return count;
 }
@@ -856,6 +885,7 @@ static ssize_t power_stats_show(struct device *dev, struct device_attribute *att
 
 static DEVICE_ATTR_RW(l12_state);
 static DEVICE_ATTR_RW(link_speed);
+static DEVICE_ATTR_RW(link_width);
 static DEVICE_ATTR_RO(link_state);
 static DEVICE_ATTR_RO(power_stats);
 
@@ -1119,6 +1149,12 @@ static inline int create_pcie_sys_file(struct device *dev)
 		return ret;
 	}
 
+	ret = device_create_file(dev, &dev_attr_link_width);
+	if (ret) {
+		dev_err(dev, "couldn't create device file for link_width(%d)\n", ret);
+		return ret;
+	}
+
 	ret = device_create_file(dev, &dev_attr_link_state);
 	if (ret) {
 		dev_err(dev, "couldn't create device file for linkst(%d)\n", ret);
@@ -1147,6 +1183,7 @@ static inline void remove_pcie_sys_file(struct device *dev)
 	device_remove_file(dev, &dev_attr_pcie_rc_test);
 	device_remove_file(dev, &dev_attr_l12_state);
 	device_remove_file(dev, &dev_attr_link_speed);
+	device_remove_file(dev, &dev_attr_link_width);
 	device_remove_file(dev, &dev_attr_link_state);
 	device_remove_file(dev, &dev_attr_power_stats);
 	sysfs_remove_group(&pdev->dev.kobj, &link_stats_group);
@@ -1742,6 +1779,7 @@ static int exynos_pcie_rc_parse_dt(struct device *dev, struct exynos_pcie *exyno
 		/* Default Link Speet is GEN1 */
 		exynos_pcie->max_link_speed = LINK_SPEED_GEN1;
 	}
+	exynos_pcie->target_link_speed = exynos_pcie->max_link_speed;
 
 	if (of_property_read_u32(np, "perst-delay-us", &exynos_pcie->perst_delay_us)) {
 		dev_err(dev, "PERST delay is NOT defined...default to 20ms\n");
@@ -1759,6 +1797,7 @@ static int exynos_pcie_rc_parse_dt(struct device *dev, struct exynos_pcie *exyno
 	} else {
 		dev_info(dev, "parse the number of lanes: %d\n", exynos_pcie->num_lanes);
 	}
+	exynos_pcie->target_link_width = exynos_pcie->num_lanes;
 
 	if (of_property_read_u32(np, "separated-msi", &exynos_pcie->separated_msi)) {
 		dev_info(dev, "Unset separated-msi value, default '0'\n");
@@ -2831,7 +2870,7 @@ static void exynos_pcie_setup_rc(struct dw_pcie_rp *pp)
 	/* set target speed from DT */
 	exynos_pcie_rc_rd_own_conf(pp, pcie_cap_off + PCI_EXP_LNKCTL2, 4, &val);
 	val &= ~PCI_EXP_LNKCTL2_TLS;
-	val |= exynos_pcie->max_link_speed;
+	val |= exynos_pcie->target_link_speed;
 	exynos_pcie_rc_wr_own_conf(pp, pcie_cap_off + PCI_EXP_LNKCTL2, 4, val);
 
 	/* TBD : */
@@ -3285,11 +3324,11 @@ retry:
 	val |= HISTORY_BUFFER_ENABLE;
 	exynos_elbi_write(exynos_pcie, val, PCIE_STATE_HISTORY_CHECK);
 
-	/* Set dynamic lane-width according the request link speed */
+	/* Set target lane-width */
 	if (exynos_pcie->num_lanes == 2) {
 		val = dw_pcie_readl_dbi(pci, PCIE_PORT_LINK_CONTROL);
 		val &= ~PORT_LINK_MODE_MASK;
-		if (exynos_pcie->max_link_speed == LINK_SPEED_GEN1)
+		if (exynos_pcie->target_link_width == 1)
 			val |= PORT_LINK_MODE_1_LANES;
 		else
 			val |= PORT_LINK_MODE_2_LANES;
@@ -3297,7 +3336,7 @@ retry:
 
 		val = dw_pcie_readl_dbi(pci, PCIE_LINK_WIDTH_SPEED_CONTROL);
 		val &= ~PORT_LOGIC_LINK_WIDTH_MASK;
-		if (exynos_pcie->max_link_speed == LINK_SPEED_GEN1)
+		if (exynos_pcie->target_link_width == 1)
 			val |= PORT_LOGIC_LINK_WIDTH_1_LANES;
 		else
 			val |= PORT_LOGIC_LINK_WIDTH_2_LANES;
@@ -3371,7 +3410,8 @@ retry:
 			      exynos_phy_read(exynos_pcie, 0x146C));
 
 		/* need delay for link speed change from GEN1 to Max(ex GEN3) */
-		usleep_range(2800, 3000); /* 3 ms - OK */
+		if (exynos_pcie->target_link_speed != LINK_SPEED_GEN1)
+			usleep_range(2800, 3000); /* 3 ms - OK */
 
 		exynos_pcie_rc_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &val);
 		cur_link_width = (val >> 20) & (0x3F);
@@ -3384,9 +3424,9 @@ retry:
 
 
 		/* check link training result(speed) */
-		if (exynos_pcie->ip_ver >= 0x982000 && val < exynos_pcie->max_link_speed) {
+		if (exynos_pcie->ip_ver >= 0x982000 && val < exynos_pcie->target_link_speed) {
 			try_cnt++;
-			dev_info(dev, "%s: Link is up. But not max speed, try count: %d\n",
+			dev_info(dev, "%s: Link is up. But not target speed, try count: %d\n",
 				__func__, try_cnt);
 			if (try_cnt < 10) {
 				gpio_set_value(exynos_pcie->perst_gpio, 0);
@@ -4223,13 +4263,15 @@ int exynos_pcie_rc_l1ss_ctrl(int enable, int id, int ch_num)
 EXPORT_SYMBOL_GPL(exynos_pcie_rc_l1ss_ctrl);
 
 /* to support CP driver */
-int exynos_pcie_poweron(int ch_num, int spd)
+int exynos_pcie_poweron(int ch_num, int spd, int width)
 {
 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
 
-	dev_dbg(pci->dev, "%s requested with link speed GEN%d\n", __func__, spd);
-	exynos_pcie->max_link_speed = spd;
+	dev_dbg(pci->dev, "%s requested with link speed GEN%d, lane num %d\n",
+			__func__, spd, width);
+	exynos_pcie->target_link_speed = spd;
+	exynos_pcie->target_link_width = width;
 
 	return exynos_pcie_rc_poweron(ch_num);
 }
@@ -4240,6 +4282,22 @@ void exynos_pcie_poweroff(int ch_num)
 	return exynos_pcie_rc_poweroff(ch_num);
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_poweroff);
+
+int exynos_pcie_get_max_link_speed(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+
+	return exynos_pcie->max_link_speed;
+}
+EXPORT_SYMBOL_GPL(exynos_pcie_get_max_link_speed);
+
+int exynos_pcie_get_max_link_width(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+
+	return exynos_pcie->num_lanes;
+}
+EXPORT_SYMBOL_GPL(exynos_pcie_get_max_link_width);
 
 /* PCIe link status check function */
 int exynos_pcie_rc_chk_link_status(int ch_num)
@@ -4330,7 +4388,7 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 	struct dw_pcie_rp *pp = &pci->pp;
 	struct pci_bus *ep_pci_bus;
 	int i;
-	u32 val, current_speed, new_speed;
+	u32 val, new_speed;
 
 	if (exynos_pcie->state != STATE_LINK_UP) {
 		dev_err(pci->dev, "Link is not up\n");
@@ -4343,13 +4401,8 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 		return -EINVAL;
 	}
 
-	current_speed = exynos_pcie_rc_check_link_speed(ch_num);
-	if (current_speed == target_speed) {
-		dev_err(pci->dev, "Already GEN%d(current), target: GEN%d\n",
-			current_speed, target_speed);
-
-		return -EINVAL;
-	}
+	if (target_speed == exynos_pcie->target_link_speed)
+		return 0;
 
 	/* make sure that the link state is L0 by accessing ep config register
 	 * such as 'PCI_VENDOR_ID'.
@@ -4404,7 +4457,10 @@ int exynos_pcie_rc_change_link_speed(int ch_num, int target_speed)
 		return -EINVAL;
 	}
 
-	dev_info(pci->dev, "Link Speed Changed: from GEN%d to GEN%d\n", current_speed, new_speed);
+	dev_info(pci->dev, "Link Speed Changed: from GEN%d to GEN%d\n",
+			exynos_pcie->target_link_speed, new_speed);
+
+	exynos_pcie->target_link_speed = new_speed;
 
 	return 0;
 }
