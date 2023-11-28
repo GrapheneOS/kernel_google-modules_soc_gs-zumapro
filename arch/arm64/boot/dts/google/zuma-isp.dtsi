@@ -1014,7 +1014,7 @@
 		transaction-thread-priority = <99>;
 	};
 
-	lwis_gse: lwis_gse@0x1D840000 {
+	lwis_gse: lwis_gse@1D840000 {
 		compatible = "google,lwis-ioreg-device";
 
 		/* Device node name */

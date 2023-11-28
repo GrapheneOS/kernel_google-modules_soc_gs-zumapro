@@ -21,12 +21,12 @@
 			reg = <0x0 0x90000000 0x00060000>;
 		};
 
-		gsa_reserved_protected: gsa@0x90200000 {
+		gsa_reserved_protected: gsa@90200000 {
 			reg = <0x0 0x90200000 0x400000>;
 			no-map;
 		};
 
-		gsa_reserved_log: gsa@0x905FF000 {
+		gsa_reserved_log: gsa@905FF000 {
 			reg = <0x0 0x905FF000 0x1000>;
 			no-map;
 		};
@@ -36,12 +36,12 @@
 			no-map;
 		};
 
-		iif_wait_table_reserved: iif_wait_table@0x91360000 {
+		iif_wait_table_reserved: iif_wait_table@91360000 {
 			reg = <0x0 0x91360000 0x0020000>;
 			no-map;
 		};
 
-		iif_signal_table_reserved: iif_signal_table@0x91380000 {
+		iif_signal_table_reserved: iif_signal_table@91380000 {
 			reg = <0x0 0x91380000 0x0020000>;
 			no-map;
 		};
@@ -56,22 +56,22 @@
 			no-map;
 		};
 
-		gxp_mcu_fw_reserved: gxp_mcu_fw@0x92000000 {
+		gxp_mcu_fw_reserved: gxp_mcu_fw@92000000 {
 			reg = <0x0 0x92000000 0x00400000>;
 			no-map;
 		};
 
-		tpu_fw_reserved: tpu_fw@0x93000000 {
+		tpu_fw_reserved: tpu_fw@93000000 {
 			reg = <0x0 0x93000000 0x01000000>;
 			no-map;
 		};
 
-		tpu_fw_ctx_reserved: tpu_ctx@0x98000000 {
+		tpu_fw_ctx_reserved: tpu_ctx@98000000 {
 			reg = <0x0 0x98000000 0x03600000>;
 			no-map;
 		};
 
-		aoc_reserve: aoc@0x94000000 {
+		aoc_reserve: aoc@94000000 {
 			reg = <0x0 0x94000000 0x03000000>;
 			no-map;
 		};

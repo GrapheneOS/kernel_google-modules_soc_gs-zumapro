@@ -7,7 +7,7 @@
  */
 
 / {
-	gxp: callisto@0x20C00000 {
+	gxp: callisto@20C00000 {
 		compatible = "google,gxp-zuma";
 		status = "ok";
 		#dma-address-cells = <1>;

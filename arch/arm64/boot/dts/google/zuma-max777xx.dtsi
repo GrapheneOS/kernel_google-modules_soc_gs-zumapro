@@ -7,7 +7,7 @@
  *
  */
 
-max77729_pmic:max77729pmic@0x66 {
+max77729_pmic:max77729pmic@66 {
 	status = "okay";
 	compatible = "maxim,max77729pmic";
 	reg = <0x66>;
@@ -31,7 +31,7 @@ max77729_pmic:max77729pmic@0x66 {
 	};
 };
 
-max77759_fg:max77759fg@0x36 {
+max77759_fg:max77759fg@36 {
 	status = "okay";
 	compatible = "maxim,max77759";
 	reg = <0x36>;
@@ -54,7 +54,7 @@ max77759_fg:max77759fg@0x36 {
 	};
 };
 
-max77759_chg:max77759chrg@0x69 {
+max77759_chg:max77759chrg@69 {
 	status = "okay";
 	compatible = "maxim,max77759chrg";
 	reg = <0x69>;
@@ -72,7 +72,7 @@ max77759_chg:max77759chrg@0x69 {
 };
 
 	/* max77779 nodes */
-max77779_fg:max77779fg@0x36 {
+max77779_fg:max77779fg@36 {
 	status = "disabled";
 	compatible = "maxim,max77779fg_i2c";
 	reg = <0x36>;
@@ -89,7 +89,7 @@ max77779_fg:max77779fg@0x36 {
 };
 
 
-max77779_vimon:max77779vimon@0x28 {
+max77779_vimon:max77779vimon@28 {
 	status = "disabled";
 	compatible = "maxim,max77779vimon_i2c";
 	reg = <0x28>;
@@ -103,7 +103,7 @@ max77779_vimon:max77779vimon@0x28 {
 };
 
 
-max77779_chg:max77779chrg@0x69 {
+max77779_chg:max77779chrg@69 {
 	status = "disabled";
 	compatible = "maxim,max77779chrg_i2c";
 	reg = <0x69>;

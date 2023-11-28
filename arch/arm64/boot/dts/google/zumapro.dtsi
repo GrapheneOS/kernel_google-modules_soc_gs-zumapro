@@ -115,7 +115,7 @@
 		clock-frequency = <24576000>;
 	};
 
-	clock: clock-controller@0x26040000 {
+	clock: clock-controller@26040000 {
 		compatible = "samsung,zuma-clock";
 		reg = <0x0 0x26040000 0x8000>;
 		#clock-cells = <1>;
