@@ -110,6 +110,8 @@
 		samsung,pins = "gpp8-3";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+		samsung,pin-con-pdn = <EXYNOS_PIN_PDN_PREV>;
+		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_NONE>;
 	};
 
 	s5100_ap2cp_cp_nreset_n: s5100_ap2cp_cp_nreset_n {
