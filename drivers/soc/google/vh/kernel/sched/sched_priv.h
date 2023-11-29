@@ -47,6 +47,8 @@ extern unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern int pixel_cpu_num;
 extern int pixel_cluster_num;
 extern int *pixel_cluster_start_cpu;
+extern int *pixel_cluster_cpu_num;
+extern int *pixel_cpu_to_cluster;
 
 #define cpu_overutilized(cap, max, cpu)	\
 		((cap) * sched_capacity_margin[cpu] > (max) << SCHED_CAPACITY_SHIFT)
