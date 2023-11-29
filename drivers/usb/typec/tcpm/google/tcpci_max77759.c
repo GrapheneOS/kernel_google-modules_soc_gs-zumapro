@@ -2302,6 +2302,12 @@ static int max77759_get_vbus(struct google_shim_tcpci *tcpci, struct google_shim
 	}
 
 	LOG(LOG_LVL_DEBUG, chip->log, "[%s]: vbus_present %d", __func__, chip->vbus_present);
+
+	if (chip->toggle_disable_status) {
+		LOG(LOG_LVL_DEBUG, chip->log, "%s: toggle disabled, return Vbus off", __func__);
+		return 0;
+	}
+
 	return chip->vbus_present;
 }
 
