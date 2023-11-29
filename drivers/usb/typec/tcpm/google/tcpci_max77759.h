@@ -202,9 +202,6 @@ struct max77759_plat {
 	/* When true debounce disconnects to prevent user notifications during brief disconnects */
 	bool debounce_adapter_disconnect;
 
-	/* Hold while calling start_toggle and in probe to guard NULL chip->tcpci */
-	struct mutex toggle_lock;
-
 	int device_id;
 	int product_id;
 
