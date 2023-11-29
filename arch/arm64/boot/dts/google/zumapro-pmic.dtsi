@@ -242,3 +242,6 @@
 			0xE1 0x47 0x4D 0x96 0x09>;
 };
 
+&s2mpg15mfd {
+	b2_soft_ocp_warn_lvl = <OCP_WARN_LVL_2PH_5_012_A>;
+};
