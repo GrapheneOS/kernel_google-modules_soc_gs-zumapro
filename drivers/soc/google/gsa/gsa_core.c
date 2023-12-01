@@ -4,16 +4,18 @@
  *
  * Copyright (C) 2020 Google LLC
  */
+#include <linux/cdev.h>
 #include <linux/dma-mapping.h>
 #include <linux/kobject.h>
 #include <linux/module.h>
+#include <linux/idr.h>
 #include <linux/mod_devicetable.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-
+#include <linux/gsa.h>
 #include <linux/gsa/gsa_aoc.h>
 #include <linux/gsa/gsa_dsp.h>
 #include <linux/gsa/gsa_kdn.h>
@@ -24,6 +26,18 @@
 #include "gsa_priv.h"
 #include "gsa_tz.h"
 #include "hwmgr-ipc.h"
+
+#define MAX_DEVICES 1
+
+static struct class *gsa_cdev_class;
+static dev_t gsa_cdev_base_num;
+static DEFINE_IDR(gsa_cdev_devices);
+
+struct gsa_cdev {
+	dev_t device_num;
+	struct cdev cdev;
+	struct device *device;
+};
 
 struct gsa_dev_state {
 	struct device *dev;
@@ -36,6 +50,7 @@ struct gsa_dev_state {
 	struct gsa_tz_chan_ctx tpu_srv;
 	struct gsa_tz_chan_ctx dsp_srv;
 	struct gsa_log *log;
+	struct gsa_cdev cdev_node;
 };
 
 /*
@@ -600,6 +615,122 @@ int gsa_sjtag_end_session(struct device *gsa, u32 *status)
 }
 EXPORT_SYMBOL_GPL(gsa_sjtag_end_session);
 
+/*
+ *	GSA Character Device
+ */
+
+static int gsa_cdev_open(struct inode *inode, struct file *filp)
+{
+	struct gsa_cdev *gsa_cdev = container_of(inode->i_cdev, struct gsa_cdev, cdev);
+
+	/*
+	 *  Setting private_data to the main gsa_dev_state allows the cdev
+	 *  to access the state (e.g. the mbox) when handling ioctls.
+	 */
+	filp->private_data = container_of(gsa_cdev, struct gsa_dev_state, cdev_node);
+
+	return nonseekable_open(inode, filp);
+}
+
+static long gsa_cdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	struct gsa_dev_state *s = filp->private_data;
+
+	if (_IOC_TYPE(cmd) != GSA_IOC_MAGIC) {
+		dev_err(s->dev, "GSA cdev received ioctl with incorrect magic number\n");
+		return -EIO;
+	}
+
+	switch (cmd) {
+	case GSA_IOC_LOAD_APP:
+		dev_err(s->dev,
+			"GSA cdev received load_app ioctl which is not implemented yet\n");
+		return -ENOTTY;
+
+	default:
+		dev_err(s->dev, "GSA cdev received unhandled ioctl cmd: %#x\n", cmd);
+		return -ENOTTY;
+	}
+}
+
+static const struct file_operations gsa_cdev_fops = {
+	.open = gsa_cdev_open,
+	.unlocked_ioctl = gsa_cdev_ioctl,
+	.owner = THIS_MODULE,
+};
+
+int gsa_cdev_init(void)
+{
+	int ret = alloc_chrdev_region(&gsa_cdev_base_num, 0, MAX_DEVICES, KBUILD_MODNAME);
+
+	if (ret) {
+		pr_err("%s: failed (%d) to alloc chdev region\n", __func__, ret);
+		return ret;
+	}
+
+	gsa_cdev_class = class_create(THIS_MODULE, KBUILD_MODNAME);
+	if (IS_ERR(gsa_cdev_class)) {
+		ret = PTR_ERR(gsa_cdev_class);
+		unregister_chrdev_region(gsa_cdev_base_num, MAX_DEVICES);
+		return ret;
+	}
+
+	return 0;
+}
+
+int gsa_cdev_create(struct device *parent, struct gsa_cdev *cdev_node)
+{
+	int ret;
+	int minor;
+
+	/* allocate minor */
+	minor = idr_alloc(&gsa_cdev_devices, cdev_node, 0, MAX_DEVICES - 1, GFP_KERNEL);
+	if (minor < 0) {
+		dev_err(parent, "%s: failed (%d) to get id\n", __func__, minor);
+		return minor;
+	}
+	cdev_node->device_num = MKDEV(MAJOR(gsa_cdev_base_num), minor);
+
+	/* Create device node */
+	cdev_node->device = device_create(gsa_cdev_class, parent, cdev_node->device_num, NULL,
+					  "%s%d", "gsa", MINOR(cdev_node->device_num));
+	if (IS_ERR(cdev_node->device)) {
+		ret = PTR_ERR(cdev_node->device);
+		dev_err(parent, "%s: device_create failed: %d\n", __func__, ret);
+		goto err_device_create;
+	}
+
+	/* Add character device */
+	cdev_node->cdev.owner = THIS_MODULE;
+	cdev_init(&cdev_node->cdev, &gsa_cdev_fops);
+	ret = cdev_add(&cdev_node->cdev, cdev_node->device_num, 1);
+	if (ret) {
+		dev_err(parent, "%s: cdev_add failed (%d)\n", __func__, ret);
+		goto err_add_cdev;
+	}
+
+	pr_debug("GSA cdev created.\n");
+	return 0;
+
+err_add_cdev:
+	device_destroy(gsa_cdev_class, cdev_node->device_num);
+err_device_create:
+	idr_remove(&gsa_cdev_devices, MINOR(cdev_node->device_num));
+	return ret;
+}
+
+void gsa_cdev_remove(struct gsa_cdev *cdev_node)
+{
+	cdev_del(&cdev_node->cdev);
+	device_destroy(gsa_cdev_class, cdev_node->device_num);
+}
+
+void gsa_cdev_exit(void)
+{
+	class_destroy(gsa_cdev_class);
+	unregister_chrdev_region(gsa_cdev_base_num, MAX_DEVICES);
+}
+
 /********************************************************************/
 
 static ssize_t gsa_log_show(struct device *gsa, struct device_attribute *attr, char *buf);
@@ -673,14 +804,15 @@ static int gsa_probe(struct platform_device *pdev)
 	if (IS_ERR(s->log))
 		return PTR_ERR(s->log);
 
-	dev_info(dev, "Initialized\n");
-
-	return 0;
+	/* Initialize character device */
+	return gsa_cdev_create(dev, &s->cdev_node);
 }
 
 static int gsa_remove(struct platform_device *pdev)
 {
 	struct gsa_dev_state *s = platform_get_drvdata(pdev);
+
+	gsa_cdev_remove(&s->cdev_node);
 
 	/* close connection to tz services */
 	gsa_tz_chan_close(&s->aoc_srv);
@@ -708,12 +840,18 @@ static struct platform_driver gsa_driver = {
 
 static int __init gsa_driver_init(void)
 {
+	int ret = gsa_cdev_init();
+
+	if (ret)
+		return ret;
+
 	return platform_driver_register(&gsa_driver);
 }
 
 static void __exit gsa_driver_exit(void)
 {
 	platform_driver_unregister(&gsa_driver);
+	gsa_cdev_exit();
 }
 
 /* XXX - EPROBE_DEFER would be better. */
