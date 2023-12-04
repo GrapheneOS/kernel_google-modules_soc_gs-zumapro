@@ -39,6 +39,7 @@ struct metrics_header_t {
 #define METRICS_DATA_TYPE_SHIFT	23
 #define METRICS_DATA_MASK		0x7FFFFFU
 #define METRICS_DATA_SHIFT		0
+#define METRICS_DATA_ALIGN		3
 
 enum bl1_metrics_type_t {
 	METRICS_BL1_ENTRY = 0x1,

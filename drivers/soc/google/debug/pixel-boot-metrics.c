@@ -94,7 +94,8 @@ static u32 metrics_type_get(u32 index)
  */
 static u32 metrics_data_get(u32 index)
 {
-	return ((boot_metrics_get_index_metrics(index) >> METRICS_DATA_SHIFT) & METRICS_DATA_MASK);
+	return (((boot_metrics_get_index_metrics(index) >> METRICS_DATA_SHIFT) & METRICS_DATA_MASK)
+		<< METRICS_DATA_ALIGN);
 }
 
 /*
