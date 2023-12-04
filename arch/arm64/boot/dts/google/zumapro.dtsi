@@ -229,6 +229,10 @@
 		status = "disabled";
 	};
 
+	hdcp {
+		compatible = "samsung,exynos-hdcp";
+	};
+
 	/* GPIO_ALIVE */
 	pinctrl_0: pinctrl@154D0000 {
 		compatible = "google,zumapro-pinctrl";
