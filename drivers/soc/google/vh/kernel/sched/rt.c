@@ -21,9 +21,10 @@ extern int cpu_is_idle(int cpu);
 extern int sched_cpu_idle(int cpu);
 extern bool get_prefer_high_cap(struct task_struct *p);
 
-extern int ___update_load_sum(u64 now, struct sched_avg *sa,
-			  unsigned long load, unsigned long runnable, int running);
+extern int ___update_load_sum(u64 now, struct sched_avg *sa, unsigned long load,
+			      unsigned long runnable, int running);
 extern void ___update_load_avg(struct sched_avg *sa, unsigned long load);
+extern int get_cluster_enabled(int cluster);
 
 /*****************************************************************************/
 /*                       Upstream Code Section                               */
@@ -190,6 +191,11 @@ static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_m
 		// To prefer idle cpu than non-idle cpu
 		if (is_idle)
 			util[cpu] = 0;
+
+		// Avoid single core cluster in CPD state
+		if (is_idle && 1 == pixel_cluster_cpu_num[pixel_cpu_to_cluster[cpu]] &&
+			!get_cluster_enabled(pixel_cpu_to_cluster[cpu]))
+			cpu_importance[cpu] = UINT_MAX;
 
 		if (task_fits[cpu]) {
 			fit_and_non_overutilized_found |= !overutilize[cpu];

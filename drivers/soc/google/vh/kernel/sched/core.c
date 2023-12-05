@@ -274,3 +274,13 @@ void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
 	vp->uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 	vp->uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
 }
+
+void set_cluster_enabled_cb(int cluster, int enabled)
+{
+	pixel_cluster_enabled[cluster] = enabled;
+}
+
+int get_cluster_enabled(int cluster)
+{
+	return pixel_cluster_enabled[cluster];
+}
