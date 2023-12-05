@@ -2,7 +2,7 @@
 #include <linux/sysfs.h>
 #include "gcma_sysfs.h"
 
-#ifdef CONFIG_VH_MM
+#if IS_ENABLED(CONFIG_VH_MM)
 extern struct kobject *vendor_mm_kobj;
 #endif
 static struct kobject *gcma_parent_kobj;
@@ -239,7 +239,7 @@ static struct kobj_type gcma_ktype = {
 
 int __init gcma_sysfs_init(void)
 {
-#ifdef CONFIG_VH_MM
+#if IS_ENABLED(CONFIG_VH_MM)
 	gcma_parent_kobj = vendor_mm_kobj;
 #else
 	gcma_parent_kobj = kobject_create_and_add("gcma", kernel_kobj);
