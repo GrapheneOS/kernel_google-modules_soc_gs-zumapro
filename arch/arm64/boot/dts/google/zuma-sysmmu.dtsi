@@ -507,6 +507,7 @@
 			<6 STR_CFG(STR_SPTLB(0x05, 0x06), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_NONE) DIR_WRITE STR_ID(0x50) STR_MASK(0x78)>;
 		sysmmu,async-fault;
 		sysmmu,ap-read-implies-write;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_ispfe_s1: sysmmu@1C150000 {
@@ -527,6 +528,7 @@
 		pmmu0,default_stream = <STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_NONE)>;
 		sysmmu,async-fault;
 		sysmmu,ap-read-implies-write;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_ispfe_s2: sysmmu@1C190000 {
@@ -553,6 +555,7 @@
 			<5 STR_CFG(STR_SPTLB(0x02, 0x02), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_NONE) DIR_WRITE STR_ID(0x60) STR_MASK(0x60)>;
 		sysmmu,async-fault;
 		sysmmu,ap-read-implies-write;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_gse: sysmmu@1D870000 {
@@ -606,6 +609,7 @@
 			<32 STR_CFG(STR_SPTLB(0x00, 0x00), S2_EN, BL1, PREF_ASC, STLB_PREF, PTLB_PREF) DIR_WRITE STR_ID(0x06) STR_MASK(0x07)>;
 		sysmmu,async-fault;
 		sysmmu,ap-read-implies-write;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_tpu: sysmmu@1A340000 {
@@ -695,6 +699,7 @@
 			<12 STR_CFG(STR_SPTLB(0x06, 0x06), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_WRITE STR_ID(0x02) STR_MASK(0x1F)>,
 			<13 STR_CFG(STR_SPTLB(0x06, 0x06), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_WRITE STR_ID(0x06) STR_MASK(0x1F)>;
 		sysmmu,async-fault;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_tnr_s0: sysmmu@1CC80000 {
@@ -754,6 +759,7 @@
 			<17 STR_CFG(STR_SPTLB(0x08, 0x08), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_READ STR_ID(0x03) STR_MASK(0x0F)>;
 		sysmmu,async-fault;
 		sysmmu,ap-read-implies-write;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_tnr_s1: sysmmu@1CCC0000 {
@@ -818,6 +824,7 @@
 			<23 STR_CFG(STR_SPTLB(0x06, 0x0B), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_READ STR_ID(0x03) STR_MASK(0x1F)>;
 		sysmmu,async-fault;
 		sysmmu,ap-read-implies-write;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_tnr_s2: sysmmu@1CD00000 {
@@ -860,6 +867,7 @@
 			<21 STR_CFG(STR_SPTLB(0x01, 0x00), S2_EN, BL4, PREF_PRED, STLB_PREF, PTLB_NONE) DIR_WRITE STR_ID(0x0B) STR_MASK(0x7F)>;
 		sysmmu,async-fault;
 		sysmmu,ap-read-implies-write;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_rgbp_s0: sysmmu@1C4A0000 {
@@ -901,6 +909,7 @@
 			<12 STR_CFG(STR_SPTLB(0x0A, 0x06), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_WRITE STR_ID(0x02) STR_MASK(0x0F)>,
 			<13 STR_CFG(STR_SPTLB(0x0A, 0x06), S2_EN, BL1, PREF_PRED, STLB_NONE, PTLB_NONE) DIR_WRITE STR_ID(0x06) STR_MASK(0x0F)>;
 		sysmmu,async-fault;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_rgbp_s1: sysmmu@1C4E0000 {
@@ -966,6 +975,7 @@
 			<12 STR_CFG(STR_SPTLB(0x05, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_READ STR_ID(0x04) STR_MASK(0x1F)>,
 			<13 STR_CFG(STR_SPTLB(0x05, 0x00), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_PREF) DIR_READ STR_ID(0x0C) STR_MASK(0x1F)>;
 		sysmmu,async-fault;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_misc: sysmmu@101C0000 {
@@ -1091,6 +1101,7 @@
 			<23 STR_CFG(STR_SPTLB(0x1D, 0x0B), S2_EN, BL1, PREF_PRED, STLB_PREF, PTLB_NONE) DIR_WRITE STR_ID(0x07) STR_MASK(0x3F)>;
 		sysmmu,async-fault;
 		sysmmu,ap-read-implies-write;
+		sysmmu,always-dump-full-fault-info;
 	};
 
 	sysmmu_hsi0: sysmmu@11040000 {
