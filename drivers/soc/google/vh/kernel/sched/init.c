@@ -114,6 +114,8 @@ extern bool wait_for_init;
 int pixel_cpu_num;
 int pixel_cluster_num;
 int *pixel_cluster_start_cpu;
+int *pixel_cluster_cpu_num;
+int *pixel_cpu_to_cluster;
 bool pixel_cpu_init = false;
 
 EXPORT_SYMBOL_GPL(pixel_cpu_num);
@@ -221,10 +223,17 @@ static int init_pixel_cpu(void)
 		}
 	}
 
-	pixel_cluster_start_cpu = kcalloc(pixel_cluster_num, sizeof(int), GFP_KERNEL);
-
-	if (!pixel_cluster_start_cpu)
+	pixel_cpu_to_cluster  = kcalloc(pixel_cpu_num, sizeof(int), GFP_KERNEL);
+	if (!pixel_cpu_to_cluster)
 		return -ENOMEM;
+
+	pixel_cluster_start_cpu = kcalloc(pixel_cluster_num, sizeof(int), GFP_KERNEL);
+	if (!pixel_cluster_start_cpu)
+		goto out_no_pixel_cluster_start_cpu;
+
+	pixel_cluster_cpu_num = kcalloc(pixel_cluster_num, sizeof(int), GFP_KERNEL);
+	if (!pixel_cluster_cpu_num)
+		goto out_no_pixel_cluster_cpu_num;
 
 	cur_capacity = 0;
 	for_each_possible_cpu(i) {
@@ -232,11 +241,21 @@ static int init_pixel_cpu(void)
 			pixel_cluster_start_cpu[j++] = i;
 			cur_capacity = arch_scale_cpu_capacity(i);
 		}
+
+		pixel_cluster_cpu_num[j - 1]++;
+		pixel_cpu_to_cluster[i] = j - 1;
 	}
 
 	pixel_cpu_init = true;
-
 	return 0;
+
+out_no_pixel_cluster_cpu_num:
+	kfree(pixel_cluster_start_cpu);
+
+out_no_pixel_cluster_start_cpu:
+	kfree(pixel_cpu_to_cluster);
+
+	return -ENOMEM;
 }
 
 static int vh_sched_init(void)
