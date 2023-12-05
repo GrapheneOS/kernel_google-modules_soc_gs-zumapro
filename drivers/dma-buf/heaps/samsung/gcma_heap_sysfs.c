@@ -9,7 +9,7 @@
 #include "gcma_heap.h"
 #include "gcma_heap_sysfs.h"
 
-#ifdef CONFIG_VH_MM
+#if IS_ENABLED(CONFIG_VH_MM)
 extern struct kobject *vendor_mm_kobj;
 #endif
 static struct kobject *gcma_heap_kobj;
@@ -180,7 +180,7 @@ int register_heap_sysfs(struct gcma_heap *heap, const char *name)
 
 int __init gcma_heap_sysfs_init(void)
 {
-#ifdef CONFIG_VH_MM
+#if IS_ENABLED(CONFIG_VH_MM)
 	gcma_heap_kobj = kobject_create_and_add("gcma_heap", vendor_mm_kobj);
 #else
 	gcma_heap_kobj = kobject_create_and_add("gcma_heap", kernel_kobj);
