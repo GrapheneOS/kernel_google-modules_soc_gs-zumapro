@@ -62,6 +62,23 @@
 				cpu1_cluster = <4>;
 				cpu2_cluster = <8>;
 
+				irq_config {
+					irq,uvlo1;
+					irq,uvlo2;
+					irq,batoilo;
+					irq,batoilo2;
+					irq,smpl_warn;
+					/* Disabled IRQ
+					* irq,ocp_cpu1;
+					* irq,ocp_cpu2;
+					* irq,ocp_tpu;
+					* irq,ocp_gpu;
+					* irq,soft_ocp_cpu1;
+					* irq,soft_ocp_cpu2;
+					* irq,soft_ocp_tpu;
+					* irq,soft_ocp_gpu;
+					*/
+				};
 				main_limit {
 					pmic = "main_limit";
 					ch1 { setting = <255>; };
