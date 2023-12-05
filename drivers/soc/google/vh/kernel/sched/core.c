@@ -275,3 +275,13 @@ void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_ma
 
 	return;
 }
+
+void set_cluster_enabled_cb(int cluster, int enabled)
+{
+	pixel_cluster_enabled[cluster] = enabled;
+}
+
+int get_cluster_enabled(int cluster)
+{
+	return pixel_cluster_enabled[cluster];
+}

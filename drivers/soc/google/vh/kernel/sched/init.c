@@ -97,18 +97,18 @@ extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
 extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 					 struct cpumask *lowest_mask,
 					 int ret, int *cpu);
-extern void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p,
-			struct rq *rq, bool *need_update);
+extern void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
+					       bool *need_update);
 extern void rvh_util_fits_cpu_pixel_mod(void *data, unsigned long util, unsigned long uclamp_min,
 	unsigned long uclamp_max, int cpu, bool *fits, bool *done);
-
 extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
 	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
 
-extern struct cpufreq_governor sched_pixel_gov;
-
 extern int pmu_poll_init(void);
+extern void set_cluster_enabled_cb(int cluster, int enabled);
+extern void register_set_cluster_enabled_cb(void (*func)(int, int));
 
+extern struct cpufreq_governor sched_pixel_gov;
 extern bool wait_for_init;
 
 int pixel_cpu_num;
@@ -116,6 +116,7 @@ int pixel_cluster_num;
 int *pixel_cluster_start_cpu;
 int *pixel_cluster_cpu_num;
 int *pixel_cpu_to_cluster;
+int *pixel_cluster_enabled;
 bool pixel_cpu_init = false;
 
 EXPORT_SYMBOL_GPL(pixel_cpu_num);
@@ -235,6 +236,11 @@ static int init_pixel_cpu(void)
 	if (!pixel_cluster_cpu_num)
 		goto out_no_pixel_cluster_cpu_num;
 
+	pixel_cluster_enabled = kmalloc_array(pixel_cluster_num, sizeof(int), GFP_KERNEL);
+	if (!pixel_cluster_cpu_num)
+		goto out_no_pixel_cluster_enabled;
+	memset(pixel_cluster_enabled, 1, pixel_cluster_num * sizeof(int));
+
 	cur_capacity = 0;
 	for_each_possible_cpu(i) {
 		if (arch_scale_cpu_capacity(i) > cur_capacity) {
@@ -247,11 +253,15 @@ static int init_pixel_cpu(void)
 	}
 
 	pixel_cpu_init = true;
+
+	register_set_cluster_enabled_cb(set_cluster_enabled_cb);
+
 	return 0;
 
+out_no_pixel_cluster_enabled:
+	kfree(pixel_cluster_cpu_num);
 out_no_pixel_cluster_cpu_num:
 	kfree(pixel_cluster_start_cpu);
-
 out_no_pixel_cluster_start_cpu:
 	kfree(pixel_cpu_to_cluster);
 
