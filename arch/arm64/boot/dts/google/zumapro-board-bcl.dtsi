@@ -46,8 +46,8 @@
 				batoilo2_trig_lvl = <8000>;
 				batoilo_bat_open_to = <0x8>;    /* 36ms */
 				batoilo2_bat_open_to = <0x3>;   /* 12ms */
-				batoilo_rel = <0x3>;   /* 10ms */
-				batoilo2_rel = <0x3>;   /* 10ms */
+				batoilo_rel = <0x2>;   /* 1ms */
+				batoilo2_rel = <0x2>;   /* 1ms */
 				batoilo_det = <0x0>;   /* 0ms */
 				batoilo2_det = <0x0>;   /* 0ms */
 				uvlo1_rel = <0x2>;   /* 10ms */
