@@ -2525,11 +2525,18 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 		update_contaminant_detection_locked(chip, CONTAMINANT_DETECT_DISABLE);
 		max777x9_disable_contaminant_detection(chip);
 		max77759_enable_toggling_locked(chip, false);
+		/*
+		 * If external Vbus OVP is present, disable it to block Vbus.
+		 * If there is no external Vbus OVP, inform TCPM of the change on Vbus.
+		 * The mock Vbus absence will be reported in max77759_get_vbus callback.
+		 */
 		if (chip->in_switch_gpio >= 0) {
 			ovp_operation(chip, OVP_OFF);
 			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Disable in-switch set %s / active %s",
 			    __func__, !chip->in_switch_gpio_active_high ? "high" : "low",
 			    chip->in_switch_gpio_active_high ? "high" : "low");
+		} else {
+			tcpm_vbus_change(chip->tcpci->port);
 		}
 	} else {
 		if (chip->contaminant_detection_userspace)
@@ -2537,11 +2544,18 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 							    chip->contaminant_detection_userspace);
 		else
 			max77759_enable_toggling_locked(chip, true);
+		/*
+		 * If external Vbus OVP is present, enable it to reflect the real Vbus status.
+		 * If there is no external Vbus OVP, inform TCPM of the change on Vbus.
+		 * The real Vbus status will be queried in max77759_get_vbus callback.
+		 */
 		if (chip->in_switch_gpio >= 0) {
 			ovp_operation(chip, OVP_ON);
 			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Enable in-switch set %s / active %s",
 			    __func__, chip->in_switch_gpio_active_high ? "high" : "low",
 			    chip->in_switch_gpio_active_high ? "high" : "low");
+		} else {
+			tcpm_vbus_change(chip->tcpci->port);
 		}
 	}
 	mutex_unlock(&chip->rc_lock);
