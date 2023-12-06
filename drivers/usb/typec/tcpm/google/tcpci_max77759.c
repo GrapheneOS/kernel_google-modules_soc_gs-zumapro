@@ -1525,10 +1525,10 @@ static void ovp_operation(struct max77759_plat *chip, int operation)
 		do {
 			gpio_set_value_cansleep(chip->in_switch_gpio,
 						!chip->in_switch_gpio_active_high);
-			gpio_val = gpio_get_value(chip->in_switch_gpio);
+			gpio_val = gpio_get_value_cansleep(chip->in_switch_gpio);
 			LOG(LOG_LVL_DEBUG, chip->log,
-				      "%s: OVP disable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
-				       __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
+			    "%s: OVP disable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
+			    __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
 		} while ((gpio_val != !chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
 	}
 
@@ -1540,10 +1540,10 @@ static void ovp_operation(struct max77759_plat *chip, int operation)
 		do {
 			gpio_set_value_cansleep(chip->in_switch_gpio,
 						chip->in_switch_gpio_active_high);
-			gpio_val = gpio_get_value(chip->in_switch_gpio);
+			gpio_val = gpio_get_value_cansleep(chip->in_switch_gpio);
 			LOG(LOG_LVL_DEBUG, chip->log,
-				      "%s: OVP enable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
-				      __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
+			    "%s: OVP enable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
+			    __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
 		} while ((gpio_val != chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
 	}
 	mutex_unlock(&chip->ovp_lock);
