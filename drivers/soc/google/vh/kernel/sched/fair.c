@@ -343,7 +343,13 @@ static inline enum utilization_group get_utilization_group(struct task_struct *p
 
 bool get_prefer_high_cap(struct task_struct *p)
 {
-	return vg[get_vendor_group(p)].prefer_high_cap;
+	return vg[get_vendor_group(p)].prefer_high_cap ||
+		get_vendor_task_struct(p)->prefer_high_cap;
+}
+
+inline void set_prefer_high_cap(struct task_struct *p, bool val)
+{
+	get_vendor_task_struct(p)->prefer_high_cap = val;
 }
 
 static inline bool get_task_spreading(struct task_struct *p)
@@ -924,7 +930,7 @@ struct vendor_util_group_property *get_vendor_util_group_property(enum utilizati
 }
 #endif
 
-static bool task_fits_capacity(struct task_struct *p, int cpu,  bool sync_boost)
+static bool task_fits_capacity(struct task_struct *p, int cpu)
 {
 	unsigned long uclamp_min = uclamp_eff_value_pixel_mod(p, UCLAMP_MIN);
 	unsigned long uclamp_max = uclamp_eff_value_pixel_mod(p, UCLAMP_MAX);
@@ -933,7 +939,7 @@ static bool task_fits_capacity(struct task_struct *p, int cpu,  bool sync_boost)
 	if (cpu >= pixel_cluster_start_cpu[2])
 		return true;
 
-	if ((get_prefer_high_cap(p) || sync_boost) && cpu < pixel_cluster_start_cpu[1])
+	if (get_prefer_high_cap(p) && cpu < pixel_cluster_start_cpu[1])
 		return false;
 
 	/*
@@ -1533,8 +1539,7 @@ inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
 }
 /* UPSTREAM UCLAMP CODE - end */
 
-int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost,
-		cpumask_t *valid_mask)
+int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, cpumask_t *valid_mask)
 {
 	struct root_domain *rd;
 	struct perf_domain *pd;
@@ -1553,7 +1558,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 	bool is_idle, task_fits, util_fits;
 	bool idle_target_found = false, importance_target_found = false;
 	bool prefer_idle = get_prefer_idle(p);
-	bool prefer_high_cap = get_prefer_high_cap(p) || sync_boost;
+	bool prefer_high_cap = get_prefer_high_cap(p);
 	unsigned long capacity, wake_util, cpu_importance, pd_least_cpu_importantce;
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 	bool group_overutilize;
@@ -1616,7 +1621,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boo
 #else
 			spare_cap = capacity - wake_util;
 #endif
-			task_fits = task_fits_capacity(p, i, sync_boost);
+			task_fits = task_fits_capacity(p, i);
 			exit_lat = 0;
 
 			if (is_idle) {
@@ -2473,23 +2478,24 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 				       int wake_flags, int *target_cpu)
 {
 	int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
-	bool sync_wakeup = false, prefer_prev = false, sync_boost = false;
+	bool sync_wakeup = false, prefer_prev = false;
 	int cpu;
 
 	/* sync wake up */
 	cpu = smp_processor_id();
+
+	set_prefer_high_cap(p, sync && cpu >= pixel_cluster_start_cpu[1]);
+
 	if (sync && cpu_rq(cpu)->nr_running == 1 && cpumask_test_cpu(cpu, p->cpus_ptr) &&
-	     cpu_is_in_target_set(p, cpu) && task_fits_capacity(p, cpu, false)) {
+	     cpu_is_in_target_set(p, cpu) && task_fits_capacity(p, cpu)) {
 		*target_cpu = cpu;
 		sync_wakeup = true;
 		goto out;
 	}
 
-	sync_boost = sync && cpu >= pixel_cluster_start_cpu[1];
-
 	/* prefer prev cpu */
 	if (cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) &&
-	    task_fits_capacity(p, prev_cpu, sync_boost) && is_preferred_idle_cpu(p, prev_cpu)) {
+	    task_fits_capacity(p, prev_cpu) && is_preferred_idle_cpu(p, prev_cpu)) {
 
 		struct cpuidle_state *idle_state;
 		unsigned int exit_lat = UINT_MAX;
@@ -2512,17 +2518,20 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 	}
 
 	if (sd_flag & SD_BALANCE_WAKE) {
-		*target_cpu = find_energy_efficient_cpu(p, prev_cpu, sync_boost, NULL);
+		*target_cpu = find_energy_efficient_cpu(p, prev_cpu, NULL);
 	}
 
 out:
 	if (trace_sched_select_task_rq_fair_enabled())
 		trace_sched_select_task_rq_fair(p, task_util_est(p),
-						sync_wakeup, prefer_prev, sync_boost,
+						sync_wakeup, prefer_prev,
+						get_vendor_task_struct(p)->prefer_high_cap,
 						get_vendor_group(p),
 						uclamp_eff_value_pixel_mod(p, UCLAMP_MIN),
 						uclamp_eff_value_pixel_mod(p, UCLAMP_MAX),
 						prev_cpu, *target_cpu);
+
+	set_prefer_high_cap(p, false);
 }
 
 void rvh_set_user_nice_locked_pixel_mod(void *data, struct task_struct *p, long *nice)
@@ -2602,8 +2611,8 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 		if (!is_ui && !is_boost)
 			continue;
 
-		if (task_fits_capacity(p, dst_cpu, false)) {
-			if (!task_fits_capacity(p, src_rq->cpu, false)) {
+		if (task_fits_capacity(p, dst_cpu)) {
+			if (!task_fits_capacity(p, src_rq->cpu)) {
 				// if task is fit for new cpu but not old cpu
 				// stop if we found an ADPF UI task
 				// use it as backup if we found a boost task
