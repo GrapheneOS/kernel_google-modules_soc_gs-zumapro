@@ -1373,7 +1373,7 @@ static void process_power_status(struct max77759_plat *chip)
 	 * Check for missing-rp non compliant power source.
 	 * Skip when usb is throttled due to overheat.
 	 */
-	if (!chip->usb_throttled)
+	if (!chip->usb_throttled && !chip->toggle_disable_status)
 		check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES), chip->cc1,
 				 chip->cc2);
 
@@ -1800,7 +1800,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 			max77759_cache_cc(chip);
 			/* Check for missing-rp non compliant power source */
 			if (!regmap_read(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status) &&
-			    !chip->usb_throttled)
+			    !chip->usb_throttled && !chip->toggle_disable_status)
 				check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES),
 						 chip->cc1, chip->cc2);
 			/* TCPM has detected valid CC terminations */
