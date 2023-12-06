@@ -282,6 +282,7 @@ struct exynos_pcie {
 	bool			use_nclkoff_en;
 	bool                    cpl_timeout_recovery;
 	bool			sudden_linkdown;
+	bool			dw_host_inited;
 	spinlock_t		conf_lock;		/* pcie config - link status change */
 	spinlock_t		reg_lock;		/* pcie config - reg_lock(reserved) */
 	spinlock_t		pcie_l1_exit_lock;	/* pcie l1.2 exit - ctrl_id_state */

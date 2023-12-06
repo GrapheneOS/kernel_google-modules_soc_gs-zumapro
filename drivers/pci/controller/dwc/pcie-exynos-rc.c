@@ -71,6 +71,11 @@ static struct separated_msi_vector sep_msi_vec[MAX_RC_NUM][PCIE_MAX_SEPA_IRQ_NUM
 static bool is_vhook_registered;
 
 static struct pci_dev *exynos_pcie_get_pci_dev(struct dw_pcie_rp *pp);
+static int exynos_pcie_msi_set_affinity(struct irq_data *irq_data,
+	const struct cpumask *mask,
+	bool force);
+int exynos_pcie_rc_set_enable_wake(struct irq_data *data, unsigned int enable);
+
 
 #if IS_ENABLED(CONFIG_PM_DEVFREQ)
 struct exynos_pm_qos_request exynos_pcie_int_qos[MAX_RC_NUM];
@@ -3501,9 +3506,12 @@ int exynos_pcie_rc_poweron(int ch_num)
 	struct dw_pcie *pci;
 	struct dw_pcie_rp *pp;
 	struct device *dev;
+	struct irq_domain *msi_domain;
+	struct msi_domain_info *msi_domain_info;
 	int ret;
 	unsigned long flags;
 	u32 val;
+	u32 vendor_id, device_id;
 
 	if (!exynos_pcie) {
 		pr_err("%s: ch#%d PCIe device is not loaded\n", __func__, ch_num);
@@ -3516,6 +3524,44 @@ int exynos_pcie_rc_poweron(int ch_num)
 	pci = exynos_pcie->pci;
 	pp = &pci->pp;
 	dev = pci->dev;
+
+	if (!exynos_pcie->dw_host_inited) {
+
+		ret = dw_pcie_host_init(pp);
+		if (ret) {
+			dev_err(dev, "failed to dw pcie host init in %s\n", __func__);
+			return ret;
+		}
+
+		if (pp->msi_domain) {
+			msi_domain = pp->msi_domain;
+			msi_domain_info = (struct msi_domain_info *)msi_domain->host_data;
+			msi_domain_info->chip->irq_set_affinity = exynos_pcie_msi_set_affinity;
+			msi_domain_info->chip->irq_set_wake = exynos_pcie_rc_set_enable_wake;
+			if (exynos_pcie->ep_device_type == EP_QC_WIFI ||
+					exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
+				msi_domain_info->chip->irq_mask = pci_msi_mask_irq;
+				msi_domain_info->chip->irq_unmask = pci_msi_unmask_irq;
+			}
+		}
+
+		exynos_pcie_rc_rd_own_conf(pp, PCI_VENDOR_ID, 4, &val);
+		vendor_id = val & ID_MASK;
+		device_id = (val >> 16) & ID_MASK;
+
+		exynos_pcie->pci_dev = pci_get_device(vendor_id, device_id, NULL);
+		if (!exynos_pcie->pci_dev) {
+			logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR,
+				       "Failed to get pci device");
+			goto poweron_fail;
+		}
+		dev_dbg(dev, "ep_pci_device:vendor/device id = 0x%x\n", val);
+		logbuffer_log(exynos_pcie->log, "ep_pci_device:vendor/device id = 0x%x",
+			      val);
+		exynos_pcie->pci_saved_configs = pci_store_saved_state(exynos_pcie->pci_dev);
+
+		exynos_pcie->dw_host_inited = true;
+	}
 
 	dev_dbg(dev, "start poweron, state: %d\n", exynos_pcie->state);
 	logbuffer_log(exynos_pcie->log, "start poweron, state: %d", exynos_pcie->state);
@@ -4932,8 +4978,6 @@ EXPORT_SYMBOL_GPL(register_separated_msi_vector);
 
 static int exynos_pcie_rc_add_port(struct platform_device *pdev, struct dw_pcie_rp *pp, int ch_num)
 {
-	struct irq_domain *msi_domain;
-	struct msi_domain_info *msi_domain_info;
 	int ret, i, sep_irq;
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
@@ -5005,25 +5049,6 @@ skip_sep_request_irq:
 		dw_pcie_dbi_ro_wr_dis(exynos_pcie->pci);
 
 		dev_dbg(&pdev->dev, "MSI is supported with 64-bit mask.\n");
-	}
-
-	ret = dw_pcie_host_init(pp);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to dw pcie host init\n");
-
-		return ret;
-	}
-
-	if (pp->msi_domain) {
-		msi_domain = pp->msi_domain;
-		msi_domain_info = (struct msi_domain_info *)msi_domain->host_data;
-		msi_domain_info->chip->irq_set_affinity = exynos_pcie_msi_set_affinity;
-		msi_domain_info->chip->irq_set_wake = exynos_pcie_rc_set_enable_wake;
-		if (exynos_pcie->ep_device_type == EP_QC_WIFI ||
-				exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
-			msi_domain_info->chip->irq_mask = pci_msi_mask_irq;
-			msi_domain_info->chip->irq_unmask = pci_msi_unmask_irq;
-		}
 	}
 
 	return 0;
@@ -5206,7 +5231,6 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	int ret = 0;
 	int ch_num;
-	u32 val, vendor_id, device_id;
 #if IS_ENABLED(CONFIG_GS_S2MPU)
 	struct device_node *s2mpu_dn;
 #endif
@@ -5357,21 +5381,6 @@ static int exynos_pcie_rc_probe(struct platform_device *pdev)
 	ret = exynos_pcie_rc_add_port(pdev, pp, ch_num);
 	if (ret)
 		goto probe_fail;
-
-	exynos_pcie_rc_rd_own_conf(pp, PCI_VENDOR_ID, 4, &val);
-	vendor_id = val & ID_MASK;
-	device_id = (val >> 16) & ID_MASK;
-
-	exynos_pcie->pci_dev = pci_get_device(vendor_id, device_id, NULL);
-	if (!exynos_pcie->pci_dev) {
-		logbuffer_logk(exynos_pcie->log, LOGLEVEL_ERR,
-			       "Failed to get pci device");
-		goto probe_fail;
-	}
-	dev_dbg(&pdev->dev, "(%s):ep_pci_device:vendor/device id = 0x%x\n", __func__, val);
-	logbuffer_log(exynos_pcie->log, "ep_pci_device:vendor/device id = 0x%x",
-		      val);
-	exynos_pcie->pci_saved_configs = pci_store_saved_state(exynos_pcie->pci_dev);
 
 	if (exynos_pcie->use_cache_coherency)
 		exynos_pcie_rc_set_iocc(pp, 1);
