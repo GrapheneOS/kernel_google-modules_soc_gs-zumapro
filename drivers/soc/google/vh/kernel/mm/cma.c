@@ -45,7 +45,7 @@ static ssize_t force_empty_store(struct kobject *kobj,
 		return -EINVAL;
 
 	for (nr_retry = 0; nr_retry < 5; nr_retry++) {
-		page = cma_alloc(cma, req_pages, 0, GFP_KERNEL);
+		page = cma_alloc(cma, req_pages, 0, false);
 		pr_info("%s req_pages %d force_empty %s\n", cma_get_name(cma),
 					req_pages, page ? "succeeded" : "failed");
 		if (page)

@@ -48,7 +48,7 @@ static struct dma_buf *cma_heap_allocate(struct dma_heap *heap, unsigned long le
 	if (IS_ERR(buffer))
 		return ERR_PTR(-ENOMEM);
 
-	pages = cma_alloc(cma_heap->cma, nr_pages, get_order(alignment), GFP_KERNEL);
+	pages = cma_alloc(cma_heap->cma, nr_pages, get_order(alignment), false);
 	if (!pages) {
 		perrfn("failed to allocate from %s, size %lu", dma_heap_get_name(heap), size);
 		goto free_cma;
