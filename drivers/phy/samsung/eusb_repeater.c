@@ -835,10 +835,11 @@ static int eusb_repeater_parse_dt(struct device *dev, struct eusb_repeater_data 
 	tud->vdd33 = devm_regulator_get(dev, "vdd33");
 	if (IS_ERR(tud->vdd33)) {
 		dev_err(dev, "vdd33 regulator_get fail: %ld\n", PTR_ERR(tud->vdd33));
+		ret = PTR_ERR(tud->vdd33);
 		tud->vdd33 = NULL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static const struct of_device_id eusb_repeater_match_table[] = {
