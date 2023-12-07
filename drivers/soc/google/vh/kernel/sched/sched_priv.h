@@ -50,6 +50,7 @@ extern int *pixel_cluster_start_cpu;
 extern int *pixel_cluster_cpu_num;
 extern int *pixel_cpu_to_cluster;
 extern int *pixel_cluster_enabled;
+extern unsigned int *pixel_cpd_exit_latency;
 
 #define cpu_overutilized(cap, max, cpu)	\
 		((cap) * sched_capacity_margin[cpu] > (max) << SCHED_CAPACITY_SHIFT)
