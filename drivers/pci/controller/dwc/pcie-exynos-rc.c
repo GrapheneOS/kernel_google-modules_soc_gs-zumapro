@@ -456,7 +456,10 @@ static ssize_t exynos_pcie_rc_store(struct device *dev, struct device_attribute 
 	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
 	int ret = 0;
 
-	if (sscanf(buf, "%10d", &op_num) == 0)
+	if (!buf)
+		return -EINVAL;
+
+	if (sscanf(buf, "%10d", &op_num) <= 0)
 		return -EINVAL;
 
 	if (exynos_pcie->use_phy_isol_con)
@@ -573,7 +576,10 @@ static ssize_t exynos_pcie_eom1_store(struct device *dev, struct device_attribut
 	int op_num;
 	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
 
-	if (sscanf(buf, "%10d", &op_num) == 0)
+	if (!buf)
+		return -EINVAL;
+
+	if (sscanf(buf, "%10d", &op_num) <= 0)
 		return -EINVAL;
 	switch (op_num) {
 	case 0:
@@ -674,7 +680,10 @@ static ssize_t l12_state_store(struct device *dev,
 	int ch_num = exynos_pcie->ch_num;
 	int enable;
 
-	if (sscanf(buf, "%10d", &enable) == 0)
+	if (!buf)
+		return -EINVAL;
+
+	if (sscanf(buf, "%10d", &enable) <= 0)
 		return -EINVAL;
 
 	if (enable == 1) {
@@ -706,7 +715,10 @@ static ssize_t link_speed_store(struct device *dev,
 	int link_speed;
 	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
 
-	if (sscanf(buf, "%10d", &link_speed) == 0)
+	if (!buf)
+		return -EINVAL;
+
+	if (sscanf(buf, "%10d", &link_speed) <= 0)
 		return -EINVAL;
 
 	if (link_speed < LINK_SPEED_GEN1 || link_speed > exynos_pcie->max_link_speed) {
