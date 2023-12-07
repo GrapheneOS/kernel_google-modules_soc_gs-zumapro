@@ -117,6 +117,7 @@ int *pixel_cluster_start_cpu;
 int *pixel_cluster_cpu_num;
 int *pixel_cpu_to_cluster;
 int *pixel_cluster_enabled;
+unsigned int *pixel_cpd_exit_latency;
 bool pixel_cpu_init = false;
 
 EXPORT_SYMBOL_GPL(pixel_cpu_num);
@@ -239,7 +240,10 @@ static int init_pixel_cpu(void)
 	pixel_cluster_enabled = kmalloc_array(pixel_cluster_num, sizeof(int), GFP_KERNEL);
 	if (!pixel_cluster_cpu_num)
 		goto out_no_pixel_cluster_enabled;
-	memset(pixel_cluster_enabled, 1, pixel_cluster_num * sizeof(int));
+
+	pixel_cpd_exit_latency = kcalloc(pixel_cluster_num, sizeof(int), GFP_KERNEL);
+	if (!pixel_cpd_exit_latency)
+		goto out_no_pixel_cpd_exit_latency;
 
 	cur_capacity = 0;
 	for_each_possible_cpu(i) {
@@ -252,12 +256,19 @@ static int init_pixel_cpu(void)
 		pixel_cpu_to_cluster[i] = j - 1;
 	}
 
+	for (i = 0; i < pixel_cluster_num; i++) {
+		pixel_cluster_enabled[i] = 1;
+		pixel_cpd_exit_latency[i] = UINT_MAX - pixel_cluster_num + i;
+	}
+
 	pixel_cpu_init = true;
 
 	register_set_cluster_enabled_cb(set_cluster_enabled_cb);
 
 	return 0;
 
+out_no_pixel_cpd_exit_latency:
+	kfree(pixel_cluster_enabled);
 out_no_pixel_cluster_enabled:
 	kfree(pixel_cluster_cpu_num);
 out_no_pixel_cluster_cpu_num:

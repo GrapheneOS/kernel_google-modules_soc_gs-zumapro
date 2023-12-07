@@ -193,9 +193,8 @@ static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_m
 			util[cpu] = 0;
 
 		// Avoid single core cluster in CPD state
-		if (is_idle && 1 == pixel_cluster_cpu_num[pixel_cpu_to_cluster[cpu]] &&
-			!get_cluster_enabled(pixel_cpu_to_cluster[cpu]))
-			cpu_importance[cpu] = UINT_MAX;
+		if (is_idle && !get_cluster_enabled(pixel_cpu_to_cluster[cpu]))
+			exit_lat[cpu] = pixel_cpd_exit_latency[pixel_cpu_to_cluster[cpu]];
 
 		if (task_fits[cpu]) {
 			fit_and_non_overutilized_found |= !overutilize[cpu];
