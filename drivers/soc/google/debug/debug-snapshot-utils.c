@@ -543,8 +543,6 @@ static inline void dbg_snapshot_save_core(struct pt_regs *regs)
 	} else {
 		memcpy(core_reg, regs, sizeof(struct user_pt_regs));
 	}
-
-	dev_emerg(dss_desc.dev, "core register saved(CPU:%d)\n", cpu);
 }
 
 void dbg_snapshot_save_context(struct pt_regs *regs, bool stack_dump)
