@@ -414,7 +414,7 @@ static void _dbg_snapshot_ecc_dump(bool call_panic, char *ecc_sel_str[])
 	erridr_el1.reg = read_ERRIDR_EL1();
 
 	for (i = 0; i < (int)erridr_el1.field.NUM; i++) {
-		char errbuf[SZ_512] = {0, };
+		char errbuf[SZ_256];
 		int n = 0;
 
 		errselr_el1.reg = read_ERRSELR_EL1();
@@ -424,14 +424,12 @@ static void _dbg_snapshot_ecc_dump(bool call_panic, char *ecc_sel_str[])
 		isb();
 
 		erxstatus_el1.reg = read_ERXSTATUS_EL1();
-		msg = erxstatus_el1.field.VALID ? "Error" : "NO Error";
+		if (!erxstatus_el1.field.VALID)
+			continue;
 
 		n = scnprintf(errbuf + n, sizeof(errbuf) - n,
-			      "%4s: %8s: [NUM:%d][ERXSTATUS_EL1:%#016llx]\n",
-			      ecc_sel_str[i] ? ecc_sel_str[i] : "", msg, i, erxstatus_el1.reg);
-
-		if (!erxstatus_el1.field.VALID)
-			goto output_cont;
+			      "%4s:  Error: [NUM:%d][ERXSTATUS_EL1:%#016llx]\n",
+			      ecc_sel_str[i] ? ecc_sel_str[i] : "", i, erxstatus_el1.reg);
 
 		if (erxstatus_el1.field.AV)
 			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
