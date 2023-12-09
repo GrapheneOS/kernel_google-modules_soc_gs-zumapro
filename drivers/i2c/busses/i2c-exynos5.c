@@ -377,6 +377,7 @@ static int exynos5_i2c_set_timing(struct exynos5_i2c *i2c, int mode)
 	int ret;
 	unsigned int ipclk;
 	unsigned int op_clk;
+	unsigned int f_scl;
 
 	u32 hs_div, utscl_h_hs, utscl_l_hs, utstart_hd_hs;
 	u32 fs_div, utscl_h_fs, utscl_l_fs, utstart_hd_fs;
@@ -427,8 +428,9 @@ static int exynos5_i2c_set_timing(struct exynos5_i2c *i2c, int mode)
 		writel(utemp | (utstart_hd_fs << 16), i2c->regs +
 				HSI2C_TIMING_FS1);
 
-		dev_info(i2c->dev, "%s IPCLK = %d OP_CLK = %d DIV = %d TIMING FS1(STAND) = 0x%X TIMING FS2(STAND) = 0x%X TIMING FS3(STAND) = 0x%X\n",
-			 __func__, ipclk, op_clk, fs_div,
+		f_scl = ipclk / ((fs_div + 1) * 16);
+		dev_info(i2c->dev, "%s IPCLK = %u OP_CLK = %u DIV = %d FSCL = %u TIMING FS1(STAND) = 0x%X TIMING FS2(STAND) = 0x%X TIMING FS3(STAND) = 0x%X\n",
+			 __func__, ipclk, op_clk, fs_div, f_scl,
 				readl(i2c->regs + HSI2C_TIMING_FS1),
 				readl(i2c->regs + HSI2C_TIMING_FS2),
 				readl(i2c->regs + HSI2C_TIMING_FS3));
@@ -475,8 +477,9 @@ static int exynos5_i2c_set_timing(struct exynos5_i2c *i2c, int mode)
 		writel(utemp | (utstart_hd_fs << 16), i2c->regs +
 				HSI2C_TIMING_FS1);
 
-		dev_info(i2c->dev, "%s IPCLK = %d OP_CLK = %d DIV = %d TIMING FS1(FS+) = 0x%X TIMING FS2(FS+) = 0x%X TIMING FS3(FS+) = 0x%X\n",
-			 __func__, ipclk, op_clk, fs_div,
+		f_scl = ipclk / ((fs_div + 1) * 16);
+		dev_info(i2c->dev, "%s IPCLK = %u OP_CLK = %u DIV = %u FSCK = %u TIMING FS1(FS+) = 0x%X TIMING FS2(FS+) = 0x%X TIMING FS3(FS+) = 0x%X\n",
+			 __func__, ipclk, op_clk, fs_div, f_scl,
 				readl(i2c->regs + HSI2C_TIMING_FS1),
 				readl(i2c->regs + HSI2C_TIMING_FS2),
 				readl(i2c->regs + HSI2C_TIMING_FS3));
@@ -521,8 +524,9 @@ static int exynos5_i2c_set_timing(struct exynos5_i2c *i2c, int mode)
 		writel(utemp | (utstart_hd_hs << 16), i2c->regs +
 				HSI2C_TIMING_HS1);
 
-		dev_info(i2c->dev, "%s IPCLK = %d OP_CLK = %d DIV = %d TIMING HS1 = 0x%08X TIMING HS2 = 0x%08X TIMING HS3 = 0x%08X\n",
-			 __func__, ipclk, op_clk, hs_div,
+		f_scl = ipclk / ((hs_div + 1) * 16);
+		dev_info(i2c->dev, "%s IPCLK = %u OP_CLK = %u DIV = %u FSCL= %u TIMING HS1 = 0x%08X TIMING HS2 = 0x%08X TIMING HS3 = 0x%08X\n",
+			 __func__, ipclk, op_clk, hs_div, f_scl,
 				readl(i2c->regs + HSI2C_TIMING_HS1),
 				readl(i2c->regs + HSI2C_TIMING_HS2),
 				readl(i2c->regs + HSI2C_TIMING_HS3));
@@ -568,8 +572,9 @@ static int exynos5_i2c_set_timing(struct exynos5_i2c *i2c, int mode)
 		writel(utemp | (utstart_hd_fs << 16), i2c->regs +
 				HSI2C_TIMING_FS1);
 
-		dev_info(i2c->dev, "%s IPCLK = %d OP_CLK = %d DIV = %d Timing FS1 = 0x%X TIMING FS2 = 0x%X TIMING FS3 = 0x%X\n",
-			 __func__, ipclk, op_clk, fs_div,
+		f_scl = ipclk / ((fs_div + 1) * 16);
+		dev_info(i2c->dev, "%s IPCLK = %u OP_CLK = %u DIV = %u FSCL = %u Timing FS1 = 0x%X TIMING FS2 = 0x%X TIMING FS3 = 0x%X\n",
+			 __func__, ipclk, op_clk, fs_div, f_scl,
 				readl(i2c->regs + HSI2C_TIMING_FS1),
 				readl(i2c->regs + HSI2C_TIMING_FS2),
 				readl(i2c->regs + HSI2C_TIMING_FS3));
