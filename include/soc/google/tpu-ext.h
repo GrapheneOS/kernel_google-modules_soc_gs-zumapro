@@ -53,8 +53,8 @@ struct edgetpu_ext_mailbox_info {
  * Structure to hold information of TPU offload.
  */
 struct edgetpu_ext_offload_info {
-	u16 client_id; /* ID of the virtual client. */
-	u8 reserved[62]; /* Reserved for future compatibility. */
+	u32 client_id; /* ID of the virtual client. */
+	u8 reserved[60]; /* Reserved for future compatibility. */
 };
 
 enum edgetpu_ext_commands {
