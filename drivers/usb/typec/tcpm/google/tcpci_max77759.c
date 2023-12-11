@@ -32,7 +32,7 @@
 #include <linux/usb/max77759_export.h>
 #include "max77759_helper.h"
 /* This header comes from the GKI kernel tree */
-#include <tcpm/tcpci.h>
+#include <linux/usb/tcpci.h>
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
 #include "usb_icl_voter.h"
@@ -643,6 +643,7 @@ void register_data_active_callback(void (*callback)(void *data_active_payload), 
 }
 EXPORT_SYMBOL_GPL(register_data_active_callback);
 
+static void ovp_operation(struct max77759_plat *chip, int operation);
 #ifdef CONFIG_GPIOLIB
 static int ext_bst_en_gpio_get_direction(struct gpio_chip *chip, unsigned int offset)
 {
@@ -664,13 +665,34 @@ static int ext_bst_en_gpio_get(struct gpio_chip *gpio, unsigned int offset)
 
 static void ext_bst_en_gpio_set(struct gpio_chip *gpio, unsigned int offset, int value)
 {
-	int ret;
 	struct max77759_plat *chip = gpiochip_get_data(gpio);
 	struct regmap *regmap = chip->data.regmap;
+	bool vsafe0v, toggle_ovp = false;
+	int ret;
+	u8 raw;
+
+	ret = max77759_read8(regmap, TCPC_EXTENDED_STATUS, &raw);
+	if (ret < 0)
+		vsafe0v = chip->vsafe0v;
+	else
+		vsafe0v = !!(raw & TCPC_EXTENDED_STATUS_VSAFE0V);
+
+	/* b/309900468 toggle ovp to make sure that Vbus is vSafe0V when setting EXT_BST_EN. */
+	if (chip->in_switch_gpio >= 0 && value && !vsafe0v)
+		toggle_ovp = true;
+
+	if (toggle_ovp)
+		ovp_operation(chip, OVP_OFF);
 
 	ret = max77759_write8(regmap, TCPC_VENDOR_EXTBST_CTRL, value ? EXT_BST_EN : 0);
-	LOG(LOG_LVL_DEBUG, chip->log,
-	    "%s: TCPC_VENDOR_EXTBST_CTRL value%d ret:%d", __func__, value, ret);
+	LOG(LOG_LVL_DEBUG, chip->log, "%s: TCPC_VENDOR_EXTBST_CTRL value:%d ret:%d", __func__,
+	    value, ret);
+
+	if (toggle_ovp) {
+		mdelay(10);
+
+		ovp_operation(chip, OVP_ON);
+	}
 }
 
 static int ext_bst_en_gpio_init(struct max77759_plat *chip)
@@ -1498,6 +1520,7 @@ static void ovp_operation(struct max77759_plat *chip, int operation)
 {
 	int gpio_val, retry = 0;
 
+	mutex_lock(&chip->ovp_lock);
 	if (operation == OVP_RESET || operation == OVP_OFF) {
 		do {
 			gpio_set_value_cansleep(chip->in_switch_gpio,
@@ -1523,6 +1546,7 @@ static void ovp_operation(struct max77759_plat *chip, int operation)
 				      __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
 		} while ((gpio_val != chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
 	}
+	mutex_unlock(&chip->ovp_lock);
 }
 
 static void reset_ovp_work(struct kthread_work *work)
@@ -3110,6 +3134,7 @@ static int max77759_probe(struct i2c_client *client,
 	mutex_init(&chip->rc_lock);
 	mutex_init(&chip->irq_status_lock);
 	mutex_init(&chip->toggle_lock);
+	mutex_init(&chip->ovp_lock);
 	spin_lock_init(&g_caps_lock);
 	chip->first_toggle = true;
 	chip->first_rp_missing_timeout = true;

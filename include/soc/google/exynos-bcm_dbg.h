@@ -123,6 +123,7 @@ enum exynos_bcm_event_id {
 	BCM_EVT_STR_STATE,
 	BCM_EVT_DUMP_ADDR,
 	BCM_EVT_DUMP_ACCUMULATORS,
+	BCM_EVT_EVENT_SM_USER,
 	BCM_EVT_MAX,
 };
 
@@ -150,6 +151,11 @@ struct exynos_bcm_pd_info {
 	unsigned int			cal_pdid;
 	unsigned int			pd_index;
 	bool				on;
+};
+
+struct exynos_bcm_event_sm_user_info {
+	unsigned int			sm_user_mask;
+	unsigned int			sm_user_value;
 };
 
 struct exynos_bcm_filter_id {

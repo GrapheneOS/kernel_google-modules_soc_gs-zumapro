@@ -186,29 +186,43 @@ static int eusb_repeater_fill_tune_param(struct eusb_repeater_data *tud,
 static int eusb_repeater_ctrl(int value)
 {
 	struct eusb_repeater_data *tud = g_tud;
-	int ret = 0;
+	int i, ret = 0;
 	u8 read_data, write_data;
 
-	ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
-	if (ret < 0)
-		goto err;
+	for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
+		ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
+		if (ret < 0)
+			goto retry;
 
-	write_data = value ? (read_data & ~REG_DISABLE_P1) : (read_data | REG_DISABLE_P1);
-	ret = eusb_repeater_write_reg(tud, I2C_GLOBAL_CONFIG, &write_data, 1);
-	if (ret < 0)
-		goto err;
+		write_data = value ? (read_data & ~REG_DISABLE_P1) : (read_data | REG_DISABLE_P1);
+		ret = eusb_repeater_write_reg(tud, I2C_GLOBAL_CONFIG, &write_data, 1);
+		if (ret < 0)
+			goto retry;
 
-	ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
-	dev_dbg(tud->dev, "%s: i2c global config = %x, ret=%d\n", __func__, read_data, ret);
+		ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &read_data, 1);
+		if (ret < 0)
+			goto retry;
 
-	if (!ret)
+		break;
+
+retry:
+		if (i > 1)
+			goto err;
+
+		usleep_range(30 * 1000, 80 * 1000);
+	}
+
+
+	dev_info(tud->dev, "%s Disabled mode, reg = %x\n", value ? "Exit" : "Enter", read_data);
+
+	if (ret >= 0)
 		tud->ctrl_sel_status = value;
 
 	return ret;
 
 err:
 
-	dev_err(tud->dev, "Failed to %s Disabled state\n", value ? "Exit" : "Enter");
+	dev_err(tud->dev, "Failed to %s Disabled state, ret:%d\n", value ? "Exit" : "Enter", ret);
 	return ret;
 }
 
@@ -245,11 +259,10 @@ eusb_repeater_store(struct device *dev,
 		return -EINVAL;
 
 	if (tud->ctrl_sel_status == false) {
-		for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
-			ret = eusb_repeater_ctrl(true);
-			if (ret >= 0)
-				break;
-		}
+		ret = eusb_repeater_ctrl(true);
+		if (ret < 0)
+			return -EBUSY;
+
 		mdelay(3);
 	}
 
@@ -285,6 +298,518 @@ static struct attribute *eusb_repeater_attrs[] = {
 };
 ATTRIBUTE_GROUPS(eusb_repeater);
 
+/* -------------------------------- debugfs -------------------------------- */
+static int u_tx_adjust_port1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, U_TX_ADJUST_PORT1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(u_tx_adjust_port1_fops, u_tx_adjust_port1_get, NULL, "0x%x\n");
+
+static int u_hs_tx_pre_emphasus_p1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, U_HS_TX_PRE_EMPHASIS_P1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(u_hs_tx_pre_emphasus_p1_fops, u_hs_tx_pre_emphasus_p1_get, NULL, "0x%x\n");
+
+static int u_rx_adjust_port1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, U_RX_ADJUST_PORT1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(u_rx_adjust_port1_fops, u_rx_adjust_port1_get, NULL, "0x%x\n");
+
+static int u_disconnect_squelch_port1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, U_DISCONNECT_SQUELCH_PORT1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(u_disconnect_squelch_port1_fops, u_disconnect_squelch_port1_get, NULL,
+			"0x%x\n");
+
+static int e_hs_tx_pre_emphasus_p1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, E_HS_TX_PRE_EMPHASIS_P1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(e_hs_tx_pre_emphasus_p1_fops, e_hs_tx_pre_emphasus_p1_get, NULL, "0x%x\n");
+
+static int e_tx_adjust_port1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, E_TX_ADJUST_PORT1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(e_tx_adjust_port1_fops, e_tx_adjust_port1_get, NULL, "0x%x\n");
+
+static int e_rx_adjust_port1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, E_RX_ADJUST_PORT1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(e_rx_adjust_port1_fops, e_rx_adjust_port1_get, NULL, "0x%x\n");
+
+static int gpio0_config_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, GPIO0_CONFIG, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(gpio0_config_fops, gpio0_config_get, NULL, "0x%x\n");
+
+static int gpio1_config_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, GPIO1_CONFIG, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(gpio1_config_fops, gpio1_config_get, NULL, "0x%x\n");
+
+static int uart_port1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, UART_PORT1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+
+static int uart_port1_set(void *p, u64 val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data = (u8) val;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	return eusb_repeater_write_reg(tud, UART_PORT1, &data, 1);
+}
+DEFINE_SIMPLE_ATTRIBUTE(uart_port1_fops, uart_port1_get, uart_port1_set, "0x%x\n");
+
+static int rev_id_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, REV_ID, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(rev_id_fops, rev_id_get, NULL, "0x%x\n");
+
+static int global_config_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+
+static int global_config_set(void *p, u64 val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data = (u8) val;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	return eusb_repeater_write_reg(tud, I2C_GLOBAL_CONFIG, &data, 1);
+}
+DEFINE_SIMPLE_ATTRIBUTE(global_config_fops, global_config_get, global_config_set, "0x%x\n");
+
+static int int_enable_1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, INT_ENABLE_1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+
+static int int_enable_1_set(void *p, u64 val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data = (u8) val;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	return eusb_repeater_write_reg(tud, INT_ENABLE_1, &data, 1);
+}
+DEFINE_SIMPLE_ATTRIBUTE(int_enable_1_fops, int_enable_1_get, int_enable_1_set, "0x%x\n");
+
+static int int_enable_2_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, INT_ENABLE_2, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+
+static int int_enable_2_set(void *p, u64 val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data = (u8) val;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	return eusb_repeater_write_reg(tud, INT_ENABLE_2, &data, 1);
+}
+DEFINE_SIMPLE_ATTRIBUTE(int_enable_2_fops, int_enable_2_get, int_enable_2_set, "0x%x\n");
+
+static int bc_control_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, BC_CONTROL, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+
+static int bc_control_set(void *p, u64 val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data = (u8) val;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	return eusb_repeater_write_reg(tud, BC_CONTROL, &data, 1);
+}
+DEFINE_SIMPLE_ATTRIBUTE(bc_control_fops, bc_control_get, bc_control_set, "0x%x\n");
+
+static int bc_status_1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, BC_STATUS_1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(bc_status_1_fops, bc_status_1_get, NULL, "0x%x\n");
+
+static int int_status_1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, INT_STATUS_1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+
+static int int_status_1_set(void *p, u64 val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data = (u8) val;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	return eusb_repeater_write_reg(tud, INT_STATUS_1, &data, 1);
+}
+DEFINE_SIMPLE_ATTRIBUTE(int_status_1_fops, int_status_1_get, int_status_1_set, "0x%x\n");
+
+static int int_status_2_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, INT_STATUS_2, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+
+static int int_status_2_set(void *p, u64 val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data = (u8) val;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	return eusb_repeater_write_reg(tud, INT_STATUS_2, &data, 1);
+}
+DEFINE_SIMPLE_ATTRIBUTE(int_status_2_fops, int_status_2_get, int_status_2_set, "0x%x\n");
+
+static int config_port1_get(void *p, u64 *val)
+{
+	struct eusb_repeater_data *tud = p;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	ret = eusb_repeater_read_reg(tud, CONFIG_PORT1, &data, 1);
+	if (ret < 0)
+		return ret;
+
+	*val = data;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(config_port1_fops, config_port1_get, NULL, "0x%x\n");
+
+static int eusb_repeater_all_registers_show(struct seq_file *s, void *unused)
+{
+	struct eusb_repeater_data *tud = s->private;
+	u8 data;
+	int ret;
+
+	if (!regulator_is_enabled(tud->vdd33))
+		return -ESHUTDOWN;
+
+	seq_puts(s, "----- dump all registers of eUSB repeater (0xff = i2c busy) -----\n");
+
+	/* phy tune */
+	ret = eusb_repeater_read_reg(tud, U_TX_ADJUST_PORT1, &data, 1);
+	seq_printf(s, "reg u_tx_adjust_port1(%x): 0x%x\n", U_TX_ADJUST_PORT1,
+		   (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, U_HS_TX_PRE_EMPHASIS_P1, &data, 1);
+	seq_printf(s, "reg u_hs_tx_pre_emphasus_p1(%x): 0x%x\n", U_HS_TX_PRE_EMPHASIS_P1,
+		   (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, U_RX_ADJUST_PORT1, &data, 1);
+	seq_printf(s, "reg u_rx_adjust_port1(%x): 0x%x\n", U_RX_ADJUST_PORT1,
+		   (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, U_DISCONNECT_SQUELCH_PORT1, &data, 1);
+	seq_printf(s, "reg u_disconnect_squelch_port1(%x): 0x%x\n", U_DISCONNECT_SQUELCH_PORT1,
+		   (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, E_HS_TX_PRE_EMPHASIS_P1, &data, 1);
+	seq_printf(s, "reg e_hs_tx_pre_emphasus_p1(%x): 0x%x\n", E_HS_TX_PRE_EMPHASIS_P1,
+		   (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, E_TX_ADJUST_PORT1, &data, 1);
+	seq_printf(s, "reg e_tx_adjust_port1(%x): 0x%x\n", E_TX_ADJUST_PORT1,
+		   (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, E_RX_ADJUST_PORT1, &data, 1);
+	seq_printf(s, "reg e_rx_adjust_port1(%x): 0x%x\n", E_RX_ADJUST_PORT1,
+		   (ret >= 0) ? data : 0xff);
+
+	/* gpio config */
+	ret = eusb_repeater_read_reg(tud, GPIO0_CONFIG, &data, 1);
+	seq_printf(s, "reg gpio0_config(%x): 0x%x\n", GPIO0_CONFIG, (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, GPIO1_CONFIG, &data, 1);
+	seq_printf(s, "reg gpio1_config(%x): 0x%x\n", GPIO1_CONFIG, (ret >= 0) ? data : 0xff);
+
+	/* uart port */
+	ret = eusb_repeater_read_reg(tud, UART_PORT1, &data, 1);
+	seq_printf(s, "reg uart_port1(%x): 0x%x\n", UART_PORT1, (ret >= 0) ? data : 0xff);
+
+	/* rev id */
+	ret = eusb_repeater_read_reg(tud, REV_ID, &data, 1);
+	seq_printf(s, "reg rev_id(%x): 0x%x\n", REV_ID, (ret >= 0) ? data : 0xff);
+
+	/* i2c global config */
+	ret = eusb_repeater_read_reg(tud, I2C_GLOBAL_CONFIG, &data, 1);
+	seq_printf(s, "reg global_config(%x): 0x%x\n", I2C_GLOBAL_CONFIG, (ret >= 0) ? data : 0xff);
+
+	/* INT enable */
+	ret = eusb_repeater_read_reg(tud, INT_ENABLE_1, &data, 1);
+	seq_printf(s, "reg int_enable_1(%x): 0x%x\n", INT_ENABLE_1, (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, INT_ENABLE_2, &data, 1);
+	seq_printf(s, "reg int_enable_2(%x): 0x%x\n", INT_ENABLE_2, (ret >= 0) ? data : 0xff);
+
+	/* bc control */
+	ret = eusb_repeater_read_reg(tud, BC_CONTROL, &data, 1);
+	seq_printf(s, "reg bc_control(%x): 0x%x\n", BC_CONTROL, (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, BC_STATUS_1, &data, 1);
+	seq_printf(s, "reg bc_status_1(%x): 0x%x\n", BC_STATUS_1, (ret >= 0) ? data : 0xff);
+
+	/* INT status */
+	ret = eusb_repeater_read_reg(tud, INT_STATUS_1, &data, 1);
+	seq_printf(s, "reg int_status_1(%x): 0x%x\n", INT_STATUS_1, (ret >= 0) ? data : 0xff);
+	ret = eusb_repeater_read_reg(tud, INT_STATUS_2, &data, 1);
+	seq_printf(s, "reg int_status_2(%x): 0x%x\n", INT_STATUS_2, (ret >= 0) ? data : 0xff);
+
+	/* config port */
+	ret = eusb_repeater_read_reg(tud, CONFIG_PORT1, &data, 1);
+	seq_printf(s, "reg config_port1(%x): 0x%x\n", CONFIG_PORT1, (ret >= 0) ? data : 0xff);
+
+	return 0;
+}
+
+static int eusb_repeater_all_registers_open(struct inode *inode, struct file *file)
+{
+        return single_open(file, eusb_repeater_all_registers_show, inode->i_private);
+}
+
+static const struct file_operations dump_all_registers_fops = {
+        .open = eusb_repeater_all_registers_open,
+        .read = seq_read,
+        .llseek = seq_lseek,
+        .release = single_release,
+};
+
+/* ------------------------------------------------------------------------- */
+
 static int eusb_repeater_parse_dt(struct device *dev, struct eusb_repeater_data *tud,
 				     struct eusb_repeater_plat_data *pdata)
 {
@@ -307,7 +832,14 @@ static int eusb_repeater_parse_dt(struct device *dev, struct eusb_repeater_data 
 	} else
 		dev_info(dev, "don't need repeater tuning param\n");
 
-	return 0;
+	tud->vdd33 = devm_regulator_get(dev, "vdd33");
+	if (IS_ERR(tud->vdd33)) {
+		dev_err(dev, "vdd33 regulator_get fail: %ld\n", PTR_ERR(tud->vdd33));
+		ret = PTR_ERR(tud->vdd33);
+		tud->vdd33 = NULL;
+	}
+
+	return ret;
 }
 
 static const struct of_device_id eusb_repeater_match_table[] = {
@@ -318,18 +850,11 @@ static const struct of_device_id eusb_repeater_match_table[] = {
 int eusb_repeater_power_off(void)
 {
 	struct eusb_repeater_data *tud = g_tud;
-	int i, ret;
 
 	if (!tud)
 		return -EEXIST;
 
-	for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
-		ret = eusb_repeater_ctrl(false);
-		if (ret >= 0)
-			break;
-	}
-
-	return 0;
+	return eusb_repeater_ctrl(false);
 }
 EXPORT_SYMBOL_GPL(eusb_repeater_power_off);
 
@@ -342,11 +867,9 @@ int eusb_repeater_power_on(void)
 	if (!tud)
 		return -EEXIST;
 
-	for (i = 0; i < TUSB_MODE_CONTROL_RETRY_CNT; i++) {
-		ret = eusb_repeater_ctrl(true);
-		if (ret >= 0)
-			break;
-	}
+	ret = eusb_repeater_ctrl(true);
+	if (ret < 0)
+		goto err;
 
 	mdelay(3);
 
@@ -398,6 +921,56 @@ err:
 }
 EXPORT_SYMBOL_GPL(eusb_repeater_power_on);
 
+static int eusb_repeater_debugfs_init(struct eusb_repeater_data *tud)
+{
+	tud->root = debugfs_create_dir("eusb_repeater", 0);
+	if (IS_ERR_OR_NULL(tud->root))
+		return -EINVAL;
+
+	debugfs_create_file("u_tx_adjust_port1", 0444, tud->root, tud, &u_tx_adjust_port1_fops);
+	debugfs_create_file("u_hs_tx_pre_emphasus_p1", 0444, tud->root, tud,
+			    &u_hs_tx_pre_emphasus_p1_fops);
+	debugfs_create_file("u_rx_adjust_port1", 0444, tud->root, tud, &u_rx_adjust_port1_fops);
+	debugfs_create_file("u_disconnect_squelch_port1", 0444, tud->root, tud,
+			    &u_disconnect_squelch_port1_fops);
+	debugfs_create_file("e_hs_tx_pre_emphasus_p1", 0444, tud->root, tud, &e_hs_tx_pre_emphasus_p1_fops);
+	debugfs_create_file("e_tx_adjust_port1", 0444, tud->root, tud, &e_tx_adjust_port1_fops);
+	debugfs_create_file("e_rx_adjust_port1", 0444, tud->root, tud, &e_rx_adjust_port1_fops);
+
+	debugfs_create_file("gpio0_config", 0444, tud->root, tud, &gpio0_config_fops);
+	debugfs_create_file("gpio1_config", 0444, tud->root, tud, &gpio1_config_fops);
+
+	debugfs_create_file("uart_port1", 0644, tud->root, tud, &uart_port1_fops);
+
+	debugfs_create_file("rev_id", 0444, tud->root, tud, &rev_id_fops);
+
+	debugfs_create_file("global_config", 0644, tud->root, tud, &global_config_fops);
+
+	debugfs_create_file("int_enable_1", 0644, tud->root, tud, &int_enable_1_fops);
+	debugfs_create_file("int_enable_2", 0644, tud->root, tud, &int_enable_2_fops);
+
+	debugfs_create_file("bc_control", 0644, tud->root, tud, &bc_control_fops);
+	debugfs_create_file("bc_status_1", 0444, tud->root, tud, &bc_status_1_fops);
+
+	debugfs_create_file("int_status_1", 0644, tud->root, tud, &int_status_1_fops);
+	debugfs_create_file("int_status_2", 0644, tud->root, tud, &int_status_2_fops);
+
+	debugfs_create_file("config_port1", 0444, tud->root, tud, &config_port1_fops);
+
+	debugfs_create_file("registers", 0444, tud->root, tud, &dump_all_registers_fops);
+	return 0;
+}
+
+static void eusb_repeater_debugfs_remove(struct eusb_repeater_data *tud)
+{
+	if (!tud->root)
+		return;
+
+	debugfs_remove_recursive(tud->root);
+	tud->root = NULL;
+	return;
+}
+
 static int eusb_repeater_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -437,10 +1010,15 @@ static int eusb_repeater_probe(struct i2c_client *client,
 	tud->pdata = pdata;
 	g_tud = tud;
 
+	ret = eusb_repeater_debugfs_init(tud);
+	if (ret < 0)
+		dev_err(&client->dev, "failed to init debugfs nodes, ret: %d\n", ret);
+
 	tud->pinctrl = devm_pinctrl_get(&client->dev);
 	if (IS_ERR(tud->pinctrl)) {
 		dev_err(&client->dev, "failed to allocate pinctrl ret: %ld\n", PTR_ERR(tud->pinctrl));
 		ret = PTR_ERR(tud->pinctrl);
+		goto err_pinctrl;
 	} else {
 		tud->init_state = pinctrl_lookup_state(tud->pinctrl, "init_state");
 		if (IS_ERR(tud->init_state)) {
@@ -449,6 +1027,7 @@ static int eusb_repeater_probe(struct i2c_client *client,
 			ret = PTR_ERR(tud->init_state);
 			tud->pinctrl = NULL;
 			tud->init_state = NULL;
+			goto err_pinctrl;
 		} else
 			pinctrl_select_state(tud->pinctrl, tud->init_state);
 	}
@@ -464,6 +1043,8 @@ static int eusb_repeater_probe(struct i2c_client *client,
 
 	return 0;
 
+err_pinctrl:
+	eusb_repeater_debugfs_remove(tud);
 err_parse_dt:
 	devm_kfree(&client->dev, pdata);
 err_repeater_func:

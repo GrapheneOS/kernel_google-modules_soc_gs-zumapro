@@ -1526,6 +1526,10 @@ static int sysmmu_parse_dt(struct device *sysmmu, struct sysmmu_drvdata *data)
 	}
 
 	data->hide_page_fault = of_property_read_bool(sysmmu->of_node, "sysmmu,hide-page-fault");
+	data->always_dump_full_fault_info = of_property_read_bool(sysmmu->of_node,
+								  "sysmmu,always-dump-full-fault-info");
+	if (data->hide_page_fault && data->always_dump_full_fault_info)
+		dev_warn(sysmmu, "Device tree option sysmmu,always-dump-full-fault-info ineffective if sysmmu,hide-page-fault is set\n");
 	/* use async fault mode */
 	data->async_fault_mode = of_property_read_bool(sysmmu->of_node, "sysmmu,async-fault");
 	data->leave_enabled_on_suspend = of_property_read_bool(sysmmu->of_node,

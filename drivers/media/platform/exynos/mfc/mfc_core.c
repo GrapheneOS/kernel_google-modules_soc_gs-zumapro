@@ -54,6 +54,7 @@
 #include "mfc_utils.h"
 #include "mfc_buf.h"
 #include "mfc_mem.h"
+#include "mfc_rm.h"
 
 #define MFC_CORE_NAME			"mfc-core"
 
@@ -920,6 +921,17 @@ static int mfc_core_suspend(struct device *device)
 		return -EBUSY;
 	}
 
+	/*
+	 * Prevent a timing issue that can occur when the power manager (PM)
+	 * and the idle worker both call the mfc_core_suspend function at the
+	 * same time.
+	 */
+	if (core->sleep == 1) {
+		mfc_core_info("MFC core is slept\n");
+		mfc_core_release_hwlock_dev(core);
+		return 0;
+	}
+
 	if (!mfc_core_pm_get_pwr_ref_cnt(core)) {
 		mfc_core_info("MFC power has not been turned on yet\n");
 		mfc_core_release_hwlock_dev(core);
@@ -965,6 +977,18 @@ static int mfc_core_resume(struct device *device)
 
 	if (core->num_inst == 0)
 		return 0;
+
+	if ((core->idle_mode == MFC_IDLE_MODE_IDLE) && idle_suspend_enable) {
+		core_ctx = core->core_ctx[core->curr_core_ctx];
+		if (core_ctx) {
+			/* Trigger idle resume instead of core resume */
+			mfc_rm_qos_control(core_ctx->ctx, MFC_QOS_TRIGGER);
+			return 0;
+		} else {
+			dev_err(device, "no mfc context to run\n");
+			return -EINVAL;
+		}
+	}
 
 	if (core->sleep == 0) {
 		mfc_core_info("MFC core is not slept\n");

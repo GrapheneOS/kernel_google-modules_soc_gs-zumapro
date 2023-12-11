@@ -27,6 +27,7 @@
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/kernel.h>
+#include <linux/debugfs.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
@@ -51,7 +52,26 @@
 #define TUSB_I2C_RETRY_CNT		3
 #define TUSB_MODE_CONTROL_RETRY_CNT	3
 #define EXYNOS_USB_TUNE_LAST		0xEF
+
+#define U_TX_ADJUST_PORT1		0x70
+#define U_HS_TX_PRE_EMPHASIS_P1		0x71
+#define U_RX_ADJUST_PORT1		0x72
+#define U_DISCONNECT_SQUELCH_PORT1	0x73
+#define E_HS_TX_PRE_EMPHASIS_P1		0x77
+#define E_TX_ADJUST_PORT1		0x78
+#define E_RX_ADJUST_PORT1		0x79
+#define GPIO0_CONFIG			0x0
+#define GPIO1_CONFIG			0x40
+#define UART_PORT1			0x50
+#define REV_ID				0xB0
 #define I2C_GLOBAL_CONFIG		0xB2
+#define INT_ENABLE_1			0xB3
+#define INT_ENABLE_2			0xB4
+#define BC_CONTROL			0xB6
+#define BC_STATUS_1			0xB7
+#define INT_STATUS_1			0xA3
+#define INT_STATUS_2			0xA4
+#define CONFIG_PORT1			0x60
 
 #define REG_DISABLE_P1			BIT(6)
 
@@ -76,6 +96,8 @@ struct eusb_repeater_data {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *init_state;
 	int ctrl_sel_status;
+	struct dentry *root;
+	struct regulator *vdd33;
 };
 
 struct eusb_repeater_plat_data {
