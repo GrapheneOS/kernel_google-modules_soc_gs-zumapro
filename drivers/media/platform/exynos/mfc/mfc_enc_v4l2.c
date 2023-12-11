@@ -520,6 +520,9 @@ static int mfc_enc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
 	enc->dst_buf_size = pix_fmt_mp->plane_fmt[0].sizeimage;
 	pix_fmt_mp->plane_fmt[0].bytesperline = 0;
 
+	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
+	core = mfc_get_main_core_wait(dev, ctx);
+	atomic_inc(&core->hw_run_cnt);
 	/* Trigger idle resume if core is in the idle mode for starting NAL_Q */
 	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
@@ -988,6 +991,8 @@ static int mfc_enc_streamoff(struct file *file, void *priv,
 			    enum v4l2_buf_type type)
 {
 	struct mfc_ctx *ctx = fh_to_mfc_ctx(file->private_data);
+	struct mfc_dev *dev = ctx->dev;
+	struct mfc_core *core;
 	int ret = -EINVAL;;
 
 	mfc_debug_enter();
@@ -1002,6 +1007,9 @@ static int mfc_enc_streamoff(struct file *file, void *priv,
 		return -EINVAL;
 	}
 
+	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
+	core = mfc_get_main_core_wait(dev, ctx);
+	atomic_inc(&core->hw_run_cnt);
 	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
 	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 

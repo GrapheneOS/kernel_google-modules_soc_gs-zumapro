@@ -176,6 +176,7 @@ struct sysmmu_drvdata {
 	unsigned int secure_base;
 	bool async_fault_mode;
 	bool hide_page_fault;
+	bool always_dump_full_fault_info;
 	bool leave_enabled_on_suspend;
 	bool ap_read_implies_write;
 	bool ap_permissive;

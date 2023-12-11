@@ -683,6 +683,57 @@ out:
 }
 EXPORT_SYMBOL(exynos_bcm_dbg_sample_id_ctrl);
 
+static int exynos_bcm_dbg_event_sm_user_ctrl(struct exynos_bcm_ipc_base_info *ipc_base_info,
+					     struct exynos_bcm_event_sm_user_info *event_sm_user,
+					     unsigned int bcm_ip_index,
+					     struct exynos_bcm_dbg_data *data)
+{
+	unsigned int cmd[4] = {0, 0, 0, 0};
+	int ret = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&data->lock, flags);
+
+	if (!ipc_base_info || !event_sm_user) {
+		BCM_ERR("%s: pointer is NULL\n", __func__);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	exynos_bcm_dbg_set_base_cmd(cmd, ipc_base_info);
+
+	if (ipc_base_info->event_id != BCM_EVT_EVENT_SM_USER) {
+		BCM_ERR("%s: Invalid Event ID(%d)\n", __func__, ipc_base_info->event_id);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (ipc_base_info->ip_range == BCM_EACH)
+		cmd[0] |= BCM_CMD_SET(bcm_ip_index, BCM_IP_MASK, BCM_IP_SHIFT);
+
+	if (ipc_base_info->direction == BCM_EVT_SET) {
+		cmd[1] = event_sm_user->sm_user_mask;
+		cmd[2] = event_sm_user->sm_user_value;
+	}
+
+	/* send command for BCM event_sm_user control */
+	ret = __exynos_bcm_dbg_ipc_send_data(IPC_BCM_DBG_EVENT, data, cmd);
+	if (ret) {
+		BCM_ERR("%s: Failed send data\n", __func__);
+		goto out;
+	}
+
+	if (ipc_base_info->direction == BCM_EVT_GET) {
+		event_sm_user->sm_user_mask = cmd[1];
+		event_sm_user->sm_user_value = cmd[2];
+	}
+
+out:
+	spin_unlock_irqrestore(&data->lock, flags);
+
+	return ret;
+}
+
 int exynos_bcm_dbg_run_ctrl(struct exynos_bcm_ipc_base_info *ipc_base_info,
 					unsigned int *bcm_run,
 					struct exynos_bcm_dbg_data *data)
@@ -2386,6 +2437,133 @@ static ssize_t store_filter_others_ctrl(struct file *fp, const char __user *ubuf
 	return size;
 }
 
+static ssize_t show_event_sm_user_ctrl(struct file *fp, char __user *ubuf, size_t size,
+				       loff_t *ppos)
+{
+	struct exynos_bcm_dbg_data *data = fp->private_data;
+	char *buf;
+	struct exynos_bcm_ipc_base_info ipc_base_info;
+	struct exynos_bcm_event_sm_user_info event_sm_user;
+	ssize_t count = 0;
+	int ret;
+	static int ip_cnt;
+
+	if (ip_cnt >= data->bcm_ip_nr) {
+		ip_cnt = 0;
+		return 0;
+	}
+
+	buf = kmalloc(size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	exynos_bcm_dbg_set_base_info(&ipc_base_info, BCM_EVT_EVENT_SM_USER, BCM_EVT_GET, BCM_EACH);
+
+	do {
+		ret = exynos_bcm_dbg_event_sm_user_ctrl(&ipc_base_info, &event_sm_user, ip_cnt,
+							data);
+		if (ret) {
+			BCM_ERR("%s: failed get event_sm_user(ip:%d)\n", __func__, ip_cnt);
+			ip_cnt = 0;
+			goto out;
+		}
+
+		count += scnprintf(buf + count, size - count, "bcm[%2d]: %x/%x\n", ip_cnt,
+				   event_sm_user.sm_user_value, event_sm_user.sm_user_mask);
+		ip_cnt++;
+	} while ((ip_cnt < data->bcm_ip_nr) &&
+		 (ip_cnt % data->bcm_ip_print_nr));
+
+	*ppos = 0;
+	ret = simple_read_from_buffer(ubuf, size, ppos, buf, count);
+out:
+	kfree(buf);
+
+	return ret;
+}
+
+static ssize_t store_event_sm_user_ctrl(struct file *fp, const char __user *ubuf, size_t size,
+					loff_t *ppos)
+{
+	struct exynos_bcm_dbg_data *data = fp->private_data;
+	char *buf;
+	struct exynos_bcm_ipc_base_info ipc_base_info;
+	struct exynos_bcm_event_sm_user_info event_sm_user;
+	unsigned int ip_range, bcm_ip_index;
+	int ret;
+
+	if (*ppos != 0)
+		return size;
+
+	buf = kmalloc(size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	simple_write_to_buffer(buf, size, ppos, ubuf, size);
+
+	ret = sscanf(buf, "%u %u %x %x", &ip_range, &bcm_ip_index,
+		     &event_sm_user.sm_user_value, &event_sm_user.sm_user_mask);
+	kfree(buf);
+	if (ret != 4) {
+		BCM_ERR("%s: Invalid command string\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = exynos_bcm_ip_validate(ip_range, bcm_ip_index, data->bcm_ip_nr);
+	if (ret)
+		return ret;
+
+	if (ip_range == BCM_ALL)
+		bcm_ip_index = 0;
+
+	exynos_bcm_dbg_set_base_info(&ipc_base_info, BCM_EVT_EVENT_SM_USER, BCM_EVT_SET, ip_range);
+
+	ret = exynos_bcm_dbg_event_sm_user_ctrl(&ipc_base_info, &event_sm_user, bcm_ip_index, data);
+	if (ret) {
+		BCM_ERR("%s:failed set event sm user\n", __func__);
+		return ret;
+	}
+
+	return size;
+}
+
+static ssize_t show_event_sm_user_ctrl_help(struct file *fp, char __user *ubuf, size_t size,
+					    loff_t *ppos)
+{
+	struct exynos_bcm_dbg_data *data = fp->private_data;
+	char *buf;
+	ssize_t ret;
+	ssize_t count = 0;
+
+	if (*ppos > 0)
+		return 0;
+
+	buf = kmalloc(size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	/* help event_sm_user_ctrl */
+	count += scnprintf(buf + count, size - count,
+		"\n"
+		"= event_sm_user_ctrl get help =\n"
+		"Usage:\n"
+		"cat event_sm_user_ctrl\n"
+		" bcm[ip_index]: [sm_user_value]/[sm_user_mask]\n"
+		"\n"
+		"= event_sm_user_ctrl set help =\n"
+		"Usage:\n"
+		"echo [ip_range] [ip_index] [sm_user_value] [sm_user_mask] > event_sm_user_ctrl\n"
+		" ip_range: BCM_EACH(%d), BCM_ALL(%d)\n"
+		" ip_index: number of bcm ip (0 ~ %u)\n"
+		"           (if ip_range is all, set to 0)\n",
+		BCM_EACH, BCM_ALL, data->bcm_ip_nr - 1);
+
+	ret = simple_read_from_buffer(ubuf, size, ppos, buf, count);
+	kfree(buf);
+
+	return ret;
+}
+
 static ssize_t show_sample_id_ctrl(struct file *fp, char __user *ubuf, size_t size, loff_t *ppos)
 {
 	struct exynos_bcm_dbg_data *data = fp->private_data;
@@ -3647,6 +3825,8 @@ static struct bcm_file_entry bcm_dbg_file_entries[] = {
 	BCM_FILE_ENTRY_RO(filter_others_active),
 	BCM_FILE_ENTRY_WR(filter_others_ctrl),
 	BCM_FILE_ENTRY_RO(filter_others_ctrl_help),
+	BCM_FILE_ENTRY_WR(event_sm_user_ctrl),
+	BCM_FILE_ENTRY_RO(event_sm_user_ctrl_help),
 	BCM_FILE_ENTRY_WR(ip_ctrl),
 	BCM_FILE_ENTRY_RO(ip_ctrl_help),
 	BCM_FILE_ENTRY_RO(ip_power_domains),

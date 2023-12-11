@@ -50,7 +50,6 @@
 		qm35-vdd3-supply = <&s_bucka_reg>;
 		exton-gpios = <&gpp13 1 GPIO_ACTIVE_HIGH>;
 		reset-gpios = <&gpp14 0 GPIO_ACTIVE_LOW>;
-		ss-irq-gpios = <&gpn5 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
 		ss-ready-gpios = <&gpn4 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
 		wakeup-gpios = <&gpa5 6 GPIO_ACTIVE_HIGH>;
 		status = "okay";
