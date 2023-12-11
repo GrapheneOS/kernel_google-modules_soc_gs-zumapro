@@ -234,14 +234,19 @@
 };
 
 &s2mpg14mfd {
-		init_time,year = <123>;
-		init_time,wday = <0>;
+	init_time,year = <123>;
+	init_time,wday = <0>;
 
-		/* PCTRLSEL(VGPIO) 1~11 (CONTROL_SEL#) */
-		sel_vgpio = <0xC3 0x1D 0xE3 0x0C 0x63 0xD6
-			0xE1 0x47 0x4D 0x96 0x09>;
+	/* PCTRLSEL(VGPIO) 1~11 (CONTROL_SEL#) */
+	sel_vgpio = <0xC3 0x1D 0xE3 0x0C 0x63 0xD6
+		0xE1 0x47 0x4D 0x96 0x09>;
+
+        b2_soft_ocp_warn_en = <OCP_WARN_DISABLE>;
+        b3_soft_ocp_warn_en = <OCP_WARN_DISABLE>;
+        b7_soft_ocp_warn_en = <OCP_WARN_DISABLE>;
 };
 
 &s2mpg15mfd {
 	b2_soft_ocp_warn_lvl = <OCP_WARN_LVL_2PH_5_012_A>;
+        b2_soft_ocp_warn_en = <OCP_WARN_DISABLE>;
 };
