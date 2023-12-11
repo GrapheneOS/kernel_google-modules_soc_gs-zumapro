@@ -105,7 +105,6 @@ extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 extern void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
 					       bool *need_update);
 
-
 extern int pmu_poll_init(void);
 extern void set_cluster_enabled_cb(int cluster, int enabled);
 extern void register_set_cluster_enabled_cb(void (*func)(int, int));
@@ -115,7 +114,6 @@ extern bool wait_for_init;
 
 int pixel_cpu_num;
 int pixel_cluster_num = 0;
-int *pixel_cluster_start_cpu;
 int *pixel_cluster_start_cpu;
 int *pixel_cluster_cpu_num;
 int *pixel_cpu_to_cluster;
