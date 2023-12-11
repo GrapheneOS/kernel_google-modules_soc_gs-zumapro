@@ -1011,11 +1011,13 @@ static ssize_t manual_gc_store(struct device *dev,
 						UPIU_QUERY_OPCODE_CLEAR_FLAG;
 		u8 index = ufshcd_wb_get_query_index(hba);
 
-		ufshcd_query_flag_retry(hba, opcode,
+		if (ufshcd_is_wb_allowed(hba)) {
+			ufshcd_query_flag_retry(hba, opcode,
 				QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8,
 				index, NULL);
-		ufshcd_query_flag_retry(hba, opcode,
+			ufshcd_query_flag_retry(hba, opcode,
 				QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN, index, NULL);
+		}
 	}
 
 	if (!ufs->manual_gc.hagc_support) {
