@@ -3127,7 +3127,6 @@ static void exynos_pcie_rc_send_pme_turn_off(struct exynos_pcie *exynos_pcie)
 		return;
 	}
 
-	exynos_elbi_write(exynos_pcie, 0x0, PCIE_APP_XFER_PENDING);
 	exynos_elbi_write(exynos_pcie, 0x1, PCIE_APP_REQ_EXIT_L1);
 	val = exynos_elbi_read(exynos_pcie, PCIE_APP_REQ_EXIT_L1_MODE);
 	val &= ~APP_REQ_EXIT_L1_MODE;
@@ -3219,7 +3218,6 @@ retry:
 	val |= L1_REQ_NAK_CONTROL_MASTER;
 	exynos_elbi_write(exynos_pcie, val, PCIE_APP_REQ_EXIT_L1_MODE);
 	exynos_elbi_write(exynos_pcie, PCIE_LINKDOWN_RST_MANUAL, PCIE_LINKDOWN_RST_CTRL_SEL);
-	exynos_elbi_write(exynos_pcie, 0x1, PCIE_APP_XFER_PENDING);
 
 	/* Q-Channel support */
 	val = exynos_elbi_read(exynos_pcie, PCIE_QCH_SEL);
