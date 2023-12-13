@@ -826,8 +826,12 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 				goto out;
 			}
 		} else  {
-			if (!drvdata->hide_page_fault)
-				sysmmu_show_fault_info_simple(drvdata, itype, addr, vmid);
+			if (!drvdata->hide_page_fault) {
+				if (drvdata->always_dump_full_fault_info)
+					sysmmu_show_fault_information(drvdata, itype, addr, vmid);
+				else
+					sysmmu_show_fault_info_simple(drvdata, itype, addr, vmid);
+			}
 			sysmmu_clear_interrupt(drvdata, false, &vmid);
 		}
 		pm_runtime_put(drvdata->dev);
