@@ -242,10 +242,6 @@ int cpuidle_metrics_init(struct kobject *metrics_kobj)
 		return -ENOMEM;
 	}
 
-	// register hook
-	ret = register_trace_cpu_idle(hook_cpu_idle, NULL);
-	WARN_ON(ret);
-
 	for_each_possible_cpu (cpu) {
 		struct device_node *cpu_node, *state_node;
 		struct power_stats *stats = &per_cpu(all_cpu_stats, cpu);
@@ -267,6 +263,10 @@ int cpuidle_metrics_init(struct kobject *metrics_kobj)
 		all_cluster_stats[cluster_index].initialized = false;
 		spin_lock_init(&cluster_spinlocks[cluster_index]);
 	}
+
+	// register hook
+	ret = register_trace_cpu_idle(hook_cpu_idle, NULL);
+	WARN_ON_ONCE(ret);
 
 	pr_info("cpuidle_metrics driver initialized! :D\n");
 	return ret;
