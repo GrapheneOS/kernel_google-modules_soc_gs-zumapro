@@ -192,5 +192,9 @@
 #define UFS_MITIGATION_ID		18
 #define MAX_MITIGATION_MODULE		19
 
+/* IFPMIC */
+#define M77759 0
+#define M77779 1
+
 #endif /* _DT_BINDINGS_ZUMAPRO_BCL_H */
 
