@@ -70,15 +70,26 @@ ${@}
 
 [ "Perform Merge" ]
 
-find private/google-modules -name .git |
+find private -name .git |
   while read gitdir; do
     dir=${gitdir%/.git}
     case ${dir} in
-      */soc/gs)
-        # Note: this project doesn't have an android13 upstream branch
+      */trusty)
+        # Merge from 14-5.15
+        do_merge ${dir} partner android14-gs-pixel-5.15-24Q1
+        ;;
+      */soc/gs) ;&
+      */power/mitigation) ;&
+      */devices/google/cloudripper) ;&
+      */devices/google/pantah) ;&
+      */devices/google/raviole) ;&
+        # No 5.10 or 5.15 branch
+      */devices/google/bluejay) ;&
+      */devices/google/lynx)
+        # these project were merged into soc/gs for v6.1
         ;;
       *)
-        do_merge ${dir} partner android13-gs-pixel-5.10-udc
+        do_merge ${dir} partner android13-gs-pixel-5.10-24Q1
         ;;
     esac ||
       echo ERROR: merge ${dir} failed
