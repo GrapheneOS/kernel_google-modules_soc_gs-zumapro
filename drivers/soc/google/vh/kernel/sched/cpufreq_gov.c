@@ -395,33 +395,8 @@ static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 	return true;
 }
 
-static void sugov_fast_switch(struct sugov_policy *sg_policy, u64 time,
-			      unsigned int next_freq)
+static void sugov_deferred_update(struct sugov_policy *sg_policy)
 {
-	struct cpufreq_policy *policy = sg_policy->policy;
-	int cpu;
-
-	if (!sugov_update_next_freq(sg_policy, time, next_freq))
-		return;
-
-	next_freq = cpufreq_driver_fast_switch(policy, next_freq);
-	if (!next_freq)
-		return;
-
-	policy->cur = next_freq;
-
-	if (trace_cpu_frequency_enabled()) {
-		for_each_cpu(cpu, policy->cpus)
-			trace_cpu_frequency(next_freq, cpu);
-	}
-}
-
-static void sugov_deferred_update(struct sugov_policy *sg_policy, u64 time,
-				  unsigned int next_freq)
-{
-	if (!sugov_update_next_freq(sg_policy, time, next_freq))
-		return;
-
 	if (!sg_policy->work_in_progress) {
 		sg_policy->work_in_progress = true;
 		irq_work_queue(&sg_policy->irq_work);
@@ -786,16 +761,19 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		sg_cpu->sg_policy->cached_raw_freq = sg_cpu->sg_policy->prev_cached_raw_freq;
 	}
 
+	if (!sugov_update_next_freq(sg_cpu->sg_policy, time, next_f))
+		return;
+
 	/*
 	 * This code runs under rq->lock for the target CPU, so it won't run
 	 * concurrently on two different CPUs for the same target and it is not
 	 * necessary to acquire the lock in the fast switch case.
 	 */
 	if (sg_cpu->sg_policy->policy->fast_switch_enabled) {
-		sugov_fast_switch(sg_cpu->sg_policy, time, next_f);
+		cpufreq_driver_fast_switch(sg_cpu->sg_policy->policy, next_f);
 	} else {
 		raw_spin_lock(&sg_cpu->sg_policy->update_lock);
-		sugov_deferred_update(sg_cpu->sg_policy, time, next_f);
+		sugov_deferred_update(sg_cpu->sg_policy);
 		raw_spin_unlock(&sg_cpu->sg_policy->update_lock);
 	}
 }
@@ -855,15 +833,18 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	if (sugov_should_update_freq(sg_cpu->sg_policy, time)) {
 		next_f = sugov_next_freq_shared(sg_cpu, time);
 
+		if (!sugov_update_next_freq(sg_cpu->sg_policy, time, next_f))
+			goto unlock;
+
 		if (trace_sugov_util_update_enabled())
 			trace_sugov_util_update(sg_cpu->cpu, sg_cpu->util, sg_cpu->max, flags);
 
 		if (sg_cpu->sg_policy->policy->fast_switch_enabled)
-			sugov_fast_switch(sg_cpu->sg_policy, time, next_f);
+			cpufreq_driver_fast_switch(sg_cpu->sg_policy->policy, next_f);
 		else
-			sugov_deferred_update(sg_cpu->sg_policy, time, next_f);
+			sugov_deferred_update(sg_cpu->sg_policy);
 	}
-
+unlock:
 	raw_spin_unlock(&sg_cpu->sg_policy->update_lock);
 }
 
