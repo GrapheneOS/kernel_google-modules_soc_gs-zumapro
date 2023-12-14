@@ -301,6 +301,7 @@ kernel_module(
         "drivers/soc/google/s2mpu/s2mpu.ko",
         "drivers/soc/google/sysrq-hook.ko",
         "drivers/soc/google/vh/kernel/cgroup/vh_cgroup.ko",
+        "drivers/soc/google/vh/kernel/fs/vh_fs.ko",
         "drivers/soc/google/vh/kernel/metrics/pixel_metrics.ko",
         "drivers/soc/google/vh/kernel/mm/vh_mm.ko",
         "drivers/soc/google/vh/kernel/pixel_em/pixel_em.ko",
