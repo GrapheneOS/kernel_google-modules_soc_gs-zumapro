@@ -507,6 +507,8 @@ void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
 	data = &ctrl->data;
 	for (i = 0; i < NUM_TRACE; i++) {
 		count = ++data->data_ptr % NUM_TRACE;
+		if (i < NUM_TRACE_SKIP)
+			continue;
 		if (data->pmpcsr[count] == EHLD_PCSR_SELF) {
 			strlcpy(buf, "(self)", sizeof(buf));
 		} else {
