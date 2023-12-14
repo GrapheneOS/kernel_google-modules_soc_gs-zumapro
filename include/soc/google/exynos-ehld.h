@@ -3,6 +3,7 @@
 #define EXYNOS_EHLD__H
 
 #define NUM_TRACE			(8)
+#define NUM_TRACE_SKIP			(4)
 
 #define EHLD_STAT_NORMAL		(0x0)
 #define EHLD_STAT_LOCKUP_WARN		(0x1)
