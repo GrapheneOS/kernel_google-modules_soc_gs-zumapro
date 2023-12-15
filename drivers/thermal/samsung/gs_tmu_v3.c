@@ -2560,6 +2560,10 @@ static ssize_t offset_enabled_store(struct device *dev,
 		dev_dbg(&pdev->dev, "trip_temp_%d change from %d to %d\n",
 			i, trip_temp, new_trip_temp);
 		ret = tz->ops->set_trip_temp(tz, i, new_trip_temp);
+
+		// 6.1 moved set_trip_temp to sysfs, this is to address b/315931658
+		if (tz->trips)
+			tz->trips[i].temperature = new_trip_temp;
 		if (ret) {
 			dev_err(&pdev->dev,
 				"Failed to set trip_temp_%d on %s\n",
