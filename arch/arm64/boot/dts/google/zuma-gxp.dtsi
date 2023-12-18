@@ -25,6 +25,7 @@
 		       0x0 0x15360000 0x1000
 		       0x0 0x15280000 0x1000
 		       0x0 0x152A0000 0x1000
+		       /* TODO(309801480): Remove this field after migrating to pmu,aur-status. */
 		       /* PMU AUR_STATUS */
 		       0x0 0x15462304 0x4
 		       /* CMU AUR */
@@ -69,6 +70,7 @@
 		>;
 		iif-fence-wait-table-region = <&iif_wait_table_reserved>;
 		iif-fence-signal-table-region = <&iif_signal_table_reserved>;
+		pmu,aur-status = <0x0 0x15462304 0x4>;
 	};
 	gxp_cooling: gxp-cooling {
 		#cooling-cells = <2>;
