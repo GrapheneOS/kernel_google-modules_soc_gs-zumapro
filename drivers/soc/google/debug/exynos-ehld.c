@@ -507,6 +507,8 @@ void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
 	data = &ctrl->data;
 	for (i = 0; i < NUM_TRACE; i++) {
 		count = ++data->data_ptr % NUM_TRACE;
+		if (i < NUM_TRACE_SKIP)
+			continue;
 		if (data->pmpcsr[count] == EHLD_PCSR_SELF) {
 			strlcpy(buf, "(self)", sizeof(buf));
 		} else {
@@ -682,9 +684,8 @@ static int exynos_ehld_panic_handler(struct notifier_block *nb,
 	exynos_ehld_event_raw_dump_allcpu();
 
 	for_each_possible_cpu(i)
-		ehld_info(1, "%s: cpu%u: pmu_val:%#x, ehld_stat:%#x\n",
-			__func__, i,
-			dbg_snapshot_get_core_pmu_val(i),
+		printk("cpu%u: pmu_val:%#x, ehld_stat:%#x\n",
+			i, dbg_snapshot_get_core_pmu_val(i),
 			dbg_snapshot_get_core_ehld_stat(i));
 
 	return 0;
