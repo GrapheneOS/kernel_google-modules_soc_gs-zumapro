@@ -1273,7 +1273,7 @@ static void itmon_report_timeout(struct itmon_dev *itmon,
 	unsigned int bit = 0;
 
 	if (group)
-		dev_info(itmon->dev, "group %s frz_support %s\n",
+		printk("group %s frz_support %s\n",
 			 group->name, group->frz_support ? "YES" : "NO");
 
 	if (!group->frz_support)
