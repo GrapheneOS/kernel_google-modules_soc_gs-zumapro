@@ -398,9 +398,6 @@ static int samsung_sysmmu_set_domain_range(struct iommu_domain *dom,
 
 	end = start + size;
 
-	if (end > DMA_BIT_MASK(32))
-		end = DMA_BIT_MASK(32);
-
 	if (geom->force_aperture) {
 		dma_addr_t d_start, d_end;
 
