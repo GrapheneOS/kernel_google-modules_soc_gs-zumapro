@@ -112,7 +112,7 @@ static int pixel_ufs_keyslot_program(struct blk_crypto_profile *profile,
 {
 	struct ufs_hba *hba = container_of(profile,
 					struct ufs_hba, crypto_profile);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int err;
 
 	dev_info(ufs->dev,
@@ -140,7 +140,7 @@ static int pixel_ufs_keyslot_evict(struct blk_crypto_profile *profile,
 {
 	struct ufs_hba *hba = container_of(profile,
 					struct ufs_hba, crypto_profile);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int err;
 
 	dev_info(ufs->dev, "kdn: evicting keyslot %u\n", slot);
@@ -166,7 +166,7 @@ static int pixel_ufs_derive_sw_secret(struct blk_crypto_profile *profile,
 {
 	struct ufs_hba *hba = container_of(profile,
 					struct ufs_hba, crypto_profile);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int ret;
 
 	dev_info(ufs->dev,
@@ -196,7 +196,7 @@ static const struct blk_crypto_ll_ops pixel_ufs_crypto_ops = {
 
 static void pixel_ufs_release_gsa_device(void *_ufs)
 {
-	struct exynos_ufs *ufs = _ufs;
+	struct pixel_ufs *ufs = _ufs;
 
 	put_device(ufs->gsa_dev);
 }
@@ -205,7 +205,7 @@ static void pixel_ufs_release_gsa_device(void *_ufs)
  * Get the GSA device from the device tree and save a pointer to it in the UFS
  * host struct.
  */
-static int pixel_ufs_find_gsa_device(struct exynos_ufs *ufs)
+static int pixel_ufs_find_gsa_device(struct pixel_ufs *ufs)
 {
 	struct device_node *np;
 	struct platform_device *gsa_pdev;
@@ -232,7 +232,7 @@ static int pixel_ufs_find_gsa_device(struct exynos_ufs *ufs)
 /* Initialize UFS inline encryption support. */
 int pixel_ufs_crypto_init(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int err;
 
 	err = pixel_ufs_find_gsa_device(ufs);
@@ -310,7 +310,7 @@ disable:
 static void pixel_ufs_crypto_restore_keys(void *unused, struct ufs_hba *hba,
 					  int *err)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 
 	/*
 	 * GSA provides a function to restore all keys which is faster than

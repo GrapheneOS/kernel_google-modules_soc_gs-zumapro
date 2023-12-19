@@ -612,7 +612,7 @@ static int exynos_ufs_init(struct ufs_hba *hba)
 	/* set features, such as caps or quirks */
 	exynos_ufs_set_features(hba);
 
-	return pixel_init(hba, &exynos_crypto_ops);
+	return pixel_init(hba, ufs->dev, &exynos_crypto_ops);
 }
 
 static void exynos_ufs_init_host(struct ufs_hba *hba)

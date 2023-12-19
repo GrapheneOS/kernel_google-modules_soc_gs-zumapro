@@ -29,7 +29,7 @@ enum {
 void pixel_update_power_event(struct ufs_hba *hba,
 			      enum pixel_power_event_type e)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	unsigned long flags;
 
 	if (!ufs->power_event_mode)
@@ -74,7 +74,7 @@ void pixel_update_power_event(struct ufs_hba *hba,
 
 static void pixel_ufs_update_slowio_min_us(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	enum pixel_slowio_optype i;
 	u64 us;
 
@@ -88,7 +88,7 @@ static void pixel_ufs_update_slowio_min_us(struct ufs_hba *hba)
 
 void pixel_init_slowio(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 
 	/* Set default slow io value. */
 	ufs->slowio[PIXEL_SLOWIO_READ][PIXEL_SLOWIO_US] =
@@ -118,7 +118,7 @@ static enum pixel_slowio_optype pixel_ufs_get_slowio_optype(u8 opcode)
 static void pixel_ufs_log_slowio(struct ufs_hba *hba,
 		struct ufshcd_lrb *lrbp, s64 iotime_us)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	sector_t sector = ULONG_MAX;
 	u32 affected_bytes = UINT_MAX;
 	u8 opcode = 0xff;
@@ -200,7 +200,7 @@ u64 pixel_ufs_prev_count[REQ_TYPE_MAX] = { 0, };
 
 static inline void __sync_io_stats(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int cpu;
 
 	if (!ufs->io_stats)
@@ -263,7 +263,7 @@ static inline void __sync_io_stats(struct ufs_hba *hba)
 
 static inline void record_ufs_stats(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int i;
 	u64 avg_time[REQ_TYPE_MAX] = { 0, };
 
@@ -294,7 +294,7 @@ static inline void record_ufs_stats(struct ufs_hba *hba)
 
 void pixel_ufs_update_req_stats(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	struct pixel_req_stats *rst;
 	enum req_type_stats cmd_type;
 	u64 delta = (u64)ktime_us_delta(lrbp->compl_time_stamp,
@@ -334,7 +334,7 @@ static inline void __update_io_stats(struct ufs_hba *hba,
 				     bool is_write,
 				     u32 affected_bytes, bool is_start)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	struct pixel_io_stats *s;
 
 	if (!ufs->io_stats)
@@ -396,7 +396,7 @@ static void pixel_ufs_update_io_stats(struct ufs_hba *hba,
 
 void pixel_ufs_record_hibern8(struct ufs_hba *hba, bool is_enter_h8)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	struct pixel_ufs_stats *ufs_stats = &ufs->ufs_stats;
 	u64 curr_t = ktime_to_us(ktime_get());
 
@@ -419,7 +419,7 @@ void pixel_ufs_record_hibern8(struct ufs_hba *hba, bool is_enter_h8)
 
 static int pixel_ufs_init_cmd_log(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int i;
 
 	memset(&ufs->cmd_log, 0, sizeof(struct pixel_cmd_log));
@@ -517,7 +517,7 @@ static int pixel_ufs_init_cmd_log(struct ufs_hba *hba)
 
 static struct pixel_cmd_log_entry *__get_log_entry(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	struct pixel_cmd_log_entry *entry = NULL;
 
 	if (!virt_addr_valid(ufs->cmd_log.entry))
@@ -535,7 +535,7 @@ static struct pixel_cmd_log_entry *__get_log_entry(struct ufs_hba *hba)
 static void __set_cmd_log_str(struct ufs_hba *hba, u8 event, u8 opcode,
 		struct pixel_cmd_log_entry *entry)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	u8 cmd_type = 0;
 
 	entry->event = ufs->cmd_log.event_str[event];
@@ -600,7 +600,7 @@ static void __store_cmd_log(struct ufs_hba *hba, u8 event, u8 lun,
 		u8 opcode, u8 idn, sector_t sector, int affected_bytes,
 		u8 group_id, int tag, u64 error, u8 queue_eh_work)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	struct pixel_cmd_log_entry *entry;
 
 	if (!ufs->enable_cmd_log)
@@ -626,7 +626,7 @@ static void __store_cmd_log(struct ufs_hba *hba, u8 event, u8 lun,
 static void pixel_ufs_trace_fdeviceinit(struct ufs_hba *hba,
 					struct ufshcd_lrb *lrbp, u8 opcode)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	struct latency_metrics *metric = NULL;
 
 	if (opcode == UPIU_QUERY_OPCODE_SET_FLAG)
@@ -831,7 +831,7 @@ static void pixel_ufs_compl_command(void *data, struct ufs_hba *hba,
 static void pixel_ufs_prepare_command(void *data, struct ufs_hba *hba,
 			struct request *rq, struct ufshcd_lrb *lrbp, int *err)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	u8 opcode;
 
 	*err = 0;
@@ -932,7 +932,7 @@ static ssize_t manual_gc_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	u32 status = MANUAL_GC_OFF;
 
 	if (ufs->manual_gc.state == MANUAL_GC_DISABLE)
@@ -978,7 +978,7 @@ static ssize_t manual_gc_store(struct device *dev,
 			const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	u32 value;
 	int err = 0;
 
@@ -1044,7 +1044,7 @@ static ssize_t manual_gc_hold_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 
 	return snprintf(buf, PAGE_SIZE, "%lu\n", ufs->manual_gc.delay_ms);
 }
@@ -1053,7 +1053,7 @@ static ssize_t manual_gc_hold_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	unsigned long value;
 
 	if (kstrtoul(buf, 0, &value))
@@ -1065,8 +1065,8 @@ static ssize_t manual_gc_hold_store(struct device *dev,
 
 static enum hrtimer_restart pixel_mgc_hrtimer_handler(struct hrtimer *timer)
 {
-	struct exynos_ufs *ufs = container_of(timer, struct exynos_ufs,
-					manual_gc.hrtimer);
+	struct pixel_ufs *ufs = container_of(timer, struct pixel_ufs,
+					     manual_gc.hrtimer);
 
 	queue_work(ufs->manual_gc.mgc_workq, &ufs->manual_gc.hibern8_work);
 	return HRTIMER_NORESTART;
@@ -1074,15 +1074,15 @@ static enum hrtimer_restart pixel_mgc_hrtimer_handler(struct hrtimer *timer)
 
 static void pixel_mgc_hibern8_work(struct work_struct *work)
 {
-	struct exynos_ufs *ufs = container_of(work, struct exynos_ufs,
-					manual_gc.hibern8_work);
+	struct pixel_ufs *ufs = container_of(work, struct pixel_ufs,
+					     manual_gc.hibern8_work);
 	pm_runtime_put_sync(ufs->hba->dev);
 	/* bkops will be disabled when power down */
 }
 
 void pixel_init_manual_gc(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	struct ufs_manual_gc *mgc = &ufs->manual_gc;
 	char wq_name[sizeof("ufs_mgc_hibern8_work_#####")];
 
@@ -1112,7 +1112,7 @@ static ssize_t slowio_store(struct device *dev, struct device_attribute *_attr,
 {
 	struct slowio_attr *attr = (struct slowio_attr *)_attr;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	unsigned long flags, value;
 
 	if (kstrtol(buf, 0, &value))
@@ -1137,7 +1137,7 @@ static ssize_t slowio_show(struct device *dev, struct device_attribute *_attr,
 {
 	struct slowio_attr *attr = (struct slowio_attr *)_attr;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	return snprintf(buf, PAGE_SIZE, "%lld\n",
 			ufs->slowio[attr->optype][attr->systype]);
 }
@@ -1208,7 +1208,7 @@ static ssize_t set_gid_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 
 	return snprintf(buf, PAGE_SIZE, "%s\n", wb_gid_str[ufs->set_gid]);
 }
@@ -1218,7 +1218,7 @@ static ssize_t set_gid_store(struct device *dev,
 				   const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	enum query_opcode opcode;
 	int i;
 	u8 index;
@@ -1335,7 +1335,7 @@ static ssize_t power_event_mode_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	return sprintf(buf, "%u\n", ufs->power_event_mode);
 }
 
@@ -1344,7 +1344,7 @@ static ssize_t power_event_mode_store(struct device *dev,
 				      const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	u32 value;
 
 	if (kstrtou32(buf, 0, &value))
@@ -1364,7 +1364,7 @@ static ssize_t enable_pixel_ufs_logging_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 
 	return sysfs_emit(buf, "%u\n", ufs->enable_cmd_log);
 }
@@ -1373,7 +1373,7 @@ static ssize_t enable_pixel_ufs_logging_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	u32 value;
 
 	if (kstrtouint(buf, 0, &value))
@@ -1402,7 +1402,7 @@ static ssize_t _name##_show(struct device *dev,				\
 	struct device_attribute *attr, char *buf)			\
 {									\
 	struct ufs_hba *hba = dev_get_drvdata(dev);			\
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);			\
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);			\
 	unsigned long flags;						\
 	u64 val;							\
 	spin_lock_irqsave(hba->host->host_lock, flags);			\
@@ -1431,7 +1431,7 @@ static DEVICE_ATTR_RO(_name)
 
 static inline void pixel_init_req_stats(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 
 	memset(ufs->req_stats, 0, sizeof(ufs->req_stats));
 	memset(pixel_ufs_prev_sum, 0, sizeof(pixel_ufs_prev_sum));
@@ -1528,7 +1528,7 @@ static ssize_t _name##_show(struct device *dev,			\
 	struct device_attribute *attr, char *buf)		\
 {								\
 	struct ufs_hba *hba = dev_get_drvdata(dev);		\
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);		\
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);		\
 	unsigned long flags;					\
 	u64 val;						\
 	spin_lock_irqsave(hba->host->host_lock, flags);		\
@@ -1541,7 +1541,7 @@ static DEVICE_ATTR_RO(_name)
 
 void pixel_init_io_stats(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int cpu;
 
 	memset(&ufs->curr_io_stats, 0, sizeof(ufs->curr_io_stats));
@@ -1569,7 +1569,7 @@ static ssize_t reset_io_status_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int cpu;
 	unsigned long flags;
 
@@ -1752,7 +1752,7 @@ static ssize_t _name##_show(struct device *dev,			\
 	struct device_attribute *attr, char *buf)		\
 {								\
 	struct ufs_hba *hba = dev_get_drvdata(dev);		\
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);		\
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);		\
 	unsigned long flags;					\
 	u64 val;						\
 	spin_lock_irqsave(hba->host->host_lock, flags);		\
@@ -1871,7 +1871,7 @@ static ssize_t _name##_show(struct device *dev,				\
 	struct device_attribute *attr, char *buf)			\
 {									\
 	struct ufs_hba *hba = dev_get_drvdata(dev);			\
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);			\
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);			\
 	return sprintf(buf, "%llu\n", ufs->power_stats._metric._var);	\
 }									\
 static DEVICE_ATTR_RO(_name)
@@ -1915,8 +1915,8 @@ static const struct attribute_group *pixel_ufs_sysfs_groups[] = {
 
 static void pixel_ufs_update_sysfs_work(struct work_struct *work)
 {
-	struct exynos_ufs *ufs = container_of(work, struct exynos_ufs,
-						update_sysfs_work);
+	struct pixel_ufs *ufs = container_of(work, struct pixel_ufs,
+					     update_sysfs_work);
 	struct ufs_hba *hba = ufs->hba;
 	int err;
 
@@ -1941,7 +1941,7 @@ static void pixel_ufs_update_sysfs_work(struct work_struct *work)
 
 static void pixel_ufs_update_sysfs(void *data, struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 
 	queue_work(system_highpri_wq, &ufs->update_sysfs_work);
 }
@@ -1954,7 +1954,7 @@ static void pixel_ufs_update_sdev(void *data, struct scsi_device *sdev)
 
 void pixel_print_cmd_log(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	struct pixel_cmd_log_entry *entry = NULL;
 	int i;
 
@@ -1974,7 +1974,8 @@ void pixel_print_cmd_log(struct ufs_hba *hba)
 	}
 }
 
-static void pixel_ufs_init(struct exynos_ufs *ufs)
+/* Initialize struct pixel_ufs except the crypto_ops, hba and dev members. */
+static void pixel_ufs_init(struct pixel_ufs *ufs)
 {
 	memset(&ufs->ufs_stats, 0, sizeof(struct pixel_ufs_stats));
 	memset(&ufs->power_stats, 0, sizeof(struct pixel_power_stats));
@@ -1985,12 +1986,15 @@ static void pixel_ufs_init(struct exynos_ufs *ufs)
 	spin_lock_init(&ufs->power_event_lock);
 }
 
-int pixel_init(struct ufs_hba *hba, const struct pixel_crypto_ops *crypto_ops)
+int pixel_init(struct ufs_hba *hba, struct device *pdev,
+	       const struct pixel_crypto_ops *crypto_ops)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int ret;
 
 	ufs->crypto_ops = crypto_ops;
+	ufs->hba = hba;
+	ufs->dev = pdev;
 
 	ret = pixel_ufs_crypto_init(hba);
 	if (ret)
@@ -2053,7 +2057,7 @@ int pixel_init(struct ufs_hba *hba, const struct pixel_crypto_ops *crypto_ops)
 
 void pixel_exit(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	int i;
 
 	devm_kfree(ufs->dev, ufs->cmd_log.entry);

@@ -95,7 +95,7 @@ static void exynos_check_crypto_hw(struct ufs_hba *hba)
  */
 static int pixel_ufs_crypto_configure_hw(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	unsigned long ret;
 	int err;
 
@@ -143,7 +143,7 @@ static int pixel_ufs_crypto_configure_hw(struct ufs_hba *hba)
 
 void pixel_ufs_crypto_resume(struct ufs_hba *hba)
 {
-	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	unsigned long ret;
 
 	if (!(hba->caps & UFSHCD_CAP_CRYPTO))

@@ -68,12 +68,6 @@ enum exynos_ufs_param_id {
 	UFS_SYSFS_NUM,
 };
 
-enum pixel_ufs_wb_gid {
-	WB_GID_DISABLE = 0,
-	WB_GID_SEL = 1,
-	WB_GID_ALL = 2,
-};
-
 struct pixel_crypto_ops {
 	void (*crypto_init)(struct ufs_hba *hba);
 	int (*configure_crypto_hw)(struct ufs_hba *hba);
@@ -153,55 +147,20 @@ struct exynos_ufs {
 	 */
 	u32 params[UFS_SYSFS_NUM];
 
-	const struct pixel_crypto_ops *crypto_ops;
-
-	/* sysfs */
-	struct work_struct update_sysfs_work;
-
-	/* manual_gc */
-	struct ufs_manual_gc manual_gc;
-
-	/* pixel ufs request statistics */
-	struct pixel_req_stats req_stats[REQ_TYPE_MAX];
-	u64 peak_reqs[REQ_TYPE_MAX];
-	u64 peak_queue_depth;
-	/* pixel ufs I/O quatity statistics */
-	struct pixel_io_stats __percpu *io_stats;
-	struct pixel_io_stats curr_io_stats;
-	struct pixel_io_stats prev_io_stats;
-
-	/* To monitor slow UFS I/O requests. */
-	u64 slowio_min_us;
-	u64 slowio[PIXEL_SLOWIO_OP_MAX][PIXEL_SLOWIO_SYS_MAX];
-
-	/* pixel ufs power related statistics */
-	struct pixel_power_stats power_stats;
-
-	/* Pointer to GSA device */
-	struct device *gsa_dev;
-
-	/* Hibern8 recording */
-	struct pixel_ufs_stats ufs_stats;
-
-	/* ufs command logging */
-	u8 enable_cmd_log;
-	struct pixel_cmd_log cmd_log;
-
-	/* enable WriteBooster based on given Group ID mode */
-	enum pixel_ufs_wb_gid set_gid;
-
 	/* auto hibern8 */
 	u32 ah8_ahit;
 
-	/* power event tracing with kibble */
-	spinlock_t power_event_lock;
-	u32 power_event_mode;
-	u32 outstanding_io;
+	struct pixel_ufs pixel_ufs;
 };
 
 static inline struct exynos_ufs *to_exynos_ufs(struct ufs_hba *hba)
 {
 	return dev_get_platdata(hba->dev);
+}
+
+static inline struct pixel_ufs *to_pixel_ufs(struct ufs_hba *hba)
+{
+	return &to_exynos_ufs(hba)->pixel_ufs;
 }
 
 int exynos_ufs_init_dbg(struct ufs_vs_handle *handle, struct device *dev);
