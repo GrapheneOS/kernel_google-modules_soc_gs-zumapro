@@ -1984,10 +1984,12 @@ static void pixel_ufs_init(struct exynos_ufs *ufs)
 	spin_lock_init(&ufs->power_event_lock);
 }
 
-int pixel_init(struct ufs_hba *hba)
+int pixel_init(struct ufs_hba *hba, const struct pixel_crypto_ops *crypto_ops)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	int ret;
+
+	ufs->crypto_ops = crypto_ops;
 
 	ret = pixel_ufs_crypto_init(hba);
 	if (ret)

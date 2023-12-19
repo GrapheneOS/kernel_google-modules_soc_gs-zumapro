@@ -219,7 +219,9 @@ struct pixel_ufs_stats {
 	u64 last_hibern8_exit_time;
 };
 
-extern int pixel_init(struct ufs_hba *hba);
+struct pixel_crypto_ops;
+
+int pixel_init(struct ufs_hba *hba, const struct pixel_crypto_ops *crypto_ops);
 extern void pixel_exit(struct ufs_hba *hba);
 extern void pixel_ufs_record_hibern8(struct ufs_hba *hba, bool is_enter_h8);
 extern void pixel_print_cmd_log(struct ufs_hba *hba);

@@ -74,6 +74,11 @@ enum pixel_ufs_wb_gid {
 	WB_GID_ALL = 2,
 };
 
+struct pixel_crypto_ops {
+	void (*crypto_init)(struct ufs_hba *hba);
+	int (*configure_crypto_hw)(struct ufs_hba *hba);
+};
+
 struct exynos_ufs {
 	struct device *dev;
 	struct ufs_hba *hba;
@@ -148,6 +153,8 @@ struct exynos_ufs {
 	 */
 	u32 params[UFS_SYSFS_NUM];
 
+	const struct pixel_crypto_ops *crypto_ops;
+
 	/* sysfs */
 	struct work_struct update_sysfs_work;
 
@@ -205,6 +212,8 @@ void exynos_ufs_cmd_log_start(struct ufs_vs_handle *handle,
 			      struct ufs_hba *hba, struct scsi_cmnd *cmd);
 void exynos_ufs_cmd_log_end(struct ufs_vs_handle *handle,
 			    struct ufs_hba *hba, int tag);
+
+extern const struct pixel_crypto_ops exynos_crypto_ops;
 
 #ifdef CONFIG_SCSI_UFS_CRYPTO
 int pixel_ufs_crypto_init(struct ufs_hba *hba);
