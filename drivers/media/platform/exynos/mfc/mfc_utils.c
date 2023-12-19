@@ -759,7 +759,9 @@ void mfc_core_idle_checker(struct timer_list *t)
 	}
 
 #ifdef CONFIG_MFC_USE_BUS_DEVFREQ
-	mfc_core_change_idle_mode(core, MFC_IDLE_MODE_RUNNING);
-	queue_work(core->mfc_idle_wq, &core->mfc_idle_work);
+	if (!atomic_read(&core->during_release)) {
+	    mfc_core_change_idle_mode(core, MFC_IDLE_MODE_RUNNING);
+	    queue_work(core->mfc_idle_wq, &core->mfc_idle_work);
+	}
 #endif
 }
