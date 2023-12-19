@@ -149,7 +149,6 @@ struct exynos_ufs {
 	u32 params[UFS_SYSFS_NUM];
 
 	/* sysfs */
-	struct kobject sysfs_kobj;
 	struct work_struct update_sysfs_work;
 
 	/* manual_gc */
