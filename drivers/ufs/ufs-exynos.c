@@ -1706,9 +1706,6 @@ static int exynos_ufs_probe(struct platform_device *pdev)
 		goto remove_qos_request;
 	spin_lock_init(&ufs->dbg_lock);
 
-	/* init power event monitoring */
-	spin_lock_init(&ufs->power_event_lock);
-
 	/* store ufs host symbols to analyse later */
 	ufs->id = ufs_host_index++;
 	ufs_host_backup[ufs->id] = ufs;

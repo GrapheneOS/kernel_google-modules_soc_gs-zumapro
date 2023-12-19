@@ -1973,6 +1973,17 @@ void pixel_print_cmd_log(struct ufs_hba *hba)
 	}
 }
 
+static void pixel_ufs_init(struct exynos_ufs *ufs)
+{
+	memset(&ufs->ufs_stats, 0, sizeof(struct pixel_ufs_stats));
+	memset(&ufs->power_stats, 0, sizeof(struct pixel_power_stats));
+	ufs->ufs_stats.hibern8_flag = false;
+	ufs->set_gid = WB_GID_SEL;
+
+	/* init power event monitoring */
+	spin_lock_init(&ufs->power_event_lock);
+}
+
 int pixel_init(struct ufs_hba *hba)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
@@ -1982,10 +1993,7 @@ int pixel_init(struct ufs_hba *hba)
 	if (ret)
 		return ret;
 
-	memset(&ufs->ufs_stats, 0, sizeof(struct pixel_ufs_stats));
-	memset(&ufs->power_stats, 0, sizeof(struct pixel_power_stats));
-	ufs->ufs_stats.hibern8_flag = false;
-	ufs->set_gid = WB_GID_SEL;
+	pixel_ufs_init(ufs);
 
 	ret = register_trace_android_vh_ufs_prepare_command(
 				pixel_ufs_prepare_command, NULL);
