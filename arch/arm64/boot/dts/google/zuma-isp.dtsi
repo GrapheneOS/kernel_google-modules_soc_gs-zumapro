@@ -1304,6 +1304,9 @@
 		iommus =
 			<&sysmmu_tnr_s2>;
 		samsung,iommu-group = <&iommu_group_isp>;
+
+		/* Thread priority */
+		transaction-thread-priority = <99>;
 	};
 
 	lwis_lme: lwis_lme@1D4A0000 {
