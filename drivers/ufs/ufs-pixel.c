@@ -1352,7 +1352,8 @@ static ssize_t power_event_mode_store(struct device *dev,
 
 	if (value != ufs->power_event_mode) {
 		ufs->power_event_mode = value;
-		if (ufs->power_event_mode && ufs->h_state != H_SUSPEND)
+		if (ufs->power_event_mode &&
+		    !hba->ufs_device_wlun->sdev_gendev.power.is_suspended)
 			pixel_update_power_event(hba, PE_SYSTEM_RESUME);
 	}
 	return count;
