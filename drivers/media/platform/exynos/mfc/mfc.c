@@ -560,7 +560,8 @@ static int mfc_release(struct file *file)
 	struct mfc_ctx *ctx = fh_to_mfc_ctx(file->private_data);
 	struct mfc_dev *dev = ctx->dev;
 	struct mfc_ctx *move_ctx;
-	struct mfc_core *core;
+	struct mfc_core *maincore;
+	struct mfc_core *subcore;
 	int ret = 0;
 	int i;
 
@@ -577,8 +578,13 @@ static int mfc_release(struct file *file)
 	v4l2_fh_exit(&ctx->fh);
 
 	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
-	core = mfc_get_main_core_wait(dev, ctx);
-	atomic_inc(&core->hw_run_cnt);
+	maincore = mfc_get_main_core_wait(dev, ctx);
+	atomic_inc(&maincore->hw_run_cnt);
+	atomic_inc(&maincore->during_release);
+	subcore = mfc_get_sub_core(dev, ctx);
+	if (subcore)
+		atomic_inc(&subcore->during_release);
+
 	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
 	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
@@ -649,6 +655,9 @@ static int mfc_release(struct file *file)
 	queue_work(dev->butler_wq, &dev->butler_work);
 
 end_release:
+	atomic_dec(&maincore->during_release);
+	if (subcore)
+		atomic_dec(&subcore->during_release);
 	mutex_unlock(&dev->mfc_migrate_mutex);
 	mutex_unlock(&dev->mfc_mutex);
 	return ret;

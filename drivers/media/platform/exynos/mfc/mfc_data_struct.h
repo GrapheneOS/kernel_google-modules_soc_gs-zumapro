@@ -1439,6 +1439,7 @@ struct mfc_core {
 
 	/* QoS idle */
 	atomic_t hw_run_cnt;
+	atomic_t during_release;
 	struct mutex idle_qos_mutex;
 	enum mfc_idle_mode idle_mode;
 	struct timer_list mfc_idle_timer;
