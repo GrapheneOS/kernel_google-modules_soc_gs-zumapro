@@ -19,6 +19,12 @@
 
 #include "zcomp.h"
 
+/*
+ * Pages that compress to sizes equals or greater than this are stored
+ * uncompressed in memory.
+ */
+static size_t huge_class_size = 0;
+
 /* The 32 is align with SWAP_CLUSTER_MAX and BLK_MAX_REQUEST_COUNT */
 #define ZRAM_BLK_MAX_REQUEST_COUNT 32
 
@@ -463,6 +469,9 @@ struct zcomp *zcomp_create(const char *algo_name, struct zram *zram)
 	comp->zram = zram;
 	up_read(&zcomp_rwsem);
 
+	if (!huge_class_size)
+		huge_class_size = zs_huge_class_size(zram->mem_pool);
+
 	return comp;
 }
 
@@ -487,11 +496,8 @@ int zcomp_copy_buffer(int err, void *buffer, int comp_len,
 
 	if (err)
 		goto out;
-	/*
-	 * Pages that compress to sizes equals or greater than this are stored
-	 * uncompressed in memory to make decompress fast.
-	 */
-	if (comp_len >= zs_huge_class_size(zram->mem_pool))
+
+	if (comp_len >= huge_class_size)
 		comp_len = PAGE_SIZE;
 
 	handle = zs_malloc(zram->mem_pool, comp_len,
