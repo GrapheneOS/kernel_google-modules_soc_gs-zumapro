@@ -612,21 +612,7 @@ static int exynos_ufs_init(struct ufs_hba *hba)
 	/* set features, such as caps or quirks */
 	exynos_ufs_set_features(hba);
 
-	ret = pixel_ufs_crypto_init(hba);
-	if (ret)
-		return ret;
-
-	ret = pixel_init(hba);
-	if (ret)
-		return ret;
-
-	pixel_init_manual_gc(hba);
-
-	pixel_init_slowio(hba);
-
-	pixel_init_io_stats(hba);
-
-	return 0;
+	return pixel_init(hba);
 }
 
 static void exynos_ufs_init_host(struct ufs_hba *hba)

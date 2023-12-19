@@ -1978,6 +1978,10 @@ int pixel_init(struct ufs_hba *hba)
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
 	int ret;
 
+	ret = pixel_ufs_crypto_init(hba);
+	if (ret)
+		return ret;
+
 	memset(&ufs->ufs_stats, 0, sizeof(struct pixel_ufs_stats));
 	memset(&ufs->power_stats, 0, sizeof(struct pixel_power_stats));
 	ufs->ufs_stats.hibern8_flag = false;
@@ -2026,6 +2030,13 @@ int pixel_init(struct ufs_hba *hba)
 	pixel_ufs_init_cmd_log(hba);
 
 	INIT_WORK(&ufs->update_sysfs_work, pixel_ufs_update_sysfs_work);
+
+	pixel_init_manual_gc(hba);
+
+	pixel_init_slowio(hba);
+
+	pixel_init_io_stats(hba);
+
 	return 0;
 }
 
