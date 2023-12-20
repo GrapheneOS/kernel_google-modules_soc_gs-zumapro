@@ -196,8 +196,8 @@ static int pixel_ufs_get_cmd_type(struct ufshcd_lrb *lrbp,
 static const unsigned long period_ms = 3000;
 static unsigned long next_period_ufs_stats;
 
-u64 pixel_ufs_prev_sum[REQ_TYPE_MAX] = { 0, };
-u64 pixel_ufs_prev_count[REQ_TYPE_MAX] = { 0, };
+static u64 pixel_ufs_prev_sum[REQ_TYPE_MAX];
+static u64 pixel_ufs_prev_count[REQ_TYPE_MAX];
 
 static inline void __sync_io_stats(struct ufs_hba *hba)
 {
