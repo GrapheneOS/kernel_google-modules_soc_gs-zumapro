@@ -25,6 +25,7 @@
 #include <linux/spinlock.h>
 
 #include "ufs-exynos-gs.h"
+#include "ufs-pixel-crypto.h"
 #include <soc/google/exynos-pmu-if.h>
 #include <soc/google/exynos-cpupm.h>
 #include <trace/hooks/ufshcd.h>
@@ -106,6 +107,11 @@ static const int ufs_ext_ignore[EXT_BLK_MAX] = {0};
  * the head of data for DATA UPIU.
  */
 static const int __cport_log_type = 0x22;
+
+struct pixel_ufs *to_pixel_ufs(struct ufs_hba *hba)
+{
+	return &to_exynos_ufs(hba)->pixel_ufs;
+}
 
 /* Functions to map registers or to something by other modules */
 static void ufs_udelay(u32 n)

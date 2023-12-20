@@ -68,11 +68,6 @@ enum exynos_ufs_param_id {
 	UFS_SYSFS_NUM,
 };
 
-struct pixel_crypto_ops {
-	void (*crypto_init)(struct ufs_hba *hba);
-	int (*configure_crypto_hw)(struct ufs_hba *hba);
-};
-
 struct exynos_ufs {
 	struct device *dev;
 	struct ufs_hba *hba;
@@ -158,11 +153,6 @@ static inline struct exynos_ufs *to_exynos_ufs(struct ufs_hba *hba)
 	return dev_get_platdata(hba->dev);
 }
 
-static inline struct pixel_ufs *to_pixel_ufs(struct ufs_hba *hba)
-{
-	return &to_exynos_ufs(hba)->pixel_ufs;
-}
-
 int exynos_ufs_init_dbg(struct ufs_vs_handle *handle, struct device *dev);
 int exynos_ufs_dbg_set_lanes(struct ufs_vs_handle *handle,
 			     struct device *dev, u32 lane);
@@ -174,16 +164,4 @@ void exynos_ufs_cmd_log_end(struct ufs_vs_handle *handle,
 
 extern const struct pixel_crypto_ops exynos_crypto_ops;
 
-#ifdef CONFIG_SCSI_UFS_CRYPTO
-int pixel_ufs_crypto_init(struct ufs_hba *hba);
-void pixel_ufs_crypto_resume(struct ufs_hba *hba);
-#else
-static inline int pixel_ufs_crypto_init(struct ufs_hba *hba)
-{
-	return 0;
-}
-static inline void pixel_ufs_crypto_resume(struct ufs_hba *hba)
-{
-}
-#endif /* !CONFIG_SCSI_UFS_CRYPTO */
 #endif /* _UFS_EXYNOS_H_ */

@@ -219,7 +219,10 @@ struct pixel_ufs_stats {
 	u64 last_hibern8_exit_time;
 };
 
-struct pixel_crypto_ops;
+struct pixel_crypto_ops {
+	void (*crypto_init)(struct ufs_hba *hba);
+	int (*configure_crypto_hw)(struct ufs_hba *hba);
+};
 
 int pixel_init(struct ufs_hba *hba, struct device *pdev,
 	       const struct pixel_crypto_ops *crypto_ops);
@@ -368,6 +371,8 @@ struct pixel_ufs {
 	u32 power_event_mode;
 	u32 outstanding_io;
 };
+
+struct pixel_ufs *to_pixel_ufs(struct ufs_hba *hba);
 
 void pixel_update_power_event(struct ufs_hba *hba,
 			      enum pixel_power_event_type event);

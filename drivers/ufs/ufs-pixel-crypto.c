@@ -14,8 +14,9 @@
 #include <ufs/ufshcd.h>
 #include <core/ufshcd-crypto.h>
 
-#include "ufs-exynos-gs.h"
+#include "ufs-pixel.h"
 #include "ufs-pixel-fips.h"
+#include "ufs-pixel-crypto.h"
 
 #undef CREATE_TRACE_POINTS
 #include <trace/hooks/ufshcd.h>

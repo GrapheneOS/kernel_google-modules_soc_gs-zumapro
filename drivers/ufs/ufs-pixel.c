@@ -10,7 +10,8 @@
 #include <core/ufshcd-priv.h>
 #include <linux/workqueue.h>
 #include <misc/sbbm.h>
-#include "ufs-exynos-gs.h"
+#include "ufs-pixel.h"
+#include "ufs-pixel-crypto.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/ufs_pixel.h>
