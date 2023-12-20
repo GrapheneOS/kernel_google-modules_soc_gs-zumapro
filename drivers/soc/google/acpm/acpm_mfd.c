@@ -62,47 +62,57 @@ int exynos_acpm_bulk_read(struct device_node *acpm_mfd_node, u8 channel,
 			  u16 type, u8 reg, int count, u8 *buf)
 {
 	unsigned int channel_num, size;
-	struct ipc_config config;
-	unsigned int command[4] = {0,};
-	int i, ret = 0;
+	int ret = 0;
 
-	if (!acpm_ipc_request_channel(acpm_mfd_node, NULL, &channel_num, &size)) {
+	if (acpm_ipc_request_channel(acpm_mfd_node, NULL, &channel_num, &size)) {
+		pr_err("%s ipc request_channel fail, id:%u, size:%u\n",
+				__func__, channel_num, size);
+		return -EBUSY;
+	}
+
+	while (count > 0) {
+		struct ipc_config config;
+		unsigned int command[4] = {0,};
+		int i, bytes_to_read;
+
+		bytes_to_read = (count > BULK_TRANSFER_LIMIT) ? BULK_TRANSFER_LIMIT : count;
+
 		config.cmd = command;
 		config.cmd[0] = set_protocol(type, TYPE) | set_protocol(reg, REG) |
 				set_protocol(channel, CHANNEL);
 		config.cmd[1] = set_protocol(FUNC_BULK_READ, FUNC) |
-			set_protocol(count, CNT);
+			set_protocol(bytes_to_read, CNT);
 		config.response = true;
 
 		ACPM_MFD_PRINT("%s - addr: 0x%03x\n", __func__,
-			       set_protocol(type, TYPE) | set_protocol(reg, REG));
+					set_protocol(type, TYPE) | set_protocol(reg, REG));
 
 		ret = acpm_ipc_send_data(channel_num, &config);
 		if (ret) {
 			pr_err("%s - acpm_ipc_send_data fail.\n", __func__);
-			return ret;
+			goto end;
 		}
 
 		ret = read_protocol(config.cmd[1], RETURN);
 		if (ret) {
 			pr_err("%s - APM's speedy_rx fail.\n", __func__);
-			return ret;
+			goto end;
 		}
 
-		for (i = 0; i < count; i++) {
+		for (i = 0; i < bytes_to_read; i++) {
 			if (i < 4)
 				buf[i] = read_bulk_protocol(config.cmd[2], BULK_VAL, i);
 			else
 				buf[i] = read_bulk_protocol(config.cmd[3], BULK_VAL, i - 4);
 		}
 
-		acpm_ipc_release_channel(acpm_mfd_node, channel_num);
-	} else {
-		pr_err("%s ipc request_channel fail, id:%u, size:%u\n",
-		       __func__, channel_num, size);
-		ret = -EBUSY;
+		count -= bytes_to_read;
+		reg += bytes_to_read;
+		buf += bytes_to_read;
 	}
 
+end:
+	acpm_ipc_release_channel(acpm_mfd_node, channel_num);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(exynos_acpm_bulk_read);
@@ -159,24 +169,33 @@ int exynos_acpm_bulk_write(struct device_node *acpm_mfd_node, u8 channel,
 			   u16 type, u8 reg, int count, u8 *buf)
 {
 	unsigned int channel_num, size;
-	struct ipc_config config;
-	unsigned int command[4] = {0,};
 	int ret = 0;
-	int i;
 
-	if (!acpm_ipc_request_channel(acpm_mfd_node, NULL, &channel_num, &size)) {
+	if (acpm_ipc_request_channel(acpm_mfd_node, NULL, &channel_num, &size)) {
+		pr_err("%s ipc request_channel fail, id:%u, size:%u\n",
+				__func__, channel_num, size);
+		return -EBUSY;
+	}
+
+	while (count > 0) {
+		struct ipc_config config;
+		unsigned int command[4] = {0,};
+		int i, bytes_to_write;
+
+		bytes_to_write = (count > BULK_TRANSFER_LIMIT) ? BULK_TRANSFER_LIMIT : count;
+
 		config.cmd = command;
 		config.cmd[0] = set_protocol(type, TYPE) | set_protocol(reg, REG) |
 				set_protocol(channel, CHANNEL);
 		config.cmd[1] = set_protocol(FUNC_BULK_WRITE, FUNC) |
-			set_protocol(count, CNT);
+			set_protocol(bytes_to_write, CNT);
 		config.response = true;
 
 		ACPM_MFD_PRINT("%s - addr: 0x%03x\n cnt: 0x%02x\n", __func__,
-			       set_protocol(type, TYPE) | set_protocol(reg, REG),
-			       count);
+					set_protocol(type, TYPE) | set_protocol(reg, REG),
+					bytes_to_write);
 
-		for (i = 0; i < count; i++) {
+		for (i = 0; i < bytes_to_write; i++) {
 			if (i < 4)
 				config.cmd[2] |= set_bulk_protocol(buf[i], BULK_VAL, i);
 			else
@@ -186,22 +205,22 @@ int exynos_acpm_bulk_write(struct device_node *acpm_mfd_node, u8 channel,
 		ret = acpm_ipc_send_data(channel_num, &config);
 		if (ret) {
 			pr_err("%s - acpm_ipc_send_data fail.\n", __func__);
-			return ret;
+			goto end;
 		}
 
 		ret = read_protocol(config.cmd[1], RETURN);
 		if (ret) {
 			pr_err("%s - APM's speedy_tx fail.\n", __func__);
-			return ret;
+			goto end;
 		}
 
-		acpm_ipc_release_channel(acpm_mfd_node, channel_num);
-	} else {
-		pr_err("%s ipc request_channel fail, id:%u, size:%u\n",
-		       __func__, channel_num, size);
-		ret = -EBUSY;
+		count -= bytes_to_write;
+		reg += bytes_to_write;
+		buf += bytes_to_write;
 	}
 
+end:
+	acpm_ipc_release_channel(acpm_mfd_node, channel_num);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(exynos_acpm_bulk_write);
