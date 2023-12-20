@@ -220,8 +220,7 @@ struct pixel_ufs_stats {
 };
 
 struct pixel_crypto_ops {
-	void (*crypto_init)(struct ufs_hba *hba);
-	int (*configure_crypto_hw)(struct ufs_hba *hba);
+	int (*crypto_init)(struct ufs_hba *hba);
 };
 
 int pixel_init(struct ufs_hba *hba, struct device *pdev,

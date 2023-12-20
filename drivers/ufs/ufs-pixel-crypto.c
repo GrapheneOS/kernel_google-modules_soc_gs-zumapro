@@ -242,7 +242,8 @@ int pixel_ufs_crypto_init(struct ufs_hba *hba)
 	if (err)
 		return err;
 
-	err = ufs->crypto_ops->configure_crypto_hw(hba);
+	if (ufs->crypto_ops->crypto_init)
+		err = ufs->crypto_ops->crypto_init(hba);
 	if (err == -ENODEV)
 		goto disable;
 	if (err)
@@ -272,8 +273,6 @@ int pixel_ufs_crypto_init(struct ufs_hba *hba)
 	 * always has crypto support enabled.
 	 */
 	hba->android_quirks |= UFSHCD_ANDROID_QUIRK_BROKEN_CRYPTO_ENABLE;
-
-	ufs->crypto_ops->crypto_init(hba);
 
 	/* Advertise crypto capabilities to the block layer. */
 	err = devm_blk_crypto_profile_init(hba->dev, &hba->crypto_profile,

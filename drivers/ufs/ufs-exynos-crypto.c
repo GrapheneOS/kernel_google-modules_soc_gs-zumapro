@@ -47,12 +47,6 @@ struct pixel_ufs_prdt_entry {
 	__le32 reserved[20];
 };
 
-static void exynos_crypto_init(struct ufs_hba *hba)
-{
-	/* Override the PRDT entry size to include the extra crypto fields. */
-	hba->sg_entry_size = sizeof(struct pixel_ufs_prdt_entry);
-}
-
 /*
  * Read the HSI2_KDN_CONTROL_MONITOR register to verify that the KDN is
  * configured correctly.
@@ -262,9 +256,12 @@ static int pixel_ufs_register_fill_prdt(void)
 
 #endif
 
-static int exynos_configure_crypto_hw(struct ufs_hba *hba)
+static int exynos_crypto_init(struct ufs_hba *hba)
 {
 	int err;
+
+	/* Override the PRDT entry size to include the extra crypto fields. */
+	hba->sg_entry_size = sizeof(struct pixel_ufs_prdt_entry);
 
 	err = pixel_ufs_crypto_configure_hw(hba);
 	if (err)
@@ -283,5 +280,4 @@ static int exynos_configure_crypto_hw(struct ufs_hba *hba)
 
 const struct pixel_crypto_ops exynos_crypto_ops = {
 	.crypto_init = exynos_crypto_init,
-	.configure_crypto_hw = exynos_configure_crypto_hw,
 };
