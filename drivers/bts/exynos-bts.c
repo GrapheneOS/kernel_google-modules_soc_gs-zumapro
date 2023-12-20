@@ -294,7 +294,7 @@ int bts_get_bwindex(const char *name)
 {
 	struct bts_bw *bw = btsdev->bts_bw;
 	unsigned int index;
-	int ret, i, j;
+	int ret, i;
 
 	spin_lock(&btsdev->lock);
 
@@ -325,6 +325,7 @@ int bts_get_bwindex(const char *name)
 	}
 #if IS_ENABLED(CONFIG_SOC_ZUMA)
 	for (i = 0; i < btsdev->num_nocl; i++) {
+		int j;
 		for (j = 0; j < btsdev->nocl_infos[i].num_ip; j++) {
 			if (!strcmp(bw[index].name,
 			    btsdev->nocl_infos[i].nocl_ips[j].ip_name)) {
