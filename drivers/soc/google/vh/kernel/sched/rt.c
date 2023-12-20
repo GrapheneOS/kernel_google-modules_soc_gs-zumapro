@@ -35,7 +35,7 @@ extern int get_cluster_enabled(int cluster);
  * to make proper adjustment in vendor hook.
  */
 
-#if defined CONFIG_SMP || defined CONFIG_RT_GROUP_SCHED
+#if defined CONFIG_SMP
 static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 					bool sync)
 {
