@@ -245,7 +245,6 @@ enum pixel_event_type {
 	EVENT_INTR_FATAL_ERR,
 	EVENT_INTR_UIC_ERR,
 	EVENT_INTR_H8_ERR,
-	EVENT_TYPE_MAX,
 };
 
 enum pixel_command_type {
@@ -271,13 +270,11 @@ enum pixel_command_type {
 	CMD_SCSI_PROTOCOL_OUT,
 	CMD_SCSI_ZBC_IN,
 	CMD_SCSI_ZBC_OUT,
-	/* query cmd */
-	CMD_TYPE_MAX,
 };
 
 struct pixel_cmd_log_entry {
-	u8  *event;
-	u8  *cmd;
+	const char *event;
+	const char *cmd;
 	u8  opcode;
 	u8  lun;
 	u8  idn;
@@ -299,8 +296,6 @@ struct pixel_cmd_log {
 	struct pixel_cmd_log_entry *entry;
 	u32 head;
 	u32 seq_cnt;
-	u8 *event_str[EVENT_TYPE_MAX];
-	u8 *cmd_str[CMD_TYPE_MAX];
 };
 
 enum pixel_power_event_type {

@@ -27,6 +27,47 @@ enum {
 #define ufshcd_eh_in_progress(h) \
 	((h)->eh_flags & UFSHCD_EH_IN_PROGRESS)
 
+static const char *const ufs_event_str[] = {
+	[EVENT_UNDEF] = "event_undef",
+	[EVENT_DME_SEND] = "dme_send",
+	[EVENT_DME_COMPL] = "dme_compl",
+	[EVENT_SCSI_SEND] = "scsi_send",
+	[EVENT_SCSI_COMPL] = "scsi_compl",
+	[EVENT_NOP_OUT] = "nop_out",
+	[EVENT_NOP_IN] = "nop_in",
+	[EVENT_QUERY_SEND] = "query_send",
+	[EVENT_QUERY_COMPL] = "query_compl",
+	[EVENT_TM_SEND] = "tm_send",
+	[EVENT_TM_ERR] = "tm_err",
+	[EVENT_TM_COMPL] = "tm_compl",
+	[EVENT_INTR_FATAL_ERR] = "intr_fatal_err",
+	[EVENT_INTR_UIC_ERR] = "intr_uic_err",
+	[EVENT_INTR_H8_ERR] = "intr_h8_err",
+};
+
+static const char *const ufs_cmd_str[] = {
+	[CMD_UNDEF] = "cmd_undef",
+	[CMD_DME_GET] = "dme_get",
+	[CMD_DME_SET] = "dme_set",
+	[CMD_DME_PWR_ON] = "dme_pwr_on",
+	[CMD_DME_PWR_OFF] = "dme_pwr_off",
+	[CMD_DME_RESET] = "dme_reset",
+	[CMD_DME_LINKSTARTUP] = "dme_linkstartup",
+	[CMD_DME_H8_ENTER] = "dme_h8_enter",
+	[CMD_DME_H8_EXIT] = "dme_h8_exit",
+	[CMD_SCSI_WRITE_10] = "write_10",
+	[CMD_SCSI_READ_10] = "read_10",
+	[CMD_SCSI_WRITE_16] = "write_16",
+	[CMD_SCSI_READ_16] = "read_16",
+	[CMD_SCSI_SYNC] = "sync",
+	[CMD_SCSI_UNMAP] = "unmap",
+	[CMD_SCSI_SSU] = "ssu",
+	[CMD_SCSI_PROTOCOL_IN] = "protocol_in",
+	[CMD_SCSI_PROTOCOL_OUT] = "protocol_out",
+	[CMD_SCSI_ZBC_IN] = "zbc_in: report_zone",
+	[CMD_SCSI_ZBC_OUT] = "zbc_out: zone_reset",
+};
+
 void pixel_update_power_event(struct ufs_hba *hba,
 			      enum pixel_power_event_type e)
 {
@@ -421,95 +462,12 @@ void pixel_ufs_record_hibern8(struct ufs_hba *hba, bool is_enter_h8)
 static int pixel_ufs_init_cmd_log(struct ufs_hba *hba)
 {
 	struct pixel_ufs *ufs = to_pixel_ufs(hba);
-	int i;
 
 	memset(&ufs->cmd_log, 0, sizeof(struct pixel_cmd_log));
 
 	ufs->cmd_log.entry = devm_kcalloc(ufs->dev, MAX_CMD_ENTRY_NUM,
 					  sizeof(struct pixel_cmd_log_entry),
 					  GFP_KERNEL);
-	for (i = 0; i < EVENT_TYPE_MAX; i++)
-		ufs->cmd_log.event_str[i] = devm_kzalloc(ufs->dev,
-							    MAX_EVENT_STR_LEN,
-							    GFP_KERNEL);
-	for (i = 0; i < CMD_TYPE_MAX; i++)
-		ufs->cmd_log.cmd_str[i] = devm_kzalloc(ufs->dev,
-							MAX_CMD_STR_LEN,
-							GFP_KERNEL);
-
-	/* set command type string*/
-	strncpy(ufs->cmd_log.event_str[EVENT_UNDEF], "event_undef",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_DME_SEND], "dme_send",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_DME_COMPL], "dme_compl",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_SCSI_SEND], "scsi_send",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_SCSI_COMPL], "scsi_compl",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_NOP_OUT], "nop_out",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_NOP_IN], "nop_in",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_QUERY_SEND], "query_send",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_QUERY_COMPL], "query_compl",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_TM_SEND], "tm_send",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_TM_ERR], "tm_err",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_TM_COMPL], "tm_compl",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_INTR_FATAL_ERR], "intr_fatal_err",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_INTR_UIC_ERR], "intr_uic_err",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.event_str[EVENT_INTR_H8_ERR], "intr_h8_err",
-		MAX_EVENT_STR_LEN);
-
-	/* set command opcode string */
-	strncpy(ufs->cmd_log.cmd_str[CMD_UNDEF], "cmd_undef",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_DME_GET], "dme_get",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_DME_SET], "dme_set",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_DME_PWR_ON], "dme_pwr_on",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_DME_PWR_OFF], "dme_pwr_off",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_DME_RESET], "dme_reset",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_DME_LINKSTARTUP], "dme_linkstartup",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_DME_H8_ENTER], "dme_h8_enter",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_DME_H8_EXIT], "dme_h8_exit",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_WRITE_10], "write_10",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_READ_10], "read_10",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_WRITE_16], "write_16",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_READ_16], "read_16",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_SYNC], "sync",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_UNMAP], "unmap",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_SSU], "ssu",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_PROTOCOL_IN], "protocol_in",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_PROTOCOL_OUT], "protocol_out",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_ZBC_IN], "zbc_in: report_zone",
-		MAX_EVENT_STR_LEN);
-	strncpy(ufs->cmd_log.cmd_str[CMD_SCSI_ZBC_OUT], "zbc_out: zone_reset",
-		MAX_EVENT_STR_LEN);
 
 	ufs->enable_cmd_log = 0;
 
@@ -536,10 +494,9 @@ static struct pixel_cmd_log_entry *__get_log_entry(struct ufs_hba *hba)
 static void __set_cmd_log_str(struct ufs_hba *hba, enum pixel_event_type event,
 			      u8 opcode, struct pixel_cmd_log_entry *entry)
 {
-	struct pixel_ufs *ufs = to_pixel_ufs(hba);
 	enum pixel_command_type cmd_type = CMD_UNDEF;
 
-	entry->event = ufs->cmd_log.event_str[event];
+	entry->event = ufs_event_str[event];
 	switch (event) {
 	case EVENT_DME_SEND:
 	case EVENT_DME_COMPL:
@@ -600,12 +557,11 @@ static void __set_cmd_log_str(struct ufs_hba *hba, enum pixel_event_type event,
 	case EVENT_INTR_UIC_ERR:
 	case EVENT_INTR_H8_ERR:
 	case EVENT_UNDEF:
-	case EVENT_TYPE_MAX:
 		break;
 	}
 
-	if (cmd_type > 0 && cmd_type < CMD_TYPE_MAX)
-		entry->cmd = ufs->cmd_log.cmd_str[cmd_type];
+	if (cmd_type > 0 && cmd_type < ARRAY_SIZE(ufs_cmd_str))
+		entry->cmd = ufs_cmd_str[cmd_type];
 	else
 		entry->cmd = 0;
 }
@@ -621,7 +577,7 @@ static void __store_cmd_log(struct ufs_hba *hba, enum pixel_event_type event,
 		return;
 
 	entry = __get_log_entry(hba);
-	if (!entry || event >= EVENT_TYPE_MAX)
+	if (!entry || event >= ARRAY_SIZE(ufs_event_str))
 		return;
 
 	__set_cmd_log_str(hba, event, opcode, entry);
@@ -2073,9 +2029,6 @@ int pixel_init(struct ufs_hba *hba, struct device *pdev,
 void pixel_exit(struct ufs_hba *hba)
 {
 	struct pixel_ufs *ufs = to_pixel_ufs(hba);
-	int i;
 
 	devm_kfree(ufs->dev, ufs->cmd_log.entry);
-	for (i = 0; i < EVENT_TYPE_MAX; i++)
-		devm_kfree(ufs->dev, ufs->cmd_log.event_str);
 }
