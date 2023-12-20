@@ -80,7 +80,6 @@ struct sugov_cpu {
 	unsigned int		iowait_boost;
 	u64			last_update;
 
-	unsigned long           util;
 	unsigned long		bw_dl;
 	unsigned long		max;
 
@@ -583,17 +582,17 @@ unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
 	return min(max, util);
 }
 
-static void __always_inline
+static unsigned long __always_inline
 sugov_get_util(struct sugov_cpu *sg_cpu)
 {
 	struct rq *rq = cpu_rq(sg_cpu->cpu);
+	unsigned long util = cpu_util_cfs_group_mod(sg_cpu->cpu);
 	unsigned long max = arch_scale_cpu_capacity(sg_cpu->cpu);
 
 	sg_cpu->max = max;
 	sg_cpu->bw_dl = cpu_bw_dl(rq);
 
-	sg_cpu->util = schedutil_cpu_util_pixel_mod(sg_cpu->cpu,
-			cpu_util_cfs_group_mod(sg_cpu->cpu), max, FREQUENCY_UTIL, NULL);
+	return schedutil_cpu_util_pixel_mod(sg_cpu->cpu, util, max, FREQUENCY_UTIL, NULL);
 }
 
 /**
@@ -670,6 +669,8 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
  * sugov_iowait_apply() - Apply the IO boost to a CPU.
  * @sg_cpu: the sugov data for the cpu to boost
  * @time: the update time from the caller
+ * @util: the utilization to (eventually) boost
+ * @max: the maximum value the utilization can be boosted to
  *
  * A CPU running a task which woken up after an IO operation can have its
  * utilization boosted to speed up the completion of those IO operations.
@@ -683,17 +684,18 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
  * This mechanism is designed to boost high frequently IO waiting tasks, while
  * being more conservative on tasks which does sporadic IO operations.
  */
-static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time)
+static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
+					unsigned long util, unsigned long max)
 {
 	unsigned long boost;
 
 	/* No boost currently required */
 	if (!sg_cpu->iowait_boost)
-		return;
+		return util;
 
 	/* Reset boost if the CPU appears to have been idle enough */
 	if (sugov_iowait_reset(sg_cpu, time, false))
-		return;
+		return util;
 
 	if (!sg_cpu->iowait_boost_pending) {
 		/*
@@ -702,19 +704,21 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time)
 		sg_cpu->iowait_boost >>= 1;
 		if (sg_cpu->iowait_boost < IOWAIT_BOOST_MIN) {
 			sg_cpu->iowait_boost = 0;
-			return;
+			return util;
 		}
 	}
 
 	sg_cpu->iowait_boost_pending = false;
 
 	/*
-	 * sg_cpu->util is already in capacity scale; convert iowait_boost
+	 * @util is already in capacity scale; convert iowait_boost
 	 * into the same scale so we can compare.
 	 */
-	boost = (sg_cpu->iowait_boost * sg_cpu->max) >> SCHED_CAPACITY_SHIFT;
-	boost = max(boost, sg_cpu->util);
-	sg_cpu->util = uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost, NULL);
+	boost = (sg_cpu->iowait_boost * max) >> SCHED_CAPACITY_SHIFT;
+	boost = max(boost, util);
+	boost = uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost, NULL);
+
+	return boost;
 }
 
 #if IS_ENABLED(USE_UPDATE_SINGLE)
@@ -748,6 +752,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 {
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
+	unsigned long util, max;
 	unsigned int next_f;
 	bool busy;
 
@@ -768,13 +773,13 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	/* Limits may have changed, don't skip frequency update */
 	busy = !sg_policy->need_freq_update && sugov_cpu_is_busy(sg_cpu);
 
-	sugov_get_util(sg_cpu);
+	util = sugov_get_util(sg_cpu);
+	max = sg_cpu->max;
 
-	trace_sugov_util_update(sg_cpu->cpu, sg_cpu->util, sg_cpu->max, flags);
+	trace_sugov_util_update(sg_cpu->cpu, util, max, flags);
 
-	sugov_iowait_apply(sg_cpu, time);
-	next_f = get_next_freq(sg_policy, sg_cpu->util, sg_cpu->max);
-
+	util = sugov_iowait_apply(sg_cpu, time, util, max);
+	next_f = get_next_freq(sg_policy, util, max);
 	/*
 	 * Do not reduce the frequency if the CPU has not been idle
 	 * recently, as the reduction is likely to be premature then.
@@ -814,11 +819,9 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
 		unsigned long j_util, j_max;
 
-		sugov_get_util(j_sg_cpu);
-		sugov_iowait_apply(j_sg_cpu, time);
-		j_util = j_sg_cpu->util;
+		j_util = sugov_get_util(j_sg_cpu);
 		j_max = j_sg_cpu->max;
-
+		j_util = sugov_iowait_apply(j_sg_cpu, time, j_util, j_max);
 		if (update_pmu_limit)
 			update_pmu_limit = update_pmu_throttle_on_ignored_cpus(sg_policy, j_util,
 							      policy->cpuinfo.max_freq, j_max, j);
@@ -857,8 +860,10 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	if (sugov_should_update_freq(sg_policy, time)) {
 		next_f = sugov_next_freq_shared(sg_cpu, time);
 
-		if (trace_sugov_util_update_enabled())
-			trace_sugov_util_update(sg_cpu->cpu, sg_cpu->util, sg_cpu->max, flags);
+		if (trace_sugov_util_update_enabled()) {
+			unsigned long util = sugov_get_util(sg_cpu);
+			trace_sugov_util_update(sg_cpu->cpu, util, sg_cpu->max, flags);
+		}
 
 		if (sg_policy->policy->fast_switch_enabled)
 			sugov_fast_switch(sg_policy, time, next_f);
@@ -1069,8 +1074,7 @@ static void pmu_limit_work(struct kthread_work *work)
 
 			if (!check_pmu_limit_conditions(lcpi, spc, sg_policy)) {
 				sg_cpu = &per_cpu(sugov_cpu, ccpu);
-				sugov_get_util(sg_cpu);
-				freq = map_util_freq_pixel_mod(sg_cpu->util,
+				freq = map_util_freq_pixel_mod(sugov_get_util(sg_cpu),
 					policy->cpuinfo.max_freq, sg_cpu->max);
 				// Ignore this cpu if freq is <= limit freq.
 				if (freq <= sg_policy->tunables->limit_frequency) {
