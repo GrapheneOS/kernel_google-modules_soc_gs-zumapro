@@ -10,6 +10,7 @@
 #include <linux/soc/samsung/exynos-smc.h>
 #include <trace/hooks/ufshcd.h>
 #include "ufs-exynos-gs.h"
+#include "ufs-pixel-crypto.h"
 #include "ufs-pixel-fips.h"
 
 #define HSI2_KDN_CONTROL_MONITOR	0x400	/* offset from HSI2 base */

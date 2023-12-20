@@ -24,8 +24,6 @@
 static void pixel_ufs_crypto_restore_keys(void *unused, struct ufs_hba *hba,
 					  int *err);
 
-#define CRYPTO_DATA_UNIT_SIZE 4096
-
 /*
  * Format of UFS PRDT entries when the KDN is enabled and the PRDT-based
  * descriptor mode is enabled.  In this mode, when the data in a UFS request
