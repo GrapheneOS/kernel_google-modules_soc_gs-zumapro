@@ -36,6 +36,9 @@
 #define MASK_BULK_VAL			MASK_BYTE
 #define MASK_CHANNEL			(0xF)
 
+/* Define transfer limit */
+#define BULK_TRANSFER_LIMIT		(8)
+
 /* Command */
 #define set_protocol(data, protocol)					\
 		(((data) & MASK_##protocol) << SHIFT_##protocol)
