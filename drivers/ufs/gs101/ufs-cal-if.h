@@ -90,6 +90,11 @@ struct ufs_cal_param {
 	u32 mclk_period;
 	u32 mclk_period_rnd_off;
 	u32 mclk_period_unipro_18;
+
+	/* AH8 */
+	u32 support_ah8_cal;
+	u32 ah8_thinern8_time;
+	u32 ah8_brefclkgatingwaittime;
 };
 
 enum ufs_cal_errno {
