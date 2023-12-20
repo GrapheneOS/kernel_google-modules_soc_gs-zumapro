@@ -493,7 +493,7 @@ free_gsc:
 	return ret;
 }
 
-static int gsc_remove(struct spi_device *spi)
+static void gsc_remove(struct spi_device *spi)
 {
 	struct gsc_data *gsc = spi_get_drvdata(spi);
 
@@ -502,8 +502,6 @@ static int gsc_remove(struct spi_device *spi)
 	free_pages((unsigned long)gsc->rx_buf, get_order(MAX_DATA_SIZE));
 	free_pages((unsigned long)gsc->tx_buf, get_order(MAX_DATA_SIZE));
 	kfree(gsc);
-
-	return 0;
 }
 
 static struct spi_driver gsc_spi_driver = {
