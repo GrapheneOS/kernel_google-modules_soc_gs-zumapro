@@ -533,11 +533,11 @@ static struct pixel_cmd_log_entry *__get_log_entry(struct ufs_hba *hba)
 	return entry;
 }
 
-static void __set_cmd_log_str(struct ufs_hba *hba, u8 event, u8 opcode,
-		struct pixel_cmd_log_entry *entry)
+static void __set_cmd_log_str(struct ufs_hba *hba, enum pixel_event_type event,
+			      u8 opcode, struct pixel_cmd_log_entry *entry)
 {
 	struct pixel_ufs *ufs = to_pixel_ufs(hba);
-	u8 cmd_type = 0;
+	enum pixel_command_type cmd_type = CMD_UNDEF;
 
 	entry->event = ufs->cmd_log.event_str[event];
 	switch (event) {
@@ -589,6 +589,19 @@ static void __set_cmd_log_str(struct ufs_hba *hba, u8 event, u8 opcode,
 			cmd_type = CMD_SCSI_ZBC_OUT; break;
 		}
 		break;
+	case EVENT_NOP_OUT:
+	case EVENT_NOP_IN:
+	case EVENT_QUERY_SEND:
+	case EVENT_QUERY_COMPL:
+	case EVENT_TM_SEND:
+	case EVENT_TM_ERR:
+	case EVENT_TM_COMPL:
+	case EVENT_INTR_FATAL_ERR:
+	case EVENT_INTR_UIC_ERR:
+	case EVENT_INTR_H8_ERR:
+	case EVENT_UNDEF:
+	case EVENT_TYPE_MAX:
+		break;
 	}
 
 	if (cmd_type > 0 && cmd_type < CMD_TYPE_MAX)
@@ -597,8 +610,8 @@ static void __set_cmd_log_str(struct ufs_hba *hba, u8 event, u8 opcode,
 		entry->cmd = 0;
 }
 
-static void __store_cmd_log(struct ufs_hba *hba, u8 event, u8 lun,
-		u8 opcode, u8 idn, sector_t sector, int affected_bytes,
+static void __store_cmd_log(struct ufs_hba *hba, enum pixel_event_type event,
+		u8 lun, u8 opcode, u8 idn, sector_t sector, int affected_bytes,
 		u8 group_id, int tag, u64 error, u8 queue_eh_work)
 {
 	struct pixel_ufs *ufs = to_pixel_ufs(hba);
@@ -651,7 +664,8 @@ static void pixel_ufs_trace_fdeviceinit(struct ufs_hba *hba,
 static void pixel_ufs_trace_upiu_cmd(struct ufs_hba *hba,
 		struct ufshcd_lrb *lrbp, bool is_start)
 {
-	u8 event = 0, lun = 0, opcode = 0, idn = 0, tag = 0, group_id = 0;
+	u8 lun = 0, opcode = 0, idn = 0, tag = 0, group_id = 0;
+	enum pixel_event_type event = EVENT_UNDEF;
 	sector_t sector = 0;
 	int affected_bytes = 0;
 
@@ -688,7 +702,7 @@ static void pixel_ufs_trace_upiu_cmd(struct ufs_hba *hba,
 static void pixel_ufs_send_uic_command(void *data, struct ufs_hba *hba,
 				const struct uic_command *ucmd, int str_t)
 {
-	u8 event = 0;
+	enum pixel_event_type event = EVENT_UNDEF;
 	u8 opcode = (ucmd) ? ucmd->command : 0xFF;
 
 	if (str_t == UFS_CMD_SEND)
@@ -704,7 +718,7 @@ static void pixel_ufs_send_uic_command(void *data, struct ufs_hba *hba,
 static void pixel_ufs_send_tm_command(void *data, struct ufs_hba *hba,
 				int tag, int str_t)
 {
-	u8 event = 0;
+	enum pixel_event_type event = EVENT_UNDEF;
 
 	if (str_t == UFS_TM_SEND)
 		event = EVENT_TM_SEND;
@@ -716,13 +730,13 @@ static void pixel_ufs_send_tm_command(void *data, struct ufs_hba *hba,
 		event = EVENT_UNDEF;
 
 	__store_cmd_log(hba, event, 0, 0, 0, 0, 0, 0, tag,
-			((event == EVENT_TM_ERR) ? 1 : 0), 0);
+			event == EVENT_TM_ERR, 0);
 }
 
 static void pixel_ufs_check_int_errors(void *data, struct ufs_hba *hba,
 				bool queue_eh_work)
 {
-	u8 event = 0;
+	enum pixel_event_type event = EVENT_UNDEF;
 	u32 status = 0;
 
 	if (!queue_eh_work)
