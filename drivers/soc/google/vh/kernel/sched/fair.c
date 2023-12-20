@@ -39,6 +39,8 @@ extern int vendor_sched_ug_bg_auto_prio;
 extern unsigned int vendor_sched_util_post_init_scale;
 extern bool vendor_sched_npi_packing;
 extern bool vendor_sched_boost_adpf_prio;
+extern unsigned int sysctl_sched_min_granularity;
+extern unsigned int sysctl_sched_idle_min_granularity;
 
 static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
@@ -101,36 +103,23 @@ static void attach_one_task(struct rq *rq, struct task_struct *p)
 	rq_unlock(rq, &rf);
 }
 
-#if !IS_ENABLED(CONFIG_64BIT)
 static inline u64 cfs_rq_last_update_time(struct cfs_rq *cfs_rq)
 {
-	u64 last_update_time_copy;
-	u64 last_update_time;
+	return u64_u32_load_copy(cfs_rq->avg.last_update_time,
+				 cfs_rq->last_update_time_copy);
+}
 
-	do {
-		last_update_time_copy = cfs_rq->load_last_update_time_copy;
-		smp_rmb();
-		last_update_time = cfs_rq->avg.last_update_time;
-	} while (last_update_time != last_update_time_copy);
-
-	return last_update_time;
+#ifdef CONFIG_UCLAMP_TASK
+static inline unsigned long uclamp_task_util(struct task_struct *p,
+					     unsigned long uclamp_min,
+					     unsigned long uclamp_max)
+{
+	return clamp(task_util_est(p), uclamp_min, uclamp_max);
 }
 #else
-static inline u64 cfs_rq_last_update_time(struct cfs_rq *cfs_rq)
-{
-	return cfs_rq->avg.last_update_time;
-}
-#endif
-
-#if IS_ENABLED(CONFIG_UCLAMP_TASK)
-static inline unsigned long uclamp_task_util(struct task_struct *p)
-{
-	return clamp(task_util_est(p),
-		     uclamp_eff_value_pixel_mod(p, UCLAMP_MIN),
-		     uclamp_eff_value_pixel_mod(p, UCLAMP_MAX));
-}
-#else
-static inline unsigned long uclamp_task_util(struct task_struct *p)
+static inline unsigned long uclamp_task_util(struct task_struct *p,
+					     unsigned long uclamp_min,
+					     unsigned long uclamp_max)
 {
 	return task_util_est(p);
 }
@@ -191,22 +180,25 @@ static void __update_inv_weight(struct load_weight *lw)
 static u64 __calc_delta(u64 delta_exec, unsigned long weight, struct load_weight *lw)
 {
 	u64 fact = scale_load_down(weight);
+	u32 fact_hi = (u32)(fact >> 32);
 	int shift = WMULT_SHIFT;
+	int fs;
 
 	__update_inv_weight(lw);
 
-	if (unlikely(fact >> 32)) {
-		while (fact >> 32) {
-			fact >>= 1;
-			shift--;
-		}
+	if (unlikely(fact_hi)) {
+		fs = fls(fact_hi);
+		shift -= fs;
+		fact >>= fs;
 	}
 
 	fact = mul_u32_u32(fact, lw->inv_weight);
 
-	while (fact >> 32) {
-		fact >>= 1;
-		shift--;
+	fact_hi = (u32)(fact >> 32);
+	if (fact_hi) {
+		fs = fls(fact_hi);
+		shift -= fs;
+		fact >>= fs;
 	}
 
 	return mul_u64_u32_shr(delta_exec, fact, shift);
@@ -217,35 +209,83 @@ static u64 __sched_period(unsigned long nr_running);
 #define for_each_sched_entity(se) \
 		for (; se; se = se->parent)
 
+#ifdef CONFIG_FAIR_GROUP_SCHED
+static int cfs_rq_is_idle(struct cfs_rq *cfs_rq)
+{
+	return cfs_rq->idle > 0;
+}
+
+static int se_is_idle(struct sched_entity *se)
+{
+	if (entity_is_task(se))
+		return task_has_idle_policy(task_of(se));
+	return cfs_rq_is_idle(group_cfs_rq(se));
+}
+#else
+static int cfs_rq_is_idle(struct cfs_rq *cfs_rq)
+{
+	return 0;
+}
+
+static int se_is_idle(struct sched_entity *se)
+{
+	return 0;
+}
+#endif
+
+static bool sched_idle_cfs_rq(struct cfs_rq *cfs_rq)
+{
+	return cfs_rq->nr_running &&
+		cfs_rq->nr_running == cfs_rq->idle_nr_running;
+}
+
 u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
-	u64 slice = __sched_period(cfs_rq->nr_running + !se->on_rq);
+	unsigned int nr_running = cfs_rq->nr_running;
+	struct sched_entity *init_se = se;
+	unsigned int min_gran;
+	u64 slice;
+
+	if (sched_feat(ALT_PERIOD))
+		nr_running = rq_of(cfs_rq)->cfs.h_nr_running;
+
+	slice = __sched_period(nr_running + !se->on_rq);
 
 	for_each_sched_entity(se) {
 		struct load_weight *load;
 		struct load_weight lw;
+		struct cfs_rq *qcfs_rq;
 
-		cfs_rq = cfs_rq_of(se);
-		load = &cfs_rq->load;
+		qcfs_rq = cfs_rq_of(se);
+		load = &qcfs_rq->load;
 
 		if (unlikely(!se->on_rq)) {
-			lw = cfs_rq->load;
+			lw = qcfs_rq->load;
 
 			update_load_add(&lw, se->load.weight);
 			load = &lw;
 		}
 		slice = __calc_delta(slice, se->load.weight, load);
 	}
+
+	if (sched_feat(BASE_SLICE)) {
+		if (se_is_idle(init_se) && !sched_idle_cfs_rq(cfs_rq))
+			min_gran = sysctl_sched_idle_min_granularity;
+		else
+			min_gran = sysctl_sched_min_granularity;
+
+		slice = max_t(u64, slice, min_gran);
+	}
+
 	return slice;
 }
 
 void set_next_buddy(struct sched_entity *se)
 {
-	if (entity_is_task(se) && unlikely(task_has_idle_policy(task_of(se))))
-		return;
-
 	for_each_sched_entity(se) {
 		if (SCHED_WARN_ON(!se->on_rq))
+			return;
+		if (se_is_idle(se))
 			return;
 		cfs_rq_of(se)->next = se;
 	}
@@ -460,7 +500,7 @@ prio_changed_fair(struct rq *rq, struct task_struct *p, int oldprio)
 	 * our priority decreased, or if we are not currently running on
 	 * this runqueue and our priority is higher than the current's
 	 */
-	if (rq->curr == p) {
+	if (task_current(rq, p)) {
 		if (p->prio > oldprio)
 			resched_curr(rq);
 	} else
@@ -1478,21 +1518,6 @@ static void get_uclamp_on_nice(struct task_struct *p, enum uclamp_id clamp_id,
  * This part of code is vendor hook functions, which modify or extend the original
  * functions.
  */
-
-/*
- * To avoid export more and more sysctl from GKI kernel,
- * use following setting directly dumped from running Android
- * and also assume the setting is not changed in runtime.
- *
- * sysctl_sched
- * .sysctl_sched_latency                    : 10.000000
- * .sysctl_sched_min_granularity            : 3.000000
- * .sysctl_sched_wakeup_granularity         : 2.000000
- * .sysctl_sched_child_runs_first           : 0
- * .sysctl_sched_features                   : 33477435
- * .sysctl_sched_tunable_scaling            : 0 (none)
- */
-#define sysctl_sched_min_granularity 3000000ULL
 
 static u64 __sched_period(unsigned long nr_running)
 {
@@ -2851,7 +2876,8 @@ void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p,
 	if (!pd)
 		goto out;
 
-	task_util = uclamp_task_util(p);
+	task_util = uclamp_task_util(p, uclamp_eff_value_pixel_mod(p, UCLAMP_MIN),
+				     uclamp_eff_value_pixel_mod(p, UCLAMP_MAX));
 
 	for (; pd; pd = pd->next) {
 		cpumask_and(&cluster, p->cpus_ptr, perf_domain_span(pd));
