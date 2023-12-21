@@ -126,6 +126,8 @@ EXPORT_SYMBOL_GPL(pixel_cluster_num);
 EXPORT_SYMBOL_GPL(pixel_cluster_start_cpu);
 EXPORT_SYMBOL_GPL(pixel_cpu_init);
 
+DEFINE_STATIC_KEY_FALSE(enqueue_dequeue_ready);
+
 /*
  * @tsk: Remote task we want to access its info
  * @saved_nice: Pointer to save the old nice value if we inherited a new one.
@@ -332,15 +334,15 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_rvh_dequeue_task(rvh_dequeue_task_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
 	ret = register_trace_android_rvh_enqueue_task(rvh_enqueue_task_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_rvh_dequeue_task_fair(rvh_dequeue_task_fair_pixel_mod, NULL);
+	ret = register_trace_android_rvh_dequeue_task(rvh_dequeue_task_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_can_migrate_task(rvh_can_migrate_task_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
@@ -348,9 +350,11 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_rvh_can_migrate_task(rvh_can_migrate_task_pixel_mod, NULL);
+	ret = register_trace_android_rvh_dequeue_task_fair(rvh_dequeue_task_fair_pixel_mod, NULL);
 	if (ret)
 		return ret;
+
+	static_branch_enable(&enqueue_dequeue_ready);
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	ret = register_trace_android_rvh_attach_entity_load_avg(
