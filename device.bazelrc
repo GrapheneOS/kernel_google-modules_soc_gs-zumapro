@@ -55,3 +55,12 @@ try-import %workspace%/.d4.bazelrc
 try-import %workspace%/.d5.bazelrc
 try-import %workspace%/.d6.bazelrc
 try-import %workspace%/.d7.bazelrc
+try-import %workspace%/.d8.bazelrc
+try-import %workspace%/.d9.bazelrc
+try-import %workspace%/.d10.bazelrc
+try-import %workspace%/.d11.bazelrc
+try-import %workspace%/.d12.bazelrc
+try-import %workspace%/.d13.bazelrc
+try-import %workspace%/.d14.bazelrc
+try-import %workspace%/.d15.bazelrc
+try-import %workspace%/.d16.bazelrc
