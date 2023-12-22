@@ -836,12 +836,29 @@ static const struct of_device_id eusb_repeater_match_table[] = {
 		{},
 };
 
+void eusb_repeater_update_usb_state(bool data_enabled)
+{
+	struct eusb_repeater_data *tud = g_tud;
+
+	if (!tud)
+		return;
+
+	tud->eusb_data_enabled = data_enabled;
+	if (tud->eusb_pm_status && !tud->eusb_data_enabled)
+		eusb_repeater_ctrl(false);
+
+	return;
+}
+EXPORT_SYMBOL_GPL(eusb_repeater_update_usb_state);
+
 int eusb_repeater_power_off(void)
 {
 	struct eusb_repeater_data *tud = g_tud;
 
 	if (!tud)
 		return -EEXIST;
+
+	tud->eusb_data_enabled = false;
 
 	return eusb_repeater_ctrl(false);
 }
@@ -902,6 +919,8 @@ int eusb_repeater_power_on(void)
 			 tud->tune_param[i].value);
 
 	}
+
+	tud->eusb_data_enabled = true;
 
 	return 0;
 err:
@@ -1030,6 +1049,7 @@ static int eusb_repeater_probe(struct i2c_client *client,
 	 * eusb_repeater_power_on();
 	 */
 
+	tud->eusb_pm_status = true;
 	return 0;
 
 err_pinctrl:
@@ -1065,11 +1085,21 @@ static int eusb_repeater_remove(struct i2c_client *client)
 #if IS_ENABLED(CONFIG_PM)
 static int eusb_repeater_suspend(struct device *dev)
 {
+	struct eusb_repeater_data *tud = dev_get_drvdata(dev);
+
+	tud->eusb_pm_status = false;
 	return 0;
 }
 
 static int eusb_repeater_resume(struct device *dev)
 {
+	struct eusb_repeater_data *tud = dev_get_drvdata(dev);
+
+	tud->eusb_pm_status = true;
+
+        if (regulator_is_enabled(tud->vdd33) && !tud->eusb_data_enabled)
+		eusb_repeater_ctrl(false);
+
 	return 0;
 }
 #else

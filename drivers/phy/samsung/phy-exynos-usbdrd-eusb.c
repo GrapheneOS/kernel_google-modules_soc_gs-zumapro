@@ -1908,7 +1908,9 @@ int exynos_usbdrd_ldo_manual_control(bool on)
 	if (on) {
 		if (extcon_get_state(phy_drd->edev, EXTCON_USB) <= 0 &&
 		    extcon_get_state(phy_drd->edev, EXTCON_USB_HOST) <= 0)
-			eusb_repeater_power_off();
+			eusb_repeater_update_usb_state(false);
+		else
+			eusb_repeater_update_usb_state(true);
 	}
 #endif
 
