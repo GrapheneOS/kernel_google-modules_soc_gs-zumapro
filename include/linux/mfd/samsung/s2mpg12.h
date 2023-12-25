@@ -1,70 +1,73 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * include/linux/mfd/samsung/s2mpg10.h
+ * s2mpg12.h
  *
  * Copyright (C) 2016 Samsung Electrnoics
  *
- * Driver for the s2mpg10
+ * Driver for the s2mpg12
  */
 
-#ifndef __S2MPG10_MFD_H__
-#define __S2MPG10_MFD_H__
+#ifndef __S2MPG12_MFD_H__
+#define __S2MPG12_MFD_H__
 
 #include <linux/platform_device.h>
 #include <linux/thermal.h>
 #include <linux/regmap.h>
 
 #include "s2mpg1x-register.h"
-#include "s2mpg10-meter.h"
+#include "s2mpg12-meter.h"
 
-#define S2MPG10_MFD_DEV_NAME "s2mpg10"
+#define S2MPG12_MFD_DEV_NAME "s2mpg12"
 
 /**
  * sec_regulator_data - regulator data
  * @id: regulator id
  * @initdata: regulator init data (constraints, supplies, ...)
  */
-struct s2mpg10_regulator_data {
+struct s2mpg12_regulator_data {
 	int id;
 	struct regulator_init_data *initdata;
 	struct device_node *reg_node;
 };
 
-enum s2mpg10_irq_source {
-	S2MPG10_PMIC_INT1 = 0,
-	S2MPG10_PMIC_INT2,
-	S2MPG10_PMIC_INT3,
-	S2MPG10_PMIC_INT4,
-	S2MPG10_PMIC_INT5,
-	S2MPG10_PMIC_INT6,
+enum s2mpg12_irq_source {
+	S2MPG12_IRQS_PMIC_INT1 = 0,
+	S2MPG12_IRQS_PMIC_INT2,
+	S2MPG12_IRQS_PMIC_INT3,
+	S2MPG12_IRQS_PMIC_INT4,
+	S2MPG12_IRQS_PMIC_INT5,
+	S2MPG12_IRQS_METER_INT1,
+	S2MPG12_IRQS_METER_INT2,
 
-	S2MPG10_IRQ_GROUP_NR,
+	S2MPG12_IRQ_GROUP_NR,
 };
 
-#define S2MPG10_NUM_IRQ_PMIC_REGS 6
+#define S2MPG12_NUM_IRQ_PMIC_REGS	5
+#define S2MPG12_NUM_IRQ_METER_REGS	2
 
-enum s2mpg10_device_type {
-	S2MPG10X,
+enum s2mpg12_device_type {
+	S2MPG12X,
 };
 
-enum s2mpg10_types {
-	TYPE_S2MPG10,
+enum s2mpg12_types {
+	TYPE_S2MPG12,
 };
 
-struct s2mpg10_platform_data {
+struct s2mpg12_platform_data {
+	/* Device Data */
+	int device_type;
+
 	/* IRQ */
 	int irq_base;
-	int irq_gpio;
 	bool wakeup;
 
-	int num_regulators;
-	struct s2mpg10_regulator_data *regulators;
-	struct sec_opmode_data *opmode;
-	struct mfd_cell *sub_devices;
-	int num_subdevs;
+	/* VGPIO */
+	u32 *sel_vgpio;
 
-	int device_type;
-	int buck_ramp_delay;
+	/* Regulator */
+	int num_regulators;
+	struct s2mpg12_regulator_data *regulators;
+	struct sec_opmode_data *opmode;
 
 	int smpl_warn_pin;
 	unsigned int smpl_warn_lvl;
@@ -124,41 +127,55 @@ struct s2mpg10_platform_data {
 	void *meter;
 };
 
-struct s2mpg10_dev {
+struct s2mpg12_dev {
+	/* Device Data */
 	struct device *dev;
+	struct s2mpg12_platform_data *pdata;
+	struct regmap *regmap;
+	int device_type;
+	int type;
+
+	/* pmic VER/REV register */
+	enum S2MPG12_pmic_rev pmic_rev; /* pmic Rev */
+
+	/* I2C Client */
 	struct i2c_client *i2c;
 	struct i2c_client *pmic;
 	struct i2c_client *rtc;
 	struct i2c_client *meter;
 	struct i2c_client *wlwp;
+	struct i2c_client *gpio;
+	struct i2c_client *mt_trim;
 	struct i2c_client *trim;
-
-	/* mutex for s2mpg10 speedy read/write */
+	/* mutex for i2c */
 	struct mutex i2c_lock;
-	int type;
-	int device_type;
+
+	/* IRQ */
 	int irq;
 	int irq_base;
-	int irq_gpio;
 	bool wakeup;
 
-	/* mutex for s2mpg10 irq handling */
+	/* VGPIO_RX_MONITOR */
+	void __iomem *mem_base;
+
+	/* VGPIO_INTC0_IPEND */
+	void __iomem *sysreg_pending;
+
+	/* mutex for s2mpg12 irq handling */
 	struct mutex irqlock;
-	int irq_masks_cur[S2MPG10_IRQ_GROUP_NR];
-	int irq_masks_cache[S2MPG10_IRQ_GROUP_NR];
+	int irq_masks_cur[S2MPG12_IRQ_GROUP_NR];
+	int irq_masks_cache[S2MPG12_IRQ_GROUP_NR];
 
-	/* pmic VER/REV register */
-	u8 pmic_rev; /* pmic Rev */
-
-	struct s2mpg10_platform_data *pdata;
-	struct regmap *regmap;
+	/* Work queue */
+	struct workqueue_struct *irq_wqueue;
+	struct delayed_work irq_work;
 };
 
-struct s2mpg10_pmic {
-	struct s2mpg10_dev *iodev;
+struct s2mpg12_pmic {
+	struct s2mpg12_dev *iodev;
 	struct i2c_client *i2c;
 
-	/* mutex for s2mpg10 regulator */
+	/* mutex for s2mpg12 regulator */
 	struct mutex lock;
 	struct regulator_dev **rdev;
 	unsigned int *opmode;
@@ -170,26 +187,24 @@ struct s2mpg10_pmic {
 	int soft_cpu2_ocp_warn_irq;
 	int tpu_ocp_warn_irq;
 	int soft_tpu_ocp_warn_irq;
-	atomic_t *need_sync;
-	bool *turn_off_on_sync;
 #if IS_ENABLED(CONFIG_DRV_SAMSUNG_PMIC)
 	struct device *dev;
 	u16 read_addr;
 #endif
 };
 
-int s2mpg10_irq_init(struct s2mpg10_dev *s2mpg10);
-void s2mpg10_irq_exit(struct s2mpg10_dev *s2mpg10);
+int s2mpg12_irq_init(struct s2mpg12_dev *s2mpg12);
+void s2mpg12_irq_exit(struct s2mpg12_dev *s2mpg12);
+void s2mpg13_call_notifier(void);
 
-/* S2MPG10 shared i2c API function */
-int s2mpg10_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest);
-int s2mpg10_bulk_read(struct i2c_client *i2c, u8 reg, int count, u8 *buf);
-int s2mpg10_write_reg(struct i2c_client *i2c, u8 reg, u8 value);
-int s2mpg10_bulk_write(struct i2c_client *i2c, u8 reg, int count, u8 *buf);
-int s2mpg10_write_word(struct i2c_client *i2c, u8 reg, u16 value);
-int s2mpg10_read_word(struct i2c_client *i2c, u8 reg);
-int s2mpg10_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask);
+/* S2MPG12 shared i2c API function */
+int s2mpg12_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest);
+int s2mpg12_bulk_read(struct i2c_client *i2c, u8 reg, int count, u8 *buf);
+int s2mpg12_write_reg(struct i2c_client *i2c, u8 reg, u8 value);
+int s2mpg12_bulk_write(struct i2c_client *i2c, u8 reg, int count, u8 *buf);
+int s2mpg12_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask);
 
-u8 s2mpg10_get_rev_id(void);
+u8 s2mpg12_get_rev_id(void);
+int pmic_read_pwrkey_status(void);
 
-#endif /* __S2MPG10_MFD_H__ */
+#endif /* __S2MPG12_MFD_H__ */

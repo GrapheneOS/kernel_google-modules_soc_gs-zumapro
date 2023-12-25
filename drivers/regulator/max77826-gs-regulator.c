@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/delay.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/regulator/driver.h>
 #include <linux/slab.h>
 #include <linux/of_gpio.h>
