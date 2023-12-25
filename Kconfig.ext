@@ -40,7 +40,13 @@ source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/power/Kconfig"
 
+if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/thermal/Kconfig"
+endif
+
+if SOC_GS101
+source "$(KCONFIG_EXT_PREFIX)drivers/thermal-whi/Kconfig"
+endif
 
 source "$(KCONFIG_EXT_PREFIX)drivers/watchdog/Kconfig"
 
