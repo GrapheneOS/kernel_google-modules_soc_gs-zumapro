@@ -14,7 +14,11 @@
 #include <linux/io.h>
 #include <dt-bindings/soc/google/gs-bts.h>
 
+#if IS_ENABLED(CONFIG_SOC_GS101)
+#include "regs-btsgs101.h"
+#else
 #include "regs-btsgs.h"
+#endif
 #include "bts.h"
 
 /****************************************************************
