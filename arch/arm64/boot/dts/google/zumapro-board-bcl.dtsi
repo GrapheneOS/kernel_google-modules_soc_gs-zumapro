@@ -60,6 +60,7 @@
 				cpu1_cluster = <4>;
 				cpu2_cluster = <7>;
 				odpm_ratio = <3>;
+				non_monitored_module_ids = <AUDIO_MITIGATION_ID HAPTICS_MITIGATION_ID>;
 
 				irq_config {
 					irq,uvlo1;
@@ -107,6 +108,106 @@
 					ch10 { setting = <125>; };
 					ch11 { setting = <166>; };
 					ch12 { setting = <166>; };
+				};
+				main_mitigation {
+					ch1 {
+						module_id = <MIF_MITIGATION_ID>;
+						threshold = <145600>; // ODPM LPF RAW
+					};
+					ch2 {
+						module_id = <CPU_MID_MITIGATION_ID>;
+						threshold = <109200>;
+					};
+					ch3 {
+						module_id = <CPU_BIG_MITIGATION_ID>;
+						threshold = <97067>;
+					};
+					ch4 {
+						module_id = <CPU_LITTLE_MITIGATION_ID>;
+						threshold = <72800>;
+					};
+					ch5 {
+						module_id = <INT_MITIGATION_ID>;
+						threshold = <72800>;
+					};
+					ch6 {
+						module_id = <LDO_MITIGATION_ID>;
+						threshold = <218400>;
+					};
+					ch7 {
+						module_id = <TPU_MITIGATION_ID>;
+						threshold = <72800>;
+					};
+					ch8 {
+						module_id = <LDO_MITIGATION_ID>;
+						threshold = <218400>;
+					};
+					ch9 {
+						module_id = <CPU_MID_MITIGATION_ID>;
+						threshold = <218400>;
+					};
+					ch10 {
+						module_id = <DISPLAY_MITIGATION_ID>;
+						threshold = <107321>;
+					};
+					ch11 {
+						module_id = <CAMERA_MITIGATION_ID>;
+						threshold = <107321>;
+					};
+					ch12 {
+						module_id = <CELLULAR_MITIGATION_ID>;
+						threshold = <107321>;
+					};
+				};
+				sub_mitigation {
+					ch1 {
+						module_id = <CAMERA_MITIGATION_ID>;
+						threshold = <109200>; // ODPM LPF RAW
+					};
+					ch2 {
+						module_id = <GPU_MITIGATION_ID>;
+						threshold = <145600>;
+					};
+					ch3 {
+						module_id = <DDR_MITIGATION_ID>;
+						threshold = <145600>;
+					};
+					ch4 {
+						module_id = <DDR_MITIGATION_ID>;
+						threshold = <145600>;
+					};
+					ch5 {
+						module_id = <GPU_MITIGATION_ID>;
+						threshold = <145600>;
+					};
+					ch6 {
+						module_id = <AOC_MITIGATION_ID>;
+						threshold = <145600>;
+					};
+					ch7 {
+						module_id = <UFS_MITIGATION_ID>;
+						threshold = <546000>;
+					};
+					ch8 {
+						module_id = <GNSS_MITIGATION_ID>;
+						threshold = <2184002>;
+					};
+					ch9 {
+						module_id = <DDR_MITIGATION_ID>;
+						threshold = <409500>;
+					};
+					ch10 {
+						module_id = <MODEM_MITIGATION_ID>;
+						threshold = <107321>;
+					};
+					ch11 {
+						module_id = <WLAN_MITIGATION_ID>;
+						threshold = <107321>;
+					};
+					ch12 {
+						module_id = <CELLULAR_MITIGATION_ID>;
+						threshold = <107321>;
+					};
 				};
 				freq_qos {
 					batoilo {

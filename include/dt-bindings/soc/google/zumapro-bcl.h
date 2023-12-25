@@ -55,6 +55,10 @@
 #define THERMAL_HYST_LEVEL 100
 
 /* Indexing */
+
+/* Brownout triggered source need to be sync with the UAPI header.
+ * google-modules/power/mitigation/uapi/brownout_stats.h
+ */
 #define SMPL_WARN 0
 #define OCP_WARN_CPUCL1 1
 #define OCP_WARN_CPUCL2 2
@@ -162,6 +166,31 @@
 /* Event Counter */
 #define EVT_CNT_ENABLE_DEFAULT 1
 #define EVT_CNT_RATE_DEFAULT 0
+
+
+/* Mitigation Module ID need to be sync with the UAPI header.
+ * google-modules/power/mitigation/uapi/brownout_stats.h
+ */
+#define AUDIO_MITIGATION_ID		0 /* ODPM non monitored */
+#define CELLULAR_MITIGATION_ID		1
+#define DISPLAY_MITIGATION_ID		2
+#define HAPTICS_MITIGATION_ID		3 /* ODPM non monitored */
+#define MODEM_MITIGATION_ID		4
+#define WLAN_MITIGATION_ID		5
+#define CPU_LITTLE_MITIGATION_ID	6
+#define CPU_MID_MITIGATION_ID		7
+#define CPU_BIG_MITIGATION_ID		8
+#define GPU_MITIGATION_ID		9
+#define TPU_MITIGATION_ID		10
+#define DDR_MITIGATION_ID		11
+#define CAMERA_MITIGATION_ID		12
+#define MIF_MITIGATION_ID		13
+#define INT_MITIGATION_ID		14
+#define LDO_MITIGATION_ID		15
+#define GNSS_MITIGATION_ID		16
+#define AOC_MITIGATION_ID		17
+#define UFS_MITIGATION_ID		18
+#define MAX_MITIGATION_MODULE		19
 
 #endif /* _DT_BINDINGS_ZUMAPRO_BCL_H */
 
