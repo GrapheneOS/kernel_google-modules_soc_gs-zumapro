@@ -190,6 +190,10 @@ void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
 
 	vbinder->active = true;
 
+	/* inherit uclamp */
+	vbinder->uclamp[UCLAMP_MIN] = uclamp_eff_value(current, UCLAMP_MIN);
+	vbinder->uclamp[UCLAMP_MAX] = uclamp_eff_value(current, UCLAMP_MAX);
+
 	/* inherit prefer_idle */
 	vbinder->prefer_idle = get_prefer_idle(current);
 
@@ -209,6 +213,8 @@ void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction 
 		if (task_on_rq_queued(p) && vbinder->uclamp_fork_reset)
 			dec_adpf_counter(p, task_rq(p));
 
+		vbinder->uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
+		vbinder->uclamp[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
 		vbinder->uclamp_fork_reset = false;
 		vbinder->prefer_idle = false;
 		vbinder->active = false;

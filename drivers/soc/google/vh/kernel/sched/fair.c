@@ -2078,6 +2078,7 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 {
 	struct uclamp_se uc_req = p->uclamp_req[clamp_id];
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
 
 #if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
 	unsigned int tg_min, tg_max, vnd_min, vnd_max, value;
@@ -2117,6 +2118,10 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 
 	// RT_mutex inherited uclamp restriction
 	value = clamp(value, vp->uclamp_pi[UCLAMP_MIN], vp->uclamp_pi[UCLAMP_MAX]);
+
+	// Inherited uclamp restriction
+	if (vbinder->active)
+		value = clamp(value, vbinder->uclamp[UCLAMP_MIN], vbinder->uclamp[UCLAMP_MAX]);
 
 	// For uclamp min, if task has a valid per-task setting that is lower than or equal to its
 	// group value, increase the final uclamp value by 1. This would have effect only on
