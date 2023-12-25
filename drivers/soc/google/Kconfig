@@ -229,7 +229,13 @@ config PERF_TRACE_CTRS
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/gsa/Kconfig"
 
+if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif/Kconfig"
+endif
+
+if SOC_GS101
+source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif-whi/Kconfig"
+endif
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/debug/Kconfig"
 

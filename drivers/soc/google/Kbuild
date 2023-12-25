@@ -33,7 +33,13 @@ bcm_dbg-$(CONFIG_EXYNOS_BCM_DBG)	+= exynos-bcm_dbg.o exynos-bcm_dbg-dt.o exynos-
 obj-$(CONFIG_EXYNOS_BCM_DBG_DUMP)	+= exynos-bcm_dbg-dump.o
 
 # CPIF
+ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-$(CONFIG_EXYNOS_MODEM_IF) += cpif/
+endif
+
+ifeq ($(CONFIG_SOC_GS101),y)
+obj-$(CONFIG_EXYNOS_MODEM_IF) += cpif-whi/
+endif
 
 # GNSSIF
 obj-$(CONFIG_EXYNOS_GNSS_IF_SPI) += gnssif_spi/
