@@ -8,7 +8,13 @@ obj-y += drivers/phy/
 
 obj-y += drivers/pinctrl/
 
+ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-y += drivers/pci/controller/dwc/
+endif
+
+ifeq ($(CONFIG_SOC_GS101),y)
+obj-y += drivers/pci/controller/dwc-whi/
+endif
 
 obj-y += drivers/clk/gs/
 

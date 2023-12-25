@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0
 
+if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/dwc/Kconfig"
+endif
+
+if SOC_GS101
+source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/dwc-whi/Kconfig"
+endif
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/Kconfig"
 
