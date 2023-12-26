@@ -25,9 +25,6 @@
 		       0x0 0x15360000 0x1000
 		       0x0 0x15280000 0x1000
 		       0x0 0x152A0000 0x1000
-		       /* TODO(309801480): Remove this field after migrating to pmu,aur-status. */
-		       /* PMU AUR_STATUS */
-		       0x0 0x15462304 0x4
 		       /* CMU AUR */
 		       0x0 0x20A00000 0x1000
 		       /* SSMTs */
@@ -35,7 +32,7 @@
 		       0x0 0x20AE0000 0x10000>;
 		reg-names = "aur",
 			    "mailbox0", "mailbox1", "mailbox2", "mailbox3", "mailbox4",
-			    "pmu_aur_status", "cmu", "ssmt_idma", "ssmt_inst_data";
+			    "cmu", "ssmt_idma", "ssmt_inst_data";
 		interrupts = <GIC_SPI IRQ_MAILBOX_AURCORE02AP_ALIVE IRQ_TYPE_LEVEL_HIGH
 			      GIC_SPI IRQ_MAILBOX_AURCORE12AP_ALIVE IRQ_TYPE_LEVEL_HIGH
 			      GIC_SPI IRQ_MAILBOX_AURCORE22AP_ALIVE IRQ_TYPE_LEVEL_HIGH
@@ -70,7 +67,7 @@
 		>;
 		iif-fence-wait-table-region = <&iif_wait_table_reserved>;
 		iif-fence-signal-table-region = <&iif_signal_table_reserved>;
-		pmu,aur-status = <0x0 0x15462304 0x4>;
+		pmu-aur-status = <0x15462304>;
 	};
 	gxp_cooling: gxp-cooling {
 		#cooling-cells = <2>;
