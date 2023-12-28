@@ -4,7 +4,7 @@ if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/dwc/Kconfig"
 endif
 
-if SOC_GS101
+if !SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/dwc-whi/Kconfig"
 endif
 
@@ -44,7 +44,7 @@ if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/thermal/Kconfig"
 endif
 
-if SOC_GS101
+if !SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/thermal-whi/Kconfig"
 endif
 
@@ -68,7 +68,7 @@ if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/devfreq/google/Kconfig"
 endif
 
-if SOC_GS101
+if !SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/devfreq-whi/google/Kconfig"
 endif
 

@@ -2,8 +2,6 @@
 
 ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-$(CONFIG_ODPM) += odpm.o
-endif
-
-ifeq ($(CONFIG_SOC_GS101),y)
+else
 obj-$(CONFIG_ODPM) += odpm-whi.o
 endif

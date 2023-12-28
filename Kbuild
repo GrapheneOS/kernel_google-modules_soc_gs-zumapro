@@ -10,9 +10,7 @@ obj-y += drivers/pinctrl/
 
 ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-y += drivers/pci/controller/dwc/
-endif
-
-ifeq ($(CONFIG_SOC_GS101),y)
+else
 obj-y += drivers/pci/controller/dwc-whi/
 endif
 
@@ -58,9 +56,7 @@ obj-y += drivers/power/
 
 ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-y += drivers/thermal/
-endif
-
-ifeq ($(CONFIG_SOC_GS101),y)
+else
 obj-y += drivers/thermal-whi/
 endif
 
@@ -72,9 +68,7 @@ obj-y += drivers/clocksource/
 
 ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-y += drivers/devfreq/google/
-endif
-
-ifeq ($(CONFIG_SOC_GS101),y)
+else
 obj-y += drivers/devfreq-whi/google/
 endif
 

@@ -241,7 +241,7 @@ if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif/Kconfig"
 endif
 
-if SOC_GS101
+if !SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif-whi/Kconfig"
 endif
 
