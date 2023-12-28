@@ -24,6 +24,8 @@ struct pixel_em_profile **vendor_sched_pixel_em_profile;
 EXPORT_SYMBOL_GPL(vendor_sched_pixel_em_profile);
 struct pixel_idle_em *vendor_sched_pixel_idle_em;
 EXPORT_SYMBOL_GPL(vendor_sched_pixel_idle_em);
+raw_spinlock_t vendor_sched_pixel_em_lock;
+EXPORT_SYMBOL_GPL(vendor_sched_pixel_em_lock);
 #endif
 
 extern inline void update_misfit_status(struct task_struct *p, struct rq *rq);
@@ -651,6 +653,13 @@ void init_vendor_group_data(void)
 #endif
 }
 
+void init_pixel_em(void)
+{
+#if IS_ENABLED(CONFIG_PIXEL_EM)
+	raw_spin_lock_init(&vendor_sched_pixel_em_lock);
+#endif
+}
+
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 /* This function is called when tasks migrate among vendor groups */
 void migrate_vendor_group_util(struct task_struct *p, unsigned int old, unsigned int new)
@@ -1271,10 +1280,15 @@ static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu)
 #if IS_ENABLED(CONFIG_PIXEL_EM)
 static inline unsigned long get_idle_cost(int cpu, int opp_level)
 {
-	if (vendor_sched_pixel_idle_em)
-		return vendor_sched_pixel_idle_em->cpu_to_cluster[cpu]->opps[opp_level].cost;
-	else
-		return 0;
+	unsigned long cost = 0;
+	struct pixel_idle_em *idle_em_snapshot;
+	raw_spin_lock(&vendor_sched_pixel_em_lock);
+	idle_em_snapshot = READ_ONCE(vendor_sched_pixel_idle_em);
+	if (idle_em_snapshot) {
+		cost = idle_em_snapshot->cpu_to_cluster[cpu]->opps[opp_level].cost;
+	}
+	raw_spin_unlock(&vendor_sched_pixel_em_lock);
+	return cost;
 }
 #endif
 

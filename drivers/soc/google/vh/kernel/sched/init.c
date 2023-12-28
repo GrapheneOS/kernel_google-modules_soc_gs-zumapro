@@ -57,6 +57,7 @@ extern void vh_dup_task_struct_pixel_mod(void *data, struct task_struct *tsk,
 extern void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int prev_cpu,
 					      int sd_flag, int wake_flags, int *target_cpu);
 extern void init_vendor_group_data(void);
+extern void init_pixel_em(void);
 extern void rvh_update_rt_rq_load_avg_pixel_mod(void *data, u64 now, struct rq *rq,
 						struct task_struct *p, int running);
 extern void rvh_set_task_cpu_pixel_mod(void *data, struct task_struct *p, unsigned int new_cpu);
@@ -315,6 +316,8 @@ static int vh_sched_init(void)
 	init_vendor_rt_rq();
 
 	init_vendor_group_data();
+
+	init_pixel_em();
 
 	/*
 	 * We must register this first but it won't do anything until we

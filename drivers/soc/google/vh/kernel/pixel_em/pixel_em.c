@@ -27,6 +27,7 @@
 #if IS_ENABLED(CONFIG_VH_SCHED)
 extern struct pixel_em_profile **vendor_sched_pixel_em_profile;
 extern struct pixel_idle_em *vendor_sched_pixel_idle_em;
+extern raw_spinlock_t vendor_sched_pixel_em_lock;
 extern void vh_arch_set_freq_scale_pixel_mod(void *data,
 					     const struct cpumask *cpus,
 					     unsigned long freq,
@@ -46,6 +47,7 @@ extern bool pixel_cpu_init;
 static struct mutex profile_list_lock;
 static LIST_HEAD(profile_list);
 static struct pixel_em_profile *active_profile;
+static struct pixel_idle_em *idle_profile;
 
 static struct mutex sysfs_lock; // Synchronize sysfs calls.
 static struct kobject *primary_sysfs_folder;
@@ -57,6 +59,10 @@ static struct pixel_em_profile *generate_default_em_profile(const char *);
 static void pixel_em_free_profile(struct pixel_em_profile *);
 static int pixel_em_publish_profile(struct pixel_em_profile *);
 static void pixel_em_unpublish_profile(struct pixel_em_profile *);
+
+#if IS_ENABLED(CONFIG_VH_SCHED)
+static void pixel_em_free_idle(struct pixel_idle_em *);
+#endif
 
 static int pixel_em_init_cpu_layout(void)
 {
@@ -774,6 +780,135 @@ static struct kobj_attribute active_profile_attr = __ATTR(active_profile,
 							  sysfs_active_profile_show,
 							  sysfs_active_profile_store);
 
+#if IS_ENABLED(CONFIG_VH_SCHED)
+
+static ssize_t sysfs_idle_profile_show(struct kobject *kobj,
+					 struct kobj_attribute *attr,
+					 char *buf)
+{
+	ssize_t res = 0;
+	int cluster_id;
+
+	mutex_lock(&sysfs_lock);
+
+	res = sysfs_emit(buf, "idle\n");
+
+	if (idle_profile != NULL) {
+		for (cluster_id = 0; cluster_id < idle_profile->num_clusters; cluster_id++) {
+			int opp_id;
+			int first_cpu = cpumask_first(&idle_profile->clusters[cluster_id].cpus);
+
+			res += sysfs_emit_at(buf, res, "cpu%d {\n", first_cpu);
+
+			for (opp_id = 0;
+				opp_id < idle_profile->clusters[cluster_id].num_opps;
+				opp_id++)
+				res += sysfs_emit_at(buf,
+							res,
+							"%u %d\n",
+							idle_profile->clusters[cluster_id].opps[opp_id].freq,
+							idle_profile->clusters[cluster_id].opps[opp_id].power);
+		}
+
+		res += sysfs_emit_at(buf, res, "}\n");
+	}
+
+	mutex_unlock(&sysfs_lock);
+	return res;
+}
+
+static ssize_t sysfs_idle_profile_store(struct kobject *kobj,
+					  struct kobj_attribute *attr,
+					  const char *buf,
+					  size_t count)
+{
+	int res = 0;
+	bool parse_result;
+	struct pixel_idle_em *new_idle_profile = NULL;
+
+	mutex_lock(&sysfs_lock);
+
+	new_idle_profile = generate_idle_em();
+	if (new_idle_profile == NULL) {
+		pr_err("Pixel idle em not generated!\n");
+		res = -ENOMEM;
+		goto unlock;
+	}
+	parse_result = parse_idle_em_body(new_idle_profile, buf, count);
+	if (parse_result) {
+		struct pixel_idle_em *old_idle_profile = idle_profile;
+		idle_profile = new_idle_profile;
+		raw_spin_lock(&vendor_sched_pixel_em_lock);
+		WRITE_ONCE(vendor_sched_pixel_idle_em, idle_profile);
+		raw_spin_unlock(&vendor_sched_pixel_em_lock);
+		pixel_em_free_idle(old_idle_profile);
+		res = count;
+	} else {
+		res = -EINVAL;
+	}
+
+unlock:
+	mutex_unlock(&sysfs_lock);
+
+	return res;
+}
+
+static struct kobj_attribute idle_profile_attr = __ATTR(idle_profile,
+							  0664,
+							  sysfs_idle_profile_show,
+							  sysfs_idle_profile_store);
+
+
+static ssize_t sysfs_idle_profile_enable_show(struct kobject *kobj,
+					 struct kobj_attribute *attr,
+					 char *buf)
+{
+	ssize_t res = 0;
+
+	mutex_lock(&sysfs_lock);
+
+	if (READ_ONCE(vendor_sched_pixel_idle_em) != NULL) {
+		res = sysfs_emit(buf, "1\n");
+	} else {
+		res = sysfs_emit(buf, "0\n");
+	}
+
+	mutex_unlock(&sysfs_lock);
+	return res;
+}
+
+static ssize_t sysfs_idle_profile_enable_store(struct kobject *kobj,
+					  struct kobj_attribute *attr,
+					  const char *buf,
+					  size_t count)
+{
+	bool enable;
+	int res = kstrtobool(buf, &enable);
+	if (res) {
+		return res;
+	}
+
+	mutex_lock(&sysfs_lock);
+
+	raw_spin_lock(&vendor_sched_pixel_em_lock);
+	if (enable) {
+		WRITE_ONCE(vendor_sched_pixel_idle_em, idle_profile);
+	} else {
+		WRITE_ONCE(vendor_sched_pixel_idle_em, NULL);
+	}
+	raw_spin_unlock(&vendor_sched_pixel_em_lock);
+
+	mutex_unlock(&sysfs_lock);
+
+	return count;
+}
+
+static struct kobj_attribute idle_profile_enable_attr = __ATTR(idle_profile_enable,
+							  0664,
+							  sysfs_idle_profile_enable_show,
+							  sysfs_idle_profile_enable_store);
+#endif
+
 struct profile_sysfs_helper {
 	struct kobj_attribute kobj_attr;
 	struct pixel_em_profile *profile;
@@ -903,6 +1038,10 @@ static void pixel_em_clean_up_sysfs_nodes(void)
 	if (!primary_sysfs_folder)
 		return;
 
+#if IS_ENABLED(CONFIG_VH_SCHED)
+	sysfs_remove_file(primary_sysfs_folder, &idle_profile_attr.attr);
+	sysfs_remove_file(primary_sysfs_folder, &idle_profile_enable_attr.attr);
+#endif
 	sysfs_remove_file(primary_sysfs_folder, &active_profile_attr.attr);
 	sysfs_remove_file(primary_sysfs_folder, &write_profile_attr.attr);
 
@@ -952,6 +1091,18 @@ static int pixel_em_initialize_sysfs_nodes(void)
 		return -EINVAL;
 	}
 
+#if IS_ENABLED(CONFIG_VH_SCHED)
+	if (sysfs_create_file(primary_sysfs_folder, &idle_profile_attr.attr)) {
+		pr_err("Failed to create idle_profile file!\n");
+		return -EINVAL;
+	}
+
+	if (sysfs_create_file(primary_sysfs_folder, &idle_profile_enable_attr.attr)) {
+		pr_err("Failed to create idle_profile_enable file!\n");
+		return -EINVAL;
+	}
+#endif
+
 	return 0;
 }
 
@@ -962,7 +1113,8 @@ static void pixel_em_drv_undo_probe(void)
 
 	pixel_em_clean_up_sysfs_nodes();
 #if IS_ENABLED(CONFIG_VH_SCHED)
-	pixel_em_free_idle(vendor_sched_pixel_idle_em);
+	pixel_em_free_idle(idle_profile);
+	idle_profile = NULL;
 	vendor_sched_pixel_idle_em = NULL;
 #endif
 
@@ -1001,16 +1153,19 @@ static int pixel_em_drv_probe(struct platform_device *dev)
 	}
 
 #if IS_ENABLED(CONFIG_VH_SCHED)
-	vendor_sched_pixel_idle_em = generate_idle_em();
-	if (vendor_sched_pixel_idle_em == NULL)
-		pr_info("Pixel idle em not generated!\n");
+	idle_profile = generate_idle_em();
+	if (idle_profile == NULL)
+		pr_warn("Pixel idle em not generated!\n");
 
-	if (vendor_sched_pixel_idle_em &&
-	    parse_idle_em(vendor_sched_pixel_idle_em, dev->dev.of_node) < 0) {
-		pixel_em_free_idle(vendor_sched_pixel_idle_em);
-		vendor_sched_pixel_idle_em = NULL;
-		pr_info("Pixel idle em not parsed!\n");
+	if (idle_profile &&
+	    parse_idle_em(idle_profile, dev->dev.of_node) < 0) {
+		pixel_em_free_idle(idle_profile);
+		idle_profile = NULL;
+		pr_warn("Pixel idle em not parsed!\n");
 	}
+	raw_spin_lock(&vendor_sched_pixel_em_lock);
+	WRITE_ONCE(vendor_sched_pixel_idle_em, idle_profile);
+	raw_spin_unlock(&vendor_sched_pixel_em_lock);
 #endif
 
 	res = pixel_em_initialize_sysfs_nodes();
