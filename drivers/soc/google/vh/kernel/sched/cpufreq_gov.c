@@ -736,10 +736,10 @@ static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
  * Make sugov_should_update_freq() ignore the rate limit when DL
  * has increased the utilization.
  */
-static inline void ignore_dl_rate_limit(struct sugov_cpu *sg_cpu, struct sugov_policy *sg_policy)
+static inline void ignore_dl_rate_limit(struct sugov_cpu *sg_cpu)
 {
 	if (cpu_bw_dl(cpu_rq(sg_cpu->cpu)) > sg_cpu->bw_dl)
-		sg_policy->limits_changed = true;
+		sg_cpu->sg_policy->limits_changed = true;
 }
 
 #if IS_ENABLED(USE_UPDATE_SINGLE)
@@ -747,7 +747,6 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 				unsigned int flags)
 {
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
-	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	unsigned int next_f;
 	bool busy;
 
@@ -760,31 +759,31 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 
 	pmu_poll_defer_work(time);
 
-	ignore_dl_rate_limit(sg_cpu, sg_policy);
+	ignore_dl_rate_limit(sg_cpu);
 
-	if (!sugov_should_update_freq(sg_policy, time))
+	if (!sugov_should_update_freq(sg_cpu->sg_policy, time))
 		return;
 
 	/* Limits may have changed, don't skip frequency update */
-	busy = !sg_policy->need_freq_update && sugov_cpu_is_busy(sg_cpu);
+	busy = !sg_cpu->sg_policy->need_freq_update && sugov_cpu_is_busy(sg_cpu);
 
 	sugov_get_util(sg_cpu);
 
 	trace_sugov_util_update(sg_cpu->cpu, sg_cpu->util, sg_cpu->max, flags);
 
 	sugov_iowait_apply(sg_cpu, time);
-	next_f = get_next_freq(sg_policy, sg_cpu->util, sg_cpu->max);
+	next_f = get_next_freq(sg_cpu->sg_policy, sg_cpu->util, sg_cpu->max);
 
 	/*
 	 * Do not reduce the frequency if the CPU has not been idle
 	 * recently, as the reduction is likely to be premature then.
 	 */
 
-	if (busy && next_f < sg_policy->next_freq) {
-		next_f = sg_policy->next_freq;
+	if (busy && next_f < sg_cpu->sg_policy->next_freq) {
+		next_f = sg_cpu->sg_policy->next_freq;
 
 		/* Reset cached freq as next_freq has changed */
-		sg_policy->cached_raw_freq = sg_policy->prev_cached_raw_freq;
+		sg_cpu->sg_policy->cached_raw_freq = sg_cpu->sg_policy->prev_cached_raw_freq;
 	}
 
 	/*
@@ -792,12 +791,12 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	 * concurrently on two different CPUs for the same target and it is not
 	 * necessary to acquire the lock in the fast switch case.
 	 */
-	if (sg_policy->policy->fast_switch_enabled) {
-		sugov_fast_switch(sg_policy, time, next_f);
+	if (sg_cpu->sg_policy->policy->fast_switch_enabled) {
+		sugov_fast_switch(sg_cpu->sg_policy, time, next_f);
 	} else {
-		raw_spin_lock(&sg_policy->update_lock);
-		sugov_deferred_update(sg_policy, time, next_f);
-		raw_spin_unlock(&sg_policy->update_lock);
+		raw_spin_lock(&sg_cpu->sg_policy->update_lock);
+		sugov_deferred_update(sg_cpu->sg_policy, time, next_f);
+		raw_spin_unlock(&sg_cpu->sg_policy->update_lock);
 	}
 }
 #endif
@@ -836,12 +835,11 @@ static void
 sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 {
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
-	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	unsigned int next_f;
 
-	raw_spin_lock(&sg_policy->update_lock);
+	raw_spin_lock(&sg_cpu->sg_policy->update_lock);
 
-	sg_policy->limits_changed |= flags & SCHED_PIXEL_FORCE_UPDATE;
+	sg_cpu->sg_policy->limits_changed |= flags & SCHED_PIXEL_FORCE_UPDATE;
 
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 	update_uclamp_stats(sg_cpu->cpu, time);
@@ -852,21 +850,21 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 
 	pmu_poll_defer_work(time);
 
-	ignore_dl_rate_limit(sg_cpu, sg_policy);
+	ignore_dl_rate_limit(sg_cpu);
 
-	if (sugov_should_update_freq(sg_policy, time)) {
+	if (sugov_should_update_freq(sg_cpu->sg_policy, time)) {
 		next_f = sugov_next_freq_shared(sg_cpu, time);
 
 		if (trace_sugov_util_update_enabled())
 			trace_sugov_util_update(sg_cpu->cpu, sg_cpu->util, sg_cpu->max, flags);
 
-		if (sg_policy->policy->fast_switch_enabled)
-			sugov_fast_switch(sg_policy, time, next_f);
+		if (sg_cpu->sg_policy->policy->fast_switch_enabled)
+			sugov_fast_switch(sg_cpu->sg_policy, time, next_f);
 		else
-			sugov_deferred_update(sg_policy, time, next_f);
+			sugov_deferred_update(sg_cpu->sg_policy, time, next_f);
 	}
 
-	raw_spin_unlock(&sg_policy->update_lock);
+	raw_spin_unlock(&sg_cpu->sg_policy->update_lock);
 }
 
 static void sugov_work(struct kthread_work *work)
