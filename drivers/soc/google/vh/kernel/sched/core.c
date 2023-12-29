@@ -74,7 +74,7 @@ extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool s
  * This part of code is vendor hook functions, which modify or extend the original
  * functions.
  */
-#ifdef CONFIG_UCLAMP_TASK
+#if IS_ENABLED(CONFIG_UCLAMP_TASK)
 static inline void task_tick_uclamp(struct rq *rq, struct task_struct *curr)
 {
 	bool can_ignore;
