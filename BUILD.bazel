@@ -203,6 +203,7 @@ exports_files([
     "Kconfig.ext",
     "Makefile",
     "build.config.gs101",
+    "build.config.gs201",
     "build.config.slider.blktest",
     "build.config.slider.debug_api",
     "build.config.slider.debug_kmemleak",
