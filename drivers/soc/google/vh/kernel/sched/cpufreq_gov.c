@@ -84,7 +84,7 @@ struct sugov_cpu {
 	unsigned long		max;
 
 	/* The field below is for single-CPU policies only: */
-#ifdef CONFIG_NO_HZ_COMMON
+#if IS_ENABLED(CONFIG_NO_HZ_COMMON)
 	unsigned long		saved_idle_calls;
 #endif
 };
@@ -104,7 +104,7 @@ extern unsigned int pmu_poll_time_ms;
 
 static void pmu_poll_defer_work(u64 time);
 
-#if defined(CONFIG_UCLAMP_TASK) && defined(CONFIG_FAIR_GROUP_SCHED)
+#if IS_ENABLED(CONFIG_UCLAMP_TASK) && IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
 extern unsigned long cpu_util_cfs_group_mod(int cpu);
 #else
 #define cpu_util_cfs_group_mod cpu_util_cfs
@@ -722,7 +722,7 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 }
 
 #if IS_ENABLED(USE_UPDATE_SINGLE)
-#ifdef CONFIG_NO_HZ_COMMON
+#if IS_ENABLED(CONFIG_NO_HZ_COMMON)
 static bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu)
 {
 	unsigned long idle_calls = tick_nohz_get_idle_calls_cpu(sg_cpu->cpu);

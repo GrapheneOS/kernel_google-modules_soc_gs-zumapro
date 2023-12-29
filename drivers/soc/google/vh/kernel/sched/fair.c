@@ -109,7 +109,7 @@ static inline u64 cfs_rq_last_update_time(struct cfs_rq *cfs_rq)
 				 cfs_rq->last_update_time_copy);
 }
 
-#ifdef CONFIG_UCLAMP_TASK
+#if IS_ENABLED(CONFIG_UCLAMP_TASK)
 static inline unsigned long uclamp_task_util(struct task_struct *p,
 					     unsigned long uclamp_min,
 					     unsigned long uclamp_max)
@@ -139,7 +139,7 @@ static int sched_idle_rq(struct rq *rq)
 			rq->nr_running);
 }
 
-#ifdef CONFIG_SMP
+#if IS_ENABLED(CONFIG_SMP)
 int sched_cpu_idle(int cpu)
 {
 	return sched_idle_rq(cpu_rq(cpu));
@@ -209,7 +209,7 @@ static u64 __sched_period(unsigned long nr_running);
 #define for_each_sched_entity(se) \
 		for (; se; se = se->parent)
 
-#ifdef CONFIG_FAIR_GROUP_SCHED
+#if IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
 static int cfs_rq_is_idle(struct cfs_rq *cfs_rq)
 {
 	return cfs_rq->idle > 0;
@@ -879,7 +879,7 @@ static inline unsigned long cpu_vendor_group_util_est(int cpu, bool with, struct
 }
 #endif
 
-#if defined(CONFIG_UCLAMP_TASK) && defined(CONFIG_FAIR_GROUP_SCHED)
+#if IS_ENABLED(CONFIG_UCLAMP_TASK) && IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 unsigned long __always_inline cpu_util_cfs_group_mod(int cpu)
 {
@@ -2044,7 +2044,7 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 
 
-#ifdef CONFIG_UCLAMP_TASK_GROUP
+#if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
 	unsigned int tg_min, tg_max, vnd_min, vnd_max, value;
 	unsigned int nice_min = uclamp_none(UCLAMP_MIN), nice_max = uclamp_none(UCLAMP_MAX);
 
@@ -2252,7 +2252,7 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	cpu = cpu_of(rq_of(cfs_rq));
 	scale_cpu = arch_scale_cpu_capacity(cpu);
 	// TODO: make util_est to sub cfs-rq and aggregate.
-#ifdef CONFIG_UCLAMP_TASK
+#if IS_ENABLED(CONFIG_UCLAMP_TASK)
 	// Currently util_est is done only in the root group
 	// Current solution apply the clamp in the per-task level for simplicity.
 	// However it may
@@ -2308,7 +2308,7 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	ue.ewma <<= UTIL_EST_WEIGHT_SHIFT;
 	ue.ewma  += last_ewma_diff;
 	ue.ewma >>= UTIL_EST_WEIGHT_SHIFT;
-#ifdef CONFIG_UCLAMP_TASK
+#if IS_ENABLED(CONFIG_UCLAMP_TASK)
 	ue.ewma = min((unsigned long)ue.ewma, uclamp_eff_value_pixel_mod(p, UCLAMP_MAX));
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 	ue.ewma = min_t(unsigned long, ue.ewma,

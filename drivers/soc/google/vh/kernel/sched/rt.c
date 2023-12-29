@@ -35,7 +35,7 @@ extern int get_cluster_enabled(int cluster);
  * to make proper adjustment in vendor hook.
  */
 
-#if defined CONFIG_SMP
+#if IS_ENABLED(CONFIG_SMP)
 static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 					bool sync)
 {
@@ -508,7 +508,7 @@ void rvh_set_task_cpu_pixel_mod(void *data, struct task_struct *p, unsigned int 
 void vh_dump_throttled_rt_tasks_mod(void *data, int cpu, u64 clock, ktime_t rt_period,
 				    u64 rt_runtime, s64 rt_period_timer_expires)
 {
-#ifdef CONFIG_SCHED_INFO
+#if IS_ENABLED(CONFIG_SCHED_INFO)
 	printk_deferred("RT %s (%d) run %llu ns over rt throttled threshold %llu ns on cpu %d",
 			current->comm,
 			current->pid,

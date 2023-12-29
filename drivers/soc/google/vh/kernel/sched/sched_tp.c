@@ -26,7 +26,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(sched_compute_energy);
 
 static inline struct sched_avg *sched_trace_cfs_rq_avg(struct cfs_rq *cfs_rq)
 {
-#ifdef CONFIG_SMP
+#if IS_ENABLED(CONFIG_SMP)
 	return cfs_rq ? &cfs_rq->avg : NULL;
 #else
 	return NULL;
@@ -61,7 +61,7 @@ static inline char *sched_trace_cfs_rq_path(struct cfs_rq *cfs_rq, char *str, in
 
 static inline struct cfs_rq *get_group_cfs_rq(struct sched_entity *se)
 {
-#ifdef CONFIG_FAIR_GROUP_SCHED
+#if IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
 	return se->my_q;
 #else
 	return NULL;
@@ -70,7 +70,7 @@ static inline struct cfs_rq *get_group_cfs_rq(struct sched_entity *se)
 
 static inline struct cfs_rq *get_se_cfs_rq(struct sched_entity *se)
 {
-#ifdef CONFIG_FAIR_GROUP_SCHED
+#if IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
 	return se->cfs_rq;
 #else
 	return NULL;
@@ -84,7 +84,7 @@ static inline int sched_trace_cfs_rq_cpu(struct cfs_rq *cfs_rq)
 
 static inline struct sched_avg *sched_trace_rq_avg_rt(struct rq *rq)
 {
-#ifdef CONFIG_SMP
+#if IS_ENABLED(CONFIG_SMP)
 	return rq ? &rq->avg_rt : NULL;
 #else
 	return NULL;
@@ -93,7 +93,7 @@ static inline struct sched_avg *sched_trace_rq_avg_rt(struct rq *rq)
 
 static inline struct sched_avg *sched_trace_rq_avg_dl(struct rq *rq)
 {
-#ifdef CONFIG_SMP
+#if IS_ENABLED(CONFIG_SMP)
 	return rq ? &rq->avg_dl : NULL;
 #else
 	return NULL;
@@ -102,7 +102,7 @@ static inline struct sched_avg *sched_trace_rq_avg_dl(struct rq *rq)
 
 static inline struct sched_avg *sched_trace_rq_avg_irq(struct rq *rq)
 {
-#if defined(CONFIG_SMP) && defined(CONFIG_HAVE_SCHED_AVG_IRQ)
+#if IS_ENABLED(CONFIG_SMP) && IS_ENABLED(CONFIG_HAVE_SCHED_AVG_IRQ)
 	return rq ? &rq->avg_irq : NULL;
 #else
 	return NULL;
@@ -111,7 +111,7 @@ static inline struct sched_avg *sched_trace_rq_avg_irq(struct rq *rq)
 
 static inline struct cpumask *sched_trace_rd_span(struct root_domain *rd)
 {
-#ifdef CONFIG_SMP
+#if IS_ENABLED(CONFIG_SMP)
 	return rd ? rd->span : NULL;
 #else
 	return NULL;
