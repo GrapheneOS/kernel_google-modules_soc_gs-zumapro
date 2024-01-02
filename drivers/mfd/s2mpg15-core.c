@@ -63,14 +63,26 @@ int s2mpg15_bulk_read(struct i2c_client *i2c, u8 reg, int count, u8 *buf)
 {
 	struct s2mpg15_dev *s2mpg15 = i2c_get_clientdata(i2c);
 	u8 channel = 1;
-	int ret;
+	int ret = 0;
 
 	mutex_lock(&s2mpg15->i2c_lock);
-	ret = exynos_acpm_bulk_read(acpm_mfd_node, channel,
-				    i2c->addr, reg, count, buf);
+	while (count > 0) {
+		int bytes_to_read = (count > ACPM_BULK_READ_MAX_LIMIT) ?
+						ACPM_BULK_READ_MAX_LIMIT : count;
+
+		ret = exynos_acpm_bulk_read(acpm_mfd_node, channel,
+					    i2c->addr, reg, bytes_to_read, buf);
+		if (ret) {
+			pr_err("[%s] acpm ipc fail!\n", __func__);
+			break;
+		}
+
+		count -= bytes_to_read;
+		reg += bytes_to_read;
+		buf += bytes_to_read;
+	}
 	mutex_unlock(&s2mpg15->i2c_lock);
-	if (ret)
-		pr_err("[%s] acpm ipc fail!\n", __func__);
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(s2mpg15_bulk_read);
