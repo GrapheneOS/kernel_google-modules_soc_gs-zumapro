@@ -44,6 +44,8 @@ enum s2mpg15_irq_source {
 #define S2MPG15_NUM_IRQ_PMIC_REGS 4
 #define S2MPG15_NUM_IRQ_METER_REGS 4
 
+#define ACPM_BULK_READ_MAX_LIMIT 8
+
 enum s2mpg15_device_type {
 	S2MPG15X,
 };
