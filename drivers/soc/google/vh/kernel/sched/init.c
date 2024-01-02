@@ -189,6 +189,7 @@ static void init_vendor_rt_rq(void)
 		vrq = get_vendor_rq_struct(cpu_rq(i));
 		raw_spin_lock_init(&vrq->lock);
 		vrq->util_removed = 0;
+		vrq->iowait_boost = 0;
 		atomic_set(&vrq->num_adpf_tasks, 0);
 	}
 }

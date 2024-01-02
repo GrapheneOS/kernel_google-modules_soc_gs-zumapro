@@ -43,6 +43,8 @@
 extern unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR];
+extern unsigned int sched_per_cpu_iowait_boost_max_value[CONFIG_VH_SCHED_MAX_CPU_NR];
+extern unsigned int sched_per_task_iowait_boost_max_value;
 
 extern int pixel_cpu_num;
 extern int pixel_cluster_num;
@@ -404,6 +406,7 @@ static inline struct vendor_task_group_struct *get_vendor_task_group_struct(stru
 struct vendor_rq_struct {
 	raw_spinlock_t lock;
 	unsigned long util_removed;
+	unsigned long iowait_boost;
 	atomic_t num_adpf_tasks;
 };
 
@@ -458,6 +461,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->auto_uclamp_max_flags = 0;
 	v_tsk->uclamp_filter.uclamp_min_ignored = 0;
 	v_tsk->uclamp_filter.uclamp_max_ignored = 0;
+	v_tsk->iowait_boost = 0;
 	v_tsk->binder_task.uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 	v_tsk->binder_task.uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MAX);
 	v_tsk->binder_task.prefer_idle = false;

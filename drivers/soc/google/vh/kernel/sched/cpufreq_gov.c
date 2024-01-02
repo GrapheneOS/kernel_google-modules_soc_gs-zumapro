@@ -25,6 +25,10 @@
 
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 
+unsigned int __read_mostly sched_per_cpu_iowait_boost_max_value[CONFIG_VH_SCHED_MAX_CPU_NR] = {
+	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = SCHED_CAPACITY_SCALE
+};
+
 struct sugov_tunables {
 	struct gov_attr_set	attr_set;
 	unsigned int		up_rate_limit_us;
@@ -614,6 +618,7 @@ static bool sugov_iowait_reset(struct sugov_cpu *sg_cpu, u64 time,
 static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 			       unsigned int flags)
 {
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(cpu_rq(sg_cpu->cpu));
 	bool set_iowait_boost = flags & SCHED_CPUFREQ_IOWAIT;
 
 	/* Reset boost if the CPU appears to have been idle enough */
@@ -633,12 +638,16 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 	/* Double the boost at each request */
 	if (sg_cpu->iowait_boost) {
 		sg_cpu->iowait_boost =
-			min_t(unsigned int, sg_cpu->iowait_boost << 1, SCHED_CAPACITY_SCALE);
+			min_t(unsigned int, sg_cpu->iowait_boost << 1,
+			      sched_per_cpu_iowait_boost_max_value[sg_cpu->cpu]);
 		return;
 	}
 
 	/* First wakeup after IO: start with minimum boost */
 	sg_cpu->iowait_boost = IOWAIT_BOOST_MIN;
+
+	/* Cater for a task with high iowait boost migrated to this CPU */
+	sg_cpu->iowait_boost = max_t(unsigned long, sg_cpu->iowait_boost, vrq->iowait_boost);
 }
 
 /**

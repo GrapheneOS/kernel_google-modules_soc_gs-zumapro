@@ -1164,6 +1164,64 @@ fail:
 	return -EINVAL;
 }
 
+static int update_sched_per_cpu_iowait_boost_max_value(const char *buf, int count)
+{
+	char *tok, *str1, *str2;
+	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
+	int index = 0;
+
+	str1 = kstrndup(buf, count, GFP_KERNEL);
+	str2 = str1;
+
+	if (!str2)
+		return -ENOMEM;
+
+	while (1) {
+		tok = strsep(&str2, " ");
+
+		if (tok == NULL)
+			break;
+
+		if (kstrtouint(tok, 0, &val))
+			goto fail;
+
+		if (val > SCHED_CAPACITY_SCALE)
+			goto fail;
+
+		tmp[index] = val;
+		index++;
+
+		if (index == pixel_cpu_num)
+			break;
+	}
+
+	if (index == 1) {
+		for (index = 0; index < pixel_cpu_num; index++) {
+			sched_per_cpu_iowait_boost_max_value[index] = tmp[0];
+		}
+	} else if (index == pixel_cluster_num) {
+		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
+			sched_per_cpu_iowait_boost_max_value[index] = tmp[0];
+
+		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
+			sched_per_cpu_iowait_boost_max_value[index] = tmp[1];
+
+		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
+			sched_per_cpu_iowait_boost_max_value[index] = tmp[2];
+	} else if (index == pixel_cpu_num) {
+		memcpy(sched_per_cpu_iowait_boost_max_value, tmp,
+		       sizeof(sched_per_cpu_iowait_boost_max_value));
+	} else {
+		goto fail;
+	}
+
+	kfree(str1);
+	return count;
+fail:
+	kfree(str1);
+	return -EINVAL;
+}
+
 static inline struct task_struct *get_next_task(int group, struct list_head *head)
 {
 	unsigned long flags;
@@ -1973,12 +2031,6 @@ static ssize_t uclamp_max_filter_rt_store(struct file *filp,
 }
 PROC_OPS_RW(uclamp_max_filter_rt);
 
-static int util_post_init_scale_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%d\n", vendor_sched_util_post_init_scale);
-	return 0;
-}
-
 static int auto_uclamp_max_show(struct seq_file *m, void *v)
 {
 	int i;
@@ -2009,6 +2061,11 @@ static ssize_t auto_uclamp_max_store(struct file *filp,
 }
 PROC_OPS_RW(auto_uclamp_max);
 
+static int util_post_init_scale_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", vendor_sched_util_post_init_scale);
+	return 0;
+}
 static ssize_t util_post_init_scale_store(struct file *filp,
 							const char __user *ubuf,
 							size_t count, loff_t *pos)
@@ -2027,15 +2084,76 @@ static ssize_t util_post_init_scale_store(struct file *filp,
 	if (kstrtouint(buf, 0, &val))
 		return -EINVAL;
 
-	if (val > 1024)
+	if (val > SCHED_CAPACITY_SCALE)
 		return -EINVAL;
 
 	vendor_sched_util_post_init_scale = val;
 
 	return count;
 }
-
 PROC_OPS_RW(util_post_init_scale);
+
+static int per_task_iowait_boost_max_value_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sched_per_task_iowait_boost_max_value);
+	return 0;
+}
+static ssize_t per_task_iowait_boost_max_value_store(struct file *filp,
+						     const char __user *ubuf,
+						     size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > SCHED_CAPACITY_SCALE)
+		return -EINVAL;
+
+	sched_per_task_iowait_boost_max_value = val;
+
+	return count;
+}
+PROC_OPS_RW(per_task_iowait_boost_max_value);
+
+static int per_cpu_iowait_boost_max_value_show(struct seq_file *m, void *v)
+{
+	int i;
+
+	for (i = 0; i < pixel_cpu_num; i++) {
+		seq_printf(m, "%u ", sched_per_cpu_iowait_boost_max_value[i]);
+	}
+
+	seq_printf(m, "\n");
+
+	return 0;
+}
+static ssize_t per_cpu_iowait_boost_max_value_store(struct file *filp,
+						    const char __user *ubuf,
+						    size_t count, loff_t *pos)
+{
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	return update_sched_per_cpu_iowait_boost_max_value(buf, count);
+}
+PROC_OPS_RW(per_cpu_iowait_boost_max_value);
 
 static int pmu_poll_time_show(struct seq_file *m, void *v)
 {
@@ -2289,6 +2407,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(tapered_dvfs_headroom_enable),
 	// teo
 	PROC_ENTRY(teo_util_threshold),
+	// iowait boost
+	PROC_ENTRY(per_task_iowait_boost_max_value),
+	PROC_ENTRY(per_cpu_iowait_boost_max_value),
 };
 
 

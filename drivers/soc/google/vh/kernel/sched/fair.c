@@ -53,6 +53,8 @@ unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
 unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = 1024 };
 
+unsigned int __read_mostly sched_per_task_iowait_boost_max_value = SCHED_CAPACITY_SCALE;
+
 struct vendor_group_property vg[VG_MAX];
 
 extern struct vendor_group_list vendor_group_list[VG_MAX];
@@ -1139,6 +1141,8 @@ static bool task_fits_capacity(struct task_struct *p, int cpu)
 							arch_scale_cpu_capacity(cpu)));
 #endif
 
+	uclamp_min = max(uclamp_min, get_vendor_task_struct(p)->iowait_boost);
+
 	return util_fits_cpu(task_util, uclamp_min, uclamp_max, cpu);
 }
 
@@ -1574,6 +1578,8 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	if (!pd)
 		goto out;
 
+	p_util_min = max(p_util_min, get_vendor_task_struct(p)->iowait_boost);
+
 	for (; pd; pd = pd->next) {
 		unsigned long util_min = p_util_min, util_max = p_util_max;
 		unsigned long rq_util_min, rq_util_max;
@@ -1984,10 +1990,47 @@ out:
 	return best_energy_cpu;
 }
 
+#define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
+
 void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
 			      int *should_iowait_boost)
 {
-	*should_iowait_boost = p->in_iowait && uclamp_boosted(p);
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(task_rq(p));
+	bool boosted = uclamp_boosted(p);
+
+	if (p->in_iowait && boosted) {
+		if (!vp->iowait_boost)
+			vp->iowait_boost = IOWAIT_BOOST_MIN;
+		else
+			vp->iowait_boost = min_t(unsigned long,
+						 vp->iowait_boost << 1,
+						 sched_per_task_iowait_boost_max_value);
+	} else {
+		if (!boosted) {
+			vp->iowait_boost = 0;
+			return;
+		}
+
+		vp->iowait_boost >>= 1;
+		if (vp->iowait_boost < IOWAIT_BOOST_MIN)
+			vp->iowait_boost = 0;
+	}
+
+	*should_iowait_boost = vp->iowait_boost;
+
+	/*
+	 * If we should boost, then we will send an update to cpufreq governor
+	 * as soon as we return from here which will then take into account the
+	 * vrq->iowait_boost value we just updated. So the expectation is that
+	 * we can have one enqueue at a time and this value will be taken into
+	 * account by the governor immediately during this enqueue() call.
+	 *
+	 * Only exception if rate limit rejects the freq update; then we are
+	 * already out of luck anyway for this particular enqueue().
+	 */
+	if (*should_iowait_boost)
+		vrq->iowait_boost = vp->iowait_boost;
 }
 
 void rvh_cpu_overutilized_pixel_mod(void *data, int cpu, int *overutilized)
@@ -2844,6 +2887,9 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 
 void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
+
 	if (!static_branch_unlikely(&enqueue_dequeue_ready))
 		return;
 
@@ -2865,6 +2911,16 @@ void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 #endif
 
 	/* Resetting uclamp filter is handled in dequeue_task() */
+
+	/*
+	 * If this task has boosted the rq then clear the boost once it no
+	 * longer runs.
+	 *
+	 * No aggregation done here. Several tasks enqueued at the same
+	 * time will be hit by the rate limit.
+	 */
+	if (vp->iowait_boost == vrq->iowait_boost)
+		vrq->iowait_boost = 0;
 }
 
 void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p,
