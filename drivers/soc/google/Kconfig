@@ -12,9 +12,17 @@ config SOC_GS101
 	bool "Google GS101"
 	depends on SOC_GOOGLE
 
+config SOC_GS201
+	bool "Google GS201"
+	depends on SOC_GOOGLE
+
 config BOARD_SLIDER
 	bool "Google Slider Board"
 	depends on SOC_GS101
+
+config BOARD_CLOUDRIPPER
+	bool "Google Cloudripper Board"
+	depends on SOC_GS201
 
 config BOARD_EMULATOR
 	bool "Google Zuma emulator"
