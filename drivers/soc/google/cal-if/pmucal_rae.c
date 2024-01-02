@@ -3,11 +3,16 @@
 #include "pmucal_rae.h"
 
 #define A_FEW_USECS 10		/* see Documentation/timers/timers-howto.rst */
-#if defined(CONFIG_SOC_ZUMA)
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
 #define PMU_ALIVE_BASE_ADDR	0x15460000
-#else
+#endif
+#if IS_ENABLED(CONFIG_SOC_GS101)
 #define PMU_ALIVE_BASE_ADDR	0x17460000
 #endif
+#if IS_ENABLED(CONFIG_SOC_GS201)
+#define PMU_ALIVE_BASE_ADDR	0x18060000
+#endif
+
 /**
  * A global index for pmucal_rae_handle_seq.
  * it should be helpful in ramdump.
