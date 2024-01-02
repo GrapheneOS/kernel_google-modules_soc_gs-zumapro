@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (c) 2020 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2021 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  */
 
@@ -116,6 +116,12 @@ do {									\
 #define log_dev_info(dev, fmt, ...)	\
 do {									\
 	dev_printk_emit(LOGLEVEL_INFO, dev, fmt, ##__VA_ARGS__);	\
+	dbg_snapshot_itmon_backup_log(fmt, ##__VA_ARGS__);		\
+} while (0)
+
+#define log_dev_dbg(dev, fmt, ...)	\
+do {									\
+	dev_printk_emit(LOGLEVEL_DEBUG, dev, fmt, ##__VA_ARGS__);	\
 	dbg_snapshot_itmon_backup_log(fmt, ##__VA_ARGS__);		\
 } while (0)
 
@@ -242,6 +248,8 @@ struct itmon_dev {
 	void __iomem *regs;
 	spinlock_t ctrl_lock;
 	struct itmon_notifier notifier_info;
+	char itmon_pattern[SZ_32];
+	atomic_t itmon_pattern_cnt;
 };
 
 struct itmon_panic_block {
@@ -260,232 +268,250 @@ static struct itmon_policy err_policy[] = {
 const static struct itmon_rpathinfo rpathinfo[] = {
 	/* 0x8000_0000 - 0xf_ffff_ffff */
 
-	/* CORE_M0 / M1 / M2 / M3 CPU specific */
-	{0,	"CPU0",		"CORE_M0",	0x3F, 0},
-	{0,	"CPU1",		"CORE_M1",	0x3F, 0},
-	{0,	"CPU2",		"CORE_M2",	0x3F, 0},
-	{0,	"CPU3",		"CORE_M3",	0x3F, 0},
+	/* NOCL0_M0 / M1 / M2 / M3 CPU specific */
+	{0,	"CPU0",		"NOCL0_M0",	0x3F, 0},
+	{0,	"CPU1",		"NOCL0_M1",	0x3F, 0},
+	{0,	"CPU2",		"NOCL0_M2",	0x3F, 0},
+	{0,	"CPU3",		"NOCL0_M3",	0x3F, 0},
 
 	/* CORE_M0 / M1 / M2 / M3 Common */
-	{1,	"GPU0",		"CORE_M",	0x3F, 0},
-	{2,	"GPU1",		"CORE_M",	0x3F, 0},
-	{3,	"GPU2",		"CORE_M",	0x3F, 0},
-	{4,	"GPU3",		"CORE_M",	0x3F, 0},
-	{5,	"TPU",		"CORE_M",	0x3F, 0},
-	{6,	"DPU0",		"CORE_M",	0x3F, 0},
-	{7,	"DPU1",		"CORE_M",	0x3F, 0},
-	{8,	"DPU2",		"CORE_M",	0x3F, 0},
-	{9,	"CSIS0",	"CORE_M",	0x3F, 0},
-	{10,	"CSIS1",	"CORE_M",	0x3F, 0},
-	{11,	"G3AA",		"CORE_M",	0x3F, 0},
-	{12,	"IPP",		"CORE_M",	0x3F, 0},
-	{13,	"DNS",		"CORE_M",	0x3F, 0},
-	{14,	"MCSC0",	"CORE_M",	0x3F, 0},
-	{15,	"MCSC1",	"CORE_M",	0x3F, 0},
-	{16,	"MCSC2",	"CORE_M",	0x3F, 0},
-	{17,	"TNR0",		"CORE_M",	0x3F, 0},
-	{18,	"TNR1",		"CORE_M",	0x3F, 0},
-	{19,	"TNR2",		"CORE_M",	0x3F, 0},
-	{20,	"TNR3",		"CORE_M",	0x3F, 0},
-	{21,	"TNR4",		"CORE_M",	0x3F, 0},
-	{22,	"GDC0",		"CORE_M",	0x3F, 0},
-	{23,	"GDC1",		"CORE_M",	0x3F, 0},
-	{24,	"GDC2",		"CORE_M",	0x3F, 0},
-	{25,	"BO",		"CORE_M",	0x3F, 0},
-	{26,	"MFC0",		"CORE_M",	0x3F, 0},
-	{27,	"MFC1",		"CORE_M",	0x3F, 0},
-	{28,	"G2D0",		"CORE_M",	0x3F, 0},
-	{29,	"G2D1",		"CORE_M",	0x3F, 0},
-	{30,	"G2D2",		"CORE_M",	0x3F, 0},
-	{31,	"HSI2",		"CORE_M",	0x3F, 0},
-	{32,	"MISC",		"CORE_M",	0x3F, 0},
-	{34,	"GSA",		"CORE_M",	0x3F, 0},
-	{35,	"ALIVE",	"CORE_M",	0x3F, 0},
-	{36,	"AOC",		"CORE_M",	0x3F, 0},
-	{37,	"HSI0",		"CORE_M",	0x3F, 0},
-	{38,	"HSI1",		"CORE_M",	0x3F, 0},
-	{39,	"CS",		"CORE_M",	0x3F, 0},
+	{1,	"AUR1",		"NOCL0_M",	0x3F, 0},
+	{2,	"GPUMMU",	"NOCL0_M",	0x3F, 0},
+	{3,	"AUR0",		"NOCL0_M",	0x3F, 0},
+	{4,	"GPU0",		"NOCL0_M",	0x3F, 0},
+	{5,	"GPU1",		"NOCL0_M",	0x3F, 0},
+	{6,	"GPU2",		"NOCL0_M",	0x3F, 0},
+	{7,	"GPU3",		"NOCL0_M",	0x3F, 0},
+	{8,	"TPU",		"NOCL0_M",	0x3F, 0},
+	{9,	"DPU0",		"NOCL0_M",	0x3F, 0},
+	{10,	"DPU1",		"NOCL0_M",	0x3F, 0},
+	{11,	"DPU2",		"NOCL0_M",	0x3F, 0},
+	{12,	"CSIS0",	"NOCL0_M",	0x3F, 0},
+	{13,	"CSIS1",	"NOCL0_M",	0x3F, 0},
+	{14,	"DNS",		"NOCL0_M",	0x3F, 0},
+	{15,	"GDC0",		"NOCL0_M",	0x3F, 0},
+	{16,	"GDC1",		"NOCL0_M",	0x3F, 0},
+	{17,	"GDC2",		"NOCL0_M",	0x3F, 0},
+	{18,	"G3AA",		"NOCL0_M",	0x3F, 0},
+	{19,	"IPP",		"NOCL0_M",	0x3F, 0},
+	{20,	"MCSC0",	"NOCL0_M",	0x3F, 0},
+	{21,	"MCSC1",	"NOCL0_M",	0x3F, 0},
+	{22,	"MCSC2",	"NOCL0_M",	0x3F, 0},
+	{23,	"TNR0",		"NOCL0_M",	0x3F, 0},
+	{24,	"TNR1",		"NOCL0_M",	0x3F, 0},
+	{25,	"TNR2",		"NOCL0_M",	0x3F, 0},
+	{26,	"TNR3",		"NOCL0_M",	0x3F, 0},
+	{27,	"TNR4",		"NOCL0_M",	0x3F, 0},
+	{28,	"BO",		"NOCL0_M",	0x3F, 0},
+	{29,	"G2D0",		"NOCL0_M",	0x3F, 0},
+	{30,	"G2D1",		"NOCL0_M",	0x3F, 0},
+	{31,	"G2D2",		"NOCL0_M",	0x3F, 0},
+	{32,	"HSI2",		"NOCL0_M",	0x3F, 0},
+	{33,	"MFC0",		"NOCL0_M",	0x3F, 0},
+	{34,	"MFC1",		"NOCL0_M",	0x3F, 0},
+	{35,	"MISC",		"NOCL0_M",	0x3F, 0},
+	{36,	"ALIVE",	"NOCL0_M",	0x3F, 0},
+	{37,	"AOC",		"NOCL0_M",	0x3F, 0},
+	{38,	"CSSYS",	"NOCL0_M",	0x3F, 0},
+	{39,	"GSA",		"NOCL0_M",	0x3F, 0},
+	{40,	"HSI0",		"NOCL0_M",	0x3F, 0},
+	{41,	"HSI1",		"NOCL0_M",	0x3F, 0},
 
 
 	/* 0x0 - 0x7fff_ffff */
 
-	{0,	"CPU0",		"CORE_DP",	0x3F, 0},
-	{1,	"CPU1",		"CORE_DP",	0x3F, 0},
-	{2,	"CPU2",		"CORE_DP",	0x3F, 0},
-	{3,	"CPU3",		"CORE_DP",	0x3F, 0},
-	{4,	"GPU0",		"CORE_DP",	0x3F, 0},
-	{5,	"GPU1",		"CORE_DP",	0x3F, 0},
-	{6,	"GPU2",		"CORE_DP",	0x3F, 0},
-	{7,	"GPU3",		"CORE_DP",	0x3F, 0},
-	{8,	"TPU",		"CORE_DP",	0x3F, 0},
-	{9,	"DPU0",		"CORE_DP",	0x3F, 0},
-	{10,	"DPU1",		"CORE_DP",	0x3F, 0},
-	{11,	"DPU2",		"CORE_DP",	0x3F, 0},
-	{12,	"CSIS0",	"CORE_DP",	0x3F, 0},
-	{13,	"CSIS1",	"CORE_DP",	0x3F, 0},
-	{14,	"G3AA",		"CORE_DP",	0x3F, 0},
-	{15,	"IPP",		"CORE_DP",	0x3F, 0},
-	{16,	"DNS",		"CORE_DP",	0x3F, 0},
-	{17,	"MCSC0",	"CORE_DP",	0x3F, 0},
-	{18,	"MCSC1",	"CORE_DP",	0x3F, 0},
-	{19,	"MCSC2",	"CORE_DP",	0x3F, 0},
-	{20,	"TNR0",		"CORE_DP",	0x3F, 0},
-	{21,	"TNR1",		"CORE_DP",	0x3F, 0},
-	{22,	"TNR2",		"CORE_DP",	0x3F, 0},
-	{23,	"TNR3",		"CORE_DP",	0x3F, 0},
-	{24,	"TNR4",		"CORE_DP",	0x3F, 0},
-	{25,	"GDC0",		"CORE_DP",	0x3F, 0},
-	{26,	"GDC1",		"CORE_DP",	0x3F, 0},
-	{27,	"GDC2",		"CORE_DP",	0x3F, 0},
-	{28,	"BO",		"CORE_DP",	0x3F, 0},
-	{29,	"MFC0",		"CORE_DP",	0x3F, 0},
-	{30,	"MFC1",		"CORE_DP",	0x3F, 0},
-	{31,	"G2D0",		"CORE_DP",	0x3F, 0},
-	{32,	"G2D1",		"CORE_DP",	0x3F, 0},
-	{33,	"G2D2",		"CORE_DP",	0x3F, 0},
-	{34,	"HSI2",		"CORE_DP",	0x3F, 0},
-	{35,	"MISC",		"CORE_DP",	0x3F, 0},
-	{37,	"GSA",		"CORE_DP",	0x3F, 0},
-	{38,	"GSA",		"CORE_DP",	0x3F, 0},
-	{39,	"AOC",		"CORE_DP",	0x3F, 0},
-	{40,	"HSI0",		"CORE_DP",	0x3F, 0},
-	{41,	"HSI1",		"CORE_DP",	0x3F, 0},
-	{42,	"CORESIGHT",	"CORE_DP",	0x3F, 0},
+	{0,	"CPU0",		"NOCL0_DP",	0x3F, 0},
+	{1,	"CPU1",		"NOCL0_DP",	0x3F, 0},
+	{2,	"CPU2",		"NOCL0_DP",	0x3F, 0},
+	{3,	"CPU3",		"NOCL0_DP",	0x3F, 0},
+	{4,	"AUR1",		"NOCL0_DP",	0x3F, 0},
+	{5,	"GPUMMU",	"NOCL0_DP",	0x3F, 0},
+	{6,	"AUR0",		"NOCL0_DP",	0x3F, 0},
+	{7,	"GPU0",		"NOCL0_DP",	0x3F, 0},
+	{8,	"GPU1",		"NOCL0_DP",	0x3F, 0},
+	{9,	"GPU2",		"NOCL0_DP",	0x3F, 0},
+	{10,	"GPU3",		"NOCL0_DP",	0x3F, 0},
+	{11,	"TPU",		"NOCL0_DP",	0x3F, 0},
+	{12,	"DPU0",		"NOCL0_DP",	0x3F, 0},
+	{13,	"DPU1",		"NOCL0_DP",	0x3F, 0},
+	{14,	"DPU2",		"NOCL0_DP",	0x3F, 0},
+	{15,	"CSIS0",	"NOCL0_DP",	0x3F, 0},
+	{16,	"CSIS1",	"NOCL0_DP",	0x3F, 0},
+	{17,	"DNS",		"NOCL0_DP",	0x3F, 0},
+	{18,	"GDC0",		"NOCL0_DP",	0x3F, 0},
+	{19,	"GDC1",		"NOCL0_DP",	0x3F, 0},
+	{20,	"GDC2",		"NOCL0_DP",	0x3F, 0},
+	{21,	"G3AA",		"NOCL0_DP",	0x3F, 0},
+	{22,	"IPP",		"NOCL0_DP",	0x3F, 0},
+	{23,	"MCSC0",	"NOCL0_DP",	0x3F, 0},
+	{24,	"MCSC1",	"NOCL0_DP",	0x3F, 0},
+	{25,	"MCSC2",	"NOCL0_DP",	0x3F, 0},
+	{26,	"TNR0",		"NOCL0_DP",	0x3F, 0},
+	{27,	"TNR1",		"NOCL0_DP",	0x3F, 0},
+	{28,	"TNR2",		"NOCL0_DP",	0x3F, 0},
+	{29,	"TNR3",		"NOCL0_DP",	0x3F, 0},
+	{30,	"TNR4",		"NOCL0_DP",	0x3F, 0},
+	{31,	"BO",		"NOCL0_DP",	0x3F, 0},
+	{32,	"G2D0",		"NOCL0_DP",	0x3F, 0},
+	{33,	"G2D1",		"NOCL0_DP",	0x3F, 0},
+	{34,	"G2D2",		"NOCL0_DP",	0x3F, 0},
+	{35,	"MFC0",		"NOCL0_DP",	0x3F, 0},
+	{36,	"MFC1",		"NOCL0_DP",	0x3F, 0},
+	{37,	"HSI2",		"NOCL0_DP",	0x3F, 0},
+	{38,	"MISC",		"NOCL0_DP",	0x3F, 0},
+	{39,	"ALIVE",	"NOCL0_DP",	0x3F, 0},
+	{40,	"AOC",		"NOCL0_DP",	0x3F, 0},
+	{41,	"CSSYS",	"NOCL0_DP",	0x3F, 0},
+	{42,	"GSA",		"NOCL0_DP",	0x3F, 0},
+	{43,	"HSI0",		"NOCL0_DP",	0x3F, 0},
+	{44,	"HSI1",		"NOCL0_DP",	0x3F, 0},
 
-	{0,	"GPU0",		"CORE_CCI",	0x7F, 0},
-	{33,	"GPU0",		"CORE_CCI",	0x7F, 0},
-	{66,	"GPU0",		"CORE_CCI",	0x7F, 0},
-	{99,	"GPU0",		"CORE_CCI",	0x7F, 0},
-	{1,	"GPU1",		"CORE_CCI",	0x7F, 0},
-	{34,	"GPU1",		"CORE_CCI",	0x7F, 0},
-	{67,	"GPU1",		"CORE_CCI",	0x7F, 0},
-	{100,	"GPU1",		"CORE_CCI",	0x7F, 0},
-	{2,	"GPU2",		"CORE_CCI",	0x7F, 0},
-	{35,	"GPU2",		"CORE_CCI",	0x7F, 0},
-	{68,	"GPU2",		"CORE_CCI",	0x7F, 0},
-	{101,	"GPU2",		"CORE_CCI",	0x7F, 0},
-	{3,	"GPU3",		"CORE_CCI",	0x7F, 0},
-	{36,	"GPU3",		"CORE_CCI",	0x7F, 0},
-	{69,	"GPU3",		"CORE_CCI",	0x7F, 0},
-	{102,	"GPU3",		"CORE_CCI",	0x7F, 0},
-	{4,	"TPU",		"CORE_CCI",	0x7F, 0},
-	{37,	"TPU",		"CORE_CCI",	0x7F, 0},
-	{70,	"TPU",		"CORE_CCI",	0x7F, 0},
-	{103,	"TPU",		"CORE_CCI",	0x7F, 0},
-	{5,	"DPU0",		"CORE_CCI",	0x7F, 0},
-	{38,	"DPU0",		"CORE_CCI",	0x7F, 0},
-	{71,	"DPU0",		"CORE_CCI",	0x7F, 0},
-	{104,	"DPU0",		"CORE_CCI",	0x7F, 0},
-	{6,	"DPU1",		"CORE_CCI",	0x7F, 0},
-	{39,	"DPU1",		"CORE_CCI",	0x7F, 0},
-	{72,	"DPU1",		"CORE_CCI",	0x7F, 0},
-	{105,	"DPU1",		"CORE_CCI",	0x7F, 0},
-	{7,	"DPU2",		"CORE_CCI",	0x7F, 0},
-	{40,	"DPU2",		"CORE_CCI",	0x7F, 0},
-	{73,	"DPU2",		"CORE_CCI",	0x7F, 0},
-	{106,	"DPU2",		"CORE_CCI",	0x7F, 0},
-	{8,	"CSIS0",	"CORE_CCI",	0x7F, 0},
-	{41,	"CSIS0",	"CORE_CCI",	0x7F, 0},
-	{74,	"CSIS0",	"CORE_CCI",	0x7F, 0},
-	{107,	"CSIS0",	"CORE_CCI",	0x7F, 0},
-	{9,	"CSIS1",	"CORE_CCI",	0x7F, 0},
-	{42,	"CSIS1",	"CORE_CCI",	0x7F, 0},
-	{75,	"CSIS1",	"CORE_CCI",	0x7F, 0},
-	{108,	"CSIS1",	"CORE_CCI",	0x7F, 0},
-	{10,	"G3AA",		"CORE_CCI",	0x7F, 0},
-	{43,	"G3AA",		"CORE_CCI",	0x7F, 0},
-	{76,	"G3AA",		"CORE_CCI",	0x7F, 0},
-	{109,	"G3AA",		"CORE_CCI",	0x7F, 0},
-	{11,	"IPP",		"CORE_CCI",	0x7F, 0},
-	{44,	"IPP",		"CORE_CCI",	0x7F, 0},
-	{77,	"IPP",		"CORE_CCI",	0x7F, 0},
-	{110,	"IPP",		"CORE_CCI",	0x7F, 0},
-	{12,	"DNS",		"CORE_CCI",	0x7F, 0},
-	{45,	"DNS",		"CORE_CCI",	0x7F, 0},
-	{78,	"DNS",		"CORE_CCI",	0x7F, 0},
-	{111,	"DNS",		"CORE_CCI",	0x7F, 0},
-	{13,	"MCSC0",	"CORE_CCI",	0x7F, 0},
-	{46,	"MCSC0",	"CORE_CCI",	0x7F, 0},
-	{79,	"MCSC0",	"CORE_CCI",	0x7F, 0},
-	{112,	"MCSC0",	"CORE_CCI",	0x7F, 0},
-	{14,	"MCSC1",	"CORE_CCI",	0x7F, 0},
-	{47,	"MCSC1",	"CORE_CCI",	0x7F, 0},
-	{80,	"MCSC1",	"CORE_CCI",	0x7F, 0},
-	{113,	"MCSC1",	"CORE_CCI",	0x7F, 0},
-	{15,	"MCSC2",	"CORE_CCI",	0x7F, 0},
-	{48,	"MCSC2",	"CORE_CCI",	0x7F, 0},
-	{81,	"MCSC2",	"CORE_CCI",	0x7F, 0},
-	{114,	"MCSC2",	"CORE_CCI",	0x7F, 0},
-	{16,	"TNR0",		"CORE_CCI",	0x7F, 0},
-	{49,	"TNR0",		"CORE_CCI",	0x7F, 0},
-	{82,	"TNR0",		"CORE_CCI",	0x7F, 0},
-	{115,	"TNR0",		"CORE_CCI",	0x7F, 0},
-	{17,	"TNR1",		"CORE_CCI",	0x7F, 0},
-	{50,	"TNR1",		"CORE_CCI",	0x7F, 0},
-	{83,	"TNR1",		"CORE_CCI",	0x7F, 0},
-	{116,	"TNR1",		"CORE_CCI",	0x7F, 0},
-	{18,	"TNR2",		"CORE_CCI",	0x7F, 0},
-	{51,	"TNR2",		"CORE_CCI",	0x7F, 0},
-	{84,	"TNR2",		"CORE_CCI",	0x7F, 0},
-	{117,	"TNR2",		"CORE_CCI",	0x7F, 0},
-	{19,	"TNR3",		"CORE_CCI",	0x7F, 0},
-	{52,	"TNR3",		"CORE_CCI",	0x7F, 0},
-	{85,	"TNR3",		"CORE_CCI",	0x7F, 0},
-	{118,	"TNR3",		"CORE_CCI",	0x7F, 0},
-	{20,	"TNR4",		"CORE_CCI",	0x7F, 0},
-	{53,	"TNR4",		"CORE_CCI",	0x7F, 0},
-	{86,	"TNR4",		"CORE_CCI",	0x7F, 0},
-	{119,	"TNR4",		"CORE_CCI",	0x7F, 0},
-	{21,	"GDC0",		"CORE_CCI",	0x7F, 0},
-	{54,	"GDC0",		"CORE_CCI",	0x7F, 0},
-	{87,	"GDC0",		"CORE_CCI",	0x7F, 0},
-	{120,	"GDC0",		"CORE_CCI",	0x7F, 0},
-	{22,	"GDC1",		"CORE_CCI",	0x7F, 0},
-	{55,	"GDC1",		"CORE_CCI",	0x7F, 0},
-	{88,	"GDC1",		"CORE_CCI",	0x7F, 0},
-	{121,	"GDC1",		"CORE_CCI",	0x7F, 0},
-	{23,	"GDC2",		"CORE_CCI",	0x7F, 0},
-	{56,	"GDC2",		"CORE_CCI",	0x7F, 0},
-	{89,	"GDC2",		"CORE_CCI",	0x7F, 0},
-	{122,	"GDC2",		"CORE_CCI",	0x7F, 0},
-	{24,	"BO",		"CORE_CCI",	0x7F, 0},
-	{57,	"BO",		"CORE_CCI",	0x7F, 0},
-	{90,	"BO",		"CORE_CCI",	0x7F, 0},
-	{123,	"BO",		"CORE_CCI",	0x7F, 0},
-	{25,	"MFC0",		"CORE_CCI",	0x7F, 0},
-	{58,	"MFC0",		"CORE_CCI",	0x7F, 0},
-	{91,	"MFC0",		"CORE_CCI",	0x7F, 0},
-	{124,	"MFC0",		"CORE_CCI",	0x7F, 0},
-	{26,	"MFC1",		"CORE_CCI",	0x7F, 0},
-	{59,	"MFC1",		"CORE_CCI",	0x7F, 0},
-	{92,	"MFC1",		"CORE_CCI",	0x7F, 0},
-	{125,	"MFC1",		"CORE_CCI",	0x7F, 0},
-	{27,	"G2D0",		"CORE_CCI",	0x7F, 0},
-	{60,	"G2D0",		"CORE_CCI",	0x7F, 0},
-	{93,	"G2D0",		"CORE_CCI",	0x7F, 0},
-	{126,	"G2D0",		"CORE_CCI",	0x7F, 0},
-	{28,	"G2D1",		"CORE_CCI",	0x7F, 0},
-	{61,	"G2D1",		"CORE_CCI",	0x7F, 0},
-	{94,	"G2D1",		"CORE_CCI",	0x7F, 0},
-	{127,	"G2D1",		"CORE_CCI",	0x7F, 0},
-	{29,	"G2D2",		"CORE_CCI",	0x7F, 0},
-	{62,	"G2D2",		"CORE_CCI",	0x7F, 0},
-	{95,	"G2D2",		"CORE_CCI",	0x7F, 0},
-	{128,	"G2D2",		"CORE_CCI",	0x7F, 0},
-	{30,	"HSI2",		"CORE_CCI",	0x7F, 0},
-	{63,	"HSI2",		"CORE_CCI",	0x7F, 0},
-	{96,	"HSI2",		"CORE_CCI",	0x7F, 0},
-	{129,	"HSI2",		"CORE_CCI",	0x7F, 0},
-	{31,	"MISC",		"CORE_CCI",	0x7F, 0},
-	{64,	"MISC",		"CORE_CCI",	0x7F, 0},
-	{97,	"MISC",		"CORE_CCI",	0x7F, 0},
-	{130,	"MISC",		"CORE_CCI",	0x7F, 0},
-	{132,	"GSA",		"CORE_CCI",	0x7F, 0},
-	{133,	"ALIVE",	"CORE_CCI",	0x7F, 0},
-	{134,	"AOC",		"CORE_CCI",	0x7F, 0},
-	{135,	"HSI0",		"CORE_CCI",	0x7F, 0},
-	{136,	"HSI1",		"CORE_CCI",	0x7F, 0},
-	{137,	"CORESIGHT",	"CORE_CCI",	0x7F, 0},
+	{0,	"AUR1",		"CORE_CCI",	0x7F, 0},
+	{35,	"AUR1",		"CORE_CCI",	0x7F, 0},
+	{70,	"AUR1",		"CORE_CCI",	0x7F, 0},
+	{105,	"AUR1",		"CORE_CCI",	0x7F, 0},
+	{1,	"GPUMMU",	"CORE_CCI",	0x7F, 0},
+	{36,	"GPUMMU",	"CORE_CCI",	0x7F, 0},
+	{71,	"GPUMMU",	"CORE_CCI",	0x7F, 0},
+	{106,	"GPUMMU",	"CORE_CCI",	0x7F, 0},
+	{2,	"AUR0",		"CORE_CCI",	0x7F, 0},
+	{37,	"AUR0",		"CORE_CCI",	0x7F, 0},
+	{72,	"AUR0",		"CORE_CCI",	0x7F, 0},
+	{107,	"AUR0",		"CORE_CCI",	0x7F, 0},
+	{3,	"GPU0",		"CORE_CCI",	0x7F, 0},
+	{38,	"GPU0",		"CORE_CCI",	0x7F, 0},
+	{73,	"GPU0",		"CORE_CCI",	0x7F, 0},
+	{108,	"GPU0",		"CORE_CCI",	0x7F, 0},
+	{4,	"GPU1",		"CORE_CCI",	0x7F, 0},
+	{39,	"GPU1",		"CORE_CCI",	0x7F, 0},
+	{74,	"GPU1",		"CORE_CCI",	0x7F, 0},
+	{109,	"GPU1",		"CORE_CCI",	0x7F, 0},
+	{5,	"GPU2",		"CORE_CCI",	0x7F, 0},
+	{40,	"GPU2",		"CORE_CCI",	0x7F, 0},
+	{75,	"GPU2",		"CORE_CCI",	0x7F, 0},
+	{110,	"GPU2",		"CORE_CCI",	0x7F, 0},
+	{6,	"GPU3",		"CORE_CCI",	0x7F, 0},
+	{41,	"GPU3",		"CORE_CCI",	0x7F, 0},
+	{76,	"GPU3",		"CORE_CCI",	0x7F, 0},
+	{111,	"GPU3",		"CORE_CCI",	0x7F, 0},
+	{7,	"TPU",		"CORE_CCI",	0x7F, 0},
+	{42,	"TPU",		"CORE_CCI",	0x7F, 0},
+	{77,	"TPU",		"CORE_CCI",	0x7F, 0},
+	{112,	"TPU",		"CORE_CCI",	0x7F, 0},
+	{9,	"DPU0",		"CORE_CCI",	0x7F, 0},
+	{44,	"DPU0",		"CORE_CCI",	0x7F, 0},
+	{79,	"DPU0",		"CORE_CCI",	0x7F, 0},
+	{114,	"DPU0",		"CORE_CCI",	0x7F, 0},
+	{9,	"DPU1",		"CORE_CCI",	0x7F, 0},
+	{44,	"DPU1",		"CORE_CCI",	0x7F, 0},
+	{79,	"DPU1",		"CORE_CCI",	0x7F, 0},
+	{114,	"DPU1",		"CORE_CCI",	0x7F, 0},
+	{10,	"DPU2",		"CORE_CCI",	0x7F, 0},
+	{45,	"DPU2",		"CORE_CCI",	0x7F, 0},
+	{80,	"DPU2",		"CORE_CCI",	0x7F, 0},
+	{115,	"DPU2",		"CORE_CCI",	0x7F, 0},
+	{11,	"CSIS0",	"CORE_CCI",	0x7F, 0},
+	{46,	"CSIS0",	"CORE_CCI",	0x7F, 0},
+	{81,	"CSIS0",	"CORE_CCI",	0x7F, 0},
+	{116,	"CSIS0",	"CORE_CCI",	0x7F, 0},
+	{12,	"CSIS1",	"CORE_CCI",	0x7F, 0},
+	{47,	"CSIS1",	"CORE_CCI",	0x7F, 0},
+	{82,	"CSIS1",	"CORE_CCI",	0x7F, 0},
+	{117,	"CSIS1",	"CORE_CCI",	0x7F, 0},
+	{13,	"DNS",		"CORE_CCI",	0x7F, 0},
+	{48,	"DNS",		"CORE_CCI",	0x7F, 0},
+	{82,	"DNS",		"CORE_CCI",	0x7F, 0},
+	{117,	"DNS",		"CORE_CCI",	0x7F, 0},
+	{14,	"GDC0",		"CORE_CCI",	0x7F, 0},
+	{49,	"GDC0",		"CORE_CCI",	0x7F, 0},
+	{84,	"GDC0",		"CORE_CCI",	0x7F, 0},
+	{119,	"GDC0",		"CORE_CCI",	0x7F, 0},
+	{15,	"GDC1",		"CORE_CCI",	0x7F, 0},
+	{50,	"GDC1",		"CORE_CCI",	0x7F, 0},
+	{85,	"GDC1",		"CORE_CCI",	0x7F, 0},
+	{120,	"GDC1",		"CORE_CCI",	0x7F, 0},
+	{16,	"GDC2",		"CORE_CCI",	0x7F, 0},
+	{51,	"GDC2",		"CORE_CCI",	0x7F, 0},
+	{86,	"GDC2",		"CORE_CCI",	0x7F, 0},
+	{121,	"GDC2",		"CORE_CCI",	0x7F, 0},
+	{17,	"G3AA",		"CORE_CCI",	0x7F, 0},
+	{52,	"G3AA",		"CORE_CCI",	0x7F, 0},
+	{87,	"G3AA",		"CORE_CCI",	0x7F, 0},
+	{122,	"G3AA",		"CORE_CCI",	0x7F, 0},
+	{17,	"IPP",		"CORE_CCI",	0x7F, 0},
+	{52,	"IPP",		"CORE_CCI",	0x7F, 0},
+	{88,	"IPP",		"CORE_CCI",	0x7F, 0},
+	{113,	"IPP",		"CORE_CCI",	0x7F, 0},
+	{19,	"MCSC0",	"CORE_CCI",	0x7F, 0},
+	{54,	"MCSC0",	"CORE_CCI",	0x7F, 0},
+	{89,	"MCSC0",	"CORE_CCI",	0x7F, 0},
+	{124,	"MCSC0",	"CORE_CCI",	0x7F, 0},
+	{20,	"MCSC1",	"CORE_CCI",	0x7F, 0},
+	{55,	"MCSC1",	"CORE_CCI",	0x7F, 0},
+	{90,	"MCSC1",	"CORE_CCI",	0x7F, 0},
+	{125,	"MCSC1",	"CORE_CCI",	0x7F, 0},
+	{21,	"MCSC2",	"CORE_CCI",	0x7F, 0},
+	{56,	"MCSC2",	"CORE_CCI",	0x7F, 0},
+	{91,	"MCSC2",	"CORE_CCI",	0x7F, 0},
+	{126,	"MCSC2",	"CORE_CCI",	0x7F, 0},
+	{22,	"TNR0",		"CORE_CCI",	0x7F, 0},
+	{57,	"TNR0",		"CORE_CCI",	0x7F, 0},
+	{92,	"TNR0",		"CORE_CCI",	0x7F, 0},
+	{127,	"TNR0",		"CORE_CCI",	0x7F, 0},
+	{23,	"TNR1",		"CORE_CCI",	0x7F, 0},
+	{58,	"TNR1",		"CORE_CCI",	0x7F, 0},
+	{93,	"TNR1",		"CORE_CCI",	0x7F, 0},
+	{128,	"TNR1",		"CORE_CCI",	0x7F, 0},
+	{24,	"TNR2",		"CORE_CCI",	0x7F, 0},
+	{59,	"TNR2",		"CORE_CCI",	0x7F, 0},
+	{94,	"TNR2",		"CORE_CCI",	0x7F, 0},
+	{129,	"TNR2",		"CORE_CCI",	0x7F, 0},
+	{25,	"TNR3",		"CORE_CCI",	0x7F, 0},
+	{60,	"TNR3",		"CORE_CCI",	0x7F, 0},
+	{95,	"TNR3",		"CORE_CCI",	0x7F, 0},
+	{130,	"TNR3",		"CORE_CCI",	0x7F, 0},
+	{26,	"TNR4",		"CORE_CCI",	0x7F, 0},
+	{61,	"TNR4",		"CORE_CCI",	0x7F, 0},
+	{96,	"TNR4",		"CORE_CCI",	0x7F, 0},
+	{131,	"TNR4",		"CORE_CCI",	0x7F, 0},
+	{27,	"BO",		"CORE_CCI",	0x7F, 0},
+	{62,	"BO",		"CORE_CCI",	0x7F, 0},
+	{97,	"BO",		"CORE_CCI",	0x7F, 0},
+	{132,	"BO",		"CORE_CCI",	0x7F, 0},
+	{28,	"G2D0",		"CORE_CCI",	0x7F, 0},
+	{63,	"G2D0",		"CORE_CCI",	0x7F, 0},
+	{98,	"G2D0",		"CORE_CCI",	0x7F, 0},
+	{133,	"G2D0",		"CORE_CCI",	0x7F, 0},
+	{29,	"G2D1",		"CORE_CCI",	0x7F, 0},
+	{64,	"G2D1",		"CORE_CCI",	0x7F, 0},
+	{99,	"G2D1",		"CORE_CCI",	0x7F, 0},
+	{134,	"G2D1",		"CORE_CCI",	0x7F, 0},
+	{30,	"G2D2",		"CORE_CCI",	0x7F, 0},
+	{65,	"G2D2",		"CORE_CCI",	0x7F, 0},
+	{100,	"G2D2",		"CORE_CCI",	0x7F, 0},
+	{135,	"G2D2",		"CORE_CCI",	0x7F, 0},
+	{31,	"HSI2",		"CORE_CCI",	0x7F, 0},
+	{66,	"HSI2",		"CORE_CCI",	0x7F, 0},
+	{101,	"HSI2",		"CORE_CCI",	0x7F, 0},
+	{136,	"HSI2",		"CORE_CCI",	0x7F, 0},
+	{32,	"MFC0",		"CORE_CCI",	0x7F, 0},
+	{67,	"MFC0",		"CORE_CCI",	0x7F, 0},
+	{102,	"MFC0",		"CORE_CCI",	0x7F, 0},
+	{137,	"MFC0",		"CORE_CCI",	0x7F, 0},
+	{33,	"MFC1",		"CORE_CCI",	0x7F, 0},
+	{68,	"MFC1",		"CORE_CCI",	0x7F, 0},
+	{103,	"MFC1",		"CORE_CCI",	0x7F, 0},
+	{138,	"MFC1",		"CORE_CCI",	0x7F, 0},
+	{34,	"MISC",		"CORE_CCI",	0x7F, 0},
+	{69,	"MISC",		"CORE_CCI",	0x7F, 0},
+	{104,	"MISC",		"CORE_CCI",	0x7F, 0},
+	{139,	"MISC",		"CORE_CCI",	0x7F, 0},
+	{140,	"ALIVE",	"CORE_CCI",	0x7F, 0},
+	{141,	"AOC",		"CORE_CCI",	0x7F, 0},
+	{142,	"CSSYS",	"CORE_CCI",	0x7F, 0},
+	{143,	"GSA",		"CORE_CCI",	0x7F, 0},
+	{144,	"HSI0",		"CORE_CCI",	0x7F, 0},
+	{145,	"HSI1",		"CORE_CCI",	0x7F, 0},
 };
 
 const static struct itmon_clientinfo clientinfo[] = {
@@ -493,25 +519,27 @@ const static struct itmon_clientinfo clientinfo[] = {
 	{"GSA",		0x2, /*XXXX10*/		"SYSMMU_S1_GSA",	0x3},
 	{"GSA",		0x4, /*XXX100*/		"GME",			0x7},
 	{"GSA",		0x0, /*000000*/		"CA32",			0x3F},
-	{"GSA",		0x10,/*010000*/		"CA32",			0x3F},
-	{"GSA",		0x20,/*100000*/		"CA32",			0x3F},
-	{"GSA",		0x30,/*11XX00*/		"CA32",			0x33},
+	{"GSA",		0x10,/*010000*/		"SSS_GSACORE",		0x3F},
+	{"GSA",		0x20,/*100000*/		"DMA_GSACORE",		0x3F},
+	{"GSA",		0x30,/*110000*/		"DAP",			0x3F},
 
 	{"ALIVE",	0x1, /*XXXXX1*/		"SYSMMU_S2_APM",	0x1},
-	{"ALIVE",	0x0, /*XX0000*/		"SYSMMU_S2_APM",	0xF},
+	{"ALIVE",	0x0, /*XX0000*/		"APM",			0xF},
 
-	{"HSI0",	0x1, /*XXXXX1*/		"SYSMMU_S2_HSI0",	0x1},
-	{"HSI0",	0x0, /*XXXX00*/		"USB31DRD_LINK",	0x3},
-	{"HSI0",	0x2, /*XXXX10*/		"USB PCS",		0x3},
+	{"HSI0",	0x1, /*XXXX01*/		"SYSMMU_S2_HSI0",	0x3},
+	{"HSI0",	0x2, /*XXXX10*/		"SYSMMU_S1_HSI0",	0x3},
+	{"HSI0",	0x0, /*XXX000*/		"USB31DRD_LINK",	0x7},
+	{"HSI0",	0x4, /*XXX100*/		"USB PCS",		0x7},
 
-	{"HSI1",	0x1, /*XXXXX1*/		"SYSMMU_S2_HSI1",	0x1},
-	{"HSI1",	0x0, /*XXXX00*/		"PCIE_GEN4A",		0x3},
-	{"HSI1",	0x2, /*XXXX10*/		"PCIE_GEN4B",		0x3},
+	{"HSI1",	0x1, /*XXXX01*/		"SYSMMU_S2_HSI1",	0x3},
+	{"HSI1",	0x2, /*XXXX10*/		"SYSMMU_S1_HSI1",	0x3},
+	{"HSI1",	0x0, /*XXX000*/		"PCIE_GEN4A",		0x7},
+	{"HSI1",	0x2, /*XXX100*/		"PCIE_GEN4B",		0x7},
 
-	{"CORESIGHT",	0x0, /*XXX000*/		"SYSMMU_S2_CPUCL0",	0x7},
-	{"CORESIGHT",	0x4, /*XXX100*/		"CORESIGHT(ETR)",	0x7},
-	{"CORESIGHT",	0x1, /*XXXX01*/		"CORESIGHT(AXI-AP)",	0x3},
-	{"CORESIGHT",	0x2, /*XXXX10*/		"DBGC",			0x3},
+	{"CSSYS",	0x4, /*XXX100*/		"SYSMMU_S2_CPUCL0",	0x7},
+	{"CSSYS",	0x0, /*XXX000*/		"CORESIGHT(ETR)",	0x7},
+	{"CSSYS",	0x1, /*XXXX01*/		"CORESIGHT(AXI-AP)",	0x3},
+	{"CSSYS",	0x2, /*XXXX10*/		"DBGC",			0x3},
 
 	{"AOC",		0x1, /*XXXX01*/		"SYSMMU_S2_AOC",	0x3},
 	{"AOC",		0x2, /*XXXX10*/		"SYSMMU_S1_AOC",	0x3},
@@ -572,15 +600,17 @@ const static struct itmon_clientinfo clientinfo[] = {
 
 	{"DNS",		0x1, /*XXXX01*/		"SYSMMU_S2_DNS",	0x3},
 	{"DNS",		0x2, /*XXXX10*/		"SYSMMU_S1_DNS",	0x3},
-	{"DNS",		0x0, /*XX0000*/		"DNS",			0xF},
-	{"DNS",		0x4, /*XX0100*/		"VRA",			0xF},
-	{"DNS",		0x8, /*XX1000*/		"TNR_ALIGN(TNR_MSA1)",	0xF},
-	{"DNS",		0xC, /*X01100*/		"ITSC(M1)",		0x1F},
-	{"DNS",		0x1C,/*X11100*/		"ITSC(M2)",		0x1F},
+	{"DNS",		0x0, /*X00000*/		"DNS0",			0x1F},
+	{"DNS",		0x10,/*X10000*/		"DNS1",			0x1F},
+	{"DNS",		0x4, /*X00100*/		"VRA",			0x1F},
+	{"DNS",		0x8, /*X01000*/		"TNR_ALIGN(TNR_MSA1)",	0x1F},
+	{"DNS",		0xC, /*001100*/		"ITSC(M0/M2)",		0x3F},
+	{"DNS",		0x2C,/*101100*/		"ITSC(M1)",		0x3F},
+	{"DNS",		0x1C,/*X11100*/		"ITP",			0x1F},
 
 	{"MCSC0",	0x1, /*XXXX01*/		"SYSMMU_S2_MCSC0",	0x3},
 	{"MCSC0",	0x2, /*XXXX10*/		"SYSMMU_S1_MCSC0",	0x3},
-	{"MCSC0",	0x0, /*XX0000*/		"ITSC(M0)",		0xF},
+	{"MCSC0",	0x0, /*XXXX00*/		"ITSC(M0)",		0x3},
 
 	{"MCSC1",	0x1, /*XXXX01*/		"SYSMMU_S2_MCSC1",	0x3},
 	{"MCSC1",	0x2, /*XXXX10*/		"SYSMMU_S1_MCSC1",	0x3},
@@ -592,11 +622,13 @@ const static struct itmon_clientinfo clientinfo[] = {
 	{"MCSC2",	0x2, /*XXXX10*/		"SYSMMU_S1_MCSC2",	0x3},
 	{"MCSC2",	0x0, /*XX0000*/		"MCSC(M1)",		0xF},
 	{"MCSC2",	0x4, /*XX0100*/		"MCSC(M4)",		0xF},
+	{"MCSC2",	0x8, /*XX1000*/		"MCSC(M5)",		0xF},
 
 	{"TNR0",	0x1, /*XXXX01*/		"SYSMMU_S2_TNR0",	0x3},
 	{"TNR0",	0x2, /*XXXX10*/		"SYSMMU_S1_TNR0",	0x3},
 	{"TNR0",	0x0, /*XX0000*/		"TNR(M0)",		0xF},
 	{"TNR0",	0x4, /*XX0100*/		"TNR(M1)",		0xF},
+	{"TNR0",	0x8, /*XX1000*/		"TNR(M8)",		0xF},
 
 	{"TNR1",	0x1, /*XXXX01*/		"SYSMMU_S2_TNR1",	0x3},
 	{"TNR1",	0x2, /*XXXX10*/		"SYSMMU_S1_TNR1",	0x3},
@@ -640,32 +672,38 @@ const static struct itmon_clientinfo clientinfo[] = {
 	{"G2D2",	0x2, /*XXXX10*/		"SYSMMU_S1_G2D2",	0x3},
 	{"G2D2",	0x0, /*XXXX00*/		"G2D2",			0x3},
 
-	{"HSI2",	0x1, /*XXXXX1*/		"SYSMMU_S2_HSI2",	0x1},
-	{"HSI2",	0x0, /*XXX000*/		"PCIE_GEN4A",		0x7},
-	{"HSI2",	0x2, /*XXX010*/		"PCIE_GEN4B",		0x7},
-	{"HSI2",	0x4, /*XXX100*/		"UFS_EMBD",		0x7},
-	{"HSI2",	0x6, /*XXX110*/		"MMC_CARD",		0x7},
+	{"HSI2",	0x1, /*XXXX01*/		"SYSMMU_S2_HSI2",	0x3},
+	{"HSI2",	0x2, /*XXXX10*/		"SYSMMU_S1_HSI2",	0x3},
+	{"HSI2",	0x0, /*XX0000*/		"PCIE_GEN4A",		0xF},
+	{"HSI2",	0x4, /*XX0100*/		"PCIE_GEN4B",		0xF},
+	{"HSI2",	0x8, /*XX1000*/		"UFS_EMBD",		0xF},
+	{"HSI2",	0xC, /*XX1100*/		"MMC_CARD",		0xF},
 
 	{"MISC",	0x1, /*XXXXX1*/		"SYSMMU_S2_MISC",	0x1},
 	{"MISC",	0x10,/*X10000*/		"SYSMMU_S2_SSS",	0x1F},
 	{"MISC",	0x0, /*X00000*/		"SSS",			0x1F},
 	{"MISC",	0x2, /*XX0010*/		"RTIC",			0xF},
-	{"MISC",	0x4, /*XX0100*/		"SPDMA",		0xF},
-	{"MISC",	0x6, /*XX0110*/		"PDMA",			0xF},
+	{"MISC",	0x4, /*XX0100*/		"SPDMA0",		0xF},
+	{"MISC",	0x6, /*XX0110*/		"PDMA0",			0xF},
 	{"MISC",	0x8, /*XX1000*/		"DIT",			0xF},
-	{"MISC",	0xA, /*XX1010*/		"PPMU_DMA",		0xF},
+	{"MISC",	0xA, /*XX1010*/		"SPDMA1",		0xF},
+	{"MISC",	0xC, /*XX1100*/		"PDMA1",		0xF},
 
 	{"GDC0",	0x1, /*XXXX01*/		"SYSMMU_S2_GDC0",	0x3},
 	{"GDC0",	0x2, /*XXXX10*/		"SYSMMU_S1_GDC0",	0x3},
-	{"GDC0",	0x0, /*XXXX00*/		"GDC0",			0x3},
+	{"GDC0",	0x0, /*XXX000*/		"GDC0(M0)",			0x7},
+	{"GDC0",	0x4, /*XXX100*/		"GDC0(M1)",			0x7},
 
 	{"GDC1",	0x1, /*XXXX01*/		"SYSMMU_S2_GDC1",	0x3},
 	{"GDC1",	0x2, /*XXXX10*/		"SYSMMU_S1_GDC1",	0x3},
-	{"GDC1",	0x0, /*XXXX00*/		"GDC1",			0x3},
+	{"GDC1",	0x0, /*XX0000*/		"GDC1(M0)",			0xF},
+	{"GDC1",	0x4, /*XX0100*/		"GDC1(M1)",			0xF},
+	{"GDC1",	0x8, /*XX1000*/		"SCSC(M2)",			0xF},
 
 	{"GDC2",	0x1, /*XXXX01*/		"SYSMMU_S2_GDC2",	0x3},
 	{"GDC2",	0x2, /*XXXX10*/		"SYSMMU_S1_GDC2",	0x3},
-	{"GDC2",	0x0, /*XXXX00*/		"SCSC",			0x3},
+	{"GDC2",	0x0, /*XXX000*/		"SCSC(M0)",			0x7},
+	{"GDC2",	0x4, /*XXX100*/		"SCSC(M1)",			0x7},
 
 	{"GPU0",	0x1, /*XXXXX1*/		"SYSMMU_S2_GPU0",	0x1},
 	{"GPU0",	0x0, /*XXXXX0*/		"GPU(M0)",		0x1},
@@ -683,6 +721,14 @@ const static struct itmon_clientinfo clientinfo[] = {
 	{"TPU",		0x2, /*XXXX10*/		"SYSMMU_S1_TPU",	0x3},
 	{"TPU",		0x0, /*XXXX00*/		"TPU",			0x3},
 
+	{"AUR0",	0x1, /*XXXX01*/		"SYSMMU_D0_S2_AUR1",	0x3},
+	{"AUR0",	0x2, /*XXXX10*/		"SYSMMU_D0_S1_AUR1",	0x3},
+	{"AUR0",	0x0, /*XXXX00*/		"AUR_M0",		0x3},
+
+	{"AUR1",	0x1, /*XXXX01*/		"SYSMMU_D1_S2_AUR1",	0x3},
+	{"AUR1",	0x2, /*XXXX10*/		"SYSMMU_D1_S1_AUR1",	0x3},
+	{"AUR1",	0x0, /*XXXX00*/		"AUR_M1",		0x3},
+
 	/* Cannot differentiate which cpu */
 	{"CPU0",	0x40, /*bit 25*/	"CPU",			0x40},
 	{"CPU1",	0x40, /*bit 25*/	"CPU",			0x40},
@@ -697,156 +743,159 @@ const static struct itmon_clientinfo clientinfo[] = {
 };
 
 static struct itmon_nodeinfo vec_d0[] = {
-	{M_NODE, "ALIVE",	0x1EA13000, 1, 1, 0, 0},
-	{M_NODE, "AOC",		0x1EA23000, 1, 1, 0, 0},
-	{M_NODE, "CORESIGHT",	0x1EA53000, 1, 1, 0, 0},
-	{M_NODE, "GSA",		0x1EA03000, 1, 1, 0, 0},
-	{M_NODE, "HSI0",	0x1EA33000, 1, 1, 0, 0},
-	{M_NODE, "HSI1",	0x1EA43000, 1, 1, 0, 0},
+	{M_NODE, "ALIVE",	0x1EA03000, 1, 1, 0, 0},
+	{M_NODE, "AOC",		0x1EA13000, 1, 1, 0, 0},
+	{M_NODE, "CSSYS",	0x1EA23000, 1, 1, 0, 0},
+	{M_NODE, "GSA",		0x1EA33000, 1, 1, 0, 0},
+	{M_NODE, "HSI0",	0x1EA43000, 1, 1, 0, 0},
+	{M_NODE, "HSI1",	0x1EA53000, 1, 1, 0, 0},
 	{T_S_NODE, "BUS0_M0",	0x1EA63000, 1, 1, 0, 0},
 };
 
 static struct itmon_nodeinfo vec_d1[] = {
-	{M_NODE, "BO",		0x1F533000, 1, 1, 0, 0},
-	{M_NODE, "CSIS0",	0x1F433000, 1, 1, 0, 0},
-	{M_NODE, "CSIS1",	0x1F443000, 1, 1, 0, 0},
-	{M_NODE, "DNS",		0x1F473000, 1, 1, 0, 0},
-	{M_NODE, "DPU0",	0x1F403000, 1, 1, 0, 0},
-	{M_NODE, "DPU1",	0x1F413000, 1, 1, 0, 0},
-	{M_NODE, "DPU2",	0x1F423000, 1, 1, 0, 0},
-	{M_NODE, "G2D0",	0x1F563000, 1, 1, 0, 0},
-	{M_NODE, "G2D1",	0x1F573000, 1, 1, 0, 0},
-	{M_NODE, "G2D2",	0x1F583000, 1, 1, 0, 0},
-	{M_NODE, "G3AA",	0x1F453000, 1, 1, 0, 0},
-	{M_NODE, "GDC0",	0x1F503000, 1, 1, 0, 0},
-	{M_NODE, "GDC1",	0x1F513000, 1, 1, 0, 0},
-	{M_NODE, "GDC2",	0x1F523000, 1, 1, 0, 0},
-	{M_NODE, "HSI2",	0x1F593000, 1, 1, 0, 0},
-	{M_NODE, "IPP",		0x1F463000, 1, 1, 0, 0},
-	{M_NODE, "MCSC0",	0x1F483000, 1, 1, 0, 0},
-	{M_NODE, "MCSC1",	0x1F493000, 1, 1, 0, 0},
-	{M_NODE, "MCSC2",	0x1F4A3000, 1, 1, 0, 0},
-	{M_NODE, "MFC0",	0x1F543000, 1, 1, 0, 0},
-	{M_NODE, "MFC1",	0x1F553000, 1, 1, 0, 0},
-	{M_NODE, "MISC",	0x1F5A3000, 1, 1, 0, 0},
-	{M_NODE, "TNR0",	0x1F4B3000, 1, 1, 0, 0},
-	{M_NODE, "TNR1",	0x1F4C3000, 1, 1, 0, 0},
-	{M_NODE, "TNR2",	0x1F4D3000, 1, 1, 0, 0},
-	{M_NODE, "TNR3",	0x1F4E3000, 1, 1, 0, 0},
-	{M_NODE, "TNR4",	0x1F4F3000, 1, 1, 0, 0},
-	{T_S_NODE, "BUS1_M0",	0x1F5B3000, 1, 1, 0, 0},
-	{T_S_NODE, "BUS1_M1",	0x1F5C3000, 1, 1, 0, 0},
-	{T_S_NODE, "BUS1_M2",	0x1F5D3000, 1, 1, 0, 0},
-	{T_S_NODE, "BUS1_M3",	0x1F5E3000, 1, 1, 0, 0},
+	{M_NODE, "BO",		0x1F403000, 1, 1, 0, 0},
+	{M_NODE, "CSIS0",	0x1F413000, 1, 1, 0, 0},
+	{M_NODE, "CSIS1",	0x1F423000, 1, 1, 0, 0},
+	{M_NODE, "DNS",		0x1F433000, 1, 1, 0, 0},
+	{M_NODE, "DPU0",	0x1F443000, 1, 1, 0, 0},
+	{M_NODE, "DPU1",	0x1F453000, 1, 1, 0, 0},
+	{M_NODE, "DPU2",	0x1F463000, 1, 1, 0, 0},
+	{M_NODE, "G2D0",	0x1F4A3000, 1, 1, 0, 0},
+	{M_NODE, "G2D1",	0x1F4B3000, 1, 1, 0, 0},
+	{M_NODE, "G2D2",	0x1F4C3000, 1, 1, 0, 0},
+	{M_NODE, "G3AA",	0x1F4D3000, 1, 1, 0, 0},
+	{M_NODE, "GDC0",	0x1F473000, 1, 1, 0, 0},
+	{M_NODE, "GDC1",	0x1F483000, 1, 1, 0, 0},
+	{M_NODE, "GDC2",	0x1F493000, 1, 1, 0, 0},
+	{M_NODE, "HSI2",	0x1F4E3000, 1, 1, 0, 0},
+	{M_NODE, "IPP",		0x1F4F3000, 1, 1, 0, 0},
+	{M_NODE, "MCSC0",	0x1F503000, 1, 1, 0, 0},
+	{M_NODE, "MCSC1",	0x1F513000, 1, 1, 0, 0},
+	{M_NODE, "MCSC2",	0x1F523000, 1, 1, 0, 0},
+	{M_NODE, "MFC0",	0x1F533000, 1, 1, 0, 0},
+	{M_NODE, "MFC1",	0x1F543000, 1, 1, 0, 0},
+	{M_NODE, "MISC",	0x1F553000, 1, 1, 0, 0},
+	{M_NODE, "TNR0",	0x1F563000, 1, 1, 0, 0},
+	{M_NODE, "TNR1",	0x1F573000, 1, 1, 0, 0},
+	{M_NODE, "TNR2",	0x1F583000, 1, 1, 0, 0},
+	{M_NODE, "TNR3",	0x1F593000, 1, 1, 0, 0},
+	{M_NODE, "TNR4",	0x1F5A3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL2A_M0",	0x1F5B3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL2A_M1",	0x1F5C3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL2A_M2",	0x1F5D3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL2A_M3",	0x1F5E3000, 1, 1, 0, 0},
 };
 
 static struct itmon_nodeinfo vec_d2[] = {
-	{T_M_NODE, "BUS2_S0",	0x20453000, 1, 1, 0, 0},
-	{T_M_NODE, "BUS2_S1",	0x20463000, 1, 1, 0, 0},
-	{T_M_NODE, "BUS2_S2",	0x20473000, 1, 1, 0, 0},
-	{T_M_NODE, "BUS2_S3",	0x20483000, 1, 1, 0, 0},
-	{M_NODE, "GPU0",	0x20403000, 1, 1, 0, 0},
-	{M_NODE, "GPU1",	0x20413000, 1, 1, 0, 0},
-	{M_NODE, "GPU2",	0x20423000, 1, 1, 0, 0},
-	{M_NODE, "GPU3",	0x20433000, 1, 1, 0, 0},
-	{M_NODE, "TPU",		0x20443000, 1, 1, 0, 0},
-	{T_S_NODE, "BUS2_M0",	0x20493000, 1, 1, 0, 0},
-	{T_S_NODE, "BUS2_M1",	0x204A3000, 1, 1, 0, 0},
-	{T_S_NODE, "BUS2_M2",	0x204B3000, 1, 1, 0, 0},
-	{T_S_NODE, "BUS2_M3",	0x204C3000, 1, 1, 0, 0},
+	{M_NODE, "AUR0",	0x20403000, 1, 1, 0, 0},
+	{M_NODE, "AUR1",	0x20413000, 1, 1, 0, 0},
+	{M_NODE, "GPU0",	0x20433000, 1, 1, 0, 0},
+	{M_NODE, "GPU1",	0x20443000, 1, 1, 0, 0},
+	{M_NODE, "GPU2",	0x20453000, 1, 1, 0, 0},
+	{M_NODE, "GPU3",	0x20463000, 1, 1, 0, 0},
+	{M_NODE, "GPUMMU",	0x20423000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL1A_S0",	0x20483000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL1A_S1",	0x20493000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL1A_S2",	0x204A3000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL1A_S3",	0x204B3000, 1, 1, 0, 0},
+	{M_NODE, "TPU",		0x20473000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL1A_M0",	0x204C3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL1A_M1",	0x204D3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL1A_M2",	0x204E3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL1A_M3",	0x204F3000, 1, 1, 0, 0},
 };
 
 static struct itmon_nodeinfo vec_d3[] = {
-	{T_M_NODE, "CORE0_S0",	0x1E443000, 1, 1, 0, 0},
-	{T_M_NODE, "CORE0_S1",	0x1E453000, 1, 1, 0, 0},
-	{T_M_NODE, "CORE0_S2",	0x1E463000, 1, 1, 0, 0},
-	{T_M_NODE, "CORE0_S3",	0x1E473000, 1, 1, 0, 0},
-	{T_M_NODE, "CORE0_S4",	0x1E483000, 1, 1, 0, 0},
 	{M_NODE, "CPU0",	0x1E403000, 1, 1, 0, 0},
 	{M_NODE, "CPU1",	0x1E413000, 1, 1, 0, 0},
 	{M_NODE, "CPU2",	0x1E423000, 1, 1, 0, 0},
 	{M_NODE, "CPU3",	0x1E433000, 1, 1, 0, 0},
-	{S_NODE, "CORE_CCI",	0x1E4D3000, 1, 1, 0, 0},
-	{S_NODE, "CORE_DP",	0x1E4E3000, 1, 1, 0, 0, TMOUT, 1},
-	{T_S_NODE, "CORE_M0",	0x1E493000, 1, 1, 0, 0},
-	{T_S_NODE, "CORE_M1",	0x1E4A3000, 1, 1, 0, 0},
-	{T_S_NODE, "CORE_M2",	0x1E4B3000, 1, 1, 0, 0},
-	{T_S_NODE, "CORE_M3",	0x1E4C3000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL0_S0",	0x1E443000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL0_S1",	0x1E453000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL0_S2",	0x1E463000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL0_S3",	0x1E473000, 1, 1, 0, 0},
+	{T_M_NODE, "NOCL0_S4",	0x1E483000, 1, 1, 0, 0},
+	{S_NODE, "NOCL0_CCI",	0x1E493000, 1, 1, 0, 0},
+	{S_NODE, "NOCL0_DP",	0x1E4A3000, 1, 1, 0, 0, TMOUT, 1},
+	{T_S_NODE, "NOCL0_M0",	0x1E4B3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL0_M1",	0x1E4C3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL0_M2",	0x1E4D3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL0_M3",	0x1E4E3000, 1, 1, 0, 0},
 };
 
 static struct itmon_nodeinfo vec_p0[] = {
-	{M_NODE, "CCI",		0x1E723000, 1, 1, 0, 0},
-	{M_NODE, "CORE_ALIVE",	0x1E743000, 1, 1, 0, 0},
-	{M_NODE, "CORE_DP",	0x1E733000, 1, 1, 0, 0},
-	{S_NODE, "ALIVE",	0x1E6C3000, 1, 1, 0, 0, TMOUT, 1},
-	{T_S_NODE, "CORE_M0",	0x1E643000, 1, 1, 0, 0},
-	{T_S_NODE, "CORE_M1",	0x1E653000, 1, 1, 0, 0},
-	{T_S_NODE, "CORE_M2",	0x1E663000, 1, 1, 0, 0},
-	{S_NODE, "CPU",		0x1E673000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "EH",		0x1E713000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "GIC",		0x1E6E3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "MIF0",	0x1E683000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "MIF1",	0x1E693000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "MIF2",	0x1E6A3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "MIF3",	0x1E6B3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "MISC",	0x1E6D3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "PERIC0",	0x1E6F3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "PERIC1",	0x1E703000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_P0_CORE",	0x1E613000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_P1_CORE",	0x1E623000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_TREX_CORE", 0x1E603000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SLC",		0x1E633000, 1, 1, 0, 0, TMOUT, 1},
+	{M_NODE, "CCI",		0x1E603000, 1, 1, 0, 0},
+	{M_NODE, "CSSYS",	0x1E613000, 1, 1, 0, 0},
+	{M_NODE, "NOCL0_DP",	0x1E623000, 1, 1, 0, 0},
+	{S_NODE, "ALIVE",	0x1E633000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "CPUCL0",	0x1E643000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "EH",		0x1E653000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "GIC",		0x1E663000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "MIF0",	0x1E673000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "MIF1",	0x1E683000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "MIF2",	0x1E693000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "MIF3",	0x1E6A3000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "MISC",	0x1E6B3000, 1, 1, 0, 0, TMOUT, 1},
+	{T_S_NODE, "NOCL0_M0",	0x1E6E3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL1_M1",	0x1E6F3000, 1, 1, 0, 0},
+	{T_S_NODE, "NOCL2_M2",	0x1E703000, 1, 1, 0, 0},
+	{S_NODE, "P0_NOCL0",	0x1E713000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "P1_NOCL0",	0x1E723000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "P2_NOCL0",	0x1E733000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "PERIC0",	0x1E6C3000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "PERIC1",	0x1E6D3000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "SLC",		0x1E743000, 1, 1, 0, 0, TMOUT, 1},
 };
 
 static struct itmon_nodeinfo vec_p1[] = {
-	{T_M_NODE, "BUS0_S0",	0x1EC63000, 1, 1, 0, 0},
-	{S_NODE, "AOC",		0x1EC33000, 1, 1, 0, 0, TMOUT, 1},
+	{T_M_NODE, "NOCL1B_S0",	0x1EC03000, 1, 1, 0, 0},
+	{S_NODE, "AOC",		0x1EC13000, 1, 1, 0, 0, TMOUT, 1},
 	{S_NODE, "GSA",		0x1EC23000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "HSI0",	0x1EC43000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "HSI1",	0x1EC53000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_BUS0",	0x1EC13000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_TREX_BUS0", 0x1EC03000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "HSI0",	0x1EC33000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "HSI1",	0x1EC43000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "P0_NOCL1B",	0x1EC53000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "P1_NOCL1B", 	0x1EC63000, 1, 1, 0, 0, TMOUT, 1},
 };
 
 static struct itmon_nodeinfo vec_p2[] = {
-	{T_M_NODE, "BUS1_S0",	0x1F313000, 1, 1, 0, 0},
-	{S_NODE, "BO",		0x1F2C3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "CSIS",	0x1F243000, 1, 1, 0, 0, TMOUT, 1},
+	{T_M_NODE, "NOCL2A_S0",	0x1F203000, 1, 1, 0, 0},
+	{S_NODE, "BO",		0x1F213000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "CSIS",	0x1F223000, 1, 1, 0, 0, TMOUT, 1},
 	{S_NODE, "DISP",	0x1F233000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "DNS",		0x1F283000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "DPU",		0x1F223000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "G2D",		0x1F2E3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "G3AA",	0x1F263000, 1, 1, 0, 0, TMOUT, 0},
-	{S_NODE, "GDC",		0x1F303000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "HSI2",	0x1F2F3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "IPP",		0x1F273000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "ITP",		0x1F293000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "MCSC",	0x1F2A3000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "DNS",		0x1F243000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "DPU",		0x1F253000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "G2D",		0x1F273000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "G3AA",	0x1F283000, 1, 1, 0, 0, TMOUT, 0},
+	{S_NODE, "GDC",		0x1F263000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "HSI2",	0x1F293000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "IPP",		0x1F2A3000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "ITP",		0x1F2B3000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "MCSC",	0x1F2C3000, 1, 1, 0, 0, TMOUT, 1},
 	{S_NODE, "MFC",		0x1F2D3000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "PDP",		0x1F253000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_BUS1",	0x1F213000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_TREX_BUS1", 0x1F203000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "TNR",		0x1F2B3000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "P0_NOCL2A",	0x1F303000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "P1_NOCL2A",	0x1F313000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "PDP",		0x1F2E3000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "TNR",		0x1F2F3000, 1, 1, 0, 0, TMOUT, 1},
 };
 
 static struct itmon_nodeinfo vec_p3[] = {
-	{T_M_NODE, "BUS2_S0",	0x20653000, 1, 1, 0},
-	{S_NODE, "GPU",		0x20633000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_P0_BUS2",	0x20613000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_P1_BUS2",	0x20623000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "SFR_TREX_BUS2", 0x20603000, 1, 1, 0, 0, TMOUT, 1},
-	{S_NODE, "TPU",		0x20643000, 1, 1, 0, 0, TMOUT, 1},
+	{T_M_NODE, "NOCL1A_S0",	0x20603000, 1, 1, 0},
+	{S_NODE, "AUR", 	0x20613000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "G3D",		0x20623000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "P0_NOCL1A",	0x20643000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "P1_NOCL1A",	0x20653000, 1, 1, 0, 0, TMOUT, 1},
+	{S_NODE, "TPU",		0x20633000, 1, 1, 0, 0, TMOUT, 1},
 };
 
 static struct itmon_nodegroup nodegroup[] = {
-	{"BUS_DATA0", 0x1EA83000, 0, vec_d0, ARRAY_SIZE(vec_d0), DATA}, /* 127 */
-	{"BUS_DATA1", 0x1F603000, 0, vec_d1, ARRAY_SIZE(vec_d1), DATA}, /* 130 */
-	{"BUS_DATA2", 0x204E3000, 0, vec_d2, ARRAY_SIZE(vec_d2), DATA}, /* 157 */
-	{"BUS_DATA3", 0x1E503000, 0, vec_d3, ARRAY_SIZE(vec_d3), DATA}, /* 242 */
-	{"BUS_PERI0", 0x1E763000, 0, vec_p0, ARRAY_SIZE(vec_p0), PERI}, /* 253 */
-	{"BUS_PERI1", 0x1EC73000, 0, vec_p1, ARRAY_SIZE(vec_p1), PERI}, /* 128 */
-	{"BUS_PERI2", 0x1F323000, 0, vec_p2, ARRAY_SIZE(vec_p2), PERI}, /* 131 */
-	{"BUS_PERI3", 0x20663000, 0, vec_p3, ARRAY_SIZE(vec_p3), PERI}, /* 158 */
+	{"BUS_DATA0", 0x1EA83000, 0, vec_d0, ARRAY_SIZE(vec_d0), DATA}, /* 637 */
+	{"BUS_DATA1", 0x1F603000, 0, vec_d1, ARRAY_SIZE(vec_d1), DATA}, /* 640 */
+	{"BUS_DATA2", 0x20513000, 0, vec_d2, ARRAY_SIZE(vec_d2), DATA}, /* 625 */
+	{"BUS_DATA3", 0x1E503000, 0, vec_d3, ARRAY_SIZE(vec_d3), DATA}, /* 596 */
+	{"BUS_PERI0", 0x1E773000, 0, vec_p0, ARRAY_SIZE(vec_p0), PERI}, /* 607 */
+	{"BUS_PERI1", 0x1EC83000, 0, vec_p1, ARRAY_SIZE(vec_p1), PERI}, /* 638 */
+	{"BUS_PERI2", 0x1F333000, 0, vec_p2, ARRAY_SIZE(vec_p2), PERI}, /* 641 */
+	{"BUS_PERI3", 0x20673000, 0, vec_p3, ARRAY_SIZE(vec_p3), PERI}, /* 626 */
 };
 
 const static char *itmon_pathtype[] = {
@@ -896,24 +945,21 @@ static struct itmon_dev *g_itmon;
 /* declare notifier_list */
 ATOMIC_NOTIFIER_HEAD(itmon_notifier_list);
 
-static char itmon_pattern[SZ_32];
-static atomic_t itmon_pattern_cnt = ATOMIC_INIT(0);
-
-static void itmon_pattern_reset(void)
+static void itmon_pattern_reset(struct itmon_dev *itmon)
 {
-	atomic_set(&itmon_pattern_cnt, 0);
+	atomic_set(&itmon->itmon_pattern_cnt, 0);
 }
 
-static void itmon_pattern_set(const char *fmt, ...)
+static void itmon_pattern_set(struct itmon_dev *itmon, const char *fmt, ...)
 {
 	va_list args;
 
 	/* only take the first pattern even there could be multiple paths */
-	if (atomic_inc_return(&itmon_pattern_cnt) > 1)
+	if (atomic_inc_return(&itmon->itmon_pattern_cnt) > 1)
 		return;
 
 	va_start(args, fmt);
-	vsnprintf(itmon_pattern, sizeof(itmon_pattern), fmt, args);
+	vsnprintf(itmon->itmon_pattern, sizeof(itmon->itmon_pattern), fmt, args);
 	va_end(args);
 }
 
@@ -1153,7 +1199,7 @@ static void itmon_post_handler_to_notifier(struct itmon_dev *itmon,
 	itmon_post_handler_apply_policy(itmon, ret);
 
 	log_dev_err(itmon->dev, "     -ITMON Notifier Call Information\n"
-			"-----------------------------------------------------------\n");
+		    "-----------------------------------------------------------\n");
 }
 
 static void itmon_post_handler_by_dest(struct itmon_dev *itmon,
@@ -1194,20 +1240,7 @@ static void itmon_post_handler_by_client(struct itmon_dev *itmon,
 		now = ktime_get();
 		interval = ktime_sub(now, pdata->last_time);
 		pdata->last_time = now;
-
-		/* Ignore specific speculative accesses */
-		if (trans_type == TRANS_TYPE_READ &&
-			info->errcode == ERRCODE_DECERR &&
-			info->target_addr < 0x10000 &&
-			/* size (2 ^ axsize) = 4 */
-			info->axsize == 2 &&
-			/* burst (axlen + 1) = 16 */
-			info->axlen == 15)
-			/* no-op */
-			;
-		else
-			pdata->err_cnt_by_cpu++;
-
+		pdata->err_cnt_by_cpu++;
 		if (pdata->err_cnt_by_cpu > pdata->panic_threshold)
 			pdata->policy[CPU].error = true;
 
@@ -1215,7 +1248,7 @@ static void itmon_post_handler_by_client(struct itmon_dev *itmon,
 			pdata->policy[FATAL].error = true;
 			log_dev_err(itmon->dev,
 				    "Try to handle error, even CPU transaction detected - %s\n",
-				    itmon_errcode[info->errcode]);
+				itmon_errcode[info->errcode]);
 		} else {
 			log_dev_err(itmon->dev, "Skips CPU transaction detected - err_cnt_by_cpu: %u, interval: %lldns\n",
 				    pdata->err_cnt_by_cpu, ktime_to_ns(interval));
@@ -1338,18 +1371,18 @@ static void itmon_report_prot_chk_rawdata(struct itmon_dev *itmon,
 
 	/* Output Raw register information */
 	log_dev_err(itmon->dev,
-			"\n-----------------------------------------------------------\n"
-			"      Protocol Checker Raw Register Information (ITMON information)\n\n");
+		    "\n-----------------------------------------------------------\n"
+		    "      Protocol Checker Raw Register Information (ITMON information)\n\n");
 	log_dev_err(itmon->dev,
-			"      > %s(%s, 0x%08X)\n"
-			"      > REG(0x100~0x10C)      : 0x%08X, 0x%08X, 0x%08X, 0x%08X\n",
-			node->name, itmon_node_string[node->type],
-			node->phy_regs,
-			dbg_mo_cnt,
-			prot_chk_ctl,
-			prot_chk_info,
-			prot_chk_int_id);
-	itmon_pattern_set("from %s", node->name);
+		    "      > %s(%s, 0x%08X)\n"
+		    "      > REG(0x100~0x10C)      : 0x%08X, 0x%08X, 0x%08X, 0x%08X\n",
+		    node->name, itmon_node_string[node->type],
+		    node->phy_regs,
+		    dbg_mo_cnt,
+		    prot_chk_ctl,
+		    prot_chk_info,
+		    prot_chk_int_id);
+	itmon_pattern_set(itmon, "from %s", node->name);
 }
 
 static void itmon_report_rawdata(struct itmon_dev *itmon,
@@ -1386,37 +1419,37 @@ static void itmon_report_traceinfo(struct itmon_dev *itmon,
 		return;
 
 	log_dev_err(itmon->dev,
-			"\n-----------------------------------------------------------\n"
-			"      Transaction Information\n\n"
-			"      > Client (User)  : %s %s (0x%X)\n"
-			"      > Target         : %s\n"
-			"      > Target Address : 0x%lX %s\n"
-			"      > Type           : %s\n"
-			"      > Error code     : %s\n\n",
-			info->port, info->client ? info->client : "", info->user,
-			info->dest ? info->dest : NOT_AVAILABLE_STR,
-			info->target_addr,
-			info->baaw_prot == true ? "(BAAW Remapped address)" : "",
-			trans_type == TRANS_TYPE_READ ? "READ" : "WRITE",
-			itmon_errcode[info->errcode]);
+		    "\n-----------------------------------------------------------\n"
+		    "      Transaction Information\n\n"
+		    "      > Client (User)  : %s %s (0x%X)\n"
+		    "      > Target         : %s\n"
+		    "      > Target Address : 0x%lX %s\n"
+		    "      > Type           : %s\n"
+		    "      > Error code     : %s\n\n",
+		    info->port, info->client ? info->client : "", info->user,
+		    info->dest ? info->dest : NOT_AVAILABLE_STR,
+		    info->target_addr,
+		    info->baaw_prot ? "(BAAW Remapped address)" : "",
+		    trans_type == TRANS_TYPE_READ ? "READ" : "WRITE",
+		    itmon_errcode[info->errcode]);
 
-	itmon_pattern_set("from %s %s to %s",
+	itmon_pattern_set(itmon, "from %s %s to %s",
 			  info->port, info->client ? info->client : "",
 			  info->dest ? info->dest : NOT_AVAILABLE_STR);
 
 	log_dev_err(itmon->dev,
-			"\n------------------------------------------------------------\n"
-			"      > Size           : %u bytes x %u burst => %u bytes\n"
-			"      > Burst Type     : %u (0:FIXED, 1:INCR, 2:WRAP)\n"
-			"      > Level          : %s\n"
-			"      > Protection     : %s\n"
-			"      > Path Type      : %s\n\n",
-			power(2, info->axsize), info->axlen + 1,
-			power(2, info->axsize) * (info->axlen + 1),
-			info->axburst,
-			info->axprot & BIT(0) ? "Privileged" : "Unprivileged",
-			info->axprot & BIT(1) ? "Non-secure" : "Secure",
-			itmon_pathtype[info->path_type]);
+		    "\n------------------------------------------------------------\n"
+		    "      > Size           : %u bytes x %u burst => %u bytes\n"
+		    "      > Burst Type     : %u (0:FIXED, 1:INCR, 2:WRAP)\n"
+		    "      > Level          : %s\n"
+		    "      > Protection     : %s\n"
+		    "      > Path Type      : %s\n\n",
+		    power(2, info->axsize), info->axlen + 1,
+		    power(2, info->axsize) * (info->axlen + 1),
+		    info->axburst,
+		    info->axprot & BIT(0) ? "Privileged" : "Unprivileged",
+		    info->axprot & BIT(1) ? "Non-secure" : "Secure",
+		    itmon_pathtype[info->path_type]);
 }
 
 static void itmon_report_pathinfo(struct itmon_dev *itmon,
@@ -1438,22 +1471,26 @@ static void itmon_report_pathinfo(struct itmon_dev *itmon,
 	}
 	switch (node->type) {
 	case M_NODE:
-		log_dev_info(itmon->dev, "      > %14s, %8s(0x%08X)\n",
+		log_dev_info(itmon->dev,
+			     "      > %14s, %8s(0x%08X)\n",
 			     node->name, "M_NODE",
 			     node->phy_regs + data->offset);
 		break;
 	case T_S_NODE:
-		log_dev_info(itmon->dev, "      > %14s, %8s(0x%08X)\n",
+		log_dev_info(itmon->dev,
+			     "      > %14s, %8s(0x%08X)\n",
 			     node->name, "T_S_NODE",
 			     node->phy_regs + data->offset);
 		break;
 	case T_M_NODE:
-		log_dev_info(itmon->dev, "      > %14s, %8s(0x%08X)\n",
+		log_dev_info(itmon->dev,
+			     "      > %14s, %8s(0x%08X)\n",
 			     node->name, "T_M_NODE",
 			     node->phy_regs + data->offset);
 		break;
 	case S_NODE:
-		log_dev_info(itmon->dev, "      > %14s, %8s(0x%08X)\n",
+		log_dev_info(itmon->dev,
+			     "      > %14s, %8s(0x%08X)\n",
 			     node->name, "S_NODE",
 			     node->phy_regs + data->offset);
 		break;
@@ -1721,7 +1758,7 @@ static void itmon_collect_errnode(struct itmon_dev *itmon,
 	}
 
 	/* Fill detected node information to tracedata's list */
-	memcpy(new_node, node, sizeof(struct itmon_nodeinfo));
+	memcpy(new_node, node, sizeof(*new_node));
 	new_node->tracedata.int_info = int_info;
 	new_node->tracedata.ext_info_0 = info0;
 	new_node->tracedata.ext_info_1 = info1;
@@ -1736,7 +1773,6 @@ static void itmon_collect_errnode(struct itmon_dev *itmon,
 	new_node->tracedata.read = read;
 	new_node->tracedata.ref_info = NULL;
 	new_node->group = group;
-
 	node->tracedata.logging = BIT_ERR_VALID(int_info);
 
 	list_add(&new_node->list, &pdata->datalist[read]);
@@ -1854,7 +1890,7 @@ static void itmon_do_dpm_policy(struct itmon_dev *itmon)
 			continue;
 
 		scnprintf(buf, sizeof(buf), "itmon triggering %s %s",
-			  pdata->policy[i].name, itmon_pattern);
+			  pdata->policy[i].name, itmon->itmon_pattern);
 		dbg_snapshot_do_dpm_policy(pdata->policy[i].policy, buf);
 		pdata->policy[i].error = false;
 	}
@@ -1874,23 +1910,23 @@ static irqreturn_t itmon_irq_handler(int irq, void *data)
 	system_is_in_itmon = true;
 #endif
 
-	itmon_pattern_reset();
+	itmon_pattern_reset(itmon);
 	dbg_snapshot_itmon_irq_received();
 
 	/* Search itmon group */
 	for (i = 0; i < (int)ARRAY_SIZE(nodegroup); i++) {
 		group = &pdata->nodegroup[i];
 		log_dev_info(itmon->dev,
-			    "%d irq, %s group, 0x%x\n",
-			    irq, group->name,
-			    group->phy_regs == 0 ? 0 : __raw_readl(group->regs));
+			     "%d irq, %s group, 0x%x\n",
+			     irq, group->name,
+			     group->phy_regs == 0 ? 0 : __raw_readl(group->regs));
 	}
 
 	ret = itmon_search_node(itmon, NULL, true);
 	if (!ret) {
 		log_dev_info(itmon->dev, "No errors found\n");
 	} else {
-		log_dev_err(itmon->dev, "Error detected: err_cnt_by_cpu:%u\n",
+		log_dev_err(itmon->dev, "\nError detected: err_cnt_by_cpu:%u\n",
 			    pdata->err_cnt_by_cpu);
 
 		/* This will stop recursive panic when dpm action is panic */
@@ -2119,7 +2155,7 @@ static int itmon_logging_panic_handler(struct notifier_block *nb,
 		} else {
 			log_dev_err(itmon->dev,
 				    "Error detected, err_cnt_by_cpu:%u\n",
-				    pdata->err_cnt_by_cpu);
+				pdata->err_cnt_by_cpu);
 
 			itmon_do_dpm_policy(itmon);
 		}
@@ -2173,6 +2209,11 @@ static int itmon_probe(struct platform_device *pdev)
 				sizeof(struct itmon_platdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
+	pdata->cp_crash_in_progress = false;
+	for (i = 0; i < TRANS_TYPE_NUM; i++) {
+		INIT_LIST_HEAD(&pdata->datalist[i]);
+		INIT_LIST_HEAD(&pdata->infolist[i]);
+	}
 
 	itmon->pdata = pdata;
 	itmon->pdata->clientinfo = clientinfo;
@@ -2191,7 +2232,7 @@ static int itmon_probe(struct platform_device *pdev)
 			if (nodegroup[i].regs == NULL) {
 				log_dev_err(&pdev->dev,
 					    "failed to claim register region - %s\n",
-					    dev_name);
+					dev_name);
 				return -ENOENT;
 			}
 		}
@@ -2231,24 +2272,16 @@ static int itmon_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, itmon);
-
-	pdata->cp_crash_in_progress = false;
-
 	itmon_init(itmon, true);
-
+	itmon_pattern_reset(itmon);
 	g_itmon = itmon;
-	pdata->probed = true;
-
-	for (i = 0; i < TRANS_TYPE_NUM; i++) {
-		INIT_LIST_HEAD(&pdata->datalist[i]);
-		INIT_LIST_HEAD(&pdata->infolist[i]);
-	}
 
 	ret = subsys_system_register(&itmon_subsys, itmon_sysfs_groups);
 	if (ret)
 		log_dev_err(g_itmon->dev, "fail to register itmon subsys\n");
 
-	log_dev_info(&pdev->dev, "success to probe gs101 ITMON driver\n");
+	pdata->probed = true;
+	log_dev_info(&pdev->dev, "success to probe gs201 ITMON driver\n");
 
 	return 0;
 }
@@ -2285,22 +2318,22 @@ static SIMPLE_DEV_PM_OPS(itmon_pm_ops, itmon_suspend, itmon_resume);
 #endif
 
 static const struct of_device_id itmon_dt_match[] = {
-	{.compatible = "google,gs101-itmon", },
+	{.compatible = "google,gs201-itmon", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, itmon_dt_match);
 
-static struct platform_driver gs101_itmon_driver = {
+static struct platform_driver gs201_itmon_driver = {
 	.probe = itmon_probe,
 	.remove = itmon_remove,
 	.driver = {
-		   .name = "gs101-itmon",
+		   .name = "gs201-itmon",
 		   .of_match_table = itmon_dt_match,
 		   .pm = ITMON_PM,
 		   },
 };
-module_platform_driver(gs101_itmon_driver);
+module_platform_driver(gs201_itmon_driver);
 
-MODULE_DESCRIPTION("Google GS101 ITMON DRIVER");
+MODULE_DESCRIPTION("Google GS201 ITMON DRIVER");
 MODULE_AUTHOR("Hosung Kim <hosung0.kim@samsung.com");
 MODULE_LICENSE("GPL v2");

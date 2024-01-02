@@ -170,6 +170,10 @@ static bool __percpu *hotplug_ing;
 static int cpuidle_state_max;
 static int system_suspended;
 static int system_rebooting;
+#if defined(CONFIG_SOC_GS101) || defined(CONFIG_SOC_GS201)
+bool system_is_in_itmon;
+EXPORT_SYMBOL_GPL(system_is_in_itmon);
+#endif
 
 #define NSCODE_BASE		(0xBFFFF000)
 #define CPU_STATE_BASE_OFFSET	0x2C
@@ -988,6 +992,12 @@ static int exynos_cpu_pm_notify_callback(struct notifier_block *self,
 		if (system_suspended)
 			return NOTIFY_OK;
 
+#if defined(CONFIG_SOC_GS101) || defined(CONFIG_SOC_GS201)
+		/* ignore CPU_PM_ENTER event in itmon sequence */
+		if (system_is_in_itmon)
+			return NOTIFY_BAD;
+#endif
+
 		/*
 		 * There are few block condition of C2.
 		 *  - while cpu is hotpluging.
@@ -1497,6 +1507,10 @@ static int exynos_cpupm_probe(struct platform_device *pdev)
 	system_rebooting = false;
 	register_reboot_notifier(&exynos_cpupm_reboot_nb);
 
+#if defined(CONFIG_SOC_GS101) || defined(CONFIG_SOC_GS201)
+	system_is_in_itmon = false;
+#endif
+
 	ret = cpu_pm_register_notifier(&exynos_cpu_pm_notifier);
 	if (ret)
 		return ret;
@@ -1537,7 +1551,11 @@ static struct platform_driver exynos_cpupm_driver = {
 	.probe		= exynos_cpupm_probe,
 };
 
+#if defined(CONFIG_SOC_ZUMA)
 MODULE_SOFTDEP("pre: exynos_mct_v3 exynos_mct");
+#else
+MODULE_SOFTDEP("pre: exynos_mct");
+#endif
 MODULE_DESCRIPTION("Exynos CPUPM driver");
 MODULE_LICENSE("GPL");
 module_platform_driver(exynos_cpupm_driver);
