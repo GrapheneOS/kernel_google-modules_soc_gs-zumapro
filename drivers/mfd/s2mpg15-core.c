@@ -286,6 +286,7 @@ static int s2mpg15_i2c_probe(struct i2c_client *i2c,
 	}
 
 	s2mpg15->dev = &i2c->dev;
+	s2mpg15->dev->init_name = "i2c-" S2MPG15_MFD_DEV_NAME;
 	i2c->addr = I2C_ADDR_TOP;
 	s2mpg15->i2c = i2c;
 	s2mpg15->device_type = S2MPG15X;
