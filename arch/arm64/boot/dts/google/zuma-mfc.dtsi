@@ -243,7 +243,11 @@
 			/* SLC (System Level Cache) */
 			pt_id =
 				"MFC_p0",
-				"MFC_p1";
+				"MFC_p1",
+				"MFC_p2",
+				"MFC_p3",
+				"MFC_p4",
+				"MFC_p5";
 
 			/* vOTF */
 			/* mfc_votf_base = <0x16650000>; */

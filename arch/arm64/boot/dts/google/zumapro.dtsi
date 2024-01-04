@@ -685,6 +685,22 @@
 			/* vptid 9, 1024KB, priority 0 (highest), pbha 0 */
 			id_size_priority = <0x9 0x00002001 0x0 0x0>;
 		};
+		MFC_p2 {
+			/* vptid 9, 512KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x9 0x0001001 0x0 0x0>;
+		};
+		MFC_p3 {
+			/* vptid 9, 512KB-3072KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x9 0x0002e001 0x0 0x0>;
+		};
+		MFC_p4 {
+			/* vptid 9, 512KB-6144KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x9 0x0008e001 0x0 0x0>;
+		};
+		MFC_p5 {
+			/* vptid 9, 512KB-12288KB, priority 0 (highest), pbha 0 */
+			id_size_priority = <0x9 0x002fe001 0x0 0x0>;
+		};
 	};
 
 	acpm_mfd_bus1: acpm_mfd_bus@15510000 {
