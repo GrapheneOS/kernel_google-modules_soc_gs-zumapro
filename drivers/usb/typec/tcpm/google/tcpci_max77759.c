@@ -2058,6 +2058,10 @@ static int max77759_start_toggling(struct google_shim_tcpci *tcpci,
 	int ret;
 	enum typec_cc_status cc1, cc2;
 
+	/* Wait for tcpci_register_port to finish. */
+	while (READ_ONCE(chip->tcpci) == NULL)
+		cpu_relax();
+
 	max77759_get_cc(chip, &cc1, &cc2);
 
 	switch (cc) {
@@ -2084,9 +2088,6 @@ static int max77759_start_toggling(struct google_shim_tcpci *tcpci,
 		reg |= (TCPC_ROLE_CTRL_CC_RP << TCPC_ROLE_CTRL_CC1_SHIFT) |
 			(TCPC_ROLE_CTRL_CC_RP << TCPC_ROLE_CTRL_CC2_SHIFT);
 
-	/* Wait for tcpci_register_port to finish. */
-	while (READ_ONCE(chip->tcpci) == NULL)
-		cpu_relax();
 	max77759_init_regs(chip->tcpci->regmap, chip->log);
 
 	chip->role_ctrl_cache = reg;
