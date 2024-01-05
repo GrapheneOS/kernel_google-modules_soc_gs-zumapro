@@ -3114,9 +3114,6 @@ static int exynos_pcie_rc_msi_init(struct dw_pcie_rp *pp)
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	struct device *dev = pci->dev;
 	struct pci_bus *ep_pci_bus;
-#if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
-	unsigned long msi_addr_from_dt;
-#endif
 	/*
 	 * The following code is added to avoid duplicated allocation.
 	 */
@@ -3129,18 +3126,12 @@ static int exynos_pcie_rc_msi_init(struct dw_pcie_rp *pp)
 
 		if (exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
 #if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
-			/* get the MSI target address from DT */
-			msi_addr_from_dt = shm_get_msi_base();
-
-			if (msi_addr_from_dt) {
-				dev_dbg(dev, "MSI target addr. from DT: %#lx\n", msi_addr_from_dt);
-				pp->msi_data = msi_addr_from_dt;
-				goto program_msi_data;
-			} else {
-				dev_err(dev, "%s: msi_addr_from_dt is null\n", __func__);
-
+			/* Should have been populated by exynos_pcie_set_msi_ctrl_addr()*/
+			if (!pp->msi_data) {
+				dev_err(dev, "%s: msi address is null\n", __func__);
 				return -EINVAL;
 			}
+			dev_dbg(dev, "msi_data : %pad\n", &pp->msi_data);
 #else
 			dev_dbg(dev, "EP is Modem but ModemIF is disabled\n");
 #endif
@@ -3151,9 +3142,6 @@ static int exynos_pcie_rc_msi_init(struct dw_pcie_rp *pp)
 		}
 	}
 
-#if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
-program_msi_data:
-#endif
 	dev_dbg(dev, "%s: Program the MSI data: 0x%lx (probe ok:%d)\n",
 		__func__, (unsigned long)pp->msi_data, exynos_pcie->probe_ok);
 	/* Program the msi_data */
@@ -5152,6 +5140,17 @@ u32 pcie_linkup_stat(void)
 	return pcie_is_linkup;
 }
 EXPORT_SYMBOL_GPL(pcie_linkup_stat);
+
+int exynos_pcie_set_msi_ctrl_addr(int ch_num, u64 msi_ctrl_addr) {
+	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+
+        exynos_pcie->pci->pp.msi_data = msi_ctrl_addr;
+        dev_info(exynos_pcie->pci->dev, "Updated MSI Control Addr: %pad\n",
+                &exynos_pcie->pci->pp.msi_data);
+
+        return 0;
+}
+EXPORT_SYMBOL_GPL(exynos_pcie_set_msi_ctrl_addr);
 
 #if IS_ENABLED(CONFIG_GS_S2MPU)
 static int setup_s2mpu_mem(struct device *dev, struct exynos_pcie *exynos_pcie)
