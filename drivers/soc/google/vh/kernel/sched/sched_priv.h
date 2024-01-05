@@ -54,6 +54,10 @@ extern int *pixel_cpu_to_cluster;
 extern int *pixel_cluster_enabled;
 extern unsigned int *pixel_cpd_exit_latency;
 
+
+unsigned long approximate_util_avg(unsigned long util, u64 delta);
+u64 approximate_runtime(unsigned long util);
+
 #define cpu_overutilized(cap, max, cpu)	\
 		((cap) * sched_capacity_margin[cpu] > (max) << SCHED_CAPACITY_SHIFT)
 
