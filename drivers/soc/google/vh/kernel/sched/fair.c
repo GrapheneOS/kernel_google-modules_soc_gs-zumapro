@@ -1425,7 +1425,7 @@ static inline bool group_overutilized(int cpu, struct task_struct *p, unsigned l
 	unsigned long group_capacity = cap_scale(get_task_group_throttle(p),
 						 arch_scale_cpu_capacity(cpu));
 
-	return cpu_overutilized(util, group_capacity, cpu);
+	return !fits_capacity(util, group_capacity, cpu);
 }
 #else
 static inline bool group_overutilized(int cpu, struct task_group *tg, unsigned long util)
@@ -1434,7 +1434,7 @@ static inline bool group_overutilized(int cpu, struct task_group *tg, unsigned l
 	unsigned long group_capacity = cap_scale(get_group_throttle(tg),
 					arch_scale_cpu_capacity(cpu));
 
-	return cpu_overutilized(util, group_capacity, cpu);
+	return !fits_capacity(util, group_capacity, cpu);
 }
 #endif
 #endif

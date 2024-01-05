@@ -88,7 +88,7 @@ static inline void update_auto_fits_capacity(void)
  * cores which needs to run more on to achieve same utilization compared to big
  * core.
  */
-static inline bool fits_capacity(unsigned long util, int cpu)
+static inline bool fits_capacity(unsigned long util, unsigned long capacity, int cpu)
 {
 	return util < sched_auto_fits_capacity[cpu];
 }
@@ -292,12 +292,13 @@ static inline int util_fits_cpu(unsigned long util,
 				int cpu)
 {
 	unsigned long capacity_orig, capacity_orig_thermal;
+	unsigned long capacity = capacity_of(cpu);
 	bool fits, uclamp_max_fits;
 
 	/*
 	 * Check if the real util fits without any uclamp boost/cap applied.
 	 */
-	fits = fits_capacity(util, cpu);
+	fits = fits_capacity(util, capacity, cpu);
 
 	if (!uclamp_is_used())
 		return fits;
