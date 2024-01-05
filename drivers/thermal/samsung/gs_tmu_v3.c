@@ -3651,6 +3651,11 @@ polling_delay_off_show(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs_tmu_data *data = platform_get_drvdata(pdev);
 
+	if (acpm_gov_common.turn_on) {
+		pr_err("%s: polling_delay_off not supported with ACPM governor", __func__);
+		return -EPERM;
+	}
+
 	return sysfs_emit(buf, "%u\n", data->polling_delay_off);
 }
 
@@ -3664,6 +3669,11 @@ polling_delay_off_store(struct device *dev, struct device_attribute *devattr,
 
 	if (kstrtou32(buf, 10, &polling_delay_off))
 		return -EINVAL;
+
+	if (acpm_gov_common.turn_on) {
+		pr_err("%s: polling_delay_off not supported with ACPM governor", __func__);
+		return -EPERM;
+	}
 
 	data->polling_delay_off = polling_delay_off;
 
