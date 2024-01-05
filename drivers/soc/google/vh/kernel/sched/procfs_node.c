@@ -2227,6 +2227,132 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 
 PROC_OPS_RW(pmu_poll_enable);
 
+static int max_load_balance_interval_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%lu\n", max_load_balance_interval);
+	return 0;
+}
+static ssize_t max_load_balance_interval_store(struct file *filp,
+					       const char __user *ubuf,
+					       size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	max_load_balance_interval = val;
+
+	return count;
+}
+PROC_OPS_RW(max_load_balance_interval);
+
+static int min_granularity_ns_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_min_granularity);
+	return 0;
+}
+static ssize_t min_granularity_ns_store(struct file *filp,
+					const char __user *ubuf,
+					size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	sysctl_sched_min_granularity = val;
+
+	return count;
+}
+PROC_OPS_RW(min_granularity_ns);
+
+static int latency_ns_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_latency);
+	return 0;
+}
+static ssize_t latency_ns_store(struct file *filp,
+				const char __user *ubuf,
+				size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	sysctl_sched_latency = val;
+
+	return count;
+}
+PROC_OPS_RW(latency_ns);
+
+static int enable_hrtick_show(struct seq_file *m, void *v)
+{
+	bool enabled;
+
+	sysctl_sched_features |= 1UL << __SCHED_FEAT_HRTICK;
+	enabled = static_key_enabled(&sched_feat_keys[__SCHED_FEAT_HRTICK]);
+	seq_printf(m, "%d\n", enabled);
+	return 0;
+}
+static ssize_t enable_hrtick_store(struct file *filp,
+				   const char __user *ubuf,
+				   size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (!val) {
+		sysctl_sched_features &= ~(1UL << __SCHED_FEAT_HRTICK);
+		static_key_disable(&sched_feat_keys[__SCHED_FEAT_HRTICK]);
+	} else {
+		sysctl_sched_features |= 1UL << __SCHED_FEAT_HRTICK;
+		static_key_enable(&sched_feat_keys[__SCHED_FEAT_HRTICK]);
+	}
+
+	return count;
+}
+PROC_OPS_RW(enable_hrtick);
+
 #if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 extern unsigned long sched_lib_mask_out_val;
 
@@ -2410,6 +2536,11 @@ static struct pentry entries[] = {
 	// iowait boost
 	PROC_ENTRY(per_task_iowait_boost_max_value),
 	PROC_ENTRY(per_cpu_iowait_boost_max_value),
+	// load balance
+	PROC_ENTRY(max_load_balance_interval),
+	PROC_ENTRY(min_granularity_ns),
+	PROC_ENTRY(latency_ns),
+	PROC_ENTRY(enable_hrtick),
 };
 
 
