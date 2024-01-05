@@ -1644,6 +1644,38 @@ static ssize_t tapered_dvfs_headroom_enable_store(struct file *filp,
 }
 PROC_OPS_RW(tapered_dvfs_headroom_enable);
 
+static int auto_migration_margins_enable_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", static_branch_likely(&auto_migration_margins_enable) ? 1 : 0);
+	return 0;
+}
+static ssize_t auto_migration_margins_enable_store(struct file *filp,
+						   const char __user *ubuf,
+						   size_t count, loff_t *pos)
+{
+	int enable = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &enable))
+		return -EINVAL;
+
+	if (enable)
+		static_branch_enable(&auto_migration_margins_enable);
+	else
+		static_branch_disable(&auto_migration_margins_enable);
+
+	return count;
+}
+PROC_OPS_RW(auto_migration_margins_enable);
+
 static int npi_packing_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "%s\n", vendor_sched_npi_packing ? "true" : "false");
@@ -2541,6 +2573,8 @@ static struct pentry entries[] = {
 	PROC_ENTRY(min_granularity_ns),
 	PROC_ENTRY(latency_ns),
 	PROC_ENTRY(enable_hrtick),
+	// auto margins
+	PROC_ENTRY(auto_migration_margins_enable),
 };
 
 

@@ -55,6 +55,8 @@ extern int *pixel_cpu_to_cluster;
 extern int *pixel_cluster_enabled;
 extern unsigned int *pixel_cpd_exit_latency;
 
+DECLARE_STATIC_KEY_FALSE(auto_migration_margins_enable);
+
 
 unsigned long approximate_util_avg(unsigned long util, u64 delta);
 u64 approximate_runtime(unsigned long util);
@@ -90,7 +92,10 @@ static inline void update_auto_fits_capacity(void)
  */
 static inline bool fits_capacity(unsigned long util, unsigned long capacity, int cpu)
 {
-	return util < sched_auto_fits_capacity[cpu];
+	if (static_branch_likely(&auto_migration_margins_enable))
+		return util < sched_auto_fits_capacity[cpu];
+	else
+		return !cpu_overutilized(util, capacity, cpu);
 }
 
 #define lsub_positive(_ptr, _val) do {				\
