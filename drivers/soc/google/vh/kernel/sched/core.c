@@ -122,6 +122,9 @@ void vh_scheduler_tick_pixel_mod(void *data, struct rq *rq)
 
 	/* Check if an RT task needs to move to a better fitting CPU */
 	check_migrate_rt_task(rq, rq->curr);
+
+	/* Should be really done when capacity change */
+	update_auto_fits_capacity();
 }
 
 void rvh_enqueue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)

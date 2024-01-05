@@ -41,6 +41,7 @@
 		      UCLAMP_BUCKETS - 1)
 
 extern unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR];
+extern unsigned int sched_auto_fits_capacity[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_per_cpu_iowait_boost_max_value[CONFIG_VH_SCHED_MAX_CPU_NR];
@@ -60,6 +61,37 @@ u64 approximate_runtime(unsigned long util);
 
 #define cpu_overutilized(cap, max, cpu)	\
 		((cap) * sched_capacity_margin[cpu] > (max) << SCHED_CAPACITY_SHIFT)
+
+#define cap_scale(v, s) ((v)*(s) >> SCHED_CAPACITY_SHIFT)
+
+static inline void update_auto_fits_capacity(void)
+{
+	int cpu;
+
+	for (cpu = 0; cpu < pixel_cpu_num; cpu++) {
+		u64 limit = approximate_runtime(capacity_orig_of(cpu)) * USEC_PER_MSEC;
+		limit = cap_scale(limit - TICK_USEC, capacity_orig_of(cpu));
+		sched_auto_fits_capacity[cpu] = approximate_util_avg(0, limit);
+	}
+}
+
+/*
+ * The util will fit the capacity if it has enough headroom to grow within the
+ * next tick - which is when any load balancing activity happens to do the
+ * correction.
+ *
+ * If util stays within the capacity before tick has elapsed, then it should be
+ * fine. If not, then a correction action must happen shortly after it starts
+ * running, hence we treat it as !fit.
+ *
+ * Make sure to take invariance into account so tasks don't linger on smaller
+ * cores which needs to run more on to achieve same utilization compared to big
+ * core.
+ */
+static inline bool fits_capacity(unsigned long util, int cpu)
+{
+	return util < sched_auto_fits_capacity[cpu];
+}
 
 #define lsub_positive(_ptr, _val) do {				\
 	typeof(_ptr) ptr = (_ptr);				\
@@ -260,13 +292,12 @@ static inline int util_fits_cpu(unsigned long util,
 				int cpu)
 {
 	unsigned long capacity_orig, capacity_orig_thermal;
-	unsigned long capacity = capacity_of(cpu);
 	bool fits, uclamp_max_fits;
 
 	/*
 	 * Check if the real util fits without any uclamp boost/cap applied.
 	 */
-	fits = !cpu_overutilized(util, capacity, cpu);
+	fits = fits_capacity(util, cpu);
 
 	if (!uclamp_is_used())
 		return fits;

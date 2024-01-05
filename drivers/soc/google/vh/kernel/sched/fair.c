@@ -47,6 +47,8 @@ extern unsigned int sysctl_sched_idle_min_granularity;
 static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
 
+
+unsigned int sched_auto_fits_capacity[CONFIG_VH_SCHED_MAX_CPU_NR];
 unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = DEF_UTIL_THRESHOLD };
 unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
