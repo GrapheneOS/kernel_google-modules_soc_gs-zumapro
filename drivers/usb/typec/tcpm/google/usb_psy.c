@@ -163,24 +163,7 @@ int usb_find_chg_psy(struct usb_psy_data *usb)
 	return 1;
 }
 
-static int usb_get_current_max_ma(struct usb_psy_data *usb)
-{
-	union power_supply_propval val = {0};
-	int ret;
-
-	if (!usb->chg_psy_name)
-		return usb->current_max_cache;
-
-	if (!usb_find_chg_psy(usb))
-		return 0;
-
-	ret = power_supply_get_property(usb->chg_psy,
-					POWER_SUPPLY_PROP_CURRENT_MAX, &val);
-	if (ret < 0)
-		return ret;
-
-	return val.intval;
-}
+/* b/310025560 removed the function usb_get_current_max_ma. Add it back if needed. */
 
 static int usb_set_current_max_ma(struct usb_psy_data *usb,
 				  int current_max)
@@ -382,7 +365,7 @@ static int usb_psy_data_get_prop(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = usb->sink_enabled ? usb_get_current_max_ma(usb) > ONLINE_THRESHOLD_UA
+		val->intval = usb->sink_enabled ? usb->current_max_cache > ONLINE_THRESHOLD_UA
 			? 1 : 0 : 0;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
