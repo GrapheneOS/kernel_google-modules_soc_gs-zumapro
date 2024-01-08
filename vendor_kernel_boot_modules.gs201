@@ -177,6 +177,7 @@ st33spi.ko
 st54spi.ko
 systrace.ko
 sysrq-hook.ko
+google_tcpci_shim.ko
 tcpci_max77759.ko
 touch_bus_negotiator.ko
 touch_offload.ko
