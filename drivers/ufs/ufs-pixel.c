@@ -832,6 +832,7 @@ static void pixel_ufs_prepare_command(void *data, struct ufs_hba *hba,
 		lrbp->cmd->cmnd[6] = 0x11;
 	else if (opcode == WRITE_16)
 		lrbp->cmd->cmnd[14] = 0x11;
+	ufs->need_wb_flush = true;
 }
 
 static ssize_t life_time_estimation_c_show(struct device *dev,
@@ -982,7 +983,7 @@ static ssize_t manual_gc_store(struct device *dev,
 						UPIU_QUERY_OPCODE_CLEAR_FLAG;
 		u8 index = ufshcd_wb_get_query_index(hba);
 
-		if (ufshcd_is_wb_allowed(hba)) {
+		if (ufs->need_wb_flush) {
 			ufshcd_query_flag_retry(hba, opcode,
 				QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8,
 				index, NULL);

@@ -359,6 +359,7 @@ struct pixel_ufs {
 
 	/* enable WriteBooster based on given Group ID mode */
 	enum pixel_ufs_wb_gid set_gid;
+	bool need_wb_flush;
 
 	/* power event tracing with kibble */
 	spinlock_t power_event_lock;
