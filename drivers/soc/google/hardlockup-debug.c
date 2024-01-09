@@ -19,6 +19,7 @@
 #include <linux/device.h>
 #include <linux/interval_tree.h>
 #include <linux/pm.h>
+#include <linux/oom.h>
 
 #include <linux/suspend.h>
 #include <linux/sched/task.h>
@@ -53,6 +54,8 @@
 #define CLUSTER_0_CORE_NR		(6)
 
 #define MAX_PRINT_DELAY_MS		(1800U)
+
+extern void dump_tasks(struct oom_control *oc);
 
 unsigned int hardlockup_debug_cpu_resume_insts[] = {
 	0x100000a2, //    adr     x2, 14 <__fiq_pending>
@@ -236,6 +239,7 @@ static unsigned long hardlockup_debug_get_locked_cpu_mask(void)
 static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 {
 	static atomic_t print_schedstat_once = ATOMIC_INIT(1);
+	static atomic_t dump_tasks_once = ATOMIC_INIT(1);
 	int cpu = raw_smp_processor_id();
 	unsigned int val;
 	unsigned long flags;
@@ -293,6 +297,12 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 
 		dump_backtrace(regs, NULL, KERN_DEFAULT);
 		dbg_snapshot_save_context(regs, false);
+
+		if (atomic_cmpxchg(&dump_tasks_once, 1, 0)) {
+                        /* dummy struct to fulfill dump_tasks interface */
+			struct oom_control oc = { 0 };
+			dump_tasks(&oc);
+		}
 
 		if (atomic_cmpxchg(&print_schedstat_once, 1, 0)) {
 			s3c2410wdt_print_schedstat(KERN_EMERG);
