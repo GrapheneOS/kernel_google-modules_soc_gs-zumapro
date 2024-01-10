@@ -23,6 +23,20 @@
 
 / {
 
+	tmuctrl_0: BIG@100A0000 {
+		k_po = <100>;
+		k_pu = <20>;
+		k_i = <42>;
+		early_throttle_k_p = <90>;
+		early_throttle_offset = <20>; // in Celsius
+	};
+
+	tmuctrl_1: MID@100A0000 {
+		k_po = <60>;
+		k_pu = <36>;
+		k_i = <58>;
+	};
+
 	thermal_zones: thermal-zones {
 		big_thermal: BIG {
 			zone_name  = "BIG_THERMAL";
@@ -52,7 +66,7 @@
 					type = "active";
 				};
 				big_early_throttle: big-early_throttle {
-					temperature = <80000>; /* millicelsius */
+					temperature = <70000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
@@ -147,7 +161,7 @@
 					type = "active";
 				};
 				little_switch_on: little-switch-on {
-					temperature = <70000>; /* millicelsius */
+					temperature = <75000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
