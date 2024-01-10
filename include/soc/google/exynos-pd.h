@@ -28,7 +28,11 @@
 #include <soc/google/exynos-cpupm.h>
 #include <dt-bindings/power/exynos-power.h>
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
 #define HSI0_CAL_PDID	0xB1380018
+#else
+#define HSI0_CAL_PDID	0xB1380008
+#endif
 
 struct exynos_pm_domain;
 
