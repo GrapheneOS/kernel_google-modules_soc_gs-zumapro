@@ -677,6 +677,8 @@
 		 * DSI0(0x1), DSI1(0x2), VIDI(0x8)
 		 */
 		connector = <0x1 0x2 0x8>;
+
+		hibernation;
 		rcd = <&drmrcd1>;
 
 		itmon,port = "DPUF", "DPUB";
