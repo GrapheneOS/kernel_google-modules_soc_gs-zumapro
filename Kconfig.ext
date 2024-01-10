@@ -64,7 +64,13 @@ source "$(KCONFIG_EXT_PREFIX)drivers/iommu/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/cpufreq/Kconfig"
 
+if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/devfreq/google/Kconfig"
+endif
+
+if SOC_GS101
+source "$(KCONFIG_EXT_PREFIX)drivers/devfreq-whi/google/Kconfig"
+endif
 
 source "$(KCONFIG_EXT_PREFIX)drivers/iio/Kconfig"
 

@@ -70,7 +70,13 @@ obj-y += drivers/cpufreq/
 
 obj-y += drivers/clocksource/
 
+ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-y += drivers/devfreq/google/
+endif
+
+ifeq ($(CONFIG_SOC_GS101),y)
+obj-y += drivers/devfreq-whi/google/
+endif
 
 obj-y += drivers/iio/
 
