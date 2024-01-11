@@ -64,6 +64,9 @@ enum gsa_mbox_cmd {
 	GSA_MB_CMD_WAKELOCK_ACQUIRE = 150,
 	GSA_MB_CMD_WAKELOCK_RELEASE = 151,
 
+	/* App Loading */
+	GSA_MB_CMD_LOAD_APP_PKG = 180,
+
 	/* DSP management */
 	GSA_MB_CMD_LOAD_DSP_FW_IMG = 240,
 	GSA_MB_CMD_DSP_CMD = 241,
@@ -181,6 +184,21 @@ enum sjtag_status_rsp_args {
 	SJTAG_STATUS_RSP_HW_STATUS_IDX = 1,
 	SJTAG_STATUS_RSP_DEBUG_TIME_IDX = 2,
 	SJTAG_STATUS_RSP_ARGC,
+};
+
+/**
+ * enum app_pkg_load_req_args - parameters layout for APP package request
+ * @APP_PKG_ADDR_LO_IDX: index of low word of APP package address
+ * @APP_PKG_ADDR_HI_IDX: index of high word of APP package address
+ * @APP_PKG_SIZE_IDX: index of App package size parameter
+ * @LOAD_APP_REQ_ARGC: total number of parameters expected by apploader
+ *                     service
+ */
+enum app_pkg_load_req_args {
+	APP_PKG_ADDR_LO_IDX = 0,
+	APP_PKG_ADDR_HI_IDX,
+	APP_PKG_SIZE_IDX,
+	APP_PKG_LOAD_REQ_ARGC,
 };
 
 struct gsa_mbox;

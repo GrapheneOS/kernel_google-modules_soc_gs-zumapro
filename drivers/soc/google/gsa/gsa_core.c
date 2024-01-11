@@ -26,6 +26,7 @@
 #include "gsa_priv.h"
 #include "gsa_tz.h"
 #include "hwmgr-ipc.h"
+#include <linux/types.h>
 
 #define MAX_DEVICES 1
 
@@ -632,6 +633,51 @@ static int gsa_cdev_open(struct inode *inode, struct file *filp)
 	return nonseekable_open(inode, filp);
 }
 
+static long gsa_cdev_handle_load_app(struct gsa_dev_state *s, unsigned long arg)
+{
+	struct gsa_ioc_load_app_req req;
+	u32 gsa_mbox_req[APP_PKG_LOAD_REQ_ARGC];
+	dma_addr_t outbuf_dma;
+	void *outbuf_va = NULL;
+	int rc = 0;
+
+	if (copy_from_user(&req, (const void __user *)arg, sizeof(req))) {
+		dev_err(s->dev, "load_app failed to copy request from user space.\n");
+		return -EFAULT;
+	}
+
+	/* Allocate physically contiguous memory needed by GSA app loader. */
+	outbuf_va = memdup_user((const void __user *)req.buf, req.len);
+	if (IS_ERR(outbuf_va)) {
+		dev_err(s->dev, "load_app handler failed to copy app from userspace.\n");
+		return PTR_ERR(outbuf_va);
+	}
+
+	outbuf_dma = dma_map_single(s->dev, outbuf_va, req.len, DMA_TO_DEVICE);
+	if (dma_mapping_error(s->dev, outbuf_dma)) {
+		dev_err(s->dev, "load_app handler failed to allocate dma.\n");
+		rc = -ENOMEM;
+		goto out;
+	}
+
+	gsa_mbox_req[APP_PKG_ADDR_LO_IDX] = (u32)outbuf_dma;
+	gsa_mbox_req[APP_PKG_ADDR_HI_IDX] = (u32)(outbuf_dma >> 32);
+	gsa_mbox_req[APP_PKG_SIZE_IDX] = req.len;
+	rc = gsa_send_mbox_cmd(s->mb, GSA_MB_CMD_LOAD_APP_PKG, gsa_mbox_req, 3, NULL, 0);
+
+	if (rc < 0) {
+		dev_err(s->dev, "load_app handler received error response from GSA mbox (%d).\n",
+			rc);
+		goto out;
+	}
+
+out:
+	if (outbuf_dma)
+		dma_unmap_single(s->dev, outbuf_dma, req.len, DMA_TO_DEVICE);
+	kfree(outbuf_va);
+	return rc;
+}
+
 static long gsa_cdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct gsa_dev_state *s = filp->private_data;
@@ -643,9 +689,7 @@ static long gsa_cdev_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 
 	switch (cmd) {
 	case GSA_IOC_LOAD_APP:
-		dev_err(s->dev,
-			"GSA cdev received load_app ioctl which is not implemented yet\n");
-		return -ENOTTY;
+		return gsa_cdev_handle_load_app(s, arg);
 
 	default:
 		dev_err(s->dev, "GSA cdev received unhandled ioctl cmd: %#x\n", cmd);
