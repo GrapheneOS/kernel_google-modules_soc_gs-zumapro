@@ -6,3 +6,7 @@
  */
 #include "zuma-usb.dtsi"
 
+&usbdrd_phy0 {
+		phy_eusb_version = <0x701>;
+};
+
