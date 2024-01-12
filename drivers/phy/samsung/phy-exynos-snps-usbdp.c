@@ -210,7 +210,7 @@ static void lane0_reset(struct exynos_usbphy_info *info, int val)
 	base = info->regs_base;
 	reg = readl(base + SNPS_USBDPPHY_REG_PHY_RST_CTRL);
 	((SNPS_USBDPPHY_REG_PHY_RST_CTRL_p)(&reg))->b.pipe_lane0_reset_n = (val) ? 0x0 : 0x1;
-	((SNPS_USBDPPHY_REG_PHY_RST_CTRL_p)(&reg))->b.pipe_lane0_reset_n_ovrd_en = 1;
+	((SNPS_USBDPPHY_REG_PHY_RST_CTRL_p)(&reg))->b.pipe_lane0_reset_n_ovrd_en = val;
 	writel(reg, base + SNPS_USBDPPHY_REG_PHY_RST_CTRL);
 }
 
