@@ -14,7 +14,7 @@
 #include <linux/io.h>
 #include <dt-bindings/soc/google/gs-bts.h>
 
-#if IS_ENABLED(CONFIG_SOC_GS101)
+#if ! IS_ENABLED(CONFIG_SOC_ZUMA)
 #include "regs-btsgs101.h"
 #else
 #include "regs-btsgs.h"
