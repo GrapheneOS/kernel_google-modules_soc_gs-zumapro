@@ -46,11 +46,14 @@
 #define EXYNOS_USBCON_VER_06_MAX 0x06FF
 
 /* eUSB phy contorller */
-#define EXYNOS_USBCON_VER_07_0_0 0x0700 /* eUSB PHY controller */
+#define EXYNOS_USBCON_VER_07_0_0 0x0700 /* 4nm cp_bias_cntrl = default - eUSB PHY controller, zuma */
+#define EXYNOS_USBCON_VER_07_0_1 0x0701 /* 4nm cp_bias_cntrl = 0 - eUSB PHY controller, zumapro */
+#define EXYNOS_USBCON_VER_07_0_2 0x0702 /* 3nm cp_bias_cntrl = 0 - eUSB PHY controller */
 #define EXYNOS_USBCON_VER_07_8_0 0x0780 /* dwc eUSB PHY register interface */
 
 /* synopsys usbdp phy contorller */
-#define EXYNOS_USBCON_VER_08_0_0 0x0800 /* dwc usb3p2/dp PHY controller */
+#define EXYNOS_USBCON_VER_08_0_0 0x0800 /* dwc usb3p2/dp PHY controller 9865 */
+#define EXYNOS_USBCON_VER_08_0_1 0x0801 /* dwc usb3p2/dp PHY controller, 9875 */
 
 #define EXYNOS_USBCON_VER_F2_0_0	0xF200
 #define EXYNOS_USBCON_VER_F2_MAX	0xF2FF
@@ -260,8 +263,14 @@ struct exynos_usbphy_info {
 
 	/* Dual PHY */
 	bool dual_phy;
+
+	/* SOF tick for UDMA */
+	int sel_sof;
+	int usbdp_mode;
+	unsigned int add_val_magic;
 };
 
+#define CAL_INFO_ADD_INFO_MAGIC 0xCA10ADD4
 struct usb_eom_result_s {
 	u32 phase;
 	u32 vref;
@@ -271,5 +280,7 @@ struct usb_eom_result_s {
 #define EOM_PH_SEL_MAX      72
 #define EOM_DEF_VREF_MAX    256
 
+#define SNPS_USBDP_ROM_MODE 0
+#define SNPS_USBDP_RAM_MODE 1
 void phy_usb_exynos_register_cal_infor(struct exynos_usbphy_info *cal_info);
 #endif	/* __PHY_SAMSUNG_USB_FW_CAL_H__ */
