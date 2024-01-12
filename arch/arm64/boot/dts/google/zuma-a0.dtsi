@@ -34,6 +34,179 @@
 	afbc_clk_ppc_margin = <118>; /* additional 18% margin for afbc layer clock */
 };
 
+&gs_dsulat {
+	/* Linearly Dependent Domains. */
+	secondary_domains {
+		bci_freq {
+			devfreq_domain_name = "DSU2BCI";
+			pm_qos_class = <PM_QOS_BCI_THROUGHPUT>;
+			core-dev-table-latency =
+			/* DSU     		BCI */
+			< 324000        324000 >,
+			< 615000        575000 >,
+			< 820000        840000 >,
+			< 975000        840000 >;
+		};
+	};
+
+	dsulat_governor {
+		gs_dsulat_cl0 {
+			cpulist = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
+			ratio_ceil = <700>;
+			stall_floor = <1750>;
+			cpuidle_state_depth_threshold = <2>;
+
+			core-dev-table-latency =
+			/* CL0   DSU */
+			< 351000        324000 >,
+			< 615000        324000 >,
+			< 820000        324000 >,
+			< 975000        615000 >,
+			< 1098000       615000 >,
+			< 1197000       820000 >,
+			< 1328000       820000 >,
+			< 1475000       820000 >,
+			< 1548000       820000 >,
+			< 1704000       820000 >,
+			< 1844000       820000 >,
+			< 1950000       820000 >,
+			< 2024000       820000 >,
+			< 2098000       820000 >,
+			< 2147000       820000 >,
+			< 2253000       820000 >;
+
+			core-dev-table-base =
+			/* CL0    		DSU */
+			<  324000        324000 >,
+			< 1704000        324000 >;
+		};
+		gs_dsulat_cl1 {
+			cpulist = <&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
+			ratio_ceil = <1000>;
+			stall_floor = <1750>;
+			cpuidle_state_depth_threshold = <2>;
+
+			core-dev-table-latency =
+			/* CL1    		DSU */
+			< 402000        324000 >,
+			< 578000        615000 >,
+			< 697000        615000 >,
+			< 721000        615000 >,
+			< 910000        615000 >,
+			< 1082000       615000 >,
+			< 1221000       615000 >,
+			< 1328000       615000 >,
+			< 1418000       615000 >,
+			< 1549000       820000 >,
+			< 1622000       820000 >,
+			< 1836000       820000 >,
+			< 1999000       820000 >,
+			< 2130000       820000 >,
+			< 2245000       820000 >,
+			< 2352000       820000 >,
+			< 2450000       820000 >,
+			< 2550000       820000 >,
+			< 2600000       820000 >;
+
+			core-dev-table-base =
+			/* CL1    		DSU */
+			<  402000       324000 >,
+			< 2367000       324000 >;
+
+		};
+		gs_dsulat_cl2 {
+			cpulist = <&cpu8>;
+			ratio_ceil = <3000>;
+			stall_floor = <1750>;
+			cpuidle_state_depth_threshold = <2>;
+
+			core-dev-table-latency =
+			/* CL2    		DSU */
+			< 500000        324000 >,
+			< 893000        615000 >,
+			< 1164000       615000 >,
+			< 1328000       820000 >,
+			< 1557000       975000 >,
+			< 1745000       975000 >,
+			< 1852000       975000 >,
+			< 1901000       975000 >,
+			< 2049000       975000 >,
+			< 2147000       975000 >,
+			< 2294000       975000 >,
+			< 2409000       975000 >,
+			< 2556000       975000 >,
+			< 2687000       975000 >,
+			< 2802000       975000 >,
+			< 2914000       975000 >,
+			< 3015000       975000 >,
+			< 3178000       975000 >,
+			< 3310000       975000 >;
+
+			core-dev-table-base =
+			/* CL2    DSU */
+			<  500000       324000 >,
+			< 2943000       324000 >;
+		};
+	};
+};
+
+&gs_memlat {
+	memlat_governor {
+		gs_memlat_cl0 {
+			cpulist = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
+			ratio_ceil = <1800>;
+			stall_floor = <3000>;
+			cpuidle_state_depth_threshold = <2>;
+
+			core-dev-table-latency =
+			/* CL0         MIF */
+			<  250000  546000 >,
+			<  610000  676000 >,
+			<  820000  845000 >,
+			<  955000 1014000 >,
+			< 1098000 1352000 >;
+		};
+		gs_memlat_cl1 {
+			cpulist = <&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
+			ratio_ceil = <3700>;
+			stall_floor = <2400>;
+			cpuidle_state_depth_threshold = <2>;
+
+			core-dev-table-latency =
+			/* CL1         MIF */
+			<  320000  546000 >,
+			<  578000  676000 >,
+			<  697000  845000 >,
+			<  712000 1014000 >,
+			< 1065000 1352000 >,
+			< 1328000 1539000 >,
+			< 1572000 1716000 >,
+			< 1836000 3172000 >,
+			< 1945000 3172000 >,
+			< 2130000 3744000 >;
+		};
+		gs_memlat_cl2 {
+			cpulist = <&cpu8>;
+			ratio_ceil = <3400>;
+			stall_floor = <500>;
+			cpuidle_state_depth_threshold = <2>;
+
+			core-dev-table-latency =
+			/* CL2         MIF */
+			<  400000  546000 >,
+			<  880000  676000 >,
+			< 1164000  845000 >,
+			< 1298000 1014000 >,
+			< 1557000 1352000 >,
+			< 1745000 1716000 >,
+			< 2049000 2028000 >,
+			< 2147000 3172000 >,
+			< 2556000 3172000 >,
+			< 2687000 3744000 >;
+		};
+	};
+};
+
 &dsu_lat {
 	core-dev-table-cl0-low-latency-v2 =
 		/* CL0         DSU */
