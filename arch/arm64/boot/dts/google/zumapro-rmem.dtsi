@@ -66,11 +66,6 @@
 			no-map;
 		};
 
-		tpu_fw_ctx_reserved: tpu_ctx@98000000 {
-			reg = <0x0 0x98000000 0x03600000>;
-			no-map;
-		};
-
 		aoc_reserve: aoc@94000000 {
 			reg = <0x0 0x94000000 0x03000000>;
 			no-map;
