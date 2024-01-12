@@ -130,27 +130,28 @@ static inline int update_memlat(struct memlat_hwmon *hw)
 {
 	return 0;
 }
-static int exynos_devfreq_get_boundary(unsigned int devfreq_type,
+static inline int exynos_devfreq_get_boundary(unsigned int devfreq_type,
 				       unsigned int *max_freq, unsigned int *min_freq)
 {
 	return 0;
 }
-static struct device **get_memlat_dev_array(void)
+static inline struct device **get_memlat_dev_array(void)
 {
 	return NULL;
 }
-static struct exynos_pm_qos_request **get_memlat_cpu_qos_array(void)
+static inline struct exynos_pm_qos_request **get_memlat_cpu_qos_array(void)
 {
 	return NULL;
 }
-static int *get_memlat_cpuidle_state_aware(void)
+static inline int *get_memlat_cpuidle_state_aware(void)
 {
 	return NULL;
 }
-static int get_cpu_idle_state(unsigned int cpu)
+static inline int get_cpu_idle_state(unsigned int cpu)
 {
 	return 0;
-static void set_arm_mon_probe_done(bool)
+}
+static inline void set_arm_mon_probe_done(bool b)
 {
 	return;
 }
