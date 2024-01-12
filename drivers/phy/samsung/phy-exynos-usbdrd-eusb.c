@@ -1147,14 +1147,20 @@ static int exynos_usbdrd_get_sub_phyinfo(struct exynos_usbdrd_phy *phy_drd)
 	struct device_node *tune_node;
 	int ret;
 	int value;
+	int mode;
 
 	if (of_property_read_u32(dev->of_node, "sub_phy_version", &value)) {
 		dev_err(dev, "can't get sub_phy_version\n");
 		return -EINVAL;
 	}
+	if (of_property_read_u32(dev->of_node, "usbdp_mode", &mode)) {
+		dev_err(dev, "can't get usbdp_mode\n");
+		return -EINVAL;
+	}
 
 	phy_drd->usbphy_sub_info.version = value;
 	phy_drd->usbphy_sub_info.refclk = phy_drd->extrefclk;
+	phy_drd->usbphy_sub_info.usbdp_mode = mode;
 
 	phy_drd->usbphy_sub_info.regs_base = phy_drd->reg_dpphy_ctrl;
 	phy_drd->usbphy_sub_info.regs_base_2nd = phy_drd->reg_dpphy_tca;
