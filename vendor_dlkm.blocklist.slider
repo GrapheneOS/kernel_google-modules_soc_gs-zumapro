@@ -14,7 +14,6 @@ blocklist snd-soc-cs35l41-spi
 blocklist sscoredump_sample_test.ko
 blocklist sscoredump_test.ko
 blocklist st33spi
-blocklist st54spi
 blocklist uwb_desense.ko
 blocklist uwb-hal.ko
 blocklist uwbcore.ko
