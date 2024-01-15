@@ -95,6 +95,11 @@
 	subsys-name = "TS";
 };
 
+&m_ext4_rail {
+	schematic-name = "VSYS_PWR_DISPLAY";
+	shunt-res-uohms = <5000>;
+};
+
 &m_ext5_rail {
 	schematic-name = "VSYS_PWR_CAMERA";
 	shunt-res-uohms = <5000>;
