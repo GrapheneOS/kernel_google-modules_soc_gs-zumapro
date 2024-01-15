@@ -49,6 +49,19 @@ static void __iomem *usbdp_combo_phy_reg;
 void __iomem *phycon_base_addr;
 EXPORT_SYMBOL_GPL(phycon_base_addr);
 
+static int (*s2mpu_notify)(struct device *dev, bool on);
+
+int exynos_usbdrd_set_s2mpu_pm_ops(int (*cb)(struct device *dev, bool on))
+{
+	/*
+	 * Paired with smp_load_acquire(&s2mpu_notify),
+	 * Ensure memory stores hapenning during module init
+	 * are observed before executing the callback.
+	 */
+	return cmpxchg_release(&s2mpu_notify, NULL, cb) ? -EBUSY : 0;
+}
+EXPORT_SYMBOL_GPL(exynos_usbdrd_set_s2mpu_pm_ops);
+
 /*u32 get_speed_and_disu1u2(void);*/
 
 static ssize_t
@@ -2082,6 +2095,7 @@ EXPORT_SYMBOL_GPL(exynos_usbdrd_vdd_hsi_manual_control);
 int exynos_usbdrd_s2mpu_manual_control(bool on)
 {
 	struct exynos_usbdrd_phy *phy_drd;
+	int (*__s2mpu_notify)(struct device *dev, bool on);
 
 	pr_debug("%s s2mpu = %d\n", __func__, on);
 
@@ -2091,12 +2105,12 @@ int exynos_usbdrd_s2mpu_manual_control(bool on)
 		return -ENODEV;
 	}
 
-	if (!phy_drd->s2mpu)
+	/* Paired with cmpxchg_release in exynos_usbdrd_set_s2mpu_pm_ops. */
+	__s2mpu_notify = smp_load_acquire(&s2mpu_notify);
+	if (!phy_drd->s2mpu || !__s2mpu_notify)
 		return 0;
 
-	if (is_protected_kvm_enabled())
-		return  on ? pkvm_iommu_resume(phy_drd->s2mpu)
-			   : pkvm_iommu_suspend(phy_drd->s2mpu);
+	__s2mpu_notify(phy_drd->s2mpu, on);
 
 	return 0;
 }

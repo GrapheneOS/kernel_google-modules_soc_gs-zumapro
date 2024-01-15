@@ -98,6 +98,8 @@ struct eusb_repeater_data {
 	int ctrl_sel_status;
 	struct dentry *root;
 	struct regulator *vdd33;
+	bool eusb_pm_status;
+	bool eusb_data_enabled;
 };
 
 struct eusb_repeater_plat_data {
