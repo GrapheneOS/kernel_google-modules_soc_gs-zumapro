@@ -182,6 +182,10 @@ static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_m
 		overutilize[cpu] = !util_fits_cpu(util[cpu],
 						  rq_util_min, rq_util_max, cpu);
 
+		// Make cpus in CPD state the least preferred
+		if (is_idle && !get_cluster_enabled(pixel_cpu_to_cluster[cpu]))
+			exit_lat[cpu] = pixel_cpd_exit_latency[pixel_cpu_to_cluster[cpu]];
+
 		trace_sched_cpu_util_rt(cpu, capacity[cpu], capacity_of(cpu), util[cpu],
 					exit_lat[cpu], cpu_importance[cpu], task_fits[cpu],
 					task_fits_original[cpu], overutilize[cpu], is_idle);
@@ -189,10 +193,6 @@ static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_m
 		// To prefer idle cpu than non-idle cpu
 		if (is_idle)
 			util[cpu] = 0;
-
-		// Make cpus in CPD state the least preferred
-		if (is_idle && !get_cluster_enabled(pixel_cpu_to_cluster[cpu]))
-			exit_lat[cpu] = pixel_cpd_exit_latency[pixel_cpu_to_cluster[cpu]];
 
 		if (task_fits[cpu]) {
 			fit_and_non_overutilized_found |= !overutilize[cpu];
