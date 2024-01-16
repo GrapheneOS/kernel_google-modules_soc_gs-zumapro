@@ -89,7 +89,6 @@ heatmap.ko
 i2c-acpm.ko
 i2c-dev.ko
 i2c-exynos5.ko
-janeiro.ko
 kernel-top.ko
 keycombo.ko
 keydebug.ko
