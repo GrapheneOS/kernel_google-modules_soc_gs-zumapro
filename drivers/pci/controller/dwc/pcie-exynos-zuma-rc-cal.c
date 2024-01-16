@@ -338,6 +338,9 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x0, elbi_base_regs + 0x1408);
 		writel(0x0, elbi_base_regs + 0x1400);
 
+		/* slv pend check */
+		writel(0x1, elbi_base_regs + PCIE_SLV_PEND_SEL_NAK);
+
 		/* pma_setting */
 
 		//Common
@@ -558,6 +561,9 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 		writel(0x0, elbi_base_regs + 0x1404);
 		writel(0x0, elbi_base_regs + 0x1408);
 		writel(0x0, elbi_base_regs + 0x1400);
+
+                /* slv pend check */
+                writel(0x1, elbi_base_regs + PCIE_SLV_PEND_SEL_NAK);
 
 		/* pma_setting */
 
