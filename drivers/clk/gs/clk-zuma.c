@@ -759,6 +759,15 @@ struct init_vclk zuma_misc_hwacg_vclks[] = {
 		0,
 		VCLK_GATE,
 		NULL),
+	HWACG_VCLK_QACTIVE(ATCLK,
+		"ATCLK",
+		"DOUT_CLK_MISC_NOCP",
+		0,
+		VCLK_QACTIVE,
+		NULL,
+		0x2a00c02c,
+		0x1,
+		0x1),
 };
 
 struct init_vclk zuma_peric0_hwacg_vclks[] = {
