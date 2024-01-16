@@ -62,6 +62,8 @@ obj-y += drivers/devfreq/google/
 
 obj-y += drivers/performance/gs_perf_mon/
 
+obj-y += drivers/performance/lat_governors/
+
 obj-y += drivers/iio/
 
 obj-y += drivers/staging/android/
