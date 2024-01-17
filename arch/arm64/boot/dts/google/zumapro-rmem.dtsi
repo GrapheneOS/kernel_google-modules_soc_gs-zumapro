@@ -22,7 +22,7 @@
 		};
 
 		gsa_reserved_protected: gsa@90200000 {
-			reg = <0x0 0x90200000 0x400000>;
+			reg = <0x0 0x90200000 0x3FF000>;
 			no-map;
 		};
 
