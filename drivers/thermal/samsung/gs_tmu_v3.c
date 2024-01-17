@@ -62,7 +62,7 @@ enum tmu_type_t {
 	TMU_TYPE_GPU,
 	TMU_TYPE_ISP,
 	TMU_TYPE_TPU,
-#if IS_ENABLED(CONFIG_SOC_ZUMA)
+#if IS_ENABLED(CONFIG_SOC_ZUMA) || IS_ENABLED(CONFIG_SOC_GS201)
 	TMU_TYPE_AUR,
 #endif
 	TMU_TYPE_END,
@@ -90,7 +90,32 @@ enum tmu_type_t {
 			    TMU_P9_SENSOR_MASK | \
 			    TMU_P10_SENSOR_MASK | \
 			    TMU_P11_SENSOR_MASK)
-
+#elif IS_ENABLED(CONFIG_SOC_GS201)
+#define TZ_BIG_SENSOR_MASK (TMU_P0_SENSOR_MASK | \
+			    TMU_P7_SENSOR_MASK | \
+			    TMU_P9_SENSOR_MASK | \
+			    TMU_P10_SENSOR_MASK | \
+			    TMU_P11_SENSOR_MASK)
+#define TZ_MID_SENSOR_MASK (TMU_P4_SENSOR_MASK | \
+			    TMU_P6_SENSOR_MASK)
+#define TZ_LIT_SENSOR_MASK (TMU_P1_SENSOR_MASK | \
+			    TMU_P3_SENSOR_MASK)
+#define TZ_GPU_SENSOR_MASK (TMU_P0_SENSOR_MASK | \
+			    TMU_P8_SENSOR_MASK | \
+			    TMU_P9_SENSOR_MASK | \
+			    TMU_P10_SENSOR_MASK | \
+			    TMU_P11_SENSOR_MASK | \
+			    TMU_P12_SENSOR_MASK | \
+			    TMU_P13_SENSOR_MASK)
+#define TZ_ISP_SENSOR_MASK (TMU_P13_SENSOR_MASK | \
+			    TMU_P14_SENSOR_MASK | \
+			    TMU_P15_SENSOR_MASK)
+#define TZ_TPU_SENSOR_MASK (TMU_P2_SENSOR_MASK | \
+			    TMU_P3_SENSOR_MASK | \
+			    TMU_P4_SENSOR_MASK | \
+			    TMU_P5_SENSOR_MASK)
+#define TZ_AUR_SENSOR_MASK (TMU_P14_SENSOR_MASK | \
+			    TMU_P15_SENSOR_MASK)
 #elif IS_ENABLED(CONFIG_SOC_ZUMA)
 #define TZ_BIG_SENSOR_MASK (TMU_P1_SENSOR_MASK | \
 			    TMU_P2_SENSOR_MASK)
@@ -130,14 +155,18 @@ static struct thermal_zone_data tz_config[] = {
 		.sensors_mask = TZ_GPU_SENSOR_MASK,
 	},
 	[TZ_ISP] = {
+#if IS_ENABLED(CONFIG_SOC_GS201)
+		.tmu_zone_id = TMU_TOP,
+#else
 		.tmu_zone_id = TMU_SUB,
+#endif
 		.sensors_mask = TZ_ISP_SENSOR_MASK,
 	},
 	[TZ_TPU] = {
 		.tmu_zone_id = TMU_SUB,
 		.sensors_mask = TZ_TPU_SENSOR_MASK,
 	},
-#if IS_ENABLED(CONFIG_SOC_ZUMA)
+#if IS_ENABLED(CONFIG_SOC_ZUMA) || IS_ENABLED(CONFIG_SOC_GS201)
 	[TZ_AUR] = {
 		.tmu_zone_id = TMU_SUB,
 		.sensors_mask = TZ_AUR_SENSOR_MASK,

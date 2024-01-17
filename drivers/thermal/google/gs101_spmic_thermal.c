@@ -21,6 +21,12 @@
 
 #include <thermal_core.h>
 
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
+#include <soc/google/thermal_metrics.h>
+static const int stats_thresholds[MAX_SUPPORTED_THRESHOLDS] = {
+			0, 39000, 43000, 45000, 46500, 52000, 55000, 70000};
+#endif
+
 #define GTHERM_CHAN_NUM 8
 #define SENSOR_WAIT_SLEEP_MS 50
 
@@ -30,6 +36,9 @@ struct gs101_spmic_thermal_sensor {
 	unsigned int adc_chan;
 	int emul_temperature;
 	int irq;
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
+	tr_handle tr_handle;
+#endif
 };
 
 struct gs101_spmic_thermal_chip {
@@ -38,6 +47,7 @@ struct gs101_spmic_thermal_chip {
 	struct s2mpg11_dev *iodev;
 	struct gs101_spmic_thermal_sensor sensor[GTHERM_CHAN_NUM];
 	u8 adc_chan_en;
+	u8 stats_en;
 	struct kobject *kobjs[GTHERM_CHAN_NUM];
 	struct kthread_worker *wq;
 	struct kthread_delayed_work wait_sensor_work;
@@ -168,7 +178,7 @@ static int gs101_spmic_thermal_get_temp(struct thermal_zone_device *tz,
 	emul_temp = s->emul_temperature;
 	if (emul_temp) {
 		*temp = emul_temp;
-		return 0;
+		goto end;
 	}
 
 	if (!(gs101_spmic_thermal->adc_chan_en & (mask << s->adc_chan)))
@@ -179,6 +189,12 @@ static int gs101_spmic_thermal_get_temp(struct thermal_zone_device *tz,
 		return ret;
 
 	*temp = gs101_map_volt_temp(raw);
+
+end:
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
+	if (gs101_spmic_thermal->stats_en & (mask << s->adc_chan))
+		temp_residency_stats_update(s->tr_handle, *temp);
+#endif
 
 	return ret;
 }
@@ -476,6 +492,13 @@ static int gs101_spmic_thermal_get_dt_data(struct platform_device *pdev,
 		dev_info(dev, "Cannot read adc_chan_en\n");
 		return -EINVAL;
 	}
+
+	if (of_property_read_u8(node, "stats_en",
+				&gs101_spmic_thermal->stats_en)) {
+		dev_info(dev, "Cannot read stats_en\n");
+		gs101_spmic_thermal->stats_en = 0;
+	}
+
 	return 0;
 }
 
@@ -594,7 +617,8 @@ static int gs101_spmic_thermal_probe(struct platform_device *pdev)
 	struct s2mpg11_dev *iodev = dev_get_drvdata(pdev->dev.parent);
 	struct s2mpg11_platform_data *pdata;
 	int irq_base, i;
-
+	u8 mask = 0x01;
+	char __maybe_unused thermal_group[] = "spmic";
 	chip = devm_kzalloc(&pdev->dev, sizeof(struct gs101_spmic_thermal_chip),
 			    GFP_KERNEL);
 	if (!chip)
@@ -655,8 +679,15 @@ static int gs101_spmic_thermal_probe(struct platform_device *pdev)
 		goto disable_ntc;
 	}
 
-	/* Setup IRQ */
+	/* Setup IRQ and stats collection*/
 	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
+		int ret;
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
+		struct thermal_zone_device *tzd = chip->sensor[i].tzd;
+		tr_handle tr_stats_handle;
+		int num_stats_thresholds =  ARRAY_SIZE(stats_thresholds);
+#endif
+
 		chip->sensor[i].irq =
 			irq_base + S2MPG11_IRQ_NTC_WARN_CH1_INT6 + i;
 
@@ -669,6 +700,29 @@ static int gs101_spmic_thermal_probe(struct platform_device *pdev)
 				chip->sensor[i].irq, ret);
 			goto free_irq_tz;
 		}
+
+		if (!(chip->stats_en & (mask << i)))
+			continue;
+
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
+		tr_stats_handle = register_temp_residency_stats(tzd->type, thermal_group);
+		if (tr_stats_handle < 0) {
+			dev_err(&pdev->dev,
+				"Failed to register for temperature residency stats. ret: %d\n",
+				tr_stats_handle);
+			goto free_irq_tz;
+		}
+
+		ret = temp_residency_stats_set_thresholds(tr_stats_handle,
+					stats_thresholds, num_stats_thresholds);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"Failed to set stats_thresholds. ret = %d\n", ret);
+			goto free_irq_tz;
+		}
+
+		chip->sensor[i].tr_handle = tr_stats_handle;
+#endif
 	}
 
 	chip->wq = kthread_create_worker(0, "spmic-init");
@@ -701,12 +755,18 @@ fail:
 static int gs101_spmic_thermal_remove(struct platform_device *pdev)
 {
 	int i;
+	u8 __maybe_unused mask = 0x01;
 	struct gs101_spmic_thermal_chip *chip = platform_get_drvdata(pdev);
 
 	kthread_cancel_delayed_work_sync(&chip->wait_sensor_work);
 	kthread_destroy_worker(chip->wq);
 	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
 		devm_free_irq(&pdev->dev, chip->sensor[i].irq, chip);
+
+#if IS_ENABLED(CONFIG_PIXEL_METRICS)
+		if (chip->stats_en & (mask << i))
+			unregister_temp_residency_stats(chip->sensor[i].tr_handle);
+#endif
 	}
 	gs101_spmic_thermal_unregister_tzd(chip);
 	gs101_spmic_set_enable(chip, false);
