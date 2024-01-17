@@ -719,7 +719,7 @@
 
 	acpm_mbox_test: mbox {
 		compatible = "google,acpm-mbox-test";
-		status = "disabled";
+		status = "okay";
 	};
 
 	acpm_tmu {
