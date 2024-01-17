@@ -58,11 +58,7 @@ obj-y += drivers/media/platform/
 
 obj-y += drivers/power/
 
-ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-y += drivers/thermal/
-else
-obj-y += drivers/thermal-whi/
-endif
 
 obj-y += drivers/watchdog/
 
