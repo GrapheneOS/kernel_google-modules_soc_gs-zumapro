@@ -163,5 +163,9 @@
 #define EVT_CNT_ENABLE_DEFAULT	1
 #define EVT_CNT_RATE_DEFAULT	0
 
+/* IFPMIC */
+#define M77759 0
+#define M77779 1
+
 #endif /* _DT_BINDINGS_ZUMA_BCL_H */
 

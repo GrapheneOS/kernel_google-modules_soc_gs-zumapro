@@ -25,6 +25,11 @@
 #define BO_UPPER_LIMIT	6800
 #define BO_LOWER_LIMIT	3800
 #define BO_STEP	200
+#define BO_BAT_OPEN_TO_DEFAULT  1
+#define BO_INT_REL_DEFAULT      3
+#define BO_INT_DET_DEFAULT      3
+#define UV_INT_REL_DEFAULT      2
+#define UV_INT_DET_DEFAULT      1
 
 /* Thermal Limit */
 #define PMIC_OVERHEAT_UPPER_LIMIT	2000
@@ -146,6 +151,14 @@
 #define CPU1_CLUSTER_MIN 4
 #define CPU2_CLUSTER_MIN 8
 #define METER_CHANNEL_MAX 12
+
+/* Event Counter */
+#define EVT_CNT_ENABLE_DEFAULT  1
+#define EVT_CNT_RATE_DEFAULT    0
+
+/* IFPMIC */
+#define M77759 0
+#define M77779 1
 
 #endif /* _DT_BINDINGS_GS201_BCL_H */
 
