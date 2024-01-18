@@ -6,6 +6,18 @@
 
 #include "zumapro.dtsi"
 
+&cpufreq_domain0 {
+	resume-freq = <1425000>;
+};
+
+&cpufreq_domain1 {
+	resume-freq = <1795000>;
+};
+
+&cpufreq_domain2 {
+	resume-freq = <1164000>;
+};
+
 &pixel_em {
 		profiles =
 			"default
