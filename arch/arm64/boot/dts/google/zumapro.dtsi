@@ -25,7 +25,7 @@
 #include "zumapro-pinctrl.dtsi"
 #include "zuma-s2mpu.dtsi"
 #include "zuma-gsa.dtsi"
-#include "zuma-gpu.dtsi"
+#include "zumapro-gpu.dtsi"
 #include "zumapro-tpu.dtsi"
 #include "zuma-gxp.dtsi"
 #include "zumapro-usi.dtsi"
