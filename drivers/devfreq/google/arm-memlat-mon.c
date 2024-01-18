@@ -54,6 +54,8 @@ int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 	struct memlat_cpu_grp *cpu_grp = per_cpu(cpu_grp_p, cpu);
 	struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
 
+	if (!per_cpu(is_on, cpu))
+		return -EINVAL;
 
 	spin_lock(&cpu_data->pmu_lock);
 	*inst = cpu_data->inst;
