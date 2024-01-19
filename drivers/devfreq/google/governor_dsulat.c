@@ -351,10 +351,9 @@ static int devfreq_dsulat_get_freq(struct devfreq *df,
 				  &l2_cache_wb, &l3_cache_access, &mem_count, &freq);
 
 		if (ret) {
-			*target_freq = 0;
-			pr_err("ev_data read fail for CPU %d\n", cpu);
+			pr_debug("ev_data read fail for CPU %d\n", cpu);
 			trace_clock_set_rate(trace_name, 0, raw_smp_processor_id());
-			return ret;
+			continue;
 		}
 
 		if (l2_cachemiss)
