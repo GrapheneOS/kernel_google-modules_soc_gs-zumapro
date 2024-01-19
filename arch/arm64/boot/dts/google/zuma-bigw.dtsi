@@ -12,10 +12,10 @@
 		status = "ok";
 		reg = <0x0 0x1A700000 0x860
 			0x0 0x1A6A4000 0xa00>;
-		reg-names = "bw", "ssmt_bw_pid";
+		reg-names = "regs", "ssmt_pid";
 		interrupts = <GIC_SPI IRQ_BW_XINT_BW IRQ_TYPE_LEVEL_HIGH>;
-		bigw-opp-table = <&bigw_opp_table>;
-		bigw-bw-table = <&bigw_bw_table>;
+		vpu-opp-table = <&vpu_opp_table>;
+		vpu-bw-table = <&vpu_bw_table>;
 		iommus = <&sysmmu_bw>;
 		samsung,iommu-group = <&iommu_group_bw>;
 		pt_id = "bigwave";
@@ -23,7 +23,7 @@
 		ip_ver = <0x1>;
 	};
 
-	bigw_opp_table: bigw_opp_table {
+	vpu_opp_table: vpu_pp_table {
 		opp-100000000 {
 			freq-khz = <100000>;
 			/* 1920x1088@30fps */
@@ -46,7 +46,7 @@
 		};
 	};
 
-	bigw_bw_table: bigw_bw_table {
+	vpu_bw_table: vpu_bw_table {
 		bw-1080p-30 {
 			rd-bw = <380000>;
 			wr-bw = <390000>;
