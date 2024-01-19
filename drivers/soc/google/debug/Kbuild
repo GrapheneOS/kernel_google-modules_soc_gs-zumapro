@@ -35,6 +35,12 @@ obj-$(CONFIG_EXYNOS_ECC_HANDLER)	+= exynos-ecc-handler.o
 
 obj-$(CONFIG_EXYNOS_CORESIGHT_ETM)	+= exynos-coresight-etm.o
 
+ifeq ($(CONFIG_SOC_ZUMA),y)
+exynos-coresight-etm-y += exynos-coresight-etm-zuma.o
+else
+exynos-coresight-etm-y += exynos-coresight-etm-whi.o
+endif
+
 obj-$(CONFIG_EXYNOS_ADV_TRACER) 	+= exynos-adv-tracer.o
 
 obj-$(CONFIG_EXYNOS_ADV_TRACER_S2D)	+= exynos-adv-tracer-s2d.o
