@@ -74,7 +74,7 @@
 	};
 
 	faceauth_dsp_dma_heap:faceauth_dsp_dma_heap {
-		compatible = "samsung,dma-heap-chunk";
+		compatible = "google,dma-heap-gcma";
 		memory-region = <&faceauth_dsp>;
 		dma-heap,name = "faceauth_dsp";
 		dma-heap,secure;
@@ -196,8 +196,6 @@
 	};
 
 	faceauth_dsp: faceauth_dsp {
-		compatible = "shared-dma-pool";
-		reusable;
 		size = <0x2000000>; /* 32MB */
 		alignment = <0x0 0x00010000>;
 		alloc-ranges = <0x9 0x80000000 0x80000000>,
