@@ -17,7 +17,7 @@ struct vendor_group_list vendor_group_list[VG_MAX];
 extern void update_uclamp_stats(int cpu, u64 time);
 #endif
 
-extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, bool sync_boost,
+extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		cpumask_t *valid_mask);
 /*
  * Ignore uclamp_min for CFS tasks if
@@ -190,7 +190,7 @@ void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_ma
 	 */
 	if ((p->on_cpu || p->__state == TASK_WAKING || task_on_rq_queued(p)) &&
 		!cpumask_test_cpu(task_cpu(p), new_mask)) {
-		best_energy_cpu = find_energy_efficient_cpu(p, task_cpu(p), false, &valid_mask);
+		best_energy_cpu = find_energy_efficient_cpu(p, task_cpu(p), &valid_mask);
 
 		if (best_energy_cpu != -1)
 			*dest_cpu = best_energy_cpu;

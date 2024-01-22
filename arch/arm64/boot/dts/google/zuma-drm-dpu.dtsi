@@ -35,9 +35,9 @@
 		port = <0>; /* AXI port number */
 
 		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
-		scale_down = <1>;
+		scale_down = <4>;
 		/* 1: scale X, 2: 2x scale up, 4: 4x scale up */
-		scale_up = <1>;
+		scale_up = <8>;
 
 		dpp,id = <0>;
 	};
@@ -81,8 +81,8 @@
 
 		attr = <0x6D0867>;
 		port = <0>;
-		scale_down = <1>;
-		scale_up = <1>;
+		scale_down = <4>;
+		scale_up = <8>;
 
 		dpp,id = <2>;
 	};
@@ -126,8 +126,8 @@
 
 		attr = <0x6D0867>;
 		port = <1>;
-		scale_down = <1>;
-		scale_up = <1>;
+		scale_down = <4>;
+		scale_up = <8>;
 
 		dpp,id = <4>;
 	};
@@ -172,9 +172,9 @@
 		port = <1>; /* AXI port number */
 
 		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
-		scale_down = <1>;
+		scale_down = <4>;
 		/* 1: scale X, 2: 2x scale up, 4: 4x scale up */
-		scale_up = <1>;
+		scale_up = <8>;
 
 		dpp,id = <6>;
 	};
@@ -201,9 +201,9 @@
 		port = <1>; /* AXI port number */
 
 		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
-		scale_down = <1>;
+		scale_down = <4>;
 		/* 1: scale X, 2: 2x scale up, 4: 4x scale up */
-		scale_up = <1>;
+		scale_up = <8>;
 
 		dpp,id = <7>;
 	};
@@ -247,8 +247,8 @@
 
 		attr = <0x6D0867>;
 		port = <1>;
-		scale_down = <1>;
-		scale_up = <1>;
+		scale_down = <4>;
+		scale_up = <8>;
 
 		dpp,id = <9>;
 	};
@@ -292,8 +292,8 @@
 
 		attr = <0x6D0867>;
 		port = <0>;
-		scale_down = <1>;
-		scale_up = <1>;
+		scale_down = <4>;
+		scale_up = <8>;
 
 		dpp,id = <11>;
 	};
@@ -339,9 +339,9 @@
 		port = <0>; /* AXI port number */
 
 		/* 1: scale X, 2: 1/2x scale down, 4: 1/4x scale down */
-		scale_down = <1>;
+		scale_down = <4>;
 		/* 1: scale X, 2: 2x scale up, 4: 4x scale up */
-		scale_up = <1>;
+		scale_up = <8>;
 
 		dpp,id = <13>;
 	};
