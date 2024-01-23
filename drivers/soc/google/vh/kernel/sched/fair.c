@@ -563,16 +563,13 @@ static inline unsigned int get_group_throttle(struct task_group *tg)
 
 /*
  * If a task is in prefer_idle group, check if it could run on the cpu based on its prio and the
- * prefer_idle cpumask defined, but bail out for bulk wake (wake_q_count > 1).
+ * prefer_idle cpumask defined.
  */
-static inline bool is_preferred_idle_cpu(struct task_struct *p, int cpu)
+static inline bool check_preferred_idle_mask(struct task_struct *p, int cpu)
 {
 	int vendor_group = get_vendor_group(p);
 
-	if (!vg[vendor_group].prefer_idle)
-		return true;
-
-	if (p->wake_q_count > 1)
+	if (!get_prefer_idle(p))
 		return true;
 
 	if (p->prio <= THREAD_PRIORITY_TOP_APP_BOOST) {
@@ -588,7 +585,7 @@ static inline const cpumask_t *get_preferred_idle_mask(struct task_struct *p)
 {
 	int vendor_group = get_vendor_group(p);
 
-	if (p->wake_q_count > 1)
+	if (p->wake_q_count || get_uclamp_fork_reset(p, false))
 		return cpu_possible_mask;
 
 	if (p->prio <= THREAD_PRIORITY_TOP_APP_BOOST) {
@@ -2460,7 +2457,7 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 
 	/* prefer prev cpu */
 	if (cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) &&
-	    task_fits_capacity(p, prev_cpu) && is_preferred_idle_cpu(p, prev_cpu)) {
+	    task_fits_capacity(p, prev_cpu) && check_preferred_idle_mask(p, prev_cpu)) {
 
 		struct cpuidle_state *idle_state;
 		unsigned int exit_lat = UINT_MAX;
