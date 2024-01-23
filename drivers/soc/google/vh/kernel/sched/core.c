@@ -10,6 +10,7 @@
 
 #include "sched_priv.h"
 #include "sched_events.h"
+#include <performance/gs_perf_mon/gs_perf_mon.h>
 
 struct vendor_group_list vendor_group_list[VG_MAX];
 
@@ -120,6 +121,13 @@ void vh_scheduler_tick_pixel_mod(void *data, struct rq *rq)
 
 	/* Check if an RT task needs to move to a better fitting CPU */
 	check_migrate_rt_task(rq, rq->curr);
+
+	/*
+	 * Update our performance counters for profiling per
+	 * cpu performance data. Also checks if we need to wake
+	 * up a helper thread to update memory frequencies.
+	 */
+	gs_perf_mon_tick_update_counters();
 }
 
 void rvh_enqueue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
