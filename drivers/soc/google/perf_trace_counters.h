@@ -22,6 +22,8 @@
 #include <linux/perf_event.h>
 #include <linux/sched.h>
 #include <linux/tracepoint.h>
+
+#include <performance/gs_perf_mon/gs_perf_mon.h>
 #include "../../devfreq/google/governor_memlat.h"
 
 /*
