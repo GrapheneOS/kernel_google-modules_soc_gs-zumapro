@@ -45,6 +45,11 @@ void *bus_suspend_payload;
 
 static int xhci_exynos_setup(struct usb_hcd *hcd);
 static int xhci_exynos_start(struct usb_hcd *hcd);
+static int xhci_exynos_address_device(struct usb_hcd *hcd, struct usb_device *udev);
+static int xhci_exynos_bus_suspend(struct usb_hcd *hcd);
+static int xhci_exynos_bus_resume(struct usb_hcd *hcd);
+static int xhci_exynos_wake_lock(struct xhci_hcd_exynos *xhci_exynos,
+				 int is_main_hcd, int is_lock);
 
 static const struct xhci_driver_overrides xhci_exynos_overrides __initconst = {
 	.extra_priv_size = sizeof(struct xhci_exynos_priv),
@@ -64,7 +69,7 @@ void register_bus_suspend_callback(void (*callback)(void *bus_suspend_payload, b
 }
 EXPORT_SYMBOL_GPL(register_bus_suspend_callback);
 
-int xhci_exynos_address_device(struct usb_hcd *hcd, struct usb_device *udev)
+static int xhci_exynos_address_device(struct usb_hcd *hcd, struct usb_device *udev)
 {
 	struct xhci_exynos_priv *priv = hcd_to_xhci_exynos_priv(hcd);
 	struct xhci_hcd_exynos *xhci_exynos = priv->xhci_exynos;
@@ -76,7 +81,7 @@ int xhci_exynos_address_device(struct usb_hcd *hcd, struct usb_device *udev)
 	return ret;
 }
 
-int xhci_exynos_bus_suspend(struct usb_hcd *hcd)
+static int xhci_exynos_bus_suspend(struct usb_hcd *hcd)
 {
 	struct xhci_exynos_priv *priv = hcd_to_xhci_exynos_priv(hcd);
 	struct xhci_hcd_exynos *xhci_exynos = priv->xhci_exynos;
@@ -105,7 +110,7 @@ int xhci_exynos_bus_suspend(struct usb_hcd *hcd)
 	return ret;
 }
 
-int xhci_exynos_bus_resume(struct usb_hcd *hcd)
+static int xhci_exynos_bus_resume(struct usb_hcd *hcd)
 {
 	struct xhci_exynos_priv *priv = hcd_to_xhci_exynos_priv(hcd);
 	struct xhci_hcd_exynos *xhci_exynos = priv->xhci_exynos;
@@ -594,7 +599,7 @@ static int xhci_vendor_offload_setup(struct device *dev, struct xhci_hcd *xhci)
 	return -EINVAL;
 }
 
-int xhci_exynos_wake_lock(struct xhci_hcd_exynos *xhci_exynos,
+static int xhci_exynos_wake_lock(struct xhci_hcd_exynos *xhci_exynos,
 				   int is_main_hcd, int is_lock)
 {
 	struct usb_hcd	*hcd = xhci_exynos->hcd;
