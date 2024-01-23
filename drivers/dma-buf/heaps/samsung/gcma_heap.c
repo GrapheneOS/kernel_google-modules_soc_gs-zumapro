@@ -61,7 +61,7 @@ static inline bool page_is_gcma(struct page *page)
 	return page_private(page) ? true : false;
 }
 
-static struct page *gcma_alloc(struct gcma_heap *gcma_heap, unsigned long size)
+struct page *gcma_alloc(struct gcma_heap *gcma_heap, unsigned long size)
 {
 	struct gen_pool *pool = gcma_heap->pool;
 	phys_addr_t paddr;
@@ -86,7 +86,7 @@ static struct page *gcma_alloc(struct gcma_heap *gcma_heap, unsigned long size)
 	return page;
 }
 
-static void gcma_free(struct gen_pool *pool, struct page *page)
+void gcma_free(struct gen_pool *pool, struct page *page)
 {
 	unsigned long size, pfn;
 

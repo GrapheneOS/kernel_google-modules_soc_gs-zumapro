@@ -18,6 +18,8 @@ static struct kobject *gcma_heap_kobj;
 	static struct kobj_attribute _name##_attr = __ATTR_RO(_name)
 #define GCMA_HEAP_ATTR_RW(_name) \
 	static struct kobj_attribute _name##_attr = __ATTR_RW(_name)
+#define GCMA_HEAP_ATTR_WO(_name) \
+	static struct kobj_attribute _name##_attr = __ATTR_WO(_name)
 #define to_gcma_heap_stat(obj) container_of(obj,struct gcma_heap_stat,kobj)
 
 struct gcma_heap_stat {
@@ -26,6 +28,8 @@ struct gcma_heap_stat {
 	unsigned long cur_usage_bytes;
 	unsigned long allocstall_bytes;
 	struct kobject kobj;
+	struct gcma_heap *heap;
+	char name[PATH_MAX];
 };
 
 void inc_gcma_heap_stat(struct gcma_heap *heap, enum stat_type type,
@@ -132,10 +136,36 @@ static ssize_t alloc_stall_kb_show(struct kobject *kobj,
 }
 GCMA_HEAP_ATTR_RW(alloc_stall_kb);
 
+static ssize_t force_empty_store(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				const char *buf, size_t len)
+{
+	struct gcma_heap_stat *stat = to_gcma_heap_stat(kobj);
+	struct gcma_heap *gcma_heap = stat->heap;
+	struct page *page;
+	unsigned int req_pages;
+	unsigned long req_size;
+	char *name = stat->name;
+
+	if (kstrtouint(buf, 0, &req_pages))
+		return -EINVAL;
+
+	req_size = req_pages * PAGE_SIZE;
+
+	page = gcma_alloc(gcma_heap, req_size);
+	pr_info("%s req_pages %d force_empty %s\n", name, req_pages,
+		page ? "succeeded" : "failed");
+	if (page)
+		gcma_free(gcma_heap->pool, page);
+	return page ? len : -ENOMEM;
+}
+GCMA_HEAP_ATTR_WO(force_empty);
+
 static struct attribute *gcma_heap_attrs[] = {
 	&cur_usage_kb_attr.attr,
 	&max_usage_kb_attr.attr,
 	&alloc_stall_kb_attr.attr,
+	&force_empty_attr.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(gcma_heap);
@@ -172,9 +202,12 @@ int register_heap_sysfs(struct gcma_heap *heap, const char *name)
 	if (ret) {
 		pr_err("register gcma pdev= %s sysfs fail", name);
 		kobject_put(&stat->kobj);
-	} else
-		heap->stat = stat;
-
+		goto out;
+	}
+	heap->stat = stat;
+	stat->heap = heap;
+	strncpy(stat->name, name, sizeof(stat->name));
+out:
 	return ret;
 }
 

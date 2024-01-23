@@ -15,4 +15,8 @@ struct gcma_heap {
         bool flexible_alloc;
 };
 
+
+struct page *gcma_alloc(struct gcma_heap *gcma_heap, unsigned long size);
+void gcma_free(struct gen_pool *pool, struct page *page);
+
 #endif
