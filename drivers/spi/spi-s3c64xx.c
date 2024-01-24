@@ -959,6 +959,11 @@ static int s3c64xx_spi_transfer_one_message(struct spi_master *master,
 	u32 speed;
 	u8 bpw;
 
+	if (!master->running) {
+		dev_err(&spi->dev, "Controller is in suspend state.\n");
+		return -EACCES;
+	}
+
 	/* If Master's(controller) state differs from that needed by Slave */
 	if (sdd->cur_speed != spi->max_speed_hz || sdd->cur_mode != spi->mode ||
 	    sdd->cur_bpw != spi->bits_per_word) {
@@ -1159,7 +1164,12 @@ out:
 
 	msg->status = status;
 
-	spi_finalize_current_message(master);
+	if(master->cur_msg)
+		spi_finalize_current_message(master);
+	else {
+		dev_err(&master->dev, "Controller lost cur_msg!\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }
