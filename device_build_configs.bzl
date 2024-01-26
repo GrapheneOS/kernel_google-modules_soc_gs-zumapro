@@ -151,26 +151,27 @@ def create_device_build_config(name, base_build_config, device_name, debug_fragm
                             concatenated with the base build configs.
     """
 
-    set_gki_kernel_dir(
-        name = "{}.gen".format(name),
-        device_config_dir = "private/devices/google/{}".format(device_name),
-        gki_kernel_dir = "//private/google-modules/soc/gs:gki_kernel_dir",
-        gki_build_config_fragment = debug_fragment,
-    )
+    if device_name:
+        set_gki_kernel_dir(
+            name = "{}.gen".format(name),
+            device_config_dir = "private/devices/google/{}".format(device_name),
+            gki_kernel_dir = "//private/google-modules/soc/gs:gki_kernel_dir",
+            gki_build_config_fragment = debug_fragment,
+        )
+
+        kernel_build_config(
+            name = name,
+            srcs = [
+                # do not sort
+                ":{}.gen".format(name),
+                base_build_config,
+            ] + ([gki_staging_fragment] if gki_staging_fragment else []),
+        )
 
     set_gki_kernel_dir(
         name = "{}.gki.gen".format(name),
         gki_kernel_dir = "//private/google-modules/soc/gs:gki_kernel_dir",
         gki_build_config_fragment = debug_fragment,
-    )
-
-    kernel_build_config(
-        name = name,
-        srcs = [
-            # do not sort
-            ":{}.gen".format(name),
-            base_build_config,
-        ] + ([gki_staging_fragment] if gki_staging_fragment else []),
     )
 
     kernel_build_config(
@@ -273,6 +274,7 @@ def lto_dependant_kernel_module(
         name: name of the module
         outs: See kernel_module.outs
         lto_outs: Like outs, but only appended to outs when LTO is not set to none
+        srcs: sources for the kernel module
         kernel_build: See kernel_module.kernel_build
         makefile: See kernel_module.makefile
         deps: See kernel_module.deps
