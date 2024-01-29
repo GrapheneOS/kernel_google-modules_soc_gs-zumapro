@@ -78,10 +78,5 @@ void xhci_exynos_unregister_notify(void);
 void register_bus_suspend_callback(void (*callback)(void *bus_suspend_payload, bool main_hcd,
 						    bool suspend),
 				   void *data);
-static int xhci_exynos_address_device(struct usb_hcd *hcd, struct usb_device *udev);
-static int xhci_exynos_bus_suspend(struct usb_hcd *hcd);
-static int xhci_exynos_bus_resume(struct usb_hcd *hcd);
-static int xhci_exynos_wake_lock(struct xhci_hcd_exynos *xhci_exynos,
-				 int is_main_hcd, int is_lock);
 
 #endif	/* _XHCI_EXYNOS_H */
