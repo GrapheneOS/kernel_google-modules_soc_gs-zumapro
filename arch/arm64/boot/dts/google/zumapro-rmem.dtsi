@@ -61,8 +61,8 @@
 			no-map;
 		};
 
-		tpu_fw_reserved: tpu_fw@93000000 {
-			reg = <0x0 0x93000000 0x01000000>;
+		tpu_fw_reserved: tpu_fw@92e00000 {
+			reg = <0x0 0x92e00000 0x01200000>;
 			no-map;
 		};
 
