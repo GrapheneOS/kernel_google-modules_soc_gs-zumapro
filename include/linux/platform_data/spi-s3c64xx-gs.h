@@ -37,15 +37,14 @@ enum {
 enum {
 	MANUAL_CS_MODE = 0,
 	AUTO_CS_MODE = 1,
+	AUTO_CS_MODE_FORCE_QUIESCE = 2,
 };
 
 /*
  * Located domain
  */
 enum spi_domain {
-	DOMAIN_TOP = 0,
-	DOMAIN_ISP,
-	DOMAIN_CAM1,
+	NO_POWER_DOMAIN = 0,
 };
 
 struct platform_device;

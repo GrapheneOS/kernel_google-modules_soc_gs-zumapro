@@ -2,6 +2,7 @@
 menuconfig EXYNOS_MODEM_IF
 	tristate "Samsung Mobile CP Interface"
 	default n
+	depends on S5910
 	help
 	  Samsung Dual Modem Interface Driver
 
@@ -19,7 +20,6 @@ config SEC_MODEM_S5000AP
 
 config SEC_MODEM_S5100
 	tristate "Exynos S51xx"
-	select BOOT_DEVICE_SPI
 	select LINK_DEVICE_PCIE
 	select CPIF_PAGE_RECYCLING
 	default n
@@ -107,7 +107,7 @@ config MODEM_IF_LEGACY_QOS
 	help
 	  This enables QoS for legacy buffer model
 
-config SUSPEND_DURING_VOICE_CALL
+config CPIF_AP_SUSPEND_DURING_VOICE_CALL
 	bool "control wake_lock by voice call start/end notification"
 	depends on LINK_DEVICE_PCIE
 	default n
@@ -119,6 +119,13 @@ config CPIF_TP_MONITOR
 	default n
 	help
 	  This enables CP network throughput monitor
+
+config LINK_DEVICE_PCIE_SOC_EXYNOS
+	bool "Support for Exynos SOC PCIE"
+	depends on LINK_DEVICE_PCIE
+	default n
+	help
+	  PCIE support on Exynos SOC
 
 config LINK_DEVICE_PCIE_IOCC
 	bool "Use PCIE IOCC"
@@ -210,11 +217,11 @@ config CP_PKTPROC_LRO
 	  Enable HW pktproc LRO
 
 config CP_THERMAL
-    tristate "Enable CP thermal zones"
-    depends on THERMAL
-    help
-      Enables support for reporting CP temperature sensor data to kernel thermal
-      framework.
+	tristate "Enable CP thermal zones"
+	depends on THERMAL
+	help
+	  Enables support for reporting CP temperature sensor data to
+	  kernel thermal framework.
 
 endmenu
 endif

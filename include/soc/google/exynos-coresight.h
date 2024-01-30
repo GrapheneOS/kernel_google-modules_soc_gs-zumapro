@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 
 #ifndef __EXYNOS_CORESIGHT_H__
 #define __EXYNOS_CORESIGHT_H__

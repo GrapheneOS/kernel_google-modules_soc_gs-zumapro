@@ -11,13 +11,12 @@
 #include <linux/cpufreq.h>
 #include <linux/module.h>
 #include <trace/hooks/binder.h>
+#include <trace/hooks/cgroup.h>
 #include <trace/hooks/sched.h>
 #include <trace/hooks/topology.h>
 #include <trace/hooks/cpufreq.h>
 
 #include "sched_priv.h"
-// TODO: is this needed??
-//#include "../../../../../android/binder_internal.h"
 
 extern void init_uclamp_stats(void);
 extern int create_procfs_node(void);
@@ -48,7 +47,7 @@ extern void rvh_check_preempt_wakeup_pixel_mod(void *data, struct rq *rq, struct
 			bool *preempt, bool *nopreempt, int wake_flags, struct sched_entity *se,
 			struct sched_entity *pse, int next_buddy_marked, unsigned int granularity);
 extern void vh_sched_uclamp_validate_pixel_mod(void *data, struct task_struct *tsk,
-					       const struct sched_attr *attr,  bool user,
+					       const struct sched_attr *attr, bool user,
 					       int *ret, bool *done);
 extern void vh_sched_setscheduler_uclamp_pixel_mod(void *data, struct task_struct *tsk,
 						   int clamp_id, unsigned int value);
@@ -63,8 +62,10 @@ extern void rvh_update_rt_rq_load_avg_pixel_mod(void *data, u64 now, struct rq *
 extern void rvh_set_task_cpu_pixel_mod(void *data, struct task_struct *p, unsigned int new_cpu);
 extern void rvh_enqueue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags);
 extern void rvh_dequeue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags);
-extern void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags);
-extern void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags);
+extern void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p,
+					    int flags);
+extern void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p,
+					    int flags);
 extern void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
 	struct task_struct *task);
 extern void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction *t,
@@ -73,10 +74,14 @@ extern void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct
 	struct task_struct *pi_task);
 extern void vh_dump_throttled_rt_tasks_mod(void *data, int cpu, u64 clock, ktime_t rt_period,
 					   u64 rt_runtime, s64 rt_period_timer_expires);
+
 #if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 extern void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
 					const struct cpumask *in_mask, int *res);
 #endif /* IS_ENABLED(CONFIG_RVH_SCHED_LIB) */
+
+extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
+	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
 void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_flags *rf,
 		int *pulled_task, int *done);
 extern void rvh_can_migrate_task_pixel_mod(void *data, struct task_struct *p, int dst_cpu,
@@ -92,6 +97,7 @@ extern void rvh_remove_entity_load_avg_pixel_mod(void *data, struct cfs_rq *cfs_
 						 struct sched_entity *se);
 extern void rvh_update_blocked_fair_pixel_mod(void *data, struct rq *rq);
 #endif
+extern void android_vh_use_amu_fie_pixel_mod(void* data, bool *use_amu_fie);
 extern void rvh_set_user_nice_locked_pixel_mod(void *data, struct task_struct *p, long *nice);
 extern void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p);
 extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
@@ -101,8 +107,6 @@ extern void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p
 					       bool *need_update);
 extern void rvh_util_fits_cpu_pixel_mod(void *data, unsigned long util, unsigned long uclamp_min,
 	unsigned long uclamp_max, int cpu, bool *fits, bool *done);
-extern void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
-	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu);
 
 extern int pmu_poll_init(void);
 extern void set_cluster_enabled_cb(int cluster, int enabled);
@@ -176,7 +180,7 @@ static void vh_prio_restore(void *data, int nice)
 }
 #endif
 
-void init_vendor_rt_rq(void)
+static void init_vendor_rt_rq(void)
 {
 	int i;
 	struct vendor_rq_struct *vrq;
@@ -185,6 +189,7 @@ void init_vendor_rt_rq(void)
 		vrq = get_vendor_rq_struct(cpu_rq(i));
 		raw_spin_lock_init(&vrq->lock);
 		vrq->util_removed = 0;
+		vrq->iowait_boost = 0;
 		atomic_set(&vrq->num_adpf_tasks, 0);
 	}
 }
@@ -428,6 +433,11 @@ static int vh_sched_init(void)
 		return ret;
 #endif
 
+	ret = register_trace_android_rvh_sched_newidle_balance(
+		sched_newidle_balance_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
 	ret = register_trace_android_rvh_update_misfit_status(
 		rvh_update_misfit_status_pixel_mod, NULL);
 	if (ret)
@@ -440,11 +450,6 @@ static int vh_sched_init(void)
 
 	ret = register_trace_android_rvh_check_preempt_wakeup(
 		rvh_check_preempt_wakeup_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
-	ret = register_trace_android_rvh_sched_newidle_balance(
-		sched_newidle_balance_pixel_mod, NULL);
 	if (ret)
 		return ret;
 
@@ -497,6 +502,10 @@ static int vh_sched_init(void)
 
 	ret = register_trace_android_vh_binder_restore_priority(
 		vh_binder_restore_priority_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_vh_use_amu_fie(android_vh_use_amu_fie_pixel_mod, NULL);
 	if (ret)
 		return ret;
 

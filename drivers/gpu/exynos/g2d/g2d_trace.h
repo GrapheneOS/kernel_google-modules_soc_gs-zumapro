@@ -57,8 +57,6 @@ TRACE_EVENT(tracing_mark_write,
 
 #undef TRACE_INCLUDE_PATH
 #define TRACE_INCLUDE_PATH .
-
-#undef TRACE_INCLUDE_FILE
 #define TRACE_INCLUDE_FILE g2d_trace
 
 /* This part must be outside protection */

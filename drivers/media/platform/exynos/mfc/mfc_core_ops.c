@@ -20,6 +20,7 @@
 
 #include "mfc_common.h"
 
+#include "mfc_core_ops.h"
 #include "mfc_core_hwlock.h"
 #include "mfc_core_pm.h"
 #include "mfc_core_run.h"
@@ -134,6 +135,11 @@ static void __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 	atomic_set(&core->hw_run_cnt, 0);
 	mfc_core_change_idle_mode(core, MFC_IDLE_MODE_NONE);
 
+	if (!dev->fw_date)
+		dev->fw_date = core->fw.date;
+	else if (dev->fw_date > core->fw.date)
+		dev->fw_date = core->fw.date;
+
 	if (core->has_llc && (core->llc_on_status == 0))
 		mfc_llc_enable(core);
 
@@ -148,11 +154,6 @@ static void __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	if (perf_boost_mode)
 		mfc_core_perf_boost_enable(core);
-
-	if (!dev->fw_date)
-		dev->fw_date = core->fw.date;
-	else if (dev->fw_date > core->fw.date)
-		dev->fw_date = core->fw.date;
 
 	mfc_perf_init(core);
 }
@@ -246,9 +247,7 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 #if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 		imgloader_shutdown(&core->mfc_imgloader_desc);
 #else
-#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
 		mfc_release_verify_fw(core);
-#endif
 #endif
 		mfc_core_change_fw_state(core, 0, MFC_FW_LOADED, 0);
 	}
@@ -313,7 +312,7 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 				mfc_llc_update_size(core, false);
 	}
 
-	if (core->has_slc && core->slc_on_status)
+	if (core->has_slc && core->slc_on_status && core->num_inst == 0)
 		mfc_slc_disable(core);
 
 	return 0;
@@ -830,6 +829,8 @@ void mfc_core_instance_dpb_flush(struct mfc_core *core, struct mfc_ctx *ctx)
 		mfc_err("Failed to get hwlock\n");
 		MFC_TRACE_CTX_LT("[ERR][Release] failed to get hwlock (shutdown: %d)\n",
 				core->shutdown);
+		if (core->shutdown)
+			goto cleanup;
 		return;
 	}
 
@@ -933,6 +934,8 @@ void mfc_core_instance_csd_parsing(struct mfc_core *core, struct mfc_ctx *ctx)
 	if (ret < 0) {
 		mfc_err("Failed to get hwlock\n");
 		MFC_TRACE_CTX_LT("[ERR][Release] failed to get hwlock (shutdown: %d)\n", core->shutdown);
+		if (core->shutdown)
+			goto cleanup;
 		return;
 	}
 
@@ -1000,7 +1003,6 @@ void mfc_core_instance_csd_parsing(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 
 	dec->consumed = 0;
-	dec->remained_size = 0;
 	core_ctx->check_dump = 0;
 	ctx->curr_src_index = -1;
 	ctx->serial_src_index = 0;

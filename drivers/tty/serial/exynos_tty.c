@@ -60,6 +60,7 @@
 #define DATA_BYTES_PER_LINE     (16)
 
 #include <soc/google/exynos-cpupm.h>
+#include <soc/google/exynos_tty.h>
 
 #define EXYNOS_UART_PORT_LPM			0x5
 
@@ -185,6 +186,8 @@ struct exynos_uart_port {
 	unsigned int			uart_logging;
 	struct uart_local_buf		uart_local_buf;
 	struct logbuffer *log;
+	unsigned int ioctl_support;
+	unsigned int skip_suspend;
 	bool show_uart_logging_packets;
 };
 
@@ -395,6 +398,9 @@ static void change_uart_gpio(int value, struct exynos_uart_port *ourport)
 	struct uart_port *port = &ourport->port;
 	unsigned long flags;
 
+	if (IS_ERR(ourport->pinctrl))
+		return;
+
 	spin_lock_irqsave(&port->lock, flags);
 
 	if (value) {
@@ -520,6 +526,18 @@ uart_dbg_store(struct device *dev, struct device_attribute *attr,
 			dev_err(dev, "Change UART%d to normal mode\n",
 				ourport->port.line);
 			ourport->dbg_mode = 0;
+			break;
+		case 8:
+			if (ourport->ioctl_support) {
+				dev_err(dev, "skip exynos_serial suspend/resume\n");
+				ourport->skip_suspend = 1;
+			}
+			break;
+		case 9:
+			if (ourport->ioctl_support) {
+				dev_err(dev, "disable skip exynos_serial suspend/resume\n");
+				ourport->skip_suspend = 0;
+			}
 			break;
 		default:
 			dev_err(dev, "Wrong Command!(0/1/2)\n");
@@ -2510,6 +2528,20 @@ void exynos_serial_fifo_wait(void)
 }
 EXPORT_SYMBOL_GPL(exynos_serial_fifo_wait);
 
+bool exynos_uart_console_enabled(void)
+{
+	struct exynos_uart_port *ourport;
+	struct uart_port *port;
+
+	list_for_each_entry(ourport, &drvdata_list, node) {
+		port = &ourport->port;
+		if (uart_console_enabled(port))
+			return true;
+	}
+	return false;
+}
+EXPORT_SYMBOL_GPL(exynos_uart_console_enabled);
+
 static int exynos_serial_notifier(struct notifier_block *self,
 				  unsigned long cmd, void *v)
 {
@@ -2755,6 +2787,11 @@ static int exynos_serial_probe(struct platform_device *pdev)
 	else
 		ourport->uart_logging = 0;
 
+	if (of_get_property(pdev->dev.of_node, "goog,ioctl-suspend", NULL))
+		ourport->ioctl_support = 1;
+	else
+		ourport->ioctl_support = 0;
+
 	if (of_find_property(pdev->dev.of_node,
 			     "samsung,use-default-irq", NULL))
 		ourport->use_default_irq = 1;
@@ -2848,6 +2885,9 @@ static int exynos_serial_suspend(struct device *dev)
 	unsigned int ucon;
 
 	if (port) {
+		if (ourport->skip_suspend) {
+			return 0;
+		}
 		/*
 		 * If rts line must be protected while suspending
 		 * we change the gpio pad as output high
@@ -2894,6 +2934,12 @@ static int exynos_serial_suspend_noirq(struct device *dev)
 	struct exynos_uart_port *ourport = to_ourport(port);
 	unsigned int ucon;
 
+	if (port) {
+		if (ourport->skip_suspend) {
+			return 0;
+		}
+	}
+
 	if (ourport->dbg_uart_ch && !console_suspend_enabled) {
 		uart_clock_enable(ourport);
 		/* disable Tx, Rx mode bit for suspend in case of HWACG */
@@ -2915,6 +2961,9 @@ static int exynos_serial_resume(struct device *dev)
 	struct exynos_uart_port *ourport = to_ourport(port);
 
 	if (port) {
+		if (ourport->skip_suspend) {
+			return 0;
+		}
 		if (!IS_ERR(ourport->usi_reg))
 			regmap_update_bits(ourport->usi_reg,
 					   ourport->usi_offset,
@@ -2956,6 +3005,9 @@ static int exynos_serial_resume_noirq(struct device *dev)
 	struct exynos_uart_port *ourport = to_ourport(port);
 
 	if (port) {
+		if (ourport->skip_suspend) {
+			return 0;
+		}
 		/* restore IRQ mask */
 		if (exynos_serial_has_interrupt_mask(port)) {
 			unsigned int uintm = 0xf;

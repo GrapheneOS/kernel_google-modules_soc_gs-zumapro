@@ -26,54 +26,49 @@
 struct dbg_snapshot_log_item dss_log_items[] = {
 	[DSS_LOG_TASK_ID]	= {DSS_LOG_TASK,	{0, 0, 0, false}, },
 	[DSS_LOG_WORK_ID]	= {DSS_LOG_WORK,	{0, 0, 0, false}, },
-	[DSS_LOG_CPUIDLE_ID]	= {DSS_LOG_CPUIDLE,	{0, 0, 0, false}, },
-	[DSS_LOG_SUSPEND_ID]	= {DSS_LOG_SUSPEND,	{0, 0, 0, false}, },
+	[DSS_LOG_CPUIDLE_ID]	= {DSS_LOG_CPUIDLE,	{0, 0, 0, true}, },
+	[DSS_LOG_SUSPEND_ID]	= {DSS_LOG_SUSPEND,	{0, 0, 0, true}, },
 	[DSS_LOG_IRQ_ID]	= {DSS_LOG_IRQ,		{0, 0, 0, false}, },
 	[DSS_LOG_HRTIMER_ID]	= {DSS_LOG_HRTIMER,	{0, 0, 0, false}, },
-	[DSS_LOG_CLK_ID]	= {DSS_LOG_CLK,		{0, 0, 0, false}, },
-	[DSS_LOG_PMU_ID]	= {DSS_LOG_PMU,		{0, 0, 0, false}, },
-	[DSS_LOG_FREQ_ID]	= {DSS_LOG_FREQ,	{0, 0, 0, false}, },
-	[DSS_LOG_DM_ID]		= {DSS_LOG_DM,		{0, 0, 0, false}, },
-	[DSS_LOG_REGULATOR_ID]	= {DSS_LOG_REGULATOR,	{0, 0, 0, false}, },
-	[DSS_LOG_THERMAL_ID]	= {DSS_LOG_THERMAL,	{0, 0, 0, false}, },
-	[DSS_LOG_ACPM_ID]	= {DSS_LOG_ACPM,	{0, 0, 0, false}, },
-	[DSS_LOG_PRINTK_ID]	= {DSS_LOG_PRINTK,	{0, 0, 0, false}, },
+	[DSS_LOG_CLK_ID]	= {DSS_LOG_CLK,		{0, 0, 0, true}, },
+	[DSS_LOG_PMU_ID]	= {DSS_LOG_PMU,		{0, 0, 0, true}, },
+	[DSS_LOG_FREQ_ID]	= {DSS_LOG_FREQ,	{0, 0, 0, true}, },
+	[DSS_LOG_DM_ID]		= {DSS_LOG_DM,		{0, 0, 0, true}, },
+	[DSS_LOG_REGULATOR_ID]	= {DSS_LOG_REGULATOR,	{0, 0, 0, true}, },
+	[DSS_LOG_THERMAL_ID]	= {DSS_LOG_THERMAL,	{0, 0, 0, true}, },
+	[DSS_LOG_ACPM_ID]	= {DSS_LOG_ACPM,	{0, 0, 0, true}, },
+	[DSS_LOG_PRINTK_ID]	= {DSS_LOG_PRINTK,	{0, 0, 0, true}, },
 };
 
 /*  Internal interface variable */
 struct dbg_snapshot_log_misc dss_log_misc;
-static char dss_freq_name[SZ_32][SZ_8];
+static char dss_freq_name[DSS_FREQ_MAX_SIZE][DSS_FREQ_MAX_NAME_SIZE];
 static unsigned int dss_freq_size;
+static bool dss_last_info_enabled;
 
 #define dss_get_log(item)						\
 long dss_get_len_##item##_log(void) {					\
 	return ARRAY_SIZE(dss_log->item);				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_len_##item##_log);				\
 long dss_get_last_##item##_log_idx(void) {				\
 	return (atomic_read(&dss_log_misc.item##_log_idx) - 1) &	\
 			(dss_get_len_##item##_log() - 1);		\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_last_##item##_log_idx);				\
 long dss_get_first_##item##_log_idx(void) {				\
 	return atomic_read(&dss_log_misc.item##_log_idx) &		\
 			(dss_get_len_##item##_log() - 1);		\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_first_##item##_log_idx);				\
 struct item##_log *dss_get_last_##item##_log(void) {			\
 	return &dss_log->item[dss_get_last_##item##_log_idx()];		\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_last_##item##_log);				\
 struct item##_log *dss_get_first_##item##_log(void) {			\
 	return &dss_log->item[dss_get_first_##item##_log_idx()];	\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_first_##item##_log);				\
 struct item##_log *dss_get_##item##_log_by_idx(int idx) {		\
 	if (idx < 0 || idx >= dss_get_len_##item##_log())		\
 		return NULL;						\
 	return &dss_log->item[idx];					\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_##item##_log_by_idx);				\
 struct item##_log *dss_get_##item##_log_iter(int idx) {			\
 	if (idx < 0)							\
 		idx = dss_get_len_##item##_log() - abs(idx);		\
@@ -81,49 +76,41 @@ struct item##_log *dss_get_##item##_log_iter(int idx) {			\
 		idx -= dss_get_len_##item##_log();			\
 	return &dss_log->item[idx];					\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_##item##_log_iter);				\
 unsigned long dss_get_vaddr_##item##_log(void) {			\
 	return (unsigned long)dss_log->item;				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_vaddr_##item##_log)
 
 #define dss_get_log_by_cpu(item)					\
 long dss_get_len_##item##_log(void) {					\
 	return ARRAY_SIZE(dss_log->item);				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_len_##item##_log);				\
 long dss_get_len_##item##_log_by_cpu(int cpu) {				\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return -EINVAL;						\
 	return ARRAY_SIZE(dss_log->item[cpu]);				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_len_##item##_log_by_cpu);				\
 long dss_get_last_##item##_log_idx(int cpu) {				\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return -EINVAL;						\
 	return (atomic_read(&dss_log_misc.item##_log_idx[cpu]) - 1) &	\
 			(dss_get_len_##item##_log_by_cpu(cpu) - 1);	\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_last_##item##_log_idx);				\
 long dss_get_first_##item##_log_idx(int cpu) {				\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return -EINVAL;						\
 	return atomic_read(&dss_log_misc.item##_log_idx[cpu]) &		\
 			(dss_get_len_##item##_log_by_cpu(cpu) - 1);	\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_first_##item##_log_idx);				\
 struct item##_log *dss_get_last_##item##_log(int cpu) {			\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return NULL;						\
 	return &dss_log->item[cpu][dss_get_last_##item##_log_idx(cpu)];	\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_last_##item##_log);				\
 struct item##_log *dss_get_first_##item##_log(int cpu) {		\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return NULL;						\
 	return &dss_log->item[cpu][dss_get_first_##item##_log_idx(cpu)];\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_first_##item##_log);				\
 struct item##_log *dss_get_##item##_log_by_idx(int cpu, int idx) {	\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return NULL;						\
@@ -131,7 +118,6 @@ struct item##_log *dss_get_##item##_log_by_idx(int cpu, int idx) {	\
 		return NULL;						\
 	return &dss_log->item[cpu][idx];				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_##item##_log_by_idx);				\
 struct item##_log *dss_get_##item##_log_by_cpu_iter(int cpu, int idx) {	\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return NULL;						\
@@ -141,13 +127,11 @@ struct item##_log *dss_get_##item##_log_by_cpu_iter(int cpu, int idx) {	\
 		idx -= dss_get_len_##item##_log_by_cpu(cpu);		\
 	return &dss_log->item[cpu][idx];				\
 }									\
-EXPORT_SYMBOL_GPL(dss_get_##item##_log_by_cpu_iter);			\
 unsigned long dss_get_vaddr_##item##_log_by_cpu(int cpu) {		\
 	if (cpu < 0 || cpu >= dss_get_len_##item##_log())		\
 		return 0;						\
 	return (unsigned long)dss_log->item[cpu];			\
-}									\
-EXPORT_SYMBOL_GPL(dss_get_vaddr_##item##_log_by_cpu)
+}
 
 dss_get_log_by_cpu(task);
 dss_get_log_by_cpu(work);
@@ -211,6 +195,21 @@ int dbg_snapshot_get_freq_idx(const char *name)
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_get_freq_idx);
 
+void dbg_snapshot_get_freq_name(char (*freq_names)[DSS_FREQ_MAX_NAME_SIZE])
+{
+	int i;
+
+	for (i = 0; i < dss_freq_size; i++)
+		strlcpy(freq_names[i], dss_freq_name[i], DSS_FREQ_MAX_NAME_SIZE);
+}
+EXPORT_SYMBOL_GPL(dbg_snapshot_get_freq_name);
+
+unsigned int dbg_snapshot_get_freq_size(void)
+{
+	return dss_freq_size;
+}
+EXPORT_SYMBOL_GPL(dbg_snapshot_get_freq_size);
+
 void dbg_snapshot_log_output(void)
 {
 	unsigned long i;
@@ -218,7 +217,7 @@ void dbg_snapshot_log_output(void)
 	pr_info("debug-snapshot-log physical / virtual memory layout:\n");
 	for (i = 0; i < ARRAY_SIZE(dss_log_items); i++) {
 		if (dss_log_items[i].entry.enabled)
-			pr_info("%-12s: phys:0x%pa / virt:0x%pK / size:0x%zx / en:%d\n",
+			pr_info("%-12s: phys:%pa / virt:%pK / size:0x%zx / en:%d\n",
 				dss_log_items[i].name,
 				&dss_log_items[i].entry.paddr,
 				(void *) dss_log_items[i].entry.vaddr,
@@ -303,6 +302,8 @@ void dbg_snapshot_cpuidle_mod(char *modes, unsigned int state, s64 diff, int en)
 	int cpu = raw_smp_processor_id();
 	unsigned int i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_CPUIDLE_ID))
 		return;
 
@@ -323,6 +324,8 @@ void dbg_snapshot_regulator(unsigned long long timestamp, char *f_name,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_REGULATOR_ID))
 		return;
 
@@ -346,6 +349,8 @@ void dbg_snapshot_thermal(struct exynos_tmu_data *data, unsigned int temp,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_THERMAL_ID))
 		return;
 
@@ -367,6 +372,8 @@ void dbg_snapshot_clk(struct clk_hw *clock, const char *func_name,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_CLK_ID))
 		return;
 
@@ -385,6 +392,8 @@ void dbg_snapshot_pmu(int id, const char *func_name, int mode)
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_PMU_ID))
 		return;
 
@@ -403,6 +412,8 @@ void dbg_snapshot_freq(int type, unsigned long old_freq,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (unlikely(type < 0 || type > dss_freq_size))
 		return;
 
@@ -426,6 +437,8 @@ void dbg_snapshot_dm(int type, unsigned long min, unsigned long max,
 {
 	unsigned long i;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_DM_ID))
 		return;
 
@@ -448,6 +461,8 @@ void dbg_snapshot_acpm(unsigned long long timestamp, const char *log,
 	unsigned long i;
 	int len;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_ACPM_ID))
 		return;
 
@@ -468,6 +483,8 @@ void dbg_snapshot_printk(const char *fmt, ...)
 	unsigned long i;
 	va_list args;
 
+	if (!dss_log)
+		return;
 	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_PRINTK_ID))
 		return;
 
@@ -486,6 +503,8 @@ EXPORT_SYMBOL_GPL(dbg_snapshot_printk);
 
 void dbg_snapshot_itmon_irq_received(void)
 {
+	if (!dss_itmon)
+		return;
 	if (!dss_items[DSS_ITEM_ITMON_ID].entry.enabled)
 		return;
 
@@ -499,6 +518,8 @@ void dbg_snapshot_itmon_backup_log(const char *fmt, ...)
 	size_t len_log, len_logs;
 	va_list args;
 
+	if (!dss_itmon)
+		return;
 	if (!dss_items[DSS_ITEM_ITMON_ID].entry.enabled)
 		return;
 
@@ -534,6 +555,8 @@ static void dbg_snapshot_print_last_irq(int cpu)
 	struct dbg_snapshot_log_item *log_item = &dss_log_items[DSS_LOG_IRQ_ID];
 	unsigned long idx, sec, msec;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -554,6 +577,8 @@ static void dbg_snapshot_print_last_task(int cpu)
 	unsigned long idx, sec, msec;
 	struct task_struct *task;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -573,6 +598,8 @@ static void dbg_snapshot_print_last_work(int cpu)
 	struct dbg_snapshot_log_item *log_item = &dss_log_items[DSS_LOG_WORK_ID];
 	unsigned long idx, sec, msec;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -591,6 +618,8 @@ static void dbg_snapshot_print_last_cpuidle(int cpu)
 	struct dbg_snapshot_log_item *log_item = &dss_log_items[DSS_LOG_CPUIDLE_ID];
 	unsigned long idx, sec, msec;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -610,9 +639,12 @@ static void dbg_snapshot_print_last_cpuidle(int cpu)
 static void dbg_snapshot_print_lastinfo(void)
 {
 	int cpu;
+	unsigned int nr_cpu = dbg_snapshot_get_max_core_num();
 
+	if (!dss_last_info_enabled)
+		return;
 	pr_info("<last info>\n");
-	for (cpu = 0; cpu < DSS_NR_CPUS; cpu++) {
+	for (cpu = 0; cpu < nr_cpu; cpu++) {
 		pr_info("CPU ID: %d ----------------------------------\n", cpu);
 		dbg_snapshot_print_last_task(cpu);
 		dbg_snapshot_print_last_work(cpu);
@@ -627,6 +659,8 @@ static void dbg_snapshot_print_freqinfo(void)
 	unsigned long i, idx, sec, msec;
 	unsigned long old_freq, target_freq;
 
+	if (!dss_log)
+		return;
 	if (!log_item->entry.enabled)
 		return;
 
@@ -653,10 +687,16 @@ static void dbg_snapshot_print_freqinfo(void)
 #define arch_irq_stat() 0
 #endif
 
+#define IRQ_THRESHOLD 50
+
 static void dbg_snapshot_print_irq(void)
 {
 	int i, cpu;
 	u64 sum = 0;
+	struct timespec64 tp;
+	unsigned long long irq_filter = 0;
+	ktime_get_boottime_ts64(&tp);
+	irq_filter = tp.tv_sec * IRQ_THRESHOLD;
 
 	for_each_possible_cpu(cpu)
 		sum += kstat_cpu_irqs_sum(cpu);
@@ -683,7 +723,7 @@ static void dbg_snapshot_print_irq(void)
 		for_each_possible_cpu(cpu)
 			irq_stat += *per_cpu_ptr(desc->kstat_irqs, cpu);
 
-		if (!irq_stat)
+		if (!irq_stat || irq_stat < irq_filter)
 			continue;
 
 		if (desc->action && desc->action->name)
@@ -721,6 +761,7 @@ void dbg_snapshot_init_log(void)
 		return;
 	}
 
+	dss_last_info_enabled = true;
 	log_item_set_filed(TASK, task);
 	log_item_set_filed(WORK, work);
 	log_item_set_filed(CPUIDLE, cpuidle);

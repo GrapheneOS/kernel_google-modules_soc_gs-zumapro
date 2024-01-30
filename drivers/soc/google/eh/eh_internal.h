@@ -91,9 +91,6 @@ struct eh_device {
 	/* EH clock */
 	struct clk *clk;
 
-	/* EH S2MPU device */
-	struct device *s2mpu;
-
 	int error_irq;
 
 	/*
@@ -123,5 +120,8 @@ struct eh_device {
 	/* keep pending request */
 	struct eh_sw_fifo sw_fifo;
 	atomic64_t nr_stall;
+#ifdef CONFIG_SOC_ZUMA
+	int ip_index;
+#endif
 };
 #endif

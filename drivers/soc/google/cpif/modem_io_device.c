@@ -449,8 +449,15 @@ static int rx_multi_pdp(struct sk_buff *skb)
 		if (ret != NET_RX_SUCCESS)
 			mif_err_limited("%s: %s<-%s: ERR! netif_receive_skb\n",
 					ld->name, iod->name, iod->mc->name);
-	} else
+	} else {
 		ret = napi_gro_receive(napi, skb);
+		// Comment this part of codes to fix build errors caused by GRO_DROP
+		/*
+		if (ret == GRO_DROP)
+			mif_err_limited("%s: %s<-%s: ERR! napi_gro_receive\n",
+					ld->name, iod->name, iod->mc->name);
+		*/
+	}
 	return len;
 }
 
@@ -749,7 +756,7 @@ int sipc5_init_io_device(struct io_device *iod, struct mem_link_device *mld)
 
 	case IODEV_NET:
 #if IS_ENABLED(CONFIG_MODEM_IF_QOS)
-		txqs = 2;
+		txqs = mld->pktproc_ul.num_queue;
 #endif
 #if IS_ENABLED(CONFIG_CP_PKTPROC)
 		rxqs = mld->pktproc.num_queue;

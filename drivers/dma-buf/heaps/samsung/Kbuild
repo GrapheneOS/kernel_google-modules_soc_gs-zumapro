@@ -5,7 +5,6 @@ ccflags-y += -I$(KERNEL_SRC)/../private/google-modules/trusty/include
 
 # Needed for the trace points
 CFLAGS_samsung_heap.o = -I$(srctree)/$(src)
-CFLAGS_chunk_heap.o = -I$(srctree)/$(src)
 
 obj-$(CONFIG_DMABUF_SAMSUNG_HEAPS) += samsung_dma_heap.o
 samsung_dma_heap-y += heap_dma_buf.o samsung_heap.o

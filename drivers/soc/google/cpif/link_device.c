@@ -14,24 +14,28 @@
 #include <linux/vmalloc.h>
 #include <linux/platform_device.h>
 #include <linux/kallsyms.h>
+#include <linux/shm_ipc.h>
 #include <linux/suspend.h>
 #include <linux/reboot.h>
 #include <linux/pci.h>
 #include <linux/of_reserved_mem.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+#include <net/icmp.h>
+#include <net/xfrm.h>
 #if IS_ENABLED(CONFIG_ECT)
 #include <soc/google/ect_parser.h>
 #endif
-#include <soc/google/shm_ipc.h>
-#include <soc/google/mcu_ipc.h>
 #include <soc/google/cal-if.h>
-#include <linux/modem_notifier.h>
 #include <linux/soc/samsung/exynos-smc.h>
 #include <trace/events/napi.h>
+#include "mcu_ipc.h"
 #include "modem_prj.h"
 #include "modem_utils.h"
 #include "link_device.h"
 #include "modem_dump.h"
 #include "modem_ctrl.h"
+#include "modem_notifier.h"
 #if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
 #include "s51xx_pcie.h"
 #endif
@@ -262,7 +266,7 @@ set_type:
 #if IS_ENABLED(CONFIG_SEC_MODEM_S5100)
 	if (ld->interrupt_types == INTERRUPT_GPIO)
 		/* Raise DUMP_NOTI GPIO to CP */
-		s5100_force_crash_exit_ext();
+		s5100_force_crash_exit_ext(crash_type);
 #endif
 
 	mif_err("%s->%s: CP_CRASH_REQ by %d, %s <%ps>\n",
@@ -942,8 +946,8 @@ exit:
 		return 1;
 }
 
-static inline void start_tx_timer(struct mem_link_device *mld,
-				  struct hrtimer *timer)
+static inline void start_tx_timer_custom(struct mem_link_device *mld,
+				  struct hrtimer *timer, unsigned int interval)
 {
 	struct link_device *ld = &mld->link_dev;
 	struct modem_ctl *mc = ld->mc;
@@ -958,11 +962,17 @@ static inline void start_tx_timer(struct mem_link_device *mld,
 
 	spin_lock_irqsave(&mc->tx_timer_lock, flags);
 	if (!hrtimer_is_queued(timer)) {
-		ktime_t ktime = ktime_set(0, mld->tx_period_ns);
+		ktime_t ktime = ktime_set(0, interval);
 
 		hrtimer_start(timer, ktime, HRTIMER_MODE_REL);
 	}
 	spin_unlock_irqrestore(&mc->tx_timer_lock, flags);
+}
+
+static inline void start_tx_timer(struct mem_link_device *mld,
+				struct hrtimer *timer)
+{
+	start_tx_timer_custom(mld, timer, mld->tx_period_ns);
 }
 
 static inline void shmem_start_timers(struct mem_link_device *mld)
@@ -1228,19 +1238,52 @@ static enum hrtimer_restart pktproc_tx_timer_func(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
+static inline bool is_icmp_pkt(struct sk_buff *skb)
+{
+        bool ret = false;
+        struct iphdr *iphdr_t;
+        struct icmphdr *icmph;
+        iphdr_t = (struct iphdr *)skb->data;
+
+        switch (ip_hdr(skb)->version) {
+        case 4:
+                if(iphdr_t->protocol==IPPROTO_ICMP){
+                        icmph = (struct icmphdr *) (skb->data + 20);
+                        if (icmph->type == 8)
+                                ret = true;
+                }
+                break;
+        case 6:
+                if(ipv6_hdr(skb)->nexthdr==IPPROTO_ICMPV6){
+                        icmph = (struct icmphdr *) (skb->data + 40);
+                        if (icmph->type == 128)
+                                ret = true;
+                }
+                break;
+        default:
+                break;
+        }
+
+        return ret;
+}
+
 static int xmit_ipc_to_pktproc(struct mem_link_device *mld, struct sk_buff *skb)
 {
 	struct pktproc_adaptor_ul *ppa_ul = &mld->pktproc_ul;
 	// Set the ul queue to high priority by default.
 	struct pktproc_queue_ul *q = ppa_ul->q[PKTPROC_UL_HIPRIO];
+	struct sec_path *sp = skb_sec_path(skb);
 	int len;
 	int ret = -EBUSY;
 	unsigned long flags;
+	bool icmp_pkt = false;
 
 	if (ppa_ul->padding_required)
 		len = skb->len + CP_PADDING;
 	else
 		len = skb->len;
+
+	icmp_pkt = is_icmp_pkt(skb);
 
 	/* Set ul queue
 	 * 1) The queue is high priority(PKTPROC_UL_HIPRIO) by default.
@@ -1251,7 +1294,9 @@ static int xmit_ipc_to_pktproc(struct mem_link_device *mld, struct sk_buff *skb)
 	 * 4) If queue_mapping of skb is 1(high priority), and skb length larger then
 	 *    the maximum packet size of high priority queue, set queue to
 	 *    PKTPROC_UL_NORM.
-	 * 5) Check again if the skb length exceeds the maximum size of
+	 * 5) For any packets with IPsec headers, always use normal priority buffers.
+	 *    (b/247006240)
+	 * 6) Check again if the skb length exceeds the maximum size of
 	 *    PKTPROC_UL_NORM queue.
 	 */
 #if IS_ENABLED(CONFIG_CP_PKTPROC_UL_SINGLE_QUEUE)
@@ -1260,7 +1305,8 @@ static int xmit_ipc_to_pktproc(struct mem_link_device *mld, struct sk_buff *skb)
 	else
 #endif
 	if (skb->queue_mapping != 1 ||
-		(skb->queue_mapping == 1 && len > q->max_packet_size)) {
+		(skb->queue_mapping == 1 && len > q->max_packet_size) ||
+		(sp && sp->len > 0)) {
 		q = ppa_ul->q[PKTPROC_UL_NORM];
 		if (len > q->max_packet_size) {
 			mif_err_limited("ERR!PKTPROC UL QUEUE:%d skb len:%d too large (max:%u)\n",
@@ -1291,8 +1337,11 @@ static int xmit_ipc_to_pktproc(struct mem_link_device *mld, struct sk_buff *skb)
 		dev_consume_skb_any(skb);
 
 exit:
-	/* start timer even on error */
-	if (ret)
+	/* start tx timer with 0 interval for icmp packets only to reduce the ping latency  */
+	if(ret > 0 && icmp_pkt)
+		start_tx_timer_custom(mld, &mld->pktproc_tx_timer, 0);
+	else if (ret)
+		/* start timer even on error */
 		start_tx_timer(mld, &mld->pktproc_tx_timer);
 
 	return ret;
@@ -1437,8 +1486,7 @@ static int xmit_to_cp(struct mem_link_device *mld, struct io_device *iod,
 		else
 			return -ENODEV;
 	} else {
-		if (ld->is_fmt_ch(ch) || ld->is_oem_ch(ch) ||
-			(ld->is_wfs0_ch != NULL && ld->is_wfs0_ch(ch)))
+		if (ld->is_fmt_ch(ch) || (ld->is_wfs0_ch != NULL && ld->is_wfs0_ch(ch)))
 			return xmit_ipc_to_dev(mld, ch, skb, IPC_MAP_FMT);
 
 #if IS_ENABLED(CONFIG_MODEM_IF_LEGACY_QOS)
@@ -2098,6 +2146,78 @@ out:
 	return ret;
 }
 
+static int link_load_gnss_image(struct link_device *ld,
+	struct io_device *iod, unsigned long arg)
+{
+	struct gnss_image img;
+	void __iomem *dst;
+	void __user *src;
+
+	int ret = 0;
+	struct mem_link_device *mld = to_mem_link_device(ld);
+
+	memset(&img, 0, sizeof(struct gnss_image));
+
+	mif_info("Load GNSS images\n");
+
+	if (!mld->gnss_v_base) {
+		mld->gnss_v_base = cp_shmem_get_nc_region(
+			cp_shmem_get_base(0, SHMEM_GNSS_FW),
+			cp_shmem_get_size(0, SHMEM_GNSS_FW));
+		if (!mld->gnss_v_base) {
+			mif_err("cp_shmem_get_nc_region() fail\n");
+			return -ENOMEM;
+		}
+	}
+
+	ret = copy_from_user(&img, (const void __user *)arg, sizeof(img));
+	if (ret) {
+		mif_err("copy_from_user() fail:%d\n", ret);
+		return ret;
+	}
+
+	dst = (void __iomem *)(mld->gnss_v_base + img.offset);
+	src = (void __user *)((unsigned long)img.firmware_bin);
+	ret = copy_from_user_memcpy_toio(dst, src, img.firmware_size);
+	if (ret) {
+		mif_err("copy_from_user_memcpy_toio() fail:%d\n", ret);
+		return ret;
+	}
+
+	return ret;
+}
+
+static int link_read_gnss_image(struct link_device *ld,
+	struct io_device *iod, unsigned long arg)
+{
+	struct gnss_image img;
+	int err = 0;
+	struct mem_link_device *mld = to_mem_link_device(ld);
+
+	memset(&img, 0, sizeof(struct gnss_image));
+	err = copy_from_user(&img, (const void __user *)arg,
+			sizeof(struct gnss_image));
+	if (err) {
+		mif_err("copy_from_user fail:%d\n", err);
+		return err;
+	}
+
+	if (img.offset + img.firmware_size > cp_shmem_get_size(0, SHMEM_GNSS_FW)) {
+		mif_err("offset:%d size:%d error\n",
+			img.offset, img.firmware_size);
+		return -EFAULT;
+	}
+
+	err = copy_to_user(img.firmware_bin,
+		mld->gnss_v_base + img.offset, img.firmware_size);
+	if (err) {
+		mif_err("copy_to_user fail:%d\n", err);
+		return err;
+	}
+
+	return 0;
+}
+
 int shm_get_security_param2(u32 cp_num, unsigned long mode, u32 bl_size,
 		unsigned long *param)
 {
@@ -2621,7 +2741,7 @@ exit:
 	spin_unlock_irqrestore(&mc->pcie_tx_lock, flags);
 
 	if (unlikely(force_crash))
-		s5100_force_crash_exit_ext();
+		s5100_force_crash_exit_ext(CRASH_REASON_PCIE_DOORBELL_FALIURE_AP2CP_IRQ);
 }
 
 static inline u16 pcie_read_ap2cp_irq(struct mem_link_device *mld)
@@ -3640,6 +3760,11 @@ static int set_ld_attr(struct platform_device *pdev,
 				goto error;
 			}
 		}
+
+		if (mld->attrs & LINK_ATTR_XMIT_BTDLR_GNSS) {
+			ld->load_gnss_image = link_load_gnss_image;
+			ld->read_gnss_image = link_read_gnss_image;
+		}
 	} while (0);
 
 	if (mld->attrs & LINK_ATTR_MEM_DUMP)
@@ -4047,7 +4172,7 @@ struct link_device *create_link_device(struct platform_device *pdev, u32 link_ty
 		goto error;
 
 	init_dummy_netdev(&mld->dummy_net);
-	netif_napi_add(&mld->dummy_net, &mld->mld_napi, mld_rx_int_poll);
+	netif_napi_add_weight(&mld->dummy_net, &mld->mld_napi, mld_rx_int_poll, NAPI_POLL_WEIGHT);
 	napi_enable(&mld->mld_napi);
 
 	INIT_LIST_HEAD(&ld->list);

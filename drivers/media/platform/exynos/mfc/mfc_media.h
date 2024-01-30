@@ -103,9 +103,6 @@ enum v4l2_mpeg_mfc51_video_frame_type {
 /* new entry for enum v4l2_mpeg_video_mpeg4_level */
 #define V4L2_MPEG_VIDEO_MPEG4_LEVEL_6			8
 
-/* new entry for enum v4l2_mpeg_video_h264_level */
-#define V4L2_MPEG_VIDEO_H264_LEVEL_5_2			16
-
 /* new entry for enum v4l2_mpeg_video_header_mode */
 #define V4L2_MPEG_VIDEO_HEADER_MODE_AT_THE_READY	2
 
@@ -596,5 +593,31 @@ enum v4l2_mpeg_mfc51_video_frame_type {
 					(V4L2_CID_MPEG_MFC_BASE + 251)
 #define V4L2_CID_MPEG_VIDEO_BPG_HEADER_SIZE			\
 					(V4L2_CID_MPEG_MFC_BASE + 252)
+
+/* CID for encoding info interface */
+#define V4L2_CID_MPEG_VIDEO_WP_TWO_PASS_ENABLE			\
+					(V4L2_CID_MPEG_MFC_BASE + 260)
+#define V4L2_CID_MPEG_VIDEO_ADAPTIVE_GOP_ENABLE			\
+					(V4L2_CID_MPEG_MFC_BASE + 261)
+#define V4L2_CID_MPEG_VIDEO_SUM_SKIP_MB				\
+					(V4L2_CID_MPEG_MFC_BASE + 262)
+#define V4L2_CID_MPEG_VIDEO_SUM_INTRA_MB			\
+					(V4L2_CID_MPEG_MFC_BASE + 263)
+#define V4L2_CID_MPEG_VIDEO_SUM_ZERO_MV_MB			\
+					(V4L2_CID_MPEG_MFC_BASE + 264)
+#define V4L2_CID_MPEG_VIDEO_MV_HOR_RANGE			\
+					(V4L2_CID_MPEG_MFC_BASE + 265)
+#define V4L2_CID_MPEG_VIDEO_MV_VER_RANGE			\
+					(V4L2_CID_MPEG_MFC_BASE + 266)
+#define V4L2_CID_MPEG_MFC_H264_SUB_GOP_ENABLE			\
+					(V4L2_CID_MPEG_MFC_BASE + 267)
+#define V4L2_CID_MPEG_MFC_H264_SUB_GOP_TYPE			\
+					(V4L2_CID_MPEG_MFC_BASE + 268)
+#define V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_ENABLE			\
+					(V4L2_CID_MPEG_MFC_BASE + 269)
+#define V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE			\
+					(V4L2_CID_MPEG_MFC_BASE + 270)
+#define V4L2_CID_MPEG_MFC_QPE_TWO_PASS_ENABLE			\
+					(V4L2_CID_MPEG_MFC_BASE + 272)
 
 #endif /* __EXYNOS_MFC_MEDIA_H */

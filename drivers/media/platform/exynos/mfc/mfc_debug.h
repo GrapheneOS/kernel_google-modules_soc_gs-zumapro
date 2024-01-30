@@ -30,6 +30,8 @@ extern unsigned int otf_dump;
 extern unsigned int sfr_dump;
 extern unsigned int llc_disable;
 extern unsigned int slc_disable;
+extern unsigned int slc_option;
+extern unsigned int slc_partial_height_ratio;
 extern unsigned int perf_boost_mode;
 extern unsigned int drm_predict_disable;
 extern unsigned int reg_test;
@@ -42,6 +44,7 @@ extern unsigned int core_balance;
 extern unsigned int sbwc_disable;
 extern unsigned int sscd_report;
 extern unsigned int hdr_dump;
+extern unsigned int idle_suspend_enable;
 
 #define mfc_debug(level, fmt, args...)					\
 	do {								\
@@ -221,7 +224,7 @@ extern unsigned int hdr_dump;
 #define MFC_TRACE_LOG_STR_LEN		25
 #define MFC_TRACE_LOG_COUNT_MAX		256
 #define MFC_TRACE_LOG_COUNT_PRINT	20
-#define MFC_TRACE_NAL_QUEUE_PRINT	25
+#define MFC_TRACE_NAL_QUEUE_PRINT	15
 
 #define MFC_DUMP_BUF_SIZE		0x600000
 

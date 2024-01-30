@@ -89,10 +89,13 @@ static int __mfc_dec_check_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ct
 
 	if (ctrl->value < c->minimum || ctrl->value > c->maximum
 		|| (c->step != 0 && ctrl->value % c->step != 0)) {
-		mfc_ctx_err("[CTRLS] Invalid control id (%#x) value (%d)\n", ctrl->id, ctrl->value);
+		mfc_ctx_err("[CTRLS][%s] id: %#x, invalid value (%d)\n",
+				c->name, ctrl->id, ctrl->value);
 		return -ERANGE;
 	}
 
+	mfc_debug(5, "[CTRLS][%s] id: %#x, value: %d (%#x)\n",
+			c->name, ctrl->id, ctrl->value, ctrl->value);
 	return 0;
 }
 
@@ -498,6 +501,7 @@ static int mfc_dec_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 	struct mfc_core_ctx *core_ctx;
 	struct mfc_dec *dec = ctx->dec_priv;
 	struct mfc_raw_info *raw;
+	int ret;
 
 	mfc_debug_enter();
 
@@ -539,8 +543,12 @@ static int mfc_dec_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 		 * If the MFC is parsing the header,
 		 * so wait until it is finished.
 		 */
-		if (mfc_wait_for_done_core_ctx(core_ctx,
-					MFC_REG_R2H_CMD_SEQ_DONE_RET)) {
+		ret = mfc_wait_for_done_core_ctx(core_ctx, MFC_REG_R2H_CMD_SEQ_DONE_RET);
+		if (ret) {
+			if (core_ctx->int_err == MFC_REG_ERR_UNSUPPORTED_FEATURE) {
+				mfc_ctx_err("header parsing failed by unsupported feature\n");
+				return -EINVAL;
+			}
 			mfc_ctx_err("header parsing failed\n");
 			return -EAGAIN;
 		}
@@ -698,6 +706,7 @@ static int mfc_dec_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	struct mfc_dev *dev = video_drvdata(file);
 	struct mfc_ctx *ctx = fh_to_mfc_ctx(file->private_data);
 	struct mfc_dec *dec = ctx->dec_priv;
+	struct mfc_core *core;
 	struct v4l2_pix_format_mplane *pix_fmt_mp = &f->fmt.pix_mp;
 	struct mfc_fmt *fmt = NULL;
 	int ret = 0;
@@ -734,6 +743,12 @@ static int mfc_dec_s_fmt_vid_out_mplane(struct file *file, void *priv,
 		dec->src_buf_size = MAX_FRAME_SIZE;
 	mfc_debug(2, "[STREAM] sizeimage: %d\n", pix_fmt_mp->plane_fmt[0].sizeimage);
 	pix_fmt_mp->plane_fmt[0].bytesperline = 0;
+
+	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
+	core = mfc_get_main_core_wait(dev, ctx);
+	atomic_inc(&core->hw_run_cnt);
+	/* Trigger idle resume if core is in the idle mode for starting NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
 	ret = mfc_rm_instance_open(dev, ctx);
 	if (ret)
@@ -801,7 +816,7 @@ static int mfc_dec_reqbufs(struct file *file, void *priv,
 					if (core->has_llc && core->llc_on_status)
 						mfc_llc_flush(core);
 					if (core->has_slc && core->slc_on_status)
-						mfc_slc_flush(core);
+						mfc_slc_flush(core, ctx);
 
 					core_ctx = core->core_ctx[ctx->num];
 					mfc_release_codec_buffers(core_ctx);
@@ -1007,8 +1022,7 @@ static int mfc_dec_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 		if (dec->hdr10_plus_full) {
 			src_sei_full = HDR10_PLUS_ADDR(dec->hdr10_plus_full, buf->index);
 			if (dec->sh_handle_hdr.vaddr != NULL) {
-				dst_sei_full = HDR10_PLUS_ADDR(dec->sh_handle_hdr.vaddr,
-								buf->index);
+				dst_sei_full = HDR10_PLUS_ADDR(dec->sh_handle_hdr.vaddr, buf->index);
 				memcpy(dst_sei_full, src_sei_full, HDR10_PLUS_DATA_SIZE);
 				if (hdr_dump == 1) {
 					mfc_ctx_err("[HDR+][DUMP] SH_HANDLE data (idx %d)....\n",
@@ -1076,9 +1090,17 @@ static int mfc_dec_streamoff(struct file *file, void *priv,
 			    enum v4l2_buf_type type)
 {
 	struct mfc_ctx *ctx = fh_to_mfc_ctx(file->private_data);
+	struct mfc_dev *dev = ctx->dev;
+	struct mfc_core *core;
 	int ret = -EINVAL;
 
 	mfc_debug_enter();
+
+	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
+	core = mfc_get_main_core_wait(dev, ctx);
+	atomic_inc(&core->hw_run_cnt);
+	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
 	if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		mfc_debug(4, "dec src streamoff\n");
@@ -1326,9 +1348,6 @@ static int mfc_dec_s_ctrl(struct file *file, void *priv,
 	ret = __mfc_dec_check_ctrl_val(ctx, ctrl);
 	if (ret)
 		return ret;
-
-	mfc_debug(5, "[CTRLS] set id: %#x, value: %d (%#x)\n",
-			ctrl->id, ctrl->value, ctrl->value);
 
 	switch (ctrl->id) {
 	case V4L2_CID_MPEG_VIDEO_DECODER_MPEG4_DEBLOCK_FILTER:

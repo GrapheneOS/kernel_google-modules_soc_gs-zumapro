@@ -75,6 +75,9 @@ struct i2c_data {
 	struct msgtctrl_t {
 		unsigned unhandled_irq_vec:1;
 	} msg_flag;
+
+	/* pwren regulator */
+	struct regulator *pwren_supply;
 };
 
 struct shared_i2c_data {
@@ -94,6 +97,6 @@ int stmvl53l1_reset_hold_i2c(void *arg);
 void stmvl53l1_clean_up_i2c(void);
 int stmvl53l1_start_intr(void *object, int *poll_mode);
 void *stmvl53l1_get(void *arg);
-void stmvl53l1_put(void *arg);
+int stmvl53l1_put(void *arg);
 
 #endif /* STMVL53L1_I2C_H */

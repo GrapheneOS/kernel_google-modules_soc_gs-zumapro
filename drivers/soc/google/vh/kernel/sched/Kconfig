@@ -7,8 +7,7 @@ config VH_SCHED
 
 config VH_SCHED_MAX_CPU_NR
 	int "CPU number on this platform"
-	depends on VH_SCHED
-	default 8
+	default 9
 
 config VH_PREEMPTIRQ_TRACEPOINTS
 	tristate "Vendor hooks for long preemptirq trace points"
@@ -35,7 +34,12 @@ config RVH_SCHED_LIB
 	depends on VH_SCHED
 	default y
 
+config USE_UPDATE_SINGLE
+	bool "Use sugov_update_single function for single-cpu cluster"
+	depends on VH_SCHED
+	default n
+
 config VH_PRIO_INHERITANCE
 	bool "Enable prio inheritance vendor hooks"
 	depends on VH_SCHED
-	default n
+	default y

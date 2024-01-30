@@ -240,13 +240,13 @@ struct exynos_pcie {
 	struct s2mpu_info	*s2mpu;
 	struct pci_dev		*ep_pci_dev;
 	void __iomem		*elbi_base;
+	void __iomem		*soc_base;
 	void __iomem		*udbg_base;
 	void __iomem		*phy_base;
 	void __iomem		*sysreg_base;
 	void __iomem		*rc_dbi_base;
 	void __iomem		*phy_pcs_base;
 	void __iomem		*ia_base;
-	u32			*pma_regs;
 	u32			elbi_base_physical_addr;
 	u32			phy_base_physical_addr;
 	u32			ia_base_physical_addr;
@@ -271,6 +271,7 @@ struct exynos_pcie {
 	int			idle_ip_index;
 	int			separated_msi;
 	bool			use_msi;
+	bool			support_msi64_addressing;
 	bool			use_cache_coherency;
 	bool			use_sicd;
 	bool			use_pcieon_sleep;
@@ -278,11 +279,9 @@ struct exynos_pcie {
 	bool			use_sysmmu;
 	bool			use_ia;
 	bool			use_l1ss;
-	bool			use_secure_atu;
 	bool			use_nclkoff_en;
 	bool                    cpl_timeout_recovery;
 	bool			sudden_linkdown;
-	bool			pma_regs_valid;
 	spinlock_t		conf_lock;		/* pcie config - link status change */
 	spinlock_t		reg_lock;		/* pcie config - reg_lock(reserved) */
 	spinlock_t		pcie_l1_exit_lock;	/* pcie l1.2 exit - ctrl_id_state */
@@ -310,6 +309,9 @@ struct exynos_pcie {
 	int			work_l1ss_cnt;
 	int			ep_device_type;
 	int			max_link_speed;
+	int			target_link_speed;
+	int			target_link_width;
+	int			perst_delay_us;
 	struct power_stats	link_up;
 	struct power_stats	link_down;
 	struct link_stats	link_stats;
@@ -318,7 +320,6 @@ struct exynos_pcie {
 	struct pinctrl_state	*pin_state[MAX_PCIE_PIN_STATE];
 	struct pcie_eom_result **eom_result;
 	struct notifier_block	itmon_nb;
-	struct notifier_block   panic_nb;
 
 	int wlan_gpio;
 	int ssd_gpio;
@@ -334,6 +335,9 @@ struct exynos_pcie {
 	u32 btl_offset;
 	u32 btl_size;
 
+	struct device dup_ep_dev;
+	int copy_dup_ep;
+
 	bool use_phy_isol_con;
 	int phy_control;
 	struct logbuffer *log;
@@ -342,6 +346,7 @@ struct exynos_pcie {
 	int pcieon_sleep_enable_cnt;
 
 	struct mutex power_onoff_lock;
+	bool skip_config;
 };
 
 #define PCIE_MAX_MSI_NUM	(8)
@@ -373,12 +378,14 @@ static inline void exynos_##base##_write(struct exynos_pcie *pcie, type value, t
 }
 
 PCIE_EXYNOS_OP_READ(elbi, u32);
+PCIE_EXYNOS_OP_READ(soc, u32);
 PCIE_EXYNOS_OP_READ(udbg, u32);
 PCIE_EXYNOS_OP_READ(phy, u32);
 PCIE_EXYNOS_OP_READ(phy_pcs, u32);
 PCIE_EXYNOS_OP_READ(sysreg, u32);
 PCIE_EXYNOS_OP_READ(ia, u32);
 PCIE_EXYNOS_OP_WRITE(elbi, u32);
+PCIE_EXYNOS_OP_WRITE(soc, u32);
 PCIE_EXYNOS_OP_WRITE(udbg, u32);
 PCIE_EXYNOS_OP_WRITE(phy, u32);
 PCIE_EXYNOS_OP_WRITE(phy_pcs, u32);

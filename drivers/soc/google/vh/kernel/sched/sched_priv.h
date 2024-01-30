@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 #include "../../include/sched.h"
+#include "binder_internal.h"
 #include <asm/atomic.h>
 
 #define UCLAMP_STATS_SLOTS  21
@@ -12,7 +13,6 @@
 #define THREAD_PRIORITY_LOWEST        139
 #define LIST_QUEUED         0xa5a55a5a
 #define LIST_NOT_QUEUED     0x5a5aa5a5
-
 /*
  * For cpu running normal tasks, its uclamp.min will be 0 and uclamp.max will be 1024,
  * and the sum will be 1024. We use this as index that cpu is not running important tasks.
@@ -43,6 +43,8 @@
 extern unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR];
+extern unsigned int sched_per_cpu_iowait_boost_max_value[CONFIG_VH_SCHED_MAX_CPU_NR];
+extern unsigned int sched_per_task_iowait_boost_max_value;
 
 extern int pixel_cpu_num;
 extern int pixel_cluster_num;
@@ -223,6 +225,11 @@ static inline unsigned long task_util_est(struct task_struct *p)
 	return max(task_util(p), _task_util_est(p));
 }
 
+static inline unsigned long capacity_of(int cpu)
+{
+	return cpu_rq(cpu)->cpu_capacity;
+}
+
 static inline unsigned int uclamp_none(enum uclamp_id clamp_id)
 {
 	if (clamp_id == UCLAMP_MIN)
@@ -242,11 +249,6 @@ extern inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
 				    enum uclamp_id clamp_id);
 extern inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
 				    enum uclamp_id clamp_id);
-
-static inline unsigned long capacity_of(int cpu)
-{
-	return cpu_rq(cpu)->cpu_capacity;
-}
 
 static inline int util_fits_cpu(unsigned long util,
 				unsigned long uclamp_min,
@@ -404,6 +406,7 @@ static inline struct vendor_task_group_struct *get_vendor_task_group_struct(stru
 struct vendor_rq_struct {
 	raw_spinlock_t lock;
 	unsigned long util_removed;
+	unsigned long iowait_boost;
 	atomic_t num_adpf_tasks;
 };
 
@@ -458,6 +461,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->auto_uclamp_max_flags = 0;
 	v_tsk->uclamp_filter.uclamp_min_ignored = 0;
 	v_tsk->uclamp_filter.uclamp_max_ignored = 0;
+	v_tsk->iowait_boost = 0;
 	v_tsk->binder_task.uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 	v_tsk->binder_task.uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MAX);
 	v_tsk->binder_task.prefer_idle = false;
@@ -465,6 +469,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->binder_task.uclamp_fork_reset = false;
 	v_tsk->uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 	v_tsk->uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
+	v_tsk->runnable_start_ns = -1;
 }
 
 extern u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se);
@@ -683,15 +688,6 @@ static inline bool apply_uclamp_filters(struct rq *rq, struct task_struct *p)
 		/* update uclamp_max if set to auto */
 		uclamp_se_set(&p->uclamp_req[UCLAMP_MAX],
 			      sched_auto_uclamp_max[task_cpu(p)], true);
-	}
-
-	if (uclamp_can_ignore_uclamp_max(rq, p)) {
-		uclamp_set_ignore_uclamp_max(p);
-		if (!auto_uclamp_max) {
-			/* GKI has incremented it already, undo that */
-			uclamp_rq_dec_id(rq, p, UCLAMP_MAX);
-		}
-	} else if (auto_uclamp_max) {
 		/*
 		 * re-apply uclamp_max applying the potentially new
 		 * auto value
@@ -703,10 +699,26 @@ static inline bool apply_uclamp_filters(struct rq *rq, struct task_struct *p)
 			rq->uclamp_flags &= ~UCLAMP_FLAG_IDLE;
 	}
 
-	if (uclamp_can_ignore_uclamp_min(rq, p)) {
+	/*
+	 * We can't ignore uclamp_min or uclamp_max individually without side
+	 * effects due to the way UCLAMP_FLAG_IDLE Is handled. It'll cause
+	 * confusions and spit out warnings due to imbalances.
+	 *
+	 * If one of them needs to be ignored, then we assume the other must be
+	 * ignored too.
+	 *
+	 * This should keep some implicit assumptions about how these values
+	 * are inc/dec and how the flag is handled correct.
+	 */
+	if (uclamp_can_ignore_uclamp_min(rq, p) ||
+	    uclamp_can_ignore_uclamp_max(rq, p)) {
+
 		uclamp_set_ignore_uclamp_min(p);
+		uclamp_set_ignore_uclamp_max(p);
+
 		/* GKI has incremented it already, undo that */
 		uclamp_rq_dec_id(rq, p, UCLAMP_MIN);
+		uclamp_rq_dec_id(rq, p, UCLAMP_MAX);
 	}
 
 	/*

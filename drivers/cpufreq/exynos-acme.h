@@ -37,6 +37,12 @@ struct exynos_cpufreq_file_operations {
 	unsigned int			default_value;
 };
 
+enum thermal_actors {
+	TJ = 0,
+	TSKIN = 1
+};
+#define NR_THERMAL_ACTORS 2
+#define THERMAL_PRESSURE_STR_LEN (25)
 struct exynos_cpufreq_domain {
 	/* list of domain */
 	struct list_head		list;
@@ -85,6 +91,12 @@ struct exynos_cpufreq_domain {
 	bool				need_awake;
 
 	struct thermal_cooling_device *cdev;
+
+	/* Thermal pressure */
+	spinlock_t thermal_update_lock;
+	unsigned long capped_freq[NR_THERMAL_ACTORS];
+	char capped_freq_name[NR_THERMAL_ACTORS][THERMAL_PRESSURE_STR_LEN];
+	unsigned int ect_table_offset;
 };
 
 /*

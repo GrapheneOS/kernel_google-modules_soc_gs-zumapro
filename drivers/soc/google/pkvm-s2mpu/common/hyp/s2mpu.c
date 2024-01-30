@@ -252,14 +252,21 @@ static void __wait_while(void __iomem *addr, u32 mask)
 		continue;
 }
 
-static void __sync_cmd_start(struct pkvm_iommu *sync)
+static void __sync_cmd_start(void *dev_va)
 {
-	writel_relaxed(SYNC_CMD_SYNC, sync->va + REG_NS_SYNC_CMD);
+	writel_relaxed(SYNC_CMD_SYNC, dev_va + REG_NS_SYNC_CMD);
 }
 
-static void __invalidation_barrier_slow(struct pkvm_iommu *sync)
+static void __invalidation_barrier_slow(void *dev_va)
 {
 	size_t i, timeout;
+
+	/*
+	 * Check if the SYNC_COMP_COMPLETE bit has been set for individual
+	 * devices. If not, fall back to non-parallel invalidation.
+	 */
+	if (readl_relaxed(dev_va + REG_NS_SYNC_COMP) & SYNC_COMP_COMPLETE)
+		return;
 
 	/*
 	 * Wait for transactions to drain if SysMMU_SYNCs were registered.
@@ -272,8 +279,8 @@ static void __invalidation_barrier_slow(struct pkvm_iommu *sync)
 	 */
 	timeout = SYNC_TIMEOUT;
 	for (i = 0; i < SYNC_MAX_RETRIES; i++) {
-		__sync_cmd_start(sync);
-		if (__wait_until(sync->va + REG_NS_SYNC_COMP, SYNC_COMP_COMPLETE, timeout))
+		__sync_cmd_start(dev_va);
+		if (__wait_until(dev_va + REG_NS_SYNC_COMP, SYNC_COMP_COMPLETE, timeout))
 			break;
 		timeout *= SYNC_TIMEOUT_MULTIPLIER;
 	}
@@ -284,8 +291,12 @@ static void __invalidation_barrier_init(struct pkvm_iommu *dev)
 {
 	struct pkvm_iommu *sync;
 
-	for_each_child(sync, dev)
-		__sync_cmd_start(sync);
+	if (dev->flags & S2MPU_HAS_SYNC) {
+		__sync_cmd_start(dev->va + REG_NS_V9_SYNC_DEV_OFFSET);
+	} else {
+		for_each_child(sync, dev)
+			__sync_cmd_start(sync->va);
+	}
 }
 
 /* Wait for invalidation to complete. */
@@ -293,13 +304,11 @@ static void __invalidation_barrier_complete(struct pkvm_iommu *dev)
 {
 	struct pkvm_iommu *sync;
 
-	/*
-	 * Check if the SYNC_COMP_COMPLETE bit has been set for individual
-	 * devices. If not, fall back to non-parallel invalidation.
-	 */
-	for_each_child(sync, dev) {
-		if (!(readl_relaxed(sync->va + REG_NS_SYNC_COMP) & SYNC_COMP_COMPLETE))
-			__invalidation_barrier_slow(sync);
+	if (dev->flags & S2MPU_HAS_SYNC) {
+		__invalidation_barrier_slow(dev->va + REG_NS_V9_SYNC_DEV_OFFSET);
+	} else {
+		for_each_child(sync, dev)
+			__invalidation_barrier_slow(sync->va);
 	}
 
 	/* Must not access SFRs while S2MPU is busy invalidating */

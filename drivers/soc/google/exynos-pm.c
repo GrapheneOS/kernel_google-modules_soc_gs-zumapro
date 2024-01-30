@@ -22,86 +22,16 @@
 #define WS_BIT_MAILBOX_AOC2AP		(7)
 #define WS2_BIT_MAILBOX_AOCA322AP	(5)
 #define WS2_BIT_MAILBOX_AOCF12AP	(6)
-#define WS2_BIT_VGPIO2PMU_EINT		(13)
+#define WS2_BIT_VGPIO2PMU_EINT		(18)
 
 static struct exynos_pm_info *pm_info;
 static struct exynos_pm_dbg *pm_dbg;
 
-static void exynos_show_wakeup_reason_eint(void)
+static void inline exynos_update_eint_wakeup_mask(void)
 {
-	int bit;
-	int i;
-	unsigned long ext_int_pend;
-	u32 eint_wakeup_mask[3];
-	bool found = 0;
-	unsigned long gpa_mask[3] = {0, 0, 0};
-	unsigned int gpa_cnt = 0, shift_cnt = 0, gpa_idx = 0;
-
-	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[0], &eint_wakeup_mask[0]);
-	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[1], &eint_wakeup_mask[1]);
-	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[2], &eint_wakeup_mask[2]);
-
-	for (i = 0; i < pm_info->num_gpa; i++) {
-		if (i * 8 < pm_info->num_eint)
-			ext_int_pend = __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_base, i * 8));
-		else
-			ext_int_pend = __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_far_base,
-								    i * 8 - pm_info->num_eint));
-
-		shift_cnt = pm_info->gpa_use[i];
-		ext_int_pend = ext_int_pend << (32 - shift_cnt);
-		ext_int_pend = ext_int_pend >> (32 - shift_cnt);
-
-		gpa_mask[gpa_idx] |= ext_int_pend << gpa_cnt;
-		gpa_cnt += shift_cnt;
-
-		if (gpa_cnt > 32) {
-			shift_cnt = gpa_cnt - 32 + 1;
-			ext_int_pend = ext_int_pend << (32 - pm_info->gpa_use[i]);
-			ext_int_pend = ext_int_pend >> (32 - pm_info->gpa_use[i] + shift_cnt);
-			gpa_mask[++gpa_idx] |= ext_int_pend;
-			gpa_cnt = pm_info->gpa_use[i] - shift_cnt;
-		}
-	}
-
-	for (i = 0; i < gpa_idx; i++) {
-		for_each_set_bit(bit, &gpa_mask[i], 32) {
-			u32 gpio;
-			int irq;
-
-			if (eint_wakeup_mask[i] & (1 << bit))
-				continue;
-
-			gpio = exynos_eint_to_pin_num(i * 32 + bit);
-			irq = gpio_to_irq(gpio);
-
-			pr_info("%s Resume caused by EINT num: %d\n", EXYNOS_PM_PREFIX, irq);
-
-			found = 1;
-		}
-	}
-
-	if (!found)
-		pr_info("%s Resume caused by unknown EINT\n", EXYNOS_PM_PREFIX);
-}
-
-static void exynos_show_wakeup_registers(unsigned int wakeup_stat)
-{
-	int i, size;
-
-	pr_info("WAKEUP_STAT:\n");
-	for (i = 0; i < pm_info->num_wakeup_stat; i++) {
-		exynos_pmu_read(pm_info->wakeup_stat_offset[i], &wakeup_stat);
-		pr_info("0x%08x\n", wakeup_stat);
-	}
-
-	pr_info("EINT_PEND: ");
-	for (i = 0, size = 8; i < pm_info->num_eint; i += size)
-		pr_info("0x%02x ", __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_base, i)));
-
-	pr_info("EINT_FAR_PEND: ");
-	for (i = 0, size = 8; i < pm_info->num_eint_far; i += size)
-		pr_info("0x%02x ", __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_far_base, i)));
+	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[0], &exynos_eint_wake_mask_array[0]);
+	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[1], &exynos_eint_wake_mask_array[1]);
+	exynos_pmu_read(pm_info->eint_wakeup_mask_offset[2], &exynos_eint_wake_mask_array[2]);
 }
 
 static void exynos_show_wakeup_reason_sysint(unsigned int stat,
@@ -120,7 +50,7 @@ static void exynos_show_wakeup_reason_sysint(unsigned int stat,
 
 		/*
 		 * Ignore logging VGPIO2PMU_EINT wakeup reasons because they
-		 * will get logged in "drivers/mfd/s2mpg12-irq.c".
+		 * will get logged in the function s2mpg14_irq_thread().
 		 */
 		if (wakeup_stat_id == 1 && bit == WS2_BIT_VGPIO2PMU_EINT)
 			continue;
@@ -157,7 +87,7 @@ static void exynos_show_wakeup_reason_detail(unsigned int wakeup_stat)
 	unsigned int wss;
 
 	if ((wakeup_stat & pm_info->wakeup_stat_eint))
-		exynos_show_wakeup_reason_eint();
+		exynos_update_eint_wakeup_mask();
 
 	if (unlikely(!pm_info->ws_names))
 		return;
@@ -176,23 +106,11 @@ static void exynos_show_wakeup_reason_detail(unsigned int wakeup_stat)
 
 static void exynos_show_wakeup_reason(bool sleep_abort)
 {
-	unsigned int wakeup_stat, eint_far;
-	int i, size;
-	unsigned int is_eint_far = 0;
+	unsigned int wakeup_stat;
+	int i;
 
 	if (sleep_abort) {
 		pr_info("%s early wakeup! Dumping pending registers...\n", EXYNOS_PM_PREFIX);
-
-		pr_info("EINT_PEND:\n");
-		for (i = 0, size = 8; i < pm_info->num_eint; i += size)
-			pr_info("0x%x\n", __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_base, i)));
-
-		pr_info("EINT_FAR_PEND:\n");
-		for (i = 0, size = 8; i < pm_info->num_eint_far; i += size) {
-			eint_far = __raw_readl(EXYNOS_EINT_PEND(pm_info->eint_far_base, i));
-			pr_info("0x%x\n", eint_far);
-			is_eint_far |= eint_far;
-		}
 
 		if (pm_info->gic_base) {
 			pr_info("GIC_PEND:\n");
@@ -202,14 +120,6 @@ static void exynos_show_wakeup_reason(bool sleep_abort)
 		}
 
 		pr_info("%s done.\n", EXYNOS_PM_PREFIX);
-#ifdef CONFIG_SUSPEND
-		/**
-		 * Skip logging if there is a pending wakeup from EINT_FAR. Otherwise,
-		 * the sleep abort reason will overwrite the irq wakeup reason.
-		 */
-		if (!is_eint_far)
-			log_abnormal_wakeup_reason("sleep abort (by tf-a or acpm)");
-#endif
 		return;
 	}
 
@@ -217,7 +127,6 @@ static void exynos_show_wakeup_reason(bool sleep_abort)
 		return;
 
 	exynos_pmu_read(pm_info->wakeup_stat_offset[0], &wakeup_stat);
-	exynos_show_wakeup_registers(wakeup_stat);
 
 	exynos_show_wakeup_reason_detail(wakeup_stat);
 
@@ -272,6 +181,7 @@ static void exynos_wakeup_sys_powerdown(enum sys_powerdown mode, bool early_wake
 		cal_pm_exit(mode);
 }
 
+u64 get_frc_time(void);
 static int exynos_pm_syscore_suspend(void)
 {
 #ifdef CONFIG_CP_PMUCAL
@@ -308,8 +218,8 @@ static int exynos_pm_syscore_suspend(void)
 
 	pm_dbg->mifdn_early_wakeup_prev = acpm_get_early_wakeup_count();
 
-	pr_info("%s: prev mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
-		EXYNOS_PM_PREFIX, pm_dbg->mifdn_cnt_prev,
+	pr_info("%s frc:%llu prev mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
+		EXYNOS_PM_PREFIX, get_frc_time(), pm_dbg->mifdn_cnt_prev,
 		pm_info->apdn_cnt_prev, pm_dbg->mifdn_early_wakeup_prev);
 
 	return 0;
@@ -321,8 +231,8 @@ static void exynos_pm_syscore_resume(void)
 	pm_info->apdn_cnt = acpm_get_apsocdn_count();
 	pm_dbg->mifdn_early_wakeup_cnt = acpm_get_early_wakeup_count();
 
-	pr_info("%s: post mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
-		EXYNOS_PM_PREFIX, pm_dbg->mifdn_cnt,
+	pr_info("%s frc:%llu post mif_count:%d, apsoc_count:%d, seq_early_wakeup_count:%d\n",
+		EXYNOS_PM_PREFIX, get_frc_time(), pm_dbg->mifdn_cnt,
 		pm_info->apdn_cnt, pm_dbg->mifdn_early_wakeup_cnt);
 
 	if (pm_info->apdn_cnt == pm_info->apdn_cnt_prev) {
@@ -334,13 +244,13 @@ static void exynos_pm_syscore_resume(void)
 	}
 
 	if (pm_dbg->mifdn_early_wakeup_cnt != pm_dbg->mifdn_early_wakeup_prev)
-		pr_debug("%s: Sequence early wakeup\n", EXYNOS_PM_PREFIX);
+		pr_debug("%s Sequence early wakeup\n", EXYNOS_PM_PREFIX);
 
 	if (pm_dbg->mifdn_cnt == pm_dbg->mifdn_cnt_prev)
-		pr_info("%s: MIF blocked. MIF request Mster was  0x%x\n",
+		pr_info("%s MIF blocked. MIF request Mster was  0x%x\n",
 			EXYNOS_PM_PREFIX, pm_dbg->mif_req);
 	else
-		pr_info("%s: MIF down. cur_count: %d, acc_count: %d\n",
+		pr_info("%s MIF down. cur_count: %d, acc_count: %d\n",
 			EXYNOS_PM_PREFIX,
 			pm_dbg->mifdn_cnt - pm_dbg->mifdn_cnt_prev,
 			pm_dbg->mifdn_cnt);
@@ -462,7 +372,7 @@ static struct notifier_block exynos_pm_notifier_block = {
 	.notifier_call = exynos_pm_notification_handler,
 };
 
-static void parse_dt_wakeup_stat_names(struct device *dev, struct device_node *np)
+static int parse_dt_wakeup_stat_names(struct device *dev, struct device_node *np)
 {
 	struct device_node *root, *child;
 	int ret;
@@ -472,30 +382,32 @@ static void parse_dt_wakeup_stat_names(struct device *dev, struct device_node *n
 	n = of_get_child_count(root);
 
 	if (pm_info->num_wakeup_stat != n || !n) {
-		pr_err("drvinit: failed to get wakeup_stats(%d)\n", n);
-		return;
+		dev_err(dev, "failed to get wakeup_stats(%d)\n", n);
+		return -EINVAL;
 	}
 
 	pm_info->ws_names = devm_kcalloc(dev, n, sizeof(*pm_info->ws_names), GFP_KERNEL);
 	if (!pm_info->ws_names)
-		return;
+		return -ENOMEM;
 
 	for_each_child_of_node(root, child) {
 		size = of_property_count_strings(child, "ws-name");
-		if (size <= 0 || size > 32) {
-			pr_err("drvinit: failed to get wakeup_stat name cnt(%d)\n", size);
-			return;
+		if (size < 0 || size > 32) {
+			dev_err(dev, "failed to get wakeup_stats name cnt(%d)\n", size);
+			return -EINVAL;
 		}
 
 		ret = of_property_read_string_array(child, "ws-name",
 						    pm_info->ws_names[idx].name, size);
 		if (ret < 0) {
-			pr_err("drvinit: failed to read wakeup_stat name(%d)\n", ret);
-			return;
+			dev_err(dev, "failed to read wakeup_stats name(%d)\n", ret);
+			return ret;
 		}
 
 		idx++;
 	}
+
+	return 0;
 }
 
 static int exynos_pm_drvinit(struct platform_device *pdev)
@@ -541,115 +453,65 @@ static int exynos_pm_drvinit(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 4);
 	pm_info->mbox_aocf1 = devm_ioremap_resource(dev, res);
-	if (IS_ERR(pm_info->mbox_aocf1)) {
-		dev_warn(dev, "drvinit: unabled to get the mapped address of mbox_aocf1\n");
-	}
-
-	ret = of_property_read_u32(np, "num-eint", &pm_info->num_eint);
-	if (ret) {
-		dev_err(dev, "drvinit: unabled to get the number of eint from DT\n");
-		WARN_ON(1);
-	}
-
-	ret = of_property_read_u32(np, "num-eint-far", &pm_info->num_eint_far);
-	if (ret) {
-		dev_err(dev, "drvinit: unabled to get the number of eint-far from DT\n");
-		WARN_ON(1);
-	}
-
-	ret = of_property_count_u32_elems(np, "gpa-use");
-	if (!ret) {
-		dev_err(dev, "drvinit: unabled to get num-gpa-use from DT\n");
-	} else if (ret > 0) {
-		pm_info->num_gpa = ret;
-		pm_info->gpa_use = devm_kcalloc(dev, ret, sizeof(unsigned int), GFP_KERNEL);
-		of_property_read_u32_array(np, "gpa-use", pm_info->gpa_use, ret);
-	}
+	if (IS_ERR(pm_info->mbox_aocf1))
+		dev_warn(dev, "unable to get the mapped address of mbox_aocf1\n");
 
 	ret = of_property_read_u32(np, "num-gic", &pm_info->num_gic);
-	if (ret) {
-		dev_err(dev, "drvinit: unabled to get the number of gic from DT\n");
-		WARN_ON(1);
-	}
+	if (ret)
+		dev_warn(dev, "unable to get the number of gic from DT\n");
 
 	ret = of_property_read_u32(np, "wakeup-stat-eint", &pm_info->wakeup_stat_eint);
-	if (ret) {
-		dev_err(dev, "drvinit: unabled to get the eint bit of WAKEUP_STAT from DT\n");
-		WARN_ON(1);
-	}
+	if (ret)
+		dev_warn(dev, "unable to get the eint bit of WAKEUP_STAT from DT\n");
 
 	ret = of_property_read_u32(np, "wakeup-stat-rtc", &pm_info->wakeup_stat_rtc);
-	if (ret) {
-		dev_err(dev, "drvinit: unabled to get the rtc bit of WAKEUP_STAT from DT\n");
-		WARN_ON(1);
-	}
+	if (ret)
+		dev_warn(dev, "unable to get the rtc bit of WAKEUP_STAT from DT\n");
 
 	ret = of_property_read_u32(np, "suspend_mode_idx", &pm_info->suspend_mode_idx);
-	if (ret) {
-		dev_err(dev, "drvinit: unabled to get suspend_mode_idx from DT\n");
-		WARN_ON(1);
-	}
+	if (ret)
+		dev_warn(dev, "unable to get suspend_mode_idx from DT\n");
 
 	ret = of_property_count_u32_elems(np, "wakeup_stat_offset");
-	if (!ret) {
-		dev_err(dev, "drvinit: unabled to get wakeup_stat value from DT\n");
-		WARN_ON(1);
-	} else if (ret > 0) {
+	if (ret > 0) {
 		pm_info->num_wakeup_stat = ret;
 		pm_info->wakeup_stat_offset = devm_kcalloc(dev, ret, sizeof(unsigned int),
 							   GFP_KERNEL);
 		of_property_read_u32_array(np, "wakeup_stat_offset",
 					   pm_info->wakeup_stat_offset, ret);
-	}
+	} else
+		dev_warn(dev, "unable to get wakeup_stat value from DT\n");
 
 	ret = of_property_count_u32_elems(np, "wakeup_int_en_offset");
-	if (!ret) {
-		dev_err(dev, "drvinit: unabled to get wakeup_int_en_offset value from DT\n");
-		WARN_ON(1);
-	} else if (ret > 0) {
+	if (ret > 0) {
 		pm_info->num_wakeup_int_en = ret;
 		pm_info->wakeup_int_en_offset = devm_kcalloc(dev, ret, sizeof(unsigned int),
 							     GFP_KERNEL);
 		of_property_read_u32_array(np, "wakeup_int_en_offset",
 					   pm_info->wakeup_int_en_offset, ret);
-	}
+	} else
+		dev_warn(dev, "unable to get wakeup_int_en_offset value from DT\n");
 
 	ret = of_property_count_u32_elems(np, "wakeup_int_en");
-	if (!ret) {
-		dev_err(dev, "drvinit: unabled to get wakeup_int_en value from DT\n");
-		WARN_ON(1);
-	} else if (ret > 0) {
+	if (ret > 0) {
 		pm_info->wakeup_int_en = devm_kcalloc(dev, ret, sizeof(unsigned int), GFP_KERNEL);
 		of_property_read_u32_array(np, "wakeup_int_en",
 					   pm_info->wakeup_int_en, ret);
-	}
-
-	ret = of_property_count_u32_elems(np, "usbl2_wakeup_int_en");
-	if (!ret) {
-		dev_err(dev, "drvinit: dose not support usbl2 sleep\n");
-	} else if (ret > 0) {
-		pm_info->usbl2_wakeup_int_en = devm_kcalloc(dev, ret, sizeof(unsigned int),
-							    GFP_KERNEL);
-		of_property_read_u32_array(np, "usbl2_wakeup_int_en",
-					   pm_info->usbl2_wakeup_int_en, ret);
-	}
+	} else
+		dev_warn(dev, "unable to get wakeup_int_en value from DT\n");
 
 	ret = of_property_count_u32_elems(np, "eint_wakeup_mask_offset");
-	if (!ret) {
-		dev_err(dev, "drvinit: unabled to get eint_wakeup_mask_offset from DT\n");
-		WARN_ON(1);
-	} else if (ret > 0) {
+	if (ret > 0) {
 		pm_info->num_eint_wakeup_mask = ret;
 		pm_info->eint_wakeup_mask_offset = devm_kcalloc(dev, ret, sizeof(unsigned int),
 								GFP_KERNEL);
 		of_property_read_u32_array(np, "eint_wakeup_mask_offset",
 					   pm_info->eint_wakeup_mask_offset, ret);
-	}
+	} else
+		dev_warn(dev, "unable to get eint_wakeup_mask_offset from DT\n");
 
 	ret = of_property_read_u32(np, "wake_lock", &wake_lock);
-	if (ret) {
-		dev_info(dev, "drvinit: unabled to get wake_lock from DT\n");
-	} else {
+	if (!ret) {
 		pm_info->ws = wakeup_source_register(NULL, "exynos-pm");
 		if (!pm_info->ws)
 			WARN_ON(1);
@@ -658,22 +520,22 @@ static int exynos_pm_drvinit(struct platform_device *pdev)
 
 		if (pm_info->is_stay_awake)
 			__pm_stay_awake(pm_info->ws);
-	}
+	} else
+		dev_warn(dev, "unable to get wake_lock from DT\n");
 
 	ret = of_property_read_u32(np, "pcieon_suspend_available",
 				   &pm_info->pcieon_suspend_available);
-	if (ret) {
-		dev_info(dev, "drvinit: Not support pcieon_suspend mode\n");
-	} else {
+	if (!ret) {
 		ret = of_property_read_u32(np, "pcieon_suspend_mode_idx",
 					   &pm_info->pcieon_suspend_mode_idx);
-		if (ret) {
-			dev_err(dev, "drvinit: unabled to get pcieon_suspemd_mode_idx from DT\n");
-			WARN_ON(1);
-		}
-	}
+		if (ret)
+			dev_warn(dev, "unable to get pcieon_suspemd_mode_idx from DT\n");
+	} else
+		dev_warn(dev, "No support for pcieon_suspend mode\n");
 
-	parse_dt_wakeup_stat_names(dev, np);
+	ret = parse_dt_wakeup_stat_names(dev, np);
+	if (ret < 0)
+		return ret;
 
 	register_syscore_ops(&exynos_pm_syscore_ops);
 	register_pm_notifier(&exynos_pm_notifier_block);
@@ -681,7 +543,7 @@ static int exynos_pm_drvinit(struct platform_device *pdev)
 	exynos_pm_debugfs_init();
 #endif
 
-	dev_info(dev, "initialized\n");
+	dev_dbg(dev, "initialized\n");
 	return 0;
 }
 

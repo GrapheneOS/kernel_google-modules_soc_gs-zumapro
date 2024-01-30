@@ -62,9 +62,14 @@ enum cp_boot_mode {
 	CP_BOOT_MODE_NORMAL,
 	CP_BOOT_MODE_DUMP,
 	CP_BOOT_RE_INIT,
+	CP_BOOT_MODE_SILENT,
 	CP_BOOT_REQ_CP_RAM_LOGGING = 5,
 	CP_BOOT_MODE_MANUAL = 7,
 	CP_BOOT_EXT_BAAW = 11,
+	CP_BOOT_MODE_NORMAL_BL1 = 32,
+	CP_BOOT_MODE_NORMAL_BOOTLOADER,
+	CP_BOOT_MODE_DUMP_BL1,
+	CP_BOOT_MODE_DUMP_BOOTLOADER,
 	MAX_CP_BOOT_MODE
 };
 struct boot_mode {
@@ -87,6 +92,14 @@ struct cp_image {
 	u32 len;
 } __packed;
 #define IOCTL_LOAD_CP_IMAGE		_IOW(IOCTL_MAGIC, 0x40, struct cp_image)
+
+struct gnss_image {
+	u32 firmware_size;
+	u32 offset;
+	char *firmware_bin;
+} __packed;
+#define IOCTL_LOAD_GNSS_IMAGE		_IOW(IOCTL_MAGIC, 0x41, struct gnss_image)
+#define IOCTL_READ_GNSS_IMAGE		_IOR(IOCTL_MAGIC, 0x42, struct gnss_image)
 
 #define IOCTL_GET_SRINFO		_IO(IOCTL_MAGIC, 0x45)
 #define IOCTL_SET_SRINFO		_IO(IOCTL_MAGIC, 0x46)
@@ -144,6 +157,11 @@ enum crash_type {
 	CRASH_REASON_CP_RSV_0,
 	CRASH_REASON_CP_RSV_MAX,
 	CRASH_REASON_CLD = 16,
+	CRASH_REASON_PCIE_DOORBELL_FALIURE_AP2CP_IRQ,
+	CRASH_REASON_PCIE_LINKDOWN_ERROR,
+	CRASH_REASON_PCIE_CPL_TIMEOUT_ERROR,
+	CRASH_REASON_PCIE_DOORBELL_FAILURE_POWERON,
+	CRASH_REASON_PCIE_DOORBELL_FAILURE_POWEROFF = 21,
 	CRASH_REASON_NONE = 0xFFFF,
 };
 
@@ -185,6 +203,8 @@ struct t_handover_block_info {
 
 #define IOCTL_GET_OPENED_STATUS 	_IOR(IOCTL_MAGIC, 0x59, int)
 
+#define IOCTL_SILENT_RESET			_IO(IOCTL_MAGIC, 0x60)
+
 /*
  * Definitions for IO devices
  */
@@ -225,6 +245,17 @@ enum link_state {
 	LINK_STATE_OFFLINE = 0,
 	LINK_STATE_IPC,
 	LINK_STATE_CP_CRASH
+};
+
+enum link_mode {
+	LINK_MODE_MIN_SPEED_BOOTING,
+	LINK_MODE_MAX_SPEED_BOOTING,
+	LINK_MODE_ADAPTIVE_SPEED_BOOTED,
+};
+
+enum modem_variant {
+	MODEM_SEC_5300,
+	MODEM_SEC_5400
 };
 
 struct cp_power_stats {
@@ -476,6 +507,8 @@ struct link_device {
 
 	/* method for CP booting */
 	int (*load_cp_image)(struct link_device *ld, struct io_device *iod, unsigned long arg);
+	int (*load_gnss_image)(struct link_device *ld, struct io_device *iod, unsigned long arg);
+	int (*read_gnss_image)(struct link_device *ld, struct io_device *iod, unsigned long arg);
 	void (*link_prepare_normal_boot)(struct link_device *ld, struct io_device *iod);
 	int (*link_start_normal_boot)(struct link_device *ld, struct io_device *iod);
 
@@ -526,10 +559,15 @@ struct modemctl_ops {
 	int (*power_off)(struct modem_ctl *mc);
 	int (*power_shutdown)(struct modem_ctl *mc);
 	int (*power_reset)(struct modem_ctl *mc);
-	int (*power_reset_dump)(struct modem_ctl *mc);
+	int (*power_reset_dump)(struct modem_ctl *mc, bool silent);
+	int (*silent_reset)(struct modem_ctl *mc);
 
 	int (*start_normal_boot)(struct modem_ctl *mc);
 	int (*complete_normal_boot)(struct modem_ctl *mc);
+	int (*start_normal_boot_bl1)(struct modem_ctl *mc);
+	int (*start_normal_boot_bootloader)(struct modem_ctl *mc);
+	int (*start_dump_boot_bl1)(struct modem_ctl *mc);
+	int (*start_dump_boot_bootloader)(struct modem_ctl *mc);
 
 	int (*trigger_cp_crash)(struct modem_ctl *mc);
 	int (*start_dump_boot)(struct modem_ctl *mc);
@@ -586,8 +624,10 @@ struct modem_shared {
 struct modem_ctl {
 	struct device *dev;
 	char *name;
+	enum modem_variant variant;
 	struct modem_data *mdm_data;
 	struct modem_shared *msd;
+	struct device *s5910_dev;
 
 	enum modem_state phone_state;
 
@@ -659,6 +699,7 @@ struct modem_ctl {
 
 #if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
 	struct irq_chip *apwake_irq_chip;
+	struct irq_chip *cp_wrst_irq_chip;
 	struct pci_dev *s51xx_pdev;
 	struct workqueue_struct *wakeup_wq;
 	struct work_struct wakeup_work;
@@ -667,6 +708,7 @@ struct modem_ctl {
 	struct work_struct crash_work;
 
 	struct wakeup_source *ws;
+	struct wakeup_source *ws_wrst;
 	struct mutex pcie_onoff_lock;
 	struct mutex pcie_check_lock;
 	spinlock_t pcie_tx_lock;
@@ -687,7 +729,7 @@ struct modem_ctl {
 	int pcie_pm_resume_gpio_val;
 	bool device_reboot;
 
-#if IS_ENABLED(CONFIG_SUSPEND_DURING_VOICE_CALL)
+#if IS_ENABLED(CONFIG_CPIF_AP_SUSPEND_DURING_VOICE_CALL)
 	bool pcie_voice_call_on;
 	struct work_struct call_on_work;
 	struct work_struct call_off_work;
@@ -734,6 +776,10 @@ struct modem_ctl {
 	atomic_t mark_skb_wakeup;
 #endif
 	struct logbuffer *log;
+
+	u32 tp_threshold;
+	u32 tp_hysteresis;
+	bool pcie_dynamic_spd_enabled;
 };
 
 static inline bool cp_offline(struct modem_ctl *mc)

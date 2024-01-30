@@ -9,6 +9,14 @@ config SAMSUNG_IOMMU
 	help
 	  Support for IOMMU on GS SoCs.
 
+config SAMSUNG_IOMMU_V9
+	tristate "Samsung IOMMU V9 Support"
+	select ARM_DMA_USE_IOMMU
+	select IOMMU_DMA
+	select SAMSUNG_IOMMU_GROUP
+	help
+	  Support for IOMMU V9 on Samsung Exynos SoCs.
+
 config SAMSUNG_IOMMU_GROUP
 	tristate "Samsung IOMMU Group Support"
 	help
@@ -21,7 +29,7 @@ config SAMSUNG_SECURE_IOVA
 
 config EXYNOS_PCIE_IOMMU
 	tristate "Enable Exynos PCIe IOMMU"
-	depends on PCI_EXYNOS || PCI_EXYNOS_GS
+	depends on PCI_EXYNOS_GS
 	help
 	  Support for IOMMU feature for Exynos PCIe. Memory shared between the
 	  PCIe Root Complex and the Endpoints is susceptible to attacks by

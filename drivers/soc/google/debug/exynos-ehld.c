@@ -15,12 +15,15 @@
 #include <linux/cpu_pm.h>
 #include <linux/sched/clock.h>
 #include <linux/notifier.h>
+#include <linux/panic_notifier.h>
 #include <linux/smpboot.h>
 #include <linux/hrtimer.h>
 #include <linux/reboot.h>
-#include <linux/panic_notifier.h>
-#include <asm/io.h>
+#include <linux/io.h>
+#include <linux/time64.h>
+#include <linux/irqchip/arm-gic-v3.h>
 
+#include <soc/google/acpm_ipc_ctrl.h>
 #include <soc/google/exynos-ehld.h>
 #include <soc/google/exynos-coresight.h>
 #include <soc/google/debug-snapshot.h>
@@ -32,13 +35,17 @@
 #undef EHLD_TASK_SUPPORT
 
 #ifdef DEBUG
+#define ehld_debug(f, str...) pr_debug(str)
 #define ehld_info(f, str...) pr_info(str)
 #define ehld_err(f, str...) pr_err(str)
 #else
+#define ehld_debug(f, str...) do { if (f == 1) pr_debug(str); } while (0)
 #define ehld_info(f, str...) do { if (f == 1) pr_info(str); } while (0)
 #define ehld_err(f, str...)  do { if (f == 1) pr_err(str); } while (0)
 #endif
 
+#define EHLD_PCSR_RES0_MAGIC	(0x5cULL << 56)
+#define EHLD_PCSR_SELF		(EHLD_PCSR_RES0_MAGIC | 0xbb0ce1a1d05e1fULL)
 #define MSB_MASKING		(0x0000FF0000000000)
 #define MSB_PADDING		(0xFFFFFF0000000000)
 #define DBG_UNLOCK(base)	\
@@ -49,6 +56,8 @@
 	do { isb(); __raw_writel(0, base + DBGOSLAR); } while (0)
 #define DBG_OS_LOCK(base)	\
 	do { __raw_writel(0x1, base + DBGOSLAR); isb(); } while (0)
+
+#define ALIVE_FRC_FREQ_49_152_MHZ (49152000) /* 49.152 MHz crystal */
 
 #if IS_ENABLED(CONFIG_HARDLOCKUP_WATCHDOG)
 extern struct atomic_notifier_head hardlockup_notifier_list;
@@ -75,6 +84,7 @@ struct exynos_ehld_main {
 	bool				suspending;
 	bool				resuming;
 	struct exynos_ehld_dbgc		dbgc;
+	void __iomem			**sgi_base;
 };
 
 static struct exynos_ehld_main ehld_main = {
@@ -83,6 +93,7 @@ static struct exynos_ehld_main ehld_main = {
 
 struct exynos_ehld_data {
 	unsigned long long		time[NUM_TRACE];
+	unsigned long long		alive_time[NUM_TRACE];
 	unsigned long long		event[NUM_TRACE];
 	unsigned long long		pmpcsr[NUM_TRACE];
 	unsigned long			data_ptr;
@@ -100,8 +111,7 @@ struct exynos_ehld_ctrl {
 	bool				need_to_task;
 };
 
-static DEFINE_PER_CPU(struct exynos_ehld_ctrl, ehld_ctrl) =
-{
+static DEFINE_PER_CPU(struct exynos_ehld_ctrl, ehld_ctrl) = {
 	.lock = __RAW_SPIN_LOCK_UNLOCKED(ehld_ctrl.lock),
 };
 
@@ -320,14 +330,14 @@ static int exynos_ehld_start_cpu(unsigned int cpu)
 			return PTR_ERR(event);
 		}
 
-		ehld_info(1, "@%s: cpu%u event make success\n", __func__, cpu);
+		ehld_debug(1, "@%s: cpu%u event make success\n", __func__, cpu);
 		ctrl->event = event;
 		perf_event_enable(event);
 	}
 
 	ctrl->ehld_running = 1;
 	ctrl->ehld_cpupm = 0;
-	ehld_info(1, "@%s: cpu%u ehld running\n", __func__, cpu);
+	ehld_debug(1, "@%s: cpu%u ehld running\n", __func__, cpu);
 
 	if (!ehld_main.dbgc.support)
 		return 0;
@@ -335,7 +345,7 @@ static int exynos_ehld_start_cpu(unsigned int cpu)
 	if (!ehld_main.dbgc.use_tick_timer) {
 		u64 interval = ehld_main.dbgc.interval * 1000 * 1000;
 
-		ehld_info(1, "@%s: cpu%u ehld running with hrtimer\n", __func__, cpu);
+		ehld_debug(1, "@%s: cpu%u ehld running with hrtimer\n", __func__, cpu);
 		hrtimer_init(hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		hrtimer->function = ehld_value_raw_hrtimer_fn;
 		if (ehld_main.suspending && cpu == 0)
@@ -343,7 +353,7 @@ static int exynos_ehld_start_cpu(unsigned int cpu)
 		else
 			hrtimer_start(hrtimer, ns_to_ktime(interval), HRTIMER_MODE_REL_PINNED);
 	} else {
-		ehld_info(1, "@%s: cpu%u ehld running with tick-timer\n", __func__, cpu);
+		ehld_debug(1, "@%s: cpu%u ehld running with tick-timer\n", __func__, cpu);
 	}
 
 	return 0;
@@ -362,7 +372,7 @@ static int exynos_ehld_stop_cpu(unsigned int cpu)
 	ctrl->ehld_running = 0;
 	ctrl->ehld_cpupm = 1;
 
-	ehld_info(1, "@%s: cpu%u ehld stopping\n", __func__, cpu);
+	ehld_debug(1, "@%s: cpu%u ehld stopping\n", __func__, cpu);
 
 	event = ctrl->event;
 	if (event) {
@@ -372,7 +382,7 @@ static int exynos_ehld_stop_cpu(unsigned int cpu)
 	}
 
 	if (ehld_main.dbgc.support && !ehld_main.dbgc.use_tick_timer) {
-		ehld_info(1, "@%s: cpu%u hrtimer cancel\n",
+		ehld_debug(1, "@%s: cpu%u hrtimer cancel\n",
 						__func__, cpu);
 		hrtimer_cancel(hrtimer);
 	}
@@ -410,6 +420,7 @@ void exynos_ehld_event_raw_update(unsigned int cpu, bool update_val)
 	data = &ctrl->data;
 	count = ++data->data_ptr & (NUM_TRACE - 1);
 	data->time[count] = cpu_clock(cpu);
+	data->alive_time[count] = get_frc_time() * MSEC_PER_SEC / ALIVE_FRC_FREQ_49_152_MHZ;
 	if (sjtag_is_locked() || cpu_is_offline(cpu) || !ctrl->ehld_running ||
 	    ctrl->ehld_cpupm) {
 		val = EHLD_VAL_PM;
@@ -425,6 +436,8 @@ void exynos_ehld_event_raw_update(unsigned int cpu, bool update_val)
 		val = __raw_readq(ctrl->dbg_base + PMU_OFFSET + PMUPCSR);
 		if (MSB_MASKING == (MSB_MASKING & val))
 			val |= MSB_PADDING;
+		if (cpu == raw_smp_processor_id())
+			val = EHLD_PCSR_SELF;
 		data->pmpcsr[count] = val;
 		val = __raw_readl(ctrl->dbg_base + PMU_OFFSET);
 		data->event[count] = val;
@@ -439,8 +452,10 @@ void exynos_ehld_event_raw_update(unsigned int cpu, bool update_val)
 			cpu_is_offline(cpu));
 
 	raw_spin_unlock_irqrestore(&ctrl->lock, flags);
-	ehld_info(0, "%s: cpu%u - time:%llu, event:%#llx\n",
-		__func__, cpu, data->time[count], data->event[count]);
+	ehld_info(0, "%s: cpu%u - time:%llu(%llu.%03llu), event:%#llx\n",
+		__func__, cpu, data->time[count],
+		data->alive_time[count] / MSEC_PER_SEC, data->alive_time[count] % MSEC_PER_SEC,
+		data->event[count]);
 }
 
 void exynos_ehld_event_raw_update_allcpu(void)
@@ -451,11 +466,22 @@ void exynos_ehld_event_raw_update_allcpu(void)
 		exynos_ehld_event_raw_update(cpu, true);
 }
 
+static void print_gicr_regs(void)
+{
+	unsigned int cpu;
+
+	for_each_possible_cpu(cpu)
+		ehld_err(1, "cpu%u: gicr: is-enabled:%08x, is-pending:%08x\n",
+			 cpu,
+			 __raw_readl(ehld_main.sgi_base[cpu] + GICR_ISENABLER0),
+			 __raw_readl(ehld_main.sgi_base[cpu] + GICR_ISPENDR0));
+}
+
 static void print_ehld_header(void)
 {
-	ehld_err(1, "--------------------------------------------------------------------------\n");
+	ehld_err(1, "-------------------------------------------------------------------------------------------\n");
 	ehld_err(1, "      Exynos Early Lockup Detector Information\n\n");
-	ehld_err(1, "      CPU    NUM     TIME                 Value                PC\n\n");
+	ehld_err(1, "      CPU    NUM     TIME:sys(alive)                      Value                PC\n\n");
 }
 
 void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
@@ -464,23 +490,36 @@ void exynos_ehld_event_raw_dump(unsigned int cpu, bool header)
 	struct exynos_ehld_data *data;
 	unsigned long flags, count;
 	int i;
+	char buf[128];
 
 	if (sjtag_is_locked()) {
 		ehld_err(1, "EHLD trace requires SJTAG authentication\n");
 		return;
 	}
 
-	if (header)
+	if (header) {
+		print_gicr_regs();
 		print_ehld_header();
+	}
 
 	ctrl = per_cpu_ptr(&ehld_ctrl, cpu);
 	raw_spin_lock_irqsave(&ctrl->lock, flags);
 	data = &ctrl->data;
 	for (i = 0; i < NUM_TRACE; i++) {
 		count = ++data->data_ptr % NUM_TRACE;
-		ehld_err(1, "      %03u    %03d     %015llu      %#015llx      %#016llx(%pS)\n",
-					cpu, i + 1, data->time[count], data->event[count],
-					data->pmpcsr[count], (void *)data->pmpcsr[count]);
+		if (i < NUM_TRACE_SKIP)
+			continue;
+		if (data->pmpcsr[count] == EHLD_PCSR_SELF) {
+			strlcpy(buf, "(self)", sizeof(buf));
+		} else {
+			snprintf(buf, sizeof(buf), "%#016llx(%pS)",
+				 data->pmpcsr[count], (void *)data->pmpcsr[count]);
+		}
+		ehld_err(1, "      %03u    %03d     %015llu(%010llu.%03llu)      %#015llx      %s\n",
+					cpu, i + 1, data->time[count],
+					data->alive_time[count] / MSEC_PER_SEC,
+					data->alive_time[count] % MSEC_PER_SEC,
+					data->event[count], buf);
 	}
 	raw_spin_unlock_irqrestore(&ctrl->lock, flags);
 	ehld_err(1, "--------------------------------------------------------------------------\n");
@@ -495,6 +534,7 @@ void exynos_ehld_event_raw_dump_allcpu(void)
 		return;
 	}
 
+	print_gicr_regs();
 	print_ehld_header();
 	for_each_possible_cpu(cpu)
 		exynos_ehld_event_raw_dump(cpu, false);
@@ -654,9 +694,8 @@ static int exynos_ehld_panic_handler(struct notifier_block *nb,
 	exynos_ehld_event_raw_dump_allcpu();
 
 	for_each_possible_cpu(i)
-		ehld_info(1, "%s: cpu%u: pmu_val:%#x, ehld_stat:%#x\n",
-			__func__, i,
-			dbg_snapshot_get_core_pmu_val(i),
+		printk("cpu%u: pmu_val:%#x, ehld_stat:%#x\n",
+			i, dbg_snapshot_get_core_pmu_val(i),
 			dbg_snapshot_get_core_ehld_stat(i));
 
 	return 0;
@@ -760,12 +799,16 @@ static struct notifier_block exynos_ehld_nb = {
 	.notifier_call = exynos_ehld_pm_notifier,
 };
 
-static int exynos_ehld_init_dt(struct device_node *np)
+static int exynos_ehld_init_dt(struct device *dev)
 {
+	struct device_node *np = dev->of_node;
 	struct device_node *child;
 	int ret = 0;
 	unsigned int cpu = 0, offset, base;
 	struct exynos_ehld_ctrl *ctrl;
+	u32 val, i;
+	struct property *prop;
+	const __be32 *cur;
 
 	if (of_property_read_u32(np, "cs_base", &base)) {
 		ehld_info(1, "ehld: no cs_base addr in device tree\n");
@@ -773,6 +816,20 @@ static int exynos_ehld_init_dt(struct device_node *np)
 	}
 	ehld_main.cs_base = base;
 	ehld_main.dbgc.use_tick_timer = true;
+	ehld_main.sgi_base = devm_kcalloc(dev, num_possible_cpus(),
+			sizeof(void *), GFP_KERNEL);
+	if (!ehld_main.sgi_base)
+		return -ENOMEM;
+
+	i = 0;
+	of_property_for_each_u32(np, "sgi_base", prop, cur, val) {
+		if (i >= num_possible_cpus() || !val)
+			return -EINVAL;
+		ehld_main.sgi_base[i] = devm_ioremap(dev, val, SZ_4K);
+		if (!ehld_main.sgi_base[i])
+			return -ENOMEM;
+		i++;
+	}
 
 	child = of_get_child_by_name(np, "dbgc");
 	if (child) {
@@ -921,7 +978,7 @@ static int exynos_ehld_setup(void)
 	return ret;
 }
 
-static unsigned long noehld = 0;
+static unsigned long noehld;
 module_param(noehld, ulong, 0664);
 MODULE_PARM_DESC(noehld, "disable EHLD by setting noehld=1");
 
@@ -936,7 +993,7 @@ static int ehld_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	err = exynos_ehld_init_dt(pdev->dev.of_node);
+	err = exynos_ehld_init_dt(&pdev->dev);
 	if (err) {
 		ehld_err(1, "ehld: fail device tree for ehld:%d\n", err);
 		return err;

@@ -24,6 +24,8 @@
 #include "mfc_queue.h"
 #include "mfc_mem.h"
 
+#include "mfc_perf_measure.h"
+
 #define CBR_I_LIMIT_MAX			5
 int mfc_core_nal_q_check_enable(struct mfc_core *core)
 {
@@ -133,6 +135,20 @@ int mfc_core_nal_q_check_enable(struct mfc_core *core)
 					mfc_core_debug(2, "There is CBR_VT option(rc mode)\n");
 					return 0;
 				}
+				if (p->wp_two_pass_enable) {
+					core->nal_q_stop_cause |= (1 << NALQ_STOP_TWO_PASS_ENC);
+					mfc_core_debug(2, "There is two pass encoding\n");
+					return 0;
+				}
+				if (p->adaptive_gop_enable) {
+					core->nal_q_stop_cause |= (1 << NALQ_STOP_ADAPTIVE_GOP);
+					mfc_core_debug(2, "There is adaptive gop\n");
+				}
+				if (p->qpe_two_pass_enable && enc->nal_q_disable_for_qpe_two_pass) {
+					core->nal_q_stop_cause |= (1 << NALQ_STOP_QPE_TWO_PASS);
+					mfc_debug(2, "It is first frame with two pass for initial qpe option\n");
+					return 0;
+				}
 			}
 			mfc_core_debug(2, "There is a ctx in running state. index: %d\n", i);
 		}
@@ -145,9 +161,11 @@ int mfc_core_nal_q_check_enable(struct mfc_core *core)
 	return 1;
 }
 
-void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_handle)
+void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_handle, int ctx_num)
 {
 	unsigned long flags;
+	struct mfc_core_ctx *core_ctx;
+	struct mfc_ctx *ctx;
 
 	mfc_core_debug_enter();
 
@@ -160,6 +178,19 @@ void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_hand
 		mfc_core_pm_clock_on(core);
 
 	nal_q_handle->nal_q_clk_cnt++;
+
+	core_ctx = core->core_ctx[ctx_num];
+	if (!core_ctx) {
+		mfc_core_err("no mfc context to run\n");
+	} else {
+		ctx = core_ctx->ctx;
+		ctx->nal_q_cnt++;
+		mfc_perf_trace(ctx, "nal_q", ctx->nal_q_cnt);
+		if (ctx->nal_q_cnt == 1) { /* Start a trace point for one frame */
+			mfc_perf_trace(ctx, "frame", 1);
+		}
+	}
+
 	core->continue_clock_on = false;
 
 	mfc_core_debug(2, "[NALQ] nal_q_clk_cnt = %d\n", nal_q_handle->nal_q_clk_cnt);
@@ -169,9 +200,11 @@ void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_hand
 	mfc_core_debug_leave();
 }
 
-void mfc_core_nal_q_clock_off(struct mfc_core *core, nal_queue_handle *nal_q_handle)
+void mfc_core_nal_q_clock_off(struct mfc_core *core, nal_queue_handle *nal_q_handle, int ctx_num)
 {
 	unsigned long flags;
+	struct mfc_core_ctx *core_ctx;
+	struct mfc_ctx *ctx;
 
 	mfc_core_debug_enter();
 
@@ -186,6 +219,21 @@ void mfc_core_nal_q_clock_off(struct mfc_core *core, nal_queue_handle *nal_q_han
 	}
 
 	nal_q_handle->nal_q_clk_cnt--;
+
+	core_ctx = core->core_ctx[ctx_num];
+	if (!core_ctx) {
+		mfc_core_err("no mfc context to run\n");
+	} else {
+		ctx = core_ctx->ctx;
+		ctx->nal_q_cnt--;
+		mfc_perf_trace(ctx, "nal_q", ctx->nal_q_cnt);
+		if (ctx->nal_q_cnt > 0) { /* Restart of trace point for one frame */
+			mfc_perf_trace(ctx, "frame", 0);
+			mfc_perf_trace(ctx, "frame", 1);
+		} else { /* End of trace point for one frame */
+			mfc_perf_trace(ctx, "frame", 0);
+		}
+	}
 
 	if (!nal_q_handle->nal_q_clk_cnt)
 		mfc_core_pm_clock_off(core);
@@ -463,7 +511,6 @@ void mfc_core_nal_q_start(struct mfc_core *core, nal_queue_handle *nal_q_handle)
 	MFC_TRACE_CORE("** NAL Q state : %d\n", nal_q_handle->nal_q_state);
 	mfc_core_debug(2, "[NALQ] started, state = %d\n", nal_q_handle->nal_q_state);
 
-	MFC_CORE_WRITEL(MFC_TIMEOUT_VALUE, MFC_REG_TIMEOUT_VALUE);
 	mfc_core_cmd_host2risc(core, MFC_REG_H2R_CMD_NAL_QUEUE);
 
 	mfc_core_debug_leave();
@@ -521,7 +568,7 @@ void mfc_core_nal_q_stop_if_started(struct mfc_core *core)
 		return;
 	}
 
-	mfc_core_nal_q_clock_on(core, nal_q_handle);
+	mfc_core_nal_q_clock_on(core, nal_q_handle, core->curr_core_ctx);
 
 	mfc_core_nal_q_stop(core, nal_q_handle);
 	mfc_core_info("[NALQ] stop NAL QUEUE during get hwlock\n");
@@ -529,7 +576,10 @@ void mfc_core_nal_q_stop_if_started(struct mfc_core *core)
 				MFC_REG_R2H_CMD_COMPLETE_QUEUE_RET)) {
 		mfc_core_err("[NALQ] Failed to stop qeueue during get hwlock\n");
 		core->logging_data->cause |= (1 << MFC_CAUSE_FAIL_STOP_NAL_Q_FOR_OTHER);
-		call_dop(core, dump_and_stop_always, core);
+		call_dop(core, dump_and_stop_debug_mode, core);
+		nal_q_handle->nal_q_state = NAL_Q_STATE_CREATED;
+		mfc_core_nal_q_cleanup_queue(core);
+		mfc_core_nal_q_cleanup_clock(core);
 	}
 
 	mfc_core_debug_leave();
@@ -609,6 +659,26 @@ static void __mfc_core_nal_q_set_enc_config_qp(struct mfc_ctx *ctx,
 		mfc_debug(6, "[NALQ][CTRLS] Dynamic QP changed %#x\n",
 				pInStr->FixedPictureQp);
 	}
+}
+
+static void __mfc_core_nal_q_set_enc_ts_delta(struct mfc_ctx *ctx, EncoderInputStr *pInStr)
+{
+	struct mfc_enc *enc = ctx->enc_priv;
+	struct mfc_enc_params *p = &enc->params;
+	int ts_delta;
+
+	ts_delta = mfc_enc_get_ts_delta(ctx);
+
+	pInStr->TimeStampDelta &= ~(0xFFFF);
+	pInStr->TimeStampDelta |= (ts_delta & 0xFFFF);
+
+	if (ctx->ts_last_interval)
+		mfc_debug(3, "[NALQ][DFR] fps %d -> %ld, delta: %d, reg: %#x\n",
+				p->rc_framerate, USEC_PER_SEC / ctx->ts_last_interval,
+				ts_delta, pInStr->TimeStampDelta);
+	else
+		mfc_debug(3, "[NALQ][DFR] fps %d -> 0, delta: %d, reg: %#x\n",
+				p->rc_framerate, ts_delta, pInStr->TimeStampDelta);
 }
 
 static void __mfc_core_nal_q_get_dec_metadata_sei_nal(struct mfc_core *core, struct mfc_ctx *ctx,
@@ -1022,6 +1092,7 @@ static int __mfc_core_nal_q_run_in_buf_enc(struct mfc_core *core, struct mfc_cor
 	dma_addr_t addr_2bit[2] = {0, 0};
 	unsigned int index, i;
 	int is_uncomp = 0;
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug_enter();
 
@@ -1193,6 +1264,13 @@ static int __mfc_core_nal_q_run_in_buf_enc(struct mfc_core *core, struct mfc_cor
 		__mfc_core_nal_q_set_min_bit_count(ctx, pInStr);
 	__mfc_core_nal_q_set_slice_mode(ctx, pInStr);
 	__mfc_core_nal_q_set_enc_config_qp(ctx, pInStr);
+	__mfc_core_nal_q_set_enc_ts_delta(ctx, pInStr);
+
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "[NALQ] Last MFC Freq: %d, Timeout Value: %d\n",
+			core->last_mfc_freq, timeout_value);
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
 
 	mfc_debug_leave();
 
@@ -1207,12 +1285,13 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	struct mfc_dec *dec = ctx->dec_priv;
 	struct mfc_raw_info *raw = &ctx->raw_buf;
 	dma_addr_t buf_addr;
-	unsigned int strm_size;
+	unsigned int strm_size, offset;
 	unsigned int cpb_buf_size;
 	size_t dbuf_size;
 	struct vb2_buffer *vb;
 	int src_index, dst_index;
 	int i;
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug_enter();
 
@@ -1250,7 +1329,8 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	vb = &src_mb->vb.vb2_buf;
 	src_index = vb->index;
 	buf_addr = src_mb->addr[0][0];
-	strm_size = vb->planes[0].bytesused;
+	strm_size = mfc_dec_get_strm_size(ctx, src_mb);
+	offset = mfc_dec_get_strm_offset(ctx, src_mb);
 	dbuf_size = vb->planes[0].dbuf->size;
 	cpb_buf_size = ALIGN(strm_size + 511, STREAM_BUF_ALIGN);
 
@@ -1262,8 +1342,8 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 
 	mfc_debug(2, "[NALQ][BUFINFO] ctx[%d] set src index: %d, addr: 0x%08llx\n",
 			ctx->num, src_index, buf_addr);
-	mfc_debug(2, "[NALQ][STREAM] strm_size: %#x(%d), buf_size: %u\n",
-			strm_size, strm_size, cpb_buf_size);
+	mfc_debug(2, "[NALQ][STREAM] strm_size: %#x(%d), offset: %d, buf_size: %u\n",
+			strm_size, strm_size, offset, cpb_buf_size);
 
 	if (strm_size == 0)
 		mfc_ctx_info("stream size is 0\n");
@@ -1271,7 +1351,7 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	pInStr->StreamDataSize = strm_size;
 	pInStr->CpbBufferAddr = buf_addr;
 	pInStr->CpbBufferSize = cpb_buf_size;
-	pInStr->CpbBufferOffset = 0;
+	pInStr->CpbBufferOffset = offset;
 	ctx->last_src_addr = buf_addr;
 
 	/* dst buffer setting */
@@ -1311,6 +1391,12 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	MFC_TRACE_CTX("Set dst[%d] fd: %d, %#llx / used %#lx\n",
 			dst_index, dst_mb->vb.vb2_buf.planes[0].m.fd,
 			dst_mb->addr[0][0], dec->dynamic_used);
+
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "[NALQ] Last MFC Freq: %d, Timeout Value: %d\n",
+			core->last_mfc_freq, timeout_value);
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
 
 	mfc_debug_leave();
 
@@ -1556,6 +1642,10 @@ static void __mfc_core_nal_q_handle_stream(struct mfc_core *core, struct mfc_cor
 	slice_type = (pOutStr->SliceType & MFC_REG_E_SLICE_TYPE_MASK);
 	strm_size = pOutStr->StreamSize;
 	pic_count = pOutStr->EncCnt;
+
+	mfc_perf_trace(ctx, "type", slice_type);
+	mfc_perf_trace(ctx, "size", strm_size);
+	mfc_perf_trace(ctx, "count", pic_count);
 
 	mfc_debug(2, "[NALQ][STREAM] encoded slice type: %d, size: %d, display order: %d\n",
 			slice_type, strm_size, pic_count);
@@ -2209,7 +2299,7 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 	struct mfc_buf *src_mb;
 	unsigned int index;
 	int deleted = 0;
-	unsigned long consumed;
+	unsigned int consumed;
 	unsigned int dst_frame_status;
 
 	/* If there is consumed byte, it is abnormal status,
@@ -2220,6 +2310,7 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 		src_mb = mfc_get_del_buf(ctx, &ctx->src_buf_nal_queue, MFC_BUF_NO_TOUCH_USED);
 		if (src_mb)
 			vb2_buffer_done(&src_mb->vb.vb2_buf, VB2_BUF_STATE_DONE);
+		dec->consumed = 0;
 	}
 
 	/* Check multi-frame */
@@ -2242,15 +2333,13 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 		if (CODEC_MULTIFRAME(ctx))
 			dec->y_addr_for_pb = (dma_addr_t)pOutStr->DecodedAddr[0];
 
-		dec->consumed = consumed;
-		dec->remained_size = src_mb->vb.vb2_buf.planes[0].bytesused
-			- dec->consumed;
+		dec->consumed += consumed;
 		dec->has_multiframe = 1;
 		core->nal_q_stop_cause |= (1 << NALQ_EXCEPTION_MULTI_FRAME);
 		core->nal_q_handle->nal_q_exception = 1;
 
-		MFC_TRACE_CTX("** consumed:%ld, remained:%ld, addr:0x%08llx\n",
-			dec->consumed, dec->remained_size, dec->y_addr_for_pb);
+		MFC_TRACE_CTX("** consumed:%d, remained:%d, addr:0x%08llx\n",
+			dec->consumed, mfc_dec_get_strm_size(ctx, src_mb), dec->y_addr_for_pb);
 		/* Do not move src buffer to done_list */
 		return;
 	}
@@ -2321,7 +2410,6 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 	dec->consumed = 0;
 	if (IS_VP9_DEC(ctx) || IS_AV1_DEC(ctx))
 		dec->has_multiframe = 0;
-	dec->remained_size = 0;
 
 	vb2_buffer_done(&src_mb->vb.vb2_buf, VB2_BUF_STATE_DONE);
 }
@@ -2339,6 +2427,8 @@ void __mfc_core_nal_q_handle_frame(struct mfc_core *core, struct mfc_core_ctx *c
 	int i;
 
 	mfc_debug_enter();
+
+	mfc_perf_trace(ctx, "type", pOutStr->DecodedFrameType & MFC_REG_DECODED_FRAME_MASK);
 
 	dst_frame_status = pOutStr->DisplayStatus
 				& MFC_REG_DISP_STATUS_DISPLAY_STATUS_MASK;
@@ -2391,7 +2481,7 @@ void __mfc_core_nal_q_handle_frame(struct mfc_core *core, struct mfc_core_ctx *c
 		goto leave_handle_frame;
 	}
 	if (need_empty_dpb) {
-		mfc_debug(2, "[NALQ][MULTIFRAME] There is multi-frame. consumed:%ld\n", dec->consumed);
+		mfc_debug(2, "[NALQ][MULTIFRAME] There is multi-frame. consumed:%d\n", dec->consumed);
 		dec->has_multiframe = 1;
 		core->nal_q_stop_cause |= (1 << NALQ_EXCEPTION_NEED_DPB);
 		core->nal_q_handle->nal_q_exception = 1;
@@ -2740,6 +2830,7 @@ int mfc_core_nal_q_enqueue_in_buf(struct mfc_core *core, struct mfc_core_ctx *co
 	if (input_diff == 0)
 		mfc_core_meerkat_start_tick(core);
 	MFC_TRACE_LOG_CORE("N%d", input_diff);
+	mfc_perf_trace(ctx, "fps", ctx->framerate / 1000);
 
 	spin_unlock_irqrestore(&nal_q_in_handle->nal_q_handle->lock, flags);
 

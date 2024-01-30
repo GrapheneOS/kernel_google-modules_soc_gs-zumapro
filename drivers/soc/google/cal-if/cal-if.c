@@ -11,8 +11,9 @@
 #include <soc/google/exynos-bcm_dbg.h>
 #endif
 
-#include <trace/events/power.h>
 #include <soc/google/pwrcal-env.h>
+#include <trace/events/power.h>
+
 
 #include "pwrcal-rae.h"
 #include "cmucal.h"
@@ -36,10 +37,26 @@ extern s32 gs_chipid_get_dvfs_version(void);
 // The first parameter is cluster id, the second parameter is enable/disable.
 void (*set_cluster_enabled_cb)(int, int) = NULL;
 
-int (*exynos_cal_pd_bcm_sync)(unsigned int id, bool on);
-EXPORT_SYMBOL(exynos_cal_pd_bcm_sync);
+static int (*exynos_cal_pd_bcm_sync)(unsigned int id, bool on);
+static DEFINE_MUTEX(cal_pd_bcm_sync_mutex);
 
 static DEFINE_SPINLOCK(pmucal_cpu_lock);
+
+void set_exynos_cal_pd_bcm_sync(int (*fn)(unsigned int id, bool on))
+{
+	mutex_lock(&cal_pd_bcm_sync_mutex);
+	exynos_cal_pd_bcm_sync = fn;
+	mutex_unlock(&cal_pd_bcm_sync_mutex);
+}
+EXPORT_SYMBOL_GPL(set_exynos_cal_pd_bcm_sync);
+
+void clear_exynos_cal_pd_bcm_sync(void)
+{
+	mutex_lock(&cal_pd_bcm_sync_mutex);
+	exynos_cal_pd_bcm_sync = NULL;
+	mutex_unlock(&cal_pd_bcm_sync_mutex);
+}
+EXPORT_SYMBOL_GPL(clear_exynos_cal_pd_bcm_sync);
 
 unsigned int cal_clk_is_enabled(unsigned int id)
 {
@@ -117,13 +134,27 @@ EXPORT_SYMBOL_GPL(cal_dfs_cached_get_rate);
 
 unsigned long cal_dfs_get_rate(unsigned int id)
 {
-	unsigned long ret;
+	struct vclk *vclk = cmucal_get_node(id);
 
-	ret = vclk_recalc_rate(id);
+	if (IS_ACPM_VCLK(id) && !irqs_disabled()) {
+		if (vclk && vclk->vrate)
+			return vclk->vrate;
+		else
+			return exynos_acpm_get_rate(GET_IDX(id), 0);
+	}
+	else
+		return vclk_recalc_rate(id);
 
-	return ret;
 }
 EXPORT_SYMBOL_GPL(cal_dfs_get_rate);
+
+long cal_dfs_get_rate_acpm(unsigned int id)
+{
+	if (!IS_ACPM_VCLK(id)|| irqs_disabled())
+		return -EINVAL;
+	return exynos_acpm_get_rate(GET_IDX(id), 0);
+}
+EXPORT_SYMBOL_GPL(cal_dfs_get_rate_acpm);
 
 int cal_dfs_get_rate_table(unsigned int id, unsigned long *table)
 {
@@ -214,8 +245,10 @@ int cal_pd_control(unsigned int id, int on)
 			bts_pd_sync(id, on);
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_BCM_DBG)
+		mutex_lock(&cal_pd_bcm_sync_mutex);
 		if (exynos_cal_pd_bcm_sync && cal_pd_status(id))
 			exynos_cal_pd_bcm_sync(id, true);
+		mutex_unlock(&cal_pd_bcm_sync_mutex);
 #endif
 	} else {
 #ifdef CONFIG_EXYNOS9820_BTS
@@ -223,8 +256,10 @@ int cal_pd_control(unsigned int id, int on)
 			bts_pd_sync(id, on);
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_BCM_DBG)
+		mutex_lock(&cal_pd_bcm_sync_mutex);
 		if (exynos_cal_pd_bcm_sync && cal_pd_status(id))
 			exynos_cal_pd_bcm_sync(id, false);
+		mutex_unlock(&cal_pd_bcm_sync_mutex);
 #endif
 		ret = pmucal_local_disable(index);
 	}
@@ -506,9 +541,26 @@ int cal_if_init(void *np)
 	int ret, len;
 	const __be32 *prop;
 	unsigned int minmax_idx = 0;
+	unsigned int from, to, remap_size = 0;
 
 	if (cal_initialized == 1)
 		return 0;
+
+
+	prop = of_get_property(np, "cpu-remap-size", NULL);
+	if (prop) {
+		remap_size = be32_to_cpup(prop);
+
+		prop = of_get_property(np, "cpu-remap-from", NULL);
+		if (prop) {
+			from = be32_to_cpup(prop);
+		}
+
+		prop = of_get_property(np, "cpu-remap-to", NULL);
+		if (prop) {
+			to = be32_to_cpup(prop);
+		}
+	}
 
 	prop = of_get_property(np, "minmax_idx", &len);
 	if (prop) {
@@ -539,6 +591,9 @@ int cal_if_init(void *np)
 	if (ret < 0)
 		return ret;
 
+	if (remap_size != 0)
+		pmucal_cpu_remap(from, to, remap_size);
+
 	ret = pmucal_cpu_init();
 	if (ret < 0)
 		return ret;
@@ -561,9 +616,12 @@ int cal_if_init(void *np)
 		cmucal_dbg_set_cmu_top_base(res.start);
 
 	cal_initialized = 1;
+
+/* FIXME: re-enable when a bring-up done.
 #ifdef CONFIG_DEBUG_FS
 	vclk_debug_init();
 #endif
+*/
 	pmucal_dbg_debugfs_init();
 
 	return 0;

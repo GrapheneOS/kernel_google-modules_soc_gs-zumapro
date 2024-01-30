@@ -4,6 +4,12 @@ Contact:	"Randall Huang" <huangrandall@google.com>
 Description:
 		Enable/Disable UFS command logging.
 
+What:		/sys/devices/platform/<....>ufs/pixel/power_event_mode
+Date:		June, 2023
+Contact:	"Konstantin Vyshetsky" <vkon@google.com>
+Description:
+		Enables UFS driver to set Kibble triggers on power events.
+
 What:		/sys/devices/platform/<....>ufs/power_stats
 Date:		April, 2022
 Contact:	"Konstantin Vyshetsky" <vkon@google.com>
@@ -178,6 +184,17 @@ Date:		March, 2020
 Contact:	"Jaegeuk Kim" <jaegeuk@google.com>
 Description:
 		Show the UFS protocol version.
+
+What:		/sys/devices/platform/<....>ufs/set_gid
+Date:		Aug, 2023
+Contact:	"Jaegeuk Kim" <jaegeuk@google.com>
+Description:
+		Enable/Disable setting GROUP ID by default to control command-
+		based WriteBooster. (Default: selective)
+		 - "disable" : disable
+		 - "selective" : enable WriteBooster to REQ_META and REQ_IDLE
+		                 commands
+		 - "all" : enable WriteBooster to all incoming commands
 
 What:		/sys/devices/platform/<....>ufs/err_stats
 Date:		Oct, 2020

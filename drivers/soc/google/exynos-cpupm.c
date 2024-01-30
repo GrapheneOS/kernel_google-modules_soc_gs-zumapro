@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * GS101 SoC CPU Power Management driver
+ * GS SoC CPU Power Management driver
  *
  * Copyright (c) 2019 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
- *
- * GS101 based board files should include this file.
  *
  */
 
@@ -26,8 +24,10 @@
 #include <soc/google/exynos-cpupm.h>
 #include <soc/google/cal-if.h>
 #include <soc/google/exynos-pmu-if.h>
+#include <soc/google/exynos-pm.h>
 #include <soc/google/debug-snapshot.h>
 #include <soc/google/acpm_ipc_ctrl.h>
+#include <soc/google/cpuidle_metrics.h>
 
 /*
  * State of CPUPM objects
@@ -91,6 +91,12 @@ struct power_mode {
 	/* name of power mode, it is declared in device tree */
 	char		name[NAME_LEN];
 
+	/* unique identifier for power mode */
+	int		cluster_id;
+
+	/* file node name of target_residency */
+	char		target_residency_name[NAME_LEN];
+
 	/* power mode state, BUSY or IDLE */
 	int		state;
 
@@ -120,6 +126,12 @@ struct power_mode {
 	 * it supports for enabling or disabling this power mode
 	 */
 	struct device_attribute	attr;
+
+	/*
+	 * device attribute for sysfs,
+	 * it supports for turning target residency
+	 */
+	struct device_attribute       target_residency_attr;
 
 	/* user's request for enabling/disabling power mode */
 	bool		user_request;
@@ -158,8 +170,10 @@ static bool __percpu *hotplug_ing;
 static int cpuidle_state_max;
 static int system_suspended;
 static int system_rebooting;
+#if defined(CONFIG_SOC_GS101) || defined(CONFIG_SOC_GS201)
 bool system_is_in_itmon;
 EXPORT_SYMBOL_GPL(system_is_in_itmon);
+#endif
 
 #define NSCODE_BASE		(0xBFFFF000)
 #define CPU_STATE_BASE_OFFSET	0x2C
@@ -395,8 +409,9 @@ static void cpupm_profile_begin(struct cpupm_stats *stat)
 	stat->entry_count++;
 }
 
-static void cpupm_profile_end(struct cpupm_stats *stat, int cancel)
+static void cpupm_profile_end(struct cpupm_stats *stat, int cancel, int cluster_id)
 {
+	s64 time_delta;
 	if (!stat->entry_time)
 		return;
 
@@ -405,8 +420,11 @@ static void cpupm_profile_end(struct cpupm_stats *stat, int cancel)
 		return;
 	}
 
-	stat->residency_time +=
-		ktime_to_us(ktime_sub(ktime_get(), stat->entry_time));
+	time_delta = ktime_to_us(ktime_sub(ktime_get(), stat->entry_time));
+
+	cpuidle_metrics_histogram_append(cluster_id, time_delta);
+
+	stat->residency_time += time_delta;
 	stat->entry_time = 0;
 }
 
@@ -811,7 +829,6 @@ static bool entry_allow(int cpu, struct power_mode *mode)
 	return true;
 }
 
-extern u32 exynos_eint_wake_mask_array[3];
 static void set_wakeup_mask(void)
 {
 	int i;
@@ -869,7 +886,7 @@ static void enter_power_mode(int cpu, struct power_mode *mode)
 
 static void exit_power_mode(int cpu, struct power_mode *mode, int cancel)
 {
-	cpupm_profile_end(&mode->stat, cancel);
+	cpupm_profile_end(&mode->stat, cancel, mode->cluster_id);
 
 	/*
 	 * Configure settings to exit power mode. This is executed by the
@@ -975,9 +992,11 @@ static int exynos_cpu_pm_notify_callback(struct notifier_block *self,
 		if (system_suspended)
 			return NOTIFY_OK;
 
+#if defined(CONFIG_SOC_GS101) || defined(CONFIG_SOC_GS201)
 		/* ignore CPU_PM_ENTER event in itmon sequence */
 		if (system_is_in_itmon)
 			return NOTIFY_BAD;
+#endif
 
 		/*
 		 * There are few block condition of C2.
@@ -1078,6 +1097,33 @@ static ssize_t power_mode_store(struct device *dev,
 		__disable_power_mode(mode);
 
 	return count;
+}
+
+static ssize_t target_residency_store(struct device *dev,
+				      struct device_attribute *target_residency_attr,
+				      const char *buf, size_t count)
+{
+	struct power_mode *mode = container_of(target_residency_attr,
+					       struct power_mode, target_residency_attr);
+	unsigned int val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (mode->target_residency == val)
+		return count;
+	mode->target_residency = val;
+	return count;
+}
+
+static ssize_t target_residency_show(struct device *dev,
+				     struct device_attribute *target_residency_attr,
+				     char *buf)
+{
+	struct power_mode *mode = container_of(target_residency_attr,
+					       struct power_mode, target_residency_attr);
+
+	return sysfs_emit(buf, "%d\n", mode->target_residency);
 }
 
 static struct attribute *exynos_cpupm_attrs[] = {
@@ -1225,6 +1271,7 @@ fail:
 
 static int exynos_cpupm_mode_init(struct platform_device *pdev)
 {
+	int cluster_id = 0;
 	struct device_node *dn = pdev->dev.of_node;
 
 	cpupm = alloc_percpu(struct exynos_cpupm);
@@ -1243,6 +1290,9 @@ static int exynos_cpupm_mode_init(struct platform_device *pdev)
 			return -ENOMEM;
 
 		strncpy(mode->name, dn->name, NAME_LEN - 1);
+		scnprintf(mode->target_residency_name,
+			  sizeof(mode->target_residency_name),
+			  "%s_target_residency", mode->name);
 
 		ret = of_property_read_u32(dn, "target-residency",
 					   &mode->target_residency);
@@ -1270,13 +1320,19 @@ static int exynos_cpupm_mode_init(struct platform_device *pdev)
 
 		of_property_read_u32(dn, "cal-id", &mode->cal_id);
 
-		atomic_set(&mode->disable, 0);
+		if (of_property_read_bool(dn, "disable-on-boot")) {
+			atomic_set(&mode->disable, 1);
+			mode->user_request = false;
+		} else {
+			atomic_set(&mode->disable, 0);
+			mode->user_request = true;
+		}
 
-		/*
-		 * The users' request is set to enable since initialization
-		 * state of power mode is enabled.
-		 */
-		mode->user_request = true;
+		/* set cluster_id and register with cpuidle metrics histogram */
+		mode->cluster_id = cluster_id;
+		cluster_id += 1;
+		cpuidle_metrics_histogram_register(mode->name, mode->cluster_id,
+							mode->target_residency);
 
 		/*
 		 * Initialize attribute for sysfs.
@@ -1292,6 +1348,16 @@ static int exynos_cpupm_mode_init(struct platform_device *pdev)
 						      exynos_cpupm_group.name);
 			if (ret)
 				pr_warn("Failed to add sysfs or POWERMODE\n");
+
+			CPUPM_ATTR(mode->target_residency_attr,
+				   mode->target_residency_name, 0644,
+				   target_residency_show, target_residency_store);
+
+			ret = sysfs_add_file_to_group(&pdev->dev.kobj,
+						      &mode->target_residency_attr.attr,
+						      exynos_cpupm_group.name);
+			if (ret)
+				pr_warn("Faile to add sysfs or TARGET_RESIDENCY\n");
 		}
 
 		/* Connect power mode to the cpus in the power domain */
@@ -1442,11 +1508,21 @@ static int exynos_cpupm_probe(struct platform_device *pdev)
 	system_rebooting = false;
 	register_reboot_notifier(&exynos_cpupm_reboot_nb);
 
+#if defined(CONFIG_SOC_GS101) || defined(CONFIG_SOC_GS201)
 	system_is_in_itmon = false;
+#endif
 
 	ret = cpu_pm_register_notifier(&exynos_cpu_pm_notifier);
 	if (ret)
 		return ret;
+
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	/*
+	 * In case of ZUMA, we can allow for core to enter C2 by informing TF-A
+	 * using PMU_INFORM0.
+	 */
+	exynos_pmu_write(PMU_INFORM0, PMU_ALLOWED_C2);
+#endif
 
 	ret = register_trace_android_vh_cpu_idle_enter(vendor_hook_cpu_idle_enter, NULL);
 	WARN_ON(ret);
@@ -1476,7 +1552,11 @@ static struct platform_driver exynos_cpupm_driver = {
 	.probe		= exynos_cpupm_probe,
 };
 
+#if defined(CONFIG_SOC_ZUMA)
+MODULE_SOFTDEP("pre: exynos_mct_v3 exynos_mct");
+#else
 MODULE_SOFTDEP("pre: exynos_mct");
+#endif
 MODULE_DESCRIPTION("Exynos CPUPM driver");
 MODULE_LICENSE("GPL");
 module_platform_driver(exynos_cpupm_driver);

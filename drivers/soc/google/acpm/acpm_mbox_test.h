@@ -12,6 +12,9 @@
 #elif defined(CONFIG_SOC_GS201)
 #include <dt-bindings/clock/gs201.h>
 #include <dt-bindings/soc/google/gs201-devfreq.h>
+#elif defined(CONFIG_SOC_ZUMA)
+#include <dt-bindings/clock/zuma.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 #endif
 
 enum tz_id {
@@ -188,6 +191,37 @@ enum GS201_S2MPG12_RTC_REG {
 	RTC_REG_A1YEAR = 0x1A,
 	RTC_REG_OSCCTRL = 0x1B,
 };
+#elif defined(CONFIG_SOC_ZUMA)
+enum ZUMA_S2MPG14_RTC_REG {
+	RTC_REG_CTRL = 0x0,
+	RTC_REG_UPDATE = 0x1,
+	RTC_REG_SMPL = 0x2,
+	RTC_REG_WTSR = 0x3,
+	RTC_REG_CAPSEL = 0x4,
+	RTC_REG_MSEC = 0x5,
+	RTC_REG_SEC = 0x6,
+	RTC_REG_MIN = 0x7,
+	RTC_REG_HOUR = 0x8,
+	RTC_REG_WEEK = 0x9,
+	RTC_REG_DAY = 0xA,
+	RTC_REG_MON = 0xB,
+	RTC_REG_YEAR = 0xC,
+	RTC_REG_A0SEC = 0xD,
+	RTC_REG_A0MIN = 0xE,
+	RTC_REG_A0HOUR = 0xF,
+	RTC_REG_A0WEEK = 0x10,
+	RTC_REG_A0DAY = 0x11,
+	RTC_REG_A0MON = 0x12,
+	RTC_REG_A0YEAR = 0x13,
+	RTC_REG_A1SEC = 0x14,
+	RTC_REG_A1MIN = 0x15,
+	RTC_REG_A1HOUR = 0x16,
+	RTC_REG_A1WEEK = 0x17,
+	RTC_REG_A1DAY = 0x18,
+	RTC_REG_A1MON = 0x19,
+	RTC_REG_A1YEAR = 0x1A,
+	RTC_REG_OSC_CTRL = 0x1B,
+};
 #endif
 
 #define NUM_OF_WQ               16
@@ -227,6 +261,7 @@ struct acpm_dvfs_validity {
 	unsigned int upper_bound;
 	unsigned int lower_bound;
 	bool is_given_range;
+	bool is_steep_jump;
 };
 
 #define PMIC_RANDOM_ADDR_RANGE  0x1FF
@@ -246,6 +281,9 @@ struct acpm_mfd_validity {
 #elif defined(CONFIG_SOC_GS201)
 	struct s2mpg12_dev *s2mpg_main;
 	struct s2mpg13_dev *s2mpg_sub;
+#elif defined(CONFIG_SOC_ZUMA)
+	struct s2mpg14_dev *s2mpg_main;
+	struct s2mpg15_dev *s2mpg_sub;
 #endif
 	struct i2c_client *main_pmic;
 	struct i2c_client *sub_pmic;
@@ -419,6 +457,7 @@ struct acpm_dvfs_dm {
 	unsigned int total_cycle_cnt;
 	unsigned int devfreq_id;
 	unsigned int cpu_policy_id;
+	unsigned int prev_jump_idx;
 	struct dvfs_frequency_table *table;
 	struct acpm_dvfs_test_stats *stats;
 	struct stats_scale *scales;

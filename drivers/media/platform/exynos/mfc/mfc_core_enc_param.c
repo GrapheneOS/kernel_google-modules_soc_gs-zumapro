@@ -91,6 +91,28 @@ void mfc_core_set_enc_config_qp(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 }
 
+void mfc_core_set_enc_ts_delta(struct mfc_core *core, struct mfc_ctx *ctx)
+{
+	struct mfc_enc *enc = ctx->enc_priv;
+	struct mfc_enc_params *p = &enc->params;
+	unsigned int reg = 0;
+	int ts_delta;
+
+	ts_delta = mfc_enc_get_ts_delta(ctx);
+
+	reg = MFC_CORE_READL(MFC_REG_E_TIME_STAMP_DELTA);
+	reg &= ~(0xFFFF);
+	reg |= (ts_delta & 0xFFFF);
+	MFC_CORE_WRITEL(reg, MFC_REG_E_TIME_STAMP_DELTA);
+	if (ctx->ts_last_interval)
+		mfc_debug(3, "[DFR] fps %d -> %ld, delta: %d, reg: %#x\n",
+				p->rc_framerate, USEC_PER_SEC / ctx->ts_last_interval,
+				ts_delta, reg);
+	else
+		mfc_debug(3, "[DFR] fps %d -> 0, delta: %d, reg: %#x\n",
+				p->rc_framerate, ts_delta, reg);
+}
+
 static void __mfc_set_gop_size(struct mfc_core *core, struct mfc_ctx *ctx,
 		int ctrl_mode)
 {
@@ -350,6 +372,20 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_ENC_OPTIONS);
 
+	if (p->mv_hor_range) {
+		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_HOR_RANGE);
+		mfc_clear_set_bits(reg, 0x3fff, 0, p->mv_hor_range);
+		MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_MV_HOR_RANGE);
+		mfc_debug(2, "MV HOR Range: %d\n", p->mv_hor_range);
+	}
+
+	if (p->mv_ver_range) {
+		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_VER_RANGE);
+		mfc_clear_set_bits(reg, 0x3fff, 0, p->mv_ver_range);
+		MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_MV_VER_RANGE);
+		mfc_debug(2, "MV VER Range: %d\n", p->mv_ver_range);
+	}
+
 	if (p->mv_search_mode == 2) {
 		reg = MFC_CORE_RAW_READL(MFC_REG_E_MV_HOR_RANGE);
 		mfc_clear_set_bits(reg, 0xff, 16, p->mv_hor_pos_l0);
@@ -399,6 +435,8 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 	mfc_clear_set_bits(reg, 0x1, 9, p->rc_frame);
 	/* drop control */
 	mfc_clear_set_bits(reg, 0x1, 10, p->drop_control);
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->enc_ts_delta))
+		mfc_clear_set_bits(reg, 0x1, 20, 1);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_RC_CONFIG);
 
 	/*
@@ -419,6 +457,7 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 	reg = MFC_CORE_RAW_READL(MFC_REG_E_RC_MODE);
 	mfc_clear_bits(reg, 0x3, 0);
 	mfc_clear_bits(reg, 0x3, 4);
+	mfc_clear_bits(reg, 0x1, 7);
 	mfc_clear_bits(reg, 0xFF, 8);
 	enc->is_cbr_fix = 0;
 	if (p->rc_frame) {
@@ -449,6 +488,18 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_RC_MODE);
 
+	/* high quality mode */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_HIGH_QUALITY_MODE);
+	if (p->wp_two_pass_enable) {
+		mfc_clear_set_bits(reg, 0x1, 0, p->wp_two_pass_enable);
+		mfc_debug(2, "WP two pass encoding is enabled\n");
+	}
+	if (p->adaptive_gop_enable) {
+		mfc_clear_set_bits(reg, 0x1, 4, p->adaptive_gop_enable);
+		mfc_debug(2, "Adaptive gop is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_HIGH_QUALITY_MODE);
+
 	/* extended encoder ctrl */
 	/** vbv buffer size */
 	reg = MFC_CORE_RAW_READL(MFC_REG_E_VBV_BUFFER_SIZE);
@@ -456,6 +507,13 @@ static void __mfc_set_enc_params(struct mfc_core *core, struct mfc_ctx *ctx)
 	if (p->frame_skip_mode == V4L2_MPEG_MFC51_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT)
 		mfc_set_bits(reg, 0xFF, 0, p->vbv_buf_size);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_VBV_BUFFER_SIZE);
+
+	/* two pass for initial qpe */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_HIGH_QUALITY_MODE);
+	mfc_clear_set_bits(reg, 0x1, 6, p->qpe_two_pass_enable);
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_HIGH_QUALITY_MODE);
+	mfc_debug(2, "qpe two pass is %s\n",
+            p->qpe_two_pass_enable ? "enabled" : "disabled");
 
 	/* Video signal type */
 	__mfc_set_video_signal_type(core, ctx);
@@ -650,17 +708,14 @@ static void __mfc_set_enc_params_h264(struct mfc_core *core,
 	mfc_clear_set_bits(reg, 0x1, 8, p_264->hier_qp_enable);
 	/* Weighted Prediction enable */
 	mfc_clear_set_bits(reg, 0x3, 9, p->weighted_enable);
+	if (p->weighted_enable)
+		mfc_debug(2, "WP mode is %d\n", p->weighted_enable);
 	/* 8x8 transform enable [12]: INTER_8x8_TRANS_ENABLE */
 	mfc_clear_set_bits(reg, 0x1, 12, p_264->_8x8_transform);
 	/* 8x8 transform enable [13]: INTRA_8x8_TRANS_ENABLE */
 	mfc_clear_set_bits(reg, 0x1, 13, p_264->_8x8_transform);
 	/* 'CONSTRAINED_INTRA_PRED_ENABLE' is disable */
 	mfc_clear_bits(reg, 0x1, 14);
-	/*
-	 * CONSTRAINT_SET0_FLAG: all constraints specified in
-	 * Baseline Profile
-	 */
-	mfc_set_bits(reg, 0x1, 26, 0x1);
 	/* sps pps control */
 	mfc_clear_set_bits(reg, 0x1, 29, p_264->prepend_sps_pps_to_idr);
 	/* enable sps pps control in OTF scenario */
@@ -749,6 +804,15 @@ static void __mfc_set_enc_params_h264(struct mfc_core *core,
 	if (p_264->open_gop)
 		mfc_set_bits(reg, 0xFFFF, 0, p_264->open_gop_size);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_H264_REFRESH_PERIOD);
+
+	/* Sub GOP selection enable */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_H264_OPTIONS_2);
+	mfc_clear_bits(reg, 0x1, 9);
+	if (MFC_FEATURE_SUPPORT(ctx->dev, ctx->dev->pdata->enc_sub_gop) && p_264->sub_gop_enable) {
+		mfc_set_bits(reg, 0x1, 9, 0x1);
+		mfc_debug(2, "[GOP] H264 Sub GOP selection is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_H264_OPTIONS_2);
 
 	/* Temporal SVC */
 	__mfc_set_temporal_svc_h264(core, ctx, p_264);
@@ -1358,6 +1422,15 @@ static void __mfc_set_enc_params_hevc(struct mfc_core *core,
 	mfc_clear_set_bits(reg, 0x1, 0, p->roi_enable);
 	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_RC_ROI_CTRL);
 	mfc_debug(3, "[ROI] HEVC ROI enable\n");
+
+	/* Sub GOP selection enable */
+	reg = MFC_CORE_RAW_READL(MFC_REG_E_HEVC_OPTIONS_2);
+	mfc_clear_bits(reg, 0x1, 7);
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->enc_sub_gop) && p_hevc->sub_gop_enable) {
+		mfc_set_bits(reg, 0x1, 7, 0x1);
+		mfc_debug(2, "[GOP] HEVC Sub GOP selection is enabled\n");
+	}
+	MFC_CORE_RAW_WRITEL(reg, MFC_REG_E_HEVC_OPTIONS_2);
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->static_info_enc) &&
 			p->static_info_enable && ctx->is_10bit) {

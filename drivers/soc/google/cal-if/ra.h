@@ -40,6 +40,7 @@ enum trans_opt {
 #define PLL_ENABLE		(0x1 << PLL_ENABLE_SHIFT)
 
 #define FIN_HZ_26M		(26*MHZ)
+#define FIN_HZ_24P576M		(24576000)
 #define CLK_WAIT_CNT		1000
 #define RECALC_MAX		32
 

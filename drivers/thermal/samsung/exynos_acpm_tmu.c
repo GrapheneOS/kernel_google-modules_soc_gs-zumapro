@@ -328,6 +328,26 @@ void exynos_acpm_tmu_tz_control(int tz, bool enable)
 	}
 }
 
+int exynos_acpm_tmu_tz_trip_control(int tz, bool enable)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+	message.req.type = TMU_IPC_TMU_TRIP_CONTROL;
+	message.req.tzid = tz;
+	message.req.req_rsvd0 = ((enable) ? 1 : 0);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	if (acpm_tmu_log) {
+		pr_info_ratelimited("[acpm_tmu] data 0:0x%08x 1:0x%08x 2:0x%08x 3:0x%08x\n",
+			message.data[0],
+			message.data[1],
+			message.data[2],
+			message.data[3]);
+	}
+	return message.resp.ret;
+}
+
 void exynos_acpm_tmu_clear_tz_irq(int tz)
 {
 	union tmu_ipc_message message;
@@ -415,6 +435,472 @@ void exynos_acpm_tmu_reg_write(u8 tmu_id, u16 offset, u32 val)
 	}
 }
 
+void exynos_acpm_tmu_ipc_get_target_freq(int tz, u32 *freq)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TARGET_FREQ;
+	message.req.tzid = tz;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	*freq = (message.resp.rsvd3 << 24) | (message.resp.rsvd2 << 16) |
+		(message.resp.rsvd1 << 8) | (message.resp.rsvd0 << 0);
+}
+
+int exynos_acpm_tmu_ipc_set_gov_config(int tz, u64 qword)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_GOV_CONFIG;
+	message.req.tzid = tz;
+	message.data_64b[1] = qword;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	return message.resp.ret;
+}
+
+void exynos_acpm_tmu_ipc_set_gov_debug_tracing_mode(int debug_mode)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_GOV_DEBUG_TRACING_MODE;
+	message.req.req_rsvd0 = (u8)(debug_mode & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+int exynos_acpm_tmu_ipc_set_gov_time_windows(int timer_interval, int thermal_press_window)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_GOV_DEBUG_TIMER_INTERVAL;
+	message.req.req_rsvd0 = (u8)(timer_interval & 0xff);
+	message.req.req_rsvd1 = (u8)(thermal_press_window & 0xff);
+	message.req.req_rsvd2 = (u8)((thermal_press_window>>8) & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	return message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_gov_tz_time_windows(int tz, int timer_interval,
+						int thermal_press_window)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.tzid = tz;
+	message.req.type = TMU_IPC_SET_GOV_TZ_TIMER_INTERVAL;
+	message.req.req_rsvd0 = (u8)(timer_interval & 0xff);
+	message.req.req_rsvd1 = (u8)(thermal_press_window & 0xff);
+	message.req.req_rsvd2 = (u8)((thermal_press_window >> 8) & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	return message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_gov_tz_time_windows(int tz, int *timer_interval,
+						int *thermal_press_window)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.tzid = tz;
+	message.req.type = TMU_IPC_GET_GOV_TZ_TIMER_INTERVAL;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*timer_interval = (int)message.resp.rsvd0;
+	*thermal_press_window = (int)((u16)message.resp.rsvd2 << 8) | (u16)message.resp.rsvd1;
+
+	return message.resp.ret;
+}
+
+void exynos_acpm_tmu_ipc_get_trip_counter(int tz, int trip_id, u64 *trip_counter)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TRIP_CNT;
+	message.req.tzid = tz;
+	message.req.req_rsvd0 = (u8)(trip_id & 0xff);
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*trip_counter = message.data_64b[1];
+}
+
+void exynos_acpm_tmu_ipc_reset_trip_counter(int tz)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_RESET_TRIP_CNT;
+	message.req.tzid = tz;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+int exynos_acpm_tmu_ipc_set_pi_param(int tz, u8 param, u32 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_PI_PARAM;
+	message.req.tzid = tz;
+	message.req.rsvd = param;
+	message.data[2] = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+	return (int)message.resp.ret;
+}
+
+void exynos_acpm_tmu_ipc_get_pi_param(int tz, u8 param, u32 *val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_PI_PARAM;
+	message.req.tzid = tz;
+	message.req.rsvd = param;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*val = message.data[2];
+}
+
+void exynos_acpm_tmu_ipc_set_table(int tz, u8 index, int val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_TABLE;
+	message.req.tzid = tz;
+	message.req.rsvd = index;
+	message.data[2] = (u32)val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+void exynos_acpm_tmu_ipc_get_table(int tz, u8 index, int *val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TABLE;
+	message.req.tzid = tz;
+	message.req.rsvd = index;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*val = (int)message.data[2];
+}
+
+void exynos_acpm_tmu_ipc_set_power_status(int tz, bool val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_POWER_STATUS;
+	message.req.tzid = tz;
+	message.req.rsvd = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+void exynos_acpm_tmu_ipc_set_control_temp_step(int tz, u32 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_CONTROL_TEMP_STEP;
+	message.req.tzid = tz;
+	message.data[2] = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+}
+
+int exynos_acpm_tmu_ipc_reset_tr_stats(int tz)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_RESET_TR_STATS;
+	message.req.tzid = tz;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_tr_num_thresholds(int tz, int num_of_threshold)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_TR_NUM_THRESHOLD;
+	message.req.tzid = tz;
+	message.data[2] = num_of_threshold;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_num_thresholds(int tz, int *num_of_threshold)
+{
+	union tmu_ipc_message message;
+
+	if (!num_of_threshold)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_NUM_THRESHOLD;
+	message.req.tzid = tz;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*num_of_threshold = (int)message.data[2];
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_tr_thresholds(int tz, u8 qword_index, u64 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_TR_THRESHOLD;
+	message.req.tzid = tz;
+	message.req.rsvd = qword_index;
+	message.data_64b[1] = val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_thresholds(int tz, u8 qword_index, u64 *val)
+{
+	union tmu_ipc_message message;
+
+	if (!val)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_THRESHOLD;
+	message.req.tzid = tz;
+	message.req.rsvd = qword_index;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*val = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
+enum tr_stat_type {
+	TIME_IN_STATES = 0,
+	MAX = 1,
+	MIN = 2,
+	START = 3,
+	END = 4,
+};
+
+int exynos_acpm_tmu_ipc_get_tr_stats(int tz, int bucket_idx, u64 *bucket_stats)
+{
+	union tmu_ipc_message message;
+
+	if (!bucket_stats)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd = (u8)bucket_idx;
+	message.req.rsvd2 = TIME_IN_STATES;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*bucket_stats = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats_start(int tz)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd2 = START;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats_end(int tz)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd2 = END;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats_max(int tz, int *temp, u64 *timestamp)
+{
+	union tmu_ipc_message message;
+
+	if (!temp || !timestamp)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd2 = MAX;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*temp = message.resp.temp;
+	*timestamp = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_tr_stats_min(int tz, int *temp, u64 *timestamp)
+{
+	union tmu_ipc_message message;
+
+	if (!temp || !timestamp)
+		return -EINVAL;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TR_STATS;
+	message.req.tzid = (u8)tz;
+	message.req.rsvd2 = MIN;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*temp = message.resp.temp;
+	*timestamp = message.data_64b[1];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_temp_lut(int tz, int temp, int state, int append)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_TEMP_STATE_LUT;
+	message.req.tzid = tz;
+	message.req.rsvd = (u8)append;
+	message.data[2] = temp;
+	message.data[3] = state;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_get_temp_lut(int tz, u8 index, int *temp, int *state)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_GET_TEMP_STATE_LUT;
+	message.req.tzid = tz;
+	message.req.rsvd = index;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	*temp = message.data[2];
+	*state = message.data[3];
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_mpmm_clr_throttle_level(int tz, u16 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_MPMM_CLR_THROTTLE_LEVEL;
+	message.req.tzid = tz;
+	message.data[2] = (u32)val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_mpmm_throttle_level(int tz, u16 val)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_MPMM_THROTTLE_LEVEL;
+	message.req.tzid = tz;
+	message.data[2] = (u32)val;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
+int exynos_acpm_tmu_ipc_set_mpmm_enable(int tz, u8 enable)
+{
+	union tmu_ipc_message message;
+
+	memset(&message, 0, sizeof(message));
+
+	message.req.type = TMU_IPC_SET_MPMM_ENABLE;
+	message.req.tzid = tz;
+	message.req.rsvd  = enable;
+
+	exynos_acpm_tmu_ipc_send_data(&message);
+
+	return (int)message.resp.ret;
+}
+
 int exynos_acpm_tmu_init(void)
 {
 	struct device_node *np;
@@ -424,4 +910,32 @@ int exynos_acpm_tmu_init(void)
 		return -ENODEV;
 
 	return acpm_ipc_request_channel(np, NULL, &acpm_tmu_ch_num, &acpm_tmu_size);
+}
+
+int exynos_acpm_tmu_cb_init(struct acpm_irq_callback *cb)
+{
+	struct device_node *np;
+	struct device_node *sub_node;
+	if (cb == NULL)
+		return -EINVAL;
+
+	np = of_find_node_by_name(NULL, "acpm_tmu");
+	if (!np) {
+		pr_err("GOV: No acpm_tmu node available\n");
+		return -ENODEV;
+	}
+
+	sub_node = of_find_node_by_name(np, "async");
+	if (!sub_node) {
+		pr_err("GOV: No asynchronous CPM to AP node available\n");
+		return -ENODEV;
+	}
+
+	if (acpm_ipc_request_channel(sub_node, cb->fn, &cb->ipc_ch, &cb->ipc_ch_size)) {
+		pr_err("GOV: No asynchronous CPM to AP interrupt channel available\n");
+		return -ENODEV;
+	}
+	pr_info("GOV: Asynchronous notification enabled\n");
+
+	return 0;
 }

@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Input core configuration
 
 if INPUT_KEYBOARD
 
@@ -9,5 +8,7 @@ config KEYBOARD_S2MPG12
 	depends on I2C
 	depends on MFD_S2MPG12
 
-endif
+config KEYBOARD_S2MPG14
+       tristate "Samsung Electronics S2MPG14 Powerkey Controller"
 
+endif # INPUT_KEYBOARD

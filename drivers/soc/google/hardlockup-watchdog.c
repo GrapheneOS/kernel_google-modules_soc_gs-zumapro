@@ -41,6 +41,9 @@ struct hardlockup_watchdog_dev {
 
 static struct hardlockup_watchdog_desc hardlockup_watchdog;
 
+static unsigned long hardlockup_panic = 1;
+module_param(hardlockup_panic, ulong, 0664);
+
 static const struct of_device_id hardlockup_watchdog_dt_match[] = {
 	{.compatible = "google,hardlockup-watchdog",
 	 .data = NULL,},
@@ -220,7 +223,7 @@ static void hardlockup_watchdog_enable(unsigned int cpu)
 	/* Initialize timestamp */
 	__touch_hardlockup_watchdog();
 
-	pr_info("%s: cpu%x: enabled - interval: %llu sec\n", __func__, cpu,
+	pr_debug("%s: cpu%x: enabled - interval: %llu sec\n", __func__, cpu,
 			hardlockup_watchdog.sample_period / NSEC_PER_SEC);
 }
 
@@ -237,7 +240,7 @@ static void hardlockup_watchdog_disable(unsigned int cpu)
 
 	WARN_ON_ONCE(cpu != smp_processor_id());
 
-	pr_info("%s: cpu%x: disabled\n", __func__, cpu);
+	pr_debug("%s: cpu%x: disabled\n", __func__, cpu);
 
 	cpumask_clear_cpu(cpu, &hardlockup_watchdog.allowed_mask);
 	hrtimer_cancel(hrtimer);
@@ -359,7 +362,7 @@ static int hardlockup_set_property_by_dt_node(struct device *dev)
 	ret = of_property_read_u32(np, "panic", &reg);
 	if (ret)
 		return ret;
-	hardlockup_watchdog.panic = reg;
+	hardlockup_watchdog.panic = reg && hardlockup_panic;
 
 	hardlockup_watchdog.enabled = true;
 	dev_info(dev, "sampling_time = %usec, opportunity_cnt = %u, panic = %u\n",

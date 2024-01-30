@@ -611,10 +611,7 @@ out:
 
 	pm_runtime_put(drvdata->dev);
 
-	if (drvdata->panic_action == GO_PANIC_ID)
-		panic(fault_msg);
-	else
-		dbg_snapshot_do_dpm_policy(drvdata->panic_action, fault_msg);
+	panic(fault_msg);
 
 	return IRQ_HANDLED;
 }

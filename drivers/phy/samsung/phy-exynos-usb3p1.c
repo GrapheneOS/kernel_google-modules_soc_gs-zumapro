@@ -520,13 +520,15 @@ void phy_exynos_usb_v3p1_enable(struct exynos_usbphy_info *info)
 		reg &= ~SSP_PLL_FSEL_MASK;
 		reg |= 0x0;
 		break;
+	case USBPHY_REFCLK_EXT_48MHZ:
 	case USBPHY_REFCLK_EXT_12MHZ:
-	case USBPHY_REFCLK_DIFF_26MHZ:
 	case USBPHY_REFCLK_DIFF_100MHZ:
+	case USBPHY_REFCLK_DIFF_52MHZ:
+	case USBPHY_REFCLK_DIFF_48MHZ:
+	case USBPHY_REFCLK_DIFF_26MHZ:
 	case USBPHY_REFCLK_DIFF_24MHZ:
 	case USBPHY_REFCLK_DIFF_20MHZ:
 	case USBPHY_REFCLK_DIFF_19_2MHZ:
-	case USBPHY_REFCLK_DIFF_52MHZ:
 		/* No phy ref clock control */
 		break;
 	}

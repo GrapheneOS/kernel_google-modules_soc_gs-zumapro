@@ -25,7 +25,7 @@
 #include <linux/mm.h>
 #include <asm/cacheflush.h>
 
-#include <soc/google/mcu_ipc.h>
+#include "mcu_ipc.h"
 #include "modem_prj.h"
 #include "include/circ_queue.h"
 #include "include/sbd.h"
@@ -213,6 +213,8 @@ struct mem_link_device {
 	 */
 	u8 __iomem *acpm_base;
 	int acpm_size;
+
+	void __iomem *gnss_v_base;
 
 	/* Boot link device */
 	struct legacy_link_device legacy_link_dev;

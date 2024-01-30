@@ -1839,7 +1839,7 @@ static void dma_pl330_rqcb(struct dma_pl330_desc *desc, enum pl330_op_err err)
 	if (desc->infiniteloop)
 		pl330_tasklet((uintptr_t)pch);
 	else
-		tasklet_schedule(&pch->task);
+		tasklet_hi_schedule(&pch->task);
 }
 
 static void pl330_dotask(unsigned long data)
@@ -1987,6 +1987,7 @@ static int pl330_update(struct pl330_dmac *pl330)
 
 			if (!descdone->infiniteloop) {
 				thrd->req[active].desc = NULL;
+				thrd->req_running = -1;
 
 				/* Get going again ASAP */
 				_start(thrd);
@@ -2014,7 +2015,7 @@ updt_exit:
 			|| pl330->dmac_tbd.reset_mngr
 			|| pl330->dmac_tbd.reset_chan) {
 		ret = 1;
-		tasklet_schedule(&pl330->tasks);
+		tasklet_hi_schedule(&pl330->tasks);
 	}
 
 	return ret;
@@ -2367,7 +2368,7 @@ static inline void fill_queue(struct dma_pl330_chan *pch)
 			desc->status = DONE;
 			dev_err(pch->dmac->ddma.dev, "%s:%d Bad Desc(%d)\n",
 					__func__, __LINE__, desc->txd.cookie);
-			tasklet_schedule(&pch->task);
+			tasklet_hi_schedule(&pch->task);
 		}
 	}
 }
@@ -2905,7 +2906,7 @@ static struct dma_pl330_desc *pl330_get_desc(struct dma_pl330_chan *pch)
 
 	/* If the DMAC pool is empty, alloc new */
 	if (!desc) {
-		DEFINE_SPINLOCK(lock);
+		static DEFINE_SPINLOCK(lock);
 		LIST_HEAD(pool);
 
 		if (!add_desc(&pool, &lock, GFP_ATOMIC, 1))

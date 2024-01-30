@@ -288,7 +288,9 @@ void mfc_core_cmd_dec_seq_header(struct mfc_core *core, struct mfc_ctx *ctx)
 		reg |= (0x1 << MFC_REG_D_SEI_ENABLE_MASTERING_DISPLAY_SHIFT);
 	}
 	reg |= (0x1 << MFC_REG_D_SEI_ENABLE_RECOVERY_PARSING_SHIFT);
-	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus))
+	/* If the metadata interface is supported, the SEI interface is not enabled. */
+	if (!MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus_full) &&
+			MFC_FEATURE_SUPPORT(dev, dev->pdata->hdr10_plus))
 		reg |= (0x1 << MFC_REG_D_SEI_ENABLE_ST_2094_40_SEI_SHIFT);
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->av1_film_grain))
@@ -353,6 +355,130 @@ int mfc_core_cmd_enc_seq_header(struct mfc_core *core, struct mfc_ctx *ctx)
 	return 0;
 }
 
+
+static void __mfc_core_set_slc_option(struct mfc_core *core, struct mfc_ctx *ctx)
+{
+	unsigned int reg = 0;
+	unsigned int mfc_reg_axi_wr_attr0_slc = 0;
+	unsigned int mfc_reg_axi_wr_attr1_slc = 0;
+	unsigned int mfc_reg_axi_rd_attr0_slc = 0;
+	unsigned int mfc_reg_axi_rd_attr1_slc = 0;
+	unsigned int mfc_reg_lf_pixel_posx_slc = 0;
+	unsigned int mfc_reg_lf_pixel_posy_slc = 0;
+
+	if (ctx->type == MFCINST_INVALID)
+		return;
+
+	if (ctx->type == MFCINST_DECODER) {
+		mfc_reg_axi_wr_attr0_slc = MFC_REG_D_AXI_WR_ATTR0_SLC;
+		mfc_reg_axi_wr_attr1_slc = MFC_REG_D_AXI_WR_ATTR1_SLC;
+		mfc_reg_axi_rd_attr0_slc = MFC_REG_D_AXI_RD_ATTR0_SLC;
+		mfc_reg_axi_rd_attr1_slc = MFC_REG_D_AXI_RD_ATTR1_SLC;
+		mfc_reg_lf_pixel_posx_slc = MFC_REG_D_LF_PIXEL_POSX_SLC;
+		mfc_reg_lf_pixel_posy_slc = MFC_REG_D_LF_PIXEL_POSY_SLC;
+	} else if (ctx->type == MFCINST_ENCODER) {
+		mfc_reg_axi_wr_attr0_slc = MFC_REG_E_AXI_WR_ATTR0_SLC;
+		mfc_reg_axi_wr_attr1_slc = MFC_REG_E_AXI_WR_ATTR1_SLC;
+		mfc_reg_axi_rd_attr0_slc = MFC_REG_E_AXI_RD_ATTR0_SLC;
+		mfc_reg_axi_rd_attr1_slc = MFC_REG_E_AXI_RD_ATTR1_SLC;
+		mfc_reg_lf_pixel_posx_slc = MFC_REG_E_LF_PIXEL_POSX_SLC;
+		mfc_reg_lf_pixel_posy_slc = MFC_REG_E_LF_PIXEL_POSY_SLC;
+	}
+
+	if (core->curr_slc_option & MFC_SLC_OPTION_INTERNAL) {
+		/* Read, Write allocation: Internal */
+		MFC_SLC_ALLOC_FULL(reg, 4);
+		MFC_SLC_ALLOC_FULL(reg, 6);
+		MFC_SLC_ALLOC_FULL(reg, 7);
+		MFC_SLC_ALLOC_FULL(reg, 8);
+		MFC_SLC_ALLOC_FULL(reg, 9);
+		MFC_SLC_ALLOC_FULL(reg, 13);
+		MFC_CORE_WRITEL(reg, mfc_reg_axi_rd_attr0_slc);
+		MFC_CORE_WRITEL(reg, mfc_reg_axi_wr_attr0_slc);
+	}
+
+	if (core->curr_slc_option & MFC_SLC_OPTION_DPB_FULL_W) {
+		if (core->curr_slc_option & MFC_SLC_OPTION_DPB_CHROMA_W) {
+			reg = MFC_CORE_READL(mfc_reg_axi_wr_attr0_slc);
+			/* Write allocation: DPB CHROMA */
+			MFC_SLC_ALLOC_FULL(reg, 10);
+			MFC_CORE_WRITEL(reg, mfc_reg_axi_wr_attr0_slc);
+		}
+		if (core->curr_slc_option & MFC_SLC_OPTION_DPB_LUMA_W) {
+			reg = MFC_CORE_READL(mfc_reg_axi_wr_attr1_slc);
+			/* Write allocation: DPB LUMA */
+			MFC_SLC_ALLOC_FULL(reg, 3);
+			MFC_CORE_WRITEL(reg, mfc_reg_axi_wr_attr1_slc);
+		}
+	} else if (core->curr_slc_option & MFC_SLC_OPTION_DPB_PARTIAL_W) {
+		unsigned int left = 0;
+		unsigned int right = ALIGN(ctx->img_width, 64);
+		unsigned int lower = 0;
+		unsigned int upper = ALIGN(ctx->img_height, 64);
+		if (core->curr_slc_option & MFC_SLC_OPTION_DPB_CHROMA_W) {
+			reg = MFC_CORE_READL(mfc_reg_axi_wr_attr0_slc);
+			/* Write allocation: DPB CHROMA */
+			MFC_SLC_ALLOC_PARTIAL(reg, 10);
+			MFC_CORE_WRITEL(reg, mfc_reg_axi_wr_attr0_slc);
+		}
+		if (core->curr_slc_option & MFC_SLC_OPTION_DPB_LUMA_W) {
+			reg = MFC_CORE_READL(mfc_reg_axi_wr_attr1_slc);
+			/* Write allocation: DPB LUMA */
+			MFC_SLC_ALLOC_PARTIAL(reg, 3);
+			MFC_CORE_WRITEL(reg, mfc_reg_axi_wr_attr1_slc);
+		}
+
+		if (slc_partial_height_ratio > 0) {
+			upper = upper / slc_partial_height_ratio;
+			upper = ALIGN(upper, 64);
+		} else {
+			/*
+			 * Default Partial ROI assumption:
+			 * 1/2 of height for upper bound for 8 bit video
+			 * 1/4 of height for upper bound for 10 bit video
+			 */
+			if (ctx->is_10bit)
+				upper = upper / 4;
+			else
+				upper = upper / 2;
+
+			upper = ALIGN(upper, 64);
+		}
+
+		mfc_debug(2, "Partial cache: left %d, right %d, lower %d, upper %d",
+				left, right, lower, upper);
+		reg = left;
+		reg |= ((right) << 16);
+
+		MFC_CORE_WRITEL(reg, mfc_reg_lf_pixel_posx_slc);
+
+		reg = upper;
+		reg |= ((lower) << 16);
+		MFC_CORE_WRITEL(reg, mfc_reg_lf_pixel_posy_slc);
+	}
+
+	if (core->curr_slc_option & MFC_SLC_OPTION_REF_PXL_R) {
+		reg = MFC_CORE_READL(mfc_reg_axi_rd_attr0_slc);
+		/* Read allocation: Reference Pixel */
+		MFC_SLC_ALLOC_FULL(reg, 0);
+		MFC_SLC_ALLOC_FULL(reg, 1);
+		MFC_SLC_ALLOC_FULL(reg, 2);
+		MFC_SLC_ALLOC_FULL(reg, 3);
+		MFC_CORE_WRITEL(reg, mfc_reg_axi_rd_attr0_slc);
+
+		reg = MFC_CORE_READL(mfc_reg_axi_rd_attr1_slc);
+		MFC_SLC_ALLOC_FULL(reg, 0);
+		MFC_SLC_ALLOC_FULL(reg, 1);
+		MFC_SLC_ALLOC_FULL(reg, 2);
+		MFC_SLC_ALLOC_FULL(reg, 3);
+		MFC_SLC_ALLOC_FULL(reg, 4);
+		MFC_SLC_ALLOC_FULL(reg, 5);
+		MFC_SLC_ALLOC_FULL(reg, 6);
+		MFC_SLC_ALLOC_FULL(reg, 7);
+		MFC_CORE_WRITEL(reg, mfc_reg_axi_rd_attr1_slc);
+	}
+}
+
 int mfc_core_cmd_dec_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 {
 	struct mfc_dev *dev = core->dev;
@@ -371,7 +497,7 @@ int mfc_core_cmd_dec_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_llc_flush(core);
 
 		if (core->has_slc && core->slc_on_status)
-			mfc_slc_flush(core);
+			mfc_slc_flush(core, ctx);
 
 		mfc_release_codec_buffers(core_ctx);
 		ret = mfc_alloc_codec_buffers(core_ctx);
@@ -387,8 +513,8 @@ int mfc_core_cmd_dec_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 
 	if (core->has_slc && core->slc_on_status) {
-		MFC_CORE_WRITEL(MFC_SLC_CMD_ATTR, MFC_REG_D_AXI_RD_ATTR0_SLC);
-		MFC_CORE_WRITEL(MFC_SLC_CMD_ATTR, MFC_REG_D_AXI_WR_ATTR0_SLC);
+		mfc_slc_update_partition(core, ctx);
+		__mfc_core_set_slc_option(core, ctx);
 	}
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->metadata_interface) &&
@@ -440,7 +566,7 @@ int mfc_core_cmd_enc_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_llc_flush(core);
 
 		if (core->has_slc && core->slc_on_status)
-			mfc_slc_flush(core);
+			mfc_slc_flush(core, ctx);
 
 		mfc_release_codec_buffers(core_ctx);
 		ret = mfc_alloc_codec_buffers(core_ctx);
@@ -456,8 +582,8 @@ int mfc_core_cmd_enc_init_buffers(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 
 	if (core->has_slc && core->slc_on_status) {
-		MFC_CORE_WRITEL(MFC_SLC_CMD_ATTR, MFC_REG_E_AXI_RD_ATTR0_SLC);
-		MFC_CORE_WRITEL(MFC_SLC_CMD_ATTR, MFC_REG_E_AXI_WR_ATTR0_SLC);
+		mfc_slc_update_partition(core, ctx);
+		__mfc_core_set_slc_option(core, ctx);
 	}
 
 	MFC_CORE_WRITEL(core_ctx->inst_no, MFC_REG_INSTANCE_ID);
@@ -481,7 +607,7 @@ static int __mfc_set_scratch_dpb_buffer(struct mfc_core *core, struct mfc_ctx *c
 		mfc_llc_flush(core);
 
 	if (core->has_slc && core->slc_on_status)
-		mfc_slc_flush(core);
+		mfc_slc_flush(core, ctx);
 
 	ret = mfc_alloc_scratch_buffer(core_ctx);
 	if (ret) {
@@ -525,6 +651,7 @@ int mfc_core_cmd_dec_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	struct mfc_dec *dec = ctx->dec_priv;
 	u32 reg = 0;
 	int ret = 0;
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug(2, "[MFC-%d][DPB] set dpb: %#lx, used: %#lx\n",
 			core->id, core_ctx->dynamic_set, dec->dynamic_used);
@@ -563,13 +690,17 @@ int mfc_core_cmd_dec_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	MFC_CORE_WRITEL(reg, MFC_REG_D_NAL_START_OPTIONS);
 	mfc_debug(3, "NAL_START_OPTIONS: %#x, op_mode: %d\n", reg, ctx->op_mode);
 
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "Last MFC Freq: %d, Timeout Value: %d\n", core->last_mfc_freq, timeout_value);
+
 	MFC_CORE_WRITEL(mfc_get_lower(core_ctx->dynamic_set), MFC_REG_D_DYNAMIC_DPB_FLAG_LOWER);
 	MFC_CORE_WRITEL(mfc_get_upper(core_ctx->dynamic_set), MFC_REG_D_DYNAMIC_DPB_FLAG_UPPER);
 	MFC_CORE_WRITEL(mfc_get_lower(core_ctx->dynamic_set), MFC_REG_D_AVAILABLE_DPB_FLAG_LOWER);
 	MFC_CORE_WRITEL(mfc_get_upper(core_ctx->dynamic_set), MFC_REG_D_AVAILABLE_DPB_FLAG_UPPER);
 
 	MFC_CORE_WRITEL(dec->slice_enable, MFC_REG_D_SLICE_IF_ENABLE);
-	MFC_CORE_WRITEL(MFC_TIMEOUT_VALUE, MFC_REG_TIMEOUT_VALUE);
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
 	MFC_CORE_WRITEL(core_ctx->inst_no, MFC_REG_INSTANCE_ID);
 
 	if ((sfr_dump & MFC_DUMP_DEC_FIRST_NAL_START) && !core_ctx->check_dump) {
@@ -595,6 +726,9 @@ int mfc_core_cmd_dec_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	case 0:
 		mfc_perf_measure_on(core);
 
+		mfc_perf_trace(ctx, "frame", 1);
+		mfc_perf_trace(ctx, "fps", ctx->framerate / 1000);
+
 		mfc_core_cmd_host2risc(core, MFC_REG_H2R_CMD_NAL_START);
 		break;
 	case 1:
@@ -614,10 +748,15 @@ void mfc_core_cmd_enc_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 		int last_frame)
 {
 	struct mfc_core_ctx *core_ctx = core->core_ctx[ctx->num];
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug(2, "++\n");
 
-	MFC_CORE_WRITEL(MFC_TIMEOUT_VALUE, MFC_REG_TIMEOUT_VALUE);
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "Last MFC Freq: %d, Timeout Value: %d\n", core->last_mfc_freq, timeout_value);
+
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
 	MFC_CORE_WRITEL(core_ctx->inst_no, MFC_REG_INSTANCE_ID);
 
 	if ((sfr_dump & MFC_DUMP_ENC_FIRST_NAL_START) && !core_ctx->check_dump) {
@@ -634,6 +773,9 @@ void mfc_core_cmd_enc_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	switch (last_frame) {
 	case 0:
 		mfc_perf_measure_on(core);
+
+		mfc_perf_trace(ctx, "frame", 1);
+		mfc_perf_trace(ctx, "fps", ctx->framerate / 1000);
 
 		mfc_core_cmd_host2risc(core, MFC_REG_H2R_CMD_NAL_START);
 		break;

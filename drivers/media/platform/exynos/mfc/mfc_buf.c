@@ -846,7 +846,7 @@ int mfc_load_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf,
 			fw_buf->buftype == MFCBUF_NORMAL_FW ? "normal" : "secure");
 
 	/*
-	 * In MFCBUF_DRM_FW case, FW is loaded by LDFW. Morever, memory region
+	 * In MFCBUF_DRM_FW case, FW is loaded by LDFW. Moreover, memory region
 	 * is protected, i.e. can't be accessed by Linux.
 	 */
 	if (fw_buf->buftype == MFCBUF_NORMAL_FW) {

@@ -90,6 +90,8 @@ static struct v4l2_queryctrl *__mfc_enc_get_ctrl(int id)
 static int __mfc_enc_check_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 {
 	struct v4l2_queryctrl *c;
+	struct mfc_enc *enc = ctx->enc_priv;
+	struct mfc_enc_params *p = &enc->params;
 
 	c = __mfc_enc_get_ctrl(ctrl->id);
 	if (!c) {
@@ -97,18 +99,30 @@ static int __mfc_enc_check_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ct
 		return -EINVAL;
 	}
 
-	if (ctrl->id == V4L2_CID_MPEG_VIDEO_GOP_SIZE
-	    && ctrl->value > c->maximum) {
+	if ((ctrl->id == V4L2_CID_MPEG_VIDEO_GOP_SIZE) && (ctrl->value > c->maximum)) {
 		mfc_ctx_info("GOP_SIZE is changed to max(%d -> %d)\n",
                                 ctrl->value, c->maximum);
 		ctrl->value = c->maximum;
 	}
 
 	if (ctrl->id == V4L2_CID_MPEG_VIDEO_H264_HIERARCHICAL_CODING_LAYER) {
-		if ((ctrl->value & ~(1 << 16)) < c->minimum || (ctrl->value & ~(1 << 16)) > c->maximum
-		    || (c->step != 0 && (ctrl->value & ~(1 << 16)) % c->step != 0)) {
-			mfc_ctx_err("[CTRLS][HIERARCHICAL] Invalid control value for %#x (%#x)\n",
-					ctrl->id, ctrl->value);
+		if ((ctrl->value & ~(1 << 16)) < c->minimum
+				|| (ctrl->value & ~(1 << 16)) > c->maximum
+				|| (c->step != 0 && (ctrl->value & ~(1 << 16)) % c->step != 0)) {
+			mfc_ctx_err("[CTRLS][%s] Invalid control id: %#x, value: %d (%#x)\n",
+					c->name, ctrl->id, ctrl->value, ctrl->value);
+			return -ERANGE;
+		} else {
+			return 0;
+		}
+	}
+
+	if (ctrl->id == V4L2_CID_MPEG_MFC_H264_BASE_PRIORITY) {
+		if (ctrl->value < c->minimum
+				|| (ctrl->value + p->num_hier_max_layer - 1) > c->maximum
+				|| (c->step != 0 && (ctrl->value & ~(1 << 16)) % c->step != 0)) {
+			mfc_ctx_err("[CTRLS][%s] Invalid control id: %#x, value: %d (%#x)\n",
+					c->name, ctrl->id, ctrl->value, ctrl->value);
 			return -ERANGE;
 		} else {
 			return 0;
@@ -116,12 +130,14 @@ static int __mfc_enc_check_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ct
 	}
 
 	if (ctrl->value < c->minimum || ctrl->value > c->maximum
-	    || (c->step != 0 && ctrl->value % c->step != 0)) {
-		mfc_ctx_err("[CTRLS] Invalid control value for %#x (%#x)\n",
-				ctrl->id, ctrl->value);
+		|| (c->step != 0 && ctrl->value % c->step != 0)) {
+		mfc_ctx_err("[CTRLS][%s] id: %#x, invalid value (%d)\n",
+				c->name, ctrl->id, ctrl->value);
 		return -ERANGE;
 	}
 
+	mfc_debug(5, "[CTRLS][%s] id: %#x, value: %d (%#x)\n",
+			c->name, ctrl->id, ctrl->value, ctrl->value);
 	return 0;
 }
 
@@ -504,6 +520,12 @@ static int mfc_enc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
 	enc->dst_buf_size = pix_fmt_mp->plane_fmt[0].sizeimage;
 	pix_fmt_mp->plane_fmt[0].bytesperline = 0;
 
+	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
+	core = mfc_get_main_core_wait(dev, ctx);
+	atomic_inc(&core->hw_run_cnt);
+	/* Trigger idle resume if core is in the idle mode for starting NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
+
 	ret = mfc_rm_instance_open(dev, ctx);
 	if (ret) {
 		mfc_ctx_err("Failed to instance open\n");
@@ -616,7 +638,7 @@ static int mfc_enc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 				mfc_llc_flush(core);
 
 			if (core->has_slc && core->slc_on_status)
-				mfc_slc_flush(core);
+				mfc_slc_flush(core, ctx);
 
 			mfc_release_codec_buffers(core_ctx);
 			ret = mfc_alloc_codec_buffers(core_ctx);
@@ -969,6 +991,8 @@ static int mfc_enc_streamoff(struct file *file, void *priv,
 			    enum v4l2_buf_type type)
 {
 	struct mfc_ctx *ctx = fh_to_mfc_ctx(file->private_data);
+	struct mfc_dev *dev = ctx->dev;
+	struct mfc_core *core;
 	int ret = -EINVAL;;
 
 	mfc_debug_enter();
@@ -982,6 +1006,12 @@ static int mfc_enc_streamoff(struct file *file, void *priv,
 		mfc_ctx_err("Invalid V4L2 Buffer for driver: type(%d)\n", type);
 		return -EINVAL;
 	}
+
+	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
+	core = mfc_get_main_core_wait(dev, ctx);
+	atomic_inc(&core->hw_run_cnt);
+	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
 	if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		mfc_debug(4, "enc src streamoff\n");
@@ -1040,6 +1070,7 @@ static int __mfc_enc_ext_info(struct mfc_ctx *ctx)
 	val |= ENC_SET_OPERATING_FPS;
 	val |= ENC_SET_GOP_CTRL;
 	val |= ENC_SET_PRIORITY;
+	val |= ENC_SET_QPE_TWO_PASS_ENABLE;
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->color_aspect_enc))
 		val |= ENC_SET_COLOR_ASPECT;
@@ -1063,6 +1094,9 @@ static int __mfc_enc_ext_info(struct mfc_ctx *ctx)
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->mv_search_mode))
 		val |= ENC_SET_MV_SEARCH_MODE;
+
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->enc_capability))
+		val |= ENC_SET_CAPABILITY;
 
 	mfc_debug(5, "[CTRLS] ext info val: %#x\n", val);
 
@@ -1097,6 +1131,9 @@ static int __mfc_enc_get_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_AVERAGE_QP:
+	case V4L2_CID_MPEG_VIDEO_SUM_SKIP_MB:
+	case V4L2_CID_MPEG_VIDEO_SUM_INTRA_MB:
+	case V4L2_CID_MPEG_VIDEO_SUM_ZERO_MV_MB:
 		list_for_each_entry(ctx_ctrl, &ctx->ctrls, list) {
 			if (!(ctx_ctrl->type & MFC_CTRL_TYPE_GET))
 				continue;
@@ -1172,7 +1209,7 @@ static int mfc_enc_g_ctrl(struct file *file, void *priv,
 
 static inline int __mfc_enc_h264_level(enum v4l2_mpeg_video_h264_level lvl)
 {
-	static unsigned int t[V4L2_MPEG_VIDEO_H264_LEVEL_5_2 + 1] = {
+	static unsigned int t[V4L2_MPEG_VIDEO_H264_LEVEL_6_0 + 1] = {
 		/* V4L2_MPEG_VIDEO_H264_LEVEL_1_0   */ 10,
 		/* V4L2_MPEG_VIDEO_H264_LEVEL_1B    */ 9,
 		/* V4L2_MPEG_VIDEO_H264_LEVEL_1_1   */ 11,
@@ -1190,6 +1227,7 @@ static inline int __mfc_enc_h264_level(enum v4l2_mpeg_video_h264_level lvl)
 		/* V4L2_MPEG_VIDEO_H264_LEVEL_5_0   */ 50,
 		/* V4L2_MPEG_VIDEO_H264_LEVEL_5_1   */ 51,
 		/* V4L2_MPEG_VIDEO_H264_LEVEL_5_2   */ 52,
+		/* V4L2_MPEG_VIDEO_H264_LEVEL_6_0   */ 60,
 	};
 	return t[lvl];
 }
@@ -2029,6 +2067,30 @@ static int __mfc_enc_set_param(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 	case V4L2_CID_MPEG_VIDEO_MIN_QUALITY:
 		p->min_quality_mode = ctrl->value;
 		break;
+	case V4L2_CID_MPEG_VIDEO_WP_TWO_PASS_ENABLE:
+		p->wp_two_pass_enable = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_VIDEO_ADAPTIVE_GOP_ENABLE:
+		p->adaptive_gop_enable = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_VIDEO_MV_HOR_RANGE:
+		p->mv_hor_range = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_VIDEO_MV_VER_RANGE:
+		p->mv_ver_range = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_ENABLE:
+		p->codec.h264.sub_gop_enable = ctrl->value;
+		break;
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_ENABLE:
+		p->codec.hevc.sub_gop_enable = ctrl->value;
+		fallthrough;
+	case V4L2_CID_MPEG_MFC_QPE_TWO_PASS_ENABLE:
+		p->qpe_two_pass_enable = ctrl->value;
+		enc->nal_q_disable_for_qpe_two_pass = ctrl->value;
+		mfc_debug(2, "[QPE TWO PASS] qpe two pass %s\n",
+				p->qpe_two_pass_enable ? "enable" : "disable");
+		break;
 	/* These are stored in specific variables */
 	case V4L2_CID_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_LAYER_CH:
 	case V4L2_CID_MPEG_VIDEO_VP9_HIERARCHICAL_CODING_LAYER_CH:
@@ -2040,6 +2102,8 @@ static int __mfc_enc_set_param(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 	case V4L2_CID_MPEG_MFC_H264_USE_LTR:
 	case V4L2_CID_MPEG_MFC_H264_MARK_LTR:
 	case V4L2_CID_MPEG_MFC51_VIDEO_FRAME_TAG:
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_TYPE:
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE:
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 		break;
@@ -2058,9 +2122,6 @@ static int __mfc_enc_set_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	struct mfc_ctx_ctrl *ctx_ctrl;
 	int ret = 0;
 	int found = 0;
-
-	mfc_debug(5, "[CTRLS] id: %#x, value: %d (%#x)\n",
-			ctrl->id, ctrl->value, ctrl->value);
 
 	/* update parameter value */
 	ret = __mfc_enc_set_param(ctx, ctrl);
@@ -2124,6 +2185,8 @@ static int __mfc_enc_set_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	case V4L2_CID_MPEG_VIDEO_MV_HOR_POSITION_L1:
 	case V4L2_CID_MPEG_VIDEO_MV_VER_POSITION_L0:
 	case V4L2_CID_MPEG_VIDEO_MV_VER_POSITION_L1:
+	case V4L2_CID_MPEG_MFC_H264_SUB_GOP_TYPE:
+	case V4L2_CID_MPEG_MFC_HEVC_SUB_GOP_TYPE:
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
 		list_for_each_entry(ctx_ctrl, &ctx->ctrls, list) {
@@ -2246,6 +2309,8 @@ static int mfc_enc_s_ext_ctrls(struct file *file, void *priv,
 	int i;
 	int ret = 0;
 
+	mfc_debug_enter();
+
 	if (f->which != V4L2_CTRL_CLASS_CODEC)
 		return -EINVAL;
 
@@ -2266,10 +2331,9 @@ static int mfc_enc_s_ext_ctrls(struct file *file, void *priv,
 			f->error_idx = i;
 			break;
 		}
-
-		mfc_debug(5, "[CTRLS][%d] id: %#x, value: %d\n",
-				i, ext_ctrl->id, ext_ctrl->value);
 	}
+
+	mfc_debug_leave();
 
 	return ret;
 }
@@ -2282,6 +2346,8 @@ static int mfc_enc_try_ext_ctrls(struct file *file, void *priv,
 	struct v4l2_control ctrl;
 	int i;
 	int ret = 0;
+
+	mfc_debug_enter();
 
 	if (f->which != V4L2_CTRL_CLASS_CODEC)
 		return -EINVAL;
@@ -2297,9 +2363,9 @@ static int mfc_enc_try_ext_ctrls(struct file *file, void *priv,
 			f->error_idx = i;
 			break;
 		}
-
-		mfc_debug(2, "[%d] id: 0x%08x, value: %d\n", i, ext_ctrl->id, ext_ctrl->value);
 	}
+
+	mfc_debug_leave();
 
 	return ret;
 }

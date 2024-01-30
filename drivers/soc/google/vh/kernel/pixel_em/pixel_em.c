@@ -561,7 +561,6 @@ static struct pixel_idle_em *generate_idle_em(void)
 	if (!idle_em->cpu_to_cluster)
 		goto failed_cpu_to_cluster_allocation;
 
-
 	cpumask_copy(&unmatched_cpus, cpu_possible_mask);
 
 	while (!cpumask_empty(&unmatched_cpus)) {

@@ -15,11 +15,18 @@ config TYPEC_COOLING_DEV
 	help
 	  Type-C port passive cooling device to throttle when the port is hot.
 
-if TYPEC_TCPCI
+config GOOGLE_TCPCI_SHIM
+	tristate "Type-C Port Controller Shim Interface Driver"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  Type-C Port Controller Shim Interface Driver for TCPCI-compliant
+	  controller.
 
 config TYPEC_FUSB307
 	tristate "Fairchild FUSB307B Type-C chip driver"
 	select USB_PSY
+	select GOOGLE_TCPCI_SHIM
 	help
 	  The Fairchild FUSB307 Type-C chip driver that works with
 	  Type-C Port Controller Manager to provide USB PD and USB
@@ -28,8 +35,27 @@ config TYPEC_FUSB307
 config TYPEC_MAX77759
 	tristate "Maxim MAX77759 Type-C driver"
 	select USB_PSY
+	select GOOGLE_TCPCI_SHIM
 	help
 	  MAX77759 TCPCI driver to interface with TCPM.
 
-endif # TYPEC_TCPCI
+config TYPEC_MAX77759_CONTAMINANT
+	tristate "Maxim MAX77759 specific contaminant detection routines"
+	depends on TYPEC_MAX77759
+	help
+	  Maxim MAX77759 specific contaminant detection routines.
+
+config TYPEC_MAX77779_CONTAMINANT
+        tristate "Maxim MAX77779 specific contaminant detection routines"
+        depends on TYPEC_MAX77759
+        help
+          Maxim MAX77779 specific contaminant detection routiness.
+
 endif # TYPEC_TCPM
+
+config POGO_TRANSPORT
+	tristate "Pogo transport management driver"
+	depends on TYPEC_MAX77759
+	select GOOGLE_LOGBUFFER
+	help
+	  Pogo transport management driver

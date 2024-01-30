@@ -66,6 +66,8 @@ static int mfc_enc_queue_setup(struct vb2_queue *vq,
 
 		psize[0] = enc->dst_buf_size;
 		alloc_devs[0] = dev->device;
+		/* In case of VP8/VP9 encoder, part of stream buffer should be read */
+		vq->dma_dir = DMA_BIDIRECTIONAL;
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		mfc_debug(4, "enc src\n");
 		raw = &ctx->raw_buf;

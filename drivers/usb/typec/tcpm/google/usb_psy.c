@@ -144,36 +144,8 @@ void init_vote(struct usb_vote *vote, const char *reason,
 }
 EXPORT_SYMBOL_GPL(init_vote);
 
-static int usb_get_current_max_ma(struct usb_psy_data *usb)
+int usb_find_chg_psy(struct usb_psy_data *usb)
 {
-	union power_supply_propval val = {0};
-	int ret;
-	struct i2c_client *client = usb->tcpc_client;
-
-	if (!usb->chg_psy_name)
-		return usb->current_max_cache;
-
-	if (!usb->chg_psy) {
-		usb->chg_psy = power_supply_get_by_name(usb->chg_psy_name);
-		if (IS_ERR_OR_NULL(usb->chg_psy)) {
-			dev_err(&client->dev, "chg psy not up\n");
-			return usb->current_max_cache;
-		}
-	}
-
-	ret = power_supply_get_property(usb->chg_psy,
-					POWER_SUPPLY_PROP_CURRENT_MAX, &val);
-	if (ret < 0)
-		return ret;
-
-	return val.intval;
-}
-
-static int usb_set_current_max_ma(struct usb_psy_data *usb,
-				  int current_max)
-{
-	union power_supply_propval val = {0};
-	int ret;
 	struct i2c_client *client = usb->tcpc_client;
 
 	if (!usb->chg_psy) {
@@ -188,12 +160,26 @@ static int usb_set_current_max_ma(struct usb_psy_data *usb,
 		}
 	}
 
+	return 1;
+}
+
+/* b/310025560 removed the function usb_get_current_max_ma. Add it back if needed. */
+
+static int usb_set_current_max_ma(struct usb_psy_data *usb,
+				  int current_max)
+{
+	union power_supply_propval val = {0};
+	int ret;
+
+	if (!usb_find_chg_psy(usb))
+		return 0;
+
 	val.intval = current_max;
 	ret = power_supply_set_property(usb->chg_psy,
 					POWER_SUPPLY_PROP_CURRENT_MAX,
 					&val);
 
-	logbuffer_log(usb->log, "set input max current %d to %s, ret=%d",
+	logbuffer_logk(usb->log, LOGLEVEL_INFO, "set input max current %d to %s, ret=%d",
 		      current_max, usb->chg_psy_name, ret);
 	return ret;
 }
@@ -379,7 +365,7 @@ static int usb_psy_data_get_prop(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = usb->sink_enabled ? usb_get_current_max_ma(usb) > ONLINE_THRESHOLD_UA
+		val->intval = usb->sink_enabled ? usb->current_max_cache > ONLINE_THRESHOLD_UA
 			? 1 : 0 : 0;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -393,8 +379,9 @@ static int usb_psy_data_get_prop(struct power_supply *psy,
 		 * Report the voted value to reflect TA capability when
 		 * expedite_connect_status isn't set.
 		 */
-		val->intval = usb->expedite_connect_status ? CDP_DCP_ICL_UA :
-			usb->current_max_cache;
+		val->intval = usb->expedite_connect_status ?
+				max(CDP_DCP_ICL_UA, usb->current_max_cache) :
+				usb->current_max_cache;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		/* Report in uv */
@@ -428,6 +415,7 @@ static int usb_psy_data_set_prop(struct power_supply *psy,
 	struct usb_psy_data *usb = power_supply_get_drvdata(psy);
 	struct usb_psy_ops *ops = usb->psy_ops;
 	struct i2c_client *client = usb->tcpc_client;
+	int ret;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
@@ -436,7 +424,14 @@ static int usb_psy_data_set_prop(struct power_supply *psy,
 		kthread_mod_delayed_work(usb->wq, &usb->icl_work, 0);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		/* Enough to trigger just the uevent */
+		if (!usb_find_chg_psy(usb))
+			break;
+
+		ret = power_supply_set_property(usb->chg_psy,
+						POWER_SUPPLY_PROP_VOLTAGE_MAX,
+						val);
+		logbuffer_logk(usb->log, LOGLEVEL_INFO, "set voltage max %d to %s, ret=%d",
+			      val->intval, usb->chg_psy_name, ret);
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 		logbuffer_log(usb->log, "POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT lim:%d type:%d",
@@ -496,6 +491,7 @@ void usb_psy_set_sink_state(void *usb_psy, bool enabled)
 	if (!usb || !usb->usb_psy)
 		return;
 
+	logbuffer_logk(usb->log, LOGLEVEL_INFO, "sink_enabled: %c", enabled ? 'Y' : 'N');
 	usb->sink_enabled = enabled;
 	power_supply_changed(usb->usb_psy);
 }

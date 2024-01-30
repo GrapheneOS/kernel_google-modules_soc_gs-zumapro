@@ -46,7 +46,7 @@ static ssize_t cp_temp_store(struct device *dev, struct device_attribute *attr, 
 		return -EINVAL;
 	}
 
-	if (index > temp_manager->num_sensors) {
+	if (index >= temp_manager->num_sensors) {
 		dev_err(dev, "Invalid CP temperature sensor index - %d", index);
 		return -EINVAL;
 	}
@@ -122,9 +122,8 @@ static int cp_thermal_zone_probe(struct platform_device *pdev)
 
 	for (i = 0; i < temp_manager->num_sensors; ++i) {
 		dev_info(dev, "Registering CP temp sensor %d", i);
-		tzd = devm_thermal_of_zone_register(dev, i,
-						    &temp_manager->sensor[i],
-						    &cp_thermal_zone_ops);
+		tzd = devm_thermal_of_zone_register(dev, i, &temp_manager->sensor[i],
+							   &cp_thermal_zone_ops);
 		if (IS_ERR(tzd)) {
 			dev_err(dev, "Error registering CP temperature sensor %d", i);
 			continue;

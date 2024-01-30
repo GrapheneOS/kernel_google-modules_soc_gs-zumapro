@@ -14,13 +14,13 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/panic_notifier.h>
+#include <linux/irqchip/arm-gic-v3.h>
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
 
 #include <soc/google/debug-snapshot.h>
 #include <soc/google/exynos-pmu-if.h>
 #include <soc/google/sjtag-driver.h>
-#include <soc/google/exynos-coresight.h>
 
 #include "core_regs.h"
 
@@ -44,6 +44,7 @@ struct exynos_coresight_info {
 	void __iomem **dbg_base;
 	void __iomem **cti_base;
 	void __iomem **pmu_base;
+	void __iomem **sgi_base;
 	bool halt_enabled;
 	void __iomem *gpr_base;
 	unsigned int dbgack_mask;
@@ -127,7 +128,8 @@ static int exynos_cs_get_pc(int cpu, int iter)
 	dbg_base = ecs_info->dbg_base[cpu];
 	pmu_base = ecs_info->pmu_base[cpu];
 	if (!is_power_up(cpu)) {
-		dev_err(ecs_info->dev, "Power down!\n");
+		dev_err(ecs_info->dev, "CPU%d is power down. (PRSR:0x%x)\n",
+			cpu, __raw_readl(dbg_base + DBGPRSR));
 		return -EACCES;
 	}
 
@@ -158,8 +160,16 @@ static int exynos_cs_get_pc(int cpu, int iter)
 	case ARM_CPU_PART_CORTEX_A75:
 	case ARM_CPU_PART_CORTEX_A76:
 	case ARM_CPU_PART_CORTEX_A77:
-	case ARM_CPU_PART_HERCULES:
-	case ARM_CPU_PART_HERA:
+	case ARM_CPU_PART_CORTEX_A78:
+	case ARM_CPU_PART_CORTEX_A510:
+	case ARM_CPU_PART_CORTEX_A710:
+	case ARM_CPU_PART_CORTEX_X1:
+	case ARM_CPU_PART_CORTEX_X2:
+	case ARM_CPU_PART_MAKALU:
+	case ARM_CPU_PART_MAKALU_ELP:
+	case ARM_CPU_PART_HAYDEN:
+	case ARM_CPU_PART_HUNTER:
+	case ARM_CPU_PART_HUNTER_ELP:
 		DBG_UNLOCK(dbg_base);
 		dbg_os_unlock(dbg_base);
 		DBG_UNLOCK(pmu_base);
@@ -202,6 +212,8 @@ static int exynos_cs_lockup_handler(struct notifier_block *nb,
 		return 0;
 	}
 
+	dev_err(ecs_info->dev, "CPU[%d] GICR_ISPENDR0: 0x%08x\n", *cpu,
+		__raw_readl(ecs_info->sgi_base[*cpu] + GICR_ISPENDR0));
 	dev_err(ecs_info->dev, "CPU[%d] saved pc value\n", *cpu);
 	for (iter = 0; iter < ITERATION; iter++) {
 #if IS_ENABLED(CONFIG_EXYNOS_PMU_IF)
@@ -261,6 +273,8 @@ static int exynos_cs_panic_handler(struct notifier_block *np,
 
 	local_irq_restore(flags);
 	for_each_possible_cpu(cpu) {
+		dev_err(ecs_info->dev, "CPU[%d] GICR_ISPENDR0: 0x%08x\n", cpu,
+			__raw_readl(ecs_info->sgi_base[cpu] + GICR_ISPENDR0));
 		dev_err(ecs_info->dev, "CPU[%d] saved pc value\n", cpu);
 		for (iter = 0; iter < ITERATION; iter++) {
 			val = exynos_cs_pc[cpu][iter].pc;
@@ -280,27 +294,55 @@ static struct notifier_block exynos_cs_panic_nb = {
 
 static int exynos_cs_halt_enable(unsigned int cpu)
 {
-	if (!ecs_info->halt_enabled || !ecs_info->gpr_base)
-		return 0;
-
-	__raw_writel(OSLOCK_MAGIC, ecs_info->cti_base[cpu] + DBGLAR);
-	__raw_writel(CTICH0, ecs_info->cti_base[cpu] + CTIGATE);
-	__raw_writel(CTICH0, ecs_info->cti_base[cpu] + CTIINEN(0));
-	__raw_writel(CTICH0, ecs_info->cti_base[cpu] + CTIOUTEN(0));
-	__raw_writel(0x1, ecs_info->cti_base[cpu]);
+	if (ecs_info->halt_enabled && ecs_info->gpr_base) {
+		__raw_writel(OSLOCK_MAGIC, ecs_info->cti_base[cpu] + DBGLAR);
+		__raw_writel(CTICH0, ecs_info->cti_base[cpu] + CTIGATE);
+		__raw_writel(CTICH0, ecs_info->cti_base[cpu] + CTIINEN(0));
+		__raw_writel(CTICH0, ecs_info->cti_base[cpu] + CTIOUTEN(0));
+		__raw_writel(0x1, ecs_info->cti_base[cpu]);
+	}
 
 	return 0;
 }
 
 static int exynos_cs_halt_disable(unsigned int cpu)
 {
-	if (!ecs_info->halt_enabled || !ecs_info->gpr_base)
-		return 0;
-
-	__raw_writel(0x0, ecs_info->cti_base[cpu]);
+	if (ecs_info->halt_enabled && ecs_info->gpr_base)
+		__raw_writel(0x0, ecs_info->cti_base[cpu]);
 
 	return 0;
 }
+
+static int exynos_cs_halt_suspend(struct device *dev)
+{
+	int cpu;
+
+	if (ecs_info->halt_enabled) {
+		for_each_possible_cpu(cpu) {
+			exynos_cs_halt_disable(cpu);
+		}
+	}
+
+	return 0;
+}
+
+static int exynos_cs_halt_resume(struct device *dev)
+{
+	int cpu;
+
+	if (ecs_info->halt_enabled) {
+		for_each_possible_cpu(cpu) {
+			exynos_cs_halt_enable(cpu);
+		}
+	}
+
+	return 0;
+}
+
+static const struct dev_pm_ops cs_pm_ops = {
+	.suspend = exynos_cs_halt_suspend,
+	.resume = exynos_cs_halt_resume,
+};
 
 int exynos_cs_stop_cpus(void)
 {
@@ -313,6 +355,7 @@ int exynos_cs_stop_cpus(void)
 
 	local_irq_disable();
 	cpu = raw_smp_processor_id();
+
 	dev_info(ecs_info->dev, "cpu%d calls HALT!\n", cpu);
 
 	/* gen sw dbgack for mask wdt reset */
@@ -328,7 +371,6 @@ int exynos_cs_stop_cpus(void)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(exynos_cs_stop_cpus);
 
 static int exynos_cs_suspend_cpu(unsigned int cpu)
 {
@@ -433,8 +475,8 @@ static int exynos_cs_c2_notifier(struct notifier_block *self,
 
 	switch (cmd) {
 	case CPU_PM_ENTER:
-		exynos_cs_suspend_cpu(cpu);
 		exynos_cs_halt_disable(cpu);
+		exynos_cs_suspend_cpu(cpu);
 		break;
 	case CPU_PM_ENTER_FAILED:
 	case CPU_PM_EXIT:
@@ -455,7 +497,6 @@ static int exynos_cs_c2_notifier(struct notifier_block *self,
 
 static struct notifier_block exynos_cs_c2_nb = {
 	.notifier_call = exynos_cs_c2_notifier,
-	.priority = CORESIGHT_CPUPM_PRIORITY,
 };
 
 static const struct of_device_id of_exynos_cs_matches[] __initconst= {
@@ -484,6 +525,11 @@ static int exynos_cs_parsing_dt(struct device *dev)
 	ecs_info->pmu_base = devm_kcalloc(dev, num_possible_cpus(),
 			sizeof(void *), GFP_KERNEL);
 	if (!ecs_info->pmu_base)
+		return -ENOMEM;
+
+	ecs_info->sgi_base = devm_kcalloc(dev, num_possible_cpus(),
+			sizeof(void *), GFP_KERNEL);
+	if (!ecs_info->sgi_base)
 		return -ENOMEM;
 
 	of_property_for_each_u32(np, "dbg_base", prop, cur, val) {
@@ -518,6 +564,19 @@ static int exynos_cs_parsing_dt(struct device *dev)
 			return -EINVAL;
 		ecs_info->pmu_base[i] = devm_ioremap(dev, val, SZ_4K);
 		if (!ecs_info->pmu_base[i]) {
+			dev_err(ecs_info->dev, "fail property %s(%d) ioremap\n",
+					prop->name, i);
+			return -ENOMEM;
+		}
+		i++;
+	}
+
+	i = 0;
+	of_property_for_each_u32(np, "sgi_base", prop, cur, val) {
+		if (i >= num_possible_cpus() || !val)
+			return -EINVAL;
+		ecs_info->sgi_base[i] = devm_ioremap(dev, val, SZ_64K);
+		if (!ecs_info->sgi_base[i]) {
 			dev_err(ecs_info->dev, "fail property %s(%d) ioremap\n",
 					prop->name, i);
 			return -ENOMEM;
@@ -618,11 +677,10 @@ static int exynos_coresight_probe(struct platform_device *pdev)
 					CPUHP_AP_ONLINE_DYN,
 					"exynoscoresighthalt:online",
 					exynos_cs_halt_enable,
-					NULL);
+					exynos_cs_halt_disable);
 			if (ret < 0)
 				goto err;
 		}
-
 		if (ecs_info->retention_enabled) {
 			ret = cpuhp_setup_state_nocalls_cpuslocked(
 					CPUHP_AP_ONLINE_DYN,
@@ -660,6 +718,7 @@ static struct platform_driver exynos_coresight_driver = {
 	.driver		= {
 		.name	= "exynos-coresight",
 		.of_match_table	= of_match_ptr(exynos_coresight_matches),
+		.pm = &cs_pm_ops,
 	},
 };
 module_platform_driver(exynos_coresight_driver);

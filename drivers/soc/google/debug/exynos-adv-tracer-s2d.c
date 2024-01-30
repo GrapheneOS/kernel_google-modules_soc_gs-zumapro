@@ -14,7 +14,6 @@
 #include <linux/debugfs.h>
 #include <linux/slab.h>
 #include <linux/keydebug.h>
-#include <linux/suspend.h>
 #include <soc/google/debug-snapshot.h>
 #include <soc/google/exynos-adv-tracer.h>
 #include <soc/google/exynos-pmu-if.h>
@@ -41,8 +40,8 @@ struct plugin_s2d_info {
 	int sel_scanmode;
 	int dbgsel_sw;
 	bool arraydump_done;
-	struct notifier_block pm_nb;
 	int blk_count;
+	bool *blk_en;
 	const char **blk_names;
 };
 
@@ -50,12 +49,12 @@ struct plugin_s2d_info {
 
 static struct plugin_s2d_info plugin_s2d;
 
-void adv_tracer_s2d_scandump(void)
+int adv_tracer_s2d_scandump(void)
 {
 	if (!plugin_s2d.burnin_ctrl || plugin_s2d.sel_scanmode < 0 ||
 			plugin_s2d.dbgsel_sw < 0) {
 		dev_err(plugin_s2d.dev, "pmu offset no data\n");
-		return;
+		return -1;
 	}
 	exynos_pmu_update(plugin_s2d.burnin_ctrl,
 			BIT(plugin_s2d.sel_scanmode),
@@ -63,11 +62,12 @@ void adv_tracer_s2d_scandump(void)
 	dev_info(plugin_s2d.dev, "enter scandump mode!\n");
 	exynos_pmu_update(plugin_s2d.burnin_ctrl,
 			BIT(plugin_s2d.dbgsel_sw), BIT(plugin_s2d.dbgsel_sw));
+	return 0;
 }
 
 int adv_tracer_s2d_arraydump(void)
 {
-	struct adv_tracer_ipc_cmd cmd = { 0 };
+	struct adv_tracer_ipc_cmd cmd;
 	int ret = 0;
 	u32 cpu_mask;
 
@@ -99,11 +99,12 @@ end:
 
 static int adv_tracer_s2d_get_enable(void)
 {
-	struct adv_tracer_ipc_cmd cmd = { 0 };
+	struct adv_tracer_ipc_cmd cmd;
 	int ret = 0;
 
 	cmd.cmd_raw.cmd = eS2D_IPC_CMD_GET_ENABLE;
-	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
+	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id,
+			(struct adv_tracer_ipc_cmd *)&cmd);
 	if (ret < 0) {
 		dev_err(plugin_s2d.dev, "ipc can't get enable\n");
 		return ret;
@@ -115,7 +116,7 @@ static int adv_tracer_s2d_get_enable(void)
 
 static int adv_tracer_s2d_set_enable(int en)
 {
-	struct adv_tracer_ipc_cmd cmd = { 0 };
+	struct adv_tracer_ipc_cmd cmd;
 	int ret = 0;
 
 	cmd.cmd_raw.cmd = eS2D_IPC_CMD_SET_ENABLE;
@@ -129,86 +130,15 @@ static int adv_tracer_s2d_set_enable(int en)
 	return 0;
 }
 
-static int adv_tracer_s2d_get_disable_gpr(void)
+bool adv_tracer_s2d_get_blk_by_idx(unsigned int index)
 {
-	struct adv_tracer_ipc_cmd cmd = { 0 };
-	int ret = 0;
+	if (index < plugin_s2d.blk_count)
+		return plugin_s2d.blk_en[index];
 
-	cmd.cmd_raw.cmd = eS2D_IPC_CMD_GET_DISABLE_GPR;
-	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
-	if (ret < 0) {
-		dev_err(plugin_s2d.dev, "ipc can't get enable\n");
-		return ret;
-	}
-	return cmd.buffer[1];
+	return false;
 }
 
-static int adv_tracer_s2d_set_disable_gpr(int disable)
-{
-	struct adv_tracer_ipc_cmd cmd = { 0 };
-	int ret = 0;
-
-	cmd.cmd_raw.cmd = eS2D_IPC_CMD_SET_DISABLE_GPR;
-	cmd.buffer[1] = disable;
-	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
-	if (ret < 0)
-		dev_err(plugin_s2d.dev, "ipc can't enable setting\n");
-	return 0;
-}
-
-static int s2d_pm_notifier(struct notifier_block *notifier,
-			   unsigned long pm_event, void *v)
-{
-	static int was_gpr_disabled;
-
-	switch (pm_event) {
-	case PM_SUSPEND_PREPARE:
-		was_gpr_disabled = adv_tracer_s2d_get_disable_gpr();
-		if (!was_gpr_disabled)
-			adv_tracer_s2d_set_disable_gpr(1);
-		break;
-	case PM_POST_SUSPEND:
-		if (!was_gpr_disabled)
-			adv_tracer_s2d_set_disable_gpr(0);
-		break;
-	}
-	return NOTIFY_OK;
-}
-
-static int adv_tracer_s2d_get_all_blk(unsigned long *p_blocks)
-{
-	struct adv_tracer_ipc_cmd cmd = { 0 };
-	int ret = 0;
-
-	cmd.cmd_raw.cmd = eS2D_IPC_CMD_GET_ALL_BLK;
-	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
-	if (ret < 0) {
-		dev_err(plugin_s2d.dev, "cannot get blk list\n");
-		return ret;
-	}
-
-	*p_blocks = (unsigned long)cmd.buffer[2] << 32 | cmd.buffer[1];
-
-	return 0;
-}
-
-int adv_tracer_s2d_get_blk_by_idx(unsigned int index)
-{
-	unsigned long blocks;
-	int ret;
-
-	if (index >= plugin_s2d.blk_count)
-		return -EINVAL;
-
-	ret = adv_tracer_s2d_get_all_blk(&blocks);
-
-	if (ret)
-		return ret;
-
-	return !!(blocks & BIT(index));
-}
-
-int adv_tracer_s2d_get_blk_by_name(const char *name)
+bool adv_tracer_s2d_get_blk_by_name(const char *name)
 {
 	unsigned int i;
 
@@ -217,17 +147,18 @@ int adv_tracer_s2d_get_blk_by_name(const char *name)
 			return adv_tracer_s2d_get_blk_by_idx(i);
 	}
 
-	return -EINVAL;
+	return false;
 }
 
 int adv_tracer_s2d_set_blk_by_idx(bool enabled, unsigned int index)
 {
-	struct adv_tracer_ipc_cmd cmd = { 0 };
+	struct adv_tracer_ipc_cmd cmd;
 	int ret = 0;
 
 	if (index >= plugin_s2d.blk_count)
 		return -EINVAL;
 
+	memset(&cmd, 0, sizeof(cmd));
 	cmd.cmd_raw.cmd = eS2D_IPC_CMD_SET_BLK;
 	cmd.buffer[1] = enabled;
 	cmd.buffer[2] = index;
@@ -239,12 +170,10 @@ int adv_tracer_s2d_set_blk_by_idx(bool enabled, unsigned int index)
 		return ret;
 	}
 
-	if (cmd.cmd_raw.ret_err) {
-		dev_err(plugin_s2d.dev, "%sabling %s blk rejected\n",
-			enabled ? "en" : "dis",
-			plugin_s2d.blk_names[index]);
-		return -EPERM;
-	}
+	if (cmd.cmd_raw.ret_err)
+		return -EINVAL;
+
+	plugin_s2d.blk_en[index] = enabled;
 
 	return 0;
 }
@@ -263,9 +192,11 @@ int adv_tracer_s2d_set_blk_by_name(bool enabled, const char *name)
 
 int adv_tracer_s2d_set_all_blk(bool en)
 {
-	struct adv_tracer_ipc_cmd cmd = { 0 };
+	struct adv_tracer_ipc_cmd cmd;
+	unsigned int i;
 	int ret = 0;
 
+	memset(&cmd, 0, sizeof(cmd));
 	cmd.cmd_raw.cmd = eS2D_IPC_CMD_SET_ALL_BLK;
 	cmd.buffer[1] = en;
 	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
@@ -274,7 +205,68 @@ int adv_tracer_s2d_set_all_blk(bool en)
 		return ret;
 	}
 
+	if (cmd.cmd_raw.ret_err)
+		return -EINVAL;
+
+	for (i = 0; i < plugin_s2d.blk_count; i++)
+		plugin_s2d.blk_en[i] = en;
+
 	return 0;
+}
+
+int adv_tracer_s2d_get_all_blk(void)
+{
+	struct adv_tracer_ipc_cmd cmd;
+	int ret = 0;
+	unsigned long i, bits;
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.cmd_raw.cmd = eS2D_IPC_CMD_GET_ALL_BLK;
+	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
+	if (ret < 0) {
+		dev_err(plugin_s2d.dev, "cannot get blk list\n");
+		return ret;
+	}
+
+	bits = (unsigned long)cmd.buffer[1] |
+		(unsigned long)cmd.buffer[2] << 32;
+	for_each_set_bit(i, &bits, plugin_s2d.blk_count)
+		plugin_s2d.blk_en[i] = true;
+	for_each_clear_bit(i, &bits, plugin_s2d.blk_count)
+		plugin_s2d.blk_en[i] = false;
+
+	return 0;
+}
+
+static int adv_tracer_s2d_set_disable_gpr(int en)
+{
+	struct adv_tracer_ipc_cmd cmd = { 0 };
+	int ret = 0;
+
+	cmd.cmd_raw.cmd = eS2D_IPC_CMD_SET_DISABLE_GPR;
+	cmd.buffer[1] = en;
+	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
+	if (ret < 0) {
+		dev_err(plugin_s2d.dev, "ipc can't set disable_gpr (rc = %d)\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int adv_tracer_s2d_get_disable_gpr(void)
+{
+	struct adv_tracer_ipc_cmd cmd = { 0 };
+	int ret = 0;
+
+	cmd.cmd_raw.cmd = eS2D_IPC_CMD_GET_DISABLE_GPR;
+	ret = adv_tracer_ipc_send_data(plugin_s2d.s2d_dev->id, &cmd);
+	if (ret < 0) {
+		dev_err(plugin_s2d.dev, "ipc can't get disable_gpr (rc = %d)\n", ret);
+		return ret;
+	}
+
+	return cmd.buffer[1];
 }
 
 static void adv_tracer_s2d_handler(struct adv_tracer_ipc_cmd *cmd,
@@ -405,17 +397,10 @@ static ssize_t print_all_block_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
 	unsigned int i, sz = 0;
-	unsigned long blocks;
-	int ret;
-
-	ret = adv_tracer_s2d_get_all_blk(&blocks);
-
-	if (ret)
-		return ret;
 
 	for (i = 0; i < plugin_s2d.blk_count; i++) {
 		sz += scnprintf(buf + sz, PAGE_SIZE - sz, "[%02u : %3s] %s\n",
-				i, blocks & BIT(i) ? "on" : "off",
+				i, plugin_s2d.blk_en[i] ? "on" : "off",
 				plugin_s2d.blk_names[i]);
 	}
 
@@ -426,6 +411,38 @@ static ssize_t print_all_block_show(struct device *dev,
 
 static DEVICE_ATTR_RO(print_all_block);
 
+static ssize_t disable_gpr_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t size)
+{
+	unsigned int val;
+	int ret;
+
+	ret = kstrtouint(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	ret = adv_tracer_s2d_set_disable_gpr(!!val);
+	if (ret)
+		return ret;
+
+	return size;
+}
+
+static ssize_t disable_gpr_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	int ret;
+
+	ret = adv_tracer_s2d_get_disable_gpr();
+	if (ret < 0)
+		return ret;
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", ret ? "Disabled" : "Not disabled");
+}
+
+static DEVICE_ATTR_RW(disable_gpr);
+
 static struct attribute *adv_tracer_s2d_sysfs_attrs[] = {
 	&dev_attr_s2d_enable.attr,
 	&dev_attr_enable_block_by_name.attr,
@@ -434,42 +451,10 @@ static struct attribute *adv_tracer_s2d_sysfs_attrs[] = {
 	&dev_attr_disable_block_by_index.attr,
 	&dev_attr_switch_all_block.attr,
 	&dev_attr_print_all_block.attr,
+	&dev_attr_disable_gpr.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(adv_tracer_s2d_sysfs);
-
-static void devm_unregister_pm_notifier(struct device *dev, void *res)
-{
-	int ret;
-	struct notifier_block **nb_res = res;
-
-	dev_dbg(dev, "unregister notifier %ps\n", *nb_res);
-	ret = unregister_pm_notifier(*nb_res);
-	if (ret)
-		dev_err(dev, "unregister notifier failed: %d\n", ret);
-}
-
-static int devm_register_pm_notifier(struct device *dev, struct notifier_block *nb)
-{
-	int ret;
-	struct notifier_block **nb_res;
-
-	nb_res = devres_alloc(devm_unregister_pm_notifier, sizeof(*nb_res), GFP_KERNEL);
-	if (!nb_res)
-		return -ENOMEM;
-
-	ret = register_pm_notifier(nb);
-	if (ret) {
-		dev_err(dev, "failed to register notifier: %d\n", ret);
-		devres_free(nb_res);
-		return ret;
-	}
-
-	dev_dbg(dev, "registered notifier %ps\n", nb);
-	*nb_res = nb;
-	devres_add(dev, nb_res);
-	return 0;
-}
 
 static int adv_tracer_s2d_dt_init(struct platform_device *pdev)
 {
@@ -499,6 +484,17 @@ static int adv_tracer_s2d_dt_init(struct platform_device *pdev)
 	of_property_read_string_array(node, "blk-list",
 			plugin_s2d.blk_names, plugin_s2d.blk_count);
 
+	plugin_s2d.blk_en = devm_kcalloc(&pdev->dev, plugin_s2d.blk_count,
+			sizeof(bool), GFP_KERNEL);
+	if (!plugin_s2d.blk_en) {
+		devm_kfree(&pdev->dev, plugin_s2d.blk_names);
+		plugin_s2d.blk_names = NULL;
+		dev_err(&pdev->dev, "cannot allocate mem for blk enable\n");
+		return -ENOMEM;
+	}
+
+	adv_tracer_s2d_get_all_blk();
+
 	return 0;
 }
 
@@ -507,11 +503,6 @@ static int adv_tracer_s2d_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	struct adv_tracer_plugin *s2d = NULL;
 	int ret;
-
-	plugin_s2d.pm_nb.notifier_call = s2d_pm_notifier;
-	ret = devm_register_pm_notifier(&pdev->dev, &plugin_s2d.pm_nb);
-	if (ret < 0)
-		return ret;
 
 	s2d = devm_kzalloc(&pdev->dev, sizeof(struct adv_tracer_plugin),
 			GFP_KERNEL);
@@ -547,8 +538,8 @@ static int adv_tracer_s2d_probe(struct platform_device *pdev)
 	}
 
 	dbg_snapshot_register_debug_ops(NULL,
-			(void *)adv_tracer_s2d_arraydump,
-			(void *)adv_tracer_s2d_scandump);
+					adv_tracer_s2d_arraydump,
+					adv_tracer_s2d_scandump);
 
 	keydebug_register_s2d_ops(adv_tracer_s2d_get_enable, adv_tracer_s2d_set_enable);
 

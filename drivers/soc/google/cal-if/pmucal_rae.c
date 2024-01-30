@@ -3,6 +3,15 @@
 #include "pmucal_rae.h"
 
 #define A_FEW_USECS 10		/* see Documentation/timers/timers-howto.rst */
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+#define PMU_ALIVE_BASE_ADDR	0x15460000
+#endif
+#if IS_ENABLED(CONFIG_SOC_GS101)
+#define PMU_ALIVE_BASE_ADDR	0x17460000
+#endif
+#if IS_ENABLED(CONFIG_SOC_GS201)
+#define PMU_ALIVE_BASE_ADDR	0x18060000
+#endif
 
 /**
  * A global index for pmucal_rae_handle_seq.
@@ -139,9 +148,7 @@ static inline void pmucal_rae_read(struct pmucal_seq *seq)
 
 static void pmucal_write_reg(phys_addr_t base_pa, void __iomem *base_va, u32 offset, u32 val)
 {
-	/* TODO: we should get the base address prefix from device tree instead
-	   of hardcoding here. */
-	if (((base_pa >> 16) == 0x1746) || ((base_pa >> 16) == 0x1806))
+	if ((base_pa >> 16) == (PMU_ALIVE_BASE_ADDR >> 16))
 		set_priv_reg(base_pa + offset, val);
 	else
 		writel(val, base_va + offset);
@@ -201,7 +208,7 @@ static int pmucal_rae_write_retry(struct pmucal_seq *seq, bool inversion, unsign
 
 		timeout++;
 		udelay(1);
-		if (timeout > 1000) {
+		if (timeout > 2000) {
 			u32 reg;
 
 			reg = readl(seq->cond_base_va + seq->cond_offset);

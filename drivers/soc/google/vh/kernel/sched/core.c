@@ -10,8 +10,6 @@
 #include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 
-#include "drivers/android/binder_internal.h"
-#include "sched_events.h"
 #include "sched_priv.h"
 #include "sched_events.h"
 
@@ -21,6 +19,8 @@ struct vendor_group_list vendor_group_list[VG_MAX];
 extern void update_uclamp_stats(int cpu, u64 time);
 #endif
 
+extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
+		cpumask_t *valid_mask);
 /*
  * Ignore uclamp_min for CFS tasks if
  *
@@ -57,9 +57,6 @@ DEFINE_STATIC_KEY_FALSE(uclamp_max_filter_enable);
 
 DEFINE_STATIC_KEY_FALSE(tapered_dvfs_headroom_enable);
 
-extern int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
-		cpumask_t *valid_mask);
-
 /*****************************************************************************/
 /*                       New Code Section                                    */
 /*****************************************************************************/
@@ -79,7 +76,7 @@ static inline void task_tick_uclamp(struct rq *rq, struct task_struct *curr)
 {
 	bool can_ignore;
 	bool is_ignored;
-	bool reset_idle_flag = false;
+	bool reset_filters = false;
 
 	if (!uclamp_is_used())
 		return;
@@ -91,23 +88,25 @@ static inline void task_tick_uclamp(struct rq *rq, struct task_struct *curr)
 	can_ignore = uclamp_can_ignore_uclamp_max(rq, curr);
 	is_ignored = uclamp_is_ignore_uclamp_max(curr);
 
-	if (is_ignored && !can_ignore) {
-		uclamp_reset_ignore_uclamp_max(curr);
-		uclamp_rq_inc_id(rq, curr, UCLAMP_MAX);
-		reset_idle_flag = true;
-	}
+	if (is_ignored && !can_ignore)
+		reset_filters = true;
 
 	can_ignore = uclamp_can_ignore_uclamp_min(rq, curr);
 	is_ignored = uclamp_is_ignore_uclamp_min(curr);
 
-	if (is_ignored && !can_ignore) {
+	if (is_ignored && !can_ignore)
+		reset_filters = true;
+
+	if (reset_filters) {
 		uclamp_reset_ignore_uclamp_min(curr);
+		uclamp_reset_ignore_uclamp_max(curr);
+
 		uclamp_rq_inc_id(rq, curr, UCLAMP_MIN);
-		reset_idle_flag = true;
+		uclamp_rq_inc_id(rq, curr, UCLAMP_MAX);
 	}
 
 	/* Reset clamp idle holding when there is one RUNNABLE task */
-	if (reset_idle_flag && rq->uclamp_flags & UCLAMP_FLAG_IDLE)
+	if (reset_filters && rq->uclamp_flags & UCLAMP_FLAG_IDLE)
 		rq->uclamp_flags &= ~UCLAMP_FLAG_IDLE;
 }
 #else
@@ -178,6 +177,30 @@ void rvh_dequeue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p
 		uclamp_reset_ignore_uclamp_max(p);
 		uclamp_reset_ignore_uclamp_min(p);
 	}
+}
+
+void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
+	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu)
+{
+	cpumask_t valid_mask;
+	int best_energy_cpu = -1;
+
+	cpumask_and(&valid_mask, cpu_valid_mask, new_mask);
+
+	/* find a cpu again for the running/runnable/waking tasks
+	 * if their current cpu are not allowed
+	 */
+	if ((p->on_cpu || p->__state == TASK_WAKING || task_on_rq_queued(p)) &&
+		!cpumask_test_cpu(task_cpu(p), new_mask)) {
+		best_energy_cpu = find_energy_efficient_cpu(p, task_cpu(p), &valid_mask);
+
+		if (best_energy_cpu != -1)
+			*dest_cpu = best_energy_cpu;
+	}
+
+	trace_set_cpus_allowed_by_task(p, &valid_mask, *dest_cpu);
+
+	return;
 }
 
 void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
@@ -262,30 +285,6 @@ void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
 
 	vp->uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 	vp->uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
-}
-
-void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_mask,
-	const struct cpumask *new_mask, struct task_struct *p, unsigned int *dest_cpu)
-{
-	cpumask_t valid_mask;
-	int best_energy_cpu = -1;
-
-	cpumask_and(&valid_mask, cpu_valid_mask, new_mask);
-
-	/* find a cpu again for the running/runnable/waking tasks
-	 * if their current cpu are not allowed
-	 */
-	if ((p->on_cpu || p->__state == TASK_WAKING || task_on_rq_queued(p)) &&
-		!cpumask_test_cpu(task_cpu(p), new_mask)) {
-		best_energy_cpu = find_energy_efficient_cpu(p, task_cpu(p), &valid_mask);
-
-		if (best_energy_cpu != -1)
-			*dest_cpu = best_energy_cpu;
-	}
-
-	trace_set_cpus_allowed_by_task(p, &valid_mask, *dest_cpu);
-
-	return;
 }
 
 void set_cluster_enabled_cb(int cluster, int enabled)

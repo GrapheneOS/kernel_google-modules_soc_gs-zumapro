@@ -34,9 +34,11 @@
 #include <linux/inet.h>
 #include <net/ipv6.h>
 
+#include <linux/s5910.h>
+
 #if IS_ENABLED(CONFIG_LINK_DEVICE_SHMEM)
-#include <soc/google/shm_ipc.h>
-#include <soc/google/mcu_ipc.h>
+#include <linux/shm_ipc.h>
+#include "mcu_ipc.h"
 #endif
 
 #include <soc/google/exynos-modem-ctrl.h>
@@ -109,6 +111,10 @@ static struct modem_ctl *create_modemctl_device(struct platform_device *pdev,
 	modemctl->dev = dev;
 	modemctl->name = pdata->name;
 	modemctl->mdm_data = pdata;
+	if (!strncmp(modemctl->name, "s5400", 5))
+		modemctl->variant = MODEM_SEC_5400;
+	else
+		modemctl->variant = MODEM_SEC_5300;
 
 	modemctl->msd = msd;
 
@@ -311,6 +317,9 @@ static int parse_dt_common_pdata(struct device_node *np,
 
 	mif_dt_read_u32_noerr(np, "mif,cp2ap_active_not_alive", pdata->cp2ap_active_not_alive);
 	mif_info("cp2ap_active_not_alive:%d\n", pdata->cp2ap_active_not_alive);
+
+	mif_dt_read_u32_noerr(np, "mif_off_during_volte", pdata->mif_off_during_volte);
+	mif_info("mif_off_during_volte:%d\n", pdata->mif_off_during_volte);
 
 	return 0;
 }
@@ -682,7 +691,7 @@ static enum mif_sim_mode get_sim_mode(struct device_node *of_node)
 static ssize_t do_cp_crash_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count)
 {
-	modem_force_crash_exit_ext();
+	modem_force_crash_exit_ext(buf);
 
 	return count;
 }
@@ -781,6 +790,26 @@ static int cpif_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(modemctl->log)) {
 		mif_err("Failed to register logbuffer!\n");
 		modemctl->log = NULL;
+	}
+
+	/* get the s5910 node pointer */
+	modemctl->s5910_dev = NULL;
+	if (dev->of_node) {
+		struct device_node *np;
+		struct device *dp;
+		struct device_link *link;
+
+		np = of_parse_phandle(dev->of_node, "google,clk-buffer", 0);
+		if (np) {
+			dp = s5910_get_device(np);
+			if (dp) {
+				modemctl->s5910_dev = dp;
+				link = device_link_add(dev, dp, 0);
+				if (link)
+					mif_info("%s s5910 linked\n",
+							pdata->name);
+			}
+		}
 	}
 
 	if (toe_dev_create(pdev)) {

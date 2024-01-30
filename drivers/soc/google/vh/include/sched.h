@@ -69,11 +69,13 @@ struct vendor_task_struct {
 	int auto_uclamp_max_flags;	// Relative to cpu instead of absolute
 	struct uclamp_filter uclamp_filter;
 	int orig_prio;
+	unsigned long iowait_boost;
 
 	/* parameters for binder inheritance */
 	struct vendor_binder_task_struct binder_task;
 	/* parameters for RT inheritance */
 	unsigned int uclamp_pi[UCLAMP_CNT];
+	u64 runnable_start_ns;
 };
 
 ANDROID_VENDOR_CHECK_SIZE_ALIGN(u64 android_vendor_data1[64], struct vendor_task_struct t);
@@ -91,7 +93,7 @@ static inline struct vendor_binder_task_struct *get_vendor_binder_task_struct(st
 
 static inline int get_vendor_group(struct task_struct *p)
 {
-	return get_vendor_task_struct(p)->group;
+       return get_vendor_task_struct(p)->group;
 }
 
 static inline void set_vendor_group(struct task_struct *p,  enum vendor_group group)

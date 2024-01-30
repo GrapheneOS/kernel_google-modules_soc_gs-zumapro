@@ -22,6 +22,7 @@
 #include <linux/poll.h>
 #include <linux/vmalloc.h>
 #include <linux/iommu.h>
+#include <linux/pm_runtime.h>
 
 #include "mfc_common.h"
 
@@ -53,6 +54,7 @@
 #include "mfc_utils.h"
 #include "mfc_buf.h"
 #include "mfc_mem.h"
+#include "mfc_rm.h"
 
 #define MFC_CORE_NAME			"mfc-core"
 
@@ -127,7 +129,7 @@ static int __mfc_core_parse_mfc_qos_platdata(struct device_node *np,
 int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 {
 	struct mfc_core *core = (struct mfc_core *)param;
-	unsigned int trans_info;
+	unsigned int trans_info, fault_status;
 	int ret;
 
 	if (core->core_pdata->trans_info_offset)
@@ -135,13 +137,27 @@ int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 	else
 		trans_info = MFC_MMU_FAULT_TRANS_INFO;
 
+	if (core->core_pdata->fault_status_offset)
+		fault_status = core->core_pdata->fault_status_offset;
+	else
+		fault_status = MFC_MMU_INTERRUPT_STATUS;
+
 	/* [OTF] If AxID is 1 in SYSMMU1 fault info, it is TS-MUX fault */
-	if (core->has_hwfc && core->has_2sysmmu) {
-		if (MFC_MMU1_READL(MFC_MMU_INTERRUPT_STATUS) &&
-				((MFC_MMU1_READL(trans_info) &
+	if (core->has_hwfc) {
+		if (core->has_2sysmmu) {
+			if (MFC_MMU1_READL(fault_status) && ((MFC_MMU1_READL(trans_info) &
 				  MFC_MMU_FAULT_TRANS_INFO_AXID_MASK) == 1)) {
-			mfc_core_err("There is TS-MUX page fault. skip SFR dump\n");
-			return 0;
+				mfc_core_err("There is TS-MUX page fault. skip SFR dump\n");
+				return 0;
+			}
+		/* PMMU ID is 1 means that sysmmu1 in sysmmu v9 */
+		} else if (core->core_pdata->fault_pmmuid_offset &&
+				(((MFC_MMU0_READL(core->core_pdata->fault_pmmuid_offset) >>
+				   core->core_pdata->fault_pmmuid_shift) & 0xFF) == 1)) {
+			if ((MFC_MMU0_READL(trans_info) & MFC_MMU_FAULT_TRANS_INFO_AXID_MASK) == 1) {
+				mfc_core_err("There is TS-MUX page fault. skip SFR dump\n");
+				return 0;
+			}
 		}
 	}
 
@@ -154,30 +170,30 @@ int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 		}
 	}
 
-	if (MFC_MMU0_READL(MFC_MMU_INTERRUPT_STATUS)) {
-		if (MFC_MMU0_READL(trans_info) & MFC_MMU_FAULT_TRANS_INFO_RW_MASK)
-			core->logging_data->cause |= (1 << MFC_CAUSE_0WRITE_PAGE_FAULT);
-		else
-			core->logging_data->cause |= (1 << MFC_CAUSE_0READ_PAGE_FAULT);
-		core->logging_data->fault_status = MFC_MMU0_READL(MFC_MMU_INTERRUPT_STATUS);
+	if (MFC_MMU0_READL(fault_status)) {
+		/*
+		 * Since it has become complicated to distinguish
+		 * read or write of page fault in IP driver,
+		 * the cause of page fault in logging data is unified into the page fault.
+		 */
+		core->logging_data->cause |= (1 << MFC_CAUSE_0PAGE_FAULT);
+		core->logging_data->fault_status = MFC_MMU0_READL(fault_status);
 		core->logging_data->fault_trans_info = MFC_MMU0_READL(trans_info);
 	}
 
 	if (core->has_2sysmmu) {
-		if (MFC_MMU1_READL(MFC_MMU_INTERRUPT_STATUS)) {
-			if (MFC_MMU1_READL(trans_info) & MFC_MMU_FAULT_TRANS_INFO_RW_MASK)
-				core->logging_data->cause |= (1 << MFC_CAUSE_1WRITE_PAGE_FAULT);
-			else
-				core->logging_data->cause |= (1 << MFC_CAUSE_1READ_PAGE_FAULT);
-			core->logging_data->fault_status = MFC_MMU1_READL(MFC_MMU_INTERRUPT_STATUS);
+		if (MFC_MMU1_READL(fault_status)) {
+			core->logging_data->cause |= (1 << MFC_CAUSE_1PAGE_FAULT);
+			core->logging_data->fault_status = MFC_MMU1_READL(fault_status);
 			core->logging_data->fault_trans_info = MFC_MMU1_READL(trans_info);
 		}
 	}
 	core->logging_data->fault_addr = (unsigned int)(fault->event.addr);
 
 	snprintf(core->crash_info, MFC_CRASH_INFO_LEN,
-		"MFC-%d SysMMU PAGE FAULT at %#010llx (AxID: %#x)\n",
-		core->id, fault->event.addr, core->logging_data->fault_trans_info);
+		"MFC-%d SysMMU PAGE FAULT at %#010llx (AxID: %#x), fault_status: %#x\n",
+		core->id, fault->event.addr,
+		core->logging_data->fault_trans_info, core->logging_data->fault_status);
 	mfc_core_err("%s", core->crash_info);
 	MFC_TRACE_CORE("%s", core->crash_info);
 
@@ -217,6 +233,9 @@ static int __mfc_core_parse_dt(struct device_node *np, struct mfc_core *core)
 	of_property_read_u32(np, "axid_mask", &pdata->axid_mask);
 	of_property_read_u32(np, "mfc_fault_num", &pdata->mfc_fault_num);
 	of_property_read_u32(np, "trans_info_offset", &pdata->trans_info_offset);
+	of_property_read_u32(np, "fault_status_offset", &pdata->fault_status_offset);
+	of_property_read_u32(np, "fault_pmmuid_offset", &pdata->fault_pmmuid_offset);
+	of_property_read_u32(np, "fault_pmmuid_shift", &pdata->fault_pmmuid_shift);
 
 	/* LLC(Last Level Cache) */
 	of_property_read_u32(np, "llc", &core->has_llc);
@@ -320,7 +339,7 @@ static int __mfc_core_register_resource(struct platform_device *pdev,
 		dev_err(&pdev->dev, "failed to get memory region\n");
 		return -ENOENT;
 	}
-	core->regs_base = ioremap(core->mfc_mem->start, resource_size(core->mfc_mem));
+	core->regs_base = ioremap_np(core->mfc_mem->start, resource_size(core->mfc_mem));
 	if (core->regs_base == NULL) {
 		dev_err(&pdev->dev, "failed to ioremap address region\n");
 		goto err_ioremap;
@@ -839,18 +858,20 @@ static int mfc_core_remove(struct platform_device *pdev)
 static void mfc_core_shutdown(struct platform_device *pdev)
 {
 	struct mfc_core *core = platform_get_drvdata(pdev);
+	struct mfc_dev *dev = core->dev;
 	int ret;
 
-	mfc_core_info("MFC core shutdown is called\n");
-
+	mfc_core_info("%s core shutdown is called\n", core->name);
 	if (core->shutdown) {
-		mfc_core_info("MFC core shutdown is already set\n");
+		mfc_core_info("%s core shutdown was already performed\n", core->name);
 		return;
 	}
 
+	mutex_lock(&dev->mfc_mutex);
 	if (!mfc_core_pm_get_pwr_ref_cnt(core)) {
 		core->shutdown = 1;
 		mfc_core_info("MFC is not running\n");
+		mutex_unlock(&dev->mfc_mutex);
 		return;
 	}
 
@@ -858,14 +879,14 @@ static void mfc_core_shutdown(struct platform_device *pdev)
 	if (ret < 0)
 		mfc_core_err("Failed to get hwlock\n");
 
-	if (!core->shutdown) {
-		mfc_core_risc_off(core);
-		core->shutdown = 1;
-		mfc_clear_all_bits(&core->work_bits);
-	}
-
+	mfc_core_risc_off(core);
+	mfc_clear_all_bits(&core->work_bits);
 	mfc_core_release_hwlock_dev(core);
-	mfc_core_info("core shutdown completed\n");
+
+	core->shutdown = 1;
+	mutex_unlock(&dev->mfc_mutex);
+
+	mfc_core_info("%s core shutdown completed\n", core->name);
 }
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)
@@ -873,6 +894,9 @@ static int mfc_core_suspend(struct device *device)
 {
 	struct mfc_core *core = platform_get_drvdata(to_platform_device(device));
 	int ret;
+
+	if (pm_runtime_status_suspended(device))
+		return 0;
 
 	if (!core) {
 		dev_err(device, "no mfc device to run\n");
@@ -882,7 +906,12 @@ static int mfc_core_suspend(struct device *device)
 	if (core->num_inst == 0)
 		return 0;
 
-	mfc_core_info("MFC core suspend is called\n");
+	if (core->sleep == 1) {
+		mfc_core_info("MFC core is slept\n");
+		return 0;
+	}
+
+	mfc_core_debug(2, "MFC core suspend is called\n");
 
 	ret = mfc_core_get_hwlock_dev(core);
 	if (ret < 0) {
@@ -893,6 +922,17 @@ static int mfc_core_suspend(struct device *device)
 				core->hwlock.wl_count,
 				core->hwlock.transfer_owner);
 		return -EBUSY;
+	}
+
+	/*
+	 * Prevent a timing issue that can occur when the power manager (PM)
+	 * and the idle worker both call the mfc_core_suspend function at the
+	 * same time.
+	 */
+	if (core->sleep == 1) {
+		mfc_core_info("MFC core is slept\n");
+		mfc_core_release_hwlock_dev(core);
+		return 0;
 	}
 
 	if (!mfc_core_pm_get_pwr_ref_cnt(core)) {
@@ -917,7 +957,7 @@ static int mfc_core_suspend(struct device *device)
 
 	mfc_core_release_hwlock_dev(core);
 
-	mfc_core_info("MFC suspend is completed\n");
+	mfc_core_debug(2, "MFC suspend is completed\n");
 
 	return 0;
 }
@@ -929,6 +969,9 @@ static int mfc_core_resume(struct device *device)
 	struct mfc_dev *dev;
 	int ret;
 
+	if (pm_runtime_status_suspended(device))
+		return 0;
+
 	if (!core) {
 		dev_err(device, "no mfc core to run\n");
 		return -EINVAL;
@@ -938,7 +981,24 @@ static int mfc_core_resume(struct device *device)
 	if (core->num_inst == 0)
 		return 0;
 
-	mfc_core_info("MFC core resume is called\n");
+	if ((core->idle_mode == MFC_IDLE_MODE_IDLE) && idle_suspend_enable) {
+		core_ctx = core->core_ctx[core->curr_core_ctx];
+		if (core_ctx) {
+			/* Trigger idle resume instead of core resume */
+			mfc_rm_qos_control(core_ctx->ctx, MFC_QOS_TRIGGER);
+			return 0;
+		} else {
+			dev_err(device, "no mfc context to run\n");
+			return -EINVAL;
+		}
+	}
+
+	if (core->sleep == 0) {
+		mfc_core_info("MFC core is not slept\n");
+		return 0;
+	}
+
+	mfc_core_debug(2, "MFC core resume is called\n");
 
 	ret = mfc_core_get_hwlock_dev(core);
 	if (ret < 0) {
@@ -969,7 +1029,7 @@ static int mfc_core_resume(struct device *device)
 
 	mfc_core_release_hwlock_dev(core);
 
-	mfc_core_info("MFC resume is completed\n");
+	mfc_core_debug(2, "MFC resume is completed\n");
 
 	return 0;
 }

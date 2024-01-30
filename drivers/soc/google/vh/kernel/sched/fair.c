@@ -38,13 +38,11 @@ static struct vendor_cfs_util vendor_cfs_util[UG_MAX][CONFIG_VH_SCHED_MAX_CPU_NR
 extern int vendor_sched_ug_bg_auto_prio;
 extern unsigned int vendor_sched_util_post_init_scale;
 extern bool vendor_sched_npi_packing;
-extern bool vendor_sched_idle_balancer;
 extern bool vendor_sched_boost_adpf_prio;
-
 extern unsigned int sysctl_sched_min_granularity;
 extern unsigned int sysctl_sched_idle_min_granularity;
 
-static unsigned int early_boot_boost_uclamp_min = 650;
+static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
 
 unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR] =
@@ -55,11 +53,11 @@ unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
 unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = 1024 };
 
+unsigned int __read_mostly sched_per_task_iowait_boost_max_value = SCHED_CAPACITY_SCALE;
+
 struct vendor_group_property vg[VG_MAX];
 
 extern struct vendor_group_list vendor_group_list[VG_MAX];
-
-extern inline unsigned int uclamp_none(enum uclamp_id clamp_id);
 
 bool wait_for_init = true;
 
@@ -300,6 +298,196 @@ static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
 	return css ? container_of(css, struct task_group, css) : NULL;
 }
 
+static inline unsigned int
+uclamp_idle_value(struct rq *rq, enum uclamp_id clamp_id,
+		  unsigned int clamp_value)
+{
+	/*
+	 * Avoid blocked utilization pushing up the frequency when we go
+	 * idle (which drops the max-clamp) by retaining the last known
+	 * max-clamp.
+	 */
+	if (clamp_id == UCLAMP_MAX) {
+		rq->uclamp_flags |= UCLAMP_FLAG_IDLE;
+		return clamp_value;
+	}
+
+	return uclamp_none(UCLAMP_MIN);
+}
+
+static inline void uclamp_idle_reset(struct rq *rq, enum uclamp_id clamp_id,
+				     unsigned int clamp_value)
+{
+	/* Reset max-clamp retention only on idle exit */
+	if (!(rq->uclamp_flags & UCLAMP_FLAG_IDLE))
+		return;
+
+	WRITE_ONCE(rq->uclamp[clamp_id].value, clamp_value);
+}
+
+/*
+ * The effective clamp bucket index of a task depends on, by increasing
+ * priority:
+ * - the task specific clamp value, when explicitly requested from userspace
+ * - the task group effective clamp value, for tasks not either in the root
+ *   group or in an autogroup
+ * - the system default clamp value, defined by the sysadmin
+ */
+static inline struct uclamp_se
+uclamp_eff_get(struct task_struct *p, enum uclamp_id clamp_id)
+{
+	struct uclamp_se uc_max = uclamp_default[clamp_id];
+	struct uclamp_se uc_eff;
+	int ret;
+
+	// This function will always return uc_eff
+	rvh_uclamp_eff_get_pixel_mod(NULL, p, clamp_id, &uc_max, &uc_eff, &ret);
+
+	return uc_eff;
+}
+
+static inline
+unsigned int uclamp_rq_max_value(struct rq *rq, enum uclamp_id clamp_id,
+				   unsigned int clamp_value)
+{
+	struct uclamp_bucket *bucket = rq->uclamp[clamp_id].bucket;
+	int bucket_id = UCLAMP_BUCKETS - 1;
+
+	/*
+	 * Since both min and max clamps are max aggregated, find the
+	 * top most bucket with tasks in.
+	 */
+	for ( ; bucket_id >= 0; bucket_id--) {
+		if (!bucket[bucket_id].tasks)
+			continue;
+		return bucket[bucket_id].value;
+	}
+
+	/* No tasks -- default clamp values */
+	return uclamp_idle_value(rq, clamp_id, clamp_value);
+}
+
+
+/*
+ * When a task is enqueued on a rq, the clamp bucket currently defined by the
+ * task's uclamp::bucket_id is refcounted on that rq. This also immediately
+ * updates the rq's clamp value if required.
+ *
+ * Tasks can have a task-specific value requested from user-space, track
+ * within each bucket the maximum value for tasks refcounted in it.
+ * This "local max aggregation" allows to track the exact "requested" value
+ * for each bucket when all its RUNNABLE tasks require the same clamp.
+ */
+inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
+			     enum uclamp_id clamp_id)
+{
+	struct uclamp_rq *uc_rq = &rq->uclamp[clamp_id];
+	struct uclamp_se *uc_se = &p->uclamp[clamp_id];
+	struct uclamp_bucket *bucket;
+
+	lockdep_assert_rq_held(rq);
+
+	if(SCHED_WARN_ON(!uclamp_is_used()))
+		return;
+
+	/* Update task effective clamp */
+	p->uclamp[clamp_id] = uclamp_eff_get(p, clamp_id);
+
+	bucket = &uc_rq->bucket[uc_se->bucket_id];
+	bucket->tasks++;
+	uc_se->active = true;
+
+	uclamp_idle_reset(rq, clamp_id, uc_se->value);
+
+	/*
+	 * Local max aggregation: rq buckets always track the max
+	 * "requested" clamp value of its RUNNABLE tasks.
+	 */
+	if (bucket->tasks == 1 || uc_se->value > bucket->value)
+		bucket->value = uc_se->value;
+
+	if (uc_se->value > READ_ONCE(uc_rq->value))
+		WRITE_ONCE(uc_rq->value, uc_se->value);
+}
+
+/*
+ * When a task is dequeued from a rq, the clamp bucket refcounted by the task
+ * is released. If this is the last task reference counting the rq's max
+ * active clamp value, then the rq's clamp value is updated.
+ *
+ * Both refcounted tasks and rq's cached clamp values are expected to be
+ * always valid. If it's detected they are not, as defensive programming,
+ * enforce the expected state and warn.
+ */
+inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
+			     enum uclamp_id clamp_id)
+{
+	struct uclamp_rq *uc_rq = &rq->uclamp[clamp_id];
+	struct uclamp_se *uc_se = &p->uclamp[clamp_id];
+	struct uclamp_bucket *bucket;
+	unsigned int bkt_clamp;
+	unsigned int rq_clamp;
+
+	lockdep_assert_rq_held(rq);
+
+	if(SCHED_WARN_ON(!uclamp_is_used()))
+		return;
+
+	/*
+	 * If sched_uclamp_used was enabled after task @p was enqueued,
+	 * we could end up with unbalanced call to uclamp_rq_dec_id().
+	 *
+	 * In this case the uc_se->active flag should be false since no uclamp
+	 * accounting was performed at enqueue time and we can just return
+	 * here.
+	 *
+	 * Need to be careful of the following enqeueue/dequeue ordering
+	 * problem too
+	 *
+	 *	enqueue(taskA)
+	 *	// sched_uclamp_used gets enabled
+	 *	enqueue(taskB)
+	 *	dequeue(taskA)
+	 *	// Must not decrement bukcet->tasks here
+	 *	dequeue(taskB)
+	 *
+	 * where we could end up with stale data in uc_se and
+	 * bucket[uc_se->bucket_id].
+	 *
+	 * The following check here eliminates the possibility of such race.
+	 */
+	if (unlikely(!uc_se->active))
+		return;
+
+	bucket = &uc_rq->bucket[uc_se->bucket_id];
+
+	SCHED_WARN_ON(!bucket->tasks);
+	if (likely(bucket->tasks))
+		bucket->tasks--;
+
+	uc_se->active = false;
+
+	/*
+	 * Keep "local max aggregation" simple and accept to (possibly)
+	 * overboost some RUNNABLE tasks in the same bucket.
+	 * The rq clamp bucket value is reset to its base value whenever
+	 * there are no more RUNNABLE tasks refcounting it.
+	 */
+	if (likely(bucket->tasks))
+		return;
+
+	rq_clamp = READ_ONCE(uc_rq->value);
+	/*
+	 * Defensive programming: this should never happen. If it happens,
+	 * e.g. due to future modification, warn and fixup the expected value.
+	 */
+	SCHED_WARN_ON(bucket->value > rq_clamp);
+	if (bucket->value >= rq_clamp) {
+		bkt_clamp = uclamp_rq_max_value(rq, clamp_id, uc_se->value);
+		WRITE_ONCE(uc_rq->value, bkt_clamp);
+	}
+}
+
 static void
 prio_changed_fair(struct rq *rq, struct task_struct *p, int oldprio)
 {
@@ -377,16 +565,13 @@ static inline unsigned int get_group_throttle(struct task_group *tg)
 
 /*
  * If a task is in prefer_idle group, check if it could run on the cpu based on its prio and the
- * prefer_idle cpumask defined, but bail out for bulk wake (wake_q_count > 1).
+ * prefer_idle cpumask defined.
  */
-static inline bool is_preferred_idle_cpu(struct task_struct *p, int cpu)
+static inline bool check_preferred_idle_mask(struct task_struct *p, int cpu)
 {
 	int vendor_group = get_vendor_group(p);
 
-	if (!vg[vendor_group].prefer_idle)
-		return true;
-
-	if (p->wake_q_count > 1)
+	if (!get_prefer_idle(p))
 		return true;
 
 	if (p->prio <= THREAD_PRIORITY_TOP_APP_BOOST) {
@@ -402,7 +587,7 @@ static inline const cpumask_t *get_preferred_idle_mask(struct task_struct *p)
 {
 	int vendor_group = get_vendor_group(p);
 
-	if (p->wake_q_count > 1)
+	if (p->wake_q_count || get_uclamp_fork_reset(p, false))
 		return cpu_possible_mask;
 
 	if (p->prio <= THREAD_PRIORITY_TOP_APP_BOOST) {
@@ -956,6 +1141,8 @@ static bool task_fits_capacity(struct task_struct *p, int cpu)
 							arch_scale_cpu_capacity(cpu)));
 #endif
 
+	uclamp_min = max(uclamp_min, get_vendor_task_struct(p)->iowait_boost);
+
 	return util_fits_cpu(task_util, uclamp_min, uclamp_max, cpu);
 }
 
@@ -1077,6 +1264,7 @@ static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu)
 #endif
 }
 
+#if IS_ENABLED(CONFIG_PIXEL_EM)
 static inline unsigned long get_idle_cost(int cpu, int opp_level)
 {
 	if (vendor_sched_pixel_idle_em)
@@ -1084,12 +1272,13 @@ static inline unsigned long get_idle_cost(int cpu, int opp_level)
 	else
 		return 0;
 }
+#endif
 
 static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 				unsigned long max_util, unsigned long sum_util, bool count_idle,
 				int dst_cpu)
 {
-	unsigned long freq, scale_cpu, cost;
+	unsigned long freq, scale_cpu;
 	struct em_perf_state *ps;
 	int i, cpu;
 
@@ -1100,6 +1289,7 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 
 #if IS_ENABLED(CONFIG_PIXEL_EM)
 	{
+		unsigned long cost;
 		struct pixel_em_profile **profile_ptr_snapshot;
 		profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
 		if (profile_ptr_snapshot) {
@@ -1347,199 +1537,8 @@ static u64 __sched_period(unsigned long nr_running)
 		return sysctl_sched_latency;
 }
 
-/* UPSTREAM UCLAMP CODE - start */
-static inline unsigned int
-uclamp_idle_value(struct rq *rq, enum uclamp_id clamp_id,
-		  unsigned int clamp_value)
-{
-	/*
-	 * Avoid blocked utilization pushing up the frequency when we go
-	 * idle (which drops the max-clamp) by retaining the last known
-	 * max-clamp.
-	 */
-	if (clamp_id == UCLAMP_MAX) {
-		rq->uclamp_flags |= UCLAMP_FLAG_IDLE;
-		return clamp_value;
-	}
-
-	return uclamp_none(UCLAMP_MIN);
-}
-
-static inline void uclamp_idle_reset(struct rq *rq, enum uclamp_id clamp_id,
-				     unsigned int clamp_value)
-{
-	/* Reset max-clamp retention only on idle exit */
-	if (!(rq->uclamp_flags & UCLAMP_FLAG_IDLE))
-		return;
-
-	WRITE_ONCE(rq->uclamp[clamp_id].value, clamp_value);
-}
-
-/*
- * The effective clamp bucket index of a task depends on, by increasing
- * priority:
- * - the task specific clamp value, when explicitly requested from userspace
- * - the task group effective clamp value, for tasks not either in the root
- *   group or in an autogroup
- * - the system default clamp value, defined by the sysadmin
- */
-static inline struct uclamp_se
-uclamp_eff_get(struct task_struct *p, enum uclamp_id clamp_id)
-{
-	struct uclamp_se uc_max = uclamp_default[clamp_id];
-	struct uclamp_se uc_eff;
-	int ret;
-
-	// This function will always return uc_eff
-	rvh_uclamp_eff_get_pixel_mod(NULL, p, clamp_id, &uc_max, &uc_eff, &ret);
-
-	return uc_eff;
-}
-
-static inline
-unsigned int uclamp_rq_max_value(struct rq *rq, enum uclamp_id clamp_id,
-				   unsigned int clamp_value)
-{
-	struct uclamp_bucket *bucket = rq->uclamp[clamp_id].bucket;
-	int bucket_id = UCLAMP_BUCKETS - 1;
-
-	/*
-	 * Since both min and max clamps are max aggregated, find the
-	 * top most bucket with tasks in.
-	 */
-	for ( ; bucket_id >= 0; bucket_id--) {
-		if (!bucket[bucket_id].tasks)
-			continue;
-		return bucket[bucket_id].value;
-	}
-
-	/* No tasks -- default clamp values */
-	return uclamp_idle_value(rq, clamp_id, clamp_value);
-}
-
-
-/*
- * When a task is enqueued on a rq, the clamp bucket currently defined by the
- * task's uclamp::bucket_id is refcounted on that rq. This also immediately
- * updates the rq's clamp value if required.
- *
- * Tasks can have a task-specific value requested from user-space, track
- * within each bucket the maximum value for tasks refcounted in it.
- * This "local max aggregation" allows to track the exact "requested" value
- * for each bucket when all its RUNNABLE tasks require the same clamp.
- */
-inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
-			     enum uclamp_id clamp_id)
-{
-	struct uclamp_rq *uc_rq = &rq->uclamp[clamp_id];
-	struct uclamp_se *uc_se = &p->uclamp[clamp_id];
-	struct uclamp_bucket *bucket;
-
-	lockdep_assert_held(&rq->__lock);
-
-	if(SCHED_WARN_ON(!uclamp_is_used()))
-		return;
-
-	/* Update task effective clamp */
-	p->uclamp[clamp_id] = uclamp_eff_get(p, clamp_id);
-
-	bucket = &uc_rq->bucket[uc_se->bucket_id];
-	bucket->tasks++;
-	uc_se->active = true;
-
-	uclamp_idle_reset(rq, clamp_id, uc_se->value);
-
-	/*
-	 * Local max aggregation: rq buckets always track the max
-	 * "requested" clamp value of its RUNNABLE tasks.
-	 */
-	if (bucket->tasks == 1 || uc_se->value > bucket->value)
-		bucket->value = uc_se->value;
-
-	if (uc_se->value > READ_ONCE(uc_rq->value))
-		WRITE_ONCE(uc_rq->value, uc_se->value);
-}
-
-/*
- * When a task is dequeued from a rq, the clamp bucket refcounted by the task
- * is released. If this is the last task reference counting the rq's max
- * active clamp value, then the rq's clamp value is updated.
- *
- * Both refcounted tasks and rq's cached clamp values are expected to be
- * always valid. If it's detected they are not, as defensive programming,
- * enforce the expected state and warn.
- */
-inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
-			     enum uclamp_id clamp_id)
-{
-	struct uclamp_rq *uc_rq = &rq->uclamp[clamp_id];
-	struct uclamp_se *uc_se = &p->uclamp[clamp_id];
-	struct uclamp_bucket *bucket;
-	unsigned int bkt_clamp;
-	unsigned int rq_clamp;
-
-	lockdep_assert_held(&rq->__lock);
-
-	if(SCHED_WARN_ON(!uclamp_is_used()))
-		return;
-
-	/*
-	 * If sched_uclamp_used was enabled after task @p was enqueued,
-	 * we could end up with unbalanced call to uclamp_rq_dec_id().
-	 *
-	 * In this case the uc_se->active flag should be false since no uclamp
-	 * accounting was performed at enqueue time and we can just return
-	 * here.
-	 *
-	 * Need to be careful of the following enqeueue/dequeue ordering
-	 * problem too
-	 *
-	 *	enqueue(taskA)
-	 *	// sched_uclamp_used gets enabled
-	 *	enqueue(taskB)
-	 *	dequeue(taskA)
-	 *	// Must not decrement bukcet->tasks here
-	 *	dequeue(taskB)
-	 *
-	 * where we could end up with stale data in uc_se and
-	 * bucket[uc_se->bucket_id].
-	 *
-	 * The following check here eliminates the possibility of such race.
-	 */
-	if (unlikely(!uc_se->active))
-		return;
-
-	bucket = &uc_rq->bucket[uc_se->bucket_id];
-
-	SCHED_WARN_ON(!bucket->tasks);
-	if (likely(bucket->tasks))
-		bucket->tasks--;
-
-	uc_se->active = false;
-
-	/*
-	 * Keep "local max aggregation" simple and accept to (possibly)
-	 * overboost some RUNNABLE tasks in the same bucket.
-	 * The rq clamp bucket value is reset to its base value whenever
-	 * there are no more RUNNABLE tasks refcounting it.
-	 */
-	if (likely(bucket->tasks))
-		return;
-
-	rq_clamp = READ_ONCE(uc_rq->value);
-	/*
-	 * Defensive programming: this should never happen. If it happens,
-	 * e.g. due to future modification, warn and fixup the expected value.
-	 */
-	SCHED_WARN_ON(bucket->value > rq_clamp);
-	if (bucket->value >= rq_clamp) {
-		bkt_clamp = uclamp_rq_max_value(rq, clamp_id, uc_se->value);
-		WRITE_ONCE(uc_rq->value, bkt_clamp);
-	}
-}
-/* UPSTREAM UCLAMP CODE - end */
-
-int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, cpumask_t *valid_mask)
+int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
+		cpumask_t *valid_mask)
 {
 	struct root_domain *rd;
 	struct perf_domain *pd;
@@ -1578,6 +1577,8 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, cpumask_t *va
 	pd = rcu_dereference(rd->pd);
 	if (!pd)
 		goto out;
+
+	p_util_min = max(p_util_min, get_vendor_task_struct(p)->iowait_boost);
 
 	for (; pd; pd = pd->next) {
 		unsigned long util_min = p_util_min, util_max = p_util_max;
@@ -1989,42 +1990,47 @@ out:
 	return best_energy_cpu;
 }
 
-#if IS_ENABLED(CONFIG_PIXEL_EM)
-void vh_arch_set_freq_scale_pixel_mod(void *data, const struct cpumask *cpus,
-				      unsigned long freq,
-				      unsigned long max, unsigned long *scale)
-{
-	int i;
-	struct pixel_em_profile **profile_ptr_snapshot;
-	profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
-	if (profile_ptr_snapshot) {
-		struct pixel_em_profile *profile = READ_ONCE(*profile_ptr_snapshot);
-		if (profile) {
-			struct pixel_em_cluster *cluster;
-			struct pixel_em_opp *max_opp;
-			struct pixel_em_opp *opp;
-
-			cluster = profile->cpu_to_cluster[cpumask_first(cpus)];
-			max_opp = &cluster->opps[cluster->num_opps - 1];
-
-			for (i = 0; i < cluster->num_opps; i++) {
-				opp = &cluster->opps[i];
-				if (opp->freq >= freq)
-					break;
-			}
-
-			*scale = (opp->capacity << SCHED_CAPACITY_SHIFT) /
-				  max_opp->capacity;
-		}
-	}
-}
-EXPORT_SYMBOL_GPL(vh_arch_set_freq_scale_pixel_mod);
-#endif
+#define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 
 void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
 			      int *should_iowait_boost)
 {
-	*should_iowait_boost = p->in_iowait && uclamp_boosted(p);
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(task_rq(p));
+	bool boosted = uclamp_boosted(p);
+
+	if (p->in_iowait && boosted) {
+		if (!vp->iowait_boost)
+			vp->iowait_boost = IOWAIT_BOOST_MIN;
+		else
+			vp->iowait_boost = min_t(unsigned long,
+						 vp->iowait_boost << 1,
+						 sched_per_task_iowait_boost_max_value);
+	} else {
+		if (!boosted) {
+			vp->iowait_boost = 0;
+			return;
+		}
+
+		vp->iowait_boost >>= 1;
+		if (vp->iowait_boost < IOWAIT_BOOST_MIN)
+			vp->iowait_boost = 0;
+	}
+
+	*should_iowait_boost = vp->iowait_boost;
+
+	/*
+	 * If we should boost, then we will send an update to cpufreq governor
+	 * as soon as we return from here which will then take into account the
+	 * vrq->iowait_boost value we just updated. So the expectation is that
+	 * we can have one enqueue at a time and this value will be taken into
+	 * account by the governor immediately during this enqueue() call.
+	 *
+	 * Only exception if rate limit rejects the freq update; then we are
+	 * already out of luck anyway for this particular enqueue().
+	 */
+	if (*should_iowait_boost)
+		vrq->iowait_boost = vp->iowait_boost;
 }
 
 void rvh_cpu_overutilized_pixel_mod(void *data, int cpu, int *overutilized)
@@ -2060,8 +2066,7 @@ apply_dvfs_headroom(unsigned long util, int cpu, bool tapered)
 		 */
 		headroom = (capacity - util);
 		/* formula: headroom * (1.X - 1) == headroom * 0.X */
-		headroom = headroom *
-			(sched_dvfs_headroom[cpu] - SCHED_CAPACITY_SCALE) >> SCHED_CAPACITY_SHIFT;
+		headroom = headroom * (sched_dvfs_headroom[cpu] - SCHED_CAPACITY_SCALE) >> SCHED_CAPACITY_SHIFT;
 		return util + headroom;
 	}
 
@@ -2495,7 +2500,7 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 
 	/* prefer prev cpu */
 	if (cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) &&
-	    task_fits_capacity(p, prev_cpu) && is_preferred_idle_cpu(p, prev_cpu)) {
+	    task_fits_capacity(p, prev_cpu) && check_preferred_idle_mask(p, prev_cpu)) {
 
 		struct cpuidle_state *idle_state;
 		unsigned int exit_lat = UINT_MAX;
@@ -2683,8 +2688,6 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	if (SCHED_WARN_ON(atomic_read(&this_vrq->num_adpf_tasks)))
 		atomic_set(&this_vrq->num_adpf_tasks, 0);
 
-	if (!vendor_sched_idle_balancer)
-		return;
 	/*
 	 * We must set idle_stamp _before_ calling idle_balance(), such that we
 	 * measure the duration of idle_balance() as idle time.
@@ -2884,6 +2887,9 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 
 void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_rq_struct *vrq = get_vendor_rq_struct(rq);
+
 	if (!static_branch_unlikely(&enqueue_dequeue_ready))
 		return;
 
@@ -2905,6 +2911,16 @@ void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 #endif
 
 	/* Resetting uclamp filter is handled in dequeue_task() */
+
+	/*
+	 * If this task has boosted the rq then clear the boost once it no
+	 * longer runs.
+	 *
+	 * No aggregation done here. Several tasks enqueued at the same
+	 * time will be hit by the rate limit.
+	 */
+	if (vp->iowait_boost == vrq->iowait_boost)
+		vrq->iowait_boost = 0;
 }
 
 void rvh_update_misfit_status_pixel_mod(void *data, struct task_struct *p,

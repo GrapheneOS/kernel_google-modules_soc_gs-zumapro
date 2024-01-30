@@ -50,6 +50,19 @@ int set_priv_reg(phys_addr_t reg, u32 val)
 }
 EXPORT_SYMBOL(set_priv_reg);
 
+int get_priv_reg(phys_addr_t reg)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SMC_CMD_PRIV_REG,
+		      reg,
+		      PRIV_REG_OPTION_READ,
+		      0, 0, 0, 0, 0, &res);
+
+	return (int)res.a0;
+}
+EXPORT_SYMBOL_GPL(get_priv_reg);
+
 int rmw_priv_reg(phys_addr_t reg, u32 mask, u32 val)
 {
 	struct arm_smccc_res res;

@@ -33,7 +33,14 @@ bcm_dbg-$(CONFIG_EXYNOS_BCM_DBG)	+= exynos-bcm_dbg.o exynos-bcm_dbg-dt.o exynos-
 obj-$(CONFIG_EXYNOS_BCM_DBG_DUMP)	+= exynos-bcm_dbg-dump.o
 
 # CPIF
+ifeq ($(CONFIG_SOC_ZUMA),y)
 obj-$(CONFIG_EXYNOS_MODEM_IF) += cpif/
+else
+obj-$(CONFIG_EXYNOS_MODEM_IF) += cpif-whi/
+endif
+
+# GNSSIF
+obj-$(CONFIG_EXYNOS_GNSS_IF_SPI) += gnssif_spi/
 
 obj-y				    	+= debug/
 
@@ -65,6 +72,7 @@ obj-$(CONFIG_PKVM_S2MPU)		+= pkvm-s2mpu/pkvm-s2mpu/
 
 obj-$(CONFIG_PKVM_S2MPU_V9) 		+= pkvm-s2mpu/pkvm-s2mpu-v9/
 
-obj-$(CONFIG_BOOT_CONTROL)	 	+= boot_control/
+# perf_trace_counters
+obj-$(CONFIG_PERF_TRACE_CTRS)		+= perf_trace_counters.o
 
-obj-$(CONFIG_KERNEL_TOP)		+= kernel-top.o
+obj-$(CONFIG_BOOT_CONTROL)              += boot_control/

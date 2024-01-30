@@ -20,18 +20,24 @@
 #include <linux/regulator/consumer.h>
 #include <linux/spinlock.h>
 #include <linux/usb/pd.h>
+#include <linux/usb/pd_vdo.h>
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
+#include <linux/usb/typec_dp.h>
+#include <linux/usb/typec_mux.h>
 #include <misc/logbuffer.h>
 #include <trace/hooks/typec.h>
 
 #include "bc_max77759.h"
 #include <linux/usb/max77759_export.h>
 #include "max77759_helper.h"
+#include "max777x9_contaminant.h"
 #include "tcpci_max77759.h"
 #include "tcpci_max77759_vendor_reg.h"
+#include "google_tcpci_shim.h"
 #include "usb_icl_voter.h"
 #include "usb_psy.h"
+#include "usb_thermal_voter.h"
 
 #define TCPCI_MODE_VOTER	"TCPCI"
 #define LIMIT_SINK_VOTER	"LIMIT_SINK_CURRENT_VOTER"
@@ -60,6 +66,8 @@
 #define GBMS_MODE_VOTABLE "CHARGER_MODE"
 
 #define MAX77759_DEVICE_ID_A1				0x2
+#define MAX77759_PRODUCT_ID				0x59
+#define MAX77779_PRODUCT_ID				0x79
 
 #define MAX77759_DISABLE_TOGGLE				1
 #define MAX77759_ENABLE_TOGGLE				0
@@ -100,11 +108,6 @@ enum gbms_charger_modes {
 #define REGMAP_REG_MAX_ADDR			0x95
 #define REGMAP_REG_COUNT			(REGMAP_REG_MAX_ADDR + 1)
 
-#define tcpc_presenting_rd(reg, cc) \
-	(!(TCPC_ROLE_CTRL_DRP & (reg)) && \
-	 (((reg) & (TCPC_ROLE_CTRL_## cc ##_MASK << TCPC_ROLE_CTRL_## cc ##_SHIFT)) == \
-	  (TCPC_ROLE_CTRL_CC_RD << TCPC_ROLE_CTRL_## cc ##_SHIFT)))
-
 #define cc_open_or_toggling(cc1, cc2) \
 	(((cc1) == TYPEC_CC_OPEN) && ((cc2) == TYPEC_CC_OPEN))
 
@@ -123,6 +126,18 @@ enum gbms_charger_modes {
 #define port_is_sink(cc1, cc2) \
 	(rp_def_detected(cc1, cc2) || rp_1a5_detected(cc1, cc2) || rp_3a_detected(cc1, cc2))
 
+#define is_debug_accessory_detected(cc1, cc2) \
+	((((cc1) == TYPEC_CC_RP_DEF) || ((cc1) == TYPEC_CC_RP_1_5) || ((cc1) == TYPEC_CC_RP_3_0)) && \
+	 (((cc1) == TYPEC_CC_RP_DEF) || ((cc1) == TYPEC_CC_RP_1_5) || ((cc1) == TYPEC_CC_RP_3_0)))
+
+#define FLOATING_CABLE_INSTANCE_THRESHOLD	5
+#define AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS	600000
+
+#define VOLTAGE_DP_AUX_DEFAULT_UV	3300000
+
+#define SRC_CURRENT_LIMIT_MA		0
+
+#define DISCONNECT_DEBOUNCE_MS		1200
 
 #define LOG_LVL_DEBUG				1
 #define LOG_LVL_INFO				2
@@ -139,6 +154,13 @@ do {						\
 		logbuffer_log(LOG, FMT __VA_OPT__(,) __VA_ARGS__); \
 } while (0)
 
+#define OVP_OP_RETRY	3
+
+enum ovp_operation {
+	OVP_RESET,
+	OVP_ON,
+	OVP_OFF
+};
 
 static struct logbuffer *tcpm_log;
 
@@ -169,14 +191,10 @@ void *orientation_payload;
 
 static bool hooks_installed;
 
-struct tcpci {
-	struct device *dev;
-	struct tcpm_port *port;
-	struct regmap *regmap;
-	bool controls_vbus;
-
-	struct tcpc_dev tcpc;
-	struct tcpci_data *data;
+struct dp_notification_event {
+	struct max77759_plat *chip;
+	unsigned long mode;
+	struct kthread_work dp_notification_work;
 };
 
 static const struct regmap_range max77759_tcpci_range[] = {
@@ -255,34 +273,38 @@ static ssize_t contaminant_detection_show(struct device *dev, struct device_attr
 	return scnprintf(buf, PAGE_SIZE, "%d\n", chip->contaminant_detection_userspace);
 };
 
-static void update_contaminant_detection_locked(struct max77759_plat *chip, int val)
+static int update_contaminant_detection_locked(struct max77759_plat *chip, int val)
 {
 
+	if (!chip->contaminant)
+		return -ENODEV;
 	chip->contaminant_detection = val;
 
 	if (chip->contaminant_detection)
-		enable_contaminant_detection(chip, chip->contaminant_detection ==
-					     CONTAMINANT_DETECT_MAXQ);
+		max777x9_enable_contaminant_detection(chip, chip->contaminant_detection ==
+						      CONTAMINANT_DETECT_MAXQ);
 	else
-		disable_contaminant_detection(chip);
+		max777x9_disable_contaminant_detection(chip);
 
 	LOG(LOG_LVL_DEBUG, chip->log, "[%s]: %d", __func__, chip->contaminant_detection);
+	return 0;
 }
 
 static ssize_t contaminant_detection_store(struct device *dev, struct device_attribute *attr,
 					   const char *buf, size_t count)
 {
 	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
-	int val;
+	int val, ret;
 
 	if (kstrtoint(buf, 10, &val) < 0)
 		return -EINVAL;
 
 	mutex_lock(&chip->rc_lock);
-	chip->contaminant_detection_userspace = val;
-	update_contaminant_detection_locked(chip, val);
+	ret = update_contaminant_detection_locked(chip, val);
+	if (!ret)
+		chip->contaminant_detection_userspace = val;
 	mutex_unlock(&chip->rc_lock);
-	return count;
+	return (ret < 0) ? ret : count;
 }
 static DEVICE_ATTR_RW(contaminant_detection);
 
@@ -327,7 +349,7 @@ static ssize_t contaminant_detection_status_show(struct device *dev, struct devi
 						 char *buf)
 {
 	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
-	struct max77759_contaminant *contaminant;
+	struct max777x9_contaminant *contaminant;
 
 	if (!chip)
 		return -EAGAIN;
@@ -337,7 +359,7 @@ static ssize_t contaminant_detection_status_show(struct device *dev, struct devi
 	if (!contaminant)
 		return -EAGAIN;
 
-	return scnprintf(buf, PAGE_SIZE, "%d\n", is_contaminant_detected(chip));
+	return scnprintf(buf, PAGE_SIZE, "%d\n", max777x9_is_contaminant_detected(chip));
 }
 static DEVICE_ATTR_RO(contaminant_detection_status);
 
@@ -411,32 +433,6 @@ static ssize_t usb_limit_sink_current_store(struct device *dev, struct device_at
 }
 static DEVICE_ATTR_RW(usb_limit_sink_current);
 
-static ssize_t usb_limit_source_enable_show(struct device *dev, struct device_attribute *attr,
-					    char *buf)
-{
-	return sysfs_emit(buf, "%u\n", limit_src_cap_enable);
-}
-
-static ssize_t usb_limit_source_enable_store(struct device *dev, struct device_attribute *attr,
-					     const char *buf, size_t count)
-{
-	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
-	bool enable;
-
-	if (kstrtobool(buf, &enable) < 0)
-		return -EINVAL;
-
-	spin_lock(&g_caps_lock);
-	port_src_pdo_updated = false;
-	limit_src_cap_enable = enable;
-	spin_unlock(&g_caps_lock);
-
-	tcpm_cc_change(chip->tcpci->port);
-
-	return count;
-}
-static DEVICE_ATTR_RW(usb_limit_source_enable);
-
 static ssize_t usb_limit_accessory_enable_show(struct device *dev, struct device_attribute *attr,
 					  char *buf)
 {
@@ -506,6 +502,126 @@ static ssize_t usb_limit_accessory_current_store(struct device *dev, struct devi
 }
 static DEVICE_ATTR_RW(usb_limit_accessory_current);
 
+static ssize_t sbu_pullup_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+
+	return sysfs_emit(buf, "%u\n", chip->current_sbu_state);
+}
+
+static ssize_t sbu_pullup_store(struct device *dev, struct device_attribute *attr, const char *buf,
+				size_t count)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+	int val, ret = 0;
+	bool enable = false;
+	bool crossbar_reverse = false;
+
+	if (kstrtoint(buf, 0, &val) < 0)
+		return -EINVAL;
+
+	switch (val) {
+	case 0:
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
+		enable = false;
+		break;
+	case 1:
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 0);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
+		enable = false;
+		break;
+	case 2:
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 0);
+		enable = true;
+		break;
+	case 3:
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio, 1);
+		enable = true;
+		crossbar_reverse = true;
+		break;
+	default:
+		goto set_sbu_state;
+	}
+
+	if ((enable && !chip->dp_regulator_enabled) || (!enable && chip->dp_regulator_enabled)) {
+		ret = enable ? regulator_enable(chip->dp_regulator) : \
+			regulator_disable(chip->dp_regulator);
+		if (ret >= 0)
+			chip->dp_regulator_enabled = enable;
+		dev_info(chip->dev, "dp regulator_%s %s ret:%d", enable ? "enable" : "disable",
+				ret < 0 ? "fail" : "success", ret);
+		ret = enable ? regulator_set_voltage(chip->dp_regulator, VOLTAGE_DP_AUX_DEFAULT_UV,
+							VOLTAGE_DP_AUX_DEFAULT_UV) : \
+				regulator_set_voltage(chip->dp_regulator, chip->dp_regulator_min_uv,
+							chip->dp_regulator_max_uv);
+		dev_info(chip->dev, "dp regulator_set_voltage %s ret:%d",
+				ret < 0 ? "fail" : "success", ret);
+	}
+
+	if (chip->product_id == MAX77779_PRODUCT_ID) {
+		ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, enable ?
+				      (crossbar_reverse ? SBUSW_XBAR_POL_REVERSE :
+				      SBUSW_XBAR_POL_NORMAL) : (modparam_conf_sbu ?
+				      SBUSW_SERIAL_UART : 0));
+		LOG(LOG_LVL_DEBUG, chip->log, "SBU Cross Bar SW %s %s, ret:%d",
+		    enable ? "Enable" : "Disable", ret < 0 ? "fail" : "success", ret);
+	} else {
+		ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, enable ?
+				      SBUSW_PATH_1 : (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+	}
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "SBU dp switch %s %s ret:%d",
+		       enable ? "enable" : "disable", ret < 0 ? "fail" : "success", ret);
+
+set_sbu_state:
+	dev_info(chip->dev, "dp_debug: sbu_pullup_store: val:%d \n", val);
+	if (!ret)
+		chip->current_sbu_state = val;
+
+	return count;
+}
+static DEVICE_ATTR_RW(sbu_pullup);
+
+static ssize_t irq_hpd_count_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+
+	return sysfs_emit(buf, "%u\n", chip->irq_hpd_count);
+};
+static DEVICE_ATTR_RO(irq_hpd_count);
+
+static ssize_t usb_limit_source_enable_show(struct device *dev, struct device_attribute *attr,
+					    char *buf)
+{
+	return sysfs_emit(buf, "%u\n", limit_src_cap_enable);
+}
+
+static ssize_t usb_limit_source_enable_store(struct device *dev, struct device_attribute *attr,
+					     const char *buf, size_t count)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+	bool enable;
+
+	if (kstrtobool(buf, &enable) < 0)
+		return -EINVAL;
+
+	spin_lock(&g_caps_lock);
+	port_src_pdo_updated = false;
+	limit_src_cap_enable = enable;
+	spin_unlock(&g_caps_lock);
+
+	tcpm_cc_change(chip->tcpci->port);
+
+	return count;
+}
+static DEVICE_ATTR_RW(usb_limit_source_enable);
+
 static struct device_attribute *max77759_device_attrs[] = {
 	&dev_attr_frs,
 	&dev_attr_bc12_enabled,
@@ -517,9 +633,11 @@ static struct device_attribute *max77759_device_attrs[] = {
 	&dev_attr_non_compliant_reasons,
 	&dev_attr_usb_limit_sink_enable,
 	&dev_attr_usb_limit_sink_current,
-	&dev_attr_usb_limit_source_enable,
 	&dev_attr_usb_limit_accessory_enable,
 	&dev_attr_usb_limit_accessory_current,
+	&dev_attr_sbu_pullup,
+	&dev_attr_usb_limit_source_enable,
+	&dev_attr_irq_hpd_count,
 	NULL
 };
 
@@ -539,6 +657,7 @@ void register_orientation_callback(void (*callback)(void *orientation_payload), 
 }
 EXPORT_SYMBOL_GPL(register_orientation_callback);
 
+static void ovp_operation(struct max77759_plat *chip, int operation);
 #ifdef CONFIG_GPIOLIB
 static int ext_bst_en_gpio_get_direction(struct gpio_chip *chip, unsigned int offset)
 {
@@ -560,13 +679,34 @@ static int ext_bst_en_gpio_get(struct gpio_chip *gpio, unsigned int offset)
 
 static void ext_bst_en_gpio_set(struct gpio_chip *gpio, unsigned int offset, int value)
 {
-	int ret;
 	struct max77759_plat *chip = gpiochip_get_data(gpio);
 	struct regmap *regmap = chip->data.regmap;
+	bool vsafe0v, toggle_ovp = false;
+	int ret;
+	u8 raw;
+
+	ret = max77759_read8(regmap, TCPC_EXTENDED_STATUS, &raw);
+	if (ret < 0)
+		vsafe0v = chip->vsafe0v;
+	else
+		vsafe0v = !!(raw & TCPC_EXTENDED_STATUS_VSAFE0V);
+
+	/* b/309900468 toggle ovp to make sure that Vbus is vSafe0V when setting EXT_BST_EN. */
+	if (chip->in_switch_gpio >= 0 && value && !vsafe0v)
+		toggle_ovp = true;
+
+	if (toggle_ovp)
+		ovp_operation(chip, OVP_OFF);
 
 	ret = max77759_write8(regmap, TCPC_VENDOR_EXTBST_CTRL, value ? EXT_BST_EN : 0);
-	LOG(LOG_LVL_DEBUG, chip->log,
-	    "%s: TCPC_VENDOR_EXTBST_CTRL value%d ret:%d", __func__, value, ret);
+	LOG(LOG_LVL_DEBUG, chip->log, "%s: TCPC_VENDOR_EXTBST_CTRL value:%d ret:%d", __func__,
+	    value, ret);
+
+	if (toggle_ovp) {
+		mdelay(10);
+
+		ovp_operation(chip, OVP_ON);
+	}
 }
 
 static int ext_bst_en_gpio_init(struct max77759_plat *chip)
@@ -596,7 +736,7 @@ static int ext_bst_en_gpio_init(struct max77759_plat *chip)
 }
 #endif
 
-static struct max77759_plat *tdata_to_max77759(struct tcpci_data *tdata)
+static struct max77759_plat *tdata_to_max77759(struct google_shim_tcpci_data *tdata)
 {
 	return container_of(tdata, struct max77759_plat, data);
 }
@@ -663,6 +803,35 @@ static void max77759_init_regs(struct regmap *regmap, struct logbuffer *log)
 	ret = max77759_update_bits8(regmap, TCPC_VENDOR_VCON_CTRL, VCNILIM_MASK, VCNILIM_300_MA);
 	if (ret < 0)
 		LOG(LOG_LVL_DEBUG, log, "TCPC_VENDOR_VCON_CTRL: update vcnilim to 300mA failed");
+}
+
+static int post_process_pd_message(struct max77759_plat *chip, struct pd_message msg)
+{
+	enum pd_ctrl_msg_type pd_type = pd_header_type_le(msg.header);
+
+	if (pd_type == PD_DATA_VENDOR_DEF) {
+		u32 payload[2];
+		int i;
+
+		for (i = 0; i < 2; i++) {
+			payload[i] = le32_to_cpu(msg.payload[i]);
+			if ((PD_VDO_VID(payload[0]) == USB_TYPEC_DP_SID))
+				LOG(LOG_LVL_DEBUG, chip->log, "DP VDO[%d] 0x%x", i, payload[i]);
+		}
+
+		if (PD_VDO_SVDM(payload[0]) && (PD_VDO_VID(payload[0]) == USB_TYPEC_DP_SID) &&
+		    ((PD_VDO_CMD(payload[0]) == CMD_ATTENTION) ||
+		    (PD_VDO_CMD(payload[0]) == DP_CMD_STATUS_UPDATE)) &&
+		    (payload[1] & DP_STATUS_IRQ_HPD)) {
+			chip->irq_hpd_count++;
+			LOG(LOG_LVL_DEBUG, chip->log, "DP IRQ_HPD:%d count:%u",
+			    (payload[1] & DP_STATUS_IRQ_HPD), chip->irq_hpd_count);
+			// sysfs_notify(&chip->dev->kobj, NULL, "irq_hpd_count");
+			kobject_uevent(&chip->dev->kobj, KOBJ_CHANGE);
+		}
+	}
+
+	return 0;
 }
 
 static int process_rx(struct max77759_plat *chip, u16 status)
@@ -749,6 +918,11 @@ static int process_rx(struct max77759_plat *chip, u16 status)
 	}
 
 	tcpm_pd_receive(chip->port, &msg);
+
+	ret = post_process_pd_message(chip, msg);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 }
 
@@ -880,14 +1054,14 @@ void enable_data_path_locked(struct max77759_plat *chip)
 		chip->bc12_running = false;
 
 		if (chip->alt_path_active) {
-			LOG(LOG_LVL_DEBUG, chip->log,
-			    "%s skipping enabling as alt path is active", __func__);
+			LOG(LOG_LVL_DEBUG, chip->log, "%s skipping enabling as alt path is active",
+			    __func__);
 			/* Enable switch for Host mode because alt_path works for Host Mode only */
 			if (chip->data_role == TYPEC_HOST) {
 				ret = max77759_write8(regmap, TCPC_VENDOR_USBSW_CTRL,
 						      USBSW_CONNECT);
-				LOG(LOG_LVL_DEBUG, chip->log,
-				    "Turning on dp switches %s", ret < 0 ? "fail" : "success");
+				LOG(LOG_LVL_DEBUG, chip->log, "Turning on dp switches %s", ret < 0 ?
+				    "fail" : "success");
 			}
 
 			chip->active_data_role = chip->data_role;
@@ -921,8 +1095,8 @@ void enable_data_path_locked(struct max77759_plat *chip)
 			(*data_active_callback)(data_active_payload, chip->active_data_role, true);
 	} else if (chip->data_active && (!chip->attached || !enable_data)) {
 		if (chip->alt_path_active) {
-			LOG(LOG_LVL_DEBUG, chip->log,
-			    "%s skipping turning off as alt path is active", __func__);
+			LOG(LOG_LVL_DEBUG, chip->log, "%s skipping turning off as alt path is active",
+			    __func__);
 			if (data_active_callback)
 				(*data_active_callback)(data_active_payload,
 							chip->active_data_role, false);
@@ -963,7 +1137,7 @@ static void enable_vbus_work(struct kthread_work *work)
 	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
 		chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
 		if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
-			LOG(LOG_LVL_DEBUG, chip->log,
+			logbuffer_logk(chip->log, LOGLEVEL_ERR,
 			    "ERR: GBMS_MODE_VOTABLE lazy get failed with error %ld",
 			    PTR_ERR(chip->charger_mode_votable));
 			return;
@@ -974,7 +1148,7 @@ static void enable_vbus_work(struct kthread_work *work)
 				 chip->no_external_boost ? (void *)GBMS_USB_OTG_FRS_ON :
 				 (void *)GBMS_USB_OTG_ON, true);
 
-	LOG(LOG_LVL_DEBUG, chip->log, "%s: GBMS_MODE_VOTABLE voting source ret:%d",
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "%s: GBMS_MODE_VOTABLE voting source ret:%d",
 	    ret < 0 ? "Error" : "Success", ret);
 
 	if (ret < 0)
@@ -984,7 +1158,8 @@ static void enable_vbus_work(struct kthread_work *work)
 		chip->sourcing_vbus = 1;
 }
 
-static int max77759_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool source, bool sink)
+static int max77759_set_vbus(struct google_shim_tcpci *tcpci, struct google_shim_tcpci_data *tdata,
+			     bool source, bool sink)
 {
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
 	int ret;
@@ -1035,7 +1210,8 @@ static int max77759_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool
 	return 0;
 }
 
-static void max77759_frs_sourcing_vbus(struct tcpci *tcpci, struct tcpci_data *tdata)
+static void max77759_frs_sourcing_vbus(struct google_shim_tcpci *tcpci,
+				       struct google_shim_tcpci_data *tdata)
 {
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
 	int ret;
@@ -1072,7 +1248,7 @@ static void vsafe0v_debounce_work(struct kthread_work *work)
 	struct max77759_plat *chip  =
 		container_of(container_of(work, struct kthread_delayed_work, work),
 			     struct max77759_plat, vsafe0v_work);
-	struct tcpci *tcpci = chip->tcpci;
+	struct google_shim_tcpci *tcpci = chip->tcpci;
 
 	/* update to TCPM only if it is still Vsafe0V */
 	if (!chip->vsafe0v)
@@ -1098,7 +1274,7 @@ void disconnect_missing_rp_partner(struct max77759_plat *chip)
 	 */
 	update_compliance_warnings(chip, COMPLIANCE_WARNING_INPUT_POWER_LIMITED, false);
 	chip->vbus_mv = 0;
-	/* val.intval does not matter */
+	val.intval = 0;
 	ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
 	if (ret < 0)
 		LOG(LOG_LVL_DEBUG, chip->log,
@@ -1135,11 +1311,11 @@ static void check_missing_rp_work(struct kthread_work *work)
 		if (power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_USB_TYPE, &val))
 			LOG(LOG_LVL_DEBUG, chip->log, "%s: usb_psy set dcp failed", __func__);
 		chip->vbus_mv = 5000;
-		/* val.intval does not matter */
+		val.intval = chip->vbus_mv * 1000;
 		ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
 		if (ret < 0)
 			LOG(LOG_LVL_DEBUG, chip->log, "%s: unable to set max voltage to %d, ret=%d",
-			    chip->vbus_mv, ret, __func__);
+			    chip->vbus_mv * 1000, ret, __func__);
 		update_compliance_warnings(chip, COMPLIANCE_WARNING_MISSING_RP, true);
 		usb_psy_set_sink_state(chip->usb_psy_data, true);
 	} else if (chip->compliance_warnings->missing_rp) {
@@ -1175,7 +1351,7 @@ static void check_missing_rp(struct max77759_plat *chip, bool vbus_present,
 
 static void process_power_status(struct max77759_plat *chip)
 {
-	struct tcpci *tcpci = chip->tcpci;
+	struct google_shim_tcpci *tcpci = chip->tcpci;
 	struct logbuffer *log = chip->log;
 	unsigned int pwr_status;
 	int ret;
@@ -1227,8 +1403,13 @@ static void process_power_status(struct max77759_plat *chip)
 		chip->vbus_present = 0;
 	LOG(LOG_LVL_DEBUG, chip->log, "[%s]: vbus_present %d", __func__, chip->vbus_present);
 	tcpm_vbus_change(tcpci->port);
-	/* Check for missing-rp non compliant power source */
-	check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES), chip->cc1, chip->cc2);
+	/*
+	 * Check for missing-rp non compliant power source.
+	 * Skip when usb is throttled due to overheat.
+	 */
+	if (!chip->usb_throttled && !chip->toggle_disable_status)
+		check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES), chip->cc1,
+				 chip->cc2);
 
 	if (chip->quick_ramp_vbus_ovp && chip->vbus_present) {
 		kthread_cancel_delayed_work_sync(&chip->reset_ovp_work);
@@ -1276,7 +1457,7 @@ static void process_power_status(struct max77759_plat *chip)
 	}
 }
 
-static void process_tx(struct tcpci *tcpci, u16 status, struct logbuffer *log)
+static void process_tx(struct google_shim_tcpci *tcpci, u16 status, struct logbuffer *log)
 {
 	if (status & TCPC_ALERT_TX_SUCCESS) {
 		LOG(LOG_LVL_DEBUG, log, "TCPC_ALERT_TX_SUCCESS");
@@ -1367,10 +1548,43 @@ static void floating_cable_sink_detected_handler_locked(struct max77759_plat *ch
 	LOG(LOG_LVL_DEBUG, chip->log,
 	    "floating_cable_or_sink_detected count: %d", chip->floating_cable_or_sink_detected);
 	if (chip->floating_cable_or_sink_detected >= FLOATING_CABLE_OR_SINK_INSTANCE_THRESHOLD) {
-		disable_auto_ultra_low_power_mode(chip, true);
+		max777x9_disable_auto_ultra_low_power_mode(chip, true);
 		alarm_start_relative(&chip->reenable_auto_ultra_low_power_mode_alarm,
 				     ms_to_ktime(AUTO_ULTRA_LOW_POWER_MODE_REENABLE_MS));
 	}
+}
+
+static void ovp_operation(struct max77759_plat *chip, int operation)
+{
+	int gpio_val, retry = 0;
+
+	mutex_lock(&chip->ovp_lock);
+	if (operation == OVP_RESET || operation == OVP_OFF) {
+		do {
+			gpio_set_value_cansleep(chip->in_switch_gpio,
+						!chip->in_switch_gpio_active_high);
+			gpio_val = gpio_get_value_cansleep(chip->in_switch_gpio);
+			LOG(LOG_LVL_DEBUG, chip->log,
+			    "%s: OVP disable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
+			    __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
+		} while ((gpio_val != !chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
+	}
+
+	if (operation == OVP_RESET)
+		mdelay(10);
+
+	if (operation == OVP_RESET || operation == OVP_ON) {
+		retry = 0;
+		do {
+			gpio_set_value_cansleep(chip->in_switch_gpio,
+						chip->in_switch_gpio_active_high);
+			gpio_val = gpio_get_value_cansleep(chip->in_switch_gpio);
+			LOG(LOG_LVL_DEBUG, chip->log,
+			    "%s: OVP enable gpio_val:%d in_switch_gpio_active_high:%d retry:%d",
+			    __func__, gpio_val, chip->in_switch_gpio_active_high, retry++);
+		} while ((gpio_val != chip->in_switch_gpio_active_high) && (retry < OVP_OP_RETRY));
+	}
+	mutex_unlock(&chip->ovp_lock);
 }
 
 static void reset_ovp_work(struct kthread_work *work)
@@ -1385,9 +1599,7 @@ static void reset_ovp_work(struct kthread_work *work)
 	if (vbus_mv > VBUS_PRESENT_THRESHOLD_MV)
 		return;
 
-	gpio_set_value_cansleep(chip->in_switch_gpio, !chip->in_switch_gpio_active_high);
-	mdelay(10);
-	gpio_set_value_cansleep(chip->in_switch_gpio, chip->in_switch_gpio_active_high);
+	ovp_operation(chip, OVP_RESET);
 	chip->reset_ovp_retry++;
 
 	LOG(LOG_LVL_DEBUG, chip->log, "ovp reset done [%d]", chip->reset_ovp_retry);
@@ -1403,7 +1615,7 @@ static void reset_ovp_work(struct kthread_work *work)
 static void max77759_get_cc(struct max77759_plat *chip, enum typec_cc_status *cc1,
 			    enum typec_cc_status *cc2)
 {
-	struct tcpci *tcpci = chip->tcpci;
+	struct google_shim_tcpci *tcpci = chip->tcpci;
 	u8 reg, role_control;
 	int ret;
 
@@ -1456,7 +1668,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 					struct logbuffer *log)
 {
 	u16 vendor_status = 0, vendor_status2 = 0, raw;
-	struct tcpci *tcpci = chip->tcpci;
+	struct google_shim_tcpci *tcpci = chip->tcpci;
 	int ret;
 	const u16 mask = status & TCPC_ALERT_RX_BUF_OVF ? status &
 		~(TCPC_ALERT_RX_STATUS | TCPC_ALERT_RX_BUF_OVF) :
@@ -1569,11 +1781,12 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		 */
 		mutex_lock(&chip->rc_lock);
 		LOG(LOG_LVL_DEBUG, chip->log, "Servicing TCPC_ALERT_CC_STATUS");
-		if (chip->contaminant_detection && tcpm_port_is_toggling(tcpci->port)) {
+		if (!chip->usb_throttled && chip->contaminant_detection &&
+		    tcpm_port_is_toggling(tcpci->port)) {
 			LOG(LOG_LVL_DEBUG, chip->log, "Invoking process_contaminant_alert");
-			ret = process_contaminant_alert(chip->contaminant, false, true,
-							&contaminant_cc_update_handled,
-							&port_clean);
+			ret = max777x9_process_contaminant_alert(chip->contaminant, false, true,
+								 &contaminant_cc_update_handled,
+								 &port_clean);
 			if (ret < 0) {
 				mutex_unlock(&chip->rc_lock);
 				goto reschedule;
@@ -1600,10 +1813,14 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				if (contaminant_cc_update_handled) {
 					LOG(LOG_LVL_DEBUG, log,
 					    "CC update: Contaminant algorithm responded");
-					if (is_floating_cable_or_sink_detected(chip)) {
+					if (max777x9_is_floating_cable_or_sink_detected(chip)) {
 						floating_cable_sink_detected_handler_locked(chip);
 						LOG(LOG_LVL_DEBUG, chip->log,
 						    "Floating cable detected");
+					} else {
+						chip->floating_cable_or_sink_detected = 0;
+						LOG(LOG_LVL_DEBUG, chip->log,
+						    "Floating cable counter cleared");
 					}
 				}
 			}
@@ -1616,7 +1833,8 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 			tcpm_cc_change(tcpci->port);
 			max77759_cache_cc(chip);
 			/* Check for missing-rp non compliant power source */
-			if (!regmap_read(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status))
+			if (!regmap_read(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status) &&
+			    !chip->usb_throttled && !chip->toggle_disable_status)
 				check_missing_rp(chip, !!(pwr_status & TCPC_POWER_STATUS_VBUS_PRES),
 						 chip->cc1, chip->cc2);
 			/* TCPM has detected valid CC terminations */
@@ -1628,8 +1846,8 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 				 */
 				if (chip->contaminant_detection_userspace !=
 					CONTAMINANT_DETECT_DISABLE)
-					disable_auto_ultra_low_power_mode(chip, false);
-			} else {
+					max777x9_disable_auto_ultra_low_power_mode(chip, false);
+			} else if (!chip->usb_throttled && chip->contaminant_detection) {
 				/*
 				 * TCPM has not detected valid CC terminations
 				 * and neither the comparators nor ADC
@@ -1864,13 +2082,21 @@ static void max77759_enable_toggling_locked(struct max77759_plat *chip, bool ena
 	if (ret < 0)
 		LOG(LOG_LVL_DEBUG, chip->log, "%s: Enable LK4CONN failed ret:%d", __func__, ret);
 }
-static int max77759_start_toggling(struct tcpci *tcpci,
-				   struct tcpci_data *tdata,
+
+static int max77759_start_toggling(struct google_shim_tcpci *tcpci,
+				   struct google_shim_tcpci_data *tdata,
 				   enum typec_cc_status cc)
 {
 	struct max77759_plat *chip = tdata_to_max77759(tdata);
 	u8 reg = TCPC_ROLE_CTRL_DRP, pwr_ctrl;
 	int ret;
+	enum typec_cc_status cc1, cc2;
+
+	/* Wait for tcpci_register_port to finish. */
+	while (READ_ONCE(chip->tcpci) == NULL)
+		cpu_relax();
+
+	max77759_get_cc(chip, &cc1, &cc2);
 
 	switch (cc) {
 	case TYPEC_CC_RP_DEF:
@@ -1896,9 +2122,7 @@ static int max77759_start_toggling(struct tcpci *tcpci,
 		reg |= (TCPC_ROLE_CTRL_CC_RP << TCPC_ROLE_CTRL_CC1_SHIFT) |
 			(TCPC_ROLE_CTRL_CC_RP << TCPC_ROLE_CTRL_CC2_SHIFT);
 
-	mutex_lock(&chip->toggle_lock);
 	max77759_init_regs(chip->tcpci->regmap, chip->log);
-	mutex_unlock(&chip->toggle_lock);
 
 	chip->role_ctrl_cache = reg;
 	mutex_lock(&chip->rc_lock);
@@ -1906,11 +2130,11 @@ static int max77759_start_toggling(struct tcpci *tcpci,
 		goto unlock;
 
 	/* Kick debug accessory state machine when enabling toggling for the first time */
-	if (chip->first_toggle && chip->in_switch_gpio >= 0) {
-		LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Kick Debug accessory FSM", __func__);
-		gpio_set_value_cansleep(chip->in_switch_gpio, !chip->in_switch_gpio_active_high);
-		mdelay(10);
-		gpio_set_value_cansleep(chip->in_switch_gpio, chip->in_switch_gpio_active_high);
+	if (chip->first_toggle) {
+		if ((chip->in_switch_gpio >= 0) && is_debug_accessory_detected(cc1, cc2)) {
+			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Kick Debug accessory FSM", __func__);
+			ovp_operation(chip, OVP_RESET);
+		}
 		chip->first_toggle = false;
 	}
 
@@ -1948,8 +2172,8 @@ unlock:
 	return 0;
 }
 
-static void max77759_set_partner_usb_comm_capable(struct tcpci *tcpci, struct tcpci_data *data,
-						  bool capable)
+static void max77759_set_partner_usb_comm_capable(struct google_shim_tcpci *tcpci,
+						  struct google_shim_tcpci_data *data, bool capable)
 {
 	struct max77759_plat *chip = tdata_to_max77759(data);
 
@@ -1967,6 +2191,7 @@ static int max77759_usb_set_orientation(struct typec_switch_dev *sw,
 		TYPEC_POLARITY_CC2 : TYPEC_POLARITY_CC1;
 	int ret;
 
+	chip->orientation = orientation;
 	ret = extcon_set_property(chip->extcon, EXTCON_USB, EXTCON_PROP_USB_TYPEC_POLARITY,
 				  (union extcon_property_value)(int)polarity);
 	logbuffer_logk(chip->log, LOGLEVEL_INFO,
@@ -1976,6 +2201,7 @@ static int max77759_usb_set_orientation(struct typec_switch_dev *sw,
 				  (union extcon_property_value)(int)polarity);
 	logbuffer_logk(chip->log, LOGLEVEL_INFO, "%s setting polarity USB_HOST %d",
 		       ret < 0 ? "Failed" : "Succeeded", polarity);
+
 	chip->polarity = polarity;
 
 	if (orientation_callback)
@@ -1989,7 +2215,6 @@ static int max77759_vote_icl(struct max77759_plat *chip, u32 max_ua)
 	int ret = 0;
 	struct usb_vote vote;
 
-	usb_psy_set_sink_state(chip->usb_psy_data, chip->online);
 	/*
 	 * TCPM sets max_ua to zero for Rp-default which needs to be
 	 * ignored. PPS values reflect the requested ones not the max.
@@ -2018,7 +2243,41 @@ static void icl_work_item(struct kthread_work *work)
 	struct max77759_plat *chip  =
 		container_of(container_of(work, struct kthread_delayed_work, work),
 			     struct max77759_plat, icl_work);
+	union power_supply_propval current_max = {0}, voltage_max = {0}, online = {0},
+	      usb_type = {0}, val = {0};
+	int ret;
 
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_CURRENT_MAX, &current_max);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &voltage_max);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_ONLINE, &online);
+	power_supply_get_property(chip->tcpm_psy, POWER_SUPPLY_PROP_USB_TYPE, &usb_type);
+	logbuffer_logk(chip->log, LOGLEVEL_INFO,
+		      "%s: ONLINE:%d USB_TYPE:%d CURRENT_MAX:%d VOLTAGE_MAX:%d",
+		      __func__, online.intval, usb_type.intval, current_max.intval, voltage_max.intval);
+
+	/* Debounce disconnect for power adapters that can source at least 1.5A */
+	if (chip->debounce_adapter_disconnect && chip->online && !online.intval &&
+	    chip->typec_current_max >= 1500000) {
+		logbuffer_log(chip->log, "Debouncing disconnect\n");
+		/* Reduce current limit 500mA during debounce */
+		max77759_vote_icl(chip, 500000);
+		chip->debounce_adapter_disconnect = false;
+		kthread_mod_delayed_work(chip->wq, &chip->icl_work,
+					 msecs_to_jiffies(DISCONNECT_DEBOUNCE_MS));
+		return;
+	}
+
+	chip->vbus_mv = voltage_max.intval / 1000;
+	val.intval = voltage_max.intval;
+	ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
+	if (ret < 0)
+		LOG(LOG_LVL_DEBUG, chip->log,
+		    "unable to set max voltage to %d, ret=%d", voltage_max.intval, ret);
+
+	chip->online = online.intval;
+	chip->usb_type = usb_type.intval;
+	chip->typec_current_max = current_max.intval;
+	usb_psy_set_sink_state(chip->usb_psy_data, chip->online);
 	max77759_vote_icl(chip, chip->typec_current_max);
 }
 
@@ -2026,30 +2285,22 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 {
 	struct max77759_plat *chip = container_of(nb, struct max77759_plat, psy_notifier);
 	struct power_supply *psy = ptr;
-	union power_supply_propval current_max = {0}, voltage_max = {0}, online = {0},
-	      usb_type = {0}, val = {0};
-	int ret;
+	union power_supply_propval online = {0}, usb_type = {0};
 
 	if (!strstr(psy->desc->name, "tcpm-source") || evt != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
 
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_CURRENT_MAX, &current_max);
-	power_supply_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &voltage_max);
 	power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE, &online);
 	power_supply_get_property(psy, POWER_SUPPLY_PROP_USB_TYPE, &usb_type);
-	logbuffer_logk(chip->log, LOGLEVEL_INFO,
-		       "ONLINE:%d USB_TYPE:%d CURRENT_MAX:%d VOLTAGE_MAX:%d",
-		       online.intval, usb_type.intval, current_max.intval, voltage_max.intval);
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "ONLINE:%d USB_TYPE:%d", online.intval,
+		       usb_type.intval);
+	chip->tcpm_psy = psy;
 
-	chip->vbus_mv = voltage_max.intval / 1000;
-	ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
-	if (ret < 0)
-		LOG(LOG_LVL_DEBUG, chip->log,
-		    "unable to set max voltage to %d, ret=%d", chip->vbus_mv, ret);
+	if (chip->online && !online.intval && chip->typec_current_max >= 1500000)
+		chip->debounce_adapter_disconnect = true;
+	else
+		chip->debounce_adapter_disconnect = false;
 
-	chip->online = online.intval;
-	chip->usb_type = usb_type.intval;
-	chip->typec_current_max = current_max.intval;
 	/* Notifier is atomic, hence offloading */
 	kthread_mod_delayed_work(chip->wq, &chip->icl_work, 0);
 	return NOTIFY_OK;
@@ -2073,22 +2324,32 @@ static int max77759_set_vbus_voltage_max_mv(struct i2c_client *tcpc_client,
 	return 0;
 }
 
-static void max77759_get_vbus(void *unused, struct tcpci *tcpci, struct tcpci_data *data, int *vbus,
-			      int *bypass)
+static int max77759_get_vbus(struct google_shim_tcpci *tcpci, struct google_shim_tcpci_data *data)
 {
 	struct max77759_plat *chip = tdata_to_max77759(data);
 	u8 pwr_status;
 	int ret;
 
 	ret = max77759_read8(tcpci->regmap, TCPC_POWER_STATUS, &pwr_status);
+	if (ret < 0) {
+		LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Unable to fetch power status, ret=%d\n",
+		    __func__, ret);
+		return ret;
+	}
+
 	if (!ret && !chip->vbus_present && (pwr_status & TCPC_POWER_STATUS_VBUS_PRES)) {
 		LOG(LOG_LVL_DEBUG, chip->log, "[%s]: syncing vbus_present", __func__);
 		chip->vbus_present = 1;
 	}
 
 	LOG(LOG_LVL_DEBUG, chip->log, "[%s]: vbus_present %d", __func__, chip->vbus_present);
-	*vbus = chip->vbus_present;
-	*bypass = 1;
+
+	if (chip->toggle_disable_status) {
+		LOG(LOG_LVL_DEBUG, chip->log, "%s: toggle disabled, return Vbus off", __func__);
+		return 0;
+	}
+
+	return chip->vbus_present;
 }
 
 static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
@@ -2163,7 +2424,8 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 	return 0;
 }
 
-static void max77759_store_partner_src_caps(void *unused, unsigned int *nr_source_caps,
+static void max77759_store_partner_src_caps(void *unused,
+					    unsigned int *nr_source_caps,
 					    u32 (*source_caps)[])
 {
 	int i;
@@ -2260,18 +2522,31 @@ static void max77759_set_port_data_capable(struct i2c_client *tcpc_client,
 static const unsigned int usbpd_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
-	EXTCON_DISP_DP,
 	EXTCON_MECHANICAL,
 	EXTCON_NONE,
 };
 
-static int tcpci_init(struct tcpci *tcpci, struct tcpci_data *data)
+static int tcpci_init(struct google_shim_tcpci *tcpci, struct google_shim_tcpci_data *data)
 {
 	/*
 	 * Generic TCPCI overwrites the regs once this driver initializes
 	 * them. Prevent this by returning -1.
 	 */
 	return -1;
+}
+
+static int usb_throttle_votable_callback(struct gvotable_election *el,
+					 const char *reason, void *value)
+{
+	struct max77759_plat *chip = gvotable_get_data(el);
+	int throttled = (long)value ? USB_SUSPENDED : USB_RESUMED;
+
+	mutex_lock(&chip->rc_lock);
+	chip->usb_throttled =  throttled;
+	LOG(LOG_LVL_DEBUG, chip->log, "%s: reason %s value %ld\n", __func__, reason, (long)value);
+	mutex_unlock(&chip->rc_lock);
+
+	return 0;
 }
 
 static int max77759_toggle_disable_votable_callback(struct gvotable_election *el,
@@ -2289,14 +2564,20 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 	chip->toggle_disable_status = disable;
 	if (chip->toggle_disable_status) {
 		update_contaminant_detection_locked(chip, CONTAMINANT_DETECT_DISABLE);
-		disable_contaminant_detection(chip);
+		max777x9_disable_contaminant_detection(chip);
 		max77759_enable_toggling_locked(chip, false);
+		/*
+		 * If external Vbus OVP is present, disable it to block Vbus.
+		 * If there is no external Vbus OVP, inform TCPM of the change on Vbus.
+		 * The mock Vbus absence will be reported in max77759_get_vbus callback.
+		 */
 		if (chip->in_switch_gpio >= 0) {
-			gpio_set_value_cansleep(chip->in_switch_gpio,
-						!chip->in_switch_gpio_active_high);
+			ovp_operation(chip, OVP_OFF);
 			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Disable in-switch set %s / active %s",
 			    __func__, !chip->in_switch_gpio_active_high ? "high" : "low",
 			    chip->in_switch_gpio_active_high ? "high" : "low");
+		} else {
+			tcpm_vbus_change(chip->tcpci->port);
 		}
 	} else {
 		if (chip->contaminant_detection_userspace)
@@ -2304,12 +2585,18 @@ static int max77759_toggle_disable_votable_callback(struct gvotable_election *el
 							    chip->contaminant_detection_userspace);
 		else
 			max77759_enable_toggling_locked(chip, true);
+		/*
+		 * If external Vbus OVP is present, enable it to reflect the real Vbus status.
+		 * If there is no external Vbus OVP, inform TCPM of the change on Vbus.
+		 * The real Vbus status will be queried in max77759_get_vbus callback.
+		 */
 		if (chip->in_switch_gpio >= 0) {
-			gpio_set_value_cansleep(chip->in_switch_gpio,
-						chip->in_switch_gpio_active_high);
+			ovp_operation(chip, OVP_ON);
 			LOG(LOG_LVL_DEBUG, chip->log, "[%s]: Enable in-switch set %s / active %s",
 			    __func__, chip->in_switch_gpio_active_high ? "high" : "low",
 			    chip->in_switch_gpio_active_high ? "high" : "low");
+		} else {
+			tcpm_vbus_change(chip->tcpci->port);
 		}
 	}
 	mutex_unlock(&chip->rc_lock);
@@ -2384,10 +2671,269 @@ static const struct file_operations force_device_mode_on_fops = {
 };
 #endif
 
+static void max77759_get_timer_value(void *unused, const char *state, enum typec_timer timer,
+				     unsigned int *val)
+{
+	switch (timer) {
+	case SINK_DISCOVERY_BC12:
+		*val = sink_discovery_delay_ms;
+		break;
+	case SINK_WAIT_CAP:
+		*val = 450;
+		break;
+	case SOURCE_OFF:
+		*val = 870;
+		break;
+	case CC_DEBOUNCE:
+		*val = 170;
+		break;
+	default:
+		break;
+	}
+}
+
+static void max77759_tcpm_log(void *unused, const char *log, bool *bypass)
+{
+	if (tcpm_log)
+		LOG(LOG_LVL_DEBUG, tcpm_log, "%s", log);
+
+	*bypass = true;
+}
+
+static void max77759_modify_src_caps(void *unused, unsigned int *nr_src_pdo,
+				     u32 (*src_pdo)[], bool *modified)
+{
+	spin_lock(&g_caps_lock);
+
+	if (port_src_pdo_updated) {
+		spin_unlock(&g_caps_lock);
+		return;
+	}
+
+	if (limit_src_cap_enable) {
+		(*src_pdo)[0] &= ~(PDO_CURR_MASK << PDO_FIXED_CURR_SHIFT);
+		(*src_pdo)[0] |= PDO_FIXED_CURR(SRC_CURRENT_LIMIT_MA);
+		*nr_src_pdo = 1;
+	} else {
+		(*src_pdo)[0] |= PDO_FIXED_CURR(orig_src_current);
+		*nr_src_pdo = nr_orig_src_pdo;
+	}
+
+	port_src_pdo_updated = true;
+	*modified = true;
+
+	spin_unlock(&g_caps_lock);
+}
+
+static int max77759_register_vendor_hooks(struct i2c_client *client)
+{
+	int ret;
+
+	if (hooks_installed)
+		return 0;
+
+	ret = register_trace_android_vh_typec_store_partner_src_caps(
+			max77759_store_partner_src_caps, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
+			ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_tcpm_get_timer(max77759_get_timer_value, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_get_timer failed ret:%d\n", ret);
+		return ret;
+	}
+
+	ret = register_trace_android_vh_typec_tcpm_log(max77759_tcpm_log, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_log failed ret:%d\n", ret);
+		return ret;
+	}
+
+	port_src_pdo_updated = true;
+	ret = register_trace_android_vh_typec_tcpm_modify_src_caps(max77759_modify_src_caps, NULL);
+	if (ret) {
+		dev_err(&client->dev,
+			"register_trace_android_vh_typec_tcpm_modify_src_caps failed ret:%d\n",
+			ret);
+		return ret;
+	}
+
+	hooks_installed = true;
+
+	return ret;
+}
+
+static void reenable_auto_ultra_low_power_mode_work_item(struct kthread_work *work)
+{
+	struct max77759_plat *chip = container_of(work, struct max77759_plat,
+						  reenable_auto_ultra_low_power_mode_work);
+
+	chip->floating_cable_or_sink_detected = 0;
+	max777x9_disable_auto_ultra_low_power_mode(chip, false);
+}
+
+static enum alarmtimer_restart reenable_auto_ultra_low_power_mode_alarm_handler(struct alarm *alarm,
+										ktime_t time)
+{
+	struct max77759_plat *chip = container_of(alarm, struct max77759_plat,
+						  reenable_auto_ultra_low_power_mode_alarm);
+
+	logbuffer_log(chip->log, "timer fired: enable_auto_ultra_low_power_mode");
+	if (max777x9_is_contaminant_detected(chip)) {
+		LOG(LOG_LVL_DEBUG, chip->log,
+			      "Skipping enable_auto_ultra_low_power_mode. Dry detection in progress");
+		goto exit;
+	}
+	kthread_queue_work(chip->wq, &chip->reenable_auto_ultra_low_power_mode_work);
+	pm_wakeup_event(chip->dev, PD_ACTIVITY_TIMEOUT_MS);
+
+exit:
+	return ALARMTIMER_NORESTART;
+}
+
+static void max_tcpci_check_contaminant(struct google_shim_tcpci *tcpci,
+					struct google_shim_tcpci_data *tdata)
+{
+	struct max77759_plat *chip = tdata_to_max77759(tdata);
+	bool contaminant_cc_status_handled = false, port_clean = false;
+	int ret = 0;
+
+	mutex_lock(&chip->rc_lock);
+	LOG(LOG_LVL_DEBUG, chip->log, "max_tcpci_check_contaminant");
+	if (chip->usb_throttled) {
+		LOG(LOG_LVL_DEBUG, chip->log, "usb throttled; port clean");
+		tcpm_port_clean(chip->port);
+		mutex_unlock(&chip->rc_lock);
+		return;
+	}
+	if (chip->contaminant_detection) {
+		ret = max777x9_process_contaminant_alert(chip->contaminant, true, false,
+							 &contaminant_cc_status_handled,
+							 &port_clean);
+		if (ret < 0) {
+			logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
+			/* Assume clean port */
+			tcpm_port_clean(chip->port);
+		} else if (port_clean) {
+			LOG(LOG_LVL_DEBUG, chip->log, "port clean");
+			tcpm_port_clean(chip->port);
+		} else {
+			LOG(LOG_LVL_DEBUG, chip->log, "port dirty");
+			chip->check_contaminant = true;
+		}
+	} else {
+		LOG(LOG_LVL_DEBUG, chip->log, "port clean; Contaminant detection not enabled");
+		tcpm_port_clean(chip->port);
+	}
+	mutex_unlock(&chip->rc_lock);
+}
+
+static void dp_notification_work_item(struct kthread_work *work)
+{
+	struct dp_notification_event *evt = container_of(work, struct dp_notification_event,
+							 dp_notification_work);
+	struct max77759_plat *chip = evt->chip;
+	int dp, ret;
+
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp wq %s: %lu", __func__, evt->mode);
+
+	switch (evt->mode) {
+	case TYPEC_DP_STATE_A:
+	case TYPEC_DP_STATE_C:
+	case TYPEC_DP_STATE_E:
+		dp = 1;
+		chip->lanes = 4;
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio,
+					chip->orientation == TYPEC_ORIENTATION_NORMAL ?
+					0 : 1);
+		break;
+	case TYPEC_DP_STATE_B:
+	case TYPEC_DP_STATE_D:
+	case TYPEC_DP_STATE_F:
+		dp = 1;
+		chip->lanes = 2;
+		if (chip->sbu_mux_en_gpio >= 0)
+			gpio_set_value_cansleep(chip->sbu_mux_en_gpio, 1);
+		gpio_set_value_cansleep(chip->sbu_mux_sel_gpio,
+					chip->orientation == TYPEC_ORIENTATION_NORMAL ?
+					0 : 1);
+		break;
+	default:
+		dp = 0;
+	}
+
+	if ((dp && !chip->dp_regulator_enabled) || (!dp && chip->dp_regulator_enabled)) {
+		ret = dp ? regulator_enable(chip->dp_regulator) : \
+			   regulator_disable(chip->dp_regulator);
+		if (ret >= 0)
+			chip->dp_regulator_enabled = dp;
+		LOG(LOG_LVL_DEBUG, chip->log, "dp regulator_%s %s ret:%d",
+		    dp ? "enable" : "disable", ret < 0 ? "fail" : "success", ret);
+		ret = dp ? regulator_set_voltage(chip->dp_regulator, VOLTAGE_DP_AUX_DEFAULT_UV,
+						 VOLTAGE_DP_AUX_DEFAULT_UV) : \
+			   regulator_set_voltage(chip->dp_regulator, chip->dp_regulator_min_uv,
+						 chip->dp_regulator_max_uv);
+		LOG(LOG_LVL_DEBUG, chip->log,
+		    "dp regulator_set_voltage %s ret:%d", ret < 0 ? "fail" : "success", ret);
+	}
+
+	if (chip->product_id == MAX77779_PRODUCT_ID) {
+		ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ?
+				      (chip->orientation == TYPEC_ORIENTATION_REVERSE ?
+				      SBUSW_XBAR_POL_REVERSE : SBUSW_XBAR_POL_NORMAL) :
+				      (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+		LOG(LOG_LVL_DEBUG, chip->log, "SBU Cross Bar SW %s %s, orientation:%d ret:%d",
+		    dp ? "Enable" : "Disable", ret < 0 ? "fail" : "success", chip->orientation,
+		    ret);
+	} else {
+		ret = max77759_write8(chip->data.regmap, TCPC_VENDOR_SBUSW_CTRL, dp ? SBUSW_PATH_1 :
+				      (modparam_conf_sbu ? SBUSW_SERIAL_UART : 0));
+	}
+
+	LOG(LOG_LVL_DEBUG, chip->log, "%s Signaling dp altmode: %s ret:%d",
+	    ret < 0 ? "Failed" : "Succeeded", dp ? "on" : "off", ret);
+	logbuffer_logk(chip->log, LOGLEVEL_INFO, "dp altmode orientation:%d lanes:%d dp:%d",
+		      (int)chip->orientation, chip->lanes, dp);
+
+	devm_kfree(chip->dev, evt);
+}
+
+static int max77759_usb_set_mode(struct typec_mux_dev *mux, struct typec_mux_state *state)
+{
+	struct max77759_plat *chip = typec_mux_get_drvdata(mux);
+	struct dp_notification_event *evt;
+
+	if (!state || !state->alt) {
+		LOG(LOG_LVL_DEBUG, chip->log, "%s: dropping event", __func__);
+		return 0;
+	}
+
+	evt = devm_kzalloc(chip->dev, sizeof(*evt), GFP_KERNEL);
+	if (!evt) {
+		LOG(LOG_LVL_DEBUG, chip->log, "dp notification: Dropping event");
+		return 0;
+	}
+	kthread_init_work(&evt->dp_notification_work, dp_notification_work_item);
+	evt->chip = chip;
+	evt->mode = state->mode;
+	kthread_queue_work(chip->dp_notification_wq, &evt->dp_notification_work);
+	pm_wakeup_event(chip->dev, PD_ACTIVITY_TIMEOUT_MS);
+	return 0;
+}
+
 static int max77759_setup_data_notifier(struct max77759_plat *chip)
 {
 	struct usb_role_switch_desc desc = { };
 	struct typec_switch_desc sw_desc = { };
+	struct typec_mux_desc mux_desc = {};
 	u32 conn_handle;
 	int ret;
 
@@ -2434,6 +2980,18 @@ static int max77759_setup_data_notifier(struct max77759_plat *chip)
 		goto usb_sw_free;
 	}
 
+	mux_desc.fwnode = dev_fwnode(chip->dev);
+	mux_desc.drvdata = chip;
+	mux_desc.name = fwnode_get_name(dev_fwnode(chip->dev));
+	mux_desc.set = max77759_usb_set_mode;
+
+	chip->mode_mux = typec_mux_register(chip->dev, &mux_desc);
+	if (IS_ERR(chip->mode_mux)) {
+		ret = PTR_ERR(chip->mode_mux);
+		dev_err(chip->dev, "Error while registering mode mux:%d\n", ret);
+		goto usb_sw_free;
+	}
+
 	return 0;
 
 usb_sw_free:
@@ -2447,148 +3005,6 @@ static void max77759_teardown_data_notifier(struct max77759_plat *chip)
 		typec_switch_unregister(chip->typec_sw);
 	if (!IS_ERR_OR_NULL(chip->usb_sw))
 		usb_role_switch_unregister(chip->usb_sw);
-}
-
-static void max77759_typec_tcpci_override_toggling(void *unused, struct tcpci *tcpci,
-						   struct tcpci_data *data,
-						   int *override_toggling)
-{
-	*override_toggling = 1;
-}
-
-static void max77759_get_timer_value(void *unused, const char *state, enum typec_timer timer,
-				     unsigned int *val)
-{
-	switch (timer) {
-	case SINK_DISCOVERY_BC12:
-		*val = sink_discovery_delay_ms;
-		break;
-	case SINK_WAIT_CAP:
-		*val = 450;
-		break;
-	case SOURCE_OFF:
-		*val = 870;
-		break;
-	case CC_DEBOUNCE:
-		*val = 170;
-		break;
-	default:
-		break;
-	}
-}
-
-static void max77759_tcpm_log(void *unused, const char *log, bool *bypass)
-{
-	if (tcpm_log)
-		logbuffer_log(tcpm_log, "%s", log);
-
-	*bypass = true;
-}
-
-static int max77759_register_vendor_hooks(struct i2c_client *client)
-{
-	int ret = 0;
-
-	if (hooks_installed)
-		return 0;
-
-	ret = register_trace_android_vh_typec_tcpci_override_toggling(
-			max77759_typec_tcpci_override_toggling, NULL);
-
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpci_override_toggling failed ret:%d",
-			ret);
-		return ret;
-	}
-
-	ret = register_trace_android_rvh_typec_tcpci_get_vbus(max77759_get_vbus, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_rvh_typec_tcpci_get_vbus failed ret:%d\n", ret);
-		return ret;
-	}
-
-	port_src_pdo_updated = true;
-	ret = register_trace_android_vh_typec_store_partner_src_caps(
-			max77759_store_partner_src_caps, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_store_partner_src_caps failed ret:%d\n",
-			ret);
-		return ret;
-	}
-
-	ret = register_trace_android_vh_typec_tcpm_get_timer(max77759_get_timer_value, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpm_get_timer failed ret:%d\n", ret);
-		return ret;
-	}
-
-	ret = register_trace_android_vh_typec_tcpm_log(max77759_tcpm_log, NULL);
-	if (ret) {
-		dev_err(&client->dev,
-			"register_trace_android_vh_typec_tcpm_log failed ret:%d\n", ret);
-		return ret;
-	}
-
-	hooks_installed = true;
-
-	return ret;
-}
-
-static void reenable_auto_ultra_low_power_mode_work_item(struct kthread_work *work)
-{
-	struct max77759_plat *chip = container_of(work, struct max77759_plat,
-						  reenable_auto_ultra_low_power_mode_work);
-
-	chip->floating_cable_or_sink_detected = 0;
-	disable_auto_ultra_low_power_mode(chip, false);
-}
-
-static enum alarmtimer_restart reenable_auto_ultra_low_power_mode_alarm_handler(struct alarm *alarm,
-										ktime_t time)
-{
-	struct max77759_plat *chip = container_of(alarm, struct max77759_plat,
-						  reenable_auto_ultra_low_power_mode_alarm);
-
-	logbuffer_log(chip->log, "timer fired: enable_auto_ultra_low_power_mode");
-	if (is_contaminant_detected(chip)) {
-		logbuffer_log(chip->log,
-			      "Skipping enable_auto_ultra_low_power_mode. Dry detection in progress");
-		goto exit;
-	}
-	kthread_queue_work(chip->wq, &chip->reenable_auto_ultra_low_power_mode_work);
-	pm_wakeup_event(chip->dev, PD_ACTIVITY_TIMEOUT_MS);
-
-exit:
-	return ALARMTIMER_NORESTART;
-}
-
-static void max_tcpci_check_contaminant(struct tcpci *tcpci, struct tcpci_data *tdata)
-{
-	struct max77759_plat *chip = tdata_to_max77759(tdata);
-	bool contaminant_cc_status_handled = false, port_clean = false;
-	int ret = 0;
-
-	mutex_lock(&chip->rc_lock);
-	if (chip->contaminant_detection)
-		ret = process_contaminant_alert(chip->contaminant, true, false,
-						&contaminant_cc_status_handled,
-						&port_clean);
-	mutex_unlock(&chip->rc_lock);
-	if (ret < 0) {
-		logbuffer_logk(chip->log, LOGLEVEL_ERR, "I/O error in %s", __func__);
-		/* Assume clean port */
-		tcpm_port_clean(chip->port);
-	} else if (port_clean) {
-		LOG(LOG_LVL_DEBUG, chip->log, "port clean");
-		tcpm_port_clean(chip->port);
-	} else {
-		LOG(LOG_LVL_DEBUG, chip->log, "port dirty");
-		chip->check_contaminant = true;
-	}
 }
 
 static bool is_aicl_limited(struct max77759_plat *chip)
@@ -2681,10 +3097,10 @@ static int max77759_probe(struct i2c_client *client,
 	int ret, i;
 	struct max77759_plat *chip;
 	char *usb_psy_name;
-	struct device_node *dn, *ovp_dn, *conn;
-	u8 power_status;
+	struct device_node *dn, *ovp_dn, *regulator_dn, *conn;
+	u8 power_status, pid;
 	u16 device_id;
-	u32 ovp_handle;
+	u32 ovp_handle, regulator_handle;
 	const char *ovp_status;
 	enum of_gpio_flags flags;
 	u32 first_src_pdo = 0;
@@ -2706,9 +3122,16 @@ static int max77759_probe(struct i2c_client *client,
 		return PTR_ERR(chip->data.regmap);
 	}
 
+	dn = dev_of_node(&client->dev);
+	if (!dn) {
+		dev_err(&client->dev, "of node not found\n");
+		return -EINVAL;
+	}
+
 	chip->charger_mode_votable = gvotable_election_get_handle(GBMS_MODE_VOTABLE);
 	if (IS_ERR_OR_NULL(chip->charger_mode_votable)) {
-		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed");
+		dev_err(&client->dev, "TCPCI: GBMS_MODE_VOTABLE get failed: %ld",
+			PTR_ERR(chip->charger_mode_votable));
 		if (!of_property_read_bool(dn, "gvotable-lazy-probe"))
 			return -EPROBE_DEFER;
 	}
@@ -2719,12 +3142,6 @@ static int max77759_probe(struct i2c_client *client,
 		   reenable_auto_ultra_low_power_mode_alarm_handler);
 	kthread_init_work(&chip->aicl_check_alarm_work, aicl_check_alarm_work_item);
 	alarm_init(&chip->aicl_check_alarm, ALARM_BOOTTIME, aicl_check_alarm_handler);
-
-	dn = dev_of_node(&client->dev);
-	if (!dn) {
-		dev_err(&client->dev, "of node not found\n");
-		return -EINVAL;
-	}
 
 	chip->in_switch_gpio = -EINVAL;
 	if (of_property_read_bool(dn, "ovp-present")) {
@@ -2749,13 +3166,21 @@ static int max77759_probe(struct i2c_client *client,
 		}
 	}
 
+	chip->sbu_mux_en_gpio = of_get_named_gpio_flags(dn, "sbu-mux-en-gpio", 0, &flags);
+	if (chip->sbu_mux_en_gpio < 0) {
+		dev_err(&client->dev, "sbu-mux-en-gpio not found\n");
+	}
+	chip->sbu_mux_sel_gpio = of_get_named_gpio_flags(dn, "sbu-mux-sel-gpio", 0, &flags);
+	if (chip->sbu_mux_sel_gpio < 0) {
+		dev_err(&client->dev, "sbu-mux-sel-gpio not found\n");
+	}
 	chip->dev = &client->dev;
 	i2c_set_clientdata(client, chip);
 	mutex_init(&chip->icl_proto_el_lock);
 	mutex_init(&chip->data_path_lock);
 	mutex_init(&chip->rc_lock);
 	mutex_init(&chip->irq_status_lock);
-	mutex_init(&chip->toggle_lock);
+	mutex_init(&chip->ovp_lock);
 	spin_lock_init(&g_caps_lock);
 	chip->first_toggle = true;
 	chip->first_rp_missing_timeout = true;
@@ -2780,6 +3205,16 @@ static int max77759_probe(struct i2c_client *client,
 	gvotable_set_vote2str(chip->toggle_disable_votable, gvotable_v2s_int);
 	gvotable_election_set_name(chip->toggle_disable_votable, "TOGGLE_DISABLE");
 
+	chip->usb_throttle_votable =
+		gvotable_create_bool_election(NULL, usb_throttle_votable_callback, chip);
+	if (IS_ERR_OR_NULL(chip->usb_throttle_votable)) {
+		ret = PTR_ERR(chip->usb_throttle_votable);
+		dev_err(chip->dev, "USB throttle votable (%d) failed to create\n", ret);
+		return ret;
+	}
+	gvotable_set_vote2str(chip->usb_throttle_votable, gvotable_v2s_int);
+	gvotable_election_set_name(chip->usb_throttle_votable, USB_THROTTLE_VOTABLE);
+
 	/* Chip level tcpci callbacks */
 	chip->data.set_vbus = max77759_set_vbus;
 	chip->data.start_drp_toggling = max77759_start_toggling;
@@ -2789,6 +3224,7 @@ static int max77759_probe(struct i2c_client *client,
 	chip->data.init = tcpci_init;
 	chip->data.frs_sourcing_vbus = max77759_frs_sourcing_vbus;
 	chip->data.check_contaminant = max_tcpci_check_contaminant;
+	chip->data.get_vbus = max77759_get_vbus;
 
 	chip->compliance_warnings = init_compliance_warnings(chip);
 	if (IS_ERR_OR_NULL(chip->compliance_warnings)) {
@@ -2868,23 +3304,60 @@ static int max77759_probe(struct i2c_client *client,
 		goto teardown_bc12;
 	}
 
+	chip->dp_regulator = devm_regulator_get(chip->dev, "pullup");
+	if (IS_ERR_OR_NULL(chip->dp_regulator) ) {
+		dev_err(&client->dev, "devm_regulator_get failed\n");
+		goto psy_put;
+	}
+	if (!of_property_read_u32(dn, "pullup-supply", &regulator_handle)) {
+		regulator_dn = of_find_node_by_phandle(regulator_handle);
+		if (!IS_ERR_OR_NULL(regulator_dn)) {
+			if (of_property_read_u32(regulator_dn, "regulator-min-microvolt",
+						 &chip->dp_regulator_min_uv)) {
+				dev_err(&client->dev, "failed to read regulator-min-microvolt\n");
+				goto psy_put;
+			}
+			if (of_property_read_u32(regulator_dn, "regulator-max-microvolt",
+						 &chip->dp_regulator_max_uv)) {
+				dev_err(&client->dev, "failed to read regulator-max-microvolt\n");
+				goto psy_put;
+			}
+		}
+	}
+
 	ret = max77759_read16(chip->data.regmap, TCPC_BCD_DEV, &device_id);
 	if (ret < 0)
-		goto psy_put;
+		goto dp_regulator_put;
 
 	LOG(LOG_LVL_DEBUG, chip->log, "TCPC DEVICE id:%d", device_id);
-	/* Default enable on A1 or higher */
-	chip->contaminant_detection = device_id >= MAX77759_DEVICE_ID_A1;
+
+	ret = max77759_read8(chip->data.regmap, TCPC_PRODUCT_ID, &pid);
+	if (ret < 0)
+		goto dp_regulator_put;
+	LOG(LOG_LVL_DEBUG, chip->log, "TCPC PID:%d", pid);
+
+	/* Default enable on A1 or higher on MAX77759 */
+	chip->contaminant_detection =
+		((pid == MAX77759_PRODUCT_ID) && (device_id >= MAX77759_DEVICE_ID_A1)) ||
+		(pid == MAX77779_PRODUCT_ID);
 	chip->contaminant_detection_userspace = chip->contaminant_detection;
-	chip->contaminant = max77759_contaminant_init(chip, chip->contaminant_detection);
+	if (chip->contaminant_detection) {
+		LOG(LOG_LVL_DEBUG, chip->log, "Contaminant detection enabled");
+		chip->data.check_contaminant = max_tcpci_check_contaminant;
+		chip->contaminant = max777x9_contaminant_init(chip, chip->contaminant_detection,
+							      pid == MAX77779_PRODUCT_ID);
+	}
+
+	/* Cache product_id to determine dp_regulator handling */
+	chip->product_id = pid;
 
 	ret = max77759_setup_data_notifier(chip);
 	if (ret < 0)
-		goto psy_put;
+		goto dp_regulator_put;
 	max77759_init_regs(chip->data.regmap, chip->log);
 
-	/* Default enable on A1 or higher */
-	if (device_id >= MAX77759_DEVICE_ID_A1) {
+	/* Default enable on MAX77759 A1 or higher. Default enable on MAX77779 */
+	if (pid == MAX77779_PRODUCT_ID || device_id >= MAX77759_DEVICE_ID_A1) {
 		chip->data.auto_discharge_disconnect = true;
 		chip->frs = true;
 	}
@@ -2893,6 +3366,12 @@ static int max77759_probe(struct i2c_client *client,
 	if (IS_ERR_OR_NULL(chip->wq)) {
 		ret = PTR_ERR(chip->wq);
 		goto teardown_data;
+	}
+
+	chip->dp_notification_wq = kthread_create_worker(0, "wq-tcpc-dp-notification");
+	if (IS_ERR_OR_NULL(chip->dp_notification_wq)) {
+		ret = PTR_ERR(chip->dp_notification_wq);
+		goto destroy_worker;
 	}
 
 	kthread_init_delayed_work(&chip->icl_work, icl_work_item);
@@ -2914,7 +3393,7 @@ static int max77759_probe(struct i2c_client *client,
 	ret = power_supply_reg_notifier(&chip->psy_notifier);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to register power supply callback\n");
-		goto destroy_worker;
+		goto destroy_dp_worker;
 	}
 
 	chip->usb_icl_proto_el = gvotable_election_get_handle(USB_ICL_PROTO_EL);
@@ -2942,15 +3421,13 @@ static int max77759_probe(struct i2c_client *client,
 	}
 	gvotable_set_vote2str(chip->aicl_active_el, gvotable_v2s_int);
 
-	mutex_lock(&chip->toggle_lock);
-	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
-	mutex_unlock(&chip->toggle_lock);
+	chip->tcpci = google_tcpci_shim_register_port(chip->dev, &chip->data);
 	if (IS_ERR_OR_NULL(chip->tcpci)) {
 		dev_err(&client->dev, "TCPCI port registration failed");
 		ret = PTR_ERR(chip->tcpci);
 		goto unreg_aicl_el;
 	}
-	chip->port = tcpci_get_tcpm_port(chip->tcpci);
+	chip->port = google_tcpci_shim_get_tcpm_port(chip->tcpci);
 
 	max77759_enable_voltage_alarm(chip, true, true);
 
@@ -2997,15 +3474,19 @@ remove_files:
 	for (i = 0; max77759_device_attrs[i]; i++)
 		device_remove_file(&client->dev, max77759_device_attrs[i]);
 unreg_port:
-	tcpci_unregister_port(chip->tcpci);
+	google_tcpci_shim_unregister_port(chip->tcpci);
 unreg_aicl_el:
 	gvotable_destroy_election(chip->aicl_active_el);
 unreg_notifier:
 	power_supply_unreg_notifier(&chip->psy_notifier);
+destroy_dp_worker:
+	kthread_destroy_worker(chip->dp_notification_wq);
 destroy_worker:
 	kthread_destroy_worker(chip->wq);
 teardown_data:
 	max77759_teardown_data_notifier(chip);
+dp_regulator_put:
+	devm_regulator_put(chip->dp_regulator);
 psy_put:
 	power_supply_put(chip->usb_psy);
 teardown_bc12:
@@ -3029,7 +3510,9 @@ static void max77759_remove(struct i2c_client *client)
 	for (i = 0; max77759_device_attrs[i]; i++)
 		device_remove_file(&client->dev, max77759_device_attrs[i]);
 	if (!IS_ERR_OR_NULL(chip->tcpci))
-		tcpci_unregister_port(chip->tcpci);
+		google_tcpci_shim_unregister_port(chip->tcpci);
+	if (!IS_ERR_OR_NULL(chip->dp_regulator))
+		devm_regulator_put(chip->dp_regulator);
 	if (!IS_ERR_OR_NULL(chip->aicl_active_el))
 		gvotable_destroy_election(chip->aicl_active_el);
 	if (!IS_ERR_OR_NULL(chip->usb_psy))
@@ -3040,6 +3523,8 @@ static void max77759_remove(struct i2c_client *client)
 		bc12_teardown(chip->bc12);
 	if (!IS_ERR_OR_NULL(chip->log))
 		logbuffer_unregister(chip->log);
+	if (!IS_ERR_OR_NULL(chip->dp_notification_wq))
+		kthread_destroy_worker(chip->dp_notification_wq);
 	if (!IS_ERR_OR_NULL(chip->wq))
 		kthread_destroy_worker(chip->wq);
 	power_supply_unreg_notifier(&chip->psy_notifier);
@@ -3053,6 +3538,7 @@ static void max77759_shutdown(struct i2c_client *client)
 
 	dev_info(&client->dev, "disabling Type-C upon shutdown\n");
 	kthread_cancel_delayed_work_sync(&chip->check_missing_rp_work);
+	kthread_cancel_delayed_work_sync(&chip->icl_work);
 	/* Set current limit to 0. Will eventually happen after hi-Z as well */
 	max77759_vote_icl(chip, 0);
 	/* Prevent re-enabling toggling */

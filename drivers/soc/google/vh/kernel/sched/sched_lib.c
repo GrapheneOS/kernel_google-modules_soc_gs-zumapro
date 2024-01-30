@@ -123,4 +123,3 @@ void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
 	pr_debug("schedlib setaff tid: %d, mask out: %*pb\n",
 		 task_pid_nr(task), cpumask_pr_args(in_mask));
 }
-

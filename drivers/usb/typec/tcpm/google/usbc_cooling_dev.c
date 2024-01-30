@@ -19,6 +19,7 @@
 #include <linux/thermal.h>
 
 #include "usb_icl_voter.h"
+#include "usb_thermal_voter.h"
 
 #define USBC_COOLING_DEV_VOTER		"USBC_COOLING_DEV_VOTER"
 
@@ -57,6 +58,8 @@ struct usb_port_cooling_dev_info {
 	struct gvotable_election *usb_icl_votable;
 	/* Votable to disable USB-C port */
 	struct gvotable_election *toggle_disable_votable;
+	/* Votable that signals whether USB is suspended or resumed */
+	struct gvotable_election *usb_throttle_votable;
 	struct usb_port_cooling_dev_stats stats;
 	/* usb-port cooling device */
 	struct thermal_cooling_device *cooling_dev;
@@ -188,6 +191,19 @@ static int suspend_usb(struct usb_port_cooling_dev_info *usb_cdev_info)
 		return ret;
 	}
 
+	/*
+	 * Vote to let TCPCI know that USB has been throttled.
+	 * Different from toggle_disable_votable where the toggling is disabled
+	 * intermittently.
+	 */
+	ret = gvotable_cast_vote(usb_cdev_info->usb_throttle_votable, USBC_COOLING_DEV_VOTER,
+				 (void *)DISABLE_TOGGLE_VOTE, USB_SUSPENDED);
+	if (ret < 0) {
+		dev_err(usb_cdev_info->dev, "Couldn't vote for usb_throttle_votable ret=%d\n",
+			ret);
+		return ret;
+	}
+
 	dev_warn(usb_cdev_info->dev, "USB suspended\n");
 	usb_cdev_info->trip_time_since_boot = get_seconds_since_boot();
 	usb_cdev_info->usb_suspended = true;
@@ -216,6 +232,20 @@ static int resume_usb(struct usb_port_cooling_dev_info *usb_cdev_info)
 				 (void *)THROTTLE_USBIN_LIMIT, DISABLE_ICL_VOTE);
 	if (ret < 0) {
 		dev_err(usb_cdev_info->dev, "Couldn't un-vote for USB ICL ret=%d\n", ret);
+		return ret;
+	}
+
+	/*
+	 * Vote to let TCPCI know that USB has been resumed.
+	 * Different from toggle_disable_votable where the toggling is disabled
+	 * intermittently.
+	 * Vote before enable toggling so that the CC updates are processed.
+	 */
+	ret = gvotable_cast_vote(usb_cdev_info->usb_throttle_votable, USBC_COOLING_DEV_VOTER,
+				 (void *)DISABLE_TOGGLE_VOTE, USB_RESUMED);
+	if (ret < 0) {
+		dev_err(usb_cdev_info->dev, "Couldn't un-vote for usb_throttle_votable ret=%d\n",
+			ret);
 		return ret;
 	}
 
@@ -471,6 +501,7 @@ static int usb_cdev_probe(struct platform_device *pdev)
 	struct usb_port_cooling_dev_info *usb_cdev_info;
 	struct gvotable_election *usb_icl_votable;
 	struct gvotable_election *toggle_disable_votable;
+	struct gvotable_election *usb_throttle_votable;
 
 	usb_icl_votable = gvotable_election_get_handle(USB_ICL_EL);
 	if (IS_ERR_OR_NULL(usb_icl_votable)) {
@@ -486,6 +517,13 @@ static int usb_cdev_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
+	usb_throttle_votable = gvotable_election_get_handle(USB_THROTTLE_VOTABLE);
+	if (IS_ERR_OR_NULL(usb_throttle_votable)) {
+		dev_err(&pdev->dev, "Couldn't find USB_THROTTLE votable:%ld\n",
+			PTR_ERR(usb_throttle_votable));
+		return -EPROBE_DEFER;
+	}
+
 	usb_cdev_info = devm_kzalloc(&pdev->dev, sizeof(*usb_cdev_info), GFP_KERNEL);
 	if (!usb_cdev_info)
 		return -ENOMEM;
@@ -494,6 +532,7 @@ static int usb_cdev_probe(struct platform_device *pdev)
 	usb_cdev_info->dev = &pdev->dev;
 	usb_cdev_info->usb_icl_votable = usb_icl_votable;
 	usb_cdev_info->toggle_disable_votable = toggle_disable_votable;
+	usb_cdev_info->usb_throttle_votable = usb_throttle_votable;
 
 	ret = get_dts_vars(usb_cdev_info);
 	if (ret < 0)

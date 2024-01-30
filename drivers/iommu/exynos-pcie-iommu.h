@@ -104,7 +104,13 @@ typedef u32 sysmmu_pte_t;
 #define CTRL_BLOCK_DISABLE 0x3
 
 #define CTRL_MMU_ENABLE			BIT(0)
+#define CTRL_INT_ENABLE 		BIT(2)
 #define CTRL_FAULT_STALL_MODE		BIT(3)
+
+#define MMU_STREAM_CFG_STLB_ID(val)		(((val) >> 24) & 0xFF)
+#define MMU_STREAM_CFG_PTLB_ID(val)		(((val) >> 16) & 0xFF)
+
+#define MMU_SET_PMMU_INDICATOR(val)		((val) & 0xF)
 
 #define CFG_MASK	0x301F1F8C	/* Bit 29-28, 20-16, 12-7, 3-2 */
 #define CFG_ACGEN	BIT(24)
@@ -129,19 +135,38 @@ typedef u32 sysmmu_pte_t;
 
 #define REG_MMU_CAPA			0x030
 #define REG_MMU_CAPA_1			0x038
-#define REG_INT_STATUS			0x060
 #define REG_INT_CLEAR			0x064
 #define REG_MMU_CTRL_VID(n)		(0x8000 + ((n) * 0x1000))
 #define REG_MMU_CFG_VID(n)		(0x8004 + ((n) * 0x1000))
-#define REG_PT_BASE_PPN_VID(n)		(0x800C + ((n) * 0x1000))
+
+#define REG_FAULT_STATUS_VID(n)		(0x8060 + ((n) * 0x1000))
+#define REG_FAULT_CLEAR_VID(n)		(0x8064 + ((n) * 0x1000))
+#define REG_FAULT_VA_VID(n)		(0x8070 + ((n) * 0x1000))
+#define REG_FAULT_INFO0_VID(n)		(0x8074 + ((n) * 0x1000))
+#define REG_FAULT_INFO1_VID(n)		(0x8078 + ((n) * 0x1000))
+#define REG_FAULT_INFO2_VID(n)		(0x807C + ((n) * 0x1000))
+
+#define MMU_FAULT_INFO0_VA_36(reg)	(((reg) >> 21) & 0x1)
+#define MMU_FAULT_INFO0_VA_HIGH(reg)	(((u64)(reg) & 0x3C00000) << 10)
+#define MMU_FAULT_INFO0_LEN(reg)	(((reg) >> 16) & 0xF)
+#define MMU_FAULT_INFO0_ASID(reg)	((reg) & 0xFFFF)
+#define MMU_FAULT_INFO1_AXID(reg)	(reg)
+#define MMU_FAULT_INFO2_PMMU_ID(reg)	(((reg) >> 24) & 0xFF)
+#define MMU_FAULT_INFO2_STREAM_ID(reg)	((reg) & 0xFFFFFF)
+
+#define REG_PT_BASE_PPN_VID(n)		(0x8404 + ((n) * 0x1000))
+#define REG_CONTEXT_CFG_ATTR_VID(n)	(0x8408 + ((n) * 0x1000))
+
 #define REG_MMU_FLUSH_VID(n)		(0x8010 + ((n) * 0x1000))
 #define REG_MMU_FLUSH_ENTRY_VID(n)	(0x8014 + ((n) * 0x1000))
 #define REG_MMU_FLUSH_RANGE_VID(n)	(0x8018 + ((n) * 0x1000))
 #define REG_FLUSH_RANGE_START_VID(n)	(0x8020 + ((n) * 0x1000))
 #define REG_FLUSH_RANGE_END_VID(n)	(0x8024 + ((n) * 0x1000))
+#define TLB_INVALIDATE			BIT(0)
 
 #define VID_CFG_SHAREABLE      BIT(29)
 #define VID_CFG_SHAREABLE_OVRD BIT(28)
+#define VID_CFG_USE_MASTER_SHA BIT(27)
 
 #define REG_FAULT_AR_ADDR	0x070
 #define REG_FAULT_AR_TRANS_INFO	0x078
@@ -190,15 +215,37 @@ typedef u32 sysmmu_pte_t;
 #define MMU_MASK_LINE_SIZE	0x7
 #define MMU_DEFAULT_LINE_SIZE	(0x2 << 4)
 
-#define MMU_MAJ_VER(val)	((val) >> 11)
-#define MMU_MIN_VER(val)	(((val) >> 4) & 0x7F)
-#define MMU_REV_VER(val)	((val) & 0xF)
-#define MMU_RAW_VER(reg)	(((reg) >> 17) & 0x7FFF) /* upper 15 bits */
+#define MMU_MAJ_VER(val)	((val) >> 12)
+#define MMU_MIN_VER(val)	(((val) >> 8) & 0xF)
+#define MMU_REV_VER(val)	((val) & 0xFF)
+#define MMU_RAW_VER(reg)	(((reg) >> 16) & 0xFFFF) /* upper 15 bits */
 
-#define MAKE_MMU_VER(maj, min)	((((maj) & 0xF) << 11) | \
-					(((min) & 0x7F) << 4))
+#define REG_MMU_NUM_CONTEXT	0x0100
+
+#define REG_MMU_STREAM_CFG(n)			(0x2000 + ((n) * 0x10))
+#define REG_MMU_STREAM_MATCH_CFG(n)		(0x2000 + ((n) * 0x10) + 0x4)
+#define REG_MMU_STREAM_MATCH_SID_VALUE(n)	(0x2000 + ((n) * 0x10) + 0x8)
+#define REG_MMU_STREAM_MATCH_SID_MASK(n)	(0x2000 + ((n) * 0x10) + 0xC)
+
+#define MMU_STREAM_CFG_MASK(reg)		((reg) & (GENMASK(31, 16) | GENMASK(6, 0)))
+#define MMU_STREAM_MATCH_CFG_MASK(reg)		((reg) & (GENMASK(9, 8)))
+
+#define REG_MMU_PMMU_INDICATOR			0x2FFC
+#define REG_MMU_PMMU_INFO			0x3000
+#define REG_MMU_SWALKER_INFO			0x3004
+
+#define MMU_NUM_CONTEXT(reg)	((reg) & 0x1F)
+
+#define VA_WIDTH_32BIT		0x0
+#define VA_WIDTH_36BIT		0x1
+
+#define SET_PMMU_INDICATOR(val)			((val) & 0xF)
+#define MMU_PMMU_INFO_VA_WIDTH(reg)		((reg) & 0x1)
+#define MMU_PMMU_INFO_NUM_STREAM_TABLE(reg)	(((reg) >> 16) & 0xFFFF)
 
 #define DEFAULT_QOS_VALUE	-1
+#define DEFAULT_STREAM_NONE	~0U
+#define UNUSED_STREAM_INDEX	~0U
 
 #define SYSMMU_FAULT_BITS       4
 #define SYSMMU_FAULT_SHIFT      16
@@ -206,12 +253,12 @@ typedef u32 sysmmu_pte_t;
 #define SYSMMU_FAULT_FLAG(id) (((id) & SYSMMU_FAULT_MASK) << SYSMMU_FAULT_SHIFT)
 #define SYSMMU_FAULT_ID(fg)   (((fg) >> SYSMMU_FAULT_SHIFT) & SYSMMU_FAULT_MASK)
 
-#define SYSMMU_FAULT_PTW_ACCESS   0
-#define SYSMMU_FAULT_PAGE_FAULT   1
-#define SYSMMU_FAULT_TLB_MULTIHIT 2
-#define SYSMMU_FAULT_ACCESS       3
-#define SYSMMU_FAULT_SECURITY     4
-#define SYSMMU_FAULT_UNKNOWN      5
+#define SYSMMU_FAULT_PTW_ACCESS		0
+#define SYSMMU_FAULT_PAGE		1
+#define SYSMMU_FAULT_ACCESS		2
+#define SYSMMU_FAULT_CONTEXT		3
+#define SYSMMU_FAULT_UNKNOWN		4
+#define SYSMMU_FAULTS_NUM		(SYSMMU_FAULT_UNKNOWN + 1)
 
 #define SYSMMU_4KB_MASK		0xfffUL
 
@@ -250,7 +297,7 @@ typedef u32 sysmmu_pte_t;
 #define TLB_USED_RW_REQ			(0x3 << 8)
 
 #define MAX_EXT_BUFF_NUM		(400)
-#define LV2_GENPOOL_SZIE		(SZ_1M * 3)
+#define LV2_GENPOOL_SIZE		(SZ_1M * 3)
 /* Level2 table size + reference counter region */
 #define LV2TABLE_AND_REFBUF_SZ		(LV2TABLE_SIZE * 2)
 #define NUM_DRAM_REGION			(10)
@@ -259,6 +306,107 @@ typedef u32 sysmmu_pte_t;
 #define SYSMMU_PCIE_CH0			(0)
 #define SYSMMU_PCIE_CH1			(1)
 
+#define SYSMMU_PANIC_BY_DEV		(3)
+
+/* For SysMMU v9 */
+#define REG_MMU_PMMU_PTLB_INFO(n)		(0x3400 + ((n) * 0x4))
+#define REG_MMU_STLB_INFO(n)			(0x3800 + ((n) * 0x4))
+#define REG_MMU_S1L1TLB_INFO			0x3C00
+
+#define REG_MMU_READ_PTLB			0x5000
+#define REG_MMU_READ_PTLB_TPN			0x5004
+#define REG_MMU_READ_PTLB_PPN			0x5008
+#define REG_MMU_READ_PTLB_ATTRIBUTE		0x500C
+
+#define REG_MMU_READ_STLB			0x5010
+#define REG_MMU_READ_STLB_TPN			0x5014
+#define REG_MMU_READ_STLB_PPN			0x5018
+#define REG_MMU_READ_STLB_ATTRIBUTE		0x501C
+
+#define REG_MMU_READ_S1L1TLB			0x5020
+#define REG_MMU_READ_S1L1TLB_VPN		0x5024
+#define REG_MMU_READ_S1L1TLB_SLPT_OR_PPN	0x5028
+#define REG_MMU_READ_S1L1TLB_ATTRIBUTE		0x502C
+
+#define REG_MMU_FAULT_STATUS_VM			0x8060
+#define REG_MMU_FAULT_CLEAR_VM			0x8064
+#define REG_MMU_FAULT_VA_VM			0x8070
+#define REG_MMU_FAULT_INFO0_VM			0x8074
+#define REG_MMU_FAULT_INFO1_VM			0x8078
+#define REG_MMU_FAULT_INFO2_VM			0x807C
+#define REG_MMU_FAULT_RW_MASK			GENMASK(20, 20)
+#define IS_READ_FAULT(x)			(((x) & REG_MMU_FAULT_RW_MASK) == 0)
+
+#define MMU_PMMU_PTLB_INFO_NUM_WAY(reg)			(((reg) >> 16) & 0xFFFF)
+#define MMU_PMMU_PTLB_INFO_NUM_SET(reg)			((reg) & 0xFFFF)
+#define MMU_READ_PTLB_TPN_VALID(reg)			(((reg) >> 28) & 0x1)
+#define MMU_READ_PTLB_TPN_S1_ENABLE(reg)		(((reg) >> 24) & 0x1)
+#define MMU_VADDR_FROM_PTLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
+#define MMU_PADDR_FROM_PTLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
+#define MMU_SET_READ_PTLB_ENTRY(way, set, ptlb, pmmu)	((pmmu) | ((ptlb) << 4) |		\
+							((set) << 16) | ((way) << 24))
+
+#define MMU_SWALKER_INFO_NUM_STLB(reg)			(((reg) >> 16) & 0xFFFF)
+#define MMU_SWALKER_INFO_NUM_PMMU(reg)			((reg) & 0xF)
+#define MMU_STLB_INFO_NUM_WAY(reg)			(((reg) >> 16) & 0xFFFF)
+#define MMU_STLB_INFO_NUM_SET(reg)			((reg) & 0xFFFF)
+#define MMU_READ_STLB_TPN_VALID(reg)			(((reg) >> 28) & 0x1)
+#define MMU_READ_STLB_TPN_S1_ENABLE(reg)		(((reg) >> 24) & 0x1)
+#define MMU_VADDR_FROM_STLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
+#define MMU_PADDR_FROM_STLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
+#define MMU_SET_READ_STLB_ENTRY(way, set, stlb, line)	((set) | ((way) << 8) |			\
+							((line) << 16) | ((stlb) << 20))
+
+#define MMU_S1L1TLB_INFO_NUM_SET(reg)			(((reg) >> 16) & 0xFFFF)
+#define MMU_S1L1TLB_INFO_NUM_WAY(reg)			(((reg) >> 12) & 0xF)
+#define MMU_SET_READ_S1L1TLB_ENTRY(way, set)		((set) | ((way) << 8))
+#define MMU_READ_S1L1TLB_VPN_VALID(reg)			(((reg) >> 28) & 0x1)
+#define MMU_VADDR_FROM_S1L1TLB(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
+#define MMU_PADDR_FROM_S1L1TLB_PPN(reg)			(((reg) & 0xFFFFFF) << SPAGE_ORDER)
+#define MMU_PADDR_FROM_S1L1TLB_BASE(reg)		(((reg) & 0x3FFFFFF) << 10)
+#define MMU_S1L1TLB_ATTRIBUTE_PS(reg)			(((reg) >> 8) & 0x7)
+
+#define MMU_FAULT_INFO0_VA_36(reg)			(((reg) >> 21) & 0x1)
+#define MMU_FAULT_INFO0_VA_HIGH(reg)			(((u64)(reg) & 0x3C00000) << 10)
+#define MMU_FAULT_INFO0_LEN(reg)			(((reg) >> 16) & 0xF)
+#define MMU_FAULT_INFO0_ASID(reg)			((reg) & 0xFFFF)
+#define MMU_FAULT_INFO1_AXID(reg)			(reg)
+#define MMU_FAULT_INFO2_PMMU_ID(reg)			(((reg) >> 24) & 0xFF)
+#define MMU_FAULT_INFO2_STREAM_ID(reg)			((reg) & 0xFFFFFF)
+
+#define SLPT_BASE_FLAG		0x6
+#define PMMU_MAX_NUM		8
+
+static char *pmmu_default_stream[PMMU_MAX_NUM] = {
+	"pmmu0,default_stream",
+	"pmmu1,default_stream",
+	"pmmu2,default_stream",
+	"pmmu3,default_stream",
+	"pmmu4,default_stream",
+	"pmmu5,default_stream",
+	"pmmu6,default_stream",
+	"pmmu7,default_stream"
+};
+
+static char *pmmu_stream_property[PMMU_MAX_NUM] = {
+	"pmmu0,stream_property",
+	"pmmu1,stream_property",
+	"pmmu2,stream_property",
+	"pmmu3,stream_property",
+	"pmmu4,stream_property",
+	"pmmu5,stream_property",
+	"pmmu6,stream_property",
+	"pmmu7,stream_property"
+};
+
+enum pcie_sysmmu_vid {
+	PCIE_SYSMMU_NOT_USED, /* For unused VID */
+	PCIE_SYSMMU_VID_CH0,
+	PCIE_SYSMMU_VID_CH1,
+	PCIE_SYSMMU_VID_MAX,
+};
+
+#define SYSMMU_PCIE_VID_OFFSET		(PCIE_SYSMMU_VID_CH0 - PCIE_SYSMMU_NOT_USED)
 struct ext_buff {
 	int index;
 	int used;
@@ -340,6 +488,20 @@ struct tlb_props {
 	struct tlb_priv_addr *priv_addr_cfg;
 };
 
+struct stream_config {
+	unsigned int index;
+	u32 cfg;
+	u32 match_cfg;
+	u32 match_id_value;
+	u32 match_id_mask;
+};
+
+struct stream_props {
+	int id_cnt;
+	u32 default_cfg;
+	struct stream_config *cfg;
+};
+
 /*
  * This structure hold all data of a single SYSMMU controller, this includes
  * hw resources like registers and clocks, pointers and list nodes to connect
@@ -355,7 +517,6 @@ struct sysmmu_drvdata {
 	int runtime_active;	/* Runtime PM activated count from master */
 	spinlock_t lock;		/* lock for modyfying state */
 	phys_addr_t pgtable;		/* assigned page table structure */
-	int version;			/* our version */
 	int qos;
 	int securebase;
 	struct atomic_notifier_head fault_notifiers;
@@ -364,13 +525,20 @@ struct sysmmu_drvdata {
 	bool use_map_once;
 
 	struct exynos_iommu_domain *domain; /* iommu domain for this iovmm */
-	int use_tlb_pinning;
 	int pcie_use_iocc;
 	int ignore_tlb_inval;
 
 	spinlock_t mmu_ctrl_lock; /* Global Register Control lock */
 	int hsi_block_num;
 	int pcie_vid; /* PCIe VID number */
+
+	u32 version;
+	u32 va_width;
+	u32 max_vm;
+	u32 vmid_mask;
+	int num_pmmu;
+
+	struct stream_props *props;
 };
 
 struct exynos_vm_region {

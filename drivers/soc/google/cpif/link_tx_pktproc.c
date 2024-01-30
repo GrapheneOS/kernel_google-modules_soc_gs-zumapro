@@ -5,7 +5,7 @@
  */
 
 #include <asm/cacheflush.h>
-#include <soc/google/shm_ipc.h>
+#include <linux/shm_ipc.h>
 #include "modem_prj.h"
 #include "modem_utils.h"
 #include "link_device_memory.h"
@@ -521,7 +521,7 @@ int pktproc_create_ul(struct platform_device *pdev, struct mem_link_device *mld,
 
 		mif_info("Queue %d\n", i);
 
-		ppa_ul->q[i] = kzalloc(sizeof(struct pktproc_queue),
+		ppa_ul->q[i] = kzalloc(sizeof(struct pktproc_queue_ul),
 				GFP_ATOMIC);
 		if (ppa_ul->q[i] == NULL) {
 			mif_err_limited("kzalloc() error %d\n", i);

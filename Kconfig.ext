@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0
 
+if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/dwc/Kconfig"
+endif
+
+if !SOC_ZUMA
+source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/dwc-whi/Kconfig"
+endif
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/Kconfig"
 
@@ -14,7 +20,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/char/hw_random/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/tty/serial/Kconfig"
 
-source "$(KCONFIG_EXT_PREFIX)drivers/scsi/ufs/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/ufs/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/i2c/busses/Kconfig"
 
@@ -27,6 +33,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/dma/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/dma-buf/heaps/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/spi/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/spmi/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/Kconfig"
 
@@ -50,14 +58,24 @@ source "$(KCONFIG_EXT_PREFIX)drivers/iommu/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/cpufreq/Kconfig"
 
+if SOC_ZUMA
 source "$(KCONFIG_EXT_PREFIX)drivers/devfreq/google/Kconfig"
+endif
+
+if !SOC_ZUMA
+source "$(KCONFIG_EXT_PREFIX)drivers/devfreq-whi/google/Kconfig"
+endif
 
 source "$(KCONFIG_EXT_PREFIX)drivers/iio/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/phy/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/staging/android/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/bts/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/block/zram/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)Kconfig.ext_modules"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/pwm/Kconfig"

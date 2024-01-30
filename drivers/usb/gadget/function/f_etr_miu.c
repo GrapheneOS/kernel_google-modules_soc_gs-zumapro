@@ -22,7 +22,7 @@
 #include <linux/types.h>
 #include <linux/usb/composite.h>
 #include <linux/wait.h>
-#include "../../dwc3/dwc3-exynos.h"
+#include "../../dwc3/gadget.h"
 
 #define MAX_INST_NAME_LEN 40
 
@@ -305,6 +305,8 @@ static int etr_miu_function_set_alt(struct usb_function *f, unsigned int intf,
 {
 	struct etr_miu_dev *dev = func_to_etr_miu(f);
 	struct usb_composite_dev *cdev = f->config->cdev;
+	struct dwc3_ep *dep;
+	dma_addr_t ep_dma;
 	int ret = 0;
 
 	DBG(cdev, "%s: %d alt: %d\n", __func__, intf, alt);
@@ -320,18 +322,22 @@ static int etr_miu_function_set_alt(struct usb_function *f, unsigned int intf,
 	if (ret)
 		return ret;
 
+	__raw_writel(DATA_TRB_CTRL, base + ETR_DESC_ROM_RD(3));
+
+	/*
+	 * ETR_MIU's TRB use a hardware fixed physical address.
+	 * Backup original dma address in dwc3 and replace it with ETR_MIU's
+	 * one and restore after params of DWC3_DEPCMD_STARTTRANSFER sent.
+	 */
+	dep = to_dwc3_ep(dev->ep_in);
+	ep_dma = dep->trb_pool_dma;
+	dep->trb_pool_dma = (dma_addr_t)ETR_MIU_TRB_ADDR;
 	ret = usb_ep_enable(dev->ep_in);
+	dep->trb_pool_dma = ep_dma;
 	if (ret)
 		goto alt0;
 
 	dev->online = 1;
-
-	__raw_writel(DATA_TRB_CTRL, base + ETR_DESC_ROM_RD(3));
-
-	ret = dwc3_gadget_ep_custom_transfer(dev->ep_in, (dma_addr_t)ETR_MIU_TRB_ADDR);
-	if (ret)
-		goto alt0;
-
 	dev->alt = 1;
 
 	return 0;
@@ -597,7 +603,9 @@ static int __init etr_miu_mod_init(void)
 	int ret = 0;
 
 	ret = etr_miu_init();
-	if (ret) {
+	if (ret == -ENODEV) {
+		return 0;
+	} else if (ret) {
 		pr_err("fail to init ETR MIU\n");
 		return ret;
 	}

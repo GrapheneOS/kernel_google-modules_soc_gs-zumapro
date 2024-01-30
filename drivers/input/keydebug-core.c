@@ -24,7 +24,7 @@
 #include <linux/time.h>
 #include <linux/keycombo.h>
 #include <linux/keydebug.h>
-#include <linux/kernel-top.h>
+#include <linux/keydebug-func.h>
 #include <linux/sysrq.h>
 
 /*
@@ -90,11 +90,8 @@ void do_keydebug(struct work_struct *this)
 	struct keydebug_platform_data *pdata = container_of(dwork,
 				struct keydebug_platform_data, delayed_work);
 
-	if (pdata->ktop) {
-		kernel_top_print(pdata->ktop);
-		kernel_top_destroy(pdata->ktop);
-		pdata->ktop = NULL;
-	}
+	if (kernel_top_enable)
+		kernel_top_monitor();
 
 	if (show_dstate_enable) {
 		pr_info("=======     Show D state tasks++   =======\n");
@@ -129,7 +126,7 @@ static int s2d_state_xchg(int new, int *pold)
 static void keydebug_event_down(void *priv)
 {
 	struct keydebug_platform_data *pdata = priv;
-	uint32_t msecs = pdata->dbg_fn_delay ?: DEFAULT_DBG_DELAY;
+	uint32_t msecs = DEFAULT_DBG_DELAY;
 
 	if (bind_s2d)
 		s2d_state_xchg(false, &pdata->s2d_state_backup);
@@ -138,11 +135,11 @@ static void keydebug_event_down(void *priv)
 		pr_info("%s: request is running\n", __func__);
 		return;
 	} else {
-		WARN_ON(pdata->ktop);
-		pdata->ktop = NULL;
+		if (pdata->dbg_fn_delay)
+			msecs = pdata->dbg_fn_delay;
+
 		if (kernel_top_enable)
-			WARN_ON(kernel_top_init(pdata->pdev_child->dev.parent,
-					&pdata->ktop));
+			kernel_top_init();
 
 		queue_delayed_work(kdbg_wq,
 			&pdata->delayed_work, msecs_to_jiffies(msecs));
@@ -308,7 +305,8 @@ static int keydebug_remove(struct platform_device *pdev)
 {
 	struct keydebug_platform_data *pdata = dev_get_platdata(&pdev->dev);
 
-	flush_delayed_work(&pdata->delayed_work);
+	if (kernel_top_enable)
+		kernel_top_exit();
 
 	platform_device_put(pdata->pdev_child);
 	if (kdbg_wq)

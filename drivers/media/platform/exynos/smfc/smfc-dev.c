@@ -18,6 +18,9 @@
 #include <linux/mutex.h>
 #include <linux/wait.h>
 #include <linux/iommu.h>
+#if IS_ENABLED(CONFIG_EXYNOS_BTS)
+#include <soc/google/bts.h>
+#endif
 
 #include <media/videobuf2-core.h>
 #include <media/videobuf2-dma-sg.h>
@@ -25,9 +28,17 @@
 #include "smfc.h"
 #include "smfc-sync.h"
 
+#if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
+// wait time in milliseconds
+#define SMFC_QOS_WAIT 2
+#endif
+
 static atomic_t smfc_hwfc_state;
 static wait_queue_head_t smfc_hwfc_sync_wq;
 static wait_queue_head_t smfc_suspend_wq;
+
+static void g2d_pm_qos_update_request(struct smfc_dev *smfc);
+static void g2d_pm_qos_reset_request(struct smfc_dev *smfc);
 
 enum {
 	SMFC_HWFC_STANDBY = 0,
@@ -103,6 +114,7 @@ static irqreturn_t exynos_smfc_irq_handler(int irq, void *priv)
 			clk_disable(smfc->clk_gate2);
 	}
 
+	g2d_pm_qos_reset_request(smfc);
 	pm_runtime_put(smfc->dev);
 
 	/* ctx is NULL if streamoff is called before (de)compression finishes */
@@ -178,6 +190,7 @@ static void smfc_timedout_handler(struct timer_list *arg)
 			clk_disable(smfc->clk_gate2);
 	}
 
+	g2d_pm_qos_reset_request(smfc);
 	pm_runtime_put(smfc->dev);
 
 	ctx = v4l2_m2m_get_curr_priv(smfc->m2mdev);
@@ -620,6 +633,8 @@ static void smfc_m2m_device_run(void *priv)
 		goto err_pm;
 	}
 
+	g2d_pm_qos_update_request(ctx->smfc);
+
 	if (!IS_ERR(ctx->smfc->clk_gate)) {
 		ret = clk_enable(ctx->smfc->clk_gate);
 		if (!ret && !IS_ERR(ctx->smfc->clk_gate2)) {
@@ -688,6 +703,7 @@ err_hwfc:
 			clk_disable(ctx->smfc->clk_gate2);
 	}
 err_clk:
+	g2d_pm_qos_reset_request(ctx->smfc);
 	pm_runtime_put(ctx->smfc->dev);
 err_pm:
 	v4l2_m2m_buf_done(v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx), VB2_BUF_STATE_ERROR);
@@ -821,6 +837,8 @@ static int smfc_find_hw_version(struct device *dev, struct smfc_dev *smfc)
 		return ret;
 	}
 
+	g2d_pm_qos_update_request(smfc);
+
 	if (!IS_ERR(smfc->clk_gate)) {
 		ret = clk_prepare_enable(smfc->clk_gate);
 		if (!ret && !IS_ERR(smfc->clk_gate2))
@@ -842,6 +860,7 @@ static int smfc_find_hw_version(struct device *dev, struct smfc_dev *smfc)
 	}
 
 err_clk:
+	g2d_pm_qos_reset_request(smfc);
 	pm_runtime_put(dev);
 
 	return ret;
@@ -850,26 +869,51 @@ err_clk:
 #if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
 static void g2d_pm_qos_remove_request(struct smfc_dev *smfc)
 {
-	if (smfc->qosreq_int_level > 0)
-		exynos_pm_qos_remove_request(&smfc->qosreq_int);
+	exynos_pm_qos_remove_request(&smfc->qosreq_int);
+	exynos_pm_qos_remove_request(&smfc->qosreq_mif);
 }
 
+#if IS_ENABLED(CONFIG_EXYNOS_BTS)
+void smfc_get_bandwidth(struct smfc_dev *smfc, struct bts_bw *bw)
+{
+	unsigned int bpc = smfc->bpc;
+	unsigned int core_clk = smfc->core_clk;
+	unsigned int bw_khz = bpc * core_clk / SZ_1K / BITS_PER_BYTE;
+
+	bw->read = bw_khz * 1000;
+	bw->write = bw->read;
+	bw->peak = (bw->read + bw->write) / 2;
+}
+#endif
+
+/* Helper function to request PM QoS */
 static void g2d_pm_qos_update_request(struct smfc_dev *smfc)
 {
-	if (!exynos_pm_qos_request_active(&smfc->qosreq_int))
-		exynos_pm_qos_add_request(&smfc->qosreq_int, PM_QOS_DEVICE_THROUGHPUT, 0);
+	cancel_delayed_work_sync(&smfc->qos_work);
 
 	if (smfc->qosreq_int_level > 0)
 		exynos_pm_qos_update_request(&smfc->qosreq_int, smfc->qosreq_int_level);
+
+	if (smfc->qosreq_mif_level > 0)
+		exynos_pm_qos_update_request(&smfc->qosreq_mif, smfc->qosreq_mif_level);
 }
 
+static void smfc_qos_release(struct work_struct *qos_work)
+{
+	struct smfc_dev *smfc = container_of(to_delayed_work(qos_work), struct smfc_dev, qos_work);
+
+	exynos_pm_qos_update_request(&smfc->qosreq_int, 0);
+	exynos_pm_qos_update_request(&smfc->qosreq_mif, 0);
+}
+
+/* Helper function to release PM QoS */
 static void g2d_pm_qos_reset_request(struct smfc_dev *smfc)
 {
-	if (smfc->qosreq_int_level > 0)
-		exynos_pm_qos_update_request(&smfc->qosreq_int, 0);
+	/* TODO: Optimise delay time or initialise it using DT property */
+	mod_delayed_work(system_wq, &smfc->qos_work, msecs_to_jiffies(SMFC_QOS_WAIT));
 }
 #else
-static void g2d_pm_qos_add_request(struct smfc_dev *smfc)
+static void g2d_pm_qos_add_request(struct device *dev, struct smfc_dev *smfc)
 {
 }
 
@@ -1001,13 +1045,40 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 		smfc->device_id = -1;
 	}
 
+	INIT_DELAYED_WORK(&smfc->qos_work, smfc_qos_release);
 	pm_runtime_enable(&pdev->dev);
+
+#if IS_ENABLED(CONFIG_EXYNOS_BTS)
+	smfc->bts_id = bts_get_bwindex("jpeg");
+#else
+	smfc->bts_id = -1;
+#endif
+	dev_info(&pdev->dev, "bts_id = %d\n", smfc->bts_id);
 
 	if (of_property_read_u32(pdev->dev.of_node, "smfc,int_qos_minlock",
 				 (u32 *)&smfc->qosreq_int_level))
 		smfc->qosreq_int_level = 0;
 
+	if (of_property_read_u32(pdev->dev.of_node, "smfc,mif_qos_minlock",
+				 (u32 *)&smfc->qosreq_mif_level))
+		smfc->qosreq_mif_level = 0;
+
+	if (of_property_read_u32(pdev->dev.of_node, "smfc_core_clk",
+				&smfc->core_clk)) {
+		smfc->core_clk = 0;
+		dev_err(&pdev->dev, "Failed to get core_clk for smfc BTS support\n");
+	}
+
+	if (of_property_read_u32(pdev->dev.of_node, "smfc_bpc",
+				&smfc->bpc)) {
+		smfc->bpc = 0;
+		dev_err(&pdev->dev, "Failed to get bpc for smfc BTS support\n");
+	}
+
 	platform_set_drvdata(pdev, smfc);
+
+	exynos_pm_qos_add_request(&smfc->qosreq_int, PM_QOS_DEVICE_THROUGHPUT, 0);
+	exynos_pm_qos_add_request(&smfc->qosreq_mif, PM_QOS_BUS_THROUGHPUT, 0);
 
 	ret = smfc_init_v4l2(&pdev->dev, smfc);
 	if (ret < 0)
@@ -1023,9 +1094,11 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 
 	spin_lock_init(&smfc->flag_lock);
 
-	dev_info(&pdev->dev, "Probed H/W Version: %02x.%02x.%04x int_level=%d\n",
-		 (smfc->hwver >> 24) & 0xFF, (smfc->hwver >> 16) & 0xFF,
-		 smfc->hwver & 0xFFFF, smfc->qosreq_int_level);
+	dev_info(
+		&pdev->dev,
+		"Probed H/W Version: %02x.%02x.%04x int_level=%d mif_level=%d Core(%d), BPC(%d) \n",
+		(smfc->hwver >> 24) & 0xFF, (smfc->hwver >> 16) & 0xFF, smfc->hwver & 0xFFFF,
+		smfc->qosreq_int_level, smfc->qosreq_mif_level, smfc->core_clk, smfc->bpc);
 	return 0;
 
 err_hwver:
@@ -1093,26 +1166,6 @@ static int smfc_resume(struct device *dev)
 }
 #endif
 
-#ifdef CONFIG_PM
-static int smfc_runtime_resume(struct device *dev)
-{
-	struct smfc_dev *smfc = dev_get_drvdata(dev);
-
-	g2d_pm_qos_update_request(smfc);
-
-	return 0;
-}
-
-static int smfc_runtime_suspend(struct device *dev)
-{
-	struct smfc_dev *smfc = dev_get_drvdata(dev);
-
-	g2d_pm_qos_reset_request(smfc);
-
-	return 0;
-}
-#endif
-
 static void exynos_smfc_shutdown(struct platform_device *pdev)
 {
 	struct smfc_dev *smfc = platform_get_drvdata(pdev);
@@ -1127,7 +1180,6 @@ static void exynos_smfc_shutdown(struct platform_device *pdev)
 
 static const struct dev_pm_ops exynos_smfc_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(smfc_suspend, smfc_resume)
-	SET_RUNTIME_PM_OPS(NULL, smfc_runtime_resume, smfc_runtime_suspend)
 };
 
 static struct platform_driver exynos_smfc_driver = {

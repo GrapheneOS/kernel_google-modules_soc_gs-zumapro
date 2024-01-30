@@ -344,7 +344,7 @@ static ssize_t simple_read_from_hw(struct device *dev, struct device_attribute *
 		return -EFAULT;
 
 	scnprintf(file_op, SJTAG_FILEOP_STR_SIZE, "\"%s\" read", dev_attr->attr.name);
-	exchange_buff = (char *)dss_header_base + DSS_HDR_DBGC_EXCHG_BUFF_OFFS;
+	exchange_buff = (char *)dss_header_base + DSS_HDR_SJTAG_EXCHG_BUFF_OFFS;
 
 	ipc_rc = send_ipc_cmd(st, ipc_cmd_code, exchange_buff, byte_size, file_op);
 	if (ipc_rc < 0)
@@ -388,7 +388,7 @@ static ssize_t pretty_read_from_hw(struct device *dev, struct device_attribute *
 		return -ENODEV;
 
 	scnprintf(file_op, SJTAG_FILEOP_STR_SIZE, "\"%s\" read", dev_attr->attr.name);
-	exchange_buff = (char *)dss_header_base + DSS_HDR_DBGC_EXCHG_BUFF_OFFS;
+	exchange_buff = (char *)dss_header_base + DSS_HDR_SJTAG_EXCHG_BUFF_OFFS;
 
 	ipc_rc = send_ipc_cmd(st, ipc_cmd_code, exchange_buff, byte_size, file_op);
 	if (ipc_rc < 0)
@@ -435,7 +435,7 @@ static ssize_t begin_store(struct device *dev, struct device_attribute *dev_attr
 		return -ENODEV;
 
 	scnprintf(file_op, SJTAG_FILEOP_STR_SIZE, "\"%s\" write", dev_attr->attr.name);
-	exchange_buff = (char *)dss_header_base + DSS_HDR_DBGC_EXCHG_BUFF_OFFS;
+	exchange_buff = (char *)dss_header_base + DSS_HDR_SJTAG_EXCHG_BUFF_OFFS;
 
 	/*
 	 * Don't start auth 1) if SJTAG not enforced or already auth'd (not necessary) OTHERWISE
@@ -480,7 +480,7 @@ static ssize_t preauth_show(struct device *dev, struct device_attribute *dev_att
 		return -ENODEV;
 
 	scnprintf(file_op, SJTAG_FILEOP_STR_SIZE, "\"%s\" read", dev_attr->attr.name);
-	exchange_buff = (char *)dss_header_base + DSS_HDR_DBGC_EXCHG_BUFF_OFFS;
+	exchange_buff = (char *)dss_header_base + DSS_HDR_SJTAG_EXCHG_BUFF_OFFS;
 
 	ipc_rc = send_ipc_cmd(st, SJTAG_GET_CHALLENGE, exchange_buff, sizeof(*auth_tok_from_hw),
 			file_op);
@@ -572,7 +572,7 @@ static ssize_t auth_store(struct device *dev, struct device_attribute *dev_attr,
 		return -ENODEV;
 
 	scnprintf(file_op, SJTAG_FILEOP_STR_SIZE, "\"%s\" write", dev_attr->attr.name);
-	exchange_buff = (char *)dss_header_base + DSS_HDR_DBGC_EXCHG_BUFF_OFFS;
+	exchange_buff = (char *)dss_header_base + DSS_HDR_SJTAG_EXCHG_BUFF_OFFS;
 
 	/*
 	 * Assemble the signed auth token from the access parameters maintained by the kernel

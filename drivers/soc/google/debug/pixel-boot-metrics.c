@@ -94,7 +94,8 @@ static u32 metrics_type_get(u32 index)
  */
 static u32 metrics_data_get(u32 index)
 {
-	return ((boot_metrics_get_index_metrics(index) >> METRICS_DATA_SHIFT) & METRICS_DATA_MASK);
+	return (((boot_metrics_get_index_metrics(index) >> METRICS_DATA_SHIFT) & METRICS_DATA_MASK)
+		<< METRICS_DATA_ALIGN);
 }
 
 /*
@@ -158,7 +159,7 @@ METRICS_ATTR_RO(bl2wb, BL2, WARMBOOT_START, EL3, MON_SMC_WARMBOOT_START);
 METRICS_ATTR_RO(el3wb, EL3, MON_SMC_WARMBOOT_START, EL3, MON_SMC_WARMBOOT_END);
 /* total: bl1_sleep_go + pbl_sleep_go + el3_sleep_go + bl2_warmboot + el3_warmboot time */
 METRICS_ATTR_RO(resume_total, BL1, SLEEP_GO_START, EL3, MON_SMC_WARMBOOT_END);
-#else // CONFIG_SOC_GS201 or later
+#else /* CONFIG_SOC_GS201 or Zuma */
 /* pblsg: pbl_sleep_go time */
 METRICS_ATTR_RO(pblsg, PBL, SLEEP_GO_START, EL3, MON_SMC_WARMBOOT_START);
 /* el3wb: el3_warmboot time */

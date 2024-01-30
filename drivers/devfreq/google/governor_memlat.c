@@ -22,12 +22,11 @@
 #include <linux/of.h>
 #include <linux/devfreq.h>
 #include <soc/google/exynos_pm_qos.h>
-#include <dt-bindings/soc/google/gs101-devfreq.h>
+#include <dt-bindings/soc/google/zuma-devfreq.h>
 #include <trace/events/power.h>
-
-// Note: this header comes from $KERNEL_SRC/drivers/devfreq
-#include <governor.h>
+#include "governor.h"
 #include "governor_memlat.h"
+#include "arm-memlat-mon.h"
 
 #define CREATE_TRACE_POINTS
 #include "governor_memlat_trace.h"
@@ -99,11 +98,10 @@ static unsigned long core_to_dev_freq(struct memlat_node *node,
 	if (!map)
 		goto out;
 
-	while (map->core_mhz && map->core_mhz < coref)
+	while (map->core_mhz && map->core_mhz <= coref) {
+		freq = map->target_freq;
 		map++;
-	if (!map->core_mhz)
-		map--;
-	freq = map->target_freq;
+	}
 
 out:
 	pr_debug("freq: %lu -> dev: %lu\n", coref, freq);
@@ -318,7 +316,9 @@ static int devfreq_memlat_get_freq(struct devfreq *df,
 					hw->core_stats[i].inst_count,
 					hw->core_stats[i].mem_count,
 					hw->core_stats[i].freq,
-					hw->core_stats[i].stall_pct, ratio);
+					hw->core_stats[i].stall_pct,
+					hw->core_stats[i].mem_stall_count,
+					hw->core_stats[i].l2_cachemiss_count, ratio);
 
 		if (ratio <= node->ratio_ceil
 		    && hw->core_stats[i].stall_pct >= node->stall_floor
@@ -337,6 +337,8 @@ static int devfreq_memlat_get_freq(struct devfreq *df,
 					hw->core_stats[lat_dev].inst_count,
 					hw->core_stats[lat_dev].mem_count,
 					hw->core_stats[lat_dev].freq,
+					hw->core_stats[lat_dev].mem_stall_count,
+					hw->core_stats[lat_dev].l2_cachemiss_count,
 					max_freq);
 	}
 
@@ -354,7 +356,7 @@ store_attr(ratio_ceil, 1U, 20000U)
 static DEVICE_ATTR(ratio_ceil, 0644, show_ratio_ceil, store_ratio_ceil);
 
 show_attr(stall_floor)
-store_attr(stall_floor, 0U, 100U)
+store_attr(stall_floor, 0U, 10000U)
 static DEVICE_ATTR(stall_floor, 0644, show_stall_floor, store_stall_floor);
 
 static struct attribute *memlat_dev_attr[] = {
@@ -530,10 +532,10 @@ static struct memlat_node *register_common(struct device *dev,
 	if (hw->get_child_of_node) {
 		of_child = hw->get_child_of_node(dev);
 		hw->freq_map = init_core_dev_map(dev, of_child,
-					"core-dev-table");
+					"core-dev-table-v2");
 	} else {
 		hw->freq_map = init_core_dev_map(dev, NULL,
-					"core-dev-table");
+					"core-dev-table-v2");
 	}
 	if (!hw->freq_map) {
 		dev_err(dev, "Couldn't find the core-dev freq table!\n");

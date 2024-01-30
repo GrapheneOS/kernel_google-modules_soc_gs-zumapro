@@ -78,7 +78,15 @@ static void bts_calc_bw(void)
 	unsigned int total_read = 0;
 	unsigned int total_write = 0;
 	unsigned int rt_bw = 0;
-	unsigned int mif_freq, int_freq, bus1_freq;
+	unsigned int mif_freq, int_freq, bus1_freq = 0;
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	struct bts_bw *bw;
+	unsigned int nocl_total_rd_bw;
+	unsigned int nocl_total_wr_bw;
+	unsigned int nocl_peak_freq;
+	char buf[80];
+	ssize_t ret = 0;
+#endif
 
 	mutex_lock(&btsdev->mutex_lock);
 
@@ -86,9 +94,10 @@ static void bts_calc_bw(void)
 	btsdev->total_bw = 0;
 
 	for (i = 0; i < btsdev->num_bts; i++) {
+#if !IS_ENABLED(CONFIG_SOC_ZUMA)
 		if (btsdev->peak_bw < btsdev->bts_bw[i].peak)
 			btsdev->peak_bw = btsdev->bts_bw[i].peak;
-
+#endif
 		/* Calculate total RT BW based on RT clients */
 		if (btsdev->bts_bw[i].is_rt)
 			rt_bw += btsdev->bts_bw[i].rt;
@@ -107,6 +116,61 @@ static void bts_calc_bw(void)
 	/* Additional MIF constriant to guarantee RT BW < 40% */
 	mif_freq = max(mif_freq, (rt_bw / BUS_WIDTH) * 100 / RT_UTIL);
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	for (i = 0; i < btsdev->num_nocl ; i++) {
+		nocl_total_rd_bw = 0;
+		nocl_total_wr_bw = 0;
+		btsdev->nocl_infos[i].peak_freq = 0;
+		list_for_each_entry(bw, &btsdev->nocl_infos[i].list, node) {
+			nocl_total_rd_bw += bw->read;
+			nocl_total_wr_bw += bw->write;
+			nocl_peak_freq = (bw->peak / bw->bus_width) * 100 / INT_UTIL;
+			if (btsdev->nocl_infos[i].peak_freq < nocl_peak_freq)
+				btsdev->nocl_infos[i].peak_freq = nocl_peak_freq;
+		}
+		if (!strcmp(btsdev->nocl_infos[i].nocl_name, "nocl2aa") ||
+		    !strcmp(btsdev->nocl_infos[i].nocl_name, "nocl2ab")) {
+			/* In Zuma, the equivalent of bus1 is NOCL2AA & NOCL2AB
+			 * so first calculate the required frequency for these
+			 * two nocls to get the bus1_freq.
+			 */
+			nocl_peak_freq = (nocl_total_rd_bw / INT_BUS_WIDTH) /
+				NOCL2A_NUM_CHANNEL * 100 / INT_UTIL;
+			btsdev->nocl_infos[i].peak_freq = max(nocl_peak_freq,
+				btsdev->nocl_infos[i].peak_freq);
+			nocl_peak_freq = (nocl_total_wr_bw / INT_BUS_WIDTH) /
+				NOCL2A_NUM_CHANNEL * 100 / INT_UTIL;
+			btsdev->nocl_infos[i].peak_freq = max(nocl_peak_freq,
+				btsdev->nocl_infos[i].peak_freq);
+			bus1_freq = max(bus1_freq, btsdev->nocl_infos[i].peak_freq);
+		} else {
+			/* This block is to calculate the required frequency
+			 * of NOCL1A.
+			 */
+			nocl_peak_freq = (total_read / INT_BUS_WIDTH) /
+				NUM_CHANNEL * 100 / INT_UTIL;
+			btsdev->nocl_infos[i].peak_freq = max(nocl_peak_freq,
+				btsdev->nocl_infos[i].peak_freq);
+			nocl_peak_freq = (total_write / INT_BUS_WIDTH) /
+				NUM_CHANNEL * 100 / INT_UTIL;
+			btsdev->nocl_infos[i].peak_freq = max(nocl_peak_freq,
+				btsdev->nocl_infos[i].peak_freq);
+			int_freq = btsdev->nocl_infos[i].peak_freq;
+		}
+		ret += scnprintf(buf + ret, sizeof(buf) - ret, "%s:%.8u ",
+				 btsdev->nocl_infos[i].nocl_name,
+				 btsdev->nocl_infos[i].peak_freq);
+	}
+	BTSDBG_LOG(btsdev->dev, "Freq: %s\n", buf);
+
+	/* Calculate the final INT frequency based on NOCL2AA, NOCL2AB & NOCL1A */
+	int_freq = max(int_freq, bus1_to_int_freq(bus1_freq));
+
+	BTSDBG_LOG(btsdev->dev,
+		   "BW: T:%.8u R:%.8u W:%.8u P:%.8u RT:%.8u MIF:%.8u NOCL2A:%.8u INT:%.8u\n",
+		   btsdev->total_bw, total_read, total_write, btsdev->peak_bw, rt_bw,
+		   mif_freq, bus1_freq, int_freq);
+#else
 	bus1_freq = (btsdev->peak_bw / BUS_WIDTH) * 100 / INT_UTIL;
 	int_freq = bus1_to_int_freq(bus1_freq);
 
@@ -114,7 +178,7 @@ static void bts_calc_bw(void)
 		   "BW: T:%.8u R:%.8u W:%.8u P:%.8u RT:%.8u MIF:%.8u BUS1:%.8u INT:%.8u\n",
 		   btsdev->total_bw, total_read, total_write, btsdev->peak_bw, rt_bw,
 		   mif_freq, bus1_freq, int_freq);
-
+#endif
 	trace_clock_set_rate("BTS_mif_freq", mif_freq, raw_smp_processor_id());
 	trace_clock_set_rate("BTS_int_freq", int_freq, raw_smp_processor_id());
 
@@ -259,7 +323,20 @@ int bts_get_bwindex(const char *name)
 		if (!strcmp(bw[index].name, btsdev->rt_names[i]))
 			bw[index].is_rt = true;
 	}
-
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	for (i = 0; i < btsdev->num_nocl; i++) {
+		int j;
+		for (j = 0; j < btsdev->nocl_infos[i].num_ip; j++) {
+			if (!strcmp(bw[index].name,
+			    btsdev->nocl_infos[i].nocl_ips[j].ip_name)) {
+				INIT_LIST_HEAD(&bw[index].node);
+				list_add(&bw[index].node, &btsdev->nocl_infos[i].list);
+				bw[index].bus_width =
+					btsdev->nocl_infos[i].nocl_ips[j].ip_bus_width;
+			}
+		}
+	}
+#endif
 out:
 	spin_unlock(&btsdev->lock);
 	return ret;
@@ -1190,8 +1267,8 @@ static int exynos_bts_vc_open(struct inode *inode, struct file *file)
 }
 
 static ssize_t exynos_bts_vc_write(struct file *file,
-				    const char __user *user_buf, size_t count,
-				    loff_t *ppos)
+				   const char __user *user_buf, size_t count,
+				   loff_t *ppos)
 {
 	struct bts_info info;
 	char buf[16];
@@ -1202,6 +1279,7 @@ static ssize_t exynos_bts_vc_write(struct file *file,
 
 	buf_size = simple_write_to_buffer(buf, sizeof(buf) - 1, ppos, user_buf,
 					  count);
+
 	if (buf_size < 0)
 		return buf_size;
 
@@ -1219,15 +1297,12 @@ static ssize_t exynos_bts_vc_write(struct file *file,
 		return -EINVAL;
 	}
 
-	cnt = 0;
-	for (i = 0; i < btsdev->num_bts; i++) {
+	for (i = 0, cnt = 0; i < btsdev->num_bts && cnt <= vc_num; i++) {
 		info = btsdev->bts_list[i];
 		if (!info.va_base)
 			continue;
 		if (!info.ops->set_vc)
 			continue;
-		if (cnt == vc_num)
-			break;
 		cnt++;
 	}
 
@@ -1457,6 +1532,48 @@ static int bts_parse_setting(struct device_node *np, struct bts_stat *stat)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+static int bts_parse_nocl_data_index(struct device_node *np, struct bts_device *data,
+				     int index, const char *nocl_name)
+{
+	struct device_node *child_np, *nocl_np = NULL;
+	int i = 0;
+
+	if (!np)
+		return -ENODEV;
+
+	nocl_np = of_get_child_by_name(np, nocl_name);
+	if (!nocl_np)
+		return -ENODEV;
+
+	data->nocl_infos[index].num_ip = of_get_child_count(nocl_np);
+	if (!data->nocl_infos[index].num_ip) {
+		BTSDBG_LOG(data->dev,
+			   "No %s ip found\n", nocl_name);
+		return -EINVAL;
+	}
+	data->nocl_infos[index].nocl_ips = devm_kcalloc(data->dev,
+						data->nocl_infos[index].num_ip,
+						sizeof(struct nocl_ip_info), GFP_KERNEL);
+	if (!data->nocl_infos[index].nocl_ips) {
+		BTSDBG_LOG(data->dev,
+			   "Unable to allocate memory for %s ip\n", nocl_name);
+		return -ENOMEM;
+	}
+	for_each_child_of_node(nocl_np, child_np) {
+		if (!child_np->name)
+			return -EINVAL;
+		data->nocl_infos[index].nocl_ips[i].ip_name = child_np->name;
+		if (of_property_read_u32(child_np, "bus-width",
+					 &data->nocl_infos[index].nocl_ips[i].ip_bus_width))
+			return -EINVAL;
+		i++;
+	}
+
+	return 0;
+}
+#endif
+
 #define NUM_COLS 2
 #define OF_DATA_NUM_MAX 16
 static int bts_parse_data(struct device_node *np, struct bts_device *data)
@@ -1469,6 +1586,10 @@ static int bts_parse_data(struct device_node *np, struct bts_device *data)
 	int i, j, map_cnt;
 	int of_data_int_array[OF_DATA_NUM_MAX];
 	int ret = 0;
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	bool has_nocl2aa = false;
+	bool has_nocl2ab = false;
+#endif
 
 	if (!of_have_populated_dt()) {
 		dev_err(data->dev, "Invalid device tree node!\n");
@@ -1490,8 +1611,8 @@ static int bts_parse_data(struct device_node *np, struct bts_device *data)
 	}
 	data->map_row_cnt = map_cnt / NUM_COLS;
 	data->bus1_int_tbl =
-		devm_kcalloc(data->dev, data->map_row_cnt, sizeof(*data->bus1_int_tbl),
-			     GFP_KERNEL);
+		devm_kcalloc(data->dev, data->map_row_cnt, sizeof(struct bus1_int_map),
+		             GFP_KERNEL);
 	if (!data->bus1_int_tbl) {
 		dev_err(data->dev,
 			"Failed to allocate memory for bus1_int_tbl\n");
@@ -1567,6 +1688,50 @@ static int bts_parse_data(struct device_node *np, struct bts_device *data)
 		goto err;
 	}
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	data->num_nocl = (unsigned int)of_property_count_strings(np,
+				"nocl-names");
+	if (!data->num_nocl || (data->num_nocl >= data->num_bts)) {
+		BTSDBG_LOG(data->dev,
+			   "No nocl names found or the count is wrong\n");
+		ret = -EINVAL;
+		goto err;
+	}
+	data->nocl_infos = devm_kcalloc(data->dev, data->num_nocl,
+					sizeof(struct nocl_info), GFP_KERNEL);
+	if (!data->nocl_infos) {
+		ret = -ENOMEM;
+		goto err;
+	}
+	for (i = 0; i < data->num_nocl; i++) {
+		ret = of_property_read_string_index(np, "nocl-names", i,
+						    &data->nocl_infos[i].nocl_name);
+		if (ret) {
+			dev_err(data->dev,
+				"Unable to get name of nocls\n");
+			goto err;
+		}
+		if (!strcmp(data->nocl_infos[i].nocl_name, "nocl2aa"))
+			has_nocl2aa = true;
+		else if (!strcmp(data->nocl_infos[i].nocl_name, "nocl2ab"))
+			has_nocl2ab = true;
+	}
+	if (!has_nocl2aa || !has_nocl2ab) {
+		dev_err(data->dev,
+			"Missing nocl2aa and/or nocl2ab info\n");
+		goto err;
+	}
+	for (i = 0; i < data->num_nocl; i++) {
+		ret = bts_parse_nocl_data_index(np, data, i, data->nocl_infos[i].nocl_name);
+		if (ret) {
+			dev_err(data->dev,
+				"Failed to parse nocl data\n");
+			goto err;
+		}
+		INIT_LIST_HEAD(&data->nocl_infos[i].list);
+	}
+	data->num_bts -= data->num_nocl;
+#endif
 	info = devm_kcalloc(data->dev, data->num_bts,
 			    sizeof(struct bts_info), GFP_KERNEL);
 	if (!info) {
@@ -1577,6 +1742,10 @@ static int bts_parse_data(struct device_node *np, struct bts_device *data)
 	i = 0;
 
 	for_each_child_of_node(np, child_np) {
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+		if (of_property_read_bool(child_np, "nocl_node"))
+			continue;
+#endif
 		/* Parsing scenario data */
 		info[i].stat = devm_kcalloc(data->dev, data->num_scen,
 					    sizeof(struct bts_stat),
@@ -1631,8 +1800,9 @@ static int bts_parse_data(struct device_node *np, struct bts_device *data)
 				goto err;
 			}
 			vc_num_total++;
-		} else
+		} else {
 			info[i].name = child_np->name;
+		}
 
 		/* Register operation function */
 		ret = register_btsops(&info[i]);

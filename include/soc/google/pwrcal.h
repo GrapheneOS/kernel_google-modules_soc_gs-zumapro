@@ -31,6 +31,7 @@ extern int cal_dfs_set_rate(unsigned int id, unsigned long rate);
 extern int cal_dfs_set_rate_switch(unsigned int id, unsigned long switch_rate);
 extern unsigned long cal_dfs_cached_get_rate(unsigned int id);
 extern unsigned long cal_dfs_get_rate(unsigned int id);
+extern long cal_dfs_get_rate_acpm(unsigned int id);
 extern int cal_dfs_get_rate_table(unsigned int id, unsigned long *table);
 extern int cal_dfs_get_asv_table(unsigned int id, unsigned int *table);
 extern unsigned int cal_asv_pmic_info(void);
@@ -80,8 +81,6 @@ extern void cal_asv_set_ssa0(unsigned int id, unsigned int ssa0);
 
 extern int cal_init(void);
 
-/* It is for debugging. */
-extern void cal_vclk_dbg_info(unsigned int id);
 
 #ifdef __cplusplus
 }

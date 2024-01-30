@@ -37,7 +37,7 @@ int mfc_mem_get_user_shared_handle(struct mfc_ctx *ctx,
 	}
 
 	if (handle->dma_buf->size < handle->data_size) {
-		mfc_ctx_err("[MEMINFO][SH][%s] User-provided dma_buf size(%ld) is smaller than required size(%ld)\n",
+		mfc_ctx_err("[MEMINFO][SH][%s] User-provided dma_buf size(%zu) is smaller than required size(%zu)\n",
 				name, handle->dma_buf->size, handle->data_size);
 		ret = -EINVAL;
 		goto dma_buf_size_fail;
@@ -45,7 +45,7 @@ int mfc_mem_get_user_shared_handle(struct mfc_ctx *ctx,
 
 	ret = dma_buf_vmap(handle->dma_buf, &map);
 	if (ret) {
-		mfc_ctx_err("[MEMINFO][SH][%s] Failed to get kernel virtual address\n", name);
+		mfc_ctx_err("Failed to get kernel virtual address\n");
 		goto map_kernel_fail;
 	}
 	handle->vaddr = map.vaddr;
@@ -149,8 +149,7 @@ static int mfc_mem_dma_heap_alloc(struct mfc_dev *dev,
 
 		ret = dma_buf_vmap(special_buf->dma_buf, &map);
 		if (ret) {
-			mfc_dev_err("Failed to get vaddr (err 0x%p)\n",
-					&special_buf->vaddr);
+			mfc_dev_err("Failed to get kernel virtual adddress\n");
 			goto err_vaddr;
 		}
 		special_buf->vaddr = map.vaddr;
@@ -363,6 +362,7 @@ void mfc_put_iovmm(struct mfc_ctx *ctx, struct dpb_table *dpb, int num_planes, i
 		dpb[index].addr[i] = 0;
 		dpb[index].attach[i] = NULL;
 		dpb[index].dmabufs[i] = NULL;
+		dpb[index].sgt[i] = NULL;
 	}
 
 	dpb[index].new_fd = -1;

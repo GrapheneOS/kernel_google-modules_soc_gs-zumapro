@@ -1,20 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2014 Samsung Electronics Co., Ltd.
- *              http://www.samsung.com
+ * Samsung EXYNOS SoC series USB PHY driver
  *
- * Author: Sung-Hyun Na <sunghyun.na@samsung.com>
- *
- * USBPHY configuration definitions for Samsung USB PHY CAL
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Copyright (C) 2022 Samsung Electronics Co., Ltd.
  */
 
 #ifndef __PHY_SAMSUNG_USB_FW_CAL_H__
@@ -50,6 +38,23 @@
 #define EXYNOS_USBCON_VER_05_3_0	0x0530	/* Super Speed Dual PHY	*/
 #define EXYNOS_USBCON_VER_05_MAX	0x05FF
 
+/* block control version */
+#define EXYNOS_USBCON_VER_06_0_0 0x0600 /* link control only */
+#define EXYNOS_USBCON_VER_06_4_0 0x0610 /* link + usb2.0 phy */
+#define EXYNOS_USBCON_VER_06_2_0 0x0620 /* link + usb3.0 phy */
+#define EXYNOS_USBCON_VER_06_3_0 0x0630 /* link + usb2.0 + usb3.0 phy */
+#define EXYNOS_USBCON_VER_06_MAX 0x06FF
+
+/* eUSB phy contorller */
+#define EXYNOS_USBCON_VER_07_0_0 0x0700 /* 4nm cp_bias_cntrl = default - eUSB PHY controller, zuma */
+#define EXYNOS_USBCON_VER_07_0_1 0x0701 /* 4nm cp_bias_cntrl = 0 - eUSB PHY controller, zumapro */
+#define EXYNOS_USBCON_VER_07_0_2 0x0702 /* 3nm cp_bias_cntrl = 0 - eUSB PHY controller */
+#define EXYNOS_USBCON_VER_07_8_0 0x0780 /* dwc eUSB PHY register interface */
+
+/* synopsys usbdp phy contorller */
+#define EXYNOS_USBCON_VER_08_0_0 0x0800 /* dwc usb3p2/dp PHY controller 9865 */
+#define EXYNOS_USBCON_VER_08_0_1 0x0801 /* dwc usb3p2/dp PHY controller, 9875 */
+
 #define EXYNOS_USBCON_VER_F2_0_0	0xF200
 #define EXYNOS_USBCON_VER_F2_MAX	0xF2FF
 
@@ -60,6 +65,14 @@
 #define EXYNOS_USBCON_VER_MINOR(_x)	((_x) & 0xf)
 #define EXYNOS_USBCON_VER_MID(_x)	((_x) & 0xf0)
 #define EXYNOS_USBCON_VER_MAJOR(_x)	((_x) & 0xff00)
+
+#define EXYNOS_BLKCON_VER_HS_CAP 0x0010
+#define EXYNOS_BLKCON_VER_SS_CAP 0x0020
+
+#define HS_REWA_EN_STS_ENABLED      0
+#define HS_REWA_EN_STS_DISABLED     1
+#define HS_REWA_EN_STS_DISCONNECT   2
+#define HS_REWA_EN_STS_NOT_SUSPEND  -1
 
 enum exynos_usbphy_mode {
 	USBPHY_MODE_DEV = 0,
@@ -72,16 +85,18 @@ enum exynos_usbphy_mode {
 enum exynos_usbphy_refclk {
 	USBPHY_REFCLK_DIFF_100MHZ = 0x80 | 0x27,
 	USBPHY_REFCLK_DIFF_52MHZ = 0x80 | 0x02 | 0x40,
+	USBPHY_REFCLK_DIFF_48MHZ = 0x80 | 0x2a | 0x40,
 	USBPHY_REFCLK_DIFF_26MHZ = 0x80 | 0x02,
 	USBPHY_REFCLK_DIFF_24MHZ = 0x80 | 0x2a,
 	USBPHY_REFCLK_DIFF_20MHZ = 0x80 | 0x31,
 	USBPHY_REFCLK_DIFF_19_2MHZ = 0x80 | 0x38,
 
 	USBPHY_REFCLK_EXT_50MHZ = 0x07,
+	USBPHY_REFCLK_EXT_48MHZ = 0x08,
 	USBPHY_REFCLK_EXT_26MHZ = 0x06,
 	USBPHY_REFCLK_EXT_24MHZ = 0x05,
 	USBPHY_REFCLK_EXT_20MHZ = 0x04,
-	USBPHY_REFCLK_EXT_19P2MHZ = 0x0,
+	USBPHY_REFCLK_EXT_19P2MHZ = 0x01,
 	USBPHY_REFCLK_EXT_12MHZ = 0x02,
 };
 
@@ -248,8 +263,14 @@ struct exynos_usbphy_info {
 
 	/* Dual PHY */
 	bool dual_phy;
+
+	/* SOF tick for UDMA */
+	int sel_sof;
+	int usbdp_mode;
+	unsigned int add_val_magic;
 };
 
+#define CAL_INFO_ADD_INFO_MAGIC 0xCA10ADD4
 struct usb_eom_result_s {
 	u32 phase;
 	u32 vref;
@@ -259,5 +280,7 @@ struct usb_eom_result_s {
 #define EOM_PH_SEL_MAX      72
 #define EOM_DEF_VREF_MAX    256
 
+#define SNPS_USBDP_ROM_MODE 0
+#define SNPS_USBDP_RAM_MODE 1
 void phy_usb_exynos_register_cal_infor(struct exynos_usbphy_info *cal_info);
 #endif	/* __PHY_SAMSUNG_USB_FW_CAL_H__ */

@@ -12,8 +12,8 @@
 #include "link_device_memory.h"
 #include "cpif_tp_monitor.h"
 #if IS_ENABLED(CONFIG_LINK_DEVICE_PCIE)
-#include <linux/exynos-pci-ctrl.h>
 #include "s51xx_pcie.h"
+#include <dt-bindings/pci/pci.h>
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_DIT)
 #include "dit.h"
@@ -95,6 +95,9 @@ static void tpmon_stat_rx_speed(struct cpif_tpmon *tpmon)
 
 static void tpmon_calc_rx_speed(struct cpif_tpmon *tpmon)
 {
+	struct modem_ctl *mc = tpmon->ld->mc;
+	u32 hysteresis = mc->tp_threshold + mc->tp_hysteresis;
+	int spd;
 	int ret = 0;
 
 	ret = tpmon_calc_rx_speed_internal(tpmon, &tpmon->rx_total, false);
@@ -102,13 +105,35 @@ static void tpmon_calc_rx_speed(struct cpif_tpmon *tpmon)
 	tpmon_calc_rx_speed_internal(tpmon, &tpmon->rx_udp, false);
 	tpmon_calc_rx_speed_internal(tpmon, &tpmon->rx_others, false);
 
-	if (tpmon->debug_print && tpmon->rx_total.rx_mbps && !ret)
-		mif_info("%ldMbps(%ld/%ld/%ld)\n",
-			tpmon->rx_total.rx_mbps, tpmon->rx_tcp.rx_mbps,
-			tpmon->rx_udp.rx_mbps, tpmon->rx_others.rx_mbps);
+	if (tpmon->debug_print && tpmon->rx_total.rx_mbps && !ret) {
+		if (mc->pcie_dynamic_spd_enabled)
+			mif_info("%ldMbps(%ld/%ld/%ld), hysteresis_zone(%d, %d]\n",
+				tpmon->rx_total.rx_mbps, tpmon->rx_tcp.rx_mbps,
+				tpmon->rx_udp.rx_mbps, tpmon->rx_others.rx_mbps,
+				mc->tp_threshold, hysteresis);
+		else
+			mif_info("%ldMbps(%ld/%ld/%ld)\n",
+				tpmon->rx_total.rx_mbps, tpmon->rx_tcp.rx_mbps,
+				tpmon->rx_udp.rx_mbps, tpmon->rx_others.rx_mbps);
+	}
 
 	if (!tpmon_check_active())
 		tpmon_stat_rx_speed(tpmon);
+
+	if (ret || !mc->pcie_dynamic_spd_enabled)
+		return;
+
+	// Skip speed change if it is in hysteresis zone
+	if (tpmon->rx_total.rx_mbps > mc->tp_threshold
+		&& tpmon->rx_total.rx_mbps <= hysteresis)
+		return;
+
+	if (tpmon->rx_total.rx_mbps > hysteresis)
+		spd = pcie_get_max_link_speed(mc->pcie_ch_num);
+	else
+		spd = LINK_SPEED_GEN1;
+
+	pcie_change_link_speed(mc->pcie_ch_num, spd);
 }
 
 /* Queue status */
@@ -1445,7 +1470,9 @@ static int tpmon_set_cpufreq(struct tpmon_data *data)
 
 static int tpmon_set_target(struct tpmon_data *data)
 {
+#if IS_ENABLED(CONFIG_EXYNOS_PM_QOS)
 	struct cpif_tpmon *tpmon = data->tpmon;
+#endif
 	int ret = 0;
 
 	switch (data->target) {

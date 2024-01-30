@@ -1,74 +1,24 @@
 # SPDX-License-Identifier: GPL-2.0
 
-gs101_overlays := \
-	gs101-slider.dtbo \
-	gs101-slider2.dtbo \
-	gs101-slider2-o6r4.dtbo \
-	gs101-whitefin.dtbo \
-	gs101-whitefin2.dtbo \
-	gs101-whitefin2v2.dtbo \
-	gs101-oriole.dtbo \
-	gs101-oriole-evt1_1.dtbo \
-	gs101-oriole-evt-wingboard.dtbo \
-	gs101-oriole-evt1.dtbo \
-	gs101-oriole-proto1.dtbo \
-	gs101-oriole-proto1_1.dtbo \
-	gs101-raven.dtbo \
-	gs101-raven-evt1_1.dtbo \
-	gs101-raven-evt-wingboard.dtbo \
-	gs101-raven-evt1.dtbo \
-	gs101-raven-proto1.dtbo \
-	gs101-raven-proto1_1.dtbo \
-	gs101-bluejay-dev.dtbo \
-	gs101-bluejay-proto1_0.dtbo \
-	gs101-bluejay-proto1_1.dtbo \
-	gs101-bluejay-evt1_0.dtbo \
-	gs101-bluejay-evt1_1.dtbo \
-	gs101-bluejay-evt1_2.dtbo \
-	gs101-bluejay-dvt1_0.dtbo \
-	gs101-bluejay-dvt1_1.dtbo \
-	gs101-bluejay-pvt1_0.dtbo \
-	gs101-bluejay-mp1_0.dtbo
+zuma_overlays := \
+	zuma-emulator.dtbo \
+	zuma-hybrid.dtbo
 
-gs201_overlays := \
-	gs201-cloudripper-dev.dtbo \
-	gs201-ravenclaw-dev1_0.dtbo \
-	gs201-ravenclaw-dev1_1.dtbo \
-	gs201-cheetah-proto1.dtbo \
-	gs201-cheetah-proto1_1.dtbo \
-	gs201-cheetah-proto1_1-wingboard.dtbo \
-	gs201-cheetah-evt1.dtbo \
-	gs201-cheetah-evt1-wingboard.dtbo \
-	gs201-cheetah-evt1-nfc.dtbo \
-	gs201-cheetah-evt1_1.dtbo \
-	gs201-cheetah-evt1_1-wingboard.dtbo \
-	gs201-cheetah-dvt1.dtbo \
-	gs201-cheetah-pvt1.dtbo \
-	gs201-cheetah-mp.dtbo \
-	gs201-panther-proto1.dtbo \
-	gs201-panther-proto1_1.dtbo \
-	gs201-panther-proto1_1-wingboard.dtbo \
-	gs201-panther-evt1.dtbo \
-	gs201-panther-evt1-wingboard.dtbo \
-	gs201-panther-evt1_1.dtbo \
-	gs201-panther-evt1_1-wingboard.dtbo \
-	gs201-panther-dvt1.dtbo \
-	gs201-panther-pvt1.dtbo \
-	gs201-panther-mp.dtbo \
-	gs201-lynx-dev1_0.dtbo \
-	gs201-lynx-proto1_0.dtbo \
-	gs201-lynx-proto1_1.dtbo \
-	gs201-lynx-evt1_0.dtbo \
-	gs201-lynx-evt1_0-wingboard.dtbo \
-	gs201-lynx-evt1_1.dtbo \
-	gs201-lynx-dvt1_0.dtbo \
-	gs201-lynx-dvt1_0-gain1.dtbo \
-	gs201-lynx-pvt1_0.dtbo \
-	gs201-lynx-mp1_0.dtbo
+zuma_dtbs := \
+	zuma-a0-foplp.dtb \
+	zuma-a0-ipop.dtb \
+	zuma-b0-foplp.dtb \
+	zuma-b0-ipop.dtb
 
-gs101_dtbs := gs101-a0.dtb gs101-b0.dtb
+zumapro_overlays := \
+	zumapro-emulator.dtbo \
+	zumapro-hybrid.dtbo
 
-gs201_dtbs := gs201-a0.dtb gs201-b0.dtb gs201-b0_v2-ipop.dtb
+zumapro_dtbs := \
+	zumapro-a0-foplp.dtb \
+	zumapro-a0-ipop.dtb \
+	zumapro-a1-foplp.dtb \
+	zumapro-a1-ipop.dtb
 
 # Usage:
 #   $(call DTBS_overlay_template, overlay, base_dtb, suffix)
@@ -107,5 +57,5 @@ endef
 # overlays. For the base dtbs, kbuild will expose the symbols as needed for the
 # overlays. Additionally, kbuild will statically apply the overlay to the base
 # dtb which could be used to verify the overlay applies cleanly.
-$(call multi_dtbs_overlay, $(gs101_dtbs), $(gs101_overlays), $(CONFIG_SOC_GS101))
-$(call multi_dtbs_overlay, $(gs201_dtbs), $(gs201_overlays), $(CONFIG_SOC_GS201))
+$(call multi_dtbs_overlay, $(zuma_dtbs), $(zuma_overlays), $(CONFIG_SOC_ZUMA))
+$(call multi_dtbs_overlay, $(zumapro_dtbs), $(zumapro_overlays), $(CONFIG_SOC_ZUMA))

@@ -49,6 +49,8 @@ static int pixel_stat_mm_init(void)
         */
 
 	ret = register_trace_android_vh_meminfo_proc_show(vh_meminfo_proc_show, NULL);
+	if (ret)
+		return ret;
 
 	ret = register_trace_mm_vmscan_direct_reclaim_begin(vh_direct_reclaim_begin, NULL);
 	if (ret)
@@ -64,6 +66,8 @@ static int pixel_stat_mm_init(void)
 		return ret;
 
 	ret = register_trace_android_vh_mm_compaction_end(vh_compaction_end, NULL);
+	if (ret)
+		return ret;
 
 	return 0;
 }

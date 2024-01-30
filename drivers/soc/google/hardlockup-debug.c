@@ -16,6 +16,8 @@
 #include <linux/soc/samsung/exynos-smc.h>
 #include <linux/slab.h>
 #include <linux/panic_notifier.h>
+#include <linux/atomic.h>
+#include <linux/android_debug_symbols.h>
 #include <linux/device.h>
 #include <linux/interval_tree.h>
 #include <linux/pm.h>
@@ -148,10 +150,8 @@ static void pm_dev_start(void *data, struct device *dev, const char *pm_ops, int
 
 	spin_lock_irqsave(&pm_trace_lock, flags);
 	priv = kzalloc(sizeof(struct pm_dev_priv), GFP_ATOMIC);
-	if (!priv) {
-		pr_err("Failed to alloc pm_dev_priv buffer\n");
+	if (!priv)
 		goto exit;
-	}
 	priv->dev = dev;
 	priv->parent = dev->parent;
 	priv->event = event;
@@ -238,8 +238,10 @@ static unsigned long hardlockup_debug_get_locked_cpu_mask(void)
 
 static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 {
+	static atomic_t show_mem_once = ATOMIC_INIT(1);
 	static atomic_t print_schedstat_once = ATOMIC_INIT(1);
 	static atomic_t dump_tasks_once = ATOMIC_INIT(1);
+
 	int cpu = raw_smp_processor_id();
 	unsigned int val;
 	unsigned long flags;
@@ -298,6 +300,12 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 		dump_backtrace(regs, NULL, KERN_DEFAULT);
 		dbg_snapshot_save_context(regs, false);
 
+		if (atomic_cmpxchg(&show_mem_once, 1, 0)) {
+			void (*show_mem)(unsigned int, nodemask_t *) =
+				android_debug_symbol(ADS_SHOW_MEM);
+			show_mem(0, NULL);
+		}
+
 		if (atomic_cmpxchg(&dump_tasks_once, 1, 0)) {
                         /* dummy struct to fulfill dump_tasks interface */
 			struct oom_control oc = { 0 };
@@ -313,7 +321,6 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 			static char pm_dev_namebuf[512] = {0};
 			struct pm_dev_priv *priv;
 			struct interval_tree_node *node, *next;
-			int buf_off = 0;
 
 			pr_emerg("pm_suspend_task '%s' %d hung (state=%u)",
 					pm_suspend_task->comm, pm_suspend_task->pid,
@@ -325,10 +332,10 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 
 			pr_emerg("PM suspend timeout at following devices:\n");
 			foreach_pm_dev(node, next, priv) {
-				buf_off += scnprintf(pm_dev_namebuf + buf_off,
-						sizeof(pm_dev_namebuf) - buf_off,
-						"%s%s", pm_dev_namebuf[0] ? "," : "",
-						dev_driver_string(priv->dev));
+				if (pm_dev_namebuf[0])
+					strlcat(pm_dev_namebuf, ",", sizeof(pm_dev_namebuf));
+				strlcat(pm_dev_namebuf, dev_driver_string(priv->dev),
+						sizeof(pm_dev_namebuf));
 				pr_emerg("  - %s %s, parent: %s, %s[%s]\n",
 						dev_name(priv->dev),
 						dev_driver_string(priv->dev),
@@ -339,12 +346,17 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 		}
 		spin_unlock_irqrestore(&pm_trace_lock, flags);
 
+		hardlockup_core_handled_mask |= (1 << cpu);
+
 		if (ret)
 			raw_spin_unlock(&hardlockup_log_lock);
 
-		hardlockup_core_handled_mask |= (1 << cpu);
-
-		if (hardlockup_core_mask == hardlockup_core_handled_mask) {
+		if (hardlockup_debug_get_locked_cpu_mask() == hardlockup_core_handled_mask) {
+			/*
+			 * Tell debugcore that AP has finished performing
+			 * cache flush.
+			 */
+			dbg_snapshot_set_core_cflush_stat(0x1);
 #if IS_ENABLED(CONFIG_GS_ACPM)
 			exynos_acpm_reboot();
 #endif
@@ -524,6 +536,9 @@ static int hardlockup_debugger_probe(struct platform_device *pdev)
 
 	WARN_ON(register_trace_device_pm_callback_start(pm_dev_start, NULL));
 	WARN_ON(register_trace_device_pm_callback_end(pm_dev_end, NULL));
+
+	/* Clear AP cache flush complete flag on boot */
+	dbg_snapshot_set_core_cflush_stat(0x0);
 
 	dev_info(&pdev->dev,
 			"Initialized hardlockup debug dump successfully.\n");

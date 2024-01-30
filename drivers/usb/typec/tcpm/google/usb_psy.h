@@ -10,6 +10,7 @@
 #include <misc/logbuffer.h>
 #include <linux/power_supply.h>
 
+struct i2c_client;
 struct max77759_plat;
 
 struct usb_psy_ops {

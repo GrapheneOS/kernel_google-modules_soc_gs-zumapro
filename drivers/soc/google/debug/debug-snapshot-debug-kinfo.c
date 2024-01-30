@@ -38,6 +38,9 @@ struct vendor_kernel_info {
 	u64 page_end;
 	u64 phys_offset;
 	u64 kimage_voffset;
+	/* For debug snapshot */
+	char dss_freq_name[DSS_FREQ_MAX_SIZE][DSS_FREQ_MAX_NAME_SIZE];
+	u32 dss_freq_size;
 } __packed;
 
 struct vendor_kernel_all_info {
@@ -63,12 +66,36 @@ static void update_vendor_kernel_all_info(void)
 	int index;
 	struct vendor_kernel_info *info;
 	u32 *vendor_checksum_info;
+	size_t total_len;
+#if defined(CONFIG_MODULE_SCMVERSION)
+	const char *str_idx;
+#endif
 
 	all_info->magic_number = DEBUG_KINFO_MAGIC;
 	all_info->combined_checksum = 0;
 
 	info = &all_info->info;
-	strscpy(info->uts_release, UTS_RELEASE, sizeof(info->uts_release));
+	total_len = sizeof(info->uts_release);
+#if defined(CONFIG_MODULE_SCMVERSION)
+	str_idx = strstr(UTS_RELEASE, "-g");
+	if (str_idx) {
+		/* let '-' and '\0' are involved in the end. */
+		str_idx += 2;
+
+		/* reserve aosp kernel version */
+		strscpy(info->uts_release, UTS_RELEASE, str_idx - UTS_RELEASE);
+
+		/* append scmversion of external modules */
+		strlcat(info->uts_release, THIS_MODULE->scmversion, total_len);
+	}
+
+	/* append build_id of external modules */
+	str_idx = strstr(UTS_RELEASE, "-ab");
+	if (str_idx)
+		strlcat(info->uts_release, str_idx, total_len);
+#else
+	strscpy(info->uts_release, UTS_RELEASE, total_len);
+#endif
 
 	info->names_total_len = kallsyms_aosp_names_total_len();
 #if IS_ENABLED(CONFIG_PIXEL_SUSPEND_DIAG)
@@ -79,6 +106,9 @@ static void update_vendor_kernel_all_info(void)
 	info->page_end = PAGE_END;
 	info->phys_offset = PHYS_OFFSET;
 	info->kimage_voffset = kimage_voffset;
+
+	dbg_snapshot_get_freq_name(info->dss_freq_name);
+	info->dss_freq_size = dbg_snapshot_get_freq_size();
 
 	vendor_checksum_info = (u32 *)info;
 	for (index = 0; index < sizeof(*info) / sizeof(u32); index++)

@@ -379,12 +379,6 @@ static int etm2dram_probe(struct platform_device *pdev)
 	mutex_init(&data->arm_lock);
 	data->dbuf_size = PAGE_ALIGN(dbuf_size);
 
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
-	if (ret) {
-		dev_err(&pdev->dev, "DMA enable failed: %d\n", ret);
-		return ret;
-	}
-
 	ret = devm_dma_alloc(&pdev->dev, data->dbuf_size, &data->dbuf_base, GFP_KERNEL);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "data buffer allocation failed: %d\n", ret);

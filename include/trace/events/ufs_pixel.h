@@ -14,7 +14,7 @@
 #include <linux/tracepoint.h>
 
 TRACE_EVENT(ufs_stats,
-	TP_PROTO(struct exynos_ufs *ufs, u64 *avg_time),
+	TP_PROTO(struct pixel_ufs *ufs, u64 *avg_time),
 
 	TP_ARGS(ufs, avg_time),
 

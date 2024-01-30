@@ -26,7 +26,6 @@ DECLARE_PER_CPU(struct uclamp_stats, uclamp_stats);
 
 unsigned int __read_mostly vendor_sched_util_post_init_scale = DEF_UTIL_POST_INIT_SCALE;
 bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
-bool __read_mostly vendor_sched_idle_balancer = true; //prefer vendor idle balancer
 bool __read_mostly vendor_sched_reduce_prefer_idle = true;
 bool __read_mostly vendor_sched_boost_adpf_prio = true;
 static struct proc_dir_entry *vendor_sched;
@@ -34,6 +33,9 @@ struct proc_dir_entry *group_dirs[VG_MAX];
 extern struct vendor_group_list vendor_group_list[VG_MAX];
 
 extern void initialize_vendor_group_property(void);
+extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum uclamp_id clamp_id,
+					 struct uclamp_se *uclamp_max, struct uclamp_se *uclamp_eff,
+					 int *ret);
 
 extern struct vendor_group_property *get_vendor_group_property(enum vendor_group group);
 
@@ -875,14 +877,6 @@ UTILIZATION_GROUP_UCLAMP_ATTRIBUTE(ug_bg, uclamp_max, UG_BG, UCLAMP_MAX);
 /// ******************************************************************************** ///
 /// ********************* From upstream code for uclamp **************************** ///
 /// ******************************************************************************** ///
-/*
- * The effective clamp bucket index of a task depends on, by increasing
- * priority:
- * - the task specific clamp value, when explicitly requested from userspace
- * - the task group effective clamp value, for tasks not either in the root
- *   group or in an autogroup
- * - the system default clamp value, defined by the sysadmin
- */
 static inline void
 uclamp_update_active(struct task_struct *p, enum uclamp_id clamp_id)
 {
@@ -912,7 +906,7 @@ uclamp_update_active(struct task_struct *p, enum uclamp_id clamp_id)
 		uclamp_rq_dec_id(rq, p, clamp_id);
 		uclamp_rq_inc_id(rq, p, clamp_id);
 
-		if (rq->uclamp_flags & UCLAMP_FLAG_IDLE)
+		if (clamp_id == UCLAMP_MAX && rq->uclamp_flags & UCLAMP_FLAG_IDLE)
 			rq->uclamp_flags &= ~UCLAMP_FLAG_IDLE;
 	}
 
@@ -1159,6 +1153,64 @@ static int update_sched_auto_uclamp_max(const char *buf, int count)
 			sched_auto_uclamp_max[index] = tmp[2];
 	} else if (index == pixel_cpu_num) {
 		memcpy(sched_auto_uclamp_max, tmp, sizeof(sched_auto_uclamp_max));
+	} else {
+		goto fail;
+	}
+
+	kfree(str1);
+	return count;
+fail:
+	kfree(str1);
+	return -EINVAL;
+}
+
+static int update_sched_per_cpu_iowait_boost_max_value(const char *buf, int count)
+{
+	char *tok, *str1, *str2;
+	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
+	int index = 0;
+
+	str1 = kstrndup(buf, count, GFP_KERNEL);
+	str2 = str1;
+
+	if (!str2)
+		return -ENOMEM;
+
+	while (1) {
+		tok = strsep(&str2, " ");
+
+		if (tok == NULL)
+			break;
+
+		if (kstrtouint(tok, 0, &val))
+			goto fail;
+
+		if (val > SCHED_CAPACITY_SCALE)
+			goto fail;
+
+		tmp[index] = val;
+		index++;
+
+		if (index == pixel_cpu_num)
+			break;
+	}
+
+	if (index == 1) {
+		for (index = 0; index < pixel_cpu_num; index++) {
+			sched_per_cpu_iowait_boost_max_value[index] = tmp[0];
+		}
+	} else if (index == pixel_cluster_num) {
+		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
+			sched_per_cpu_iowait_boost_max_value[index] = tmp[0];
+
+		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
+			sched_per_cpu_iowait_boost_max_value[index] = tmp[1];
+
+		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
+			sched_per_cpu_iowait_boost_max_value[index] = tmp[2];
+	} else if (index == pixel_cpu_num) {
+		memcpy(sched_per_cpu_iowait_boost_max_value, tmp,
+		       sizeof(sched_per_cpu_iowait_boost_max_value));
 	} else {
 		goto fail;
 	}
@@ -1624,38 +1676,6 @@ static ssize_t npi_packing_store(struct file *filp,
 
 PROC_OPS_RW(npi_packing);
 
-static int idle_balancer_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%s\n", vendor_sched_idle_balancer ? "true" : "false");
-
-	return 0;
-}
-
-static ssize_t idle_balancer_store(struct file *filp,
-							const char __user *ubuf,
-							size_t count, loff_t *pos)
-{
-	bool enable;
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtobool(buf, &enable))
-		return -EINVAL;
-
-	vendor_sched_idle_balancer = enable;
-
-	return count;
-}
-
-PROC_OPS_RW(idle_balancer);
-
 static int reduce_prefer_idle_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "%s\n", vendor_sched_reduce_prefer_idle ? "true" : "false");
@@ -1807,7 +1827,6 @@ static int uclamp_util_diff_stats_show(struct seq_file *m, void *v)
 
 PROC_OPS_RO(uclamp_util_diff_stats);
 
-
 static ssize_t reset_uclamp_stats_store(struct file *filp,
 							const char __user *ubuf,
 							size_t count, loff_t *pos)
@@ -1834,244 +1853,6 @@ static ssize_t reset_uclamp_stats_store(struct file *filp,
 
 PROC_OPS_WO(reset_uclamp_stats);
 #endif
-
-static int uclamp_max_filter_rt_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%d\n", sysctl_sched_uclamp_max_filter_rt);
-	return 0;
-}
-static ssize_t uclamp_max_filter_rt_store(struct file *filp,
-					  const char __user *ubuf,
-					  size_t count, loff_t *pos)
-{
-	int val = 0;
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtoint(buf, 10, &val))
-		return -EINVAL;
-
-	sysctl_sched_uclamp_max_filter_rt = val;
-	return count;
-}
-PROC_OPS_RW(uclamp_max_filter_rt);
-
-static int util_post_init_scale_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%d\n", vendor_sched_util_post_init_scale);
-	return 0;
-}
-
-static int auto_uclamp_max_show(struct seq_file *m, void *v)
-{
-	int i;
-
-	for (i = 0; i < pixel_cpu_num; i++) {
-		seq_printf(m, "%u ", sched_auto_uclamp_max[i]);
-	}
-
-	seq_printf(m, "\n");
-
-	return 0;
-}
-static ssize_t auto_uclamp_max_store(struct file *filp,
-				     const char __user *ubuf,
-				     size_t count, loff_t *pos)
-{
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	return update_sched_auto_uclamp_max(buf, count);
-}
-PROC_OPS_RW(auto_uclamp_max);
-
-static ssize_t util_post_init_scale_store(struct file *filp,
-							const char __user *ubuf,
-							size_t count, loff_t *pos)
-{
-	unsigned int val;
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtouint(buf, 0, &val))
-		return -EINVAL;
-
-	if (val > 1024)
-		return -EINVAL;
-
-	vendor_sched_util_post_init_scale = val;
-
-	return count;
-}
-
-PROC_OPS_RW(util_post_init_scale);
-
-static int pmu_poll_time_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%u\n", pmu_poll_time_ms);
-	return 0;
-}
-
-static ssize_t pmu_poll_time_store(struct file *filp,
-							const char __user *ubuf,
-							size_t count, loff_t *pos)
-{
-	unsigned int val;
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtouint(buf, 0, &val))
-		return -EINVAL;
-
-	if (val < 10 || val > 1000000)
-		return -EINVAL;
-
-	pmu_poll_time_ms = val;
-
-	return count;
-}
-
-PROC_OPS_RW(pmu_poll_time);
-
-static int pmu_poll_enable_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%s\n", pmu_poll_enabled ? "true" : "false");
-	return 0;
-}
-
-static ssize_t pmu_poll_enable_store(struct file *filp,
-							const char __user *ubuf,
-							size_t count, loff_t *pos)
-{
-	bool enable;
-	char buf[MAX_PROC_SIZE];
-	int ret = 0;
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtobool(buf, &enable))
-		return -EINVAL;
-
-	if (enable)
-		ret = pmu_poll_enable();
-	else
-		pmu_poll_disable();
-
-	if (ret)
-		return ret;
-
-	return count;
-}
-
-PROC_OPS_RW(pmu_poll_enable);
-
-#if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
-extern unsigned long sched_lib_mask_out_val;
-
-static int sched_lib_mask_out_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "0x%lx\n", sched_lib_mask_out_val);
-	return 0;
-}
-
-static ssize_t sched_lib_mask_out_store(struct file *filp,
-					const char __user *ubuf,
-					size_t count, loff_t *pos)
-{
-	unsigned long val = 0;
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtoul(buf, 0, &val))
-		return -EINVAL;
-
-	sched_lib_mask_out_val = val;
-	return count;
-}
-
-PROC_OPS_RW(sched_lib_mask_out);
-
-extern unsigned long sched_lib_mask_in_val;
-static int sched_lib_mask_in_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "0x%lx\n", sched_lib_mask_in_val);
-	return 0;
-}
-
-static ssize_t sched_lib_mask_in_store(struct file *filp,
-							const char __user *ubuf,
-							size_t count, loff_t *pos)
-{
-	unsigned long val = 0;
-	char buf[MAX_PROC_SIZE];
-
-	if (count >= sizeof(buf))
-		return -EINVAL;
-
-	if (copy_from_user(buf, ubuf, count))
-		return -EFAULT;
-
-	buf[count] = '\0';
-
-	if (kstrtoul(buf, 0, & val))
-		return -EINVAL;
-
-	sched_lib_mask_in_val = val;
-	return count;
-}
-
-PROC_OPS_RW(sched_lib_mask_in);
-
-
-extern ssize_t sched_lib_name_store(struct file *filp,
-				const char __user *ubuffer, size_t count,
-				loff_t *ppos);
-extern int sched_lib_name_show(struct seq_file *m, void *v);
-
-
-PROC_OPS_RW(sched_lib_name);
-#endif /* CONFIG_RVH_SCHED_LIB */
 
 /* uclamp filters controls */
 static int uclamp_min_filter_enable_show(struct seq_file *m, void *v)
@@ -2222,6 +2003,303 @@ static ssize_t uclamp_max_filter_divider_store(struct file *filp,
 }
 PROC_OPS_RW(uclamp_max_filter_divider);
 
+static int uclamp_max_filter_rt_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_uclamp_max_filter_rt);
+	return 0;
+}
+static ssize_t uclamp_max_filter_rt_store(struct file *filp,
+					  const char __user *ubuf,
+					  size_t count, loff_t *pos)
+{
+	int val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	sysctl_sched_uclamp_max_filter_rt = val;
+	return count;
+}
+PROC_OPS_RW(uclamp_max_filter_rt);
+
+static int auto_uclamp_max_show(struct seq_file *m, void *v)
+{
+	int i;
+
+	for (i = 0; i < pixel_cpu_num; i++) {
+		seq_printf(m, "%u ", sched_auto_uclamp_max[i]);
+	}
+
+	seq_printf(m, "\n");
+
+	return 0;
+}
+static ssize_t auto_uclamp_max_store(struct file *filp,
+				     const char __user *ubuf,
+				     size_t count, loff_t *pos)
+{
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	return update_sched_auto_uclamp_max(buf, count);
+}
+PROC_OPS_RW(auto_uclamp_max);
+
+static int util_post_init_scale_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", vendor_sched_util_post_init_scale);
+	return 0;
+}
+static ssize_t util_post_init_scale_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > SCHED_CAPACITY_SCALE)
+		return -EINVAL;
+
+	vendor_sched_util_post_init_scale = val;
+
+	return count;
+}
+PROC_OPS_RW(util_post_init_scale);
+
+static int per_task_iowait_boost_max_value_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sched_per_task_iowait_boost_max_value);
+	return 0;
+}
+static ssize_t per_task_iowait_boost_max_value_store(struct file *filp,
+						     const char __user *ubuf,
+						     size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > SCHED_CAPACITY_SCALE)
+		return -EINVAL;
+
+	sched_per_task_iowait_boost_max_value = val;
+
+	return count;
+}
+PROC_OPS_RW(per_task_iowait_boost_max_value);
+
+static int per_cpu_iowait_boost_max_value_show(struct seq_file *m, void *v)
+{
+	int i;
+
+	for (i = 0; i < pixel_cpu_num; i++) {
+		seq_printf(m, "%u ", sched_per_cpu_iowait_boost_max_value[i]);
+	}
+
+	seq_printf(m, "\n");
+
+	return 0;
+}
+static ssize_t per_cpu_iowait_boost_max_value_store(struct file *filp,
+						    const char __user *ubuf,
+						    size_t count, loff_t *pos)
+{
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	return update_sched_per_cpu_iowait_boost_max_value(buf, count);
+}
+PROC_OPS_RW(per_cpu_iowait_boost_max_value);
+
+static int pmu_poll_time_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%u\n", pmu_poll_time_ms);
+	return 0;
+}
+
+static ssize_t pmu_poll_time_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val < 10 || val > 1000000)
+		return -EINVAL;
+
+	pmu_poll_time_ms = val;
+
+	return count;
+}
+
+PROC_OPS_RW(pmu_poll_time);
+
+static int pmu_poll_enable_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%s\n", pmu_poll_enabled ? "true" : "false");
+	return 0;
+}
+
+static ssize_t pmu_poll_enable_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	bool enable;
+	char buf[MAX_PROC_SIZE];
+	int ret = 0;
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	if (enable)
+		ret = pmu_poll_enable();
+	else
+		pmu_poll_disable();
+
+	if (ret)
+		return ret;
+
+	return count;
+}
+
+PROC_OPS_RW(pmu_poll_enable);
+
+#if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
+extern unsigned long sched_lib_mask_out_val;
+
+static int sched_lib_mask_out_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "0x%x\n", sched_lib_mask_out_val);
+	return 0;
+}
+
+static ssize_t sched_lib_mask_out_store(struct file *filp,
+					const char __user *ubuf,
+					size_t count, loff_t *pos)
+{
+	unsigned long val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoul(buf, 0, &val))
+		return -EINVAL;
+
+	sched_lib_mask_out_val = val;
+	return count;
+
+}
+
+PROC_OPS_RW(sched_lib_mask_out);
+
+extern unsigned long sched_lib_mask_in_val;
+static int sched_lib_mask_in_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "0x%x\n", sched_lib_mask_in_val);
+	return 0;
+}
+
+static ssize_t sched_lib_mask_in_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	unsigned long val = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoul(buf, 0, & val))
+		return -EINVAL;
+
+	sched_lib_mask_in_val = val;
+	return count;
+}
+
+PROC_OPS_RW(sched_lib_mask_in);
+
+
+extern ssize_t sched_lib_name_store(struct file *filp,
+				const char __user *ubuffer, size_t count,
+				loff_t *ppos);
+extern int sched_lib_name_show(struct seq_file *m, void *v);
+
+PROC_OPS_RW(sched_lib_name);
+#endif /* CONFIG_RVH_SCHED_LIB */
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 static int ug_bg_auto_prio_show(struct seq_file *m, void *v)
@@ -2299,7 +2377,6 @@ static struct pentry entries[] = {
 	PROC_ENTRY(util_threshold),
 	PROC_ENTRY(util_post_init_scale),
 	PROC_ENTRY(npi_packing),
-	PROC_ENTRY(idle_balancer),
 	PROC_ENTRY(reduce_prefer_idle),
 	PROC_ENTRY(boost_adpf_prio),
 	PROC_ENTRY(dump_task),
@@ -2330,6 +2407,9 @@ static struct pentry entries[] = {
 	PROC_ENTRY(tapered_dvfs_headroom_enable),
 	// teo
 	PROC_ENTRY(teo_util_threshold),
+	// iowait boost
+	PROC_ENTRY(per_task_iowait_boost_max_value),
+	PROC_ENTRY(per_cpu_iowait_boost_max_value),
 };
 
 

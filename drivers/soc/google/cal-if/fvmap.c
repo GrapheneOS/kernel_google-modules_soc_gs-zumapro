@@ -19,12 +19,15 @@
 void __iomem *fvmap_base;
 void __iomem *sram_fvmap_base;
 
+/* Making sure margin_id and acpm_dvfs_id are sync'ed */
 enum margin_id {
 	MARGIN_MIF,
 	MARGIN_INT,
 	MARGIN_LIT,
 	MARGIN_MID,
 	MARGIN_BIG,
+	MARGIN_DSU,
+	MARGIN_BCI,
 	MARGIN_G3D,
 	MARGIN_G3DL2,
 	MARGIN_TPU,
@@ -33,7 +36,8 @@ enum margin_id {
 	MARGIN_CAM,
 	MARGIN_MFC,
 	MARGIN_DISP,
-	MARGIN_BO,
+	MARGIN_AOC,
+	MARGIN_BW,
 	MARGIN_MAX
 };
 
@@ -44,6 +48,8 @@ static int margin_int;
 static int margin_lit;
 static int margin_mid;
 static int margin_big;
+static int margin_dsu;
+static int margin_bci;
 static int margin_g3d;
 static int margin_g3dl2;
 static int margin_tpu;
@@ -52,13 +58,15 @@ static int margin_tnr;
 static int margin_cam;
 static int margin_mfc;
 static int margin_disp;
-static int margin_bo;
+static int margin_bw;
 
 module_param(margin_mif, int, 0);
 module_param(margin_int, int, 0);
 module_param(margin_lit, int, 0);
 module_param(margin_mid, int, 0);
 module_param(margin_big, int, 0);
+module_param(margin_dsu, int, 0);
+module_param(margin_bci, int, 0);
 module_param(margin_g3d, int, 0);
 module_param(margin_g3dl2, int, 0);
 module_param(margin_tpu, int, 0);
@@ -67,7 +75,7 @@ module_param(margin_tnr, int, 0);
 module_param(margin_cam, int, 0);
 module_param(margin_mfc, int, 0);
 module_param(margin_disp, int, 0);
-module_param(margin_bo, int, 0);
+module_param(margin_bw, int, 0);
 
 void margin_table_init(void)
 {
@@ -76,6 +84,8 @@ void margin_table_init(void)
 	margin_table[MARGIN_LIT] = &margin_lit;
 	margin_table[MARGIN_MID] = &margin_mid;
 	margin_table[MARGIN_BIG] = &margin_big;
+	margin_table[MARGIN_DSU] = &margin_dsu;
+	margin_table[MARGIN_BCI] = &margin_bci;
 	margin_table[MARGIN_G3D] = &margin_g3d;
 	margin_table[MARGIN_G3DL2] = &margin_g3dl2;
 	margin_table[MARGIN_TPU] = &margin_tpu;
@@ -84,7 +94,7 @@ void margin_table_init(void)
 	margin_table[MARGIN_CAM] = &margin_cam;
 	margin_table[MARGIN_MFC] = &margin_mfc;
 	margin_table[MARGIN_DISP] = &margin_disp;
-	margin_table[MARGIN_BO] = &margin_bo;
+	margin_table[MARGIN_BW] = &margin_bw;
 }
 
 int fvmap_set_raw_voltage_table(unsigned int id, int uV)
@@ -170,7 +180,6 @@ static void fvmap_copy_from_sram(void *map_base, void __iomem *sram_base)
 
 	for (i = 0; i < size; i++) {
 		/* load fvmap info */
-
 		vclk = cmucal_get_node(ACPM_VCLK_TYPE | i);
 		if (vclk == NULL)
 			continue;
@@ -273,6 +282,8 @@ DEFINE_INT_ATTRIBUTE(margin_int, MARGIN_INT);
 DEFINE_INT_ATTRIBUTE(margin_lit, MARGIN_LIT);
 DEFINE_INT_ATTRIBUTE(margin_mid, MARGIN_MID);
 DEFINE_INT_ATTRIBUTE(margin_big, MARGIN_BIG);
+DEFINE_INT_ATTRIBUTE(margin_dsu, MARGIN_DSU);
+DEFINE_INT_ATTRIBUTE(margin_bci, MARGIN_BCI);
 DEFINE_INT_ATTRIBUTE(margin_g3d, MARGIN_G3D);
 DEFINE_INT_ATTRIBUTE(margin_g3dl2, MARGIN_G3DL2);
 DEFINE_INT_ATTRIBUTE(margin_tpu, MARGIN_TPU);
@@ -281,7 +292,7 @@ DEFINE_INT_ATTRIBUTE(margin_tnr, MARGIN_TNR);
 DEFINE_INT_ATTRIBUTE(margin_cam, MARGIN_CAM);
 DEFINE_INT_ATTRIBUTE(margin_mfc, MARGIN_MFC);
 DEFINE_INT_ATTRIBUTE(margin_disp, MARGIN_DISP);
-DEFINE_INT_ATTRIBUTE(margin_bo, MARGIN_BO);
+DEFINE_INT_ATTRIBUTE(margin_bw, MARGIN_BW);
 
 int fvmap_init(void __iomem *sram_base)
 {
@@ -306,6 +317,8 @@ int fvmap_init(void __iomem *sram_base)
 	debugfs_create_file("margin_lit", 0600, de, NULL, &margin_lit_fops);
 	debugfs_create_file("margin_mid", 0600, de, NULL, &margin_mid_fops);
 	debugfs_create_file("margin_big", 0600, de, NULL, &margin_big_fops);
+	debugfs_create_file("margin_dsu", 0600, de, NULL, &margin_dsu_fops);
+	debugfs_create_file("margin_bci", 0600, de, NULL, &margin_bci_fops);
 	debugfs_create_file("margin_g3d", 0600, de, NULL, &margin_g3d_fops);
 	debugfs_create_file("margin_g3dl2", 0600, de, NULL, &margin_g3dl2_fops);
 	debugfs_create_file("margin_tpu", 0600, de, NULL, &margin_tpu_fops);
@@ -314,7 +327,7 @@ int fvmap_init(void __iomem *sram_base)
 	debugfs_create_file("margin_cam", 0600, de, NULL, &margin_cam_fops);
 	debugfs_create_file("margin_mfc", 0600, de, NULL, &margin_mfc_fops);
 	debugfs_create_file("margin_disp", 0600, de, NULL, &margin_disp_fops);
-	debugfs_create_file("margin_bo", 0600, de, NULL, &margin_bo_fops);
+	debugfs_create_file("margin_bw", 0600, de, NULL, &margin_bw_fops);
 
 	return 0;
 }

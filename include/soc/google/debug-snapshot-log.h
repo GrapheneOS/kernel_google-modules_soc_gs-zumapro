@@ -28,7 +28,6 @@
 #define DSS_ITMON_MAGIC_IRQ_RECEIVED	0x494D4952
 
 #define DSS_CALLSTACK_MAX_NUM		3
-#define DSS_NR_CPUS			8
 #define TASK_COMM_LEN			16
 
 struct task_log {
@@ -41,9 +40,7 @@ struct task_log {
 
 struct work_log {
 	unsigned long long time;
-	struct worker *worker;
 	work_func_t fn;
-	char task_comm[TASK_COMM_LEN];
 	int en;
 };
 
@@ -76,7 +73,6 @@ struct irq_log {
 	int irq;
 	void *fn;
 	struct irq_desc *desc;
-	unsigned long long latency;
 	int en;
 };
 
@@ -116,7 +112,7 @@ struct dm_log {
 
 struct hrtimer_log {
 	unsigned long long time;
-	unsigned long long now;
+	s64 now;
 	struct hrtimer *timer;
 	void *fn;
 	int en;

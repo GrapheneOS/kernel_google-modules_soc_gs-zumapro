@@ -17,7 +17,9 @@
 #endif // CONFIG_EXYNOS_ACPM
 
 enum {
-	MAX_NUM_FREQS = 16,
+	/* The histogram will be truncated automatically we ever exceed this number.
+	 * Must update header on both acpm and kernel sides if this ever changes. */
+	MAX_NUM_FREQS = 20,
 };
 
 // Must be the same as sys_powermode in flexpmu_cal_system_<arch>.h
@@ -33,18 +35,17 @@ enum sys_powermode {
 enum mif_users {
 	MIF_USER_AOC,
 	MIF_USER_GSA,
-#if defined(CONFIG_SOC_GS201)
 	MIF_USER_TPU,
-#endif
-	NUM_MIF_USERS, // NR_MIF_USERS in plugins/flexpmu/<arch>/sfr_map.h
+	MIF_USER_AUR,
+	NUM_MIF_USERS, // NR_MIF_USERS (excluding AP) in plugins/flexpmu/<arch>/flexpmu_sfr_map.h
 };
 
 enum slc_users {
 	SLC_USER_AOC,
-	NUM_SLC_USERS, // NR_SLC_USERS in plugins/flexpmu/<arch>/sfr_map.h
+	NUM_SLC_USERS, // NR_SLC_USERS (excluding AP) in plugins/flexpmu/<arch>/flexpmu_sfr_map.h
 };
 
-// Defined in flexpmu_cal_cpu_gs101.h
+// Defined in flexpmu_cal_cpu_zuma.h
 enum cpu_corenum {
 	CORE00,
 	CORE01,
@@ -52,12 +53,13 @@ enum cpu_corenum {
 	CORE03,
 	CORE10,
 	CORE11,
+	CORE12,
+	CORE13,
 	CORE20,
-	CORE21,
 	NUM_CORES,
 };
 
-// Defined in flexpmu_cal_cpu_gs101.h
+// Defined in flexpmu_cal_cpu_zuma.h
 enum cpu_clusternum {
 	CLUSTER0,
 	CLUSTER1,
@@ -71,10 +73,9 @@ enum fvp_domains {
 	DOMAIN_CPUCL0,
 	DOMAIN_CPUCL1,
 	DOMAIN_CPUCL2,
-#if defined(CONFIG_SOC_GS201)
 	DOMAIN_AUR,
-#endif
 	NUM_DOMAINS,
+	INVALID_DOMAIN,
 };
 
 struct lpm_stat {

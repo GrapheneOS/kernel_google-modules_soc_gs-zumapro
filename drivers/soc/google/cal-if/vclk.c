@@ -362,6 +362,8 @@ unsigned int vclk_get_boot_freq(unsigned int id)
 
 	if (vclk->boot_freq)
 		rate = vclk->boot_freq;
+	else if (IS_ACPM_VCLK(vclk->id) && !irqs_disabled())
+		rate = exynos_acpm_get_rate(GET_IDX(id), 0);
 	else
 		rate = (unsigned int)vclk_recalc_rate(id);
 
@@ -379,6 +381,8 @@ unsigned int vclk_get_resume_freq(unsigned int id)
 
 	if (vclk->resume_freq)
 		rate = vclk->resume_freq;
+	else if (IS_ACPM_VCLK(vclk->id) && !irqs_disabled())
+		rate = exynos_acpm_get_rate(GET_IDX(id), 0);
 	else
 		rate = (unsigned int)vclk_recalc_rate(id);
 

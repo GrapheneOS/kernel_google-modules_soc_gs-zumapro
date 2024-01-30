@@ -30,6 +30,11 @@
 #define INT_UTIL 65
 #define RT_UTIL 40
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+#define NOCL2A_NUM_CHANNEL 2
+#define INT_BUS_WIDTH 32
+#endif
+
 #define DEFAULT_QOS 0x4
 #define MAX_QOS 0xF
 #define SCIMAX_QOS 0x3
@@ -39,6 +44,20 @@
 struct bts_scen;
 struct bts_stat;
 struct bts_info;
+
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+struct nocl_ip_info {
+	const char *ip_name;
+	u32 ip_bus_width;
+};
+struct nocl_info {
+	const char *nocl_name;
+	u32 num_ip;
+	u32 peak_freq;
+	struct nocl_ip_info *nocl_ips;
+	struct list_head list;
+};
+#endif
 
 /**
  * struct bts - Device BTS structure
@@ -85,6 +104,11 @@ struct bts_device {
 	unsigned int total_bw;
 	struct bus1_int_map *bus1_int_tbl;
 	unsigned int map_row_cnt;
+
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	unsigned int num_nocl;
+	struct nocl_info *nocl_infos;
+#endif
 };
 
 /**

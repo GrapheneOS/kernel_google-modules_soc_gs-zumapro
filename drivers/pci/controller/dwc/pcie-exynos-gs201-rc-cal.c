@@ -16,7 +16,6 @@
 #include <linux/delay.h>
 #include <linux/exynos-pci-noti.h>
 #include <linux/regmap.h>
-#include <misc/logbuffer.h>
 #include "pcie-designware.h"
 #include "pcie-exynos-common.h"
 #include "pcie-exynos-rc.h"
@@ -37,11 +36,8 @@ void exynos_pcie_rc_phy_check_rx_elecidle(void *phy_pcs_base_regs, int val, int 
 void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 {
 	void __iomem *phy_base_regs = exynos_pcie->phy_base;
-	void __iomem *phy_pcs_base_regs = exynos_pcie->phy_pcs_base;
-	u32 val;
 
-	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
-	writel(0xA8, phy_base_regs + 0x404);
+	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 	writel(0x20, phy_base_regs + 0x408);
 	writel(0x0A, phy_base_regs + 0x40C);
 
@@ -60,29 +56,17 @@ void exynos_pcie_rc_phy_all_pwrdn(struct exynos_pcie *exynos_pcie, int ch_num)
 	writel(0xAA, phy_base_regs + 0x1248);
 	writel(0xA8, phy_base_regs + 0x124C);
 	writel(0x80, phy_base_regs + 0x1250);
-
-	/* Disable PHY PMA */
-	val = readl(phy_base_regs + 0x400);
-	val &= ~(0x1 << 7);
-	writel(val, phy_base_regs + 0x400);
-
-	/* disable rate switching */
-	val = readl(phy_pcs_base_regs + 0x184);
-	val &= ~0xB0;
-	writel(val, phy_pcs_base_regs + 0x184);
 }
 
 /* PHY all power down clear */
 void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_num)
 {
 	void __iomem *phy_base_regs = exynos_pcie->phy_base;
-	void __iomem *phy_pcs_base_regs = exynos_pcie->phy_pcs_base;
 
-	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
+	dev_info(exynos_pcie->pci->dev, "[CAL: %s]\n", __func__);
 	writel(0x28, phy_base_regs + 0xD8);
 	mdelay(1);
 
-	writel(0x00, phy_base_regs + 0x404);
 	writel(0x00, phy_base_regs + 0x408);
 	writel(0x00, phy_base_regs + 0x40C);
 
@@ -101,9 +85,6 @@ void exynos_pcie_rc_phy_all_pwrdn_clear(struct exynos_pcie *exynos_pcie, int ch_
 	writel(0x00, phy_base_regs + 0x1248);
 	writel(0x00, phy_base_regs + 0x124C);
 	writel(0x00, phy_base_regs + 0x1250);
-
-	/* reset rate change and powerdown value */
-	writel(0x0, phy_pcs_base_regs + 0x184);
 }
 
 #if IS_ENABLED(CONFIG_EXYNOS_OTP)
@@ -115,21 +96,6 @@ void exynos_pcie_rc_pcie_phy_otp_config(void *phy_base_regs, int ch_num)
 
 #define LCPLL_REF_CLK_SEL	(0x3 << 4)
 
-/* Debug code added to check if PCIe PHY is being reset correctly. */
-struct pcie_reg {
-	u32 offset;
-	u32 val;
-};
-
-static const struct pcie_reg reset_table[6] = {
-	{ 0x0010, 0x55 },
-	{ 0x0014, 0x51 },
-	{ 0x0040, 0x50 },
-	{ 0x0044, 0x0C },
-	{ 0x00D8, 0x28 },
-	{ 0x1054, 0x77 }
-};
-
 void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 {
 	void __iomem *elbi_base_regs = exynos_pcie->elbi_base;
@@ -139,17 +105,7 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 	u32 val;
 	u32 i;
 
-	dev_dbg(exynos_pcie->pci->dev, "[CAL: %s] CAL ver 210802\n", __func__);
-
-	/* Debug code added to check if PCIe PHY is being reset correctly. */
-	logbuffer_log(exynos_pcie->log, "start checking reset values");
-	for (i = 0; i < 6; i++) {
-		val = readl(phy_base_regs + reset_table[i].offset);
-		if (val != reset_table[i].val)
-			dev_err(exynos_pcie->pci->dev, "off=%x, exp=0x%x, act=0x%x\n",
-				reset_table[i].offset, reset_table[i].val, val);
-	}
-	logbuffer_log(exynos_pcie->log, "reset values checked");
+	dev_info(exynos_pcie->pci->dev, "[CAL: %s] CAL ver 210802\n", __func__);
 
 	/* init. input clk path */
 	writel(0x28, phy_base_regs + 0xD8);
@@ -378,53 +334,8 @@ void exynos_pcie_rc_pcie_phy_config(struct exynos_pcie *exynos_pcie, int ch_num)
 	val |= (0x1 << 4);
 	val &= ~(0x1 << 3);
 	writel(val, phy_base_regs + 0x5D0);
-	dev_dbg(exynos_pcie->pci->dev, "[%s] XO clock configuration : 0x%x\n",
-		__func__, readl(phy_base_regs + 0x5D0));
-
-	/* AFC cal mode by default uses the calibrated value from a previous
-	 * run. However on some devices this causes a CDR failure because
-	 * the AFC done status is set prematurely. Setting the cal mode to
-	 * always start from an initial value (determined through simulation)
-	 * ensures that AFC has enough time to complete.
-	 */
-	dev_dbg(exynos_pcie->pci->dev, "AFC cal mode set to restart\n");
-	writel(0x4, phy_base_regs + 0xBF4);
-
-	/* Debug settings. Enabling internal dump function */
-	exynos_udbg_write(exynos_pcie, 0x2, 0xC100);	/* time_out_value    default: 30cycles */
-	exynos_udbg_write(exynos_pcie, 0x1, 0xC01C);	/* start AND/OR      default : AND(1) */
-	exynos_udbg_write(exynos_pcie, 0x1, 0xC044);	/* end AND/OR        default : AND(1) */
-	exynos_udbg_write(exynos_pcie, 0x57fbfbfb, 0xC00C);	/* start trigger sig sel */
-	exynos_udbg_write(exynos_pcie, 0xfbfbfbfb, 0xC008);
-	exynos_udbg_write(exynos_pcie, 0xfbfbfbfb, 0xC004);
-	exynos_udbg_write(exynos_pcie, 0xfbfbfbfb, 0xC000);
-	exynos_udbg_write(exynos_pcie, 0xffff, 0xC020);
-	exynos_udbg_write(exynos_pcie, 0xebd7af5, 0xC018);
-	exynos_udbg_write(exynos_pcie, 0xebd7af5, 0xC014);
-	exynos_udbg_write(exynos_pcie, 0xebd7af5, 0xC010);
-	exynos_udbg_write(exynos_pcie, 0xfff, 0xC024);
-	exynos_udbg_write(exynos_pcie, 0xfbfbfbfb, 0xC034);
-	exynos_udbg_write(exynos_pcie, 0xfbfbfbfb, 0xC030);
-	exynos_udbg_write(exynos_pcie, 0xfbfbfbfb, 0xC02C);
-	exynos_udbg_write(exynos_pcie, 0xfbfbfbfb, 0xC028);
-	exynos_udbg_write(exynos_pcie, 0xffff, 0xC048);
-	exynos_udbg_write(exynos_pcie, 0xebd7af5, 0xC040);
-	exynos_udbg_write(exynos_pcie, 0xebd7af5, 0xC03C);
-	exynos_udbg_write(exynos_pcie, 0xebd7af5, 0xC038);
-	exynos_udbg_write(exynos_pcie, 0xfff, 0xC04C);
-
-	/* trace signal selection */
-	exynos_udbg_write(exynos_pcie, 0x32594CB, 0xC618);
-	exynos_udbg_write(exynos_pcie, 0x1B4DC6F, 0xC614);
-	exynos_udbg_write(exynos_pcie, 0x5c2c03, 0xC610);
-	exynos_udbg_write(exynos_pcie, 0x8a450, 0xC60C);
-	exynos_udbg_write(exynos_pcie, 0x145fafd, 0xC608);
-
-	/* dump_enable[0] ;dump_mode[5:4] START_TO_FULL(0x01) START_TO_END(0x11) */
-	exynos_udbg_write(exynos_pcie, 0x11, 0xC604);
-
-	/* interrupt_enable */
-	exynos_udbg_write(exynos_pcie, 0x1, 0xC108);
+	dev_info(exynos_pcie->pci->dev, "[%s] XO clock configuration : 0x%x\n",
+			__func__, readl(phy_base_regs + 0x5D0));
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_rc_pcie_phy_config);
 

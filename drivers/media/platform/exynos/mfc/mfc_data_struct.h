@@ -73,6 +73,9 @@
 /* The number of display DRC max frames that can occur continuously in NAL_Q */
 #define MFC_MAX_DRC_FRAME              4
 
+/* SLC */
+#define MFC_MAX_SLC_PARTITIONS		3
+
 /* OTF */
 #define HWFC_MAX_BUF			10
 #define OTF_MAX_BUF			30
@@ -315,6 +318,9 @@ enum mfc_nal_q_stop_cause {
 	NALQ_STOP_RC_MODE		= 11,
 	NALQ_STOP_NO_STRUCTURE		= 12,
 	NALQ_STOP_2CORE			= 13,
+	NALQ_STOP_TWO_PASS_ENC		= 14,
+	NALQ_STOP_ADAPTIVE_GOP		= 15,
+	NALQ_STOP_QPE_TWO_PASS		= 16,
 	/* nal_q exception cause */
 	NALQ_EXCEPTION_DRC		= 25,
 	NALQ_EXCEPTION_NEED_DPB		= 26,
@@ -334,9 +340,9 @@ enum mfc_regression_option {
 enum mfc_debug_cause {
 	/* panic cause */
 	MFC_CAUSE_0WRITE_PAGE_FAULT		= 0,
-	MFC_CAUSE_0READ_PAGE_FAULT		= 1,
+	MFC_CAUSE_0PAGE_FAULT			= 1,
 	MFC_CAUSE_1WRITE_PAGE_FAULT		= 2,
-	MFC_CAUSE_1READ_PAGE_FAULT		= 3,
+	MFC_CAUSE_1PAGE_FAULT			= 3,
 	MFC_CAUSE_NO_INTERRUPT			= 4,
 	MFC_CAUSE_NO_SCHEDULING			= 5,
 	MFC_CAUSE_FAIL_STOP_NAL_Q		= 6,
@@ -783,6 +789,7 @@ struct mfc_qos_weight {
 	unsigned int weight_gpb;
 	unsigned int weight_num_of_tile;
 	unsigned int weight_super64_bframe;
+	unsigned int weight_mbaff;
 };
 
 struct mfc_feature {
@@ -841,6 +848,9 @@ struct mfc_platdata {
 	struct mfc_feature hevc_pic_output_flag;
 	struct mfc_feature metadata_interface;
 	struct mfc_feature hdr10_plus_full;
+	struct mfc_feature enc_capability;
+	struct mfc_feature enc_sub_gop;
+	struct mfc_feature enc_ts_delta;
 
 	/* AV1 Decoder */
 	unsigned int support_av1_dec;
@@ -878,6 +888,10 @@ struct mfc_core_platdata {
 	unsigned int axid_mask;
 	unsigned int mfc_fault_num;
 	unsigned int trans_info_offset;
+	unsigned int fault_status_offset;
+	unsigned int fault_pmmuid_offset;
+	unsigned int fault_pmmuid_shift;
+
 	/* vOTF */
 	unsigned int mfc_votf_base;
 	unsigned int gdc_votf_base;
@@ -902,9 +916,11 @@ struct mfc_core_platdata {
 
 /* slot 4 * max instance 32 = 128 */
 #define NAL_Q_QUEUE_SIZE		128
+#define NAL_Q_DECODER_MARKER		0xAAAAAAAA
+#define NAL_Q_ENCODER_MARKER		0xBBBBBBBB
 
 typedef struct __DecoderInputStr {
-	int StartCode; /* = 0xAAAAAAAA; Decoder input structure marker */
+	int StartCode; /* NAL_Q_DECODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int PictureTag;
@@ -927,7 +943,7 @@ typedef struct __DecoderInputStr {
 } DecoderInputStr; /* 28*4 = 112 bytes */
 
 typedef struct __EncoderInputStr {
-	int StartCode; /* 0xBBBBBBBB; Encoder input structure marker */
+	int StartCode; /* NAL_Q_ENCODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int PictureTag;
@@ -974,10 +990,11 @@ typedef struct __EncoderInputStr {
 	int SourcePlane2BitStride[2];
 	int MVHorRange;
 	int MVVerRange;
-} EncoderInputStr; /* 88*4 = 352 bytes */
+	int TimeStampDelta;
+} EncoderInputStr; /* 89*4 = 356 bytes */
 
 typedef struct __DecoderOutputStr {
-	int StartCode; /* 0xAAAAAAAA; Decoder output structure marker */
+	int StartCode; /* NAL_Q_DECODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int ErrorCode;
@@ -1060,7 +1077,7 @@ typedef struct __DecoderOutputStr {
 } DecoderOutputStr; /* 113*4 = 452 bytes */
 
 typedef struct __EncoderOutputStr {
-	int StartCode; /* 0xBBBBBBBB; Encoder output structure marker */
+	int StartCode; /* NAL_Q_ENCODER_MARKER */
 	int CommandId;
 	int InstanceId;
 	int ErrorCode;
@@ -1074,7 +1091,12 @@ typedef struct __EncoderOutputStr {
 	unsigned int ReconLumaDpbAddr;
 	unsigned int ReconChromaDpbAddr;
 	int EncCnt;
-} EncoderOutputStr; /* 16*4 = 64 bytes */
+	unsigned int MfcHwCycle;
+	unsigned int MfcProcessingCycle;
+	unsigned int SumSkipMb;
+	unsigned int SumIntraMb;
+	unsigned int SumZeroMvMb;
+} EncoderOutputStr; /* 21*4 = 84 bytes */
 
 /**
  * enum nal_queue_state - The state for nal queue operation.
@@ -1333,7 +1355,18 @@ struct mfc_core {
 	struct resource		*mfc_mem;
 #if IS_ENABLED(CONFIG_SLC_PARTITION_MANAGER)
 	struct pt_handle	*pt_handle;
-	int			ptid;
+
+	/* 0: internal buffer, 1: DPB reference write, 2:Reference pixel read */
+	int			ptid[MFC_MAX_SLC_PARTITIONS];
+
+	/* num of slc partition from device tree */
+	int 			num_slc_pt;
+
+	/* index of current slc partition which be enabled */
+	int			curr_slc_pt_idx[MFC_MAX_SLC_PARTITIONS];
+
+	/* current slc option be used */
+	int			curr_slc_option;
 #endif
 
 	struct mfc_variant	*variant;
@@ -1406,6 +1439,7 @@ struct mfc_core {
 
 	/* QoS idle */
 	atomic_t hw_run_cnt;
+	atomic_t during_release;
 	struct mutex idle_qos_mutex;
 	enum mfc_idle_mode idle_mode;
 	struct timer_list mfc_idle_timer;
@@ -1536,6 +1570,7 @@ struct mfc_h264_enc_params {
 
 	u32 prepend_sps_pps_to_idr;
 	u32 vui_enable;
+	u8 sub_gop_enable;
 };
 
 /**
@@ -1659,6 +1694,7 @@ struct mfc_hevc_enc_params {
 	u8 user_ref;
 	u8 store_ref;
 	u8 prepend_sps_pps_to_idr;
+	u8 sub_gop_enable;
 };
 
 /**
@@ -1716,6 +1752,8 @@ struct mfc_enc_params {
 	u8 ivf_header_disable;	/* VP8, VP9 */
 	u8 fixed_target_bit;
 	u8 min_quality_mode;	/* H.264, HEVC when RC_MODE is 2(VBR) */
+	u8 wp_two_pass_enable;
+	u8 adaptive_gop_enable;
 
 	u32 check_color_range;
 	u32 color_range;
@@ -1740,6 +1778,10 @@ struct mfc_enc_params {
 	u32 mv_hor_pos_l1;
 	u32 mv_ver_pos_l0;
 	u32 mv_ver_pos_l1;
+	u32 mv_hor_range;
+	u32 mv_ver_range;
+
+	u8 qpe_two_pass_enable;
 
 	union {
 		struct mfc_h264_enc_params h264;
@@ -2031,6 +2073,7 @@ struct mfc_dec {
 	int mv_count;
 	int idr_decoding;
 	int is_interlaced;
+	int is_mbaff;
 	int is_dts_mode;
 	int stored_tag;
 	int inter_res_change;
@@ -2042,8 +2085,7 @@ struct mfc_dec {
 	int crc_luma1;
 	int crc_chroma1;
 
-	unsigned long consumed;
-	unsigned long remained_size;
+	unsigned int consumed;
 	dma_addr_t y_addr_for_pb;
 
 	int sei_parse;
@@ -2144,6 +2186,8 @@ struct mfc_enc {
 	struct mfc_user_shared_handle sh_handle_svc;
 	struct mfc_user_shared_handle sh_handle_roi;
 	struct mfc_user_shared_handle sh_handle_hdr;
+
+	bool nal_q_disable_for_qpe_two_pass;
 };
 
 struct mfc_fmt {
@@ -2292,6 +2336,9 @@ struct mfc_ctx {
 
 	/* Lazy unmap disable */
 	int skip_lazy_unmap;
+
+	/* Count NAL QUEUE buffer for tracing performance */
+	int nal_q_cnt;
 
 	/* external structure */
 	struct v4l2_fh fh;

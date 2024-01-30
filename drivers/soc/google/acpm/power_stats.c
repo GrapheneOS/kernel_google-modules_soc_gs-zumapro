@@ -25,11 +25,7 @@
 
 #define GS_POWER_STATS_PREFIX "power_stats: "
 
-#if defined(CONFIG_SOC_GS101)
-static char const *const mif_user_names[NUM_MIF_USERS] = { "AOC", "GSA" };
-#elif defined(CONFIG_SOC_GS201)
-static char const *const mif_user_names[NUM_MIF_USERS] = { "AOC", "GSA", "TPU" };
-#endif
+static char const *const mif_user_names[NUM_MIF_USERS] = { "AOC", "GSA", "TPU", "AUR"};
 
 static char const *const slc_user_names[NUM_SLC_USERS] = { "AOC" };
 
@@ -42,15 +38,10 @@ static char const *const cluster_names[NUM_CLUSTERS] = { "CLUSTER0", "CLUSTER1",
 
 static char const *const core_names[NUM_CORES] = { "CORE00", "CORE01", "CORE02",
 						   "CORE03", "CORE10", "CORE11",
-						   "CORE20", "CORE21" };
+						   "CORE12", "CORE13", "CORE21" };
 
-#if defined(CONFIG_SOC_GS101)
 static char const *const domain_names[NUM_DOMAINS] = { "MIF", "TPU", "CL0",
-						       "CL1", "CL2" };
-#elif defined(CONFIG_SOC_GS201)
-static char const *const domain_names[NUM_DOMAINS] = { "MIF", "TPU", "CL0",
-						       "CL1", "CL2", "AUR" };
-#endif
+						       "CL1", "CL2", "AUR"};
 
 struct pd_entry {
 	struct list_head entry;
@@ -259,7 +250,7 @@ static ssize_t print_histogram(struct power_stats_device *ps_dev, char *buf,
 	ssize_t s = 0;
 
 	for (i = 0; i < MAX_NUM_FREQS; i++) {
-		if (hist->freq_count[i] == 0)
+		if (hist->freqs[i] == 0)
 			break;
 
 		elapsed_time = (hist->cur_freq == hist->freqs[i]) ?
@@ -531,24 +522,6 @@ static int init_stat_node(struct platform_device *pdev, const char *buffer_name,
 	return ret;
 }
 
-static int check_exynos_pd_initialized(struct device *dev)
-{
-	struct platform_device *pdev;
-	struct device_node *np;
-
-	for_each_compatible_node (np, NULL, "samsung,exynos-pd") {
-		if (of_device_is_available(np)) {
-			pdev = of_find_device_by_node(np);
-			if (!platform_get_drvdata(pdev)) {
-				dev_info(dev, "defer probe, %s not ready\n",
-					 dev_name(&pdev->dev));
-				return -EPROBE_DEFER;
-			}
-		}
-	}
-	return 0;
-}
-
 static int init_pd_stat_node(struct power_stats_device *ps_dev)
 {
 	struct device_node *np;
@@ -563,8 +536,6 @@ static int init_pd_stat_node(struct power_stats_device *ps_dev)
 			pdev = of_find_device_by_node(np);
 			pd = (struct exynos_pm_domain *)platform_get_drvdata(
 				pdev);
-			if (!pd)
-				return -EINVAL;
 
 			new_pd_entry = devm_kzalloc(
 				ps_dev->dev, sizeof(*new_pd_entry), GFP_KERNEL);
@@ -598,15 +569,11 @@ ATTRIBUTE_GROUPS(power_stats);
 
 static int power_stats_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret = 0;
 	u32 timer_freq_hz;
-	struct power_stats_device *ps_dev;
 
-	ret = check_exynos_pd_initialized(&pdev->dev);
-	if (ret)
-		return ret;
-
-	ps_dev = devm_kzalloc(&pdev->dev, sizeof(*ps_dev), GFP_KERNEL);
+	struct power_stats_device *ps_dev =
+		devm_kzalloc(&pdev->dev, sizeof(*ps_dev), GFP_KERNEL);
 	if (!ps_dev)
 		return -ENOMEM;
 
@@ -695,9 +662,6 @@ static void __exit power_stats_exit(void)
 module_init(power_stats_init);
 module_exit(power_stats_exit);
 
-#if defined(CONFIG_SOC_GS201)
-MODULE_SOFTDEP("pre: exynos-pm");
-#endif
 MODULE_AUTHOR("Benjamin Schwartz <bsschwar@google.com>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("APM power stats collection");

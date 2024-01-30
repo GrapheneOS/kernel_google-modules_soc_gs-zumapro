@@ -25,7 +25,9 @@
 #include <linux/spinlock.h>
 #include <linux/regmap.h>
 #include <linux/err.h>
+#include <linux/gpio.h>
 #include <soc/google/exynos-pmu-if.h>
+#include <soc/google/exynos-pm.h>
 #include <linux/soc/samsung/exynos-regs-pmu.h>
 
 #include "pinctrl-samsung.h"
@@ -413,8 +415,8 @@ err_domains:
 	return ret;
 }
 
-DECLARE_BITMAP(exynos_eint_wake_mask_bitmap, 96) = { [0 ... BITS_TO_LONGS(96) - 1] = ~0UL};
-u32 exynos_eint_wake_mask_array[3] = {~0U, ~0U, ~0U};
+DECLARE_BITMAP(exynos_eint_wake_mask_bitmap, BITMAP_SIZE) = { [0 ... BITS_TO_LONGS(BITMAP_SIZE) - 1] = ~0UL};
+u32 exynos_eint_wake_mask_array[EINTMASK_ARR_SIZE] = {~0U, ~0U, ~0U};
 EXPORT_SYMBOL(exynos_eint_wake_mask_array);
 
 static int exynos_wkup_irq_set_wake(struct irq_data *irqd, unsigned int on)
@@ -424,6 +426,13 @@ static int exynos_wkup_irq_set_wake(struct irq_data *irqd, unsigned int on)
 	u32 bit = 0;
 
 	bit = bank->eint_num + irqd->hwirq + bank->wake_mask_bit_offset;
+	if (bit >= BITMAP_SIZE) {
+		dev_info(d->dev, "bitmap for set_wake is not supported (%s)"
+			"hwirq = %lu, eint_num = %u, wake_mask_bit_offset = %u\n",
+			bank->name, irqd->hwirq, bank->eint_num, bank->wake_mask_bit_offset);
+		return 0;
+	}
+
 	if (!on)
 		exynos_eint_wake_mask_bitmap[BIT_WORD(bit)] |= BIT_MASK(bit);
 	else
@@ -604,7 +613,6 @@ static void exynos_irq_demux_eint16_31(struct irq_desc *desc)
 }
 
 
-static int eint_num;
 /*
  * exynos_eint_wkup_init() - setup handling of external wakeup interrupts.
  * @d: driver data of samsung pinctrl driver.
@@ -660,9 +668,6 @@ __init int exynos_eint_wkup_init(struct samsung_pinctrl_drv_data *d)
 			of_node_put(wkup_np);
 			return -ENXIO;
 		}
-
-		bank->eint_num = eint_num;
-		eint_num = eint_num + bank->nr_pins;
 
 		if (!of_find_property(bank->of_node, "interrupts", NULL)) {
 			bank->eint_type = EINT_TYPE_WKUP_MUX;
@@ -814,23 +819,47 @@ static void exynos_pinctrl_resume_bank(
 						+ bank->eint_offset);
 }
 
+static inline void exynos_pinctrl_show_wkup_reason(struct samsung_pin_bank *bank, int pin_base) {
+	int pin, shift_cnt;
+	unsigned long pmu_mask, pend_reg;
+	int irq;
+
+	pmu_mask = exynos_eint_wake_mask_array[bank->eint_num / 32];
+	pend_reg = readl(bank->eint_base + bank->irq_chip->eint_pend + bank->eint_offset);
+	if (pend_reg)
+		pr_info("%s [%s] PEND_REG: 0x%02lx", EXYNOS_PM_PREFIX, bank->name, pend_reg);
+	for_each_set_bit(pin, &pend_reg, 32) {
+		shift_cnt = (bank->eint_num % 32) + pin;
+		if (pmu_mask & (1 << shift_cnt))
+			continue;
+
+		irq = gpio_to_irq(pin_base + pin);
+		pr_debug("Resume caused by irq %d\n", irq);
+	}
+}
+
 void exynos_pinctrl_resume(struct samsung_pinctrl_drv_data *drvdata)
 {
 	struct samsung_pin_bank *bank = drvdata->pin_banks;
 	struct samsung_pinctrl_drv_data *d = bank->drvdata;
 	int i;
+	int pin_base = d->pin_base;
 
 	for (i = 0; i < drvdata->nr_banks; ++i, ++bank) {
 		if (bank->eint_type == EINT_TYPE_GPIO) {
 			exynos_pinctrl_resume_bank(drvdata, bank);
 		} else if (bank->eint_type == EINT_TYPE_WKUP ||
 			bank->eint_type == EINT_TYPE_WKUP_MUX) {
+			if (bank->eint_num < BITMAP_SIZE)
+				exynos_pinctrl_show_wkup_reason(bank, pin_base);
+
 			/* Only alive block has filter selection register. */
 			/* Setting Digital Filter */
 			exynos_eint_flt_config(EXYNOS_EINT_FLTCON_EN,
 					       EXYNOS_EINT_FLTCON_SEL, 0, d,
 					       bank);
 		}
+		pin_base += bank->nr_pins;
 	}
 }
 

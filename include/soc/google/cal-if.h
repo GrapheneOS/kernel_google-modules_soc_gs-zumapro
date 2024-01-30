@@ -25,7 +25,8 @@ static inline int cal_if_init(void)
 
 #define BLKPWR_MAGIC	0xB1380000
 
-extern int (*exynos_cal_pd_bcm_sync)(unsigned int id, bool on);
+void set_exynos_cal_pd_bcm_sync(int (*fn)(unsigned int id, bool on));
+void clear_exynos_cal_pd_bcm_sync(void);
 
 extern unsigned int cal_clk_get(char *name);
 extern unsigned int cal_clk_is_enabled(unsigned int vclkid);
@@ -60,6 +61,7 @@ extern int cal_dfs_set_rate(unsigned int id, unsigned long rate);
 extern int cal_dfs_set_rate_switch(unsigned int id, unsigned long switch_rate);
 extern unsigned long cal_dfs_cached_get_rate(unsigned int id);
 extern unsigned long cal_dfs_get_rate(unsigned int id);
+extern long cal_dfs_get_rate_acpm(unsigned int id);
 extern int cal_dfs_get_rate_table(unsigned int id, unsigned long *table);
 extern int cal_dfs_get_asv_table(unsigned int id, unsigned int *table);
 extern int cal_dfs_get_bigturbo_max_freq(unsigned int *table);
@@ -116,8 +118,5 @@ extern int cal_init(void);
 extern int cal_if_init(void *np);
 
 extern void cal_register_pd_lookup_cmu_id(void *(*func)(u32 cmu_id));
-/* It is for debugging. */
-#define cal_vclk_dbg_info(a)	do {} while (0)
-//extern void cal_vclk_dbg_info(unsigned int id);
 #endif
 #endif

@@ -26,12 +26,13 @@ static inline u32 acpm_get_apsocdn_count(void) { return 0; }
 static inline u32 acpm_get_early_wakeup_count(void) { return 0; }
 #endif
 
+#define EINTMASK_ARR_SIZE (3)
+#define BITMAP_SIZE (EINTMASK_ARR_SIZE * 32)
+
 #if IS_ENABLED(CONFIG_PINCTRL_EXYNOS_GS)
-u32 exynos_eint_to_pin_num(int eint);
-extern u32 exynos_eint_wake_mask_array[3];
+extern u32 exynos_eint_wake_mask_array[EINTMASK_ARR_SIZE];
 #else
-u32 exynos_eint_to_pin_num(int eint) { return 0; }
-u32 exynos_eint_wake_mask_array[3] = {~0U, ~0U, ~0U};
+u32 exynos_eint_wake_mask_array[EINTMASK_ARR_SIZE] = {~0U, ~0U, ~0U};
 #endif
 
 int register_pcie_is_connect(u32 (*func)(void));
@@ -46,11 +47,7 @@ struct exynos_pm_info {
 	void __iomem *gic_base;		/* GICD_ISPENDRn base to check wkup reason */
 	void __iomem *mbox_aoc;
 	void __iomem *mbox_aocf1;
-	unsigned int num_eint;		/* Total number of EINT sources */
-	unsigned int num_eint_far;
 	unsigned int num_gic;		/* Total number of GIC sources */
-	unsigned int num_gpa;
-	unsigned int *gpa_use;
 
 	bool is_early_wakeup;
 	unsigned int suspend_mode_idx;	/* power mode to be used in suspend scenario */
@@ -65,7 +62,6 @@ struct exynos_pm_info {
 	unsigned int wakeup_stat_rtc;
 	unsigned int *wakeup_int_en_offset;
 	unsigned int *wakeup_int_en;
-	unsigned int *usbl2_wakeup_int_en;
 
 	unsigned int num_eint_wakeup_mask;
 	unsigned int *eint_wakeup_mask_offset;

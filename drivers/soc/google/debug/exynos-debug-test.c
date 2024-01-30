@@ -21,6 +21,7 @@
 #include <linux/nmi.h>
 #include <linux/spinlock.h>
 #include <linux/platform_device.h>
+#include <linux/soc/samsung/exynos-smc.h>
 
 #include <dt-bindings/soc/google/debug-snapshot-def.h>
 #include <soc/google/debug-snapshot.h>
@@ -28,6 +29,7 @@
 #include <soc/google/debug-test.h>
 #include <soc/google/exynos-debug.h>
 
+#include "system-regs.h"
 #include "debug-snapshot-local.h"
 
 typedef void (*force_error_func)(char *arg);
@@ -87,6 +89,7 @@ static const char * const test_vector[] = {
 	"arraydump",
 	"halt",
 	"scandump",
+	"ecc",
 };
 
 /* timeout for dog bark/bite */
@@ -507,12 +510,12 @@ static void simulate_CPU_CONTEXT_CACHE_FLUSH_handler(void *info)
 	memset(buffer[cpu], 0x5A, PAGE_SIZE * 2);
 	dbg_snapshot_set_debug_test_buffer_addr(addr, cpu);
 
-	i = cpu << 48;
-	/* populate registers with known values and infinite loop */
+	i = (0xcafeface0000 | cpu) << 16;
+	/* populate registers with known values and go to infinite loop afterwards */
 	asm volatile("mov x0, %0\n\t"
-			"add x1, x0, #1\n\t"
-			"add x2, x0, #2\n\t"
-			"add x3, x0, #3\n\t"
+			"mov x1, #1\n\t"
+			"mov x2, #0x200000000\n\t"
+			"mov x3, #0x300000003\n\t"
 			"add x4, x0, #4\n\t"
 			"add x5, x0, #5\n\t"
 			"add x6, x0, #6\n\t"
@@ -540,6 +543,7 @@ static void simulate_CPU_CONTEXT_CACHE_FLUSH_handler(void *info)
 			"add x28, x0, #28\n\t"
 			"add x29, x0, #29\n\t"
 			"add x30, x0, #30\n\t"
+			"mov x0, #0\n\t"
 			"b .\n\t"
 			: : "r" (i));
 
@@ -609,6 +613,52 @@ static void simulate_SCANDUMP(char *arg)
 	dbg_snapshot_do_dpm_policy(GO_SCANDUMP_ID, "TEST");
 }
 
+#if !IS_ENABLED(CONFIG_SOC_GS101)
+static void simulate_EL3_ASSERT(char *arg)
+{
+	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_ASSERT, 0, 0);
+}
+
+static void simulate_EL3_PANIC(char *arg)
+{
+	exynos_smc(SIP_SVD_GS_DEBUG_CMD, CMD_PANIC, 0, 0);
+}
+#endif
+
+static void simulate_ECC_INJECTION(void *info)
+{
+	unsigned long lev = *((unsigned long *)info);
+	u64 count = 0x1000;
+	u64 ctrl = 0x80000002;
+	struct arm_smccc_res res;
+
+	dev_info(exynos_debug_desc.dev,
+		 "CPU%d: Level%ld: ECC error injection!\n",
+		 raw_smp_processor_id(), lev);
+
+	arm_smccc_smc(SIP_SVD_GS_DEBUG_CMD, CMD_ECC, lev, count, ctrl, 0, 0, 0, &res);
+}
+
+static void simulate_ECC(char *arg)
+{
+	int cpu, temp;
+	unsigned long lev;
+
+	dev_dbg(exynos_debug_desc.dev, "%s()\n", __func__);
+
+	if (kstrtoint(arg, 16, &temp)) {
+		dev_err(exynos_debug_desc.dev, "check input parameter\n");
+		return;
+	}
+	cpu = (temp >> 4) & 0xf;
+	lev = temp & 0xf;
+
+	if (cpu == raw_smp_processor_id())
+		simulate_ECC_INJECTION((void *)&lev);
+	else
+		smp_call_function_single(cpu, simulate_ECC_INJECTION, &lev, 1);
+}
+
 static struct force_error_item force_error_vector[] = {
 	{"KP",		&simulate_KP},
 	{"DP",		&simulate_DP},
@@ -642,6 +692,7 @@ static struct force_error_item force_error_vector[] = {
 	{"arraydump",	&simulate_ARRAYDUMP},
 	{"halt",	&simulate_HALT},
 	{"scandump",	&simulate_SCANDUMP},
+	{"ecc",         &simulate_ECC},
 };
 
 static int debug_force_error(const char *val)
@@ -817,8 +868,15 @@ static struct debug_trigger exynos_debug_test_trigger = {
 #endif
 	.watchdog_emergency_reset = simulate_QDP,
 	.halt = simulate_HALT,
+	.cacheflush = simulate_CACHE_FLUSH,
+	.cpucontext = simulate_CPU_CONTEXT,
 	.arraydump = simulate_ARRAYDUMP,
 	.scandump = simulate_SCANDUMP,
+#if !IS_ENABLED(CONFIG_SOC_GS101)
+	.el3_assert = simulate_EL3_ASSERT,
+	.el3_panic = simulate_EL3_PANIC,
+#endif
+	.ecc = simulate_ECC,
 };
 
 static int exynos_debug_test_probe(struct platform_device *pdev)

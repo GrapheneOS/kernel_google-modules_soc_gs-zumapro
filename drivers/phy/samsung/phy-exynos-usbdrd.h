@@ -1,10 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2015 Samsung Electronics Co., Ltd.
+ * Samsung EXYNOS SoC series USB PHY driver
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) 2022 Samsung Electronics Co., Ltd.
  */
 
 #ifndef __PHY_EXYNOS_USBDRD_H__
@@ -153,6 +151,10 @@ struct exynos_usbdrd_phy {
 	void __iomem *reg_phy2;
 	void __iomem *reg_phy3;
 	void __iomem *reg_link;
+	void __iomem *reg_eusb_ctrl;
+	void __iomem *reg_eusb_phy;
+	void __iomem *reg_dpphy_ctrl;
+	void __iomem *reg_dpphy_tca;
 	struct clk **clocks;
 	struct clk **phy_clocks;
 	const struct exynos_usbdrd_phy_drvdata *drv_data;
@@ -173,11 +175,15 @@ struct exynos_usbdrd_phy {
 	struct clk *ref_clk;
 	struct regulator *vbus;
 	struct regulator *vdd_hsi;
+	struct regulator *vdd075;
 	struct regulator *vdd085;
+	struct regulator *vdd12;
 	struct regulator *vdd18;
 	struct regulator *vdd30;
+	struct regulator *vdd33;
 	struct exynos_usbphy_info usbphy_info;
 	struct exynos_usbphy_info usbphy_sub_info;
+	struct exynos_usbphy_info usbphy_blkcon_info;
 	struct exynos_usbphy_ss_tune ss_value[2];
 	struct exynos_usbphy_hs_tune hs_value[2];
 	int hs_tune_param_value[EXYNOS_DRD_MAX_TUNEPARAM_NUM][2];
@@ -216,5 +222,11 @@ struct exynos_usbdrd_phy {
 };
 
 void __iomem *phy_exynos_usbdp_get_address(void);
+
+#if IS_ENABLED(CONFIG_PHY_EXYNOS_EUSB_REPEATER)
+extern int eusb_repeater_power_on(void);
+extern int eusb_repeater_power_off(void);
+extern void eusb_repeater_update_usb_state(bool);
+#endif
 
 #endif	/* __PHY_EXYNOS_USBDRD_H__ */

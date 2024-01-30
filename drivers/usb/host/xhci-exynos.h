@@ -9,8 +9,6 @@
 #ifndef _XHCI_EXYNOS_H
 #define _XHCI_EXYNOS_H
 
-#include <host/xhci.h> /* $(srctree)/drivers/usb/host/xhci.h */ /* for hcd_to_xhci() */
-
 #define PORTSC_OFFSET		0x430
 #define DIS_RX_DETECT		BIT(9)
 #define USB_CLASS_BILLBOARD	0x11
@@ -39,6 +37,10 @@ struct xhci_hcd_exynos {
 	int 			port_set_delayed;
 	u32 			portsc_control_priority;
 	enum usb_port_state	port_state;
+	bool			port_ctrl_allowed;
+
+	/* remote wakeup */
+	bool			rewa_supported;
 };
 
 struct xhci_exynos_priv {
@@ -53,6 +55,17 @@ struct xhci_exynos_priv {
 	struct xhci_hcd_exynos *xhci_exynos;
 };
 
+/**
+ * @offload_init: called for offload init process
+ * @offload_cleanup: called for offload cleanup process
+ * @offload_setup: called for offload setup process
+ */
+struct xhci_exynos_ops {
+	int (*offload_init)(struct xhci_hcd *xhci);
+	void (*offload_cleanup)(struct xhci_hcd *xhci);
+	int (*offload_setup)(struct xhci_hcd *xhci);
+};
+
 #define hcd_to_xhci_exynos_priv(h) ((struct xhci_exynos_priv *)hcd_to_xhci(h)->priv)
 #define xhci_to_exynos_priv(x) ((struct xhci_exynos_priv *)(x)->priv)
 
@@ -62,11 +75,6 @@ extern int exynos_usbdrd_phy_vendor_set(struct phy *phy, int is_enable,
 extern int dwc3_otg_get_idle_ip_index(void);
 void xhci_exynos_register_notify(void);
 void xhci_exynos_unregister_notify(void);
-static int xhci_exynos_address_device(struct usb_hcd *hcd, struct usb_device *udev);
-static int xhci_exynos_bus_suspend(struct usb_hcd *hcd);
-static int xhci_exynos_bus_resume(struct usb_hcd *hcd);
-static int xhci_exynos_wake_lock(struct xhci_hcd_exynos *xhci_exynos,
-				 int is_main_hcd, int is_lock);
 void register_bus_suspend_callback(void (*callback)(void *bus_suspend_payload, bool main_hcd,
 						    bool suspend),
 				   void *data);

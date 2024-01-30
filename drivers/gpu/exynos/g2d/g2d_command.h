@@ -24,7 +24,8 @@ void g2d_init_commands(struct g2d_task *task);
 void g2d_complete_commands(struct g2d_task *task);
 const struct g2d_fmt *g2d_find_format(u32 fmtval, unsigned long devcaps);
 int g2d_import_commands(struct g2d_device *g2d_dev, struct g2d_task *task,
-			struct g2d_task_data *data, unsigned int num_sources);
+			struct g2d_task_data *data, unsigned int num_sources,
+			struct g2d_reg *cmdaddr);
 bool g2d_validate_source_commands(struct g2d_device *g2d_dev,
 				  struct g2d_task *task,
 				  unsigned int i, struct g2d_layer *source,

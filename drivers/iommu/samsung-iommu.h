@@ -13,8 +13,6 @@
 #include <linux/interrupt.h>
 #include <linux/iommu.h>
 
-#include <soc/google/debug-snapshot.h>
-
 #define MAX_VIDS			8U
 
 struct tlb_config {
@@ -31,7 +29,7 @@ struct tlb_props {
 };
 
 struct sysmmu_drvdata {
-	struct list_head list[MAX_VIDS];
+	struct list_head list;
 	struct iommu_device iommu;
 	struct device *dev;
 	struct iommu_group *group;
@@ -42,7 +40,7 @@ struct sysmmu_drvdata {
 	u32 version;
 	unsigned int num_tlb;
 	int qos;
-	int attached_count[MAX_VIDS];
+	int attached_count;
 	int secure_irq;
 	unsigned int secure_base;
 	const unsigned int *reg_set;
@@ -53,20 +51,12 @@ struct sysmmu_drvdata {
 	bool rpm_resume;	/* true if .runtime_resume() is called */
 	bool async_fault_mode;
 	bool hide_page_fault;
-	unsigned int panic_action;
 };
 
 struct sysmmu_clientdata {
 	struct sysmmu_drvdata **sysmmus;
 	struct device_link **dev_link;
 	unsigned int sysmmu_count;
-};
-
-struct sysmmu_groupdata {
-	struct list_head sysmmu_list[MAX_VIDS];
-	spinlock_t sysmmu_list_lock[MAX_VIDS]; /* Protects .sysmmu_list */
-	unsigned long vid_map;
-	bool has_vcr;
 };
 
 
@@ -138,7 +128,7 @@ typedef u32 sysmmu_pte_t;
 
 #define SPAGES_PER_LPAGE	(LPAGE_SIZE / SPAGE_SIZE)
 
-#define NUM_LV1ENTRIES	65536
+#define NUM_LV1ENTRIES	4096
 #define NUM_LV2ENTRIES (SECT_SIZE / SPAGE_SIZE)
 #define LV1TABLE_SIZE (NUM_LV1ENTRIES * sizeof(sysmmu_pte_t))
 #define LV2TABLE_SIZE (NUM_LV2ENTRIES * sizeof(sysmmu_pte_t))

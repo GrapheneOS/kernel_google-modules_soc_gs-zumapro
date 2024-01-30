@@ -72,15 +72,20 @@
 #define SMC_PROTECTION_SET		(0x82002010)
 #define SMC_DRM_FW_LOADING		(0x82002011)
 #define SMC_DCPP_SUPPORT		(0x82002012)
+#define SMC_DRM_HISTOGRAM_SEC		(0x82002013)
+#define SMC_DRM_HISTOGRAM_BINS_SEC	(0x82002014)
 #define SMC_DRM_SECBUF_PROT		(0x82002020)
 #define SMC_DRM_SECBUF_UNPROT		(0x82002021)
 #define SMC_DRM_G2D_CMD_DATA		(0x8200202d)
 #define SMC_DRM_SECBUF_CFW_PROT		(0x82002030)
 #define SMC_DRM_SECBUF_CFW_UNPROT	(0x82002031)
+#define SMC_DRM_DPU_CRC_SEC		(0x82002070)
 #define SMC_DRM_PPMP_PROT		(0x82002110)
 #define SMC_DRM_PPMP_UNPROT		(0x82002111)
 #define SMC_DRM_PPMP_MFCFW_PROT		(0x82002112)
 #define SMC_DRM_PPMP_MFCFW_UNPROT	(0x82002113)
+#define SMC_DRM_G3D_PPCFW_RESTORE	(0x8200211C)
+#define SMC_DRM_G3D_PPCFW_OFF		(0x8200211D)
 #define MC_FC_SET_CFW_PROT		(0x82002040)
 #define SMC_DRM_SEC_SMMU_INFO		(0x820020D0)
 #define MC_FC_DRM_SET_CFW_PROT		(0x10000000)
@@ -102,6 +107,14 @@
 
 /* For Secure log information */
 #define SMC_CMD_SEC_LOG_INFO		(0x82000610)
+
+/* For EL3 debug cmd */
+#define SIP_SVD_GS_DEBUG_CMD		(0x82000612)
+
+/* Debug commands */
+#define CMD_ASSERT			0x0
+#define CMD_PANIC			0x1
+#define CMD_ECC				0xecc
 
 /* For PPMPU fail information */
 #define SMC_CMD_GET_PPMPU_FAIL_INFO	(0x8200211A)
@@ -148,13 +161,30 @@
 #define PROT_MFC			(0)
 #define PROT_MSCL0			(1)
 #define PROT_MSCL1			(2)
+
 #define PROT_L0				(3)
 #define PROT_L1				(4)
 #define PROT_L2				(5)
+#ifdef CONFIG_SOC_ZUMA
+#define PROT_L3				(6)
+#define PROT_L4				(7)
+#define PROT_L5				(8)
+#define PROT_L6				(9)
+
+#define PROT_L8				(25)
+#define PROT_L9				(26)
+#define PROT_L10			(27)
+#define PROT_L11			(28)
+#define PROT_L12			(29)
+#define PROT_L13			(30)
+#define PROT_L14			(31)
+#else
 #define PROT_L4				(6)
 #define PROT_L3				(9)
 #define PROT_L5				(10)
 #define PROT_L12			(11)
+#endif
+
 #define PROT_G3D			(12)
 #define PROT_JPEG			(13)
 #define PROT_G2D			(14)
@@ -247,6 +277,26 @@ static inline unsigned long exynos_smc(unsigned long cmd,
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(cmd, arg0, arg1, arg2, 0, 0, 0, 0, &res);
+	return (unsigned long)res.a0;
+}
+
+static inline unsigned long exynos_smc4(unsigned long cmd,
+					unsigned long arg0,
+					unsigned long arg1,
+					unsigned long arg2,
+					unsigned long *ret1,
+					unsigned long *ret2,
+					unsigned long *ret3)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(cmd, arg0, arg1, arg2, 0, 0, 0, 0, &res);
+	if (ret1)
+		*ret1 = (unsigned long)res.a1;
+	if (ret2)
+		*ret2 = (unsigned long)res.a2;
+	if (ret3)
+		*ret3 = (unsigned long)res.a3;
 	return (unsigned long)res.a0;
 }
 

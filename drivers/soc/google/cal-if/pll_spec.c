@@ -277,6 +277,28 @@ static struct pll_spec gpll0518X_spec = {
 	150,		0,
 };
 
+static struct pll_spec frd4312rpll_spec = {
+	1,		63,
+	8,		1023,
+	0,		6,
+	0,		0,
+	4*MHZ,		13*MHZ,
+	650*MHZ,	3300*MHZ,
+	10.15*MHZ,	3300*MHZ,
+	150,		0,
+};
+
+static struct pll_spec frd4702tpll_spec = {
+	1,		63,
+	4,		1023,
+	0,		6,
+	0,		0,
+	4*MHZ,		13*MHZ,
+	1875*MHZ,	7500*MHZ,
+	117*MHZ,	7500*MHZ,
+	150,		0,
+};
+
 struct pll_spec *pll_get_spec(struct cmucal_pll *pll)
 {
 	struct pll_spec *pll_spec;
@@ -359,6 +381,12 @@ struct pll_spec *pll_get_spec(struct cmucal_pll *pll)
 		break;
 	case PLL_0518X:
 		pll_spec = &gpll0518X_spec;
+		break;
+	case FRD_4312_RPLL:
+		pll_spec = &frd4312rpll_spec;
+		break;
+	case FRD_4702_TPLL:
+		pll_spec = &frd4702tpll_spec;
 		break;
 	default:
 		pll_spec = NULL;

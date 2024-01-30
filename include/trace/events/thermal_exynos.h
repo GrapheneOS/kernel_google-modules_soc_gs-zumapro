@@ -142,6 +142,66 @@ TRACE_EVENT(thermal_exynos_power_allocator,
 		  __entry->cdev_state, __entry->is_hardlimited)
 );
 
+TRACE_EVENT(thermal_exynos_acpm_bulk,
+	TP_PROTO(u8 tz_id, u8 current_temp, u8 ctrl_temp, u8 cdev_state, s32 pid_et_p, s16 pid_power_range, s16 pid_p, s32 pid_i, s32 k_p, s32 k_i, u64 timestamp),
+	TP_ARGS(tz_id, current_temp, ctrl_temp, cdev_state, pid_et_p, pid_power_range, pid_p, pid_i, k_p, k_i, timestamp),
+	TP_STRUCT__entry(
+		__field(u8, tz_id)
+		__field(u8, current_temp)
+		__field(u8, ctrl_temp)
+		__field(u8, cdev_state)
+		__field(s32, pid_et_p)
+		__field(s16, pid_power_range)
+		__field(s16, pid_p)
+		__field(s32, pid_i)
+		__field(s32, k_p)
+		__field(s32, k_i)
+		__field(u64, timestamp)
+	),
+	TP_fast_assign(
+		__entry->tz_id = tz_id;
+		__entry->current_temp = current_temp;
+		__entry->ctrl_temp = ctrl_temp;
+		__entry->cdev_state = cdev_state;
+		__entry->pid_et_p = pid_et_p;
+		__entry->pid_power_range = pid_power_range;
+		__entry->pid_p = pid_p;
+		__entry->pid_i = pid_i;
+		__entry->k_p = k_p;
+		__entry->k_i = k_i;
+		__entry->timestamp = timestamp;
+	),
+
+	TP_printk("thermal_zone_id=%u current_temperature=%u ctrl_temp=%u cdev_state=%u pid_et_p=%d pid_power_range=%d pid_p=%d pid_i=%d k_p=%d k_i=%d timestamp=%llu",
+		  __entry->tz_id, __entry->current_temp, __entry->ctrl_temp, __entry->cdev_state, __entry->pid_et_p, __entry->pid_power_range, __entry->pid_p, __entry->pid_i, __entry->k_p, __entry->k_i, __entry->timestamp)
+);
+
+TRACE_EVENT(thermal_exynos_acpm_high_overhead,
+	TP_PROTO(int tz_id, u8 current_temp, u8 ctrl_temp, u8 cdev_state, s32 pid_et_p, s32 k_p, s32 k_i),
+	TP_ARGS(tz_id, current_temp, ctrl_temp, cdev_state, pid_et_p, k_p, k_i),
+	TP_STRUCT__entry(
+		__field(int, tz_id)
+		__field(u8, current_temp)
+		__field(u8, ctrl_temp)
+		__field(u8, cdev_state)
+		__field(s32, pid_et_p)
+		__field(s32, k_p)
+		__field(s32, k_i)
+	),
+	TP_fast_assign(
+		__entry->tz_id = tz_id;
+		__entry->current_temp = current_temp;
+		__entry->ctrl_temp = ctrl_temp;
+		__entry->cdev_state = cdev_state;
+		__entry->pid_et_p = pid_et_p;
+		__entry->k_p = k_p;
+		__entry->k_i = k_i;
+	),
+
+	TP_printk("thermal_zone_id=%d current_temperature=%u ctrl_temp=%u cdev_state=%u pid_et_p=%d k_p=%d k_i=%d",
+		  __entry->tz_id, __entry->current_temp, __entry->ctrl_temp, __entry->cdev_state, __entry->pid_et_p, __entry->k_p, __entry->k_i)
+);
+
 TRACE_EVENT(thermal_exynos_power_allocator_pid,
 	TP_PROTO(struct thermal_zone_device *tz, s32 err, s32 err_integral,
 		 s64 p, s64 i, s32 output),
@@ -166,6 +226,24 @@ TRACE_EVENT(thermal_exynos_power_allocator_pid,
 	TP_printk("thermal_zone_id=%d err=%d err_integral=%d p=%lld i=%lld output=%d",
 		  __entry->tz_id, __entry->err, __entry->err_integral,
 		  __entry->p, __entry->i, __entry->output)
+);
+
+TRACE_EVENT(thermal_exynos_dus_bci_freq_update_request,
+	TP_PROTO(int dsu_freq, int bci_freq),
+
+	TP_ARGS(dsu_freq, bci_freq),
+
+	TP_STRUCT__entry(
+		__field(int, dsu_freq)
+		__field(int, bci_freq)
+	),
+
+	TP_fast_assign(
+		__entry->dsu_freq = dsu_freq;
+		__entry->bci_freq = bci_freq;
+	),
+
+	TP_printk("dsu_freq=%d bci_freq=%d", __entry->dsu_freq, __entry->bci_freq)
 );
 
 TRACE_EVENT(thermal_cpu_pressure,

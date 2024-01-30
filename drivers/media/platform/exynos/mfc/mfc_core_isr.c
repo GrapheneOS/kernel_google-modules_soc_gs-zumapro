@@ -81,14 +81,15 @@ static void __mfc_handle_black_bar_info(struct mfc_core *core,
 static unsigned int __mfc_handle_frame_field(struct mfc_core *core,
 		struct mfc_ctx *ctx)
 {
-	unsigned int interlace_type = 0, is_interlace = 0, is_mbaff = 0;
+	struct mfc_dec *dec = ctx->dec_priv;
+	unsigned int interlace_type = 0, is_interlace = 0;
 	unsigned int field;
 
 	if (CODEC_INTERLACED(ctx))
 		is_interlace = mfc_core_is_interlace_picture();
 
 	if (CODEC_MBAFF(ctx))
-		is_mbaff = mfc_core_is_mbaff_picture();
+		dec->is_mbaff = mfc_core_is_mbaff_picture();
 
 	if (is_interlace) {
 		interlace_type = mfc_core_get_interlace_type();
@@ -96,14 +97,14 @@ static unsigned int __mfc_handle_frame_field(struct mfc_core *core,
 			field = V4L2_FIELD_INTERLACED_TB;
 		else
 			field = V4L2_FIELD_INTERLACED_BT;
-	} else if (is_mbaff) {
+	} else if (dec->is_mbaff) {
 		field = V4L2_FIELD_INTERLACED_TB;
 	} else {
 		field = V4L2_FIELD_NONE;
 	}
 
 	mfc_debug(2, "[INTERLACE] is_interlace: %d (type : %d), is_mbaff: %d, field: 0x%#x\n",
-			is_interlace, interlace_type, is_mbaff, field);
+			is_interlace, interlace_type, dec->is_mbaff, field);
 
 	return field;
 }
@@ -686,10 +687,35 @@ static void __mfc_handle_error_state(struct mfc_ctx *ctx, struct mfc_core_ctx *c
 
 	/* Mark all dst buffers as having an error */
 	mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->dst_buf_queue);
-	mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->dst_buf_err_queue);
+	if (ctx->type == MFCINST_DECODER)
+		mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->dst_buf_err_queue);
 	/* Mark all src buffers as having an error */
 	mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->src_buf_ready_queue);
 	mfc_cleanup_queue(&ctx->buf_queue_lock, &core_ctx->src_buf_queue);
+	if (ctx->type == MFCINST_ENCODER)
+		mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->ref_buf_queue);
+	/* Mark all NAL_Q buffers as having an error */
+	mfc_cleanup_nal_queue(core_ctx);
+}
+
+void mfc_core_handle_error(struct mfc_core *core)
+{
+	struct mfc_dev *dev = core->dev;
+	struct mfc_core_ctx *core_ctx;
+	int i;
+
+	mfc_core_err("[MSR] >>>>>>>> MFC CORE is Error state <<<<<<<<\n");
+	mfc_core_change_state(core, MFCCORE_ERROR);
+
+	mutex_lock(&dev->mfc_mutex);
+	for (i = 0; i < MFC_NUM_CONTEXTS; i++) {
+		if (!core->core_ctx[i])
+			continue;
+		/* TODO: need to check two core mode */
+		core_ctx = core->core_ctx[i];
+		__mfc_handle_error_state(core_ctx->ctx, core_ctx);
+	}
+	mutex_unlock(&dev->mfc_mutex);
 }
 
 /* Error handling for interrupt */
@@ -805,7 +831,6 @@ static void __mfc_handle_frame_error(struct mfc_core *core, struct mfc_ctx *ctx,
 
 		mfc_debug(2, "MFC needs next buffer\n");
 		dec->consumed = 0;
-		dec->remained_size = 0;
 		mfc_clear_mb_flag(src_mb);
 		mfc_set_mb_flag(src_mb, MFC_FLAG_CONSUMED_ONLY);
 
@@ -833,9 +858,7 @@ static void __mfc_handle_frame_input(struct mfc_core *core,
 	struct mfc_buf *src_mb;
 	unsigned int index;
 	int deleted = 0;
-	unsigned long consumed;
-
-	consumed = dec->consumed + mfc_core_get_consumed_stream();
+	unsigned int consumed;
 
 	if (mfc_get_err(err) == MFC_REG_ERR_NON_PAIRED_FIELD) {
 		/*
@@ -847,8 +870,9 @@ static void __mfc_handle_frame_input(struct mfc_core *core,
 	}
 
 	/* Get the source buffer */
+	consumed = mfc_core_get_consumed_stream();
 	src_mb = mfc_get_del_if_consumed(ctx, &core_ctx->src_buf_queue,
-			mfc_core_get_consumed_stream(), STUFF_BYTE, err, &deleted);
+			consumed, STUFF_BYTE, err, &deleted);
 	if (!src_mb) {
 		mfc_err("no src buffers\n");
 		return;
@@ -865,13 +889,11 @@ static void __mfc_handle_frame_input(struct mfc_core *core,
 		if (CODEC_MULTIFRAME(ctx))
 			dec->y_addr_for_pb = (dma_addr_t)mfc_core_get_dec_y_addr();
 
-		dec->consumed = consumed;
-		dec->remained_size = src_mb->vb.vb2_buf.planes[0].bytesused
-					- dec->consumed;
+		dec->consumed += consumed;
 		dec->has_multiframe = 1;
 
-		MFC_TRACE_CORE_CTX("** consumed:%ld, remained:%ld, addr:0x%08llx\n",
-			dec->consumed, dec->remained_size, dec->y_addr_for_pb);
+		MFC_TRACE_CORE_CTX("** consumed:%d, remained:%d, addr:0x%08llx\n",
+			dec->consumed, mfc_dec_get_strm_size(ctx, src_mb), dec->y_addr_for_pb);
 		/* Do not move src buffer to done_list */
 		return;
 	}
@@ -943,7 +965,6 @@ static void __mfc_handle_frame_input(struct mfc_core *core,
 	dec->consumed = 0;
 	if (IS_VP9_DEC(ctx) || IS_AV1_DEC(ctx))
 		dec->has_multiframe = 0;
-	dec->remained_size = 0;
 
 	vb2_buffer_done(&src_mb->vb.vb2_buf, VB2_BUF_STATE_DONE);
 }
@@ -960,6 +981,8 @@ static void __mfc_handle_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	struct dec_dpb_ref_info *ref_info = NULL;
 	struct mfc_buf *mfc_buf = NULL;
 	int i;
+
+	mfc_perf_trace(ctx, "type", mfc_core_get_dec_frame_type());
 
 	dst_frame_status = mfc_core_get_disp_status();
 	res_change = mfc_core_get_res_change();
@@ -1393,6 +1416,10 @@ static int __mfc_handle_stream(struct mfc_core *core, struct mfc_ctx *ctx, unsig
 	strm_size = mfc_core_get_enc_strm_size();
 	pic_count = mfc_core_get_enc_pic_count();
 
+	mfc_perf_trace(ctx, "type", slice_type);
+	mfc_perf_trace(ctx, "size", strm_size);
+	mfc_perf_trace(ctx, "count", pic_count);
+
 	mfc_debug(2, "[STREAM] encoded slice type: %d, size: %d, display order: %d\n",
 			slice_type, strm_size, pic_count);
 
@@ -1410,6 +1437,11 @@ static int __mfc_handle_stream(struct mfc_core *core, struct mfc_ctx *ctx, unsig
 	/* set encoded frame type */
 	enc->frame_type = slice_type;
 	ctx->sequence++;
+
+	if (slice_type == MFC_REG_E_SLICE_TYPE_I && reason == MFC_REG_R2H_CMD_FRAME_DONE_RET) {
+		mfc_debug(2, "[FRAME] first frame with two pass for initial qpe is done\n");
+		enc->nal_q_disable_for_qpe_two_pass = false;
+	}
 
 	if (enc->in_slice) {
 		if (mfc_is_queue_count_same(&ctx->buf_queue_lock, &ctx->dst_buf_queue, 0)) {
@@ -1505,8 +1537,8 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 	struct mfc_core_ctx *core_ctx = core->core_ctx[ctx->num];
 	struct mfc_dec *dec = ctx->dec_priv;
 	struct mfc_buf *src_mb;
-	int i, is_interlace, is_mbaff, is_hdr10_sbwc_off = 0;
-	unsigned int bytesused;
+	int i, is_interlace, is_hdr10_sbwc_off = 0;
+	unsigned int strm_size, consumed;
 
 	if (ctx->src_fmt->fourcc != V4L2_PIX_FMT_FIMV1) {
 		ctx->img_width = mfc_core_get_img_width();
@@ -1534,6 +1566,8 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				mfc_core_get_profile(),
 				mfc_core_get_luma_bit_depth_minus8() + 8,
 				mfc_core_get_chroma_bit_depth_minus8() + 8);
+		} else {
+			ctx->is_10bit = 0;
 		}
 	}
 
@@ -1556,11 +1590,11 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				ctx->img_width, ctx->img_height);
 	} else {
 		is_interlace = mfc_core_is_interlace_picture();
-		is_mbaff = mfc_core_is_mbaff_picture();
-		if (is_interlace || is_mbaff)
+		dec->is_mbaff = mfc_core_is_mbaff_picture();
+		if (is_interlace || dec->is_mbaff)
 			dec->is_interlaced = 1;
 		mfc_debug(2, "[INTERLACE] interlace: %d, mbaff: %d\n",
-				is_interlace, is_mbaff);
+				is_interlace, dec->is_mbaff);
 
 		if (dev->pdata->support_sbwc) {
 			ctx->is_sbwc = mfc_core_is_sbwc_avail();
@@ -1614,20 +1648,17 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	src_mb = mfc_get_buf(ctx, &core_ctx->src_buf_queue,
 			MFC_BUF_NO_TOUCH_USED);
-	if (IS_H264_DEC(ctx) || IS_H264_MVC_DEC(ctx) || IS_HEVC_DEC(ctx)) {
-		if (src_mb) {
-			dec->consumed += mfc_core_get_consumed_stream();
-			bytesused = src_mb->vb.vb2_buf.planes[0].bytesused;
-			mfc_debug(2, "[STREAM] header total size : %d, consumed : %lu\n",
-					bytesused, dec->consumed);
-			if ((dec->consumed > 0) && (bytesused > dec->consumed)) {
-				dec->remained_size = bytesused - dec->consumed;
-				mfc_debug(2, "[STREAM] there is remained bytes(%lu) after header parsing\n",
-						dec->remained_size);
-			} else {
-				dec->consumed = 0;
-				dec->remained_size = 0;
-			}
+	if (src_mb && (IS_H264_DEC(ctx) || IS_H264_MVC_DEC(ctx) || IS_HEVC_DEC(ctx))) {
+		consumed = mfc_core_get_consumed_stream();
+		strm_size = mfc_dec_get_strm_size(ctx, src_mb);
+		mfc_debug(2, "[STREAM] header size: %d, consumed: %d\n",
+				strm_size, consumed);
+		if ((consumed > 0) && (strm_size > consumed)) {
+			dec->consumed += consumed;
+			mfc_debug(2, "[STREAM] there is remained bytes(%d) after header parsing\n",
+				(strm_size - consumed));
+		} else {
+			dec->consumed = 0;
 		}
 	}
 
@@ -1785,6 +1816,18 @@ irqreturn_t mfc_core_top_half_irq(int irq, void *priv)
 
 	mfc_perf_measure_off(core);
 
+	mfc_perf_trace(ctx, "irq", reason);
+
+	if (reason == MFC_REG_R2H_CMD_FRAME_DONE_RET) {
+		mfc_perf_trace(ctx, "frame", 0);
+	}
+
+	/* Reset trace counter when NAL QUEUE be stopped */
+	if (reason == MFC_REG_R2H_CMD_COMPLETE_QUEUE_RET) {
+		mfc_perf_trace(ctx, "frame", 0);
+		ctx->nal_q_cnt = 0;
+	}
+
 	return IRQ_WAKE_THREAD;
 }
 
@@ -1823,7 +1866,7 @@ static inline int __mfc_nal_q_irq(struct mfc_core *core,
 		mfc_core_clear_int();
 
 		if (!nal_q_handle->nal_q_exception)
-			mfc_core_nal_q_clock_off(core, nal_q_handle);
+			mfc_core_nal_q_clock_off(core, nal_q_handle, ctx_num);
 
 		if (ctx_num < 0)
 			mfc_core_err("[NALQ] Can't find ctx in nal q\n");
@@ -1851,6 +1894,7 @@ static inline int __mfc_nal_q_irq(struct mfc_core *core,
 			mfc_core_err("[NALQ] Should not be here! state: %d, int reason : %d\n",
 				nal_q_handle->nal_q_state, reason);
 			mfc_core_clear_int();
+			mfc_core_handle_error(core);
 
 			ret = -1;
 		} else {

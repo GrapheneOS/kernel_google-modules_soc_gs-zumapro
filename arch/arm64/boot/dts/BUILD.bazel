@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 load("//build/kernel/kleaf:kernel.bzl", "kernel_dtstree")
 
@@ -8,7 +8,6 @@ kernel_dtstree(
         [
             "google/**/*.dtsi",
             "google/**/*.dts",
-            "google/**/*.h",
         ],
         exclude = [
             "**/.*",
@@ -17,13 +16,11 @@ kernel_dtstree(
             "**/*.bzl",
         ],
     ) + [
-        # keep sorted
         "Makefile",
         "google/Makefile",
-        "//private/google-modules/soc/gs:gs.dt-bindings",
+        "//private/google-modules/soc/gs:dt-bindings",
     ],
     visibility = [
-        "//private/devices/google:__subpackages__",
         "//private/google-modules/soc/gs:__pkg__",
     ],
 )

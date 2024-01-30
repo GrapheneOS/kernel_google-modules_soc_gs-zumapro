@@ -105,9 +105,7 @@
 #define FUNPRIORCTRL	(0x4)
 
 #define DBG_OFFSET	(0x0)
-#define CTI_OFFSET	(0x10000)
-#define PMU_OFFSET	(0x20000)
-#define ETM_OFFSET	(0x30000)
+#define PMU_OFFSET	(0x10000)
 #define PMUPCSR         (0x200)
 #define PMUPCSR_HI      (0x204)
 
@@ -196,9 +194,6 @@
 
 #define CTIAPPSETCH0	(0x1)
 #define CTICONTROLEN	(0x1)
-
-#define ARM_CPU_PART_HERCULES		0xD41
-#define ARM_CPU_PART_HERA		0xD44
 
 #if IS_ENABLED(CONFIG_EXYNOS_CORESIGHT_ETM)
 extern void exynos_etm_trace_stop(void);

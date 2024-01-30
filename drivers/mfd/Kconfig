@@ -48,6 +48,32 @@ config MFD_S2MPG13
 	select MFD_CORE
 	select REGULATOR
 
+config MFD_S2MPG14
+	tristate "SAMSUNG Electronics S2MPG14 PMIC Series Support"
+	depends on I2C=y
+	select MFD_CORE
+	select REGULATOR
+	select MFD_S2MPG1415_GPIO
+	select GENERIC_PINCONF
+	help
+	  Support for the Samsung Electronics MFD series.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the functionality
+	  of the device
+
+config MFD_S2MPG15
+	tristate "SAMSUNG Electronics S2MPG15 PMIC Series Support"
+	depends on I2C=y
+	select MFD_CORE
+	select REGULATOR
+	select MFD_S2MPG1415_GPIO
+	select GENERIC_PINCONF
+	help
+	  Support for the Samsung Electronics MFD series.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the functionality
+	  of the device
+
 config MFD_S2MPG1X_GPIO
 	tristate "SAMSUNG Electronics S2MPG1X PMIC GPIO Support"
 	depends on I2C=y
@@ -56,6 +82,16 @@ config MFD_S2MPG1X_GPIO
 	  Several balls of S2MPG1X chips replace a few of the GPIO pins of AP
 	  and provide registers for controlling them.
 	  If MFD_S2MPG10 or MFD_S2MPG1X is selected, this config will be
+	  included together.
+
+config MFD_S2MPG1415_GPIO
+	tristate "SAMSUNG Electronics S2MPG1415 PMIC GPIO Support"
+	depends on I2C=y
+	help
+	  Support for the Samsung Electronics S2MPG1X GPIO control.
+	  Several balls of S2MPG14 chips replace a few of the GPIO pins of AP
+	  and provide registers for controlling them.
+	  If MFD_S2MPG14 or MFD_S2MPG15 is selected, this config will be
 	  included together.
 
 config MFD_SLG51000

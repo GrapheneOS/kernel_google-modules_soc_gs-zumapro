@@ -14,7 +14,11 @@
 #include <linux/io.h>
 #include <dt-bindings/soc/google/gs-bts.h>
 
+#if ! IS_ENABLED(CONFIG_SOC_ZUMA)
+#include "regs-btsgs101.h"
+#else
 #include "regs-btsgs.h"
+#endif
 #include "bts.h"
 
 /****************************************************************
@@ -239,13 +243,32 @@ static int set_ipbts_urgent(void __iomem *base, struct bts_stat *stat)
 	if (stat->qurgent_th_w > MAX_QUTH)
 		stat->qurgent_th_w = MAX_QUTH;
 
-	tmp_reg = __raw_readl(base + TIMEOUT);
-	tmp_reg = tmp_reg &
-		  ~((MAX_QUTH << TIMEOUT_CNT_R) | (MAX_QUTH << TIMEOUT_CNT_W));
-	tmp_reg = tmp_reg | (stat->qurgent_th_r << TIMEOUT_CNT_R) |
-		  (stat->qurgent_th_w << TIMEOUT_CNT_W);
+	/* Read QUrgent */
+	tmp_reg = __raw_readl(base + TIMEOUT_R0);
+	tmp_reg = tmp_reg & ~((MAX_QUTH << TIMEOUT_CNT_VC0)
+			| (MAX_QUTH << TIMEOUT_CNT_VC1)
+			| (MAX_QUTH << TIMEOUT_CNT_VC2)
+			| (MAX_QUTH << TIMEOUT_CNT_VC3));
+	tmp_reg = tmp_reg | (stat->qurgent_th_r << TIMEOUT_CNT_VC0)
+		| (stat->qurgent_th_r << TIMEOUT_CNT_VC1)
+		| (stat->qurgent_th_r << TIMEOUT_CNT_VC2)
+		| (stat->qurgent_th_r << TIMEOUT_CNT_VC3);
 
-	__raw_writel(tmp_reg, base + TIMEOUT);
+	__raw_writel(tmp_reg, base + TIMEOUT_R0);
+
+	/* Write QUrgent */
+	tmp_reg = __raw_readl(base + TIMEOUT_W0);
+	tmp_reg = tmp_reg & ~((MAX_QUTH << TIMEOUT_CNT_VC0)
+			| (MAX_QUTH << TIMEOUT_CNT_VC1)
+			| (MAX_QUTH << TIMEOUT_CNT_VC2)
+			| (MAX_QUTH << TIMEOUT_CNT_VC3));
+
+	tmp_reg = tmp_reg | (stat->qurgent_th_w << TIMEOUT_CNT_VC0)
+		| (stat->qurgent_th_w << TIMEOUT_CNT_VC1)
+		| (stat->qurgent_th_w << TIMEOUT_CNT_VC2)
+		| (stat->qurgent_th_w << TIMEOUT_CNT_VC3);
+
+	__raw_writel(tmp_reg, base + TIMEOUT_W0);
 
 	tmp_reg = __raw_readl(base + CON);
 	tmp_reg &= ~((1 << QURGENT_EN) | (1 << EX_QURGENT_EN));
@@ -267,11 +290,10 @@ static int get_ipbts_urgent(void __iomem *base, struct bts_stat *stat)
 	if (!base || !stat)
 		return -ENODATA;
 
-	tmp_reg = __raw_readl(base + TIMEOUT);
-	stat->qurgent_th_r =
-		(tmp_reg & (MAX_QUTH << TIMEOUT_CNT_R)) >> TIMEOUT_CNT_R;
-	stat->qurgent_th_w =
-		(tmp_reg & (MAX_QUTH << TIMEOUT_CNT_W)) >> TIMEOUT_CNT_W;
+	tmp_reg = __raw_readl(base + TIMEOUT_R0);
+	stat->qurgent_th_r = (tmp_reg & (MAX_QUTH << TIMEOUT_CNT_VC0)) >> TIMEOUT_CNT_VC0;
+	tmp_reg = __raw_readl(base + TIMEOUT_W0);
+	stat->qurgent_th_w = (tmp_reg & (MAX_QUTH << TIMEOUT_CNT_VC0)) >> TIMEOUT_CNT_VC0;
 
 	tmp_reg = __raw_readl(base + CON);
 	stat->qurgent_on = (tmp_reg & (1 << QURGENT_EN)) >> QURGENT_EN;
@@ -650,7 +672,7 @@ static int get_scibts(void __iomem *base, struct bts_stat *stat)
 /****************************************************************
  *›     ›       ›       int bts ops functions›  ›       ›       *
  ****************************************************************/
-static int set_intvc(void __iomem *base, unsigned int value)
+static int set_int_vc(void __iomem *base, unsigned int value)
 {
 	if (!base)
 		return -ENODATA;
@@ -660,7 +682,7 @@ static int set_intvc(void __iomem *base, unsigned int value)
 	return 0;
 }
 
-static int get_intvc(void __iomem *base, unsigned int *value)
+static int get_int_vc(void __iomem *base, unsigned int *value)
 {
 	if (!base)
 		return -ENODATA;
@@ -669,7 +691,6 @@ static int get_intvc(void __iomem *base, unsigned int *value)
 
 	return 0;
 }
-
 
 /****************************************************************
  *			register ops functions			*
@@ -785,8 +806,8 @@ int register_btsops(struct bts_info *info)
 		info->ops->get_urgent = NULL;
 		info->ops->set_blocking = NULL;
 		info->ops->get_blocking = NULL;
-		info->ops->set_vc = set_intvc;
-		info->ops->get_vc = get_intvc;
+		info->ops->set_vc = set_int_vc;
+		info->ops->get_vc = get_int_vc;
 		break;
 	default:
 		break;

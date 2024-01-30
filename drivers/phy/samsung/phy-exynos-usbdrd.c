@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/kvm_host.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -47,6 +48,19 @@
 static void __iomem *usbdp_combo_phy_reg;
 void __iomem *phycon_base_addr;
 EXPORT_SYMBOL_GPL(phycon_base_addr);
+
+static int (*s2mpu_notify)(struct device *dev, bool on);
+
+int exynos_usbdrd_set_s2mpu_pm_ops(int (*cb)(struct device *dev, bool on))
+{
+	/*
+	 * Paired with smp_load_acquire(&s2mpu_notify),
+	 * Ensure memory stores hapenning during module init
+	 * are observed before executing the callback.
+	 */
+	return cmpxchg_release(&s2mpu_notify, NULL, cb) ? -EBUSY : 0;
+}
+EXPORT_SYMBOL_GPL(exynos_usbdrd_set_s2mpu_pm_ops);
 
 /*u32 get_speed_and_disu1u2(void);*/
 
@@ -2082,6 +2096,7 @@ EXPORT_SYMBOL_GPL(exynos_usbdrd_vdd_hsi_manual_control);
 int exynos_usbdrd_s2mpu_manual_control(bool on)
 {
 	struct exynos_usbdrd_phy *phy_drd;
+	int (*__s2mpu_notify)(struct device *dev, bool on);
 
 	pr_debug("%s s2mpu = %d\n", __func__, on);
 
@@ -2091,11 +2106,14 @@ int exynos_usbdrd_s2mpu_manual_control(bool on)
 		return -ENODEV;
 	}
 
-	if (!phy_drd->s2mpu)
+	/* Paired with cmpxchg_release in exynos_usbdrd_set_s2mpu_pm_ops. */
+	__s2mpu_notify = smp_load_acquire(&s2mpu_notify);
+	if (!phy_drd->s2mpu || !__s2mpu_notify)
 		return 0;
 
-	return on ? pm_runtime_get_sync(phy_drd->s2mpu)
-		  : pm_runtime_put_sync(phy_drd->s2mpu);
+	__s2mpu_notify(phy_drd->s2mpu, on);
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(exynos_usbdrd_s2mpu_manual_control);
 
@@ -2241,27 +2259,30 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 	struct regmap *reg_pmu;
 	struct device_node *syscon_np;
 	struct resource pmu_res;
-	struct platform_device *s2mpu_pdev;
-	struct device_node *s2mpu_np;
+	struct device_node	*s2mpu_np;
+	struct platform_device	*s2mpu_pdev;
 	u32 pmu_offset, pmu_offset_dp, pmu_offset_tcxo;
 	u32 pmu_mask, pmu_mask_tcxo, pmu_mask_pll;
 	int i, ret;
+
+	s2mpu_np = of_parse_phandle(dev->of_node, "s2mpus", 0);
+	if (s2mpu_np) {
+		s2mpu_pdev = of_find_device_by_node(s2mpu_np);
+		of_node_put(s2mpu_np);
+	}
 
 	pr_info("%s: +++ %s %s\n", __func__, dev->init_name, pdev->name);
 	phy_drd = devm_kzalloc(dev, sizeof(*phy_drd), GFP_KERNEL);
 	if (!phy_drd)
 		return -ENOMEM;
 
-	s2mpu_np = of_parse_phandle(dev->of_node, "s2mpu", 0);
-	if (s2mpu_np) {
-		s2mpu_pdev = of_find_device_by_node(s2mpu_np);
-		of_node_put(s2mpu_np);
-		if (s2mpu_pdev)
-			phy_drd->s2mpu = &s2mpu_pdev->dev;
-	}
-
 	dev_set_drvdata(dev, phy_drd);
 	phy_drd->dev = dev;
+
+	if (s2mpu_pdev)
+		phy_drd->s2mpu = &s2mpu_pdev->dev;
+	else
+		phy_drd->s2mpu = NULL;
 
 	match = of_match_node(exynos_usbdrd_phy_of_match, pdev->dev.of_node);
 

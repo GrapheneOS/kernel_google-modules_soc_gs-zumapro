@@ -24,6 +24,7 @@
 /* DEVFREQ GOV TYPE */
 #define SIMPLE_INTERACTIVE 0
 #define MEM_LATENCY 1
+#define DSU_LATENCY 2
 
 int devfreq_simple_interactive_init(void);
 #if IS_ENABLED(CONFIG_EXYNOS_ALT_DVFS)
@@ -130,6 +131,7 @@ struct um_exynos {
 	u32 *um_count;
 	u32 um_count_total;
 	struct ppc_data *ppc_val;
+	bool ppc_read_reset_disable;
 };
 
 struct exynos_devfreq_data {
@@ -161,6 +163,7 @@ struct exynos_devfreq_data {
 	u32					old_freq;
 	u32					new_freq;
 	u32					min_freq;
+	u32					soft_max_freq;
 	u32					max_freq;
 	u32					reboot_freq;
 	u32					boot_freq;
@@ -175,6 +178,7 @@ struct exynos_devfreq_data {
 	struct exynos_pm_qos_request		sys_pm_qos_min;
 	struct exynos_pm_qos_request		debug_pm_qos_min;
 	struct exynos_pm_qos_request		debug_pm_qos_max;
+	struct exynos_pm_qos_request		pm_qos_soft_max_freq;
 	struct exynos_pm_qos_request		default_pm_qos_min;
 	struct exynos_pm_qos_request		default_pm_qos_max;
 	struct exynos_pm_qos_request		thermal_pm_qos_max;
@@ -263,7 +267,7 @@ int exynos_devfreq_parse_ect(struct exynos_devfreq_data *data,
 				    const char *dvfs_domain_name);
 #else
 static inline int exynos_devfreq_parse_ect(struct exynos_devfreq_data *data,
-				    const char *dvfs_domain_name);
+				    const char *dvfs_domain_name)
 {
 	return 0;
 }

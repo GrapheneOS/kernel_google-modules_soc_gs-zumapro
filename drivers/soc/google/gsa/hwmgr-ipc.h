@@ -9,6 +9,7 @@
 
 #define HWMGR_TPU_PORT "com.android.trusty.gsa.hwmgr.tpu"
 #define HWMGR_AOC_PORT "com.android.trusty.gsa.hwmgr.aoc"
+#define HWMGR_DSP_PORT "com.android.trusty.gsa.hwmgr.dsp"
 
 enum hwmgr_cmd {
     HWMGR_CMD_RESP = (1U << 31),

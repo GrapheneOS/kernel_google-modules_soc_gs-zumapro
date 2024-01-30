@@ -15,10 +15,9 @@
 #include <linux/nmi.h>
 #include <linux/init_task.h>
 #include <linux/reboot.h>
-#include <linux/smc.h>
 #include <linux/kdebug.h>
-#include <linux/arm-smccc.h>
 #include <linux/panic_notifier.h>
+#include <linux/reboot.h>
 
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
@@ -31,6 +30,18 @@
 #include "debug-snapshot-local.h"
 
 #include <trace/hooks/debug.h>
+
+static char *ecc_sel_str_dsu_l1_l2[] = {
+	"DSU", "L1", "L2", NULL,
+};
+
+static char *ecc_sel_str_core_dsu[] = {
+	"CORE", "DSU", NULL,
+};
+
+static char *ecc_sel_str_dsu_core[] = {
+	"DSU", "CORE", NULL,
+};
 
 struct dbg_snapshot_mmu_reg {
 	long SCTLR_EL1;
@@ -54,74 +65,14 @@ static struct dbg_snapshot_helper_ops dss_soc_ops;
 
 void cache_flush_all(void)
 {
-	flush_cache_all();
+	dss_flush_cache_all();
 }
 EXPORT_SYMBOL_GPL(cache_flush_all);
-
-static u64 read_errselr_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c3_1\n" : "=r" (reg));
-	return reg;
-}
-
-static void write_errselr_el1(u64 val)
-{
-	asm volatile ("msr S3_0_c5_c3_1, %0\n"
-			"isb\n" :: "r" ((__u64)val));
-}
-
-static u64 read_erridr_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c3_0\n" : "=r" (reg));
-	return reg;
-}
-
-static u64 read_erxstatus_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c4_2\n" : "=r" (reg));
-	return reg;
-}
-
-static void __attribute__((unused)) write_erxstatus_el1(u64 val)
-{
-	asm volatile ("msr S3_0_c5_c4_2, %0\n"
-			"isb\n" :: "r" ((__u64)val));
-}
-
-static u64 read_erxmisc0_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c5_0\n" : "=r" (reg));
-	return reg;
-}
-
-static u64 read_erxmisc1_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c5_1\n" : "=r" (reg));
-	return reg;
-}
-
-static u64 read_erxaddr_el1(void)
-{
-	u64 reg;
-
-	asm volatile ("mrs %0, S3_0_c5_c4_3\n" : "=r" (reg));
-	return reg;
-}
 
 static void dbg_snapshot_dump_panic(char *str, size_t len)
 {
 	/*  This function is only one which runs in panic function */
-	if (str && len && len < DSS_PANIC_LOG_SIZE)
+	if (str && len && len < DSS_PANIC_STRING_SZ)
 		memcpy(dbg_snapshot_get_header_vaddr() + DSS_OFFSET_PANIC_STRING,
 				str, len);
 }
@@ -149,12 +100,21 @@ static void dbg_snapshot_set_core_panic_stat(unsigned int val, unsigned int cpu)
 		__raw_writel(val, header + DSS_OFFSET_PANIC_STAT + cpu * 4);
 }
 
+void dbg_snapshot_set_core_cflush_stat(unsigned int val)
+{
+	void __iomem *header = dbg_snapshot_get_header_vaddr();
+
+	if (header)
+		__raw_writel(val, header + DSS_OFFSET_CFLUSH_STAT);
+}
+EXPORT_SYMBOL_GPL(dbg_snapshot_set_core_cflush_stat);
+
 void dbg_snapshot_set_core_pmu_val(unsigned int val, unsigned int cpu)
 {
 	void __iomem *header = dbg_snapshot_get_header_vaddr();
 
 	if (header)
-		 __raw_writel(val, header + DSS_OFFSET_CORE_PMU_VAL + cpu * 4);
+		__raw_writel(val, header + DSS_OFFSET_CORE_PMU_VAL + cpu * 4);
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_set_core_pmu_val);
 
@@ -171,7 +131,7 @@ void dbg_snapshot_set_core_ehld_stat(unsigned int val, unsigned int cpu)
 	void __iomem *header = dbg_snapshot_get_header_vaddr();
 
 	if (header)
-		 __raw_writel(val, header + DSS_OFFSET_CORE_EHLD_STAT + cpu * 4);
+		__raw_writel(val, header + DSS_OFFSET_CORE_EHLD_STAT + cpu * 4);
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_set_core_ehld_stat);
 
@@ -226,12 +186,17 @@ int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 	void *addr;
 	char *reboot_msg;
 
-	reboot_msg = kmalloc(DSS_PANIC_LOG_SIZE, GFP_ATOMIC);
+	reboot_msg = kmalloc(DSS_PANIC_STRING_SZ, GFP_ATOMIC);
 	if (!reboot_msg) {
 		dev_emerg(dss_desc.dev,
 			  "Out of memory! Couldn't allocate reboot message\n");
 		return -ENOMEM;
 	}
+
+	/*
+	 * Set default "Emergency Reboot" message
+	 */
+	scnprintf(reboot_msg, DSS_PANIC_STRING_SZ, "Emergency Reboot");
 
 	if (!dss_soc_ops.expire_watchdog) {
 		dev_emerg(dss_desc.dev, "There is no wdt functions!\n");
@@ -247,7 +212,7 @@ int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 
 	dbg_snapshot_set_wdt_caller((unsigned long)addr);
 	if (str)
-		scnprintf(reboot_msg, DSS_PANIC_LOG_SIZE, str);
+		scnprintf(reboot_msg, DSS_PANIC_STRING_SZ, str);
 
 	dev_emerg(dss_desc.dev, "WDT Caller: %pS %s\n", addr, str ? str : "");
 
@@ -284,10 +249,10 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 	unsigned char idx = 0;
 	unsigned long state, pc = 0;
 
-	if ((!tsk) || !try_get_task_stack(tsk) || (tsk->__state & TASK_FROZEN) ||
-			!(tsk->__state == TASK_RUNNING ||
-				tsk->__state == TASK_UNINTERRUPTIBLE ||
-				tsk->__state == TASK_KILLABLE))
+	if ((!tsk) || !try_get_task_stack(tsk) || (tsk->flags & TASK_FROZEN) ||
+	    !(tsk->__state == TASK_RUNNING ||
+	    tsk->__state == TASK_UNINTERRUPTIBLE ||
+	    tsk->__state == TASK_KILLABLE))
 		return;
 
 	state = tsk->__state | tsk->exit_state;
@@ -387,67 +352,157 @@ static void dbg_snapshot_save_system(void *unused)
 	);
 }
 
-void dbg_snapshot_ecc_dump(void)
+static void clear_external_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
 {
-	struct armv8_a_errselr_el1 errselr_el1;
-	struct armv8_a_erridr_el1 erridr_el1;
-	struct armv8_a_erxstatus_el1 erxstatus_el1;
-	struct armv8_a_erxmisc0_el1 erxmisc0_el1;
-	struct armv8_a_erxmisc1_el1 erxmisc1_el1;
-	struct armv8_a_erxaddr_el1 erxaddr_el1;
-	int i;
+	erxstatus_el1.field.CE = 0x3;
+	erxstatus_el1.field.UET = 0x3;
+	erxstatus_el1.field.SERR = 0x0;
+	erxstatus_el1.field.IERR = 0x0;
 
-	switch (read_cpuid_part_number()) {
-	case ARM_CPU_PART_CORTEX_A55:
-	case ARM_CPU_PART_CORTEX_A76:
-	case ARM_CPU_PART_CORTEX_A77:
-	case ARM_CPU_PART_CORTEX_A78:
-	case ARM_CPU_PART_CORTEX_X1:
-		asm volatile ("HINT #16");
-		erridr_el1.reg = read_erridr_el1();
-		dev_emerg(dss_desc.dev, "ECC error check erridr_el1.num = 0x%x\n",
-				erridr_el1.field.num);
+	write_ERXSTATUS_EL1(erxstatus_el1.reg);
+	write_ERXMISC0_EL1(0);
+	write_ERXMISC1_EL1(0);
+}
 
-		for (i = 0; i < (int)erridr_el1.field.num; i++) {
-			errselr_el1.reg = read_errselr_el1();
-			errselr_el1.field.sel = i;
-			write_errselr_el1(errselr_el1.reg);
+const char *get_external_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
+{
+	const char *ext_err;
 
-			isb();
+	if (erxstatus_el1.field.SERR == 0xC)
+		ext_err = "Data value from (non-associative) external memory.";
+	else if (erxstatus_el1.field.SERR == 0x12)
+		ext_err = "Error response from Completer of access.";
+	else
+		ext_err = NULL;
 
-			erxstatus_el1.reg = read_erxstatus_el1();
-			if (!erxstatus_el1.field.valid) {
-				dev_emerg(dss_desc.dev,
-					"ERRSELR_EL1.SEL = %d, NOT Error, ERXSTATUS_EL1 = 0x%llx\n",
-					i, erxstatus_el1.reg);
-				continue;
-			}
+	clear_external_ecc_err(erxstatus_el1);
 
-			if (erxstatus_el1.field.av) {
-				erxaddr_el1.reg = read_erxaddr_el1();
-				dev_emerg(dss_desc.dev,
-						"Error Address : 0x%llx\n", erxaddr_el1.reg);
-			}
-			if (erxstatus_el1.field.of)
-				dev_emerg(dss_desc.dev,
-					"There was more than one error has occurred. the other error have been discarded.\n");
-			if (erxstatus_el1.field.er)
-				dev_emerg(dss_desc.dev,	"Error Reported by external abort\n");
-			if (erxstatus_el1.field.ue)
-				dev_emerg(dss_desc.dev, "Uncorrected Error (Not deferred)\n");
-			if (erxstatus_el1.field.de)
-				dev_emerg(dss_desc.dev,	"Deferred Error\n");
-			if (erxstatus_el1.field.mv) {
-				erxmisc0_el1.reg = read_erxmisc0_el1();
-				erxmisc1_el1.reg = read_erxmisc1_el1();
-				dev_emerg(dss_desc.dev,
-					"ERXMISC0_EL1 = 0x%llx ERXMISC1_EL1 = 0x%llx ERXSTATUS_EL1[15:8] = 0x%x, [7:0] = 0x%x\n",
-					erxmisc0_el1.reg, erxmisc1_el1.reg,
-					erxstatus_el1.field.ierr, erxstatus_el1.field.serr);
-			}
-		}
+	return ext_err;
+}
+
+const char *get_correct_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
+{
+	const char *cr_err;
+
+	switch (erxstatus_el1.field.CE) {
+	case BIT(1) | BIT(0):
+		cr_err = "At least persistent was corrected";
+		break;
+	case BIT(1):
+		cr_err = "At least one error was corrected";
+		break;
+	case BIT(0):
+		cr_err = "At least one transient error was corrected";
 		break;
 	default:
+		cr_err = NULL;
+	}
+
+	return cr_err;
+}
+
+static void _dbg_snapshot_ecc_dump(bool call_panic, char *ecc_sel_str[])
+{
+	ERRSELR_EL1_t errselr_el1;
+	ERRIDR_EL1_t erridr_el1;
+	ERXSTATUS_EL1_t erxstatus_el1;
+	const char *msg;
+	bool is_capable_identifing_err = false;
+	int i;
+
+	asm volatile ("HINT #16");
+	erridr_el1.reg = read_ERRIDR_EL1();
+
+	for (i = 0; i < (int)erridr_el1.field.NUM; i++) {
+		char errbuf[SZ_256];
+		int n = 0;
+
+		errselr_el1.reg = read_ERRSELR_EL1();
+		errselr_el1.field.SEL = i;
+		write_ERRSELR_EL1(errselr_el1.reg);
+
+		isb();
+
+		erxstatus_el1.reg = read_ERXSTATUS_EL1();
+		if (!erxstatus_el1.field.VALID)
+			continue;
+
+		n = scnprintf(errbuf + n, sizeof(errbuf) - n,
+			      "%4s:  Error: [NUM:%d][ERXSTATUS_EL1:%#016llx]\n",
+			      ecc_sel_str[i] ? ecc_sel_str[i] : "", i, erxstatus_el1.reg);
+
+		if (erxstatus_el1.field.AV)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ AV ] Detected(Address VALID): [ERXADDR_EL1:%#llx]\n",
+				read_ERXADDR_EL1());
+		if (erxstatus_el1.field.OF)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ OF ] Detected(Overflow): There was more than one error has occurred\n");
+		if (erxstatus_el1.field.ER)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ ER ] Detected(Error Report by external abort)\n");
+		if (erxstatus_el1.field.UE)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ UE ] Detected(Uncorrected Error): Not deferred\n");
+		if (erxstatus_el1.field.DE)
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ DE ] Detected(Deferred Error)\n");
+		if (erxstatus_el1.field.MV) {
+			n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ MV ] Detected(Miscellaneous Registers VALID): [ERXMISC0_EL1:%#llx][ERXMISC1_EL1:%#llx]\n",
+				read_ERXMISC0_EL1(), read_ERXMISC1_EL1());
+		}
+		if (erxstatus_el1.field.CE) {
+			msg = get_correct_ecc_err(erxstatus_el1);
+			if (msg)
+				n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [ CE ] Detected(Corrected Error): %s, [CE:%#x]\n",
+				msg, erxstatus_el1.field.CE);
+		}
+		if (erxstatus_el1.field.SERR) {
+			msg = get_external_ecc_err(erxstatus_el1);
+			if (msg) {
+				n += scnprintf(errbuf + n, sizeof(errbuf) - n,
+				"\t [SERR] Detected(External ECC Error): %s, [SERR:%#x]\n",
+				msg, erxstatus_el1.field.SERR);
+				goto output_cont;
+			} else {
+				pr_warn("ecc: [SERR] Warning WO msg [CODE:%#x]\n",
+					erxstatus_el1.field.SERR);
+			}
+		}
+		is_capable_identifing_err = true;
+output_cont:
+		pr_emerg("%s", errbuf);
+	}
+
+	if (call_panic && is_capable_identifing_err)
+		panic("RAS(ECC) error occurred");
+}
+
+void dbg_snapshot_ecc_dump(bool call_panic)
+{
+	unsigned int cpuid_part = read_cpuid_part_number();
+
+	switch (cpuid_part) {
+	case ARM_CPU_PART_CORTEX_A55:
+	case ARM_CPU_PART_CORTEX_A76:
+	case ARM_CPU_PART_CORTEX_A78:
+	case ARM_CPU_PART_CORTEX_X1:
+		_dbg_snapshot_ecc_dump(call_panic, ecc_sel_str_core_dsu);
+		break;
+	case ARM_CPU_PART_CORTEX_A510:
+		_dbg_snapshot_ecc_dump(call_panic, ecc_sel_str_dsu_l1_l2);
+		break;
+	case ARM_CPU_PART_MAKALU:
+	case ARM_CPU_PART_MAKALU_ELP:
+	case ARM_CPU_PART_HAYDEN:
+	case ARM_CPU_PART_HUNTER:
+	case ARM_CPU_PART_HUNTER_ELP:
+		_dbg_snapshot_ecc_dump(call_panic, ecc_sel_str_dsu_core);
+		break;
+	default:
+		pr_emerg("Unknown cpuid part number - 0x%x\n", cpuid_part);
 		break;
 	}
 }
@@ -489,8 +544,6 @@ static inline void dbg_snapshot_save_core(struct pt_regs *regs)
 	} else {
 		memcpy(core_reg, regs, sizeof(struct user_pt_regs));
 	}
-
-	dev_emerg(dss_desc.dev, "core register saved(CPU:%d)\n", cpu);
 }
 
 void dbg_snapshot_save_context(struct pt_regs *regs, bool stack_dump)
@@ -509,7 +562,7 @@ void dbg_snapshot_save_context(struct pt_regs *regs, bool stack_dump)
 		dbg_snapshot_set_core_panic_stat(DSS_SIGN_PANIC, cpu);
 		dbg_snapshot_save_system(NULL);
 		dbg_snapshot_save_core(regs);
-		dbg_snapshot_ecc_dump();
+		dbg_snapshot_ecc_dump(false);
 		dev_emerg(dss_desc.dev, "context saved(CPU:%d)\n", cpu);
 	} else
 		dev_emerg(dss_desc.dev, "skip context saved(CPU:%d)\n", cpu);
@@ -569,7 +622,7 @@ static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 	if (!dbg_snapshot_get_enable())
 		return 0;
 
-	kernel_panic_msg = kmalloc(DSS_PANIC_LOG_SIZE, GFP_ATOMIC);
+	kernel_panic_msg = kmalloc(DSS_PANIC_STRING_SZ, GFP_ATOMIC);
 	if (!kernel_panic_msg) {
 		dev_emerg(dss_desc.dev,
 			  "Out of memory! Couldn't allocate panic string\n");
@@ -589,11 +642,11 @@ static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 		sprint_symbol(pc_symn, tombstone->regs->pc);
 		sprint_symbol(lr_symn, tombstone->regs->regs[30]);
 #endif
-		scnprintf(kernel_panic_msg, DSS_PANIC_LOG_SIZE,
+		scnprintf(kernel_panic_msg, DSS_PANIC_STRING_SZ,
 				"KP: %s: comm:%s PC:%s LR:%s", (char *)buf,
 				current->comm, pc_symn, lr_symn);
 	} else {
-		scnprintf(kernel_panic_msg, DSS_PANIC_LOG_SIZE, "KP: %s",
+		scnprintf(kernel_panic_msg, DSS_PANIC_STRING_SZ, "KP: %s",
 				(char *)buf);
 	}
 
@@ -710,7 +763,9 @@ static struct notifier_block nb_die_block = {
 	.priority = INT_MAX,
 };
 
-void dbg_snapshot_register_wdt_ops(void *start, void *expire, void *stop)
+void dbg_snapshot_register_wdt_ops(int (*start)(bool, int, int),
+				   int (*expire)(unsigned int, int),
+				   int (*stop)(int))
 {
 	if (start)
 		dss_soc_ops.start_watchdog = start;
@@ -727,8 +782,9 @@ void dbg_snapshot_register_wdt_ops(void *start, void *expire, void *stop)
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_register_wdt_ops);
 
-void dbg_snapshot_register_debug_ops(void *halt, void *arraydump,
-				    void *scandump)
+void dbg_snapshot_register_debug_ops(int (*halt)(void),
+				     int (*arraydump)(void),
+				     int (*scandump)(void))
 {
 	if (halt)
 		dss_soc_ops.stop_all_cpus = halt;
@@ -747,8 +803,8 @@ EXPORT_SYMBOL_GPL(dbg_snapshot_register_debug_ops);
 
 static void dbg_snapshot_ipi_stop(void *ignore, struct pt_regs *regs)
 {
-	if (!dss_desc.in_reboot || tombstone)
-		dbg_snapshot_save_context(regs, true);
+	if (!dss_desc.in_reboot)
+		dbg_snapshot_save_context(regs, false);
 }
 
 void dbg_snapshot_init_utils(void)
@@ -762,17 +818,14 @@ void dbg_snapshot_init_utils(void)
 	dss_core_reg = alloc_percpu(struct pt_regs *);
 	for_each_possible_cpu(i) {
 		*per_cpu_ptr(dss_mmu_reg, i) = (struct dbg_snapshot_mmu_reg *)
-					  (vaddr + DSS_HEADER_SZ +
-					   i * DSS_MMU_REG_OFFSET);
+					  (vaddr + DSS_HDR_INFO_BLOCK_SZ +
+					   i * DSS_SYSREG_PER_CORE_SZ);
 		*per_cpu_ptr(dss_core_reg, i) = (struct pt_regs *)
-					   (vaddr + DSS_HEADER_SZ + DSS_MMU_REG_SZ +
-					    i * DSS_CORE_REG_OFFSET);
+					   (vaddr + DSS_HDR_INFO_BLOCK_SZ + DSS_HDR_SYSREG_SZ +
+					    i * DSS_COREREG_PER_CORE_SZ);
 	}
 	/* write default reboot reason as unknown reboot */
 	dbg_snapshot_report_reason(DSS_SIGN_UNKNOWN_REBOOT);
-
-	/* Cancel the "Early Reboot" inform bit set by ABL */
-	exynos_pmu_update(PMU_GSA_INFORM0_OFFS, PMU_GSA_INFORM0_APC_EARLY_WD, 0);
 
 	/* write reset value to skip abl dump as debug boot */
 	dbg_snapshot_set_abl_dump_stat(DSS_SIGN_RESET);

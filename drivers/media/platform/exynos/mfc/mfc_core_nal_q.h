@@ -17,8 +17,8 @@
 
 int mfc_core_nal_q_check_enable(struct mfc_core *core);
 
-void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_handle);
-void mfc_core_nal_q_clock_off(struct mfc_core *core, nal_queue_handle *nal_q_handle);
+void mfc_core_nal_q_clock_on(struct mfc_core *core, nal_queue_handle *nal_q_handle, int ctx_num);
+void mfc_core_nal_q_clock_off(struct mfc_core *core, nal_queue_handle *nal_q_handle, int ctx_num);
 void mfc_core_nal_q_cleanup_clock(struct mfc_core *core);
 
 nal_queue_handle *mfc_core_nal_q_create(struct mfc_core *core);

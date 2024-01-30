@@ -162,7 +162,7 @@
 #define mfc_core_get_sei_avail_st_2094_40()		((MFC_CORE_READL(MFC_REG_D_SEI_AVAIL)	\
 						>> MFC_REG_D_SEI_AVAIL_ST_2094_40_SHIFT)	\
 						& MFC_REG_D_SEI_AVAIL_ST_2094_40_MASK)
-#define mfc_core_get_sei_nal_meta_status()		((MFC_CORE_READL(MFC_REG_METADATA_STATUS) \
+#define mfc_core_get_sei_nal_meta_status()		((MFC_CORE_READL(MFC_REG_METADATA_STATUS)	\
 						>> MFC_REG_SEI_NAL_STATUS_SHIFT)		\
 						& MFC_REG_SEI_NAL_STATUS_MASK)
 

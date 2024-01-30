@@ -174,6 +174,9 @@ enum clk_pll_type {
 	PLL_1031X = 10310,
 
 	DPL_L0817X = 138170,
+
+	FRD_4312_RPLL = 4312,
+	FRD_4702_TPLL = 4702,
 };
 
 #define IS_FIXED_RATE(_id)	((_id & MASK_OF_TYPE) == FIXED_RATE_TYPE)
@@ -200,7 +203,6 @@ enum clk_pll_type {
 							== GATE_VCLK_TYPE)
 #define IS_ACPM_VCLK(_id)	((_id & (MASK_OF_TYPE | MASK_OF_SUBTYPE))\
 							== ACPM_VCLK_TYPE)
-
 #define GET_TYPE(_id)		(_id & MASK_OF_TYPE)
 #define GET_IDX(_id)		(_id & MASK_OF_ID)
 /*

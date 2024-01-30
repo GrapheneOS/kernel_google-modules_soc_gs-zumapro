@@ -51,20 +51,14 @@
 #include <linux/string.h>
 #include <linux/fs.h>
 #include <linux/suspend.h>
-
 #include <soc/google/debug-test.h>
-
-void __noreturn __cold nvhe_hyp_panic_handler(u64 esr, u64 spsr,
-					      u64 elr_virt, u64 elr_phys,
-					      u64 par, uintptr_t vcpu,
-					      u64 far, u64 hpfar);
 
 /*
  * Utility functions
  */
 static inline void infinite_loop(void)
 {
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm("b .");
 #else
 	for (;;)
@@ -74,7 +68,7 @@ static inline void infinite_loop(void)
 
 void pull_down_other_cpus(void)
 {
-#ifdef CONFIG_HOTPLUG_CPU
+#if IS_ENABLED(CONFIG_HOTPLUG_CPU)
 	int cpu, ret, curr_cpu;
 
 	curr_cpu = smp_processor_id();
@@ -93,12 +87,12 @@ EXPORT_SYMBOL_GPL(pull_down_other_cpus);
 #define BUFFER_SIZE SZ_1K
 static int recursive_loop(int remaining)
 {
-	volatile char buf[BUFFER_SIZE];
+	char buf[BUFFER_SIZE];
 
 	pr_crit("remaining = [%d]\n", remaining);
 
 	/* Make sure compiler does not optimize this away. */
-	memset_io(buf, (remaining & 0xff) | 0x1, BUFFER_SIZE);
+	memset(buf, (remaining & 0xff) | 0x1, BUFFER_SIZE);
 	if (!remaining)
 		return 0;
 	return recursive_loop(remaining - 1);
@@ -164,7 +158,7 @@ static void simulate_null(char *arg)
 static void (*undefined_function)(void) = (void *)0x1234;
 static void simulate_undefined_function(char *arg)
 {
-	pr_crit("function address=[%px]\n", undefined_function);
+	pr_crit("function address=[%p]\n", undefined_function);
 
 	undefined_function();
 
@@ -376,7 +370,7 @@ static void simulate_register_access(char *arg)
 static void simulate_svc(char *arg)
 {
 	pr_crit("called!\n");
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm("svc #0x0");
 
 	/* Should not reach here */
@@ -388,7 +382,7 @@ static void simulate_undefined_memory(char *arg)
 {
 	pr_crit("called!\n");
 
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm volatile(".word 0xe7f001f2\n\t");
 
 	/* Should not reach here */
@@ -400,7 +394,7 @@ static void simulate_pc_abort(char *arg)
 {
 	pr_crit("called!\n");
 
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm("add x30, x30, #0x1\n\t"
 	    "ret"
 	    ::: "x30");
@@ -414,7 +408,7 @@ static void simulate_sp_abort(char *arg)
 {
 	pr_crit("called!\n");
 
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	/* X29(FP) or SP cannot be added to the clobber list */
 	asm("mov x29, #0xff00\n\t"
 	    "mov sp, #0xff00\n\t"
@@ -429,7 +423,7 @@ static void simulate_jump_zero(char *arg)
 {
 	pr_crit("called!\n");
 
-#ifdef CONFIG_ARM64
+#if IS_ENABLED(CONFIG_ARM64)
 	asm("mov x0, #0x0\n\t"
 	    "br x0"
 	    ::: "x0");
@@ -437,110 +431,6 @@ static void simulate_jump_zero(char *arg)
 	/* Should not reach here */
 	pr_crit("failed!\n");
 #endif
-}
-
-/*
- * SOC dependent triggers
- */
-static struct debug_trigger soc_test_trigger;
-
-void debug_trigger_register(struct debug_trigger *soc_trigger, char *arch_name)
-{
-	pr_info("DEBUG TEST: [%s] test triggers are registered!", arch_name);
-	soc_test_trigger.hard_lockup = soc_trigger->hard_lockup;
-#if IS_ENABLED(CONFIG_SOC_GS101)
-	soc_test_trigger.cold_reset = soc_trigger->cold_reset;
-#endif
-	soc_test_trigger.watchdog_emergency_reset =
-		soc_trigger->watchdog_emergency_reset;
-	soc_test_trigger.halt = soc_trigger->halt;
-	soc_test_trigger.arraydump = soc_trigger->arraydump;
-	soc_test_trigger.scandump = soc_trigger->scandump;
-}
-EXPORT_SYMBOL_GPL(debug_trigger_register);
-
-static void simulate_hardlockup(char *arg)
-{
-	pr_crit("called!\n");
-
-	if (soc_test_trigger.hard_lockup == NULL) {
-		pr_crit("SOC specific trigger is not registered! Using default.\n");
-
-		local_irq_disable();
-		infinite_loop();
-
-		/* Should not reach here */
-		pr_crit("failed!\n");
-	} else {
-		(*soc_test_trigger.hard_lockup)(arg);
-	}
-
-}
-
-#if IS_ENABLED(CONFIG_SOC_GS101)
-static void simulate_cold_reset(char *arg)
-{
-	pr_crit("called!\n");
-	if (soc_test_trigger.cold_reset == NULL) {
-		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
-		return;
-	}
-
-	(*soc_test_trigger.cold_reset)(arg);
-
-	/* Should not reach here */
-	pr_crit("failed!\n");
-}
-#endif
-
-static void simulate_watchdog_emergency_reset(char *arg)
-{
-	pr_crit("called!\n");
-	if (soc_test_trigger.watchdog_emergency_reset == NULL) {
-		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
-		return;
-	}
-
-	(*soc_test_trigger.watchdog_emergency_reset)(arg);
-
-	/* Should not reach here */
-	pr_crit("failed!\n");
-}
-
-static void simulate_halt(char *arg)
-{
-	pr_crit("called!\n");
-	if (!soc_test_trigger.halt) {
-		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
-		return;
-	}
-
-	(*soc_test_trigger.halt)(arg);
-
-	/* Should not reach here */
-	pr_crit("failed!\n");
-}
-
-static void simulate_arraydump(char *arg)
-{
-	pr_crit("called!\n");
-	if (!soc_test_trigger.arraydump) {
-		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
-		return;
-	}
-
-	(*soc_test_trigger.arraydump)(arg);
-}
-
-static void simulate_scandump(char *arg)
-{
-	pr_crit("called!\n");
-	if (!soc_test_trigger.scandump) {
-		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
-		return;
-	}
-
-	(*soc_test_trigger.scandump)(arg);
 }
 
 static int suspend_valid(suspend_state_t state)
@@ -571,22 +461,165 @@ static void simulate_suspend_hang(char *arg)
 	suspend_set_ops(&suspend_ops);
 }
 
-#if IS_ENABLED(CONFIG_PIXEL_TEST_HYP_PANIC)
-static void simulate_hyp_panic(char *arg)
-{
-	u64 esr, spsr;
+/*
+ * SOC dependent triggers
+ */
+static struct debug_trigger soc_test_trigger;
 
+void debug_trigger_register(struct debug_trigger *soc_trigger, char *arch_name)
+{
+	pr_info("DEBUG TEST: [%s] test triggers are registered!", arch_name);
+	soc_test_trigger.hard_lockup = soc_trigger->hard_lockup;
+	soc_test_trigger.cold_reset = soc_trigger->cold_reset;
+	soc_test_trigger.watchdog_emergency_reset =
+		soc_trigger->watchdog_emergency_reset;
+	soc_test_trigger.halt = soc_trigger->halt;
+	soc_test_trigger.cacheflush = soc_trigger->cacheflush,
+	soc_test_trigger.cpucontext = soc_trigger->cpucontext,
+	soc_test_trigger.arraydump = soc_trigger->arraydump;
+	soc_test_trigger.scandump = soc_trigger->scandump;
+	soc_test_trigger.el3_assert = soc_trigger->el3_assert;
+	soc_test_trigger.el3_panic = soc_trigger->el3_panic;
+	soc_test_trigger.ecc = soc_trigger->ecc;
+}
+EXPORT_SYMBOL_GPL(debug_trigger_register);
+
+static void simulate_hardlockup(char *arg)
+{
 	pr_crit("called!\n");
 
-	/* Fake the EL2 exception with the following values
-	 * exception class: 0x3F, instruction specific syndrome : 0x1ffffff
-	 */
-	spsr = PSR_MODE_EL2t;
-	esr  = (ESR_ELx_EC_MAX << ESR_ELx_EC_SHIFT) | ESR_ELx_ISS_MASK;
+	if (soc_test_trigger.hard_lockup == NULL) {
+		pr_crit("SOC specific trigger is not registered! Using default.\n");
 
-	nvhe_hyp_panic_handler(esr, spsr, -1, 0, 0, 0, 0, 0);
+		local_irq_disable();
+		infinite_loop();
+
+		/* Should not reach here */
+		pr_crit("failed!\n");
+	} else {
+		(*soc_test_trigger.hard_lockup)(arg);
+	}
+
 }
-#endif /* CONFIG_PIXEL_TEST_HYP_PANIC */
+
+static void simulate_cold_reset(char *arg)
+{
+	pr_crit("called!\n");
+	if (soc_test_trigger.cold_reset == NULL) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.cold_reset)(arg);
+
+	/* Should not reach here */
+	pr_crit("failed!\n");
+}
+
+static void simulate_watchdog_emergency_reset(char *arg)
+{
+	pr_crit("called!\n");
+	if (soc_test_trigger.watchdog_emergency_reset == NULL) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.watchdog_emergency_reset)(arg);
+
+	/* Should not reach here */
+	pr_crit("failed!\n");
+}
+
+static void simulate_halt(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.halt) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.halt)(arg);
+
+	/* Should not reach here */
+	pr_crit("failed!\n");
+}
+
+static void simulate_cacheflush(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.cacheflush) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.cacheflush)(arg);
+}
+
+static void simulate_cpucontext(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.cpucontext) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.cpucontext)(arg);
+}
+
+static void simulate_arraydump(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.arraydump) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.arraydump)(arg);
+}
+
+static void simulate_scandump(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.scandump) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.scandump)(arg);
+}
+
+static void simulate_el3_assert(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.el3_assert) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.el3_assert)(arg);
+}
+
+static void simulate_el3_panic(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.el3_panic) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.el3_panic)(arg);
+}
+
+static void simulate_ecc(char *arg)
+{
+	pr_crit("called!\n");
+	if (!soc_test_trigger.ecc) {
+		pr_crit("SOC specific trigger is not registered! Exit the test.\n");
+		return;
+	}
+
+	(*soc_test_trigger.ecc)(arg);
+}
 
 /*
  * Error trigger definitions
@@ -599,6 +632,7 @@ struct force_error_item {
 };
 
 static const struct force_error_item force_error_vector[] = {
+	/* General debug triggers */
 	{ "panic",		&simulate_panic },
 	{ "bug",		&simulate_bug },
 	{ "warn",		&simulate_warn },
@@ -621,17 +655,18 @@ static const struct force_error_item force_error_vector[] = {
 	{ "pcabort",		&simulate_pc_abort },
 	{ "spabort",		&simulate_sp_abort },
 	{ "jumpzero",		&simulate_jump_zero },
-#if IS_ENABLED(CONFIG_SOC_GS101)
+	{ "suspend_hang",	&simulate_suspend_hang },
+	/* SOC dependent triggers */
 	{ "cold_reset",		&simulate_cold_reset },
-#endif
 	{ "emerg_reset",	&simulate_watchdog_emergency_reset },
 	{ "halt",		&simulate_halt },
+	{ "cacheflush",		&simulate_cacheflush },
+	{ "cpucontext",		&simulate_cpucontext },
 	{ "arraydump",		&simulate_arraydump },
 	{ "scandump",		&simulate_scandump },
-	{ "suspend_hang",	&simulate_suspend_hang },
-#if IS_ENABLED(CONFIG_PIXEL_TEST_HYP_PANIC)
-	{ "hyp_panic",		&simulate_hyp_panic },
-#endif /* CONFIG_PIXEL_TEST_HYP_PANIC */
+	{ "el3_assert",		&simulate_el3_assert },
+	{ "el3_panic",		&simulate_el3_panic },
+	{ "ecc",		&simulate_ecc },
 };
 
 static void parse_and_trigger(const char *buf)
@@ -675,27 +710,19 @@ static void parse_and_trigger(const char *buf)
 static struct kobject *pixel_debug_kobj;
 static char *trigger;
 
-static void replace_newline_with_null(char *input)
-{
-	char *newline = strchr(input, '\n');
-
-	if (newline != NULL)
-		*newline = '\0';
-}
-
 static ssize_t trigger_write(struct kobject *kobj, struct kobj_attribute *attr,
 			     const char *buf, size_t count)
 {
+	char *token;
 	pr_crit("count=%zu, buf=%s", count, buf);
-	strlcpy(trigger, buf, PAGE_SIZE);
+	strscpy(trigger, buf, PAGE_SIZE);
 
 	/*
 	 * "echo" command appends a newline char by default. Replacing the
 	 * newline char with '\0' because it is not part of the command.
 	 */
-	replace_newline_with_null(trigger);
-
-	parse_and_trigger(trigger);
+	token = strsep(&trigger, "\n");
+	parse_and_trigger(token);
 	return count;
 }
 

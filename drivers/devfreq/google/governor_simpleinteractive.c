@@ -168,7 +168,13 @@ static unsigned int mif_to_int_freq(struct devfreq_alt_dvfs_data *alt_data,
 	return alt_data->mif_int_tbl[i].int_freq;
 }
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+/* In Zuma, NOCL1A is equivalent to BUS2 in WHI. */
+#define PPC_BUS2_ID 1
+#else
 #define PPC_BUS2_ID 2
+#endif
+
 static unsigned long update_load(struct devfreq_dev_status *stat,
 				 struct devfreq_simple_interactive_data *data)
 {
@@ -212,6 +218,7 @@ static unsigned long update_load(struct devfreq_dev_status *stat,
 		int_freq = mif_to_int_freq(alt_data, bus2_freq);
 		exynos_pm_qos_update_request(&exynos_df->bus_pm_qos_min,
 					     int_freq);
+		trace_clock_set_rate("INT_ALT", int_freq, raw_smp_processor_id());
 	}
 	trace_dvfs_update_load(freq, alt_data, idx, int_freq);
 	trace_clock_set_rate("MIF_ALT", freq, raw_smp_processor_id());

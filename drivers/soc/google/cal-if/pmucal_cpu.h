@@ -31,6 +31,7 @@ extern int pmucal_cpu_cluster_disable(unsigned int cluster);
 extern int pmucal_cpu_cluster_is_enabled(unsigned int cluster);
 extern int pmucal_cpu_cluster_req_emulation(unsigned int cluster, bool en);
 extern int pmucal_cpu_init(void);
+extern void pmucal_cpu_remap(int from, int to, int size);
 
 extern struct pmucal_cpu pmucal_cpu_list[];
 extern unsigned int pmucal_cpu_list_size;

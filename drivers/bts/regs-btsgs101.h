@@ -29,6 +29,10 @@
 #define WBLK_UPPER_BUSY 0x050
 #define WBLK_UPPER_MAX 0x054
 #define CORE_QOS_EN 0x4
+#define TIMEOUT_R0  0x008
+#define TIMEOUT_R1  0x00C
+#define TIMEOUT_W0  0x010
+#define TIMEOUT_W1  0x014
 
 #define AXQOS_BYPASS 8
 #define AXQOS_VAL 12
@@ -46,6 +50,10 @@
 #define QURGENT_EN 23
 #define EX_QURGENT_EN 7
 #define BLOCKING_EN 0
+#define TIMEOUT_CNT_VC0 0
+#define TIMEOUT_CNT_VC1 8
+#define TIMEOUT_CNT_VC2 16
+#define TIMEOUT_CNT_VC3 24
 
 #define RMO_PORT_0 0
 #define RMO_PORT_1 16

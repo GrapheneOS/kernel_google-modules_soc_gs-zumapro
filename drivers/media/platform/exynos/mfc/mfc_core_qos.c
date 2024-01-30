@@ -16,6 +16,7 @@
 
 #include "mfc_core_qos.h"
 #include "mfc_utils.h"
+#include "mfc_core_pm.h"
 
 #ifdef CONFIG_MFC_USE_BUS_DEVFREQ
 #define MFC_THROUGHPUT_OFFSET	(PM_QOS_MFC_THROUGHPUT)
@@ -450,6 +451,10 @@ static inline unsigned long __mfc_qos_get_weighted_mb(struct mfc_ctx *ctx,
 			weight = (weight * 100) / qos_weight->weight_num_of_tile;
 			mfc_debug(3, "[QoS] num of tile >= 4, weight: %d\n", weight / 10);
 		}
+		if (dec->is_mbaff) {
+			weight = (weight * 100) / qos_weight->weight_mbaff;
+			mfc_debug(3, "[QoS] MBAFF, weight: %d\n", weight / 10);
+		}
 	}
 
 	weighted_mb = (mb * weight) / 1000;
@@ -662,7 +667,12 @@ void mfc_core_qos_on(struct mfc_core *core, struct mfc_ctx *ctx)
 		return;
 	}
 
-	if (core->core_ctx[ctx->num]->state == MFCINST_FREE) {
+	if (!core->core_ctx[ctx->num]) {
+		mfc_ctx_info("[QoS] mfc context not initialized yet\n");
+		return;
+	}
+
+	if (core->core_ctx[ctx->num] && (core->core_ctx[ctx->num]->state == MFCINST_FREE)) {
 		mfc_ctx_info("[QoS] instance not started yet\n");
 		return;
 	}
@@ -894,6 +904,10 @@ void mfc_core_qos_idle_worker(struct work_struct *work)
 	mfc_core_info("[QoS][MFCIDLE] MFC go to QoS idle mode\n");
 
 	mfc_core_change_idle_mode(core, MFC_IDLE_MODE_IDLE);
+
+	/* trigger idle suspend in QoS idle mode */
+	mfc_core_pm_idle_suspend(core);
+
 	mutex_unlock(&core->idle_qos_mutex);
 }
 
@@ -904,7 +918,11 @@ bool mfc_core_qos_idle_trigger(struct mfc_core *core, struct mfc_ctx *ctx)
 	mutex_lock(&core->idle_qos_mutex);
 	if (core->idle_mode == MFC_IDLE_MODE_IDLE) {
 		mfc_debug(2, "[QoS][MFCIDLE] restart QoS control\n");
+
 		mfc_core_change_idle_mode(core, MFC_IDLE_MODE_NONE);
+
+		/* trigger idle resume when exiting QoS idle mode */
+		mfc_core_pm_idle_resume(core);
 		update_idle = true;
 	} else if (core->idle_mode == MFC_IDLE_MODE_RUNNING) {
 		mfc_debug(2, "[QoS][MFCIDLE] restart QoS control, cancel idle\n");

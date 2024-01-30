@@ -528,7 +528,8 @@ err_drm_start:
 	call_cop(ctx, cleanup_ctx_ctrls, ctx);
 
 err_ctx_ctrls:
-	vfree(dev->regression_val);
+	if ((dev->num_inst == 1) && dev->regression_val)
+		vfree(dev->regression_val);
 
 err_ctx_init:
 	dev->ctx[ctx->num] = 0;
@@ -559,6 +560,8 @@ static int mfc_release(struct file *file)
 	struct mfc_ctx *ctx = fh_to_mfc_ctx(file->private_data);
 	struct mfc_dev *dev = ctx->dev;
 	struct mfc_ctx *move_ctx;
+	struct mfc_core *maincore;
+	struct mfc_core *subcore;
 	int ret = 0;
 	int i;
 
@@ -573,6 +576,17 @@ static int mfc_release(struct file *file)
 	/* Free resources */
 	v4l2_fh_del(&ctx->fh);
 	v4l2_fh_exit(&ctx->fh);
+
+	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
+	maincore = mfc_get_main_core_wait(dev, ctx);
+	atomic_inc(&maincore->hw_run_cnt);
+	atomic_inc(&maincore->during_release);
+	subcore = mfc_get_sub_core(dev, ctx);
+	if (subcore)
+		atomic_inc(&subcore->during_release);
+
+	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
 	/*
 	 * mfc_release() can be called without a streamoff
@@ -605,9 +619,8 @@ static int mfc_release(struct file *file)
 	if (ctx->type == MFCINST_ENCODER)
 		mfc_meminfo_cleanup_outbuf_q(ctx);
 
-	if (dev->num_inst == 0)
-		if (dev->regression_val)
-			vfree(dev->regression_val);
+	if ((dev->num_inst == 0) && dev->regression_val)
+		vfree(dev->regression_val);
 
 	if (ctx->type == MFCINST_DECODER)
 		__mfc_deinit_dec_ctx(ctx);
@@ -642,6 +655,9 @@ static int mfc_release(struct file *file)
 	queue_work(dev->butler_wq, &dev->butler_work);
 
 end_release:
+	atomic_dec(&maincore->during_release);
+	if (subcore)
+		atomic_dec(&subcore->during_release);
 	mutex_unlock(&dev->mfc_migrate_mutex);
 	mutex_unlock(&dev->mfc_mutex);
 	return ret;
@@ -789,6 +805,12 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 			&pdata->metadata_interface.support, 2);
 	of_property_read_u32_array(np, "hdr10_plus_full",
 			&pdata->hdr10_plus_full.support, 2);
+	of_property_read_u32_array(np, "enc_capability",
+			&pdata->enc_capability.support, 2);
+	of_property_read_u32_array(np, "enc_sub_gop",
+			&pdata->enc_sub_gop.support, 2);
+	of_property_read_u32_array(np, "enc_ts_delta",
+			&pdata->enc_ts_delta.support, 2);
 
 	/* Determine whether to enable AV1 decoder */
 	of_property_read_u32(np, "support_av1_dec", &pdata->support_av1_dec);
@@ -939,6 +961,8 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 			&pdata->qos_weight.weight_num_of_tile);
 	of_property_read_u32(np, "qos_weight_super64_bframe",
 			&pdata->qos_weight.weight_super64_bframe);
+	of_property_read_u32(np, "qos_weight_mbaff",
+			&pdata->qos_weight.weight_mbaff);
 
 	/* Bitrate control for QoS */
 	of_property_read_u32(np, "num_mfc_freq", &pdata->num_mfc_freq);
@@ -1183,6 +1207,8 @@ static int mfc_remove(struct platform_device *pdev)
 	mfc_deinit_debugfs(dev);
 	video_unregister_device(dev->vfd_enc);
 	video_unregister_device(dev->vfd_dec);
+	video_unregister_device(dev->vfd_dec_drm);
+	video_unregister_device(dev->vfd_enc_drm);
 	video_unregister_device(dev->vfd_enc_otf);
 	video_unregister_device(dev->vfd_enc_otf_drm);
 	v4l2_device_unregister(&dev->v4l2_dev);
@@ -1201,9 +1227,10 @@ static int mfc_remove(struct platform_device *pdev)
 
 static void mfc_shutdown(struct platform_device *pdev)
 {
+	struct platform_driver *pcoredrv = &mfc_core_driver;
 	struct mfc_dev *dev = platform_get_drvdata(pdev);
 	struct mfc_core *core;
-	int i, ret;
+	int i;
 
 	for (i = 0; i < dev->num_core; i++) {
 		core = dev->core[i];
@@ -1213,19 +1240,8 @@ static void mfc_shutdown(struct platform_device *pdev)
 		}
 
 		if (!core->shutdown) {
-			ret = mfc_core_get_hwlock_dev(core);
-			if (ret < 0)
-				mfc_core_err("Failed to get hwlock\n");
-			if (!mfc_core_pm_get_pwr_ref_cnt(core)) {
-				core->shutdown = 1;
-				mfc_core_info("MFC is not running\n");
-			} else {
-				mfc_core_risc_off(core);
-				core->shutdown = 1;
-				mfc_clear_all_bits(&core->work_bits);
-				mfc_core_err("core forcibly shutdown\n");
-			}
-			mfc_core_release_hwlock_dev(core);
+			mfc_core_info("%s core shutdown was not performed\n", core->name);
+			pcoredrv->shutdown(to_platform_device(core->device));
 		}
 	}
 
