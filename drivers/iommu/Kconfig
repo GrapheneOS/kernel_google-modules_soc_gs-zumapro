@@ -46,4 +46,9 @@ config PCIE_IOMMU_HISTORY_LOG
 
 	  Say Y to enable this feature.
 
+config IOVAD_BEST_FIT_ALGO
+	tristate "Enable best fit IOVA allocation"
+	help
+	  Support best fit IOVA allocation for GS SoCs.
+
 endif # IOMMU_SUPPORT
