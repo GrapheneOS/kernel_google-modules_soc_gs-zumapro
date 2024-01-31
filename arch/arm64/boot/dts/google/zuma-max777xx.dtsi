@@ -74,7 +74,7 @@ max77759_chg:max77759chrg@69 {
 	/* max77779 nodes */
 max77779_fg:max77779fg@36 {
 	status = "disabled";
-	compatible = "maxim,max77779fg_i2c";
+	compatible = "maxim,max77779fg-i2c";
 	reg = <0x36>;
 
 	interrupt-parent = <&max77779_pmic_irq>;
@@ -91,7 +91,7 @@ max77779_fg:max77779fg@36 {
 
 max77779_vimon:max77779vimon@28 {
 	status = "disabled";
-	compatible = "maxim,max77779vimon_i2c";
+	compatible = "maxim,max77779vimon-i2c";
 	reg = <0x28>;
 
 	interrupt-parent = <&max77779_pmic_irq>;
@@ -105,7 +105,7 @@ max77779_vimon:max77779vimon@28 {
 
 max77779_chg:max77779chrg@69 {
 	status = "disabled";
-	compatible = "maxim,max77779chrg_i2c";
+	compatible = "maxim,max77779chrg-i2c";
 	reg = <0x69>;
 
 	max77779,psy-name = "main-charger";
@@ -128,12 +128,12 @@ max77779_chg:max77779chrg@69 {
 
 max77779_sp:max77779sp@60 {
 	status = "disabled";
-	compatible = "maxim,max77779sp_i2c";
+	compatible = "maxim,max77779sp-i2c";
 	reg = <0x60>;
 };
 
 max77779_pmic:max77779pmic@66 {
-	compatible = "maxim,max77779pmic_i2c";
+	compatible = "maxim,max77779pmic-i2c";
 	reg = <0x66>;
 	status = "disabled";
 
@@ -176,7 +176,7 @@ max77779_i2cm:max77779i2cm@64 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	compatible = "maxim,max77779i2cm_i2c";
+	compatible = "maxim,max77779i2cm-i2c";
 	status = "disabled";
 
 	interrupt-parent = <&max77779_pmic_irq>;
