@@ -393,7 +393,6 @@
 				regulator-name = "S2MPG14_LDO14";
 				regulator-min-microvolt = <2500000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
 				regulator-initial-mode = <SEC_OPMODE_ON>;
 				channel-mux-selection = <0x2E>;
 				schematic-name = "L14M_DISP_VCI";
