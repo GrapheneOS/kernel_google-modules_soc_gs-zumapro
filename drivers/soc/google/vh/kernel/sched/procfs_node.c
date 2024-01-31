@@ -2232,7 +2232,7 @@ extern unsigned long sched_lib_mask_out_val;
 
 static int sched_lib_mask_out_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "0x%x\n", sched_lib_mask_out_val);
+	seq_printf(m, "0x%lx\n", sched_lib_mask_out_val);
 	return 0;
 }
 
@@ -2264,7 +2264,7 @@ PROC_OPS_RW(sched_lib_mask_out);
 extern unsigned long sched_lib_mask_in_val;
 static int sched_lib_mask_in_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "0x%x\n", sched_lib_mask_in_val);
+	seq_printf(m, "0x%lx\n", sched_lib_mask_in_val);
 	return 0;
 }
 
