@@ -17,11 +17,11 @@
 #include <linux/slab.h>
 #include <linux/panic_notifier.h>
 #include <linux/atomic.h>
-#include <linux/android_debug_symbols.h>
 #include <linux/device.h>
 #include <linux/interval_tree.h>
 #include <linux/pm.h>
 #include <linux/oom.h>
+#include <linux/sysrq.h>
 
 #include <linux/suspend.h>
 #include <linux/sched/task.h>
@@ -301,9 +301,7 @@ static int hardlockup_debug_bug_handler(struct pt_regs *regs, unsigned long esr)
 		dbg_snapshot_save_context(regs, false);
 
 		if (atomic_cmpxchg(&show_mem_once, 1, 0)) {
-			void (*show_mem)(unsigned int, nodemask_t *) =
-				android_debug_symbol(ADS_SHOW_MEM);
-			show_mem(0, NULL);
+			handle_sysrq('m');
 		}
 
 		if (atomic_cmpxchg(&dump_tasks_once, 1, 0)) {
