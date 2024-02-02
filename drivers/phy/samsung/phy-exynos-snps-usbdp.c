@@ -812,6 +812,11 @@ static int additional_cr_reg_update(struct exynos_usbphy_info *info)
 		return -1;
 	}
 
+	/* LFPS threshold control */
+	cr_reg = phy_exynos_snps_usbdp_cr_read(info, CRREG_LANE_RX(0x10f0));
+	cr_reg &= ~(1 << 3);
+	phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_RX(0x10f0), cr_reg);
+
 	cr_reg = phy_exynos_snps_usbdp_cr_read(info, 0x003D);
 	pr_debug("PMA version:%#04x\n", cr_reg);
 
