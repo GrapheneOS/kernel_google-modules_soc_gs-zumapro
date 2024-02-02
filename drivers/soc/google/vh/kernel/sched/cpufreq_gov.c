@@ -445,7 +445,12 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	sg_policy->prev_cached_raw_freq = sg_policy->cached_raw_freq;
 	sg_policy->cached_raw_freq = freq;
 
-	return cpufreq_driver_resolve_freq(policy, freq);
+	freq = cpufreq_driver_resolve_freq(policy, freq);
+
+	/* Workaround a bug in GKI where we can escape policy limits */
+	freq = clamp_val(freq, policy->min, policy->max);
+
+	return freq;
 }
 
 /*
