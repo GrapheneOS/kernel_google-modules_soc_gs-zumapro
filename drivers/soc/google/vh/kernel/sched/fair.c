@@ -57,7 +57,7 @@ unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
 unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = 1024 };
 
-unsigned int __read_mostly sched_per_task_iowait_boost_max_value = SCHED_CAPACITY_SCALE;
+unsigned int __read_mostly sched_per_task_iowait_boost_max_value = 0;
 
 struct vendor_group_property vg[VG_MAX];
 
