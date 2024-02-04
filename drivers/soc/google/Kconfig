@@ -237,14 +237,6 @@ config PERF_TRACE_CTRS
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/gsa/Kconfig"
 
-if SOC_ZUMA
-source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif/Kconfig"
-endif
-
-if !SOC_ZUMA
-source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/cpif-whi/Kconfig"
-endif
-
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/debug/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/google/gnssif_spi/Kconfig"
@@ -296,5 +288,13 @@ config PKVM_S2MPU_V9
 	default n
 	help
 	This module is a driver for the stage-2 IOMMU controlled by hypervisor.
+
+config RADIO_S5300
+	bool "Samsung S5300 Radio"
+	default n
+
+config RADIO_S5400
+	bool "Samsung S5400 Radio"
+	default n
 
 endmenu

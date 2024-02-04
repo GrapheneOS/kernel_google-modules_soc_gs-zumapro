@@ -32,13 +32,6 @@ obj-$(CONFIG_EXYNOS_BCM_DBG)		+= bcm_dbg.o
 bcm_dbg-$(CONFIG_EXYNOS_BCM_DBG)	+= exynos-bcm_dbg.o exynos-bcm_dbg-dt.o exynos-bcm_dbg-ppmu.o
 obj-$(CONFIG_EXYNOS_BCM_DBG_DUMP)	+= exynos-bcm_dbg-dump.o
 
-# CPIF
-ifeq ($(CONFIG_SOC_ZUMA),y)
-obj-$(CONFIG_EXYNOS_MODEM_IF) += cpif/
-else
-obj-$(CONFIG_EXYNOS_MODEM_IF) += cpif-whi/
-endif
-
 # GNSSIF
 obj-$(CONFIG_EXYNOS_GNSS_IF_SPI) += gnssif_spi/
 
