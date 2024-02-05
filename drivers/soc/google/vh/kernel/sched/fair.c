@@ -26,6 +26,8 @@ struct pixel_idle_em *vendor_sched_pixel_idle_em;
 EXPORT_SYMBOL_GPL(vendor_sched_pixel_idle_em);
 #endif
 
+extern inline void update_misfit_status(struct task_struct *p, struct rq *rq);
+
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 extern int ___update_load_sum(u64 now, struct sched_avg *sa,
 			  unsigned long load, unsigned long runnable, int running);
@@ -45,6 +47,8 @@ extern unsigned int sysctl_sched_idle_min_granularity;
 static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
 
+
+unsigned int sched_auto_fits_capacity[CONFIG_VH_SCHED_MAX_CPU_NR];
 unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = DEF_UTIL_THRESHOLD };
 unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
@@ -53,7 +57,7 @@ unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
 unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = 1024 };
 
-unsigned int __read_mostly sched_per_task_iowait_boost_max_value = SCHED_CAPACITY_SCALE;
+unsigned int __read_mostly sched_per_task_iowait_boost_max_value = 0;
 
 struct vendor_group_property vg[VG_MAX];
 
@@ -1421,7 +1425,7 @@ static inline bool group_overutilized(int cpu, struct task_struct *p, unsigned l
 	unsigned long group_capacity = cap_scale(get_task_group_throttle(p),
 						 arch_scale_cpu_capacity(cpu));
 
-	return cpu_overutilized(util, group_capacity, cpu);
+	return !fits_capacity(util, group_capacity, cpu);
 }
 #else
 static inline bool group_overutilized(int cpu, struct task_group *tg, unsigned long util)
@@ -1430,7 +1434,7 @@ static inline bool group_overutilized(int cpu, struct task_group *tg, unsigned l
 	unsigned long group_capacity = cap_scale(get_group_throttle(tg),
 					arch_scale_cpu_capacity(cpu));
 
-	return cpu_overutilized(util, group_capacity, cpu);
+	return !fits_capacity(util, group_capacity, cpu);
 }
 #endif
 #endif
@@ -2449,6 +2453,8 @@ void vh_sched_setscheduler_uclamp_pixel_mod(void *data, struct task_struct *tsk,
 			      sched_auto_uclamp_max[task_cpu(tsk)],
 			      true);
 	}
+
+	update_misfit_status(tsk, task_rq(tsk));
 }
 
 static inline void uclamp_fork_pixel_mod(struct task_struct *p, struct task_struct *orig)

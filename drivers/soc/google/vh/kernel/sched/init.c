@@ -306,6 +306,8 @@ static int vh_sched_init(void)
 	init_uclamp_stats();
 #endif
 
+	update_auto_fits_capacity();
+
 	ret = create_procfs_node();
 	if (ret)
 		return ret;

@@ -63,6 +63,7 @@
 #include <trace/hooks/pci.h>
 
 #include <soc/google/exynos-el3_mon.h>
+#include <misc/sbbm.h>
 
 struct exynos_pcie g_pcie_rc[MAX_RC_NUM];
 int pcie_is_linkup;	/* checkpatch: do not initialise globals to 0 */
@@ -761,6 +762,34 @@ static ssize_t link_width_store(struct device *dev,
 	return count;
 }
 
+static ssize_t sbb_debug_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", exynos_pcie->sbb_debug);
+}
+
+static ssize_t sbb_debug_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	int ret;
+	int value;
+	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
+
+	ret = kstrtoint(buf, 0, &value);
+	if (ret != 0)
+		return -EINVAL;
+
+	if (value < 0 || value > 1)
+		return -EINVAL;
+
+	exynos_pcie->sbb_debug = value;
+
+	return count;
+}
+
 static ssize_t link_state_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int ret = 0;
@@ -900,6 +929,8 @@ static DEVICE_ATTR_RW(link_speed);
 static DEVICE_ATTR_RW(link_width);
 static DEVICE_ATTR_RO(link_state);
 static DEVICE_ATTR_RO(power_stats);
+static DEVICE_ATTR_RW(sbb_debug);
+
 
 /* percentage (0-100) to weight new datapoints in moving average */
 #define NEW_DATA_AVERAGE_WEIGHT  10
@@ -1167,6 +1198,12 @@ static inline int create_pcie_sys_file(struct device *dev)
 		return ret;
 	}
 
+	ret = device_create_file(dev, &dev_attr_sbb_debug);
+	if (ret) {
+		dev_err(dev, "couldn't create device file for sbb_debug(%d)\n", ret);
+		return ret;
+	}
+
 	ret = device_create_file(dev, &dev_attr_link_state);
 	if (ret) {
 		dev_err(dev, "couldn't create device file for linkst(%d)\n", ret);
@@ -1196,6 +1233,7 @@ static inline void remove_pcie_sys_file(struct device *dev)
 	device_remove_file(dev, &dev_attr_l12_state);
 	device_remove_file(dev, &dev_attr_link_speed);
 	device_remove_file(dev, &dev_attr_link_width);
+	device_remove_file(dev, &dev_attr_sbb_debug);
 	device_remove_file(dev, &dev_attr_link_state);
 	device_remove_file(dev, &dev_attr_power_stats);
 	sysfs_remove_group(&pdev->dev.kobj, &link_stats_group);
@@ -3236,6 +3274,9 @@ static void exynos_pcie_rc_send_pme_turn_off(struct exynos_pcie *exynos_pcie)
 			dev_dbg(dev, "received Enter_L23_READY DLLP packet\n");
 			logbuffer_log(exynos_pcie->log, "received Enter_L23_READY DLLP packet");
 
+			if (exynos_pcie->sbb_debug)
+				SBBM_SIGNAL_UPDATE(SBB_SIG_PCIE_LINK_STATE, 0);
+
 			break;
 		}
 		udelay(10);
@@ -3370,8 +3411,11 @@ retry:
 	while (count < MAX_TIMEOUT) {
 		val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP)
 		      & PCIE_ELBI_LTSSM_STATE_MASK;
-		if (val == S_L0)
+		if (val == S_L0) {
+			if (exynos_pcie->sbb_debug)
+				SBBM_SIGNAL_UPDATE(SBB_SIG_PCIE_LINK_STATE, 1);
 			break;
+		}
 		count++;
 		usleep_range(10, 12);
 	}

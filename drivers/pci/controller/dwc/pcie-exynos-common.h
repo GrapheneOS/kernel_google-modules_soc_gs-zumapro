@@ -312,6 +312,7 @@ struct exynos_pcie {
 	int			target_link_speed;
 	int			target_link_width;
 	int			perst_delay_us;
+	int			sbb_debug;
 	struct power_stats	link_up;
 	struct power_stats	link_down;
 	struct link_stats	link_stats;

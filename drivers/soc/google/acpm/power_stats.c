@@ -25,7 +25,13 @@
 
 #define GS_POWER_STATS_PREFIX "power_stats: "
 
+#if IS_ENABLED(CONFIG_SOC_GS101)
+static char const *const mif_user_names[NUM_MIF_USERS] = { "AOC", "GSA" };
+#elif IS_ENABLED(CONFIG_SOC_GS201)
+static char const *const mif_user_names[NUM_MIF_USERS] = { "AOC", "GSA", "TPU"};
+#else
 static char const *const mif_user_names[NUM_MIF_USERS] = { "AOC", "GSA", "TPU", "AUR"};
+#endif
 
 static char const *const slc_user_names[NUM_SLC_USERS] = { "AOC" };
 
@@ -36,12 +42,23 @@ static char const *const sys_powermode_names[NUM_SYS_POWERMODE] = {
 static char const *const cluster_names[NUM_CLUSTERS] = { "CLUSTER0", "CLUSTER1",
 							 "CLUSTER2" };
 
+#if IS_ENABLED(CONFIG_SOC_GS101) || IS_ENABLED(CONFIG_SOC_GS201)
 static char const *const core_names[NUM_CORES] = { "CORE00", "CORE01", "CORE02",
 						   "CORE03", "CORE10", "CORE11",
-						   "CORE12", "CORE13", "CORE21" };
+						   "CORE20", "CORE21" };
+#else
+static char const *const core_names[NUM_CORES] = { "CORE00", "CORE01", "CORE02",
+						   "CORE03", "CORE10", "CORE11",
+						   "CORE12", "CORE13", "CORE20" };
+#endif
 
+#if IS_ENABLED(CONFIG_SOC_GS101)
+static char const *const domain_names[NUM_DOMAINS] = { "MIF", "TPU", "CL0",
+						       "CL1", "CL2"};
+#else
 static char const *const domain_names[NUM_DOMAINS] = { "MIF", "TPU", "CL0",
 						       "CL1", "CL2", "AUR"};
+#endif
 
 struct pd_entry {
 	struct list_head entry;
