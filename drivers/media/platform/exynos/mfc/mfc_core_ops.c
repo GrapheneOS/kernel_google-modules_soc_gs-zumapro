@@ -281,7 +281,7 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_core_perf_boost_disable(core);
 
 		del_timer(&core->meerkat_timer);
-		del_timer(&core->mfc_idle_timer);
+		del_timer_sync(&core->mfc_idle_timer);
 
 		flush_workqueue(core->butler_wq);
 
