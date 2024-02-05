@@ -185,7 +185,6 @@ filegroup(
     ] + [
         # List of headers needed by external modules
         "drivers/dma-buf/heaps/samsung/samsung-dma-heap.h",
-        "drivers/soc/google/cpif/modem_notifier.h",
         "drivers/usb/host/xhci-exynos.h",
         "drivers/usb/typec/tcpm/google/google_tcpci_shim.h",
         "drivers/usb/typec/tcpm/google/tcpci_max77759.h",
