@@ -6,6 +6,7 @@
  * Copyright 2020 Google LLC
  */
 #include <linux/cpuidle.h>
+#include <linux/cpumask.h>
 #include <linux/lockdep.h>
 #include <linux/kobject.h>
 #include <linux/sched.h>
@@ -14,6 +15,7 @@
 #include <linux/sched/task.h>
 #include <linux/proc_fs.h>
 #include <linux/uaccess.h>
+#include <linux/idle_inject.h>
 #include <kernel/sched/sched.h>
 #include <trace/events/power.h>
 
@@ -31,6 +33,10 @@ bool __read_mostly vendor_sched_boost_adpf_prio = true;
 static struct proc_dir_entry *vendor_sched;
 struct proc_dir_entry *group_dirs[VG_MAX];
 extern struct vendor_group_list vendor_group_list[VG_MAX];
+
+static struct idle_inject_device *iidev_l;
+static struct idle_inject_device *iidev_m;
+static struct idle_inject_device *iidev_b;
 
 extern void initialize_vendor_group_property(void);
 extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum uclamp_id clamp_id,
@@ -1644,6 +1650,38 @@ static ssize_t tapered_dvfs_headroom_enable_store(struct file *filp,
 }
 PROC_OPS_RW(tapered_dvfs_headroom_enable);
 
+static int auto_migration_margins_enable_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", static_branch_likely(&auto_migration_margins_enable) ? 1 : 0);
+	return 0;
+}
+static ssize_t auto_migration_margins_enable_store(struct file *filp,
+						   const char __user *ubuf,
+						   size_t count, loff_t *pos)
+{
+	int enable = 0;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtoint(buf, 10, &enable))
+		return -EINVAL;
+
+	if (enable)
+		static_branch_enable(&auto_migration_margins_enable);
+	else
+		static_branch_disable(&auto_migration_margins_enable);
+
+	return count;
+}
+PROC_OPS_RW(auto_migration_margins_enable);
+
 static int npi_packing_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "%s\n", vendor_sched_npi_packing ? "true" : "false");
@@ -2227,12 +2265,138 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 
 PROC_OPS_RW(pmu_poll_enable);
 
+static int max_load_balance_interval_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%lu\n", max_load_balance_interval);
+	return 0;
+}
+static ssize_t max_load_balance_interval_store(struct file *filp,
+					       const char __user *ubuf,
+					       size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	max_load_balance_interval = val;
+
+	return count;
+}
+PROC_OPS_RW(max_load_balance_interval);
+
+static int min_granularity_ns_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_min_granularity);
+	return 0;
+}
+static ssize_t min_granularity_ns_store(struct file *filp,
+					const char __user *ubuf,
+					size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	sysctl_sched_min_granularity = val;
+
+	return count;
+}
+PROC_OPS_RW(min_granularity_ns);
+
+static int latency_ns_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", sysctl_sched_latency);
+	return 0;
+}
+static ssize_t latency_ns_store(struct file *filp,
+				const char __user *ubuf,
+				size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	sysctl_sched_latency = val;
+
+	return count;
+}
+PROC_OPS_RW(latency_ns);
+
+static int enable_hrtick_show(struct seq_file *m, void *v)
+{
+	bool enabled;
+
+	sysctl_sched_features |= 1UL << __SCHED_FEAT_HRTICK;
+	enabled = static_key_enabled(&sched_feat_keys[__SCHED_FEAT_HRTICK]);
+	seq_printf(m, "%d\n", enabled);
+	return 0;
+}
+static ssize_t enable_hrtick_store(struct file *filp,
+				   const char __user *ubuf,
+				   size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (!val) {
+		sysctl_sched_features &= ~(1UL << __SCHED_FEAT_HRTICK);
+		static_key_disable(&sched_feat_keys[__SCHED_FEAT_HRTICK]);
+	} else {
+		sysctl_sched_features |= 1UL << __SCHED_FEAT_HRTICK;
+		static_key_enable(&sched_feat_keys[__SCHED_FEAT_HRTICK]);
+	}
+
+	return count;
+}
+PROC_OPS_RW(enable_hrtick);
+
 #if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 extern unsigned long sched_lib_mask_out_val;
 
 static int sched_lib_mask_out_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "0x%x\n", sched_lib_mask_out_val);
+	seq_printf(m, "0x%lx\n", sched_lib_mask_out_val);
 	return 0;
 }
 
@@ -2264,7 +2428,7 @@ PROC_OPS_RW(sched_lib_mask_out);
 extern unsigned long sched_lib_mask_in_val;
 static int sched_lib_mask_in_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "0x%x\n", sched_lib_mask_in_val);
+	seq_printf(m, "0x%lx\n", sched_lib_mask_in_val);
 	return 0;
 }
 
@@ -2328,6 +2492,365 @@ static ssize_t ug_bg_auto_prio_store(struct file *filp, const char __user *ubuf,
 
 PROC_OPS_RW(ug_bg_auto_prio);
 #endif
+
+/* LITTLE idle injection knobs */
+static int iidev_little_started;
+static int idle_inject_little_trigger_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", iidev_little_started);
+	return 0;
+}
+static ssize_t idle_inject_little_trigger_store(struct file *filp,
+						const char __user *ubuf,
+						size_t count, loff_t *pos)
+{
+	int val, ret;
+
+	ret = kstrtoint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	if (val == iidev_little_started)
+		goto out;
+
+	iidev_little_started = !!val;
+
+	if (!iidev_little_started)
+		idle_inject_stop(iidev_l);
+	else
+		idle_inject_start(iidev_l);
+
+out:
+	return count;
+}
+PROC_OPS_RW(idle_inject_little_trigger);
+
+static int idle_inject_little_run_duration_us_show(struct seq_file *m, void *v)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+
+	idle_inject_get_duration(iidev_l, &run_duration, &idle_duration);
+
+	seq_printf(m, "%u\n", run_duration);
+	return 0;
+}
+static ssize_t idle_inject_little_run_duration_us_store(struct file *filp,
+							 const char __user *ubuf,
+							 size_t count, loff_t *pos)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_get_duration(iidev_l, &run_duration, &idle_duration);
+	run_duration = val;
+	idle_inject_set_duration(iidev_l, run_duration, idle_duration);
+
+	return count;
+}
+PROC_OPS_RW(idle_inject_little_run_duration_us);
+
+static int idle_inject_little_idle_duration_us_show(struct seq_file *m, void *v)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+
+	idle_inject_get_duration(iidev_l, &run_duration, &idle_duration);
+
+	seq_printf(m, "%u\n", idle_duration);
+	return 0;
+}
+static ssize_t idle_inject_little_idle_duration_us_store(struct file *filp,
+							 const char __user *ubuf,
+							 size_t count, loff_t *pos)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_get_duration(iidev_l, &run_duration, &idle_duration);
+	idle_duration = val;
+	idle_inject_set_duration(iidev_l, run_duration, idle_duration);
+
+	return count;
+}
+PROC_OPS_RW(idle_inject_little_idle_duration_us);
+
+static ssize_t idle_inject_little_latency_us_store(struct file *filp,
+						const char __user *ubuf,
+						size_t count, loff_t *pos)
+{
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_set_latency(iidev_l, val);
+
+	return count;
+}
+PROC_OPS_WO(idle_inject_little_latency_us);
+
+/* MID idle injections knobs */
+static int iidev_mid_started;
+static int idle_inject_mid_trigger_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", iidev_mid_started);
+	return 0;
+}
+static ssize_t idle_inject_mid_trigger_store(struct file *filp,
+					     const char __user *ubuf,
+					     size_t count, loff_t *pos)
+{
+	int val, ret;
+
+	ret = kstrtoint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	if (val == iidev_mid_started)
+		goto out;
+
+	iidev_mid_started = !!val;
+
+	if (!iidev_mid_started)
+		idle_inject_stop(iidev_m);
+	else
+		idle_inject_start(iidev_m);
+
+out:
+	return count;
+}
+PROC_OPS_RW(idle_inject_mid_trigger);
+
+static int idle_inject_mid_run_duration_us_show(struct seq_file *m, void *v)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+
+	idle_inject_get_duration(iidev_m, &run_duration, &idle_duration);
+
+	seq_printf(m, "%u\n", run_duration);
+	return 0;
+}
+static ssize_t idle_inject_mid_run_duration_us_store(struct file *filp,
+						     const char __user *ubuf,
+						     size_t count, loff_t *pos)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_get_duration(iidev_m, &run_duration, &idle_duration);
+	run_duration = val;
+	idle_inject_set_duration(iidev_m, run_duration, idle_duration);
+
+	return count;
+}
+PROC_OPS_RW(idle_inject_mid_run_duration_us);
+
+static int idle_inject_mid_idle_duration_us_show(struct seq_file *m, void *v)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+
+	idle_inject_get_duration(iidev_m, &run_duration, &idle_duration);
+
+	seq_printf(m, "%u\n", idle_duration);
+	return 0;
+}
+static ssize_t idle_inject_mid_idle_duration_us_store(struct file *filp,
+						      const char __user *ubuf,
+						      size_t count, loff_t *pos)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_get_duration(iidev_m, &run_duration, &idle_duration);
+	idle_duration = val;
+	idle_inject_set_duration(iidev_m, run_duration, idle_duration);
+
+	return count;
+}
+PROC_OPS_RW(idle_inject_mid_idle_duration_us);
+
+static ssize_t idle_inject_mid_latency_us_store(struct file *filp,
+						const char __user *ubuf,
+						size_t count, loff_t *pos)
+{
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_set_latency(iidev_m, val);
+
+	return count;
+}
+PROC_OPS_WO(idle_inject_mid_latency_us);
+
+/* BIG idle injections knobs */
+static int iidev_big_started;
+static int idle_inject_big_trigger_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", iidev_big_started);
+	return 0;
+}
+static ssize_t idle_inject_big_trigger_store(struct file *filp,
+					     const char __user *ubuf,
+					     size_t count, loff_t *pos)
+{
+	int val, ret;
+
+	ret = kstrtoint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	if (val == iidev_big_started)
+		goto out;
+
+	iidev_big_started = !!val;
+
+	if (!iidev_big_started)
+		idle_inject_stop(iidev_b);
+	else
+		idle_inject_start(iidev_b);
+
+out:
+	return count;
+}
+PROC_OPS_RW(idle_inject_big_trigger);
+
+static int idle_inject_big_run_duration_us_show(struct seq_file *m, void *v)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+
+	idle_inject_get_duration(iidev_b, &run_duration, &idle_duration);
+
+	seq_printf(m, "%u\n", run_duration);
+	return 0;
+}
+static ssize_t idle_inject_big_run_duration_us_store(struct file *filp,
+						     const char __user *ubuf,
+						     size_t count, loff_t *pos)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_get_duration(iidev_b, &run_duration, &idle_duration);
+	run_duration = val;
+	idle_inject_set_duration(iidev_b, run_duration, idle_duration);
+
+	return count;
+}
+PROC_OPS_RW(idle_inject_big_run_duration_us);
+
+static int idle_inject_big_idle_duration_us_show(struct seq_file *m, void *v)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+
+	idle_inject_get_duration(iidev_b, &run_duration, &idle_duration);
+
+	seq_printf(m, "%u\n", idle_duration);
+	return 0;
+}
+static ssize_t idle_inject_big_idle_duration_us_store(struct file *filp,
+						      const char __user *ubuf,
+						      size_t count, loff_t *pos)
+{
+	unsigned int run_duration = 0;
+	unsigned int idle_duration = 0;
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_get_duration(iidev_b, &run_duration, &idle_duration);
+	idle_duration = val;
+	idle_inject_set_duration(iidev_b, run_duration, idle_duration);
+
+	return count;
+}
+PROC_OPS_RW(idle_inject_big_idle_duration_us);
+
+static ssize_t idle_inject_big_latency_us_store(struct file *filp,
+						const char __user *ubuf,
+						size_t count, loff_t *pos)
+{
+	int val, ret;
+
+	ret = kstrtouint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	idle_inject_set_latency(iidev_b, val);
+
+	return count;
+}
+PROC_OPS_WO(idle_inject_big_latency_us);
+
+/* Sync Trigger mid and big clusters */
+static int idle_inject_sync_trigger_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", iidev_mid_started && iidev_big_started);
+	return 0;
+}
+static ssize_t idle_inject_sync_trigger_store(struct file *filp,
+					      const char __user *ubuf,
+					      size_t count, loff_t *pos)
+{
+	int val, ret;
+
+	ret = kstrtoint_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	if (val == iidev_mid_started && val == iidev_big_started)
+		goto out;
+
+	iidev_mid_started = !!val;
+	iidev_big_started = !!val;
+
+	if (!val) {
+		idle_inject_stop(iidev_m);
+		idle_inject_stop(iidev_b);
+	} else {
+		idle_inject_start(iidev_m);
+		idle_inject_start(iidev_b);
+	}
+
+out:
+	return count;
+}
+PROC_OPS_RW(idle_inject_sync_trigger);
 
 struct pentry {
 	const char *name;
@@ -2410,6 +2933,27 @@ static struct pentry entries[] = {
 	// iowait boost
 	PROC_ENTRY(per_task_iowait_boost_max_value),
 	PROC_ENTRY(per_cpu_iowait_boost_max_value),
+	// load balance
+	PROC_ENTRY(max_load_balance_interval),
+	PROC_ENTRY(min_granularity_ns),
+	PROC_ENTRY(latency_ns),
+	PROC_ENTRY(enable_hrtick),
+	// auto margins
+	PROC_ENTRY(auto_migration_margins_enable),
+	// idle injection
+	PROC_ENTRY(idle_inject_little_trigger),
+	PROC_ENTRY(idle_inject_little_run_duration_us),
+	PROC_ENTRY(idle_inject_little_idle_duration_us),
+	PROC_ENTRY(idle_inject_little_latency_us),
+	PROC_ENTRY(idle_inject_mid_trigger),
+	PROC_ENTRY(idle_inject_mid_run_duration_us),
+	PROC_ENTRY(idle_inject_mid_idle_duration_us),
+	PROC_ENTRY(idle_inject_mid_latency_us),
+	PROC_ENTRY(idle_inject_big_trigger),
+	PROC_ENTRY(idle_inject_big_run_duration_us),
+	PROC_ENTRY(idle_inject_big_idle_duration_us),
+	PROC_ENTRY(idle_inject_big_latency_us),
+	PROC_ENTRY(idle_inject_sync_trigger),
 };
 
 
@@ -2420,6 +2964,7 @@ int create_procfs_node(void)
 	enum uclamp_id clamp_id;
 	struct proc_dir_entry *parent_directory;
 	struct proc_dir_entry *group_root_dir;
+	cpumask_t cpumask;
 
 	/* create vendor sched root directory */
 	vendor_sched = proc_mkdir("vendor_sched", NULL);
@@ -2478,6 +3023,35 @@ int create_procfs_node(void)
 	}
 
 	initialize_vendor_group_property();
+
+	/* Register idle injection */
+	cpumask_clear(&cpumask);
+	for (i = pixel_cluster_start_cpu[0]; i < pixel_cluster_start_cpu[1]; i++)
+		cpumask_set_cpu(i, &cpumask);
+	iidev_l = idle_inject_register(&cpumask);
+	if (!iidev_l)
+		goto out;
+	idle_inject_set_duration(iidev_l, 2000, 14000);
+	idle_inject_set_latency(iidev_l, 5000);
+
+	cpumask_clear(&cpumask);
+	for (i = pixel_cluster_start_cpu[1]; i < pixel_cluster_start_cpu[2]; i++)
+		cpumask_set_cpu(i, &cpumask);
+	iidev_m = idle_inject_register(&cpumask);
+	if (!iidev_m)
+		goto out;
+	idle_inject_set_duration(iidev_m, 2000, 14000);
+	idle_inject_set_latency(iidev_m, 5000);
+
+	cpumask_clear(&cpumask);
+	for (i = pixel_cluster_start_cpu[2]; i < pixel_cpu_num; i++)
+		cpumask_set_cpu(i, &cpumask);
+	iidev_b = idle_inject_register(&cpumask);
+	if (!iidev_b)
+		goto out;
+	idle_inject_set_duration(iidev_b, 2000, 14000);
+	idle_inject_set_latency(iidev_b, 5000);
+
 
 	return 0;
 

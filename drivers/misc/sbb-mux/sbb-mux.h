@@ -95,6 +95,8 @@ const struct sbb_signal signals[SBB_SIG_NUM_SIGNALS] = {
 	{ SBB_SIG_UFS_ACTIVE_IDLE, "ufs_active_idle", KERNEL_DRIVEN },
 	{ SBB_SIG_UFS_POWER_ON, "ufs_power_on", KERNEL_DRIVEN },
 	{ SBB_SIG_UFS_IO_OUTSTANDING, "ufs_io_outstanding", KERNEL_DRIVEN },
+	{ SBB_SIG_MODEM_CP2AP_WAKE_ISR, "cp2ap_wake_isr", KERNEL_DRIVEN },
+	{ SBB_SIG_PCIE_LINK_STATE, "pcie_link_state", KERNEL_DRIVEN }
 };
 
 /*

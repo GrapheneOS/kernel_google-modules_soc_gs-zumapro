@@ -6,6 +6,7 @@
  * Copyright 2021 Google LLC
  */
 
+#include <linux/maple_tree.h>
 #include <linux/sched.h>
 #include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
@@ -56,6 +57,7 @@ static bool is_sched_lib_based_app(pid_t pid)
 	struct task_struct *p;
 	struct mm_struct *mm;
 	struct vendor_task_struct *vp;
+	struct ma_state mas;
 
 	rcu_read_lock();
 	p = pid ? get_pid_task(find_vpid(pid), PIDTYPE_PID) : get_task_struct(current);
@@ -80,7 +82,10 @@ static bool is_sched_lib_based_app(pid_t pid)
 		goto put_task_struct;
 
 	down_read(&mm->mmap_lock);
-	for (vma = mm->mmap; vma ; vma = vma->vm_next) {
+	mas.tree = &mm->mm_mt;
+	mas.index = 0;
+	mas.last = 0;
+	mas_for_each(&mas, vma, ULONG_MAX) {
 		if (vma->vm_file && vma->vm_flags & VM_EXEC) {
 			name = d_path(&vma->vm_file->f_path,
 					path_buf, LIB_PATH_LENGTH);

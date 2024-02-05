@@ -83,10 +83,6 @@
 				google,chg-taper-last-tier;
 			};
 
-			google_bms {
-				nvmem = <&pack_bee>;
-			};
-
 			google_wlc_charger: google,wlc_charger {
 				#cooling-cells = <2>;
 			};
