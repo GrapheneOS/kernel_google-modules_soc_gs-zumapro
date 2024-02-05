@@ -62,8 +62,8 @@ struct gsa_log *gsa_log_init(struct platform_device *pdev)
 		return ERR_PTR(-ENODEV);
 	}
 
-	if (rmem->size != (GSA_LOG_SIZE * 2)) {
-		dev_err(dev, "log size != expected size %d", (GSA_LOG_SIZE * 2));
+	if (rmem->size % (GSA_LOG_SIZE * 2)) {
+		dev_err(dev, "log size not multiple of expected size %d", (GSA_LOG_SIZE * 2));
 		return ERR_PTR(-EINVAL);
 	}
 
