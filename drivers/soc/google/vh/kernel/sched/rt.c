@@ -186,8 +186,10 @@ static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_m
 						  rq_util_min, rq_util_max, cpu);
 
 		// Make cpus in CPD state the least preferred
-		if (is_idle && !get_cluster_enabled(pixel_cpu_to_cluster[cpu]))
+		if (is_idle && !get_cluster_enabled(pixel_cpu_to_cluster[cpu])) {
+			cpu_importance[cpu] = UINT_MAX;
 			exit_lat[cpu] = pixel_cpd_exit_latency[pixel_cpu_to_cluster[cpu]];
+		}
 
 		trace_sched_cpu_util_rt(cpu, capacity[cpu], capacity_of(cpu), util[cpu],
 					exit_lat[cpu], cpu_importance[cpu], task_fits[cpu],
