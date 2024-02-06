@@ -108,8 +108,10 @@ put_task_struct:
 }
 
 void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
-				struct cpumask *in_mask, int *res)
+				const struct cpumask *in_mask, int *res)
 {
+	struct cpumask out_mask;
+
 	if (*res != 0)
 		return;
 
@@ -122,9 +124,9 @@ void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
 	if (!is_sched_lib_based_app(current->pid))
 		return;
 
-	in_mask->bits[0] = sched_lib_mask_out_val;
-	set_cpus_allowed_ptr(task, in_mask);
+	out_mask.bits[0] = sched_lib_mask_out_val;
+	set_cpus_allowed_ptr(task, &out_mask);
 
 	pr_debug("schedlib setaff tid: %d, mask out: %*pb\n",
-		 task_pid_nr(task), cpumask_pr_args(in_mask));
+		 task_pid_nr(task), cpumask_pr_args(&out_mask));
 }
