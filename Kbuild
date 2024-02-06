@@ -26,11 +26,7 @@ obj-y += drivers/tty/serial/
 
 obj-y += drivers/char/hw_random/
 
-ifeq ($(CONFIG_SOC_GS201),y)
-obj-y += drivers/iommu-whi/
-else
 obj-y += drivers/iommu/
-endif
 
 obj-y += drivers/gpu/
 
