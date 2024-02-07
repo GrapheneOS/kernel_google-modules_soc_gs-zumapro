@@ -89,6 +89,7 @@ hardlockup-watchdog.ko
 i2c-acpm.ko
 i2c-dev.ko
 i2c-exynos5.ko
+iovad-best-fit-algo.ko
 itmon.ko
 keycombo.ko
 keydebug.ko
