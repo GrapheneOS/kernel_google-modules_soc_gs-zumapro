@@ -19,8 +19,8 @@
 				#address-cells = <1>;
 				#size-cells = <1>;
 
-				clk-gpio = <&gpa3 0 GPIO_ACTIVE_HIGH>;
-				dat-gpio = <&gpa3 1 GPIO_ACTIVE_HIGH>;
+				clk-gpio = <&gpa3 2 GPIO_ACTIVE_HIGH>;
+				dat-gpio = <&gpa3 3 GPIO_ACTIVE_HIGH>;
 
 				delay_us = <10>;
 
