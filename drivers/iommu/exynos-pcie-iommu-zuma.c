@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * PCIe Exynos IOMMU driver
+ * PCIe Exynos IOMMU driver for ZUMA
  *
  * Copyright (C) 2020 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
@@ -31,7 +31,7 @@
 #include <asm/cacheflush.h>
 #include <linux/pgtable.h>
 
-#include "exynos-pcie-iommu.h"
+#include "exynos-pcie-iommu-zuma.h"
 #include "exynos-pcie-iommu-exp.h"
 
 static struct kmem_cache *lv2table_kmem_cache;

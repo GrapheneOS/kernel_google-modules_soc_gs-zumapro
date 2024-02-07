@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef _EXYNOS_PCIE_IOMMU_H_
-#define _EXYNOS_PCIE_IOMMU_H_
+#ifndef _EXYNOS_PCIE_IOMMU_ZUMA_H_
+#define _EXYNOS_PCIE_IOMMU_ZUMA_H_
 
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
@@ -673,4 +673,4 @@ static inline struct exynos_iovmm *exynos_create_single_iovmm(const char *name,
 }
 #endif /* CONFIG_EXYNOS_IOVMM */
 
-#endif /* _EXYNOS_PCIE_IOMMU_H_ */
+#endif /* _EXYNOS_PCIE_IOMMU_ZUMA_H_ */

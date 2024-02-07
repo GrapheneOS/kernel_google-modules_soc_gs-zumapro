@@ -6,3 +6,4 @@ obj-$(CONFIG_SAMSUNG_SECURE_IOVA) += samsung-secure-iova.o
 obj-$(CONFIG_SAMSUNG_IOMMU_V9) += samsung_iommu_v9.o
 samsung_iommu_v9-objs += samsung-iommu-v9.o samsung-iommu-fault-v9.o
 obj-$(CONFIG_EXYNOS_PCIE_IOMMU) += exynos-pcie-iommu.o
+exynos-pcie-iommu-objs += exynos-pcie-iommu-zuma.o
