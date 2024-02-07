@@ -28,7 +28,7 @@ DECLARE_PER_CPU(struct uclamp_stats, uclamp_stats);
 
 unsigned int __read_mostly vendor_sched_util_post_init_scale = DEF_UTIL_POST_INIT_SCALE;
 bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
-bool __read_mostly vendor_sched_reduce_prefer_idle = true;
+bool __read_mostly vendor_sched_auto_prefer_idle = true;
 bool __read_mostly vendor_sched_boost_adpf_prio = true;
 static struct proc_dir_entry *vendor_sched;
 struct proc_dir_entry *group_dirs[VG_MAX];
@@ -1716,7 +1716,7 @@ PROC_OPS_RW(npi_packing);
 
 static int reduce_prefer_idle_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%s\n", vendor_sched_reduce_prefer_idle ? "true" : "false");
+	seq_printf(m, "%s\n", vendor_sched_auto_prefer_idle ? "true" : "false");
 
 	return 0;
 }
@@ -1738,7 +1738,7 @@ static ssize_t reduce_prefer_idle_store(struct file *filp, const char __user *ub
 	if (kstrtobool(buf, &enable))
 		return -EINVAL;
 
-	vendor_sched_reduce_prefer_idle = enable;
+	vendor_sched_auto_prefer_idle = enable;
 
 	return count;
 }
