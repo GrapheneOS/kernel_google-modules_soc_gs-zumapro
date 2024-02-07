@@ -27,6 +27,7 @@
 #define NTC_UPDATE_MAX_DELAY_US 10000
 #define SPMIC_TEMPERATURE_BUF_LEN 5
 #define SPMIC_ERR_READING_IGNORE_TIME_MSEC 30000
+#define HW_LPF_RESET_VALUE 0x80
 
 struct spmic_temperature_log {
 	ktime_t time;
@@ -59,6 +60,7 @@ struct s2mpg15_spmic_thermal_chip {
 	struct s2mpg15_dev *iodev;
 	struct s2mpg15_spmic_thermal_sensor sensor[GTHERM_CHAN_NUM];
 	u8 adc_chan_en;
+	u8 enable_hw_lpf[GTHERM_CHAN_NUM];
 	u8 stats_en;
 	bool filter_spurious_samples;
 	struct kobject *kobjs[GTHERM_CHAN_NUM];
@@ -595,6 +597,7 @@ static void s2mpg15_spmic_thermal_wait_sensor(struct kthread_work *work)
 	mutex_unlock(&s2mpg15_spmic_thermal->adc_chan_lock);
 
 	for (i = 0; i < GTHERM_CHAN_NUM; i++, mask <<= 1) {
+		u8 reg = S2MPG15_METER_NTC_LPF_C0_0 + s2mpg15_spmic_thermal->sensor[i].adc_chan;
 		if (!(s2mpg15_spmic_thermal->adc_chan_en & mask))
 			continue;
 		/* Wait for longest refresh period */
@@ -612,6 +615,12 @@ static void s2mpg15_spmic_thermal_wait_sensor(struct kthread_work *work)
 
 		thermal_zone_device_update(s2mpg15_spmic_thermal->sensor[i].tzd,
 					   THERMAL_EVENT_UNSPECIFIED);
+		dev_dbg(dev, "updating sensor %d  LPF CO to 0x%x\n",
+			i, s2mpg15_spmic_thermal->enable_hw_lpf[i]);
+		ret = s2mpg15_write_reg(s2mpg15_spmic_thermal->meter_i2c, reg,
+			s2mpg15_spmic_thermal->enable_hw_lpf[i]);
+		if (ret)
+			dev_warn(dev, "Sensor %d LPF write fail\n", i);
 	}
 
 	s2mpg15_spmic_thermal->sensors_ready = true;
@@ -717,6 +726,14 @@ static int s2mpg15_spmic_thermal_get_dt_data(struct platform_device *pdev,
 
     s2mpg15_spmic_thermal->filter_spurious_samples =
         of_property_read_bool(node, "filter_spurious_samples");
+	/* property to enable HW LPF*/
+	if (of_property_read_u8_array(node, "enable_hw_lpf",
+				&s2mpg15_spmic_thermal->enable_hw_lpf[0],
+				GTHERM_CHAN_NUM) < 0) {
+		dev_dbg(dev, "lpf_weight property not defined\n");
+		memset(&s2mpg15_spmic_thermal->enable_hw_lpf[0], HW_LPF_RESET_VALUE,
+			sizeof(s2mpg15_spmic_thermal->enable_hw_lpf));
+	}
     return 0;
 }
 
@@ -778,10 +795,69 @@ err:
 	return ret;
 }
 
+static ssize_t enable_hw_lpf_show(struct device *dev,
+				    struct device_attribute *devattr,
+				    char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct s2mpg15_spmic_thermal_chip *chip = platform_get_drvdata(pdev);
+	int i, len = 0;
+
+	for (i = 0; i < GTHERM_CHAN_NUM; i++)
+		len += sysfs_emit_at(buf, len, "%d ", chip->enable_hw_lpf[i]);
+	len += sysfs_emit_at(buf, len, "\n");
+
+	return len;
+}
+
+static ssize_t enable_hw_lpf_store(struct device *dev,
+				    struct device_attribute *devattr,
+				    const char *buf,
+				    size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct device *device = &pdev->dev;
+	struct s2mpg15_spmic_thermal_chip *chip = platform_get_drvdata(pdev);
+	char **argv;
+	int argc, i, ret = 0;
+	u8 val;
+
+	argv = argv_split(GFP_KERNEL, buf, &argc);
+	if (!argv) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	if (argc != GTHERM_CHAN_NUM) {
+		ret = -EINVAL;
+		dev_err(device, "invalid args count, ret=%d,"
+			"argc=%d, GTHERM_CHAN_NUM=%d",
+			ret, argc, GTHERM_CHAN_NUM);
+		goto free_arg_out;
+	}
+	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
+		ret = kstrtou8(argv[i], 0 , &val);
+		if (ret) {
+			dev_err(device,"parse error ,ret=%d",ret);
+			goto free_arg_out;
+		}
+		dev_dbg(device, "Update hw lpf weight[%d] "
+			"from %d to %d\n", i, chip->enable_hw_lpf[i], val);
+		chip->enable_hw_lpf[i] = val;
+	}
+	ret = count;
+free_arg_out:
+	argv_free(argv);
+out:
+	return ret;
+}
+
 static DEVICE_ATTR_RW(adc_chan_en);
+static DEVICE_ATTR_RW(enable_hw_lpf);
 
 static struct attribute *s2mpg15_spmic_dev_attrs[] = {
 	&dev_attr_adc_chan_en.attr,
+	&dev_attr_enable_hw_lpf.attr,
 	NULL
 };
 
