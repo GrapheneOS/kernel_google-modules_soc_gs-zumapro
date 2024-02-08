@@ -79,6 +79,7 @@ gs-chipid.ko
 gs-drm-connector.ko
 gs-panel.ko
 gs_acpm.ko
+gs_perf_mon.ko
 pixel_metrics.ko
 gs_thermal.ko
 gsa.ko
