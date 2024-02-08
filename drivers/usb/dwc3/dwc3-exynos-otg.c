@@ -202,9 +202,17 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 	int ret1 = -1;
 	int wait_counter = 0;
 
+	if (!dwc->gadget) {
+		dev_err(dev, "%s does not have any gadget\n", __func__);
+		return -EINVAL;
+	}
+
 	__pm_stay_awake(dotg->wakelock);
 
 	if (on) {
+		/* hold gadget lock to prevent gadget driver bind and undesirable resume */
+		device_lock(&dwc->gadget->dev);
+
 		if (!dwc3_otg_check_usb_suspend(exynos))
 			dev_err(dev, "too long to wait for dwc3 suspended\n");
 
@@ -223,6 +231,7 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 			ret = dwc3_exynos_host_init(exynos);
 			if (ret) {
 				dev_err(dev, "%s: failed to init dwc3 host\n", __func__);
+				device_unlock(&dwc->gadget->dev);
 				goto err1;
 			}
 		}
@@ -239,6 +248,7 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 			dev_err(dev, "failed to resume exynos device\n");
 			pm_runtime_set_suspended(dev);
 			mutex_unlock(&dotg->lock);
+			device_unlock(&dwc->gadget->dev);
 			goto err1;
 		}
 		exynos->need_dr_role = 0;
@@ -246,6 +256,8 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 		/* To ignore gadget suspend/resume on host l2 suspend */
 		exynos->dwc->current_dr_role = DWC3_EXYNOS_IGNORE_CORE_OPS;
 		mutex_unlock(&dotg->lock);
+
+		device_unlock(&dwc->gadget->dev);
 
 		dwc3_otg_phy_tune(dwc, 1);
 
@@ -307,6 +319,9 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 
 	if (on) {
 		__pm_stay_awake(dotg->wakelock);
+		/* hold gadget lock to prevent gadget driver bind and undesirable resume */
+		device_lock(&dwc->gadget->dev);
+
 		if (!dwc3_otg_check_usb_suspend(exynos))
 			dev_err(dev, "too long to wait for dwc3 suspended\n");
 
@@ -331,6 +346,8 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 		}
 		exynos->need_dr_role = 0;
 		mutex_unlock(&dotg->lock);
+
+		device_unlock(&dwc->gadget->dev);
 
 		dwc3_otg_phy_tune(dwc, 0);
 		dwc3_exynos_core_init(dwc, exynos);
