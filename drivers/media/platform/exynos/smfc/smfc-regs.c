@@ -193,7 +193,8 @@ void smfc_hwconfigure_tables(struct smfc_ctx *ctx,
 			     base + REG_HTBL_CHROMA_ACVAL + i * sizeof(u32));
 
 	__raw_writel(VAL_MAIN_TABLE_SELECT, base + REG_MAIN_TABLE_SELECT);
-	__raw_writel(SMFC_DHT_LEN, base + REG_MAIN_DHT_LEN);
+	__raw_writel(ctx->img_fmt->v4l2_pixfmt != V4L2_PIX_FMT_GREY ?
+			SMFC_DHT_LEN : SMFC_DHT_GRAY_LEN, base + REG_MAIN_DHT_LEN);
 }
 
 void smfc_hwconfigure_2nd_tables(struct smfc_ctx *ctx, unsigned int qfactor)
@@ -209,7 +210,8 @@ void smfc_hwconfigure_2nd_tables(struct smfc_ctx *ctx, unsigned int qfactor)
 				qfactor, default_chroma_qtbl);
 	/* Huffman table for the secondary image is the same as the main image */
 	__raw_writel(VAL_SEC_TABLE_SELECT, base + REG_SEC_TABLE_SELECT);
-	__raw_writel(SMFC_DHT_LEN, base + REG_SEC_DHT_LEN);
+	__raw_writel(ctx->img_fmt->v4l2_pixfmt != V4L2_PIX_FMT_GREY ?
+			SMFC_DHT_LEN : SMFC_DHT_GRAY_LEN, base + REG_SEC_DHT_LEN);
 }
 
 void smfc_hwconfigure_tables_for_decompression(struct smfc_ctx *ctx)

@@ -238,6 +238,18 @@ const struct smfc_image_format smfc_image_formats[] = {
 		.num_buffers	= 3,
 		.chroma_hfactor	= 2,
 		.chroma_vfactor	= 2,
+	},
+	/*grayscale format*/
+	{
+		.description	= "GRAY 8BPP",
+		.v4l2_pixfmt	= V4L2_PIX_FMT_GREY,
+		.regcfg		= SMFC_IMGFMT_GRAY,
+		.bpp_buf	= {8},
+		.bpp_pix	= {8},
+		.num_planes	= 1,
+		.num_buffers	= 1,
+		.chroma_hfactor	= 0,
+		.chroma_vfactor	= 0,
 	}
 };
 
@@ -585,6 +597,11 @@ static bool __smfc_check_image_size(struct device *dev, __u32 type,
 		dev_warn(dev, "Too large image size(%ux%u) for '%s'\n",
 			 width, height, buf_type_name(type));
 		return false;
+	}
+
+	/* grayscale does not require chroma hfactor & vfactor checks */
+	if (smfc_fmt->v4l2_pixfmt == V4L2_PIX_FMT_GREY) {
+		return true;
 	}
 
 	if ((width % smfc_fmt->chroma_hfactor) != 0 || (height % smfc_fmt->chroma_vfactor) != 0) {
