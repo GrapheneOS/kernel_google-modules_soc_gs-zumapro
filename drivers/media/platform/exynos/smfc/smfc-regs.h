@@ -109,6 +109,8 @@
 #define REG_MAIN_DHT_LEN		0x04C
 #define REG_SEC_DHT_LEN			0x0C4
 #define SMFC_DHT_LEN			0x1A2
+/* grayscale DHT does not have chroma components */
+#define SMFC_DHT_GRAY_LEN		0x0D2
 
 /* Value definitions of MAIN/SECONDARY_IMAGE_FORMAT */
 enum {
@@ -119,6 +121,11 @@ enum {
 	IMGSEL_420,	/* YUV */
 	IMGSEL_422V,	/* YUV */
 	IMGSEL_411	/* YUV */
+};
+
+#define IMGFMT_GRAYSHIFT	3
+enum {
+	GRAYSEL = 4,
 };
 
 #define IMGFMT_RGBSHIFT		6
@@ -150,6 +157,7 @@ enum {
 	YUVSEL_VYUY = 3 << 28,
 };
 
+#define SMFC_IMGFMT_GRAY (IMGSEL_GRAY | (GRAYSEL << IMGFMT_GRAYSHIFT))
 #define SMFC_IMGFMT_RGB565 (IMGSEL_RGB | (RGBSEL_RGB565 << IMGFMT_RGBSHIFT))
 #define SMFC_IMGFMT_BGR565 (IMGSEL_RGB | (RGBSEL_RGB565 << IMGFMT_RGBSHIFT)\
 				| IMGFMT_RGBSWAP)
