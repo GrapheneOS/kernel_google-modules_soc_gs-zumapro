@@ -117,6 +117,19 @@ static struct pixel_em_profile *find_profile(const char *name)
 	return NULL;
 }
 
+/*
+ * We assume opps[@opp_id] was updated when this function gets called, which
+ * potentially could make the previous opp_id ineffiicent now, so check for
+ * this.
+ */
+static void update_inefficient_prev_opp(struct pixel_em_opp opps[], int opp_id)
+{
+	if (!opp_id)
+		return;
+
+	opps[opp_id-1].inefficient = opps[opp_id-1].cost >= opps[opp_id].cost;
+}
+
 
 static void apply_profile(struct pixel_em_profile *profile)
 {
@@ -190,6 +203,7 @@ static bool update_em_entry(struct pixel_em_profile *profile,
 				cluster->opps[opp_id].capacity = cap;
 				cluster->opps[opp_id].power = power;
 				cluster->opps[opp_id].cost = (max_freq * power) / freq;
+				update_inefficient_prev_opp(cluster->opps, opp_id);
 				return true;
 			}
 		}
@@ -268,6 +282,7 @@ static void update_profile(struct pixel_em_profile *dst, const struct pixel_em_p
 			dst_cluster->opps[opp_id].capacity = src_cluster->opps[opp_id].capacity;
 			dst_cluster->opps[opp_id].power = src_cluster->opps[opp_id].power;
 			dst_cluster->opps[opp_id].cost = src_cluster->opps[opp_id].cost;
+			dst_cluster->opps[opp_id].inefficient = src_cluster->opps[opp_id].inefficient;
 		}
 	}
 }
@@ -457,6 +472,7 @@ static bool generate_em_cluster(struct pixel_em_cluster *dst, struct em_perf_dom
 		dst->opps[opp_id].power = pd->table[opp_id].power;
 		dst->opps[opp_id].cost = pd->table[opp_id].cost;
 		dst->opps[opp_id].capacity = (dst->opps[opp_id].freq * cpu_scale) / max_freq;
+		update_inefficient_prev_opp(dst->opps, opp_id);
 	}
 
 	return true;
@@ -785,10 +801,13 @@ static ssize_t sysfs_profile_show(struct kobject *kobj, struct kobj_attribute *a
 		     opp_id++)
 			res += sysfs_emit_at(buf,
 					     res,
-					     "%u %d %d\n",
+					     "%u %u %u %lu %d\n",
 					     profile->clusters[cluster_id].opps[opp_id].freq,
 					     profile->clusters[cluster_id].opps[opp_id].capacity,
-					     profile->clusters[cluster_id].opps[opp_id].power);
+					     profile->clusters[cluster_id].opps[opp_id].power,
+					     profile->clusters[cluster_id].opps[opp_id].cost,
+					     profile->clusters[cluster_id].opps[opp_id].inefficient
+					     );
 
 		res += sysfs_emit_at(buf, res, "}\n");
 	}

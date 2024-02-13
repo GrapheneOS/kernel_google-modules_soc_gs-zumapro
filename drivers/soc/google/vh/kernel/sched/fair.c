@@ -1312,9 +1312,11 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 
 				for (i = 0; i < cluster->num_opps; i++) {
 					opp = &cluster->opps[i];
-					if (opp->freq >= freq)
+					if (opp->freq >= freq && !opp->inefficient)
 						break;
 				}
+
+				SCHED_WARN_ON(opp->inefficient);
 
 				cost = opp->cost * sum_util / max_opp->capacity;
 
@@ -1344,7 +1346,7 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 
 	for (i = 0; i < pd->nr_perf_states; i++) {
 		ps = &pd->table[i];
-		if (ps->frequency >= freq)
+		if (ps->frequency >= freq && !(ps->flags & EM_PERF_STATE_INEFFICIENT))
 			break;
 	}
 

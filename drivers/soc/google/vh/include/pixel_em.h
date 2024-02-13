@@ -15,6 +15,7 @@ struct pixel_em_opp {
   unsigned int capacity;
   unsigned int power;
   unsigned long cost;
+  bool inefficient;
 };
 
 struct pixel_em_cluster {
