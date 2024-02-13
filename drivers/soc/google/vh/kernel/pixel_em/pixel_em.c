@@ -193,7 +193,6 @@ static bool update_em_entry(struct pixel_em_profile *profile,
 
 	for (cluster_id = 0; cluster_id < profile->num_clusters; cluster_id++) {
 		struct pixel_em_cluster *cluster = &profile->clusters[cluster_id];
-		unsigned long max_freq = cluster->opps[cluster->num_opps - 1].freq;
 
 		if (!cpumask_test_cpu(cpu, &cluster->cpus))
 			continue;
@@ -202,7 +201,7 @@ static bool update_em_entry(struct pixel_em_profile *profile,
 			if (cluster->opps[opp_id].freq == freq) {
 				cluster->opps[opp_id].capacity = cap;
 				cluster->opps[opp_id].power = power;
-				cluster->opps[opp_id].cost = (max_freq * power) / freq;
+				cluster->opps[opp_id].cost = 1024 * power / cap;
 				update_inefficient_prev_opp(cluster->opps, opp_id);
 				return true;
 			}

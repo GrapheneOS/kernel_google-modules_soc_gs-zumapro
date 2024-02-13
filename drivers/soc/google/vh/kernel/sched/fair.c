@@ -1316,7 +1316,7 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 						break;
 				}
 
-				cost = opp->cost * sum_util / max_opp->capacity;
+				cost = opp->cost * sum_util;
 
 				if (count_idle) {
 					unsigned long cur_freq = arch_scale_freq_capacity(cpu) *
