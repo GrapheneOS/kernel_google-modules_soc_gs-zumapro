@@ -1340,7 +1340,6 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 	scale_cpu = arch_scale_cpu_capacity(cpu);
 	ps = &pd->table[pd->nr_perf_states - 1];
 	freq = map_util_freq_pixel_mod(max_util, ps->frequency, scale_cpu, cpu);
-	freq = map_scaling_freq(cpu, freq);
 
 	for (i = 0; i < pd->nr_perf_states; i++) {
 		ps = &pd->table[i];
@@ -2087,6 +2086,7 @@ unsigned long map_util_freq_pixel_mod(unsigned long util, unsigned long freq,
 	freq = freq * util / cap;
 
 #if IS_ENABLED(CONFIG_PIXEL_EM)
+	if (static_branch_likely(&skip_inefficient_opps_enable))
 	{
 		struct pixel_em_profile **profile_ptr_snapshot;
 		profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
@@ -2108,18 +2108,12 @@ unsigned long map_util_freq_pixel_mod(unsigned long util, unsigned long freq,
 				SCHED_WARN_ON(opp->inefficient);
 
 				freq = opp->freq;
-
-				/*
-				 * re-apply limits in case inefficient OPP
-				 * skipped it.
-				 */
-				freq = map_scaling_freq(cpu, freq);
 			}
 		}
 	}
 #endif
 
-	return freq;
+	return map_scaling_freq(cpu, freq);
 }
 
 static inline struct uclamp_se

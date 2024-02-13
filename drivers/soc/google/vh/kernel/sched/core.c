@@ -59,6 +59,8 @@ DEFINE_STATIC_KEY_FALSE(tapered_dvfs_headroom_enable);
 
 DEFINE_STATIC_KEY_FALSE(auto_migration_margins_enable);
 
+DEFINE_STATIC_KEY_FALSE(skip_inefficient_opps_enable);
+
 /*****************************************************************************/
 /*                       New Code Section                                    */
 /*****************************************************************************/

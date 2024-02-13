@@ -2391,6 +2391,39 @@ static ssize_t enable_hrtick_store(struct file *filp,
 }
 PROC_OPS_RW(enable_hrtick);
 
+static int skip_inefficient_opps_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", static_branch_likely(&skip_inefficient_opps_enable) ? 1 : 0);
+	return 0;
+}
+static ssize_t skip_inefficient_opps_store(struct file *filp,
+					   const char __user *ubuf,
+					   size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (!val) {
+		static_branch_disable(&skip_inefficient_opps_enable);
+	} else {
+		static_branch_enable(&skip_inefficient_opps_enable);
+	}
+
+	return count;
+}
+PROC_OPS_RW(skip_inefficient_opps);
+
 #if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 extern unsigned long sched_lib_mask_out_val;
 
@@ -2954,6 +2987,8 @@ static struct pentry entries[] = {
 	PROC_ENTRY(idle_inject_big_idle_duration_us),
 	PROC_ENTRY(idle_inject_big_latency_us),
 	PROC_ENTRY(idle_inject_sync_trigger),
+	// pixel_em
+	PROC_ENTRY(skip_inefficient_opps),
 };
 
 
