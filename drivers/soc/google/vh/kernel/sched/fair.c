@@ -2006,7 +2006,7 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 {
 	struct uclamp_se uc_req = p->uclamp_req[clamp_id];
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
-
+	bool is_adpf = get_uclamp_fork_reset(p, true);
 
 #ifdef CONFIG_UCLAMP_TASK_GROUP
 	unsigned int tg_min, tg_max, vnd_min, vnd_max, value;
@@ -2031,9 +2031,9 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 	tg_max = task_group(p)->uclamp[UCLAMP_MAX].value;
 	// Vendor group restriction
 	vnd_min = vg[vp->group].uc_req[UCLAMP_MIN].value;
-	vnd_max = get_uclamp_fork_reset(p, true) ?
+	vnd_max = is_adpf ?
 		uclamp_none(UCLAMP_MAX) : vg[vp->group].uc_req[UCLAMP_MAX].value;
-	if (vg[vp->group].auto_uclamp_max) {
+	if (vg[vp->group].auto_uclamp_max && !is_adpf) {
 		vp->auto_uclamp_max_flags |= AUTO_UCLAMP_MAX_FLAG_GROUP;
 		vnd_max = sched_auto_uclamp_max[task_cpu(p)];
 	} else {
