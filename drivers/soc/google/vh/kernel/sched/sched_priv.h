@@ -206,7 +206,7 @@ struct vendor_group_list {
 
 unsigned long apply_dvfs_headroom(unsigned long util, int cpu, bool tapered);
 unsigned long map_util_freq_pixel_mod(unsigned long util, unsigned long freq,
-				      unsigned long cap);
+				      unsigned long cap, int cpu);
 void check_migrate_rt_task(struct rq *rq, struct task_struct *p);
 void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum uclamp_id clamp_id,
 				  struct uclamp_se *uclamp_max, struct uclamp_se *uclamp_eff,

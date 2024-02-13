@@ -151,7 +151,7 @@ static inline bool update_pmu_throttle_on_ignored_cpus(struct sugov_policy *sg_p
 	if (sg_policy->tunables->pmu_limit_enable && sg_policy->under_pmu_throttle &&
 	    !sg_policy->relax_pmu_throttle &&
 	    cpumask_test_cpu(cpu, &sg_policy->pmu_ignored_mask) &&
-	    map_util_freq_pixel_mod(util, freq, cap) > sg_policy->tunables->limit_frequency) {
+	    map_util_freq_pixel_mod(util, freq, cap, cpu) > sg_policy->tunables->limit_frequency) {
 		sg_policy->relax_pmu_throttle = true;
 
 		return false;
@@ -436,7 +436,7 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	struct cpufreq_policy *policy = sg_policy->policy;
 	unsigned int freq = policy->cpuinfo.max_freq;
 
-	freq = map_util_freq_pixel_mod(util, freq, max);
+	freq = map_util_freq_pixel_mod(util, freq, max, policy->cpu);
 	trace_sugov_next_freq(policy->cpu, util, max, freq);
 
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
@@ -1060,7 +1060,7 @@ static void pmu_limit_work(struct kthread_work *work)
 				sg_cpu = &per_cpu(sugov_cpu, ccpu);
 				sugov_get_util(sg_cpu);
 				freq = map_util_freq_pixel_mod(sg_cpu->util,
-					policy->cpuinfo.max_freq, sg_cpu->max);
+					policy->cpuinfo.max_freq, sg_cpu->max, ccpu);
 				// Ignore this cpu if freq is <= limit freq.
 				if (freq <= sg_policy->tunables->limit_frequency) {
 					cpumask_set_cpu(ccpu, &local_pmu_ignored_mask);

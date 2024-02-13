@@ -1307,16 +1307,14 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 
 				freq = map_util_freq_pixel_mod(max_util,
 							       max_opp->freq,
-							       max_opp->capacity);
-				freq = map_scaling_freq(cpu, freq);
+							       max_opp->capacity,
+							       cpu);
 
 				for (i = 0; i < cluster->num_opps; i++) {
 					opp = &cluster->opps[i];
-					if (opp->freq >= freq && !opp->inefficient)
+					if (opp->freq >= freq)
 						break;
 				}
-
-				SCHED_WARN_ON(opp->inefficient);
 
 				cost = opp->cost * sum_util / max_opp->capacity;
 
@@ -1341,7 +1339,7 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 
 	scale_cpu = arch_scale_cpu_capacity(cpu);
 	ps = &pd->table[pd->nr_perf_states - 1];
-	freq = map_util_freq_pixel_mod(max_util, ps->frequency, scale_cpu);
+	freq = map_util_freq_pixel_mod(max_util, ps->frequency, scale_cpu, cpu);
 	freq = map_scaling_freq(cpu, freq);
 
 	for (i = 0; i < pd->nr_perf_states; i++) {
@@ -2084,9 +2082,44 @@ apply_dvfs_headroom(unsigned long util, int cpu, bool tapered)
  * frequency.
  */
 unsigned long map_util_freq_pixel_mod(unsigned long util, unsigned long freq,
-				      unsigned long cap)
+				      unsigned long cap, int cpu)
 {
-	return freq * util / cap;
+	freq = freq * util / cap;
+
+#if IS_ENABLED(CONFIG_PIXEL_EM)
+	{
+		struct pixel_em_profile **profile_ptr_snapshot;
+		profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
+		if (profile_ptr_snapshot) {
+			struct pixel_em_profile *profile = READ_ONCE(*profile_ptr_snapshot);
+			if (profile) {
+				struct pixel_em_cluster *cluster = profile->cpu_to_cluster[cpu];
+				struct pixel_em_opp *opp;
+				int i;
+
+				freq = map_scaling_freq(cpu, freq);
+
+				for (i = 0; i < cluster->num_opps; i++) {
+					opp = &cluster->opps[i];
+					if (opp->freq >= freq && !opp->inefficient)
+						break;
+				}
+
+				SCHED_WARN_ON(opp->inefficient);
+
+				freq = opp->freq;
+
+				/*
+				 * re-apply limits in case inefficient OPP
+				 * skipped it.
+				 */
+				freq = map_scaling_freq(cpu, freq);
+			}
+		}
+	}
+#endif
+
+	return freq;
 }
 
 static inline struct uclamp_se
