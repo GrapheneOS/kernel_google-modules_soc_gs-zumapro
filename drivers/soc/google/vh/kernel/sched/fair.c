@@ -2053,6 +2053,17 @@ void rvh_cpu_overutilized_pixel_mod(void *data, int cpu, int *overutilized)
 unsigned long __always_inline
 apply_dvfs_headroom(unsigned long util, int cpu, bool tapered)
 {
+
+	if (static_branch_likely(&auto_dvfs_headroom_enable)) {
+		u64 limit = per_cpu(dvfs_update_delay, cpu);
+
+		/*
+		 * Only apply a small headroom until the next freq request can
+		 * be taken.
+		 */
+		return approximate_util_avg(util, limit);
+	}
+
 	if (tapered && static_branch_unlikely(&tapered_dvfs_headroom_enable)) {
 		unsigned long capacity = capacity_orig_of(cpu);
 		unsigned long headroom;

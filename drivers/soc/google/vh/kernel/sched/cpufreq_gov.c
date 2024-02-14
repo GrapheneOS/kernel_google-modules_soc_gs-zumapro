@@ -31,6 +31,8 @@ unsigned int __read_mostly sched_per_cpu_iowait_boost_max_value[CONFIG_VH_SCHED_
 	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = SCHED_CAPACITY_SCALE
 };
 
+DEFINE_PER_CPU(u64, dvfs_update_delay);
+
 struct sugov_tunables {
 	struct gov_attr_set	attr_set;
 	unsigned int		up_rate_limit_us;
@@ -1195,6 +1197,7 @@ static ssize_t up_rate_limit_us_store(struct gov_attr_set *attr_set, const char 
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 	struct sugov_policy *sg_policy;
 	unsigned int rate_limit_us;
+	int cpu;
 
 	if (kstrtouint(buf, 10, &rate_limit_us))
 		return -EINVAL;
@@ -1204,6 +1207,9 @@ static ssize_t up_rate_limit_us_store(struct gov_attr_set *attr_set, const char 
 	list_for_each_entry(sg_policy, &attr_set->policy_list, tunables_hook) {
 		sg_policy->up_rate_delay_ns = rate_limit_us * NSEC_PER_USEC;
 		update_min_rate_limit_ns(sg_policy);
+
+		for_each_cpu(cpu, sg_policy->policy->cpus)
+			per_cpu(dvfs_update_delay, cpu) = rate_limit_us;
 	}
 
 	return count;
@@ -1657,6 +1663,8 @@ static int sugov_start(struct cpufreq_policy *policy)
 		memset(sg_cpu, 0, sizeof(*sg_cpu));
 		sg_cpu->cpu			= cpu;
 		sg_cpu->sg_policy		= sg_policy;
+
+		per_cpu(dvfs_update_delay, cpu) = sg_policy->tunables->up_rate_limit_us;
 	}
 
 	cpumask_or(&pixel_sched_governor_mask, &pixel_sched_governor_mask, policy->cpus);

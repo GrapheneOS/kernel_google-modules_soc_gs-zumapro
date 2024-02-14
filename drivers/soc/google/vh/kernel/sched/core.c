@@ -57,7 +57,7 @@ DEFINE_STATIC_KEY_FALSE(uclamp_min_filter_enable);
 DEFINE_STATIC_KEY_FALSE(uclamp_max_filter_enable);
 
 DEFINE_STATIC_KEY_FALSE(tapered_dvfs_headroom_enable);
-
+DEFINE_STATIC_KEY_FALSE(auto_dvfs_headroom_enable);
 DEFINE_STATIC_KEY_FALSE(auto_migration_margins_enable);
 
 DEFINE_STATIC_KEY_FALSE(skip_inefficient_opps_enable);
