@@ -75,6 +75,7 @@ google-cpm.ko
 google_bcl.ko
 google_dock.ko
 google_dual_batt_gauge.ko
+google_tcpci_shim.ko
 governor_dsulat.ko
 governor_memlat.ko
 gpu_cooling.ko
@@ -115,6 +116,8 @@ max77779-fg-i2c.ko
 max77779-fg.ko
 max77779-sp-i2c.ko
 max77779-sp.ko
+max77779-vimon-i2c.ko
+max77779-vimon.ko
 max77779_contaminant.ko
 max77779_i2cm.ko
 max77779_i2cm_i2c.ko
@@ -200,7 +203,6 @@ st21nfc.ko
 st54spi.ko
 systrace.ko
 tcpci_max77759.ko
-google_tcpci_shim.ko
 touch_bus_negotiator.ko
 touch_offload.ko
 trusty-core.ko
