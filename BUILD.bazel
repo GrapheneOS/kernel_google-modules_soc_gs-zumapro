@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 
 package(
     default_visibility = [
@@ -129,6 +129,20 @@ selects.config_setting_group(
         ":function_tracer",
         ":kasan",
     ],
+)
+
+# Do not use this flag directly, use --config=pixel_kunit,
+# which will enable this and any necessary dependencies.
+bool_flag(
+    name = "enable_kunit",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "kunit_enabled",
+    flag_values = {
+        ":enable_kunit": "1",
+    },
 )
 
 filegroup(

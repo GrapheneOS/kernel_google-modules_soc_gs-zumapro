@@ -47,6 +47,10 @@ build --config=no_download_gki
 # enable GKI prebuilts by default
 #build --config=download_gki
 
+# enable dependencies for KUNIT
+build:pixel_kunit --//private/google-modules/soc/gs:enable_kunit
+build:pixel_kunit --notrim
+
 # Placeholders for device specific bazelrc files. Add as many as you need.
 try-import %workspace%/.d1.bazelrc
 try-import %workspace%/.d2.bazelrc

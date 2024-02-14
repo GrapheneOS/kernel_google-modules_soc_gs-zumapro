@@ -263,6 +263,7 @@ def lto_dependant_kernel_module(
         name,
         outs,
         lto_outs,
+        test_outs = [],
         srcs = None,
         kernel_build = None,
         makefile = None,
@@ -274,6 +275,7 @@ def lto_dependant_kernel_module(
         name: name of the module
         outs: See kernel_module.outs
         lto_outs: Like outs, but only appended to outs when LTO is not set to none
+        test_outs: KUnit test output modules
         srcs: sources for the kernel module
         kernel_build: See kernel_module.kernel_build
         makefile: See kernel_module.makefile
@@ -305,10 +307,21 @@ def lto_dependant_kernel_module(
         **kwargs_with_private_visibility
     )
 
+    kernel_module(
+        name = name + "_kunit",
+        srcs = srcs,
+        outs = outs + test_outs + lto_outs,
+        kernel_build = kernel_build,
+        makefile = makefile,
+        deps = deps,
+        **kwargs_with_private_visibility
+    )
+
     native.alias(
         name = name,
         actual = select({
             "//private/google-modules/soc/gs:lto_none": name + "_lto_none",
+            "//private/google-modules/soc/gs:kunit_enabled": name + "_kunit",
             "//conditions:default": name + "_internal",
         }),
         **kwargs
