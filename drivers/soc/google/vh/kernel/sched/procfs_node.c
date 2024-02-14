@@ -28,6 +28,7 @@ bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
 bool __read_mostly vendor_sched_reduce_prefer_idle = true;
 bool __read_mostly vendor_sched_auto_prefer_idle = false;
 bool __read_mostly vendor_sched_boost_adpf_prio = true;
+struct cpumask cpu_skip_mask;
 static struct proc_dir_entry *vendor_sched;
 struct proc_dir_entry *group_dirs[VG_MAX];
 extern struct vendor_group_list vendor_group_list[VG_MAX];
@@ -2216,6 +2217,29 @@ static ssize_t ug_bg_auto_prio_store(struct file *filp, const char __user *ubuf,
 PROC_OPS_RW(ug_bg_auto_prio);
 #endif
 
+static int cpu_skip_mask_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "0x%lx\n", cpu_skip_mask.bits[0]);
+
+	return 0;
+}
+static ssize_t cpu_skip_mask_store(struct file *filp,
+				  const char __user *ubuf,
+				  size_t count, loff_t *pos)
+{
+	int ret;
+	unsigned long val;
+
+	ret = kstrtoul_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	cpu_skip_mask.bits[0] = val;
+
+	return count;
+}
+PROC_OPS_RW(cpu_skip_mask);
+
 struct pentry {
 	const char *name;
 	enum vendor_procfs_type type;
@@ -2295,6 +2319,8 @@ static struct pentry entries[] = {
 	PROC_ENTRY(tapered_dvfs_headroom_enable),
 	// teo
 	PROC_ENTRY(teo_util_threshold),
+	// skip mask for RT wake up
+	PROC_ENTRY(cpu_skip_mask),
 };
 
 
