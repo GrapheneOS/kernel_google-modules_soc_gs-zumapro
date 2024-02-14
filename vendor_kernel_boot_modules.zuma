@@ -5,9 +5,9 @@
 9pnet.ko
 9pnet_virtio.ko
 acpm_flexpmu_dbg.ko
+aoc_alsa_dev_util.ko
 aoc_core.ko
 aoc_tbn_service_dev.ko
-aoc_alsa_dev_util.ko
 aoc_usb_driver.ko
 arm-cmn.ko
 arm-memlat-mon.ko
@@ -41,16 +41,17 @@ exynos-adv-tracer.ko
 exynos-bcm_dbg-dump.ko
 exynos-bcm_dbg-ppmu.ko
 exynos-bcm_dbg.ko
-exynos-coresight.ko
 exynos-coresight-etm.ko
+exynos-coresight.ko
 exynos-cpuhp.ko
 exynos-cpupm.ko
 exynos-debug-test.ko
 exynos-dm.ko
-exynos-drm.ko
 exynos-drm-audio.ko
+exynos-drm.ko
 exynos-ecc-handler.ko
 exynos-hdcp2.ko
+exynos-pcie-iommu.ko
 exynos-pd-dbg.ko
 exynos-pd.ko
 exynos-pd_el3.ko
@@ -73,6 +74,7 @@ google-bms.ko
 google-charger.ko
 google-cpm.ko
 google_bcl.ko
+google_tcpci_shim.ko
 governor_dsulat.ko
 governor_memlat.ko
 gpu_cooling.ko
@@ -86,7 +88,6 @@ gs_governor_memlat.ko
 gs_governor_utils.ko
 gs_memlat_devfreq.ko
 gs_perf_mon.ko
-pixel_metrics.ko
 gs_thermal.ko
 gsa.ko
 gsa_gsc.ko
@@ -106,11 +107,9 @@ mali_kbase.ko
 mali_pixel.ko
 max1720x-battery.ko
 max20339.ko
-max777x9_contaminant.ko
 max77729-pmic.ko
 max77759-charger.ko
 max77759_contaminant.ko
-max77779_contaminant.ko
 max77759_helper.ko
 max77779-charger-i2c.ko
 max77779-charger.ko
@@ -118,6 +117,9 @@ max77779-fg-i2c.ko
 max77779-fg.ko
 max77779-sp-i2c.ko
 max77779-sp.ko
+max77779-vimon-i2c.ko
+max77779-vimon.ko
+max77779_contaminant.ko
 max77779_i2cm.ko
 max77779_i2cm_i2c.ko
 max77779_pmic.ko
@@ -125,6 +127,7 @@ max77779_pmic_i2c.ko
 max77779_pmic_irq.ko
 max77779_pmic_pinctrl.ko
 max77779_pmic_sgpio.ko
+max777x9_contaminant.ko
 memlat-devfreq.ko
 net_failover.ko
 netfs.ko
@@ -143,7 +146,6 @@ panel-samsung-s6e3hc3.ko
 panel-samsung-s6e3hc4.ko
 panel-samsung-sofef01.ko
 pca9468.ko
-exynos-pcie-iommu.ko
 pcie-exynos-gs.ko
 pcie-exynos-zuma-rc-cal.ko
 perf_trace_counters.ko
@@ -156,6 +158,7 @@ pixel-debug-test.ko
 pixel-reboot.ko
 pixel-suspend-diag.ko
 pixel_em.ko
+pixel_metrics.ko
 pixel_stat_mm.ko
 pixel_stat_sysfs.ko
 pkvm-s2mpu-v9.ko
@@ -199,7 +202,6 @@ sscoredump.ko
 st21nfc.ko
 st54spi.ko
 systrace.ko
-google_tcpci_shim.ko
 tcpci_max77759.ko
 touch_bus_negotiator.ko
 touch_offload.ko
