@@ -30,6 +30,7 @@ unsigned int __read_mostly vendor_sched_util_post_init_scale = DEF_UTIL_POST_INI
 bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
 bool __read_mostly vendor_sched_reduce_prefer_idle = true;
 bool __read_mostly vendor_sched_boost_adpf_prio = true;
+struct cpumask cpu_skip_mask;
 static struct proc_dir_entry *vendor_sched;
 struct proc_dir_entry *group_dirs[VG_MAX];
 extern struct vendor_group_list vendor_group_list[VG_MAX];
@@ -2890,6 +2891,29 @@ out:
 }
 PROC_OPS_RW(idle_inject_sync_trigger);
 
+static int cpu_skip_mask_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "0x%lx\n", cpu_skip_mask.bits[0]);
+
+	return 0;
+}
+static ssize_t cpu_skip_mask_store(struct file *filp,
+				  const char __user *ubuf,
+				  size_t count, loff_t *pos)
+{
+	int ret;
+	unsigned long val;
+
+	ret = kstrtoul_from_user(ubuf, count, 0, &val);
+	if (ret)
+		return ret;
+
+	cpu_skip_mask.bits[0] = val;
+
+	return count;
+}
+PROC_OPS_RW(cpu_skip_mask);
+
 struct pentry {
 	const char *name;
 	enum vendor_procfs_type type;
@@ -2994,6 +3018,8 @@ static struct pentry entries[] = {
 	PROC_ENTRY(idle_inject_sync_trigger),
 	// pixel_em
 	PROC_ENTRY(skip_inefficient_opps),
+	// skip mask for RT wake up
+	PROC_ENTRY(cpu_skip_mask),
 };
 
 
