@@ -24,6 +24,7 @@
 #include <linux/irqchip/arm-gic-v3.h>
 
 #include <soc/google/acpm_ipc_ctrl.h>
+#include <soc/google/exynos-cpupm.h>
 #include <soc/google/exynos-ehld.h>
 #include <soc/google/exynos-coresight.h>
 #include <soc/google/debug-snapshot.h>
@@ -78,17 +79,19 @@ struct exynos_ehld_dbgc {
 };
 
 struct exynos_ehld_main {
-	raw_spinlock_t			policy_lock;
+	raw_spinlock_t			lock;
 	unsigned int			cs_base;
 	int				enabled;
 	bool				suspending;
+	bool				pm_suspending;
+	bool				sicd_suspending;
 	bool				resuming;
 	struct exynos_ehld_dbgc		dbgc;
 	void __iomem			**sgi_base;
 };
 
 static struct exynos_ehld_main ehld_main = {
-	.policy_lock = __RAW_SPIN_LOCK_UNLOCKED(ehld_main.policy_lock),
+	.lock = __RAW_SPIN_LOCK_UNLOCKED(ehld_main.lock),
 };
 
 struct exynos_ehld_data {
@@ -163,7 +166,7 @@ void exynos_ehld_do_policy(void)
 	unsigned int cpu;
 	unsigned int warn = 0, lockup_hw = 0, lockup_sw = 0;
 
-	raw_spin_lock_irqsave(&ehld_main.policy_lock, flags);
+	raw_spin_lock_irqsave(&ehld_main.lock, flags);
 	for_each_possible_cpu(cpu) {
 		unsigned int val;
 		struct exynos_ehld_ctrl *ctrl;
@@ -194,7 +197,7 @@ void exynos_ehld_do_policy(void)
 		val |= EHLD_STAT_HANDLED_FLAG;
 		dbg_snapshot_set_core_ehld_stat(val, cpu);
 	}
-	raw_spin_unlock_irqrestore(&ehld_main.policy_lock, flags);
+	raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
 
 	for_each_possible_cpu(cpu) {
 		if (warn & (1 << cpu)) {
@@ -757,10 +760,11 @@ static struct notifier_block exynos_ehld_c2_pm_exit_nb = {
 	.priority = CORESIGHT_CPUPM_PRIORITY - 1,
 };
 
-static int exynos_ehld_pm_notifier(struct notifier_block *notifier,
-				       unsigned long pm_event, void *v)
+static int exynos_ehld_pm_notifier(struct notifier_block *notifier,unsigned long pm_event, void *v)
 {
 	unsigned int cpu;
+	unsigned long flags;
+
 	/*
 	 * We should control re-init / exit for all CPUs
 	 * Originally all CPUs are controlled by cpuhp framework.
@@ -770,34 +774,124 @@ static int exynos_ehld_pm_notifier(struct notifier_block *notifier,
 	 * CPU0 will be controlled by CPU_PM notifier call.
 	 */
 
+	if (!ehld_main.dbgc.support) {
+		return NOTIFY_OK;
+	}
+
 	switch (pm_event) {
+
 	case PM_SUSPEND_PREPARE:
-		if (ehld_main.dbgc.support) {
-			adv_tracer_ehld_set_enable(false);
-			ehld_main.dbgc.enabled = false;
+		raw_spin_lock_irqsave(&ehld_main.lock, flags);
+
+		ehld_main.pm_suspending = 1;
+
+		if (1 == ehld_main.suspending) {
+			raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
+			return NOTIFY_OK;
 		}
+
+		adv_tracer_ehld_set_enable(false);
+		ehld_main.dbgc.enabled = false;
+
 		ehld_main.suspending = 1;
+
+		raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
 		break;
 
 	case PM_POST_SUSPEND:
-		ehld_main.suspending = 0;
-		if (ehld_main.dbgc.support) {
-			for_each_possible_cpu(cpu) {
-				dbg_snapshot_set_core_pmu_val
-						(EHLD_VAL_PM_POST, cpu);
-			}
-			adv_tracer_ehld_set_enable(true);
-			ehld_main.dbgc.enabled = true;
+		raw_spin_lock_irqsave(&ehld_main.lock, flags);
+
+		ehld_main.pm_suspending = 0;
+
+		if (1 == ehld_main.sicd_suspending) {
+			raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
+			return NOTIFY_OK;
 		}
+
+		for_each_possible_cpu(cpu) {
+			dbg_snapshot_set_core_pmu_val (EHLD_VAL_PM_POST, cpu);
+		}
+
+		adv_tracer_ehld_set_enable(true);
+		ehld_main.dbgc.enabled = true;
+
+		ehld_main.suspending = 0;
+
+		raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
+		break;
+
+	default:
 		break;
 	}
 
 	return NOTIFY_OK;
 }
 
-static struct notifier_block exynos_ehld_nb = {
+static struct notifier_block exynos_ehld_pm_notifier_block = {
 	.notifier_call = exynos_ehld_pm_notifier,
 };
+
+
+
+static int exynos_ehld_sicd_notifier(struct notifier_block *self, unsigned long sicd_event, void *v)
+{
+	unsigned int cpu = raw_smp_processor_id();
+
+	unsigned long flags;
+
+	if (!ehld_main.dbgc.support) {
+		return NOTIFY_OK;
+	}
+
+	switch (sicd_event) {
+
+	case SICD_ENTER:
+		raw_spin_lock_irqsave(&ehld_main.lock, flags);
+
+		ehld_main.sicd_suspending = 1;
+
+		if (1 == ehld_main.suspending) {
+			raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
+			return NOTIFY_OK;
+		}
+
+		exynos_ehld_cpu_pm_enter(cpu);
+		adv_tracer_ehld_set_enable(false);
+		ehld_main.dbgc.enabled = false;
+
+		ehld_main.suspending = 1;
+
+		raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
+		break;
+
+	case SICD_EXIT:
+		raw_spin_lock_irqsave(&ehld_main.lock, flags);
+
+		ehld_main.sicd_suspending = 0;
+
+		if (1 == ehld_main.pm_suspending) {
+			raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
+			return NOTIFY_OK;
+		}
+
+		ehld_main.dbgc.enabled = true;
+
+		ehld_main.suspending = 0;
+
+		raw_spin_unlock_irqrestore(&ehld_main.lock, flags);
+		break;
+
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block exynos_ehld_sicd_notifier_block = {
+	.notifier_call = exynos_ehld_sicd_notifier,
+};
+
 
 static int exynos_ehld_init_dt(struct device *dev)
 {
@@ -958,8 +1052,9 @@ static int exynos_ehld_setup(void)
 {
 	int ret;
 
-	/* register pm notifier */
-	register_pm_notifier(&exynos_ehld_nb);
+	/* register the PM and SICD notifiers */
+	register_pm_notifier(&exynos_ehld_pm_notifier_block);
+	exynos_cpupm_notifier_register(&exynos_ehld_sicd_notifier_block);
 
 	register_hardlockup_notifier_list();
 
