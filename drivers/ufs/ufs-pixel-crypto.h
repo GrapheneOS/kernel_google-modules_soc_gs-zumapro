@@ -10,6 +10,9 @@
 #ifdef CONFIG_SCSI_UFS_CRYPTO
 int pixel_ufs_crypto_init(struct ufs_hba *hba);
 void pixel_ufs_crypto_resume(struct ufs_hba *hba);
+#ifdef CONFIG_SCSI_UFS_CRYPTO_SW_KEYS_MODE
+int exynos_ufs_crypto_init_sw_keys_mode(struct ufs_hba *hba);
+#endif /* CONFIG_SCSI_UFS_CRYPTO_SW_KEYS_MODE */
 #else
 static inline int pixel_ufs_crypto_init(struct ufs_hba *hba)
 {

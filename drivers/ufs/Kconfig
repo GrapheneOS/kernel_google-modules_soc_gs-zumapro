@@ -9,6 +9,15 @@ config SCSI_UFS_EXYNOS_GS
 
 	  If you have a controller with this interface, say Y or M here.
 
+config SCSI_UFS_CRYPTO_SW_KEYS_MODE
+	bool "Enable support for software delivered encryption keys"
+	depends on SCSI_UFS_CRYPTO
+	help
+	  The exynos controller supports both hardware and software encryption
+	  key modes. The hardware encryption key mode is the default one. This
+	  config enables support for software key mode which must be activated
+	  via the use_kdn=0 module parameter passed via command line.
+
 config SCSI_UFS_PIXEL_FIPS140
 	tristate "Enable FIPS 140 CMVP Module"
 	depends on m && SCSI_UFS_EXYNOS_GS && SCSI_UFS_CRYPTO && \
