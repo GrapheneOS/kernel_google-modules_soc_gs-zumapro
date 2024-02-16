@@ -18,10 +18,18 @@ struct pixel_em_opp {
   bool inefficient;
 };
 
+struct pixel_em_idle_opp {
+  unsigned int freq;
+  unsigned int energy;
+};
+
 struct pixel_em_cluster {
   cpumask_t cpus;
   int num_opps;
-  struct pixel_em_opp *opps;
+  union {
+    struct pixel_em_opp *opps;
+    struct pixel_em_idle_opp *idle_opps;
+  };
 };
 
 struct pixel_em_profile {

@@ -225,23 +225,23 @@ static bool update_em_entry(struct pixel_em_profile *profile,
 #if IS_ENABLED(CONFIG_VH_SCHED)
 static bool update_idle_em_entry(struct pixel_idle_em *idle_em,
 			    int cpu,
-			    unsigned int freq,
-			    unsigned int power)
+				unsigned int freq,
+				unsigned int energy)
 {
 	int cluster_id;
 	int opp_id;
 
+	WARN_ON(energy >= UINT_MAX/2);
+
 	for (cluster_id = 0; cluster_id < idle_em->num_clusters; cluster_id++) {
 		struct pixel_em_cluster *cluster = &idle_em->clusters[cluster_id];
-		unsigned long max_freq = cluster->opps[cluster->num_opps - 1].freq;
 
 		if (!cpumask_test_cpu(cpu, &cluster->cpus))
 			continue;
 
 		for (opp_id = 0; opp_id < cluster->num_opps; opp_id++) {
-			if (cluster->opps[opp_id].freq == freq) {
-				cluster->opps[opp_id].power = power;
-				cluster->opps[opp_id].cost = (max_freq * power) / freq;
+			if (cluster->idle_opps[opp_id].freq == freq) {
+				cluster->idle_opps[opp_id].energy = energy;
 				return true;
 			}
 		}
@@ -561,6 +561,33 @@ failed_res_allocation:
 }
 
 #if IS_ENABLED(CONFIG_VH_SCHED)
+
+static bool generate_idle_em_cluster(struct pixel_em_cluster *dst, struct em_perf_domain *pd)
+{
+	int opp_id;
+
+	cpumask_copy(&dst->cpus, em_span_cpus(pd));
+
+	dst->num_opps = pd->nr_perf_states;
+
+	dst->idle_opps = kcalloc(dst->num_opps, sizeof(*dst->idle_opps), GFP_KERNEL);
+	if (!dst->idle_opps)
+		return false;
+
+	for (opp_id = 0; opp_id < pd->nr_perf_states; opp_id++) {
+		dst->idle_opps[opp_id].freq = pd->table[opp_id].frequency;
+		dst->idle_opps[opp_id].energy = 0;
+	}
+
+	return true;
+}
+
+static void deallocate_idle_em_cluster(struct pixel_em_cluster *dst)
+{
+	kfree(dst->idle_opps);
+	dst->idle_opps = NULL;
+}
+
 static struct pixel_idle_em *generate_idle_em(void)
 {
 	struct pixel_idle_em *idle_em;
@@ -590,9 +617,9 @@ static struct pixel_idle_em *generate_idle_em(void)
 		// pd is guaranteed not to be NULL, as pixel_em_count_clusters completed earlier.
 		int pd_cpu;
 
-		if (!generate_em_cluster(&idle_em->clusters[current_cluster_id], pd)) {
+		if (!generate_idle_em_cluster(&idle_em->clusters[current_cluster_id], pd)) {
 			do {
-				deallocate_em_cluster(&idle_em->clusters[current_cluster_id]);
+				deallocate_idle_em_cluster(&idle_em->clusters[current_cluster_id]);
 			} while (--current_cluster_id >= 0);
 			goto failed_cluster_generation;
 		}
@@ -655,7 +682,7 @@ static bool parse_idle_em_body(struct pixel_idle_em *idle_em, const char *idle_e
 			pr_debug("Setting active CPU to %d...\n", current_cpu_id);
 		} else if (skipped_blanks[0] != '\0' && skipped_blanks[0] != '}') {
 			unsigned int freq = 0;
-			unsigned int power = 0;
+			unsigned int energy = 0;
 
 			if (current_cpu_id == -1) {
 				pr_err("Error: no CPU id specified before parsing '%s'!\n",
@@ -663,20 +690,20 @@ static bool parse_idle_em_body(struct pixel_idle_em *idle_em, const char *idle_e
 				ret = -EINVAL;
 				goto early_return;
 			}
-			if (sscanf(skipped_blanks, "%u %u", &freq, &power) != 2) {
+			if (sscanf(skipped_blanks, "%u %u", &freq, &energy) != 2) {
 				pr_err("Error when parsing '%s'!\n", skipped_blanks);
 				ret = -EINVAL;
 				goto early_return;
 			}
-			if (freq == 0 || power == 0) {
+			if (freq == 0 || energy == 0) {
 				pr_err("Illegal freq/power combination specified: %u, %u.\n",
 				       freq,
-				       power);
+				       energy);
 				ret = -EINVAL;
 				goto early_return;
 			}
 
-			update_idle_em_entry(idle_em, current_cpu_id, freq, power);
+			update_idle_em_entry(idle_em, current_cpu_id, freq, energy);
 		}
 	}
 
@@ -694,7 +721,7 @@ static int parse_idle_em(struct pixel_idle_em *idle_em, const struct device_node
 	int ret;
 	const char *idle_em_body;
 
-	ret = of_property_read_string(np, "idle_power", &idle_em_body);
+	ret = of_property_read_string(np, "idle_energy", &idle_em_body);
 
 	if (ret == 0) {
 		ret = parse_idle_em_body(idle_em, idle_em_body, strlen(idle_em_body));
@@ -805,9 +832,9 @@ static ssize_t sysfs_idle_profile_show(struct kobject *kobj,
 				opp_id++)
 				res += sysfs_emit_at(buf,
 							res,
-							"%u %d\n",
-							idle_profile->clusters[cluster_id].opps[opp_id].freq,
-							idle_profile->clusters[cluster_id].opps[opp_id].power);
+							"%u %u\n",
+							idle_profile->clusters[cluster_id].idle_opps[opp_id].freq,
+							idle_profile->clusters[cluster_id].idle_opps[opp_id].energy);
 		}
 
 		res += sysfs_emit_at(buf, res, "}\n");
@@ -1025,7 +1052,7 @@ static void pixel_em_free_idle(struct pixel_idle_em *idle_em)
 		return;
 
 	for (cluster_id = 0; cluster_id < idle_em->num_clusters; cluster_id++) {
-		deallocate_em_cluster(&idle_em->clusters[cluster_id]);
+		deallocate_idle_em_cluster(&idle_em->clusters[cluster_id]);
 	}
 	kfree(idle_em->clusters);
 	kfree(idle_em->cpu_to_cluster);

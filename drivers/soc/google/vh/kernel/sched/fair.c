@@ -1278,17 +1278,17 @@ static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu)
 }
 
 #if IS_ENABLED(CONFIG_PIXEL_EM)
-static inline unsigned long get_idle_cost(int cpu, int opp_level)
+static inline unsigned long get_wakeup_energy(int cpu, int opp_level)
 {
-	unsigned long cost = 0;
+	unsigned long energy = 0;
 	struct pixel_idle_em *idle_em_snapshot;
 	raw_spin_lock(&vendor_sched_pixel_em_lock);
 	idle_em_snapshot = READ_ONCE(vendor_sched_pixel_idle_em);
 	if (idle_em_snapshot) {
-		cost = idle_em_snapshot->cpu_to_cluster[cpu]->opps[opp_level].cost;
+		energy = idle_em_snapshot->cpu_to_cluster[cpu]->idle_opps[opp_level].energy;
 	}
 	raw_spin_unlock(&vendor_sched_pixel_em_lock);
-	return cost;
+	return energy;
 }
 #endif
 
@@ -1307,7 +1307,7 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 
 #if IS_ENABLED(CONFIG_PIXEL_EM)
 	{
-		unsigned long cost;
+		unsigned long energy;
 		struct pixel_em_profile **profile_ptr_snapshot;
 		profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
 		if (profile_ptr_snapshot) {
@@ -1330,7 +1330,7 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 						break;
 				}
 
-				cost = opp->cost * sum_util;
+				energy = opp->cost * sum_util;
 
 				if (count_idle) {
 					unsigned long cur_freq = arch_scale_freq_capacity(cpu) *
@@ -1342,10 +1342,13 @@ static inline unsigned long em_cpu_energy_pixel_mod(struct em_perf_domain *pd,
 							break;
 					}
 
-					cost += get_idle_cost(dst_cpu, i);
+					if (check_add_overflow(energy, get_wakeup_energy(dst_cpu, i), &energy)) {
+						WARN_ON(1);
+						energy = UINT_MAX;
+					}
 				}
 
-				return cost;
+				return energy;
 			}
 		}
 	}
