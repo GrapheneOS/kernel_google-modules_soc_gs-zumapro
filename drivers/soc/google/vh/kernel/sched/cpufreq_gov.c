@@ -25,6 +25,10 @@
 #include "sched_events.h"
 #include "sched_priv.h"
 
+#if IS_ENABLED(CONFIG_PIXEL_EM)
+#include "../../include/pixel_em.h"
+#endif
+
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 
 unsigned int __read_mostly sched_per_cpu_iowait_boost_max_value[CONFIG_VH_SCHED_MAX_CPU_NR] = {
@@ -32,12 +36,14 @@ unsigned int __read_mostly sched_per_cpu_iowait_boost_max_value[CONFIG_VH_SCHED_
 };
 
 DEFINE_PER_CPU(u64, dvfs_update_delay);
+DEFINE_PER_CPU(unsigned long, response_time_mult);
 
 struct sugov_tunables {
 	struct gov_attr_set	attr_set;
 	unsigned int		up_rate_limit_us;
 	unsigned int		down_rate_limit_us;
 	unsigned int		down_rate_limit_scale_pow;
+	unsigned int		response_time_ms;
 
 	/* The field below for PMU poll */
 	unsigned int		lcpi_threshold;
@@ -58,6 +64,7 @@ struct sugov_policy {
 	s64			up_rate_delay_ns;
 	s64			down_rate_delay_ns;
 	unsigned int		down_rate_limit_scale_pow;
+	unsigned int		freq_response_time_ms;
 	unsigned int		next_freq;
 	unsigned int		cached_raw_freq;
 	unsigned int		prev_cached_raw_freq;
@@ -135,6 +142,92 @@ extern int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 #endif
 
 /************************ Governor internals ***********************/
+static inline unsigned int
+sugov_calc_freq_response_ms(struct sugov_policy *sg_policy)
+{
+	int cpu = cpumask_first(sg_policy->policy->cpus);
+	unsigned long cap = arch_scale_cpu_capacity(cpu);
+
+#if IS_ENABLED(CONFIG_PIXEL_EM)
+	struct pixel_em_profile **profile_ptr_snapshot;
+	struct pixel_em_profile *profile;
+
+	profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
+	profile = READ_ONCE(*profile_ptr_snapshot);
+	if (profile) {
+		struct pixel_em_cluster *cluster = profile->cpu_to_cluster[cpu];
+		struct pixel_em_opp *sec_max_opp;
+
+		if (!cluster || !cluster->num_opps)
+			goto out;
+
+		if (cluster->num_opps >= 2) {
+			sec_max_opp = &cluster->opps[cluster->num_opps-2];
+			cap = sec_max_opp->capacity + 1;
+		} else {
+			sec_max_opp = &cluster->opps[0];
+			cap = sec_max_opp->capacity;
+		}
+	}
+out:
+#endif
+	/*
+	 * We will request max_freq as soon as util crosses the capacity at
+	 * second highest frequency. So effectively our response time is the
+	 * util at which we cross the cap@2nd_highest_freq.
+	 *
+	 * We need to export some functions from GKI to get the 2nd max
+	 * frequency without pixel_em.
+	 */
+	return approximate_runtime(cap);
+}
+
+static inline void sugov_update_response_time_mult(struct sugov_policy *sg_policy)
+{
+	unsigned long mult;
+	int cpu;
+
+	if (unlikely(!sg_policy->freq_response_time_ms))
+		sg_policy->freq_response_time_ms = sugov_calc_freq_response_ms(sg_policy);
+
+	mult = sg_policy->freq_response_time_ms * SCHED_CAPACITY_SCALE;
+	mult /=	sg_policy->tunables->response_time_ms;
+
+	if (SCHED_WARN_ON(!mult))
+		mult = SCHED_CAPACITY_SCALE;
+
+	for_each_cpu(cpu, sg_policy->policy->cpus)
+		per_cpu(response_time_mult, cpu) = mult;
+}
+
+/*
+ * Shrink or expand how long it takes to reach the maximum performance of the
+ * policy.
+ *
+ * sg_policy->freq_response_time_ms is a constant value defined by PELT
+ * HALFLIFE and the capacity of the policy (assuming HMP systems).
+ *
+ * sg_policy->tunables->response_time_ms is a user defined response time. By
+ * setting it lower than sg_policy->freq_response_time_ms, the system will
+ * respond faster to changes in util, which will result in reaching maximum
+ * performance point quicker. By setting it higher, it'll slow down the amount
+ * of time required to reach the maximum OPP.
+ *
+ * This should be applied when selecting the frequency.
+ */
+static inline unsigned long
+sugov_apply_response_time(unsigned long util, int cpu)
+{
+	unsigned long mult;
+
+	if (!static_branch_likely(&auto_dvfs_headroom_enable))
+		return util;
+
+	mult = per_cpu(response_time_mult, cpu) * util;
+
+	return mult >> SCHED_CAPACITY_SHIFT;
+}
+
 static bool check_pmu_limit_conditions(u64 lcpi, u64 spc, struct sugov_policy *sg_policy)
 {
 	if (sg_policy->tunables->lcpi_threshold <= lcpi &&
@@ -515,6 +608,11 @@ unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
 	 */
 	util = util_cfs + cpu_util_rt(rq);
 	if (type == FREQUENCY_UTIL) {
+		/*
+		 * Speed up/slow down response timee first then apply DVFS
+		 * headroom. We only want to do that for cfs+rt util.
+		 */
+		util = sugov_apply_response_time(util, cpu);
 		util = apply_dvfs_headroom(util, cpu, true);
 		util = uclamp_rq_util_with(rq, util, p);
 		trace_schedutil_cpu_util_clamp(cpu, util_cfs, cpu_util_rt(rq), util, max);
@@ -1277,6 +1375,52 @@ static ssize_t down_rate_limit_scale_pow_store(struct gov_attr_set *attr_set, co
 
 static struct governor_attr down_rate_limit_scale_pow = __ATTR_RW(down_rate_limit_scale_pow);
 
+static ssize_t response_time_ms_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	return sprintf(buf, "%u\n", tunables->response_time_ms);
+}
+
+static ssize_t
+response_time_ms_store(struct gov_attr_set *attr_set, const char *buf, size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+	struct sugov_policy *sg_policy;
+	unsigned int response_time_ms;
+
+	if (kstrtouint(buf, 10, &response_time_ms))
+		return -EINVAL;
+
+	/* XXX need special handling for high values? */
+
+	tunables->response_time_ms = response_time_ms;
+
+	list_for_each_entry(sg_policy, &attr_set->policy_list, tunables_hook) {
+		if (sg_policy->tunables == tunables) {
+			sugov_update_response_time_mult(sg_policy);
+			break;
+		}
+	}
+
+	return count;
+}
+
+static struct governor_attr response_time_ms = __ATTR_RW(response_time_ms);
+
+static ssize_t response_time_ms_nom_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+	struct sugov_policy *sg_policy;
+
+	list_for_each_entry(sg_policy, &attr_set->policy_list, tunables_hook)
+		if (sg_policy->tunables == tunables)
+			break;
+
+	return sprintf(buf, "%u\n", sg_policy->freq_response_time_ms);
+}
+
+static struct governor_attr response_time_ms_nom = __ATTR_RO(response_time_ms_nom);
 
 static ssize_t lcpi_threshold_show(struct gov_attr_set *attr_set, char *buf)
 {
@@ -1368,6 +1512,8 @@ static struct attribute *sugov_attrs[] = {
 	&up_rate_limit_us.attr,
 	&down_rate_limit_us.attr,
 	&down_rate_limit_scale_pow.attr,
+	&response_time_ms.attr,
+	&response_time_ms_nom.attr,
 
 	// For PMU Limit
 	&lcpi_threshold.attr,
@@ -1572,6 +1718,7 @@ static int sugov_init(struct cpufreq_policy *policy)
 	tunables->up_rate_limit_us = cpufreq_policy_transition_delay_us(policy);
 	tunables->down_rate_limit_us = cpufreq_policy_transition_delay_us(policy);
 	tunables->down_rate_limit_scale_pow = 1;
+	tunables->response_time_ms = sugov_calc_freq_response_ms(sg_policy);
 	tunables->pmu_limit_enable = false;
 	tunables->lcpi_threshold = 1000;
 	tunables->spc_threshold = 100;
@@ -1579,6 +1726,8 @@ static int sugov_init(struct cpufreq_policy *policy)
 
 	policy->governor_data = sg_policy;
 	sg_policy->tunables = tunables;
+
+	sugov_update_response_time_mult(sg_policy);
 
 
 	freq_qos_add_request(&policy->constraints, &sg_policy->pmu_max_freq_req,

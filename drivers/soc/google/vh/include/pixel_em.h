@@ -47,6 +47,11 @@ struct pixel_idle_em {
   struct pixel_em_cluster **cpu_to_cluster;
 };
 
+#if IS_ENABLED(CONFIG_VH_SCHED)
+extern struct pixel_em_profile **vendor_sched_pixel_em_profile;
+extern struct pixel_idle_em *vendor_sched_pixel_idle_em;
+#endif
+
 #endif /* CONFIG_PIXEL_EM */
 
 #endif /* __PIXEL_EM_H__ */
