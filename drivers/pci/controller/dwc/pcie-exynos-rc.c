@@ -73,6 +73,9 @@ static bool is_vhook_registered;
 
 static struct pci_dev *exynos_pcie_get_pci_dev(struct dw_pcie_rp *pp);
 
+#define LINK_L11_ENABLE (PCI_L1SS_CAP_PCIPM_L1_1 | PCI_L1SS_CAP_ASPM_L1_1)
+#define LINK_L12_ENABLE (PCI_L1SS_CAP_PCIPM_L1_2 | PCI_L1SS_CAP_ASPM_L1_2)
+
 #if IS_ENABLED(CONFIG_PM_DEVFREQ)
 struct exynos_pm_qos_request exynos_pcie_int_qos[MAX_RC_NUM];
 #endif
@@ -658,49 +661,6 @@ exit:
 static DEVICE_ATTR(eom2, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP,
 		   exynos_pcie_eom2_show, exynos_pcie_eom2_store);
 
-static ssize_t l12_state_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
-{
-	int  ret;
-	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
-
-	ret = scnprintf(buf, PAGE_SIZE, "l1ss_ctrl_id_state = 0x%08x\n",
-			exynos_pcie->l1ss_ctrl_id_state);
-	ret += scnprintf(buf + ret, PAGE_SIZE - ret,
-			 "LTSSM: 0x%08x, PM_STATE = 0x%08x\n",
-			 exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP),
-			 exynos_phy_pcs_read(exynos_pcie, PM_POWER_STATE));
-	return ret;
-}
-
-static ssize_t l12_state_store(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
-{
-	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
-	int ch_num = exynos_pcie->ch_num;
-	int enable;
-
-	if (!buf)
-		return -EINVAL;
-
-	if (sscanf(buf, "%10d", &enable) <= 0)
-		return -EINVAL;
-
-	if (enable == 1) {
-		dev_info(dev, "L1.2 Enable....on PCIe_ch%d\n", ch_num);
-		exynos_pcie_rc_l1ss_ctrl(1, PCIE_L1SS_CTRL_TEST, ch_num);
-	} else if (enable == 0) {
-		dev_info(dev, "L1.2 Disable....on PCIe_ch%d\n", ch_num);
-		exynos_pcie_rc_l1ss_ctrl(0, PCIE_L1SS_CTRL_TEST, ch_num);
-	} else {
-		dev_err(dev, "Value needs to be 0 or 1\n");
-		return -EINVAL;
-	}
-
-	return count;
-}
-
 static ssize_t link_speed_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
 {
@@ -924,7 +884,6 @@ static ssize_t power_stats_show(struct device *dev, struct device_attribute *att
 	return ret;
 }
 
-static DEVICE_ATTR_RW(l12_state);
 static DEVICE_ATTR_RW(link_speed);
 static DEVICE_ATTR_RW(link_width);
 static DEVICE_ATTR_RO(link_state);
@@ -1148,6 +1107,109 @@ static const struct attribute_group link_stats_group = {
 	.name = "link_stats",
 };
 
+static ssize_t l1ss_force_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", pcie->l1ss_force);
+}
+
+static ssize_t l1ss_force_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
+	int val;
+
+	if (!buf)
+		return -EINVAL;
+
+	if (sscanf(buf, "%x", &val) <= 0)
+		return -EINVAL;
+
+	if (val < 0 || val > 1)
+		return -EINVAL;
+
+	exynos_pcie->l1ss_force = val;
+
+	return count;
+}
+
+static ssize_t l11_enable_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", pcie->l11_enable);
+}
+
+static ssize_t l11_enable_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
+	int val;
+
+	if (!buf)
+		return -EINVAL;
+
+	if (sscanf(buf, "%x", &val) <= 0)
+		return -EINVAL;
+
+	if (val < 0 || val > 1)
+		return -EINVAL;
+
+	exynos_pcie->l11_enable = val;
+
+	return count;
+}
+
+static ssize_t l12_enable_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct exynos_pcie *pcie = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", pcie->l12_enable);
+}
+
+static ssize_t l12_enable_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct exynos_pcie *exynos_pcie = dev_get_drvdata(dev);
+	int val;
+
+	if (!buf)
+		return -EINVAL;
+
+	if (sscanf(buf, "%x", &val) <= 0)
+		return -EINVAL;
+
+	if (val < 0 || val > 1)
+		return -EINVAL;
+
+	exynos_pcie->l12_enable = val;
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(l1ss_force);
+static DEVICE_ATTR_RW(l11_enable);
+static DEVICE_ATTR_RW(l12_enable);
+
+static struct attribute *l1ss_attrs[] = {
+	&dev_attr_l1ss_force.attr,
+	&dev_attr_l11_enable.attr,
+	&dev_attr_l12_enable.attr,
+	NULL,
+};
+
+static const struct attribute_group l1ss_group = {
+	.attrs = l1ss_attrs,
+	.name = "l1ss",
+};
+
 static inline int create_pcie_sys_file(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
@@ -1178,12 +1240,6 @@ static inline int create_pcie_sys_file(struct device *dev)
 			dev_err(dev, "couldn't create device file for eom(%d)\n", ret);
 			return ret;
 		}
-	}
-
-	ret = device_create_file(dev, &dev_attr_l12_state);
-	if (ret) {
-		dev_err(dev, "couldn't create device file for l12_state(%d)\n", ret);
-		return ret;
 	}
 
 	ret = device_create_file(dev, &dev_attr_link_speed);
@@ -1222,6 +1278,12 @@ static inline int create_pcie_sys_file(struct device *dev)
 		return ret;
 	}
 
+	ret = sysfs_create_group(&pdev->dev.kobj, &l1ss_group);
+	if (ret) {
+		dev_err(dev, "couldn't create sysfs group for l1ss(%d))\n", ret);
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -1230,13 +1292,13 @@ static inline void remove_pcie_sys_file(struct device *dev)
 	struct pci_dev *pdev = to_pci_dev_from_dev(dev);
 
 	device_remove_file(dev, &dev_attr_pcie_rc_test);
-	device_remove_file(dev, &dev_attr_l12_state);
 	device_remove_file(dev, &dev_attr_link_speed);
 	device_remove_file(dev, &dev_attr_link_width);
 	device_remove_file(dev, &dev_attr_sbb_debug);
 	device_remove_file(dev, &dev_attr_link_state);
 	device_remove_file(dev, &dev_attr_power_stats);
 	sysfs_remove_group(&pdev->dev.kobj, &link_stats_group);
+	sysfs_remove_group(&pdev->dev.kobj, &l1ss_group);
 }
 
 static int exynos_pcie_rc_clock_enable(struct dw_pcie_rp *pp, int enable)
@@ -4039,7 +4101,19 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct dw_pcie_rp *pp, int id)
 		__func__, domain_num, ep_pci_bus);
 
 	spin_lock_irqsave(&exynos_pcie->conf_lock, flags);
-	if (enable) {	/* enable == 1 */
+	if (enable) {
+		if (exynos_pcie->l1ss_force) {
+			enable &= ~LINK_L11_ENABLE;
+			if (exynos_pcie->l11_enable)
+				enable |= LINK_L11_ENABLE;
+
+			enable &= ~LINK_L12_ENABLE;
+			if (exynos_pcie->l12_enable)
+				enable |= LINK_L12_ENABLE;
+
+			dev_info(dev, "force l1ss_enable=0x%x\n", enable);
+		}
+
 		exynos_pcie->l1ss_ctrl_id_state &= ~(id);
 
 		if (exynos_pcie->l1ss_ctrl_id_state == 0) {
@@ -4050,8 +4124,7 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct dw_pcie_rp *pp, int id)
 				/* 1) [RC] enable L1SS */
 				exynos_pcie_rc_rd_own_conf(pp, PCIE_LINK_L1SS_CONTROL, 4, &val);
 				/* Actual TCOMMON is 42usec (val = 0x2a << 8) */
-				val |= PORT_LINK_TCOMMON_32US
-					| PORT_LINK_L1SS_ENABLE;
+				val |= PORT_LINK_TCOMMON_32US | enable;
 				dev_dbg(dev, "CPen:1RC:L1SS_CTRL(0x19C) = 0x%x\n", val);
 				exynos_pcie_rc_wr_own_conf(pp, PCIE_LINK_L1SS_CONTROL, 4, val);
 
@@ -4095,7 +4168,7 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct dw_pcie_rp *pp, int id)
 				/* 2) [EP] enable L1SS */
 				exynos_pcie_rc_rd_other_conf(pp, ep_pci_bus, 0,
 							     exynos_pcie->ep_l1ss_ctrl1_off, 4, &val);
-				val |= PORT_LINK_L1SS_ENABLE;
+				val |= enable;
 				exynos_pcie_rc_wr_other_conf(pp, ep_pci_bus, 0,
 							     exynos_pcie->ep_l1ss_ctrl1_off, 4, val);
 				dev_dbg(dev, "CPen:2EP:L1SS_CTRL(0x19C)=0x%x\n", val);
@@ -4149,8 +4222,8 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct dw_pcie_rp *pp, int id)
 				 * [RC:enable] L1SS_ENABLE(0xf)
 				 */
 				exynos_pcie_rc_rd_own_conf(pp, PCIE_LINK_L1SS_CONTROL, 4, &val);
-				val |= PORT_LINK_L12_LTR_THRESHOLD | PORT_LINK_TCOMMON_32US |
-				       PORT_LINK_L1SS_ENABLE;
+				val |= PORT_LINK_L12_LTR_THRESHOLD |
+				       PORT_LINK_TCOMMON_32US | enable;
 				exynos_pcie_rc_wr_own_conf(pp, PCIE_LINK_L1SS_CONTROL, 4, val);
 				dev_dbg(dev, "WIFIen:1RC:L1SS_CTRL(0x19C)=0x%x\n", val);
 
@@ -4179,8 +4252,8 @@ static int exynos_pcie_rc_set_l1ss(int enable, struct dw_pcie_rp *pp, int id)
 				 */
 				exynos_pcie_rc_rd_other_conf(pp, ep_pci_bus, 0, WIFI_L1SS_CONTROL,
 							     4, &val);
-				val |= PORT_LINK_L12_LTR_THRESHOLD | WIFI_COMMON_RESTORE_TIME |
-				       WIFI_ALL_PM_ENABEL;
+				val |= PORT_LINK_L12_LTR_THRESHOLD |
+				       WIFI_COMMON_RESTORE_TIME | enable;
 				exynos_pcie_rc_wr_other_conf(pp, ep_pci_bus, 0, WIFI_L1SS_CONTROL,
 							     4, val);
 				dev_dbg(dev, "WIFIen:2EP:L1SS_CTRL(0x248)=0x%x\n", val);
@@ -4312,10 +4385,18 @@ int exynos_pcie_rc_l1ss_ctrl(int enable, int id, int ch_num)
 		return -EINVAL;
 	}
 
-	if (pp)
+	/* if enable is 1 then set enable to PORT_LINK_L1SS_ENABLE (0xf) to
+	 * enable both L11 and L12, since this what the end points expect.
+	 */
+
+	if (pp) {
+		if (enable) {
+			enable = PORT_LINK_L1SS_ENABLE;
+		}
 		return	exynos_pcie_rc_set_l1ss(enable, pp, id);
-	else
+	} else {
 		return -EINVAL;
+	}
 }
 EXPORT_SYMBOL_GPL(exynos_pcie_rc_l1ss_ctrl);
 
