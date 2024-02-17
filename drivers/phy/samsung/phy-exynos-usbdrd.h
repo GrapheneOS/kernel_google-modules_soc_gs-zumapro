@@ -221,7 +221,11 @@ struct exynos_usbdrd_phy {
 	u32 use_default_tune_val;
 };
 
+
 void __iomem *phy_exynos_usbdp_get_address(void);
+#if IS_ENABLED(CONFIG_EXYNOS_PD_HSI0)
+extern bool exynos_pd_hsi0_get_ldo_status(void);
+#endif
 
 #if IS_ENABLED(CONFIG_PHY_EXYNOS_EUSB_REPEATER)
 extern int eusb_repeater_power_on(void);

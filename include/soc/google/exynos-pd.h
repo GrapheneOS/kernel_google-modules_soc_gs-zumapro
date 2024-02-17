@@ -105,6 +105,20 @@ static inline int exynos_pd_get_pd_stat(struct exynos_pm_domain *pd,
 }
 #endif
 
+#if IS_ENABLED(CONFIG_EXYNOS_PD_HSI0)
+extern int exynos_pd_hsi0_ldo_manual_control(bool on);
+extern int exynos_pd_hsi0_vdd_hsi_manual_control(bool on);
+#else
+static inline void exynos_pd_hsi0_ldo_manual_control(bool on)
+{
+	return;
+}
+static inline void exynos_pd_hsi0_vdd_hsi_manual_control(bool on)
+{
+	return;
+}
+#endif
+
 #if IS_ENABLED(CONFIG_USB_DWC3_EXYNOS_GS)
 extern u32 dwc3_otg_is_connect(void);
 extern void exynos_usbdrd_ldo_manual_control(bool on);
