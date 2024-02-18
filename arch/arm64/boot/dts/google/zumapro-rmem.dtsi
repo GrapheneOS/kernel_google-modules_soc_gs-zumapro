@@ -71,11 +71,6 @@
 			no-map;
 		};
 
-		bl31_reserved: bl31@bff80000 {
-			compatible = "exynos,bl31_rmem";
-			reg = <0x0 0xbff80000 0x03080000>;
-		};
-
 		dss_log_reserved: dss_log_reserved@fd3f0000 {
 			reg = <0 0xfd3f0000 0x0000e000>;
 			no-map;
