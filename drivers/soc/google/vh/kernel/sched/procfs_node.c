@@ -2866,16 +2866,21 @@ static ssize_t idle_inject_sync_trigger_store(struct file *filp,
 	if (ret)
 		return ret;
 
-	if (val == iidev_mid_started && val == iidev_big_started)
+	if (val == iidev_little_started &&
+	    val == iidev_mid_started &&
+	    val == iidev_big_started)
 		goto out;
 
+	iidev_little_started = !!val;
 	iidev_mid_started = !!val;
 	iidev_big_started = !!val;
 
 	if (!val) {
+		idle_inject_stop(iidev_l);
 		idle_inject_stop(iidev_m);
 		idle_inject_stop(iidev_b);
 	} else {
+		idle_inject_start(iidev_l);
 		idle_inject_start(iidev_m);
 		idle_inject_start(iidev_b);
 	}
