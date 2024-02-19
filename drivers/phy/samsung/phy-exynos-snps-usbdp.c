@@ -8,19 +8,22 @@
 #include <linux/types.h>
 #include <linux/delay.h>
 #include <linux/io.h>
-
+#include <linux/vmalloc.h>
 #include "phy-samsung-usb-cal.h"
 #include "snps-usbdp-con-reg.h"
 #include "snps-usbdp-tca-reg.h"
 
-#define PHY_RAM_MODE
-
-#ifdef PHY_RAM_MODE
 #include "snps-usbdp-ram-code.h"
-#endif
 
 #define CRREG_LANE_TX(_reg)	((_reg) + ((info->used_phy_port == 0) ? (0x0) : (0x0300)))
 #define CRREG_LANE_RX(_reg)	((_reg) + ((info->used_phy_port == 0) ? (0x0100) : (0x0200)))
+
+static int skip_check_ack;
+
+static int get_usbdp_mode(struct exynos_usbphy_info *info)
+{
+	return info->usbdp_mode;
+}
 
 static void cr_clk_high(struct exynos_usbphy_info *info)
 {
@@ -127,6 +130,8 @@ void phy_exynos_snps_usbdp_cr_write(struct exynos_usbphy_info *info, u16 addr, u
 			break;
 		cr_clk_low(info);
 		clk_cycle++;
+		if (skip_check_ack == 1)
+			break;
 	} while (clk_cycle < 10);
 
 	if (clk_cycle == 10)
@@ -205,7 +210,7 @@ static void lane0_reset(struct exynos_usbphy_info *info, int val)
 	base = info->regs_base;
 	reg = readl(base + SNPS_USBDPPHY_REG_PHY_RST_CTRL);
 	((SNPS_USBDPPHY_REG_PHY_RST_CTRL_p)(&reg))->b.pipe_lane0_reset_n = (val) ? 0x0 : 0x1;
-	((SNPS_USBDPPHY_REG_PHY_RST_CTRL_p)(&reg))->b.pipe_lane0_reset_n_ovrd_en = 0;
+	((SNPS_USBDPPHY_REG_PHY_RST_CTRL_p)(&reg))->b.pipe_lane0_reset_n_ovrd_en = val;
 	writel(reg, base + SNPS_USBDPPHY_REG_PHY_RST_CTRL);
 }
 
@@ -222,6 +227,9 @@ int phy_exynos_snps_usbdp_nc2usb_mode(struct exynos_usbphy_info *info, int val)
 
 	if (val == FLD_OP_MODE) {
 		/* Controller Synced Mode */
+		reg = readl(tca_base + SNPS_USBDPPHY_TCA_TCA_CTRLSYNCMODE_CFG0);
+		((SNPS_USBDPPHY_TCA_TCA_CTRLSYNCMODE_CFG0_p)(&reg))->b.auto_safe_state = 0;
+		writel(reg, tca_base + SNPS_USBDPPHY_TCA_TCA_CTRLSYNCMODE_CFG0);
 		/* Clear any pending status */
 		writel(0xFFFF, tca_base + SNPS_USBDPPHY_TCA_TCA_INTR_STS);
 		/* Ack and Timeout interrupts enabled */
@@ -329,20 +337,20 @@ void phy_exynos_snps_usbdp_phy_initiate(struct exynos_usbphy_info *info)
 	/* Select phy boot up mode */
 	reg = readl(base + SNPS_USBDPPHY_REG_PHY_SRAM_CON);
 	((SNPS_USBDPPHY_REG_PHY_SRAM_CON_p)(&reg))->b.phy0_sram_ext_ld_done = 0;
-#ifdef PHY_RAM_MODE
-	/* PHY boot up mode : RAM mode
-	 * the internal algorithms are first loaded by Raw PCS into the SRAM at which
-	 * point user can change the contents of the SRAM.
-	 * The updated SRAM contents are used for the adaptation and calibration routines.
-	 */
-	((SNPS_USBDPPHY_REG_PHY_SRAM_CON_p)(&reg))->b.phy0_sram_bypass = 0;
-#else
-	/* PHY boot up mode  : ROM mode (sram_bypass)
-	 * In this case, the adaptation and calibration algorithms are executed
-	 * from the hard wired values within the Raw PCS.
-	 */
-	((SNPS_USBDPPHY_REG_PHY_SRAM_CON_p)(&reg))->b.phy0_sram_bypass = 1;
-#endif
+	if (get_usbdp_mode(info) == SNPS_USBDP_RAM_MODE) {
+		/* PHY boot up mode : RAM mode
+		 * the internal algorithms are first loaded by Raw PCS into the SRAM at which
+		 * point user can change the contents of the SRAM.
+		 * The updated SRAM contents are used for the adaptation and calibration routines.
+		 */
+		((SNPS_USBDPPHY_REG_PHY_SRAM_CON_p)(&reg))->b.phy0_sram_bypass = 0;
+	} else {
+		/* PHY boot up mode  : ROM mode (sram_bypass)
+		 * In this case, the adaptation and calibration algorithms are executed
+		 * from the hard wired values within the Raw PCS.
+		 */
+		((SNPS_USBDPPHY_REG_PHY_SRAM_CON_p)(&reg))->b.phy0_sram_bypass = 1;
+	}
 	writel(reg, base + SNPS_USBDPPHY_REG_PHY_SRAM_CON);
 	/* When sharing a reference resistor amongst several PHYs,
 	 * it may take up to 240 μs per PHY to sequentially calibrate each PHY.
@@ -530,15 +538,29 @@ void phy_exynos_snps_usbdp_tune_each_cr(struct exynos_usbphy_info *info, char *n
 	} else if (!strcmp(name, "rx_term_ctrl")) {
 		cr_reg = phy_exynos_snps_usbdp_cr_read(info, CRREG_LANE_RX(0x301a));
 		cr_reg &= ~(0x7 << 0);
-		cr_reg |= (1 << 3) | (val << 8);
+		cr_reg |= (1 << 3) | (val << 0);
 		phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_RX(0x301a), cr_reg);
 
+		cr_reg = phy_exynos_snps_usbdp_cr_read(info, CRREG_LANE_TX(0x301a));
+		cr_reg &= ~(0x7 << 0);
+		cr_reg |= (1 << 3) | (val << 0);
+		phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_TX(0x301a), cr_reg);
 	} else if (!strcmp(name, "tx_term_ctrl")) {
 		cr_reg = phy_exynos_snps_usbdp_cr_read(info, CRREG_LANE_TX(0x301a));
 		cr_reg &= ~(0x7 << 4);
 		cr_reg |= (1 << 7) | (val << 4);
 		phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_TX(0x301a), cr_reg);
 
+		cr_reg = phy_exynos_snps_usbdp_cr_read(info, CRREG_LANE_RX(0x301a));
+		cr_reg &= ~(0x7 << 4);
+		cr_reg |= (1 << 7) | (val << 4);
+		phy_exynos_snps_usbdp_cr_write(info, CRREG_LANE_RX(0x301a), cr_reg);
+	} else if (!strcmp(name, "tx_rxdet_time")) {
+		/* TX Detect time */
+		cr_reg = phy_exynos_snps_usbdp_cr_read(info, 0x1029);
+		cr_reg &= ~(0x3ff << 0);
+		cr_reg |= val;
+		phy_exynos_snps_usbdp_cr_write(info, 0x1029, cr_reg);
 	}
 }
 
@@ -698,15 +720,25 @@ static int check_fw_update_done(struct exynos_usbphy_info *info)
 	return -ETIMEDOUT;
 }
 
-#ifdef PHY_RAM_MODE
 static int update_fw_to_sram(struct exynos_usbphy_info *info)
 {
-	int cnt, code_size;
+	int cnt, code_size = 0;
+	const struct ram_code *code;
 
-	code_size = sizeof(phy_fw_code) / sizeof(struct ram_code);
-	for (cnt = 0; cnt < code_size; cnt++) {
-		phy_exynos_snps_usbdp_cr_write(info, phy_fw_code[cnt].addr, phy_fw_code[cnt].data);
+	if (EXYNOS_USBCON_VER_MINOR(info->version) == 0) {
+		pr_info(" PHY usbcon version : 0\n");
+		code_size = sizeof(phy_fw_code) / sizeof(struct ram_code);
+		code = phy_fw_code;
+	} else if (EXYNOS_USBCON_VER_MINOR(info->version) == 1) {
+		pr_info(" PHY usbcon version : 1\n");
+		code_size = sizeof(cp_int_ref_x2_code) / sizeof(struct ram_code);
+		code = cp_int_ref_x2_code;
+		skip_check_ack = 1;
 	}
+	for (cnt = 0; cnt < code_size; cnt++) {
+		phy_exynos_snps_usbdp_cr_write(info, code[cnt].addr, code[cnt].data);
+	}
+	skip_check_ack = 0;
 	return 0;
 }
 
@@ -729,7 +761,6 @@ void phy_exynos_snps_usbdp_phy_sram_ext_ld_done(struct exynos_usbphy_info *info,
 		reg = readl(base + SNPS_USBDPPHY_REG_PHY_SRAM_CON);
 	} while (((SNPS_USBDPPHY_REG_PHY_SRAM_CON_p)(&reg))->b.phy0_sram_init_done == 0);
 }
-#endif
 
 void phy_exynos_snps_usbdp_tune(struct exynos_usbphy_info *info)
 {
@@ -899,21 +930,27 @@ int phy_exynos_snps_usbdp_phy_enable(struct exynos_usbphy_info *info)
 	check_fw_update_done(info);
 
 	/* Override vco_lowfreq_val to 0 all rx lanes */
+	skip_check_ack = 1;
 	phy_exynos_snps_usbdp_cr_write(info, 0x31c5, 0x8000);
 	phy_exynos_snps_usbdp_cr_write(info, 0x32c5, 0x8000);
-#ifdef PHY_RAM_MODE
-	/* 3.boot up phy : RAM Mode -> SRAM f/w update
-	 * After external access to the SRAM (or any other PHY register) is complete,
-	 * input sram_ext_ld_done should be set high, allowing the FSMs in the
-	 * Raw PCS to start executing the code from SRAM */
-	pr_info(" PHY Boot mode :RAM mode\n");
+	skip_check_ack = 0;
+	if (get_usbdp_mode(info) == SNPS_USBDP_RAM_MODE) {
+		/* 3.boot up phy : RAM Mode -> SRAM f/w update
+		 * After external access to the SRAM (or any other PHY register) is complete,
+		 * input sram_ext_ld_done should be set high, allowing the FSMs in the
+		 * Raw PCS to start executing the code from SRAM */
+		pr_info(" PHY Boot mode :RAM mode\n");
 
-	/* f/w update */
-	update_fw_to_sram(info);
+		/* f/w update */
+		update_fw_to_sram(info);
 
-	/* sram_ext_ld_done = 1 */
-	phy_exynos_snps_usbdp_phy_sram_ext_ld_done(info, 1);
-#endif
+		/* sram_ext_ld_done = 1 */
+		phy_exynos_snps_usbdp_phy_sram_ext_ld_done(info, 1);
+	} else {
+		/* 3.boot up phy : ROM Mode -> Bypass SRAM and skip f/w update */
+		pr_info(" PHY Boot mode :ROM(SRAM Bypass) mode\n");
+	}
+
 	/* CR Register update */
 	if (additional_cr_reg_update(info) != 0)
 		return -1;
@@ -941,10 +978,10 @@ void phy_exynos_snps_usbdp_phy_disable(struct exynos_usbphy_info *info)
 	reg = readl(base + SNPS_USBDPPHY_REG_PHY_CONFIG2);
 	((SNPS_USBDPPHY_REG_PHY_CONFIG2_p)(&reg))->b.phy_test_powerdown = 1;
 	writel(reg, base + SNPS_USBDPPHY_REG_PHY_CONFIG2);
-#if 0
+
 	/* Disable Analog phy power */
 	reg = readl(base + SNPS_USBDPPHY_REG_PHY_CONFIG0);
 	((SNPS_USBDPPHY_REG_PHY_CONFIG0_p)(&reg))->b.phy0_ana_pwr_en = 0;
 	writel(reg, base + SNPS_USBDPPHY_REG_PHY_CONFIG0);
-#endif
+
 }

@@ -519,16 +519,13 @@ static inline unsigned int get_group_throttle(struct task_group *tg)
 
 /*
  * If a task is in prefer_idle group, check if it could run on the cpu based on its prio and the
- * prefer_idle cpumask defined, but bail out for bulk wake (wake_q_count > 1).
+ * prefer_idle cpumask defined.
  */
-static inline bool is_preferred_idle_cpu(struct task_struct *p, int cpu)
+static inline bool check_preferred_idle_mask(struct task_struct *p, int cpu)
 {
 	int vendor_group = get_vendor_group(p);
 
-	if (!vg[vendor_group].prefer_idle)
-		return true;
-
-	if (p->wake_q_count > 1)
+	if (!get_prefer_idle(p))
 		return true;
 
 	if (p->prio <= THREAD_PRIORITY_TOP_APP_BOOST) {
@@ -544,7 +541,7 @@ static inline const cpumask_t *get_preferred_idle_mask(struct task_struct *p)
 {
 	int vendor_group = get_vendor_group(p);
 
-	if (p->wake_q_count > 1)
+	if (p->wake_q_count || get_uclamp_fork_reset(p, false))
 		return cpu_possible_mask;
 
 	if (p->prio <= THREAD_PRIORITY_TOP_APP_BOOST) {
@@ -2009,7 +2006,7 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 {
 	struct uclamp_se uc_req = p->uclamp_req[clamp_id];
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
-
+	bool is_adpf = get_uclamp_fork_reset(p, true);
 
 #ifdef CONFIG_UCLAMP_TASK_GROUP
 	unsigned int tg_min, tg_max, vnd_min, vnd_max, value;
@@ -2034,9 +2031,9 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 	tg_max = task_group(p)->uclamp[UCLAMP_MAX].value;
 	// Vendor group restriction
 	vnd_min = vg[vp->group].uc_req[UCLAMP_MIN].value;
-	vnd_max = get_uclamp_fork_reset(p, true) ?
+	vnd_max = is_adpf ?
 		uclamp_none(UCLAMP_MAX) : vg[vp->group].uc_req[UCLAMP_MAX].value;
-	if (vg[vp->group].auto_uclamp_max) {
+	if (vg[vp->group].auto_uclamp_max && !is_adpf) {
 		vp->auto_uclamp_max_flags |= AUTO_UCLAMP_MAX_FLAG_GROUP;
 		vnd_max = sched_auto_uclamp_max[task_cpu(p)];
 	} else {
@@ -2415,7 +2412,7 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 
 	/* prefer prev cpu */
 	if (cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) &&
-	    task_fits_capacity(p, prev_cpu) && is_preferred_idle_cpu(p, prev_cpu)) {
+	    task_fits_capacity(p, prev_cpu) && check_preferred_idle_mask(p, prev_cpu)) {
 
 		struct cpuidle_state *idle_state;
 		unsigned int exit_lat = UINT_MAX;

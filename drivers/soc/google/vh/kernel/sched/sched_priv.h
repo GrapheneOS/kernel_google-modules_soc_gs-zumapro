@@ -180,7 +180,7 @@ struct vendor_task_group_struct {
 ANDROID_VENDOR_CHECK_SIZE_ALIGN(u64 android_vendor_data1[4], struct vendor_task_group_struct t);
 #endif
 
-extern bool vendor_sched_reduce_prefer_idle;
+extern bool vendor_sched_auto_prefer_idle;
 extern struct vendor_group_property vg[VG_MAX];
 
 DECLARE_STATIC_KEY_FALSE(uclamp_min_filter_enable);
@@ -424,18 +424,17 @@ static inline bool get_uclamp_fork_reset(struct task_struct *p, bool inherited)
 
 static inline bool get_prefer_idle(struct task_struct *p)
 {
-	// For group based prefer_idle vote, filter our smaller or low prio or
-	// have throttled uclamp.max settings
-	// Ignore all checks, if the prefer_idle is from per-task API.
-
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
 
+	// Always perfer idle for ADPF tasks or tasks with prefer_idle set explicitly.
+	// In auto_prefer_idle case, only allow high prio tasks of the prefer_idle group,
+	// or task with wake_q_count value greater than 0 in top-app.
 	if (get_uclamp_fork_reset(p, true) || vp->prefer_idle || vbinder->prefer_idle)
 		return true;
-	else if (vendor_sched_reduce_prefer_idle)
-		return vg[vp->group].prefer_idle && p->prio <= DEFAULT_PRIO &&
-			uclamp_eff_value_pixel_mod(p, UCLAMP_MAX) == SCHED_CAPACITY_SCALE;
+	else if (vendor_sched_auto_prefer_idle)
+		return (vg[vp->group].prefer_idle && p->prio <= DEFAULT_PRIO) ||
+		       (vp->group == VG_TOPAPP && p->prio <= DEFAULT_PRIO && p->wake_q_count);
 	else
 		return vg[vp->group].prefer_idle;
 }

@@ -131,17 +131,36 @@ void phy_exynos_eusb_initiate(struct exynos_usbphy_info *info)
 		 * phy_cfg_pll_fb_div[11:0] 	: 368
 		 * phy_cfg_pll_ref_div[3:0]		: 0
 		 */
-		/* ref_freq_sel */
-		((EUSBPHY_REG_CMN_CTRL_p) (&reg))->b.ref_freq_sel = 0;
-		writel(reg, base + EUSBCON_REG_CMN_CTRL);
-		/* phy_cfg_pll_fb_div[11:0] */
-		reg = readl(base + EUSBCON_REG_PLLCFG0);
-		((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_fb_div = 368;
-		writel(reg, base + EUSBCON_REG_PLLCFG0);
-		/* phy_cfg_pll_ref_div[3:0]	*/
-		reg = readl(base + EUSBCON_REG_PLLCFG1);
-		((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_ref_div = 0;
-		writel(reg, base + EUSBCON_REG_PLLCFG1);
+		 if ((EXYNOS_USBCON_VER_MINOR(info->version) == 0) ||
+			(EXYNOS_USBCON_VER_MINOR(info->version) == 1)) { // 4nm eusb phy
+			/* ref_freq_sel */
+			((EUSBPHY_REG_CMN_CTRL_p) (&reg))->b.ref_freq_sel = 0;
+			writel(reg, base + EUSBCON_REG_CMN_CTRL);
+			/* phy_cfg_pll_fb_div[11:0] */
+			reg = readl(base + EUSBCON_REG_PLLCFG0);
+			((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_fb_div = 368;
+			writel(reg, base + EUSBCON_REG_PLLCFG0);
+			/* phy_cfg_pll_ref_div[3:0] */
+			reg = readl(base + EUSBCON_REG_PLLCFG1);
+			((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_ref_div = 0;
+			writel(reg, base + EUSBCON_REG_PLLCFG1);
+		} else if (EXYNOS_USBCON_VER_MINOR(info->version) == 2) { // 3nm eusb phy
+			/* ref_freq_sel */
+			((EUSBPHY_REG_CMN_CTRL_p) (&reg))->b.ref_freq_sel = 0;
+			writel(reg, base + EUSBCON_REG_CMN_CTRL);
+			/* phy_cfg_pll_fb_div[11:0] */
+			reg = readl(base + EUSBCON_REG_PLLCFG0);
+			((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_fb_div = 368;
+			((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_int_cntrl = 4;
+			((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_gmp_cntrl = 2;
+			writel(reg, base + EUSBCON_REG_PLLCFG0);
+			/* phy_cfg_pll_ref_div[3:0]	*/
+			reg = readl(base + EUSBCON_REG_PLLCFG1);
+			((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_ref_div = 0;
+			((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_vref_tune = 0;
+			((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_prop_cntrl = 8;
+			writel(reg, base + EUSBCON_REG_PLLCFG1);
+		}
 		pr_info("%s: 19.2\n", __func__);
 	} else if ((info->refclk == USBPHY_REFCLK_DIFF_20MHZ) ||
 			(info->refclk == USBPHY_REFCLK_EXT_20MHZ)) {
@@ -188,17 +207,36 @@ void phy_exynos_eusb_initiate(struct exynos_usbphy_info *info)
 		 * phy_cfg_pll_fb_div[11:0] 	: 263
 		 * phy_cfg_pll_ref_div[3:0]		: 0
 		 */
-		/* ref_freq_sel */
-		((EUSBPHY_REG_CMN_CTRL_p) (&reg))->b.ref_freq_sel = 3;
-		writel(reg, base + EUSBCON_REG_CMN_CTRL);
-		/* phy_cfg_pll_fb_div[11:0] */
-		reg = readl(base + EUSBCON_REG_PLLCFG0);
-		((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_fb_div = 263;
-		writel(reg, base + EUSBCON_REG_PLLCFG0);
-		/* phy_cfg_pll_ref_div[3:0]	*/
-		reg = readl(base + EUSBCON_REG_PLLCFG1);
-		((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_ref_div = 0;
-		writel(reg, base + EUSBCON_REG_PLLCFG1);
+		 if ((EXYNOS_USBCON_VER_MINOR(info->version) == 0) ||
+			(EXYNOS_USBCON_VER_MINOR(info->version) == 1)) { // 4nm eusb phy
+			/* ref_freq_sel */
+			((EUSBPHY_REG_CMN_CTRL_p) (&reg))->b.ref_freq_sel = 3;
+			writel(reg, base + EUSBCON_REG_CMN_CTRL);
+			/* phy_cfg_pll_fb_div[11:0] */
+			reg = readl(base + EUSBCON_REG_PLLCFG0);
+			((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_fb_div = 263;
+			writel(reg, base + EUSBCON_REG_PLLCFG0);
+			/* phy_cfg_pll_ref_div[3:0] */
+			reg = readl(base + EUSBCON_REG_PLLCFG1);
+			((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_ref_div = 0;
+			writel(reg, base + EUSBCON_REG_PLLCFG1);
+		} else if (EXYNOS_USBCON_VER_MINOR(info->version) == 2) { // 3nm eusb phy
+			/* ref_freq_sel */
+			((EUSBPHY_REG_CMN_CTRL_p) (&reg))->b.ref_freq_sel = 3;
+			writel(reg, base + EUSBCON_REG_CMN_CTRL);
+			/* phy_cfg_pll_fb_div[11:0] */
+			reg = readl(base + EUSBCON_REG_PLLCFG0);
+			((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_fb_div = 263;
+			((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_int_cntrl = 4;
+			((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_gmp_cntrl = 2;
+			writel(reg, base + EUSBCON_REG_PLLCFG0);
+			/* phy_cfg_pll_ref_div[3:0]	*/
+			reg = readl(base + EUSBCON_REG_PLLCFG1);
+			((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_ref_div = 0;
+			((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_vref_tune = 0;
+			((EUSBPHY_REG_PLLCFG1_p) (&reg))->b.pll_prop_cntrl = 7;
+			writel(reg, base + EUSBCON_REG_PLLCFG1);
+		}
 		pr_info("%s: 26\n", __func__);
 	} else if ((info->refclk == USBPHY_REFCLK_DIFF_48MHZ) ||
 			(info->refclk == USBPHY_REFCLK_EXT_48MHZ)) {
@@ -222,6 +260,24 @@ void phy_exynos_eusb_initiate(struct exynos_usbphy_info *info)
 		/* Not supported clock, so skip */
 	}
 
+	if (EXYNOS_USBCON_VER_MINOR(info->version) == 0) {
+		/* use default value
+			26MHz : 3 - pll_cpbias_cntrl
+			19.2MHz : 1 - pll_cpbias_cntrl
+		*/
+	} else if (EXYNOS_USBCON_VER_MINOR(info->version) == 1) {
+		reg = readl(base + EUSBCON_REG_PLLCFG0);
+		((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_cpbias_cntrl = 0;
+		writel(reg, base + EUSBCON_REG_PLLCFG0);
+	} else if (EXYNOS_USBCON_VER_MINOR(info->version) == 2) {
+		reg = readl(base + EUSBCON_REG_PLLCFG0);
+		((EUSBPHY_REG_PLLCFG0_p) (&reg))->b.pll_cpbias_cntrl = 0;
+		writel(reg, base + EUSBCON_REG_PLLCFG0);
+	}
+
+	reg = readl(base + EUSBCON_REG_TXTUNE);
+	((EUSBPHY_REG_TXTUNE_p) (&reg))->b.fsls_vref_tune = 0;
+	writel(reg, base + EUSBCON_REG_TXTUNE);
 	phy_exynos_eusb_tune(info);
 
 	/* 3. Set all inputs to a default state as necessary for
@@ -292,9 +348,16 @@ void phy_exynos_eusb_terminate(struct exynos_usbphy_info *info)
 
 	base = info->regs_base;
 
+	udelay(2500);
+	reg = readl(base + EUSBCON_REG_CMN_CTRL);
+	((EUSBPHY_REG_CMN_CTRL_p) (&reg))->b.phy_enable = 0;
+	writel(reg, base + EUSBCON_REG_CMN_CTRL);
 	reg = readl(base + EUSBCON_REG_RST_CTRL);
 	((EUSBPHY_REG_RST_CTRL_p) (&reg))->b.phy_reset = 1;
 	writel(reg, base + EUSBCON_REG_RST_CTRL);
+	reg = readl(base + EUSBCON_REG_TESTSE);
+	((EUSBPHY_REG_TESTSE_p) (&reg))->b.test_iddq = 1;
+	writel(reg, base + EUSBCON_REG_TESTSE);
 }
 
 u8 phy_exynos_eusb_get_eusb_state(struct exynos_usbphy_info *info)

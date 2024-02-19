@@ -21,4 +21,7 @@ const struct ram_code phy_fw_code[] = {
 	{0xD32C, 0x7000}, {0xD32D, 0x002E}, {0xD32E, 0x7000}, {0xD32F, 0x0025}, {0xD330, 0x7FFF}, {0xD331, 0x7FFF},
 };
 
+const struct ram_code cp_int_ref_x2_code[] = {
+	{0x005c, 0xc0c4},
+};
 #endif // _USB_USBPHY_CAL_SNPS_USBDP_RAM_CODE_H_
