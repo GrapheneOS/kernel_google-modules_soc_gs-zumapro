@@ -22,6 +22,7 @@
 #include "thermal_core.h"
 
 #define GTHERM_CHAN_NUM 8
+#define SENSOR_MAX_WAIT_TIME_MS 64000
 #define SENSOR_WAIT_SLEEP_MS 50
 #define NTC_UPDATE_MIN_DELAY_US 100
 #define NTC_UPDATE_MAX_DELAY_US 10000
@@ -187,12 +188,22 @@ static int s2mpg15_spmic_thermal_read_raw(struct s2mpg15_spmic_thermal_sensor *s
 static int s2mpg15_spmic_set_ntc_channels(
 	struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal, u8 adc_ch_en)
 {
-	int ret = 0;
+	int i, ret = 0;
 	struct device *dev = s2mpg15_spmic_thermal->dev;
 	struct i2c_client *meter_i2c = s2mpg15_spmic_thermal->meter_i2c;
 
-	dev_info(dev, "Applying NTC... disabling odpm [s2mpg15]\n");
+	// disable lpf before meter sw reset
+	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
+		u8 reg = S2MPG15_METER_NTC_LPF_C0_0 + s2mpg15_spmic_thermal->sensor[i].adc_chan;
 
+		dev_dbg(dev, "Disabling sensor %d  LPF\n", i);
+		ret = s2mpg15_write_reg(s2mpg15_spmic_thermal->meter_i2c, reg, HW_LPF_RESET_VALUE);
+		if (ret)
+			dev_warn(dev, "Sensor %d LPF write fail\n", i);
+	}
+	usleep_range(NTC_UPDATE_MIN_DELAY_US, NTC_UPDATE_MAX_DELAY_US);
+
+	dev_info(dev, "Applying NTC... disabling odpm [s2mpg15]\n");
 	/* workaround suggested in b/238678825 for NTC channel update */
 	ret = s2mpg15_write_reg(meter_i2c, S2MPG15_METER_CTRL3, 0x00);
 	if (ret)
@@ -210,7 +221,7 @@ static int s2mpg15_spmic_set_ntc_channels(
 
 	msleep(SENSOR_WAIT_SLEEP_MS);
 
-	dev_info(dev, "Set NTC channels (adc_ch_en : 0x%x\n)", adc_ch_en);
+	dev_info(dev, "Set NTC channels (adc_ch_en : 0x%x)\n", adc_ch_en);
 
 	/* b/228112807, we need to re-enable the meter for the odpm. */
 	ret = s2mpg15_update_reg(meter_i2c, S2MPG15_METER_CTRL1,
@@ -224,8 +235,56 @@ static int s2mpg15_spmic_set_ntc_channels(
 
 err:
 	s2mpg15_write_reg(meter_i2c, S2MPG15_METER_CTRL3, 0x00);
-	dev_err(dev, "Failed to set NTC channels (adc_ch_en : 0x%x\n)", adc_ch_en);
+	dev_err(dev, "Failed to set NTC channels (adc_ch_en : 0x%x)\n", adc_ch_en);
 	return ret;
+}
+
+/*
+ * Wait for sensors to be ready. Enable HW LPF after the sensors are ready.
+ * Continue with enabling HW LPF and updating thermal zone if the sensors
+ * are not ready by the end of max wait time.
+ */
+static int s2mpg15_spmic_wait_for_sensors_ready(
+			struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal, u8 adc_chan_en)
+{
+	struct device *dev = s2mpg15_spmic_thermal->dev;
+	int raw, ret_code = 0, i, j = SENSOR_MAX_WAIT_TIME_MS / SENSOR_WAIT_SLEEP_MS;
+	const unsigned long enabled_channels = adc_chan_en;
+
+	for_each_set_bit(i, &enabled_channels, GTHERM_CHAN_NUM) {
+		int ret = 0;
+		u8 reg = S2MPG15_METER_NTC_LPF_C0_0 + i;
+
+		/* Wait for longest refresh period */
+		do {
+			ret = s2mpg15_spmic_thermal_read_raw(&s2mpg15_spmic_thermal->sensor[i],
+											&raw);
+			dev_dbg(dev, "Sensor %d raw:0x%x ret:%d\n", i, raw, ret);
+			if (ret != -EBUSY)
+				break;
+			dev_info(dev, "Sensor %d not ready, retry...\n", i);
+			msleep(SENSOR_WAIT_SLEEP_MS);
+		} while (j-- >= 0);
+
+		if (ret == -EBUSY) {
+			dev_err(dev, "Sensor %d timeout, give up...\n", i);
+			ret_code = ret;
+		}
+
+		thermal_zone_device_update(s2mpg15_spmic_thermal->sensor[i].tzd,
+					   THERMAL_EVENT_UNSPECIFIED);
+
+		/* Enable HW LPF */
+		dev_dbg(dev, "updating sensor %d  LPF CO to 0x%x\n",
+			i, s2mpg15_spmic_thermal->enable_hw_lpf[i]);
+		ret = s2mpg15_write_reg(s2mpg15_spmic_thermal->meter_i2c, reg,
+			s2mpg15_spmic_thermal->enable_hw_lpf[i]);
+		if (ret)
+			dev_warn(dev, "Sensor %d LPF write fail with ret:%d\n", i, ret);
+	}
+
+	s2mpg15_spmic_thermal->sensors_ready = true;
+	return ret_code;
 }
 
 /*
@@ -474,7 +533,7 @@ static int s2mpg15_spmic_thermal_set_emul_temp(struct thermal_zone_device *tz, i
 {
 	struct s2mpg15_spmic_thermal_sensor *sensor = tz->devdata;
 	int ret = 0;
-	u8 value, mask = 0x1;
+	u8 value = 0, mask = 0x1;
 
 	if (!sensor->chip->sensors_ready)
 		return -EAGAIN;
@@ -495,6 +554,9 @@ static int s2mpg15_spmic_thermal_set_emul_temp(struct thermal_zone_device *tz, i
 			goto err;
 	}
 	sensor->emul_temperature = temp;
+
+	mutex_unlock(&sensor->chip->adc_chan_lock);
+	return s2mpg15_spmic_wait_for_sensors_ready(sensor->chip, value);
 
 err:
 	mutex_unlock(&sensor->chip->adc_chan_lock);
@@ -578,17 +640,13 @@ static irqreturn_t s2mpg15_spmic_thermal_irq(int irq, void *data)
 	return IRQ_NONE;
 }
 
-/*
- * Wait for sensors to be ready.
- */
-static void s2mpg15_spmic_thermal_wait_sensor(struct kthread_work *work)
+static void s2mpg15_spmic_thermal_wait_sensor_work(struct kthread_work *work)
 {
 	struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal =
 		container_of(work, struct s2mpg15_spmic_thermal_chip, wait_sensor_work.work);
 	struct device *dev = s2mpg15_spmic_thermal->dev;
-	u8 mask = 0x1;
 	u8 adc_chan_en = s2mpg15_spmic_thermal->adc_chan_en;
-	int raw, ret, i, j = 64000 / SENSOR_WAIT_SLEEP_MS;
+	int ret;
 
 	mutex_lock(&s2mpg15_spmic_thermal->adc_chan_lock);
 	ret = s2mpg15_spmic_set_ntc_channels(s2mpg15_spmic_thermal, adc_chan_en);
@@ -596,34 +654,7 @@ static void s2mpg15_spmic_thermal_wait_sensor(struct kthread_work *work)
 		goto err;
 	mutex_unlock(&s2mpg15_spmic_thermal->adc_chan_lock);
 
-	for (i = 0; i < GTHERM_CHAN_NUM; i++, mask <<= 1) {
-		u8 reg = S2MPG15_METER_NTC_LPF_C0_0 + s2mpg15_spmic_thermal->sensor[i].adc_chan;
-		if (!(s2mpg15_spmic_thermal->adc_chan_en & mask))
-			continue;
-		/* Wait for longest refresh period */
-		while (j--) {
-			ret = s2mpg15_spmic_thermal_read_raw(&s2mpg15_spmic_thermal->sensor[i],
-											&raw);
-			dev_info(dev, "Sensor %d raw:0x%x\n", i, raw);
-			if (ret != -EBUSY)
-				break;
-			dev_info(dev, "Sensor %d not ready, retry...\n", i);
-			msleep(SENSOR_WAIT_SLEEP_MS);
-		}
-		if (j < 0)
-			dev_warn(dev, "Sensor %d timeout, give up...\n", i);
-
-		thermal_zone_device_update(s2mpg15_spmic_thermal->sensor[i].tzd,
-					   THERMAL_EVENT_UNSPECIFIED);
-		dev_dbg(dev, "updating sensor %d  LPF CO to 0x%x\n",
-			i, s2mpg15_spmic_thermal->enable_hw_lpf[i]);
-		ret = s2mpg15_write_reg(s2mpg15_spmic_thermal->meter_i2c, reg,
-			s2mpg15_spmic_thermal->enable_hw_lpf[i]);
-		if (ret)
-			dev_warn(dev, "Sensor %d LPF write fail\n", i);
-	}
-
-	s2mpg15_spmic_thermal->sensors_ready = true;
+	s2mpg15_spmic_wait_for_sensors_ready(s2mpg15_spmic_thermal, adc_chan_en);
 	return;
 
 err:
@@ -779,6 +810,12 @@ adc_chan_en_store(struct device *dev, struct device_attribute *devattr,
 
 	chip->adc_chan_en = value;
 	mutex_unlock(&chip->adc_chan_lock);
+
+	ret = s2mpg15_spmic_wait_for_sensors_ready(chip, chip->adc_chan_en);
+	if (ret) {
+		chip->adc_chan_en = 0x00;
+		return ret;
+	}
 
 	for (i = 0; i < GTHERM_CHAN_NUM; i++, mask <<= 1) {
 		if (chip->adc_chan_en & mask)
@@ -986,7 +1023,7 @@ static int s2mpg15_spmic_thermal_probe(struct platform_device *pdev)
 		goto free_irq_tz;
 	}
 
-	kthread_init_delayed_work(&chip->wait_sensor_work, s2mpg15_spmic_thermal_wait_sensor);
+	kthread_init_delayed_work(&chip->wait_sensor_work, s2mpg15_spmic_thermal_wait_sensor_work);
 
 	platform_set_drvdata(pdev, chip);
 
