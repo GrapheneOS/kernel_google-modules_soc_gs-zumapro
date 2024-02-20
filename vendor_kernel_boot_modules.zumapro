@@ -128,6 +128,7 @@ open-dice.ko
 p9221.ko
 page_pool.ko
 panel-common.ko
+panel-gs-simple.ko
 panel-samsung-drv.ko
 panel-samsung-emul.ko
 panel-samsung-s6e3fc3-p10.ko
