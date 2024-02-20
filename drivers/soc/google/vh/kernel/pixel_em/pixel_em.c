@@ -207,7 +207,7 @@ static bool update_em_entry(struct pixel_em_profile *profile,
 			if (cluster->opps[opp_id].freq == freq) {
 				cluster->opps[opp_id].capacity = cap;
 				cluster->opps[opp_id].power = power;
-				cluster->opps[opp_id].cost = 1024 * power / cap;
+				cluster->opps[opp_id].cost = power / cap;
 				update_inefficient_prev_opp(cluster->opps, opp_id);
 				return true;
 			}
