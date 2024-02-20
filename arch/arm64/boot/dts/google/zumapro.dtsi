@@ -750,9 +750,6 @@
 		compatible = "samsung,exynos-dvfs-manager";
 		reg = <0x0 0x17000000 0x0>;
 		acpm-ipc-channel = <1>;
-		async_dvfs {
-			acpm-ipc-channel = <5>;
-		};
 		dm_domains {
 			cpufreq_cl0 {
 				dm-index = <DM_CPU_CL0>;
