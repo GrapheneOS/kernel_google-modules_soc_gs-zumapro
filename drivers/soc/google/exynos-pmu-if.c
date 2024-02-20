@@ -87,10 +87,12 @@ int exynos_pmu_update(unsigned int offset, unsigned int mask, unsigned int val)
 EXPORT_SYMBOL(exynos_pmu_update);
 
 #define PMU_CPU_CONFIG_BASE			0x1000
+#define PMU_CPU_STATUS_BASE			0x1004
 #define PMU_CPU_IN_BASE				0x1024
 #define PMU_CPU_IN_MASK				0xFFFE
 #define CPU_LOCAL_PWR_CFG			0x1
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
 static int pmu_cpu_offset(unsigned int cpu)
 {
 	unsigned int offset = 0;
@@ -131,20 +133,6 @@ static int pmu_cpu_offset(unsigned int cpu)
 	return offset;
 }
 
-static void pmu_cpu_ctrl(unsigned int cpu, int enable)
-{
-	unsigned int offset;
-
-	if (pmu_cpu_offset_size > 0)
-		offset = pmu_cpu_offset_table[cpu];
-	else
-		offset = pmu_cpu_offset(cpu);
-
-	exynos_pmu_update_bits(PMU_CPU_CONFIG_BASE + offset,
-			       CPU_LOCAL_PWR_CFG,
-			       enable ? CPU_LOCAL_PWR_CFG : 0);
-}
-
 static int pmu_cpu_state(unsigned int cpu)
 {
 	unsigned int offset, val = 0;
@@ -157,6 +145,74 @@ static int pmu_cpu_state(unsigned int cpu)
 	regmap_read(pmureg, PMU_CPU_IN_BASE + offset, &val);
 
 	return (!!(val & PMU_CPU_IN_MASK));
+}
+
+#else
+
+static int pmu_cpu_offset(unsigned int cpu)
+{
+	unsigned int offset = 0;
+
+	switch (cpu) {
+	case 0:
+		offset = 0x0;
+		break;
+	case 1:
+		offset = 0x80;
+		break;
+	case 2:
+		offset = 0x100;
+		break;
+	case 3:
+		offset = 0x180;
+		break;
+	case 4:
+		offset = 0x300;
+		break;
+	case 5:
+		offset = 0x380;
+		break;
+	case 6:
+		offset = 0x500;
+		break;
+	case 7:
+		offset = 0x580;
+		break;
+	default:
+		pr_err("CPU index out-of-bound\n");
+		WARN_ON(1);
+		break;
+	}
+	return offset;
+}
+
+static int pmu_cpu_state(unsigned int cpu)
+{
+	unsigned int offset, val = 0;
+
+	if (pmu_cpu_offset_size > 0)
+		offset = pmu_cpu_offset_table[cpu];
+	else
+		offset = pmu_cpu_offset(cpu);
+
+	regmap_read(pmureg, PMU_CPU_STATUS_BASE + offset, &val);
+
+	return ((val & CPU_LOCAL_PWR_CFG) == CPU_LOCAL_PWR_CFG);
+}
+#endif
+
+static void pmu_cpu_ctrl(unsigned int cpu, int enable)
+{
+	unsigned int offset;
+
+	if (pmu_cpu_offset_size > 0)
+		offset = pmu_cpu_offset_table[cpu];
+	else
+		offset = pmu_cpu_offset(cpu);
+
+	exynos_pmu_update_bits(PMU_CPU_CONFIG_BASE + offset,
+			       CPU_LOCAL_PWR_CFG,
+			       enable ? CPU_LOCAL_PWR_CFG : 0);
 }
 
 #define CLUSTER_ADDR_OFFSET			0x8
