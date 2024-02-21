@@ -12,7 +12,7 @@
                 #size-cells = <1>;
                 reg = <0x0 0x15200000 0x1000>;
                 interrupts = <GIC_SPI IRQ_MAILBOX_AOCA322AP_ALIVE
-                        IRQ_TYPE_LEVEL_HIGH>;
+                        IRQ_TYPE_LEVEL_HIGH 0>;
                 mbox-name = "aoc_a32_ap";
                 #mbox-cells = <1>;
 
@@ -25,7 +25,7 @@
                 #size-cells = <1>;
                 reg = <0x0 0x15220000 0x1000>;
                 interrupts = <GIC_SPI IRQ_MAILBOX_AOCF12AP_ALIVE
-                        IRQ_TYPE_LEVEL_HIGH>;
+                        IRQ_TYPE_LEVEL_HIGH 0>;
                 mbox-name = "aoc_f1_ap";
                 #mbox-cells = <1>;
 
@@ -38,7 +38,7 @@
                 #size-cells = <1>;
                 reg = <0x0 0x15240000 0x1000>;
                 interrupts = <GIC_SPI IRQ_MAILBOX_AOCP62AP_ALIVE
-                        IRQ_TYPE_LEVEL_HIGH>;
+                        IRQ_TYPE_LEVEL_HIGH 0>;
                 mbox-name = "aoc_p6_ap";
                 #mbox-cells = <1>;
 
@@ -64,7 +64,7 @@
                 reg-names = "blk_aoc", "aoc_req", "aoc_s2mpu", "ssmt_aoc";
 
                 interrupts = <GIC_SPI IRQ_AOC_Watchdog_CPU_AOC
-                        IRQ_TYPE_LEVEL_HIGH>;
+                        IRQ_TYPE_LEVEL_HIGH 0>;
                 interrupt-names = "watchdog";
 
                 pinctrl-names = "default";

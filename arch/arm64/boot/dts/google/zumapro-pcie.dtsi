@@ -22,12 +22,12 @@
 			0x0 0x40FFE000 0x2000	/* configuration space */
 			0x0 0x12170000 0x1000>;	/* I/A space */
 		reg-names = "elbi", "soc", "udbg", "phy", "sysreg", "dbi", "pcs", "config", "ia";
-		interrupts = <GIC_SPI IRQ_PCIE_GEN3_2L_HSI1 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_0_HSI1 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_1_HSI1 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_2_HSI1 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_3_HSI1 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_4_HSI1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_PCIE_GEN3_2L_HSI1 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_0_HSI1 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_1_HSI1 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_2_HSI1 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_3_HSI1 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3_2L_MSI_4_HSI1 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "msi";
 		#interrupt-cells = <1>;
 		samsung,syscon-phandle = <&pmu_system_controller>;
@@ -61,7 +61,7 @@
 	sysmmu_hsi1: sysmmu@12060000 {
 		compatible = "samsung,pcie-sysmmu";
 		reg = <0x0 0x12060000 0x10000>;
-		interrupts = <0 IRQ_SYSMMU_STAGE1_NS_HSI1 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <0 IRQ_SYSMMU_STAGE1_NS_HSI1 IRQ_TYPE_LEVEL_HIGH 0>;
 		qos = <15>;
 		port-name = "PCIe_CH0";
 		hsi-block-num = <1>;
@@ -86,15 +86,15 @@
 			0x0 0x60FFE000 0x2000	/* configuration space */
 			0x0 0x13100000 0x1000>;	/* I/A space */
 		reg-names = "elbi", "soc", "udbg", "phy", "sysreg", "dbi", "pcs", "config", "ia";
-		interrupts = <GIC_SPI IRQ_PCIE_GEN3A_1_HSI2 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_0_HSI2 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_1_HSI2 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_2_HSI2 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_3_HSI2 IRQ_TYPE_LEVEL_HIGH>,
-			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_4_HSI2 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_PCIE_GEN3A_1_HSI2 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_0_HSI2 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_1_HSI2 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_2_HSI2 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_3_HSI2 IRQ_TYPE_LEVEL_HIGH 0>,
+			   <GIC_SPI IRQ_PCIE_GEN3A_1_MSI_4_HSI2 IRQ_TYPE_LEVEL_HIGH 0>;
 		#interrupt-cells = <1>;
 		interrupt-map-mask = <0 0 0 0>;
-		interrupt-map = <0 0 0 0 &gic 0 IRQ_PCIE_GEN3A_1_HSI2 0x4>;
+		interrupt-map = <0 0 0 0 &gic 0 IRQ_PCIE_GEN3A_1_HSI2 0x4 0>;
 		samsung,syscon-phandle = <&pmu_system_controller>;
 		pinctrl-names = "active";
 		pinctrl-0 = <&pcie1_clkreq &pcie1_perst>;
@@ -125,7 +125,7 @@
 	sysmmu_hsi2: sysmmu@131C0000 {
 		compatible = "samsung,pcie-sysmmu";
 		reg = <0x0 0x131C0000 0x10000>;
-		interrupts = <0 IRQ_SYSMMU_STAGE1_NS_HSI2 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <0 IRQ_SYSMMU_STAGE1_NS_HSI2 IRQ_TYPE_LEVEL_HIGH 0>;
 		qos = <15>;
 		port-name = "PCIe_CH1";
 		hsi-block-num = <2>;

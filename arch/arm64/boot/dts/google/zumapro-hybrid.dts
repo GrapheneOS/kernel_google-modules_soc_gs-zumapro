@@ -46,17 +46,17 @@
 			virtio_0: virtio_block@14100000 {
 				compatible = "virtio,mmio";
 				reg = <0x0 0x14100000 0x10000>;
-				interrupts = <GIC_SPI 900 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 900 IRQ_TYPE_LEVEL_HIGH 0>;
 			};
 			virtio_1: virtio_block@14110000 {
 				compatible = "virtio,mmio";
 				reg = <0x0 0x14110000 0x10000>;
-				interrupts = <GIC_SPI 901 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 901 IRQ_TYPE_LEVEL_HIGH 0>;
 			};
 			virtio_9p2000: virtio_block@14200000 {
 				compatible = "virtio,mmio";
 				reg = <0x0 0x14200000 0x10000>;
-				interrupts = <0x0 752 0x4>;
+				interrupts = <0x0 752 0x4 0>;
 				phandle = <0x1a>;
 			};
 		};

@@ -177,7 +177,7 @@
 		power-domains = <&pd_hsi0>;
 		samsung,sysreg-hsi0 = <&sysreg_hsi0>;
 
-		interrupts = <GIC_SPI IRQ_USB32DRD_GIC_0_HSI0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_USB32DRD_GIC_0_HSI0 IRQ_TYPE_LEVEL_HIGH 0>;
 		tx-fifo-resize = <0>;
 		adj-sof-accuracy = <1>;
 		is_not_vbus_pad = <1>;
@@ -195,7 +195,7 @@
 		usbdrd_dwc3: dwc3 {
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0x11210000 0x10000>;
-			interrupts = <GIC_SPI IRQ_USB32DRD_GIC_0_HSI0 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_USB32DRD_GIC_0_HSI0 IRQ_TYPE_LEVEL_HIGH 0>;
 			memory-region = <&xhci_dma>;
 			dr_mode = "peripheral";
 			phys = <&usbdrd_phy0 0>, <&usbdrd_phy0 1>;
@@ -235,9 +235,9 @@
 			<0x0 0x11130000 0x800>,
 			<0x0 0x11140000 0x800>,
 			<0x0 0x11210000 0x10000>;
-		interrupts = <GIC_SPI IRQ_USB2_REMOTE_WAKEUP_GIC_HSI0 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI IRQ_USB2_REMOTE_CONNECT_GIC_HSI0 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI IRQ_USB32DRD_REWA_WAKEUP_REQ_HSI0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_USB2_REMOTE_WAKEUP_GIC_HSI0 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI IRQ_USB2_REMOTE_CONNECT_GIC_HSI0 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI IRQ_USB32DRD_REWA_WAKEUP_REQ_HSI0 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&clock MUX_HSI0_USB20_REF>, <&clock GATE_USB32DRD_LINK>;
 		clock-names = "phy_ref", "aclk";
 		samsung,pmu-syscon = <&pmu_system_controller>;

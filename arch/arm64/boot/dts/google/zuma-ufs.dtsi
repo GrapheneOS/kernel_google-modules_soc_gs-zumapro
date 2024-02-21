@@ -26,7 +26,7 @@
 			<0x0 0x132a0000 0xA014>,/* 3: UFS protector */
 			<0x0 0x13204000 0x4000>,/* phy */
 			<0x0 0x13208000 0x804>;	/* 6: CPORT */
-		interrupts = <GIC_SPI IRQ_UFS_EMBD_HSI2 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_UFS_EMBD_HSI2 IRQ_TYPE_LEVEL_HIGH 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&ufs_rst_n &ufs_refclk_out>;
 		clocks =

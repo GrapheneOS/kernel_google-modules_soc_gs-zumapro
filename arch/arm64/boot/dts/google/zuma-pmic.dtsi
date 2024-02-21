@@ -32,7 +32,7 @@
 		acpm-speedy-channel = <0>;
 		s2mpg14,wakeup = "enabled";
 		reg = <0x1f>;
-		interrupts = <GIC_SPI IRQ_INTCOMB_VGPIO2AP_ALIVE IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_INTCOMB_VGPIO2AP_ALIVE IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-parent = <&gic>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&smpl_warn>;

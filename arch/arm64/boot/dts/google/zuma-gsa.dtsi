@@ -11,7 +11,7 @@
 		log-region = <&gsa_reserved_log>;
 
 		interrupts = <GIC_SPI IRQ_MAILBOX_GSA2NONTZ_GSA
-			      IRQ_TYPE_LEVEL_HIGH>;
+			      IRQ_TYPE_LEVEL_HIGH 0>;
 
 		s2mpu = <&s2mpu_s0_gsa>;
 	};

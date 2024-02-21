@@ -977,7 +977,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT0 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT0 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn1: gpn1 {
 			gpio-controller;
@@ -985,7 +985,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT1 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT1 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn2: gpn2 {
 			gpio-controller;
@@ -993,7 +993,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT2 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT2 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn3: gpn3 {
 			gpio-controller;
@@ -1001,7 +1001,7 @@
 			interrupt-controller;
 				#interrupt-cells = <3>;
 				interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT3 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT3 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn4: gpn4 {
 			gpio-controller;
@@ -1009,7 +1009,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT4 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT4 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn5: gpn5 {
 			gpio-controller;
@@ -1017,7 +1017,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT5 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT5 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn6: gpn6 {
 			gpio-controller;
@@ -1025,7 +1025,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT6 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT6 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn7: gpn7 {
 			gpio-controller;
@@ -1033,7 +1033,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT7 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT7 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn8: gpn8 {
 			gpio-controller;
@@ -1041,7 +1041,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT8 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT8 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpn9: gpn9 {
 			gpio-controller;
@@ -1049,7 +1049,7 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT9 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_CUSTOM_EINT9 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 	};
 
@@ -1061,10 +1061,10 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT0 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT1 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT2 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT3 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT0 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT1 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT2 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT3 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa1: gpa1 {
 			gpio-controller;
@@ -1072,12 +1072,12 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT4 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT5 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT6 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT7 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT8 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT9 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT4 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT5 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT6 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT7 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT8 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT9 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa2: gpa2 {
 			gpio-controller;
@@ -1085,10 +1085,10 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT10 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT11 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT12 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT13 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT10 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT11 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT12 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT13 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa3: gpa3 {
 			gpio-controller;
@@ -1096,10 +1096,10 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT14 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT15 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT16 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT17 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT14 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT15 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT16 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT17 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa4: gpa4 {
 			gpio-controller;
@@ -1107,8 +1107,8 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT18 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT19 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT18 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT19 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa6: gpa6 {
 			gpio-controller;
@@ -1116,12 +1116,12 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT20 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT21 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT22 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT23 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT24 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT25 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT20 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT21 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT22 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT23 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT24 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT25 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa7: gpa7 {
 			gpio-controller;
@@ -1129,14 +1129,14 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT26 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT27 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT28 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT29 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT30 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT31 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT32 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT33 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT26 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT27 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT28 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT29 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT30 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT31 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT32 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT33 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa8: gpa8 {
 			gpio-controller;
@@ -1144,10 +1144,10 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT34 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT35 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT36 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT37 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT34 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT35 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT36 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT37 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa9: gpa9 {
 			gpio-controller;
@@ -1155,13 +1155,13 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT38 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT39 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT40 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT41 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT42 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT43 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT44 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT38 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT39 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT40 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT41 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT42 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT43 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT44 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa10: gpa10 {
 			gpio-controller;
@@ -1169,11 +1169,11 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT45 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT46 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT47 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT48 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT49 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT45 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT46 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT47 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT48 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT49 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 		gpa11: gpa11 {
 			gpio-controller;
@@ -1231,14 +1231,14 @@
 			#gpio-cells = <2>;
 			interrupt-controller;
 			#interrupt-cells = <3>;
-			interrupts = <GIC_SPI IRQ_ALIVE_EINT50 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT51 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT52 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT53 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT54 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT55 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT56 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI IRQ_ALIVE_EINT57 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI IRQ_ALIVE_EINT50 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT51 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT52 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT53 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT54 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT55 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT56 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI IRQ_ALIVE_EINT57 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 	};
 

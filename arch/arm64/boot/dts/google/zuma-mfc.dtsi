@@ -211,7 +211,7 @@
 			compatible = "samsung,exynos-mfc-core";
 			id = <0>;
 			reg = <0x0 0x1A4D0000 0x10000>;
-			interrupts = <0 IRQ_MFC_MFC IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <0 IRQ_MFC_MFC IRQ_TYPE_LEVEL_HIGH 0>;
 			clock-names = "aclk_mfc";
 			clocks = <&clock GATE_MFC>;
 			iommus = <&sysmmu_mfc>;

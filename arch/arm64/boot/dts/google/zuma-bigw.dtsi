@@ -13,7 +13,7 @@
 		reg = <0x0 0x1A700000 0x860
 			0x0 0x1A6A4000 0xa00>;
 		reg-names = "regs", "ssmt_pid";
-		interrupts = <GIC_SPI IRQ_BW_XINT_BW IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_BW_XINT_BW IRQ_TYPE_LEVEL_HIGH 0>;
 		vpu-opp-table = <&vpu_opp_table>;
 		vpu-bw-table = <&vpu_bw_table>;
 		iommus = <&sysmmu_bw>;

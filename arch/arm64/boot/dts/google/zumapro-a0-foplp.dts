@@ -25,7 +25,7 @@
 	tmuctrl_0: BIG@100A0000 {
 		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100A0000 0x800>;
-		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH 0>;
 		tmu_name = "BIG";
 		id = <0>;
 		ect_nouse;
@@ -68,7 +68,7 @@
 	tmuctrl_1: MID@100A0000 {
 		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100A0000 0x800>;
-		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH 0>;
 		tmu_name = "MID";
 		id = <1>;
 		ect_nouse;
@@ -105,7 +105,7 @@
 	tmuctrl_2: LITTLE@100A0000 {
 		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100A0000 0x800>;
-		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_TMU_TOP_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH 0>;
 		tmu_name = "LITTLE";
 		id = <2>;
 		ect_nouse;
@@ -141,7 +141,7 @@
 	tmuctrl_3: G3D@100B0000 {
 		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100B0000 0x800>;
-		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH 0>;
 		tmu_name = "G3D";
 		id = <3>;
 		ect_nouse;
@@ -169,7 +169,7 @@
 	tmuctrl_4: ISP@100B0000 {
 		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100B0000 0x800>;
-		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH 0>;
 		tmu_name = "ISP";
 		id = <4>;
 		ect_nouse;
@@ -183,7 +183,7 @@
 	tmuctrl_5: TPU@100B0000 {
 		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100B0000 0x800>;
-		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH 0>;
 		tmu_name = "TPU";
 		id = <5>;
 		ect_nouse;
@@ -211,7 +211,7 @@
 	tmuctrl_6: AUR@100B0000 {
 		compatible = "samsung,gs-tmu-v3";
 		reg = <0x0 0x100B0000 0x800>;
-		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI IRQ_TMU_SUB_INTREQ_MISC IRQ_TYPE_LEVEL_HIGH 0>;
 		tmu_name = "AUR";
 		id = <6>;
 		ect_nouse;
