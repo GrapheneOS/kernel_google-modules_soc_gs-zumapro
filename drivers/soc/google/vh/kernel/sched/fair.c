@@ -1137,9 +1137,6 @@ static bool task_fits_capacity(struct task_struct *p, int cpu)
 	if (cpu >= pixel_cluster_start_cpu[2])
 		return true;
 
-	if (get_prefer_high_cap(p) && cpu < pixel_cluster_start_cpu[1])
-		return false;
-
 	/*
 	 * Ignore uclamp if spreading the task
 	 */
@@ -1164,20 +1161,6 @@ void rvh_util_fits_cpu_pixel_mod(void *data, unsigned long util, unsigned long u
 {
 	*fits = util_fits_cpu(util, uclamp_min, uclamp_max, cpu);
 	*done = true;
-}
-
-static inline bool cpu_is_in_target_set(struct task_struct *p, int cpu)
-{
-	int first_cpu, next_usable_cpu;
-
-	if (get_prefer_high_cap(p)) {
-		first_cpu = pixel_cluster_start_cpu[1];
-	} else {
-		first_cpu = pixel_cluster_start_cpu[0];
-	}
-
-	next_usable_cpu = cpumask_next(first_cpu - 1, p->cpus_ptr);
-	return cpu >= next_usable_cpu || next_usable_cpu >= nr_cpu_ids;
 }
 
 /**
@@ -1577,7 +1560,6 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	bool is_idle, task_fits, util_fits;
 	bool idle_target_found = false, importance_target_found = false;
 	bool prefer_idle = get_prefer_idle(p);
-	bool prefer_high_cap = get_prefer_high_cap(p);
 	unsigned long capacity, wake_util, cpu_importance, pd_least_cpu_importantce;
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 	bool group_overutilize;
@@ -1773,9 +1755,6 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 				}
 
 				if (importance_target_found)
-					continue;
-
-				if (prefer_high_cap && i < pixel_cluster_start_cpu[1])
 					continue;
 
 				/*
@@ -2003,9 +1982,10 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 
 out:
 	rcu_read_unlock();
-	trace_sched_find_energy_efficient_cpu(p, prefer_idle, prefer_high_cap, task_importance,
-				     &idle_fit, &idle_unfit, &unimportant_fit, &unimportant_unfit,
-				     &packing, &max_spare_cap, &idle_unpreferred, best_energy_cpu);
+	trace_sched_find_energy_efficient_cpu(p, prefer_idle, get_prefer_high_cap(p),
+					 task_importance, &idle_fit, &idle_unfit, &unimportant_fit,
+					 &unimportant_unfit, &packing, &max_spare_cap, &idle_unpreferred,
+					 best_energy_cpu);
 
 	return best_energy_cpu;
 }
@@ -2183,6 +2163,10 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 	// Inherited uclamp restriction
 	if (vbinder->active)
 		value = clamp(value, vbinder->uclamp[UCLAMP_MIN], vbinder->uclamp[UCLAMP_MAX]);
+
+	// prefer high capacity cpu
+	if (clamp_id == UCLAMP_MIN && get_prefer_high_cap(p))
+		value = max(value, (unsigned int)capacity_orig_of(pixel_cluster_start_cpu[0]) + 1);
 
 	// For uclamp min, if task has a valid per-task setting that is lower than or equal to its
 	// group value, increase the final uclamp value by 1. This would have effect only on
@@ -2545,7 +2529,7 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 	set_prefer_high_cap(p, sync && cpu >= pixel_cluster_start_cpu[1]);
 
 	if (sync && cpu_rq(cpu)->nr_running == 1 && cpumask_test_cpu(cpu, p->cpus_ptr) &&
-	     cpu_is_in_target_set(p, cpu) && task_fits_capacity(p, cpu)) {
+	     task_fits_capacity(p, cpu)) {
 		*target_cpu = cpu;
 		sync_wakeup = true;
 		goto out;
@@ -2583,7 +2567,7 @@ out:
 	if (trace_sched_select_task_rq_fair_enabled())
 		trace_sched_select_task_rq_fair(p, task_util_est(p),
 						sync_wakeup, prefer_prev,
-						get_vendor_task_struct(p)->prefer_high_cap,
+						get_prefer_high_cap(p),
 						get_vendor_group(p),
 						uclamp_eff_value_pixel_mod(p, UCLAMP_MIN),
 						uclamp_eff_value_pixel_mod(p, UCLAMP_MAX),
