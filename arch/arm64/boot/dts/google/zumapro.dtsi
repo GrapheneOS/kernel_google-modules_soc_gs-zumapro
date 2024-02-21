@@ -105,6 +105,16 @@
 		reg = <0x0 0x10400000 0x10000>,		/* GICD */
 		      <0x0 0x10440000 0x200000>;	/* GICR * 8 */
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
+
+		ppi-partitions {
+			ppi_cluster0: interrupt-partition-0 {
+				affinity = <&cpu0 &cpu1 &cpu2 &cpu3 &cpu4 &cpu5 &cpu6>;
+			};
+
+			ppi_cluster1: interrupt-partition-1 {
+				affinity = <&cpu7>;
+			};
+		};
 	};
 
 	timer {
@@ -480,9 +490,14 @@
 		interrupts = <GIC_SPI IRQ_GPIO_PERIC1_PERIC1 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	arm-pmu {
+	arm-pmu-cpu0-6 {
 		compatible = "arm,armv8-pmuv3";
-		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_HIGH) 0>;
+		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_RAW(0x3f) | IRQ_TYPE_LEVEL_HIGH) &ppi_cluster0>;
+	};
+
+	arm-pmu-cpu7 {
+		compatible = "arm,cortex-x2-pmu";
+		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_RAW(0x80) | IRQ_TYPE_LEVEL_HIGH) &ppi_cluster1>;
 	};
 
 	pmu_system_controller: system-controller@15460000 {
