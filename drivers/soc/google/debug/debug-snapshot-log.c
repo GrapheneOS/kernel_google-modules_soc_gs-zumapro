@@ -793,7 +793,13 @@ void dbg_snapshot_start_log(void)
 	}
 	dss_freq_size = of_property_count_strings(np, "freq_names");
 	of_property_for_each_string(np, "freq_names", prop, str) {
-		strlcpy(dss_freq_name[i++], str, sizeof(dss_freq_name) - 1);
+		if (i >= ARRAY_SIZE(dss_freq_name)) {
+			pr_warn("%s: DT specified more 'freq_names' than we can handle (%u vs %zu)\n",
+				__func__, dss_freq_size, ARRAY_SIZE(dss_freq_name));
+			break;
+		}
+		strlcpy(dss_freq_name[i], str, sizeof(dss_freq_name[i]));
+		++i;
 	}
 
 	dbg_snapshot_log_output();
