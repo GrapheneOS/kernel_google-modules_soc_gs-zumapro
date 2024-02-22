@@ -27,14 +27,14 @@
 		samsung,pin-con-pdn = <EXYNOS_PIN_PDN_PREV>;
 		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_DOWN>;
 	};
-};
-
-&pinctrl_2 {
-        bt_host_wake: bt-host-wake {
-                samsung,pins = "gpa5-6";
-                samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
-                samsung,pin-pud = <EXYNOS_PIN_PULL_DOWN>;
-        };
+	bt_host_wake: bt-host-wake {
+		samsung,pins ="gpn6-0";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_DOWN>;
+		samsung,pin-drv = <ZUMA_PIN_DRV_X1>;
+		samsung,pin-con-pdn = <EXYNOS_PIN_PDN_PREV>;
+		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_DOWN>;
+	};
 };
 
 &pinctrl_11 {
@@ -69,7 +69,7 @@
 		pinctrl-0 = <&bt_reg_on &bt_dev_wake &bt_host_wake &bt_ble_dbo_le &bt_timesync>;
 		pinctrl-names = "default";
 		shutdown-gpios = <&gpn8 0 GPIO_ACTIVE_HIGH>;
-		host-wakeup-gpios = <&gpa5 6 GPIO_ACTIVE_HIGH>;
+		host-wakeup-gpios = <&gpn6 0 GPIO_ACTIVE_HIGH>;
 		device-wakeup-gpios = <&gpn9 0 GPIO_ACTIVE_HIGH>;
 		bt-ble-dbo-le-gpios =<&gpp24 3 GPIO_ACTIVE_HIGH>;
 		timesync-gpios = <&gpp11 1 GPIO_ACTIVE_HIGH>;
