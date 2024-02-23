@@ -2542,7 +2542,7 @@ bool exynos_uart_console_enabled(void)
 }
 EXPORT_SYMBOL_GPL(exynos_uart_console_enabled);
 
-static int exynos_serial_notifier(struct notifier_block *self,
+static int exynos_serial_sicd_notifier(struct notifier_block *self,
 				  unsigned long cmd, void *v)
 {
 	struct exynos_uart_port *ourport;
@@ -2588,8 +2588,8 @@ static int exynos_serial_notifier(struct notifier_block *self,
 	return NOTIFY_DONE;
 }
 
-static struct notifier_block exynos_serial_notifier_block = {
-	.notifier_call = exynos_serial_notifier,
+static struct notifier_block exynos_serial_sicd_notifier_block = {
+	.notifier_call = exynos_serial_sicd_notifier,
 };
 
 static int exynos_serial_probe(struct platform_device *pdev)
@@ -3320,7 +3320,7 @@ static int __init exynos_serial_modinit(void)
 		return ret;
 	}
 
-	exynos_cpupm_notifier_register(&exynos_serial_notifier_block);
+	exynos_sicd_notifier_register(&exynos_serial_sicd_notifier_block);
 
 	return platform_driver_register(&exynos_serial_driver);
 }

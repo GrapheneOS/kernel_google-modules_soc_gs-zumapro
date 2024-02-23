@@ -1054,7 +1054,7 @@ static int exynos_ehld_setup(void)
 
 	/* register the PM and SICD notifiers */
 	register_pm_notifier(&exynos_ehld_pm_notifier_block);
-	exynos_cpupm_notifier_register(&exynos_ehld_sicd_notifier_block);
+	exynos_sicd_notifier_register(&exynos_ehld_sicd_notifier_block);
 
 	register_hardlockup_notifier_list();
 

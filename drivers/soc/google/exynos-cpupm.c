@@ -191,7 +191,7 @@ static void do_nothing(void *unused) { }
 static DEFINE_RWLOCK(notifier_lock);
 static RAW_NOTIFIER_HEAD(notifier_chain);
 
-int exynos_cpupm_notifier_register(struct notifier_block *nb)
+int exynos_sicd_notifier_register(struct notifier_block *nb)
 {
 	unsigned long flags;
 	int ret;
@@ -202,9 +202,9 @@ int exynos_cpupm_notifier_register(struct notifier_block *nb)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(exynos_cpupm_notifier_register);
+EXPORT_SYMBOL_GPL(exynos_sicd_notifier_register);
 
-static int exynos_cpupm_notify(int event, int v)
+static int exynos_sicd_notify(int event, int v)
 {
 	int ret;
 
@@ -868,7 +868,7 @@ static void enter_power_mode(int cpu, struct power_mode *mode)
 		if (!is_acpm_ipc_flushed())
 			return;
 
-		if (unlikely(exynos_cpupm_notify(SICD_ENTER, 0)))
+		if (unlikely(exynos_sicd_notify(SICD_ENTER, 0)))
 			return;
 
 		cal_pm_enter(SYS_SICD);
@@ -907,7 +907,7 @@ static void exit_power_mode(int cpu, struct power_mode *mode, int cancel)
 			cal_pm_earlywakeup(SYS_SICD);
 		else
 			cal_pm_exit(SYS_SICD);
-		exynos_cpupm_notify(SICD_EXIT, cancel);
+		exynos_sicd_notify(SICD_EXIT, cancel);
 		system_disabled = 0;
 
 		break;
@@ -998,12 +998,7 @@ static int exynos_cpu_pm_notify_callback(struct notifier_block *self,
 			return NOTIFY_BAD;
 #endif
 
-		/*
-		 * There are few block condition of C2.
-		 *  - while cpu is hotpluging.
-		 */
-		if (exynos_cpupm_notify(C2_ENTER, 0) ||
-		    *per_cpu_ptr(hotplug_ing, cpu))
+		if (*per_cpu_ptr(hotplug_ing, cpu))
 			return NOTIFY_BAD;
 
 		exynos_cpupm_enter(cpu);
