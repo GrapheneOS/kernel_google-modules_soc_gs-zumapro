@@ -855,6 +855,51 @@
 		};
 	};
 
+	gs_dsulat_devfreq {
+		compatible = "gs-dsulat-devfreq-root";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+
+		gs_dsulat: devfreq_dsulat@17000090 {
+			compatible = "gs-dsulat-devfreq";
+			devfreq_type = <DEVFREQ_DSU>;
+			devfreq_domain_name = "DSU";
+			pm_qos_class = <PM_QOS_DSU_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_DSU_THROUGHPUT_MAX>;
+			max-freq = <1800000>;
+			dm-index = <DM_DSU>;
+			clock-names = "DEVFREQ";
+			polling_ms = <10>;
+
+			/* governor data */
+			governor = <DSU_LATENCY>;
+			dfs_id = <ACPM_DVFS_DSU>;
+		};
+	};
+
+	gs_memlat_devfreq {
+		compatible = "gs-memlat-devfreq-root";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+
+		gs_memlat: devfreq_mif_lat@17000010 {
+			compatible = "gs-memlat-devfreq";
+			devfreq_type = <DEVFREQ_MIF>;
+			devfreq_domain_name = "MIF";
+			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
+			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
+			dm-index = <DM_MIF>;
+			clock-names = "DEVFREQ";
+			polling_ms = <8>;
+
+			/* governor data */
+			governor = <MEM_LATENCY>;
+			dfs_id = <ACPM_DVFS_MIF>;
+		};
+	};
+
 	gs_perf_mon {
 		compatible = "google,gs_perf_mon";
 		param_ticks_per_counter_update = <2>;
@@ -1257,7 +1302,7 @@
 		};
 	};
 
-	gs_memlat_devfreq {
+	memlat_devfreq {
 		compatible = "memlat-devfreq-root";
 		#address-cells = <2>;
 		#size-cells = <1>;
@@ -1392,7 +1437,7 @@
 		};
 	};
 
-	gs_dsulat_devfreq {
+	dsulat_devfreq {
 		compatible = "dsulat-devfreq-root";
 		#address-cells = <2>;
 		#size-cells = <1>;
