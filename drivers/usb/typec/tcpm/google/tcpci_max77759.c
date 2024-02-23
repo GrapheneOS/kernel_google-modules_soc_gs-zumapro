@@ -199,6 +199,9 @@ static char boot_mode_string[64];
 module_param_string(mode, boot_mode_string, sizeof(boot_mode_string), 0440);
 MODULE_PARM_DESC(mode, "Android bootmode");
 
+static bool modparam_disable_cc_toggling_by_default;
+module_param_named(disable_cc_toggling_by_default, modparam_disable_cc_toggling_by_default, bool, 0444);
+
 static u32 partner_src_caps[PDO_MAX_OBJECTS];
 static unsigned int nr_partner_src_caps;
 static bool port_src_pdo_updated;
@@ -345,20 +348,29 @@ static ssize_t cc_toggle_enable_show(struct device *dev, struct device_attribute
 	return scnprintf(buf, PAGE_SIZE, "%d\n", chip->toggle_disable_status ? 0 : 1);
 };
 
-static ssize_t cc_toggle_enable_store(struct device *dev, struct device_attribute *attr,
-				      const char *buf, size_t count)
+static int cc_toggle_enable_set(struct max77759_plat *chip, int val)
 {
-	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
-	int val, ret;
-
-	if (kstrtoint(buf, 10, &val) < 0)
-		return -EINVAL;
+	int ret;
 
 	ret = gvotable_cast_vote(chip->toggle_disable_votable, "USER_VOTE",
 				 (void *)MAX77759_DISABLE_TOGGLE_VOTE, val ?
 				 MAX77759_ENABLE_TOGGLE : MAX77759_DISABLE_TOGGLE);
 	if (ret < 0)
 		dev_err(chip->dev, "Cannot set TOGGLE DISABLE=%d (%d)\n", val, ret);
+
+	return ret;
+}
+
+static ssize_t cc_toggle_enable_store(struct device *dev, struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	struct max77759_plat *chip = i2c_get_clientdata(to_i2c_client(dev));
+	int val;
+
+	if (kstrtoint(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	cc_toggle_enable_set(chip, val);
 
 	return count;
 }
@@ -3442,6 +3454,9 @@ static int max77759_probe(struct i2c_client *client,
 	}
 	gvotable_set_vote2str(chip->toggle_disable_votable, gvotable_v2s_int);
 	gvotable_election_set_name(chip->toggle_disable_votable, "TOGGLE_DISABLE");
+
+	if (modparam_disable_cc_toggling_by_default)
+		cc_toggle_enable_set(chip, 0);
 
 	chip->usb_throttle_votable =
 		gvotable_create_bool_election(NULL, usb_throttle_votable_callback, chip);
