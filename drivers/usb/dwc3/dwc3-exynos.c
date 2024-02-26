@@ -1146,10 +1146,6 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 		goto extcon_unregister;
 	}
 
-#if !IS_ENABLED(CONFIG_EXYNOS_PD_HSI0)
-	exynos_usbdrd_vdd_hsi_manual_control(1);
-	exynos_usbdrd_ldo_manual_control(1);
-#endif
 	exynos_usbdrd_s2mpu_manual_control(1);
 
 	if (node) {
