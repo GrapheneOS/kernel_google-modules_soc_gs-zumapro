@@ -26,6 +26,12 @@
                 status = "disabled";
 	};
 
+	sub_pd_hsi0: sub-pd-hsi0 {
+		compatible = "exynos-pd-hsi0";
+		power-domains = <&pd_hsi0>;
+		status = "okay";
+	};
+
 	usb_hs_tune:hs_tune_phy {
 		status = "disabled";
 		hs_tune_cnt = <12>;
