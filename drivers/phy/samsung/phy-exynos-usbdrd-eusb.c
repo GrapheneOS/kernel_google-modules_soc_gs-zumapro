@@ -1666,84 +1666,6 @@ int exynos_usbdrd_phy_tune(struct phy *phy, int phy_state)
 }
 EXPORT_SYMBOL_GPL(exynos_usbdrd_phy_tune);
 
-void exynos_usbdrd_ldo_control(struct exynos_usbdrd_phy *phy_drd, int on)
-{
-	int ret1, ret2, ret3;
-
-	if (phy_drd->vdd075 == NULL ||
-	    phy_drd->vdd12 == NULL ||
-	    phy_drd->vdd33 == NULL) {
-		dev_err(phy_drd->dev, "%s: not defined regulator\n",
-			__func__);
-		return;
-	}
-
-	if (on) {
-		ret1 = regulator_enable(phy_drd->vdd075);
-		if (ret1) {
-			dev_err(phy_drd->dev,
-				"Failed to enable vdd075: %d\n", ret1);
-			return;
-		}
-
-		ret1 = regulator_enable(phy_drd->vdd12);
-		if (ret1) {
-			dev_err(phy_drd->dev,
-				"Failed to enable vdd12: %d\n", ret1);
-			ret2 = regulator_disable(phy_drd->vdd075);
-			if (ret2) {
-				dev_err(phy_drd->dev,
-					"Failed to disable vdd075: %d\n",
-					ret2);
-			}
-			return;
-		}
-
-		ret1 = regulator_enable(phy_drd->vdd33);
-		if (ret1) {
-			dev_err(phy_drd->dev,
-				"Failed to enable vdd33: %d\n", ret1);
-			ret2 = regulator_disable(phy_drd->vdd075);
-			ret3 = regulator_disable(phy_drd->vdd12);
-			if (ret2 || ret3) {
-				dev_err(phy_drd->dev,
-					"Failed to disable vdd075, vdd12: %d %d\n",
-					ret2, ret3);
-			}
-			return;
-		}
-	} else {
-		ret1 = regulator_disable(phy_drd->vdd075);
-		ret2 = regulator_disable(phy_drd->vdd12);
-		ret3 = regulator_disable(phy_drd->vdd33);
-		if (ret1 || ret2 || ret3) {
-			dev_err(phy_drd->dev,
-				"Failed to disable USB LDOs: %d %d %d\n",
-				ret1, ret2, ret3);
-		}
-	}
-}
-
-void exynos_usbdrd_l7m_control(struct exynos_usbdrd_phy *phy_drd, int on)
-{
-	int ret;
-
-	if (phy_drd->vdd_hsi == NULL) {
-		dev_err(phy_drd->dev, "%s: not defined regulator L7M\n", __func__);
-		return;
-	}
-
-	if (on) {
-		ret = regulator_enable(phy_drd->vdd_hsi);
-		if (ret)
-			 pr_err("Failed to enable vdd_hsi: %d\n", ret);
-	} else {
-		ret = regulator_disable(phy_drd->vdd_hsi);
-		if (ret)
-			 pr_err("Failed to disable vdd_hsi: %d\n", ret);
-	}
-}
-
 /*
  * USB LDO control was moved to phy_conn API from OTG
  * without adding one more phy interface
@@ -1929,34 +1851,6 @@ static int exynos_usbdrd_phy_power_off(struct phy *phy)
 	return 0;
 }
 
-int exynos_usbdrd_ldo_manual_control(bool on)
-{
-	struct exynos_usbdrd_phy *phy_drd;
-
-	pr_info("%s ldo = %d\n", __func__, on);
-
-	phy_drd = exynos_usbdrd_get_struct();
-
-	if (!phy_drd) {
-		pr_err("[%s] exynos_usbdrd_get_struct error\n", __func__);
-		return -ENODEV;
-	}
-	exynos_usbdrd_ldo_control(phy_drd, on);
-
-#if IS_ENABLED(CONFIG_PHY_EXYNOS_EUSB_REPEATER)
-	if (on) {
-		if (extcon_get_state(phy_drd->edev, EXTCON_USB) <= 0 &&
-		    extcon_get_state(phy_drd->edev, EXTCON_USB_HOST) <= 0)
-			eusb_repeater_update_usb_state(false);
-		else
-			eusb_repeater_update_usb_state(true);
-	}
-#endif
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(exynos_usbdrd_ldo_manual_control);
-
 int exynos_usbdrd_s2mpu_manual_control(bool on)
 {
 	struct exynos_usbdrd_phy *phy_drd;
@@ -1981,41 +1875,6 @@ int exynos_usbdrd_s2mpu_manual_control(bool on)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(exynos_usbdrd_s2mpu_manual_control);
-
-int exynos_usbdrd_vdd_hsi_manual_control(bool on)
-{
-	struct exynos_usbdrd_phy *phy_drd;
-
-	phy_drd = exynos_usbdrd_get_struct();
-
-	if (!phy_drd) {
-		pr_err("[%s] exynos_usbdrd_get_struct error\n", __func__);
-		return -ENODEV;
-	}
-	exynos_usbdrd_l7m_control(phy_drd, on);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(exynos_usbdrd_vdd_hsi_manual_control);
-
-bool exynos_usbdrd_get_ldo_status(void)
-{
-	struct exynos_usbdrd_phy *phy_drd;
-	bool status = false;
-
-	phy_drd = exynos_usbdrd_get_struct();
-	if (!phy_drd) {
-		pr_err("[%s] exynos_usbdrd_get_struct error\n", __func__);
-		return status;
-	}
-
-	status = regulator_is_enabled(phy_drd->vdd075) &&
-		 regulator_is_enabled(phy_drd->vdd12) &&
-		 regulator_is_enabled(phy_drd->vdd33);
-
-	return status;
-}
-EXPORT_SYMBOL_GPL(exynos_usbdrd_get_ldo_status);
 
 int exynos_usbdrd_pipe3_enable(struct phy *phy)
 {
@@ -2180,6 +2039,13 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 		s2mpu_pdev = of_find_device_by_node(s2mpu_np);
 		of_node_put(s2mpu_np);
 	}
+
+#if IS_ENABLED(CONFIG_EXYNOS_PD_HSI0)
+	if (!exynos_pd_hsi0_get_ldo_status()) {
+		dev_err(dev, "pd-hsi0 is not powered, deferred probe!");
+		return -EPROBE_DEFER;
+	}
+#endif
 
 	phy_drd = devm_kzalloc(dev, sizeof(*phy_drd), GFP_KERNEL);
 	if (!phy_drd)
@@ -2487,27 +2353,6 @@ skip_clock:
 
 	spin_lock_init(&phy_drd->lock);
 
-	dev_dbg(dev, "Get USB LDO!\n");
-	phy_drd->vdd075 = devm_regulator_get(dev, "vdd075");
-	if (IS_ERR(phy_drd->vdd075)) {
-		dev_err(dev, "%s - vdd075 regulator_get fail: %ld\n",
-			__func__, PTR_ERR(phy_drd->vdd075));
-		return PTR_ERR(phy_drd->vdd075);
-	}
-
-	phy_drd->vdd12 = devm_regulator_get(dev, "vdd12");
-	if (IS_ERR(phy_drd->vdd12)) {
-		dev_err(dev, "%s - vdd12 regulator_get fail: %ld\n",
-			__func__, PTR_ERR(phy_drd->vdd12));
-		return PTR_ERR(phy_drd->vdd12);
-	}
-
-	phy_drd->vdd33 = devm_regulator_get(dev, "vdd33");
-	if (IS_ERR(phy_drd->vdd33)) {
-		dev_err(dev, "%s - vdd33 regulator_get fail: %ld\n",
-			__func__, PTR_ERR(phy_drd->vdd33));
-		return PTR_ERR(phy_drd->vdd33);
-	}
 	phy_drd->is_irq_enabled = 0;
 	phy_drd->is_usb3_rewa_enabled = 0;
 	pm_runtime_enable(dev);

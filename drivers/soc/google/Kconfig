@@ -149,7 +149,7 @@ config EXYNOS_PD_EL3
 
 config EXYNOS_PD_HSI0
 	tristate "Exynos PD HSI0 driver"
-	depends on (SOC_GS101 || SOC_GS201) && EXYNOS_PD
+	depends on EXYNOS_PD
 	default m
 	help
 	Support PD driver to control HSI0 ldos.
