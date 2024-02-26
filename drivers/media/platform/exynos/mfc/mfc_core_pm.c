@@ -307,6 +307,11 @@ void mfc_core_pm_idle_suspend(struct mfc_core *core)
 	if ((core->sleep == 1) || !idle_suspend_enable)
 		return;
 
+	if (!mfc_core_pm_get_pwr_ref_cnt(core)) {
+		mfc_core_info("MFC core idle suspend is skipped since mfc is power off");
+		return;
+	}
+
 	mfc_perf_core_trace("sleep", 1);
 
 	mfc_core_debug(2, "MFC core idle suspend is called\n");
