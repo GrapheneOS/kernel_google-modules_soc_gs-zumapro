@@ -2531,7 +2531,7 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 	set_prefer_high_cap(p, sync && cpu >= pixel_cluster_start_cpu[1]);
 
 	if (sync && cpu_rq(cpu)->nr_running == 1 && cpumask_test_cpu(cpu, p->cpus_ptr) &&
-	     task_fits_capacity(p, cpu)) {
+	    task_fits_capacity(p, cpu) && !cpumask_test_cpu(cpu, &cpu_skip_mask)){
 		*target_cpu = cpu;
 		sync_wakeup = true;
 		goto out;
