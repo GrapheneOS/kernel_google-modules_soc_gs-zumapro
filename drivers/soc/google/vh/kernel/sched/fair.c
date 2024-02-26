@@ -2618,6 +2618,12 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 		return;
 
 	/*
+	 * Do not pull tasks in skip mask.
+	 */
+	if(cpumask_test_cpu(this_cpu, &cpu_skip_mask))
+		return;
+
+	/*
 	 * This is OK, because current is on_cpu, which avoids it being picked
 	 * for load-balance and preemption/IRQs are still disabled avoiding
 	 * further scheduler activity on it and we're being very careful to
@@ -2730,6 +2736,11 @@ void rvh_can_migrate_task_pixel_mod(void *data, struct task_struct *mp,
 
 	if (!get_prefer_idle(mp))
 		return;
+
+	if (cpumask_test_cpu(dst_cpu, &cpu_skip_mask)) {
+		*can_migrate = 0;
+		return;
+	}
 
 	if (atomic_read(&vrq->num_adpf_tasks))
 		*can_migrate = 0;
