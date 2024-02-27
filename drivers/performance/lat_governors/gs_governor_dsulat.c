@@ -54,12 +54,16 @@ make_cluster_attr(dsulat_node, stall_floor);
 make_cluster_attr(dsulat_node, ratio_ceil);
 make_cluster_attr(dsulat_node, cpuidle_state_depth_threshold);
 
+show_cluster_freq_map_attr(dsulat_node, latency_freq_table);
+show_cluster_freq_map_attr(dsulat_node, base_freq_table);
 
 /* Exposed tuning parameters. */
 static struct attribute *dsulat_dev_attr[] = {
 	&dev_attr_dsulat_node_stall_floor.attr,
 	&dev_attr_dsulat_node_ratio_ceil.attr,
 	&dev_attr_dsulat_node_cpuidle_state_depth_threshold.attr,
+	&dev_attr_dsulat_node_latency_freq_table.attr,
+	&dev_attr_dsulat_node_base_freq_table.attr,
 	NULL,
 };
 

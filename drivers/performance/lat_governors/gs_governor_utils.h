@@ -137,4 +137,24 @@ int populate_cluster_config(struct device *dev, struct device_node *cluster_node
 	}                                                                                          \
 	static DEVICE_ATTR_RW(_node_name##_##_name);
 
+#define show_cluster_freq_map_attr(_node_name, _name)                                              \
+	static ssize_t _node_name##_##_name##_show(struct device *dev,                             \
+						   struct device_attribute *attr, char *buf)       \
+	{                                                                                          \
+		int cluster_idx;                                                                   \
+		unsigned int cnt = 0;                                                              \
+		struct gs_governor_core_dev_map *map = NULL;                                       \
+		for (cluster_idx = 0; cluster_idx < _node_name.num_cpu_clusters; cluster_idx++) {  \
+			map =  _node_name.cpu_configs_arr[cluster_idx]._name;                      \
+			while (map->core_khz) {                                                    \
+				cnt += sysfs_emit_at(buf, cnt, "cl%d: %10u\t%9u\n", cluster_idx,   \
+				  map->core_khz, map->target_freq);                                \
+				map++;                                                             \
+			}                                                                          \
+		}                                                                                  \
+		return cnt;                                                                        \
+	}                                                                                          \
+                                                                                                   \
+	static DEVICE_ATTR_RO(_node_name##_##_name);
+
 #endif /*  _GS_GOVERNOR_UTILS_H */

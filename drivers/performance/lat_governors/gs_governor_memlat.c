@@ -53,11 +53,14 @@ make_cluster_attr(memlat_node, stall_floor);
 make_cluster_attr(memlat_node, ratio_ceil);
 make_cluster_attr(memlat_node, cpuidle_state_depth_threshold);
 
+show_cluster_freq_map_attr(memlat_node, latency_freq_table);
+
 /* These sysfs emitters also depend on the macro expansions from above. */
 static struct attribute *memlat_dev_attr[] = {
 	&dev_attr_memlat_node_stall_floor.attr,
 	&dev_attr_memlat_node_ratio_ceil.attr,
 	&dev_attr_memlat_node_cpuidle_state_depth_threshold.attr,
+	&dev_attr_memlat_node_latency_freq_table.attr,
 	NULL,
 };
 
