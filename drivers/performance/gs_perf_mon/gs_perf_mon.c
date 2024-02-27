@@ -161,12 +161,6 @@ int gs_perf_mon_add_client(struct gs_perf_mon_client *client)
 		return -EINVAL;
 
 	mutex_lock(&perf_mon_metadata.client_list_lock);
-
-	/* Start the perf monitor on registration of first client. */
-	if (perf_mon_metadata.perf_monitor_initialized &&
-	    list_empty(&perf_mon_metadata.client_list))
-		gs_perf_mon_start();
-
 	INIT_LIST_HEAD(&client->node);
 	list_add(&client->node, &perf_mon_metadata.client_list);
 
@@ -181,9 +175,6 @@ void gs_perf_mon_remove_client(struct gs_perf_mon_client *client)
 		return;
 	mutex_lock(&perf_mon_metadata.client_list_lock);
 	list_del(&client->node);
-	if (perf_mon_metadata.perf_monitor_initialized &&
-	    list_empty(&perf_mon_metadata.client_list))
-		gs_perf_mon_stop();
 	mutex_unlock(&perf_mon_metadata.client_list_lock);
 }
 EXPORT_SYMBOL(gs_perf_mon_remove_client);
@@ -853,13 +844,13 @@ int gs_perf_mon_driver_probe(struct platform_device *pdev)
 		goto err_cpuhp_init;
 	}
 
-	/* Check for if clients registered before we probed. */
-	mutex_lock(&perf_mon_metadata.client_list_lock);
-	if (!list_empty(&perf_mon_metadata.client_list))
-		gs_perf_mon_start();
+	/* Start the perf monitor. */
+	ret = gs_perf_mon_start();
+	if (ret) {
+		dev_err(dev, "gs_perf_mon could not stop with error code %d\n", ret);
+		goto err_cpuhp_init;
+	}
 	perf_mon_metadata.perf_monitor_initialized = true;
-	mutex_unlock(&perf_mon_metadata.client_list_lock);
-
 	return 0;
 
 /* If any of the above steps failed, we need to free resources and unregister hooks. */
@@ -935,12 +926,41 @@ static int gs_perf_mon_param_get_ticks(char *buf, const struct kernel_param *kp)
 	return sysfs_emit_at(buf, 0, "%u\n", perf_mon_config.param_ticks_per_counter_update);
 }
 
-static const struct kernel_param_ops param_ops = {
+static const struct kernel_param_ops param_tick = {
 	.set = gs_perf_mon_param_set_ticks,
 	.get = gs_perf_mon_param_get_ticks,
 };
 
-module_param_cb(gs_perf_mon_ticks, &param_ops, NULL, 0644);
+module_param_cb(gs_perf_mon_param_ticks, &param_tick, NULL, 0644);
+
+static int gs_perf_mon_param_set_active(const char *val, const struct kernel_param *kp)
+{
+	bool is_active;
+
+	if (kstrtobool(val, &is_active)) {
+		pr_err("%s: gs_perf_mon parse error", __func__);
+		return -EINVAL;
+	}
+
+	if (is_active)
+		gs_perf_mon_start();
+	else
+		gs_perf_mon_stop();
+
+	return 0;
+}
+
+static int gs_perf_mon_param_get_active(char *buf, const struct kernel_param *kp)
+{
+	return sysfs_emit_at(buf, 0, "%u\n", perf_mon_metadata.is_active);
+}
+
+static const struct kernel_param_ops param_is_active = {
+	.set = gs_perf_mon_param_set_active,
+	.get = gs_perf_mon_param_get_active,
+};
+
+module_param_cb(gs_perf_mon_param_on, &param_is_active, NULL, 0644);
 
 module_init(gs_perf_mon_init);
 module_exit(gs_perf_mon_exit);
