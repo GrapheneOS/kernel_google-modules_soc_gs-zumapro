@@ -2625,13 +2625,7 @@ static int itmon_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int itmon_suspend(struct device *dev)
-{
-	dev_dbg(dev, "%s\n", __func__);
-	return 0;
-}
-
-static int itmon_resume(struct device *dev)
+static int itmon_resume_noirq(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct itmon_dev *itmon = platform_get_drvdata(pdev);
@@ -2650,7 +2644,11 @@ static int itmon_resume(struct device *dev)
 	return 0;
 }
 
-static SIMPLE_DEV_PM_OPS(itmon_pm_ops, itmon_suspend, itmon_resume);
+const struct dev_pm_ops __maybe_unused itmon_pm_ops = {
+	.resume_noirq = itmon_resume_noirq
+};
+
+
 #endif
 
 static struct platform_driver exynos_itmon_driver = {
