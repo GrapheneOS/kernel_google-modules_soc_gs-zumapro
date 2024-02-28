@@ -148,10 +148,8 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 #if IS_ENABLED(CONFIG_ECT)
 	const char *devfreq_domain_name;
 #endif
-	int not_using_ect = true;
-
 	if (!np) {
-		pr_err("np undefined\n");
+		pr_err("device tree node undefined\n");
 		return -ENODEV;
 	}
 
@@ -180,7 +178,7 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 	if (of_property_read_string(np, "devfreq_domain_name", &devfreq_domain_name))
 		return -ENODEV;
 
-	not_using_ect = exynos_devfreq_parse_ect(data, devfreq_domain_name);
+	exynos_devfreq_parse_ect(data, devfreq_domain_name);
 #endif
 
 	if (of_property_read_u32(np, "governor", &data->gov_type))
@@ -484,4 +482,3 @@ MODULE_DESCRIPTION("Google Sourced DSU Latency Driver");
 MODULE_AUTHOR("Sophia Wang <yodagump@google.com>");
 MODULE_AUTHOR("Will Song <jinpengsong@google.com>");
 MODULE_LICENSE("GPL");
-

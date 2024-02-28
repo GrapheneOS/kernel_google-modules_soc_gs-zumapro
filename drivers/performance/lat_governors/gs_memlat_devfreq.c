@@ -101,10 +101,8 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 #if IS_ENABLED(CONFIG_ECT)
 	const char *devfreq_domain_name;
 #endif
-	int not_using_ect = true;
-
 	if (!np) {
-		pr_err("np undefined\n");
+		pr_err("device tree node undefined\n");
 		return -ENODEV;
 	}
 	/* Expected to be one of SIMPLE_INTERACTIVE MEM_LATENCY DSU_LATENCY. */
@@ -133,7 +131,7 @@ static int exynos_devfreq_parse_dt(struct device_node *np,
 				    &devfreq_domain_name))
 		return -ENODEV;
 
-	not_using_ect = exynos_devfreq_parse_ect(data, devfreq_domain_name);
+	exynos_devfreq_parse_ect(data, devfreq_domain_name);
 #endif
 
 

@@ -50,12 +50,12 @@ static struct gs_perf_mon_client dsulat_perf_client = {
 /* Memlat datastructure holding dsulat governor configurations and metadata. */
 static struct dsulat_data dsulat_node;
 
-make_cluster_attr(dsulat_node, stall_floor);
-make_cluster_attr(dsulat_node, ratio_ceil);
-make_cluster_attr(dsulat_node, cpuidle_state_depth_threshold);
+MAKE_CLUSTER_ATTR(dsulat_node, stall_floor);
+MAKE_CLUSTER_ATTR(dsulat_node, ratio_ceil);
+MAKE_CLUSTER_ATTR(dsulat_node, cpuidle_state_depth_threshold);
 
-show_cluster_freq_map_attr(dsulat_node, latency_freq_table);
-show_cluster_freq_map_attr(dsulat_node, base_freq_table);
+SHOW_CLUSTER_FREQ_MAP_ATTR(dsulat_node, latency_freq_table);
+SHOW_CLUSTER_FREQ_MAP_ATTR(dsulat_node, base_freq_table);
 
 /* Exposed tuning parameters. */
 static struct attribute *dsulat_dev_attr[] = {
