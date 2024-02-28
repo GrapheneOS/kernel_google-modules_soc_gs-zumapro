@@ -3508,6 +3508,8 @@ static int max77759_probe(struct i2c_client *client,
 	if (modparam_disable_cc_toggling_by_default)
 		cc_toggle_enable_set(chip, 0);
 
+	chip->data_path_enabled = true;
+
 	chip->usb_throttle_votable =
 		gvotable_create_bool_election(NULL, usb_throttle_votable_callback, chip);
 	if (IS_ERR_OR_NULL(chip->usb_throttle_votable)) {
