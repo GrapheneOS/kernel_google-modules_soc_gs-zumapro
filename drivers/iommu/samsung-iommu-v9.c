@@ -254,10 +254,10 @@ static inline void __sysmmu_enable_vid(struct sysmmu_drvdata *data, unsigned int
 
 	writel_relaxed(data->pgtable[vid] / SPAGE_SIZE,
 		       MMU_VM_ADDR(data->sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM, vid));
+	__sysmmu_init_config_attribute(data, vid);
 	ctrl_val = readl_relaxed(MMU_VM_ADDR(data->sfrbase + REG_MMU_CTRL_VM, vid));
 	ctrl_val |= MMU_CTRL_ENABLE;
 	writel_relaxed(ctrl_val, MMU_VM_ADDR(data->sfrbase + REG_MMU_CTRL_VM, vid));
-	__sysmmu_init_config_attribute(data, vid);
 	__sysmmu_invalidate_all_vid(data, vid);
 }
 
@@ -265,11 +265,11 @@ static inline void __sysmmu_enable(struct sysmmu_drvdata *data)
 {
 	unsigned int vid;
 
-	__sysmmu_modify_bits_all_vm(data, MMU_CTRL_ENABLE, MMU_CTRL_ENABLE,
-				    data->sfrbase + REG_MMU_CTRL_VM);
 	__sysmmu_write_all_vm(data, data->pgtable[0] / SPAGE_SIZE,
 			      data->sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM);
 	__sysmmu_init_config(data);
+	__sysmmu_modify_bits_all_vm(data, MMU_CTRL_ENABLE, MMU_CTRL_ENABLE,
+				    data->sfrbase + REG_MMU_CTRL_VM);
 	__sysmmu_invalidate_all(data);
 
 	for (vid = 1; vid < MAX_VIDS; vid++) {
