@@ -49,11 +49,11 @@ static struct gs_perf_mon_client memlat_perf_client = {
 static struct memlat_data memlat_node;
 
 /* Macro Expansions for sysfs nodes.*/
-make_cluster_attr(memlat_node, stall_floor);
-make_cluster_attr(memlat_node, ratio_ceil);
-make_cluster_attr(memlat_node, cpuidle_state_depth_threshold);
+MAKE_CLUSTER_ATTR(memlat_node, stall_floor);
+MAKE_CLUSTER_ATTR(memlat_node, ratio_ceil);
+MAKE_CLUSTER_ATTR(memlat_node, cpuidle_state_depth_threshold);
 
-show_cluster_freq_map_attr(memlat_node, latency_freq_table);
+SHOW_CLUSTER_FREQ_MAP_ATTR(memlat_node, latency_freq_table);
 
 /* These sysfs emitters also depend on the macro expansions from above. */
 static struct attribute *memlat_dev_attr[] = {

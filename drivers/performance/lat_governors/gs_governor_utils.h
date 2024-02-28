@@ -96,7 +96,7 @@ int populate_cluster_config(struct device *dev, struct device_node *cluster_node
 /****************************************************************
  *				SYSFS				*
  ****************************************************************/
-#define make_cluster_attr(_node_name, _name)                                                       \
+#define MAKE_CLUSTER_ATTR(_node_name, _name)                                                       \
 	static ssize_t _node_name##_##_name##_show(struct device *dev,                             \
 						   struct device_attribute *attr, char *buf)       \
 	{                                                                                          \
@@ -137,7 +137,7 @@ int populate_cluster_config(struct device *dev, struct device_node *cluster_node
 	}                                                                                          \
 	static DEVICE_ATTR_RW(_node_name##_##_name);
 
-#define show_cluster_freq_map_attr(_node_name, _name)                                              \
+#define SHOW_CLUSTER_FREQ_MAP_ATTR(_node_name, _name)                                              \
 	static ssize_t _node_name##_##_name##_show(struct device *dev,                             \
 						   struct device_attribute *attr, char *buf)       \
 	{                                                                                          \
