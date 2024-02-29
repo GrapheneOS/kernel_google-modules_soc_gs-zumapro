@@ -148,7 +148,7 @@ int usb_find_chg_psy(struct usb_psy_data *usb)
 {
 	struct i2c_client *client = usb->tcpc_client;
 
-	if (!usb->chg_psy) {
+	if (IS_ERR_OR_NULL(usb->chg_psy)) {
 		if (!usb->chg_psy_name) {
 			dev_err(&client->dev, "chg_psy_name not found\n");
 			return 0;
@@ -335,7 +335,7 @@ static int usb_psy_current_now_ma(struct usb_psy_data *usb, int *current_now)
 
 	if (!IS_ERR_OR_NULL(usb->main_chg_psy))
 		psy = usb->main_chg_psy;
-	else if (!IS_ERR_OR_NULL(usb->chg_psy))
+	else if (usb_find_chg_psy(usb))
 		psy = usb->chg_psy;
 
 	if (!psy) {
