@@ -31,4 +31,11 @@ void gs_memlat_governor_unregister(void);
 int gs_memlat_governor_initialize(struct device_node *governor_node,
 				  struct exynos_devfreq_data *data);
 
+/**
+ * gs_memlat_governor_set_devfreq_ready: Informs governor devfreq is initialized.
+ *
+ * TODO: Remove with devfreqs in b/327482673.
+*/
+void gs_memlat_governor_set_devfreq_ready(void);
+
 #endif /* _GS_GOVERNOR_MEMLAT_H */

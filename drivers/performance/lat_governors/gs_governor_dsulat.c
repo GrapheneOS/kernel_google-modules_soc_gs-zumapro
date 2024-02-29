@@ -33,6 +33,7 @@
  */
 struct dsulat_data {
 	bool gov_is_on;
+	bool devfreq_initialized;
 	struct exynos_devfreq_data *devfreq_data;
 	struct attribute_group *attr_grp;
 	int num_cpu_clusters;
@@ -83,16 +84,19 @@ static struct attribute_group dsulat_dev_attr_group = {
 */
 static void update_dsulat_gov(struct gs_cpu_perf_data *data, void* private_data)
 {
-	struct devfreq *df = dsulat_node.devfreq_data->devfreq;
+	struct devfreq *df;
 	int err;
 
-	mutex_lock(&df->lock);
-	df->governor_data = data;
-	err = update_devfreq(df);
-	if (err)
-		dev_err(&df->dev, "dsulat update failed: %d\n", err);
-	df->governor_data = NULL;
-	mutex_unlock(&df->lock);
+	if (dsulat_node.devfreq_initialized) {
+		df = dsulat_node.devfreq_data->devfreq;
+		mutex_lock(&df->lock);
+		df->governor_data = data;
+		err = update_devfreq(df);
+		if (err)
+			dev_err(&df->dev, "dsulat update failed: %d\n", err);
+		df->governor_data = NULL;
+		mutex_unlock(&df->lock);
+	}
 }
 
 /**
@@ -136,9 +140,11 @@ err_start:
 static int gov_suspend(struct devfreq *df)
 {
 	dsulat_node.gov_is_on = false;
-	mutex_lock(&df->lock);
-	update_devfreq(df);
-	mutex_unlock(&df->lock);
+	if (dsulat_node.devfreq_initialized) {
+		mutex_lock(&df->lock);
+		update_devfreq(df);
+		mutex_unlock(&df->lock);
+	}
 
 	return 0;
 }
@@ -152,9 +158,11 @@ static int gov_suspend(struct devfreq *df)
 static int gov_resume(struct devfreq *df)
 {
 	dsulat_node.gov_is_on = true;
-	mutex_lock(&df->lock);
-	update_devfreq(df);
-	mutex_unlock(&df->lock);
+	if (dsulat_node.devfreq_initialized) {
+		mutex_lock(&df->lock);
+		update_devfreq(df);
+		mutex_unlock(&df->lock);
+	}
 
 	return 0;
 }
@@ -172,11 +180,13 @@ static void gov_stop(struct devfreq *df)
 	dsulat_node.gov_is_on = false;
 	gs_perf_mon_remove_client(&dsulat_perf_client);
 
-	mutex_lock(&df->lock);
-	update_devfreq(df);
-	mutex_unlock(&df->lock);
+	if (dsulat_node.devfreq_initialized) {
+		mutex_lock(&df->lock);
+		update_devfreq(df);
+		mutex_unlock(&df->lock);
 
-	sysfs_remove_group(&df->dev.kobj, dsulat_node.attr_grp);
+		sysfs_remove_group(&df->dev.kobj, dsulat_node.attr_grp);
+	}
 }
 
 /**
@@ -422,6 +432,13 @@ void gs_dsulat_governor_unregister(void)
 	devfreq_remove_governor(&gs_governor_dsulat);
 }
 EXPORT_SYMBOL(gs_dsulat_governor_unregister);
+
+
+
+void gs_dsulat_governor_set_devfreq_ready(void) {
+	dsulat_node.devfreq_initialized = true;
+}
+EXPORT_SYMBOL(gs_dsulat_governor_set_devfreq_ready);
 
 MODULE_AUTHOR("Will Song <jinpengsong@google.com>");
 MODULE_LICENSE("GPL");

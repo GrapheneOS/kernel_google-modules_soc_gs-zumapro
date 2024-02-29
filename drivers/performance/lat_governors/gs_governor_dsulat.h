@@ -15,20 +15,27 @@
 int gs_dsulat_governor_register(void);
 
 /**
- * gs_memlat_governor_unregister - Removes governor from the devfreq system.
+ * gs_dsulat_governor_unregister - Removes governor from the devfreq system.
 */
 void gs_dsulat_governor_unregister(void);
 
 /**
- * gs_memlat_governor_initialize - Parse and init memlat governor data.
+ * gs_dsulat_governor_initialize - Parse and init dsulat governor data.
  *
  * Inputs:
- * @governor_node:	DTSI node containing memlat data.
+ * @governor_node:	DTSI node containing dsulat data.
  * @data:		Devfreq data for governor.
  *
  * Returns:		Non-zero on error.
 */
 int gs_dsulat_governor_initialize(struct device_node *governor_node,
 				  struct exynos_devfreq_data *data);
+
+/**
+ * gs_dsulat_governor_set_devfreq_ready: Informs governor devfreq is initialized.
+ *
+ * TODO: Remove with devfreqs in b/327482673.
+*/
+void gs_dsulat_governor_set_devfreq_ready(void);
 
 #endif /* _GS_GOVERNOR_DSULAT_H */
