@@ -38,6 +38,7 @@
 #include "zuma-sysmmu.dtsi"
 #include "gs101-dma-heap.dtsi"
 #include "gs101-faceauth-dma-heap.dtsi"
+#include "gcma-camera.dtsi"
 
 / {
 	compatible = "google,zuma";

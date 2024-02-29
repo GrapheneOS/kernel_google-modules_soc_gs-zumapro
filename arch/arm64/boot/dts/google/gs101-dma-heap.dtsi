@@ -17,11 +17,12 @@
 		dma-heap,video_aligned;
 	};
 
-	gcma_camera_dma_heap {
+	gcma_camera_dma_heap: gcma_camera_dma_heap {
 		compatible = "google,dma-heap-gcma";
 		memory-region = <&gcma_camera>;
 		dma-heap,name = "gcma_camera";
 		dma-heap-gcam,fleixble-alloc;
+		status = "disabled";
 	};
 
 	faceauth_model_heap: faceauth_model_heap {
@@ -193,6 +194,7 @@
 			       <0x9 0x00000000 0x80000000>,
 			       <0x8 0x80000000 0x80000000>,
 			       <0x0 0x80000000 0x80000000>;
+		status = "disabled";
 	};
 
 	faceauth_dsp: faceauth_dsp {
