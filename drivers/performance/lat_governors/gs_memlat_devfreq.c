@@ -268,6 +268,8 @@ static int gs_memlat_devfreq_probe(struct platform_device *pdev)
 	if (ret)
 		dev_warn(dev, "failed create sysfs for devfreq pm_qos_min\n");
 
+	gs_memlat_governor_set_devfreq_ready();
+
 	return 0;
 
 err_devfreq:
