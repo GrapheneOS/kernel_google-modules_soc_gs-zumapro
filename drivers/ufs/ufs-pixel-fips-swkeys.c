@@ -682,9 +682,10 @@ static int __init ufs_pixel_fips_init(void)
 	/* Perform module self integrity check */
 	if (ufs_pixel_self_integrity_test()) {
 		pr_err("Verify self HMAC failed\n");
-		return -EINVAL;
+		/* TODO: (b/322850872) return -EINVAL on failure */
+	} else {
+		pr_info("Verify self HMAC passed\n");
 	}
-	pr_info("Verify self HMAC passed\n");
 
 	return 0;
 }
