@@ -128,14 +128,10 @@ err_start:
 */
 static int gov_suspend(struct devfreq *df)
 {
-	unsigned long prev_freq;
-	prev_freq = df->previous_freq;
 	memlat_node.gov_is_on = false;
-
 	mutex_lock(&df->lock);
 	update_devfreq(df);
 	mutex_unlock(&df->lock);
-	gs_perf_mon_remove_client(&memlat_perf_client);
 
 	return 0;
 }
@@ -148,12 +144,7 @@ static int gov_suspend(struct devfreq *df)
 */
 static int gov_resume(struct devfreq *df)
 {
-	int ret = gs_perf_mon_add_client(&memlat_perf_client);
-	if (ret)
-		return ret;
-
 	memlat_node.gov_is_on = true;
-
 	mutex_lock(&df->lock);
 	update_devfreq(df);
 	mutex_unlock(&df->lock);

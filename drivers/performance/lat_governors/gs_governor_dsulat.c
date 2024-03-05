@@ -132,12 +132,9 @@ err_start:
 static int gov_suspend(struct devfreq *df)
 {
 	dsulat_node.gov_is_on = false;
-
 	mutex_lock(&df->lock);
 	update_devfreq(df);
 	mutex_unlock(&df->lock);
-
-	gs_perf_mon_remove_client(&dsulat_perf_client);
 
 	return 0;
 }
@@ -150,14 +147,7 @@ static int gov_suspend(struct devfreq *df)
 */
 static int gov_resume(struct devfreq *df)
 {
-	int ret;
-
-	ret = gs_perf_mon_add_client(&dsulat_perf_client);
-	if (ret)
-		return ret;
-
 	dsulat_node.gov_is_on = true;
-
 	mutex_lock(&df->lock);
 	update_devfreq(df);
 	mutex_unlock(&df->lock);

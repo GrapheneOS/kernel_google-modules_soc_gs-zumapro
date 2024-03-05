@@ -163,7 +163,6 @@ int gs_perf_mon_add_client(struct gs_perf_mon_client *client)
 	mutex_lock(&perf_mon_metadata.client_list_lock);
 	INIT_LIST_HEAD(&client->node);
 	list_add(&client->node, &perf_mon_metadata.client_list);
-
 	mutex_unlock(&perf_mon_metadata.client_list_lock);
 	return 0;
 }
@@ -174,7 +173,7 @@ void gs_perf_mon_remove_client(struct gs_perf_mon_client *client)
 	if (!client)
 		return;
 	mutex_lock(&perf_mon_metadata.client_list_lock);
-	list_del(&client->node);
+	list_del_init(&client->node);
 	mutex_unlock(&perf_mon_metadata.client_list_lock);
 }
 EXPORT_SYMBOL(gs_perf_mon_remove_client);
