@@ -24,13 +24,14 @@
 #include <trace/events/power.h>
 #include <trace/events/sched.h>
 #include <trace/events/workqueue.h>
+#include <trace/events/irq.h>
 
 struct dbg_snapshot_log_item dss_log_items[] = {
 	[DSS_LOG_TASK_ID]	= {DSS_LOG_TASK,	{0, 0, 0, true}, },
 	[DSS_LOG_WORK_ID]	= {DSS_LOG_WORK,	{0, 0, 0, true}, },
 	[DSS_LOG_CPUIDLE_ID]	= {DSS_LOG_CPUIDLE,	{0, 0, 0, true}, },
 	[DSS_LOG_SUSPEND_ID]	= {DSS_LOG_SUSPEND,	{0, 0, 0, true}, },
-	[DSS_LOG_IRQ_ID]	= {DSS_LOG_IRQ,		{0, 0, 0, false}, },
+	[DSS_LOG_IRQ_ID]	= {DSS_LOG_IRQ,		{0, 0, 0, true}, },
 	[DSS_LOG_HRTIMER_ID]	= {DSS_LOG_HRTIMER,	{0, 0, 0, false}, },
 	[DSS_LOG_CLK_ID]	= {DSS_LOG_CLK,		{0, 0, 0, true}, },
 	[DSS_LOG_PMU_ID]	= {DSS_LOG_PMU,		{0, 0, 0, true}, },
@@ -367,6 +368,38 @@ void dbg_snapshot_cpuidle_mod(char *modes, unsigned int state, s64 diff, int en)
 	dss_log->cpuidle[cpu][i].en = en;
 }
 EXPORT_SYMBOL_GPL(dbg_snapshot_cpuidle_mod);
+
+void dbg_snapshot_irq(int irq, void *fn, int en)
+{
+	unsigned long flags, i;
+	int cpu = raw_smp_processor_id();
+
+	if (!dbg_snapshot_is_log_item_enabled(DSS_LOG_IRQ_ID))
+		return;
+
+	i = atomic_fetch_inc(&dss_log_misc.irq_log_idx[cpu]) %
+		ARRAY_SIZE(dss_log->irq[0]);
+
+	flags = arch_local_irq_save();
+	dss_log->irq[cpu][i].time = cpu_clock(cpu);
+	dss_log->irq[cpu][i].irq = irq;
+	dss_log->irq[cpu][i].fn = fn;
+	dss_log->irq[cpu][i].desc = irq_to_desc(irq);
+	dss_log->irq[cpu][i].en = en;
+	arch_local_irq_restore(flags);
+}
+
+static void dbg_snapshot_irq_entry(void *ignore, int irq,
+				   struct irqaction *action)
+{
+	dbg_snapshot_irq(irq, action->handler, DSS_FLAG_IN);
+}
+
+static void dbg_snapshot_irq_exit(void *ignore, int irq,
+				  struct irqaction *action, int ret)
+{
+	dbg_snapshot_irq(irq, action->handler, DSS_FLAG_OUT);
+}
 
 void dbg_snapshot_regulator(unsigned long long timestamp, char *f_name,
 			unsigned int addr, unsigned int volt,
@@ -852,6 +885,13 @@ void dbg_snapshot_register_vh_log(void)
 
 		if (register_trace_workqueue_execute_end(dbg_snapshot_wq_end, NULL))
 			pr_err("dss wq end log VH register failed\n");
+	}
+
+	if (dss_log_items[DSS_LOG_IRQ_ID].entry.enabled) {
+		if (register_trace_irq_handler_entry(dbg_snapshot_irq_entry, NULL))
+			pr_err("dss irq handler start log VH register failed\n");
+		if (register_trace_irq_handler_exit(dbg_snapshot_irq_exit, NULL))
+			pr_err("dss irq handler end log VH register failed\n");
 	}
 }
 
