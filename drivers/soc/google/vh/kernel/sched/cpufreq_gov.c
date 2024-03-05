@@ -17,6 +17,8 @@
 #include <linux/pm_qos.h>
 
 #include <soc/google/exynos_pm_qos.h>
+
+#include <performance/gs_perf_mon/gs_perf_mon.h>
 #include "../../../../../devfreq/google/governor_memlat.h"
 #include "sched_events.h"
 #include "sched_priv.h"
@@ -115,11 +117,13 @@ unsigned int map_scaling_freq(int cpu, unsigned int freq)
 	return policy ? clamp(freq, policy->min, policy->max) : freq;
 }
 
+#if !IS_ENABLED(CONFIG_TICK_DRIVEN_LATGOV)
 extern int get_ev_data(int cpu, unsigned long *inst, unsigned long *cyc,
 			unsigned long *stall, unsigned long *l2_cachemiss,
 			unsigned long *l3_cachemiss, unsigned long *mem_stall,
 			unsigned long *l2_cache_wb, unsigned long *l3_cache_access,
 			unsigned long *mem_count, unsigned long *cpu_freq);
+#endif
 
 /************************ Governor internals ***********************/
 static bool check_pmu_limit_conditions(u64 lcpi, u64 spc, struct sugov_policy *sg_policy)
@@ -908,6 +912,13 @@ static void sugov_work(struct kthread_work *work)
 	mutex_lock(&sg_policy->work_lock);
 	__cpufreq_driver_target(sg_policy->policy, freq, CPUFREQ_RELATION_L);
 	mutex_unlock(&sg_policy->work_lock);
+
+	/*
+	 * Check if the memory frequencies need to be updated. This
+	 * is an opportunistic path for updating the memory dvfs
+	 * governors.
+	 */
+	gs_perf_mon_update_clients();
 }
 
 static void sugov_irq_work(struct irq_work *irq_work)
@@ -1007,12 +1018,18 @@ static void pmu_limit_work(struct kthread_work *work)
 	struct cpufreq_policy *policy = NULL;
 	u64 lcpi = 0, spc = 0;
 	unsigned int next_max_freq;
-	unsigned long inst, cyc, stall, l3_cachemiss, l2_cachemiss, freq, mem_stall;
-	unsigned long l2_cache_wb, l3_cache_access, mem_count, cpu_freq;
+	unsigned long inst, cyc, stall, l3_cachemiss, freq, mem_stall;
+	unsigned long cpu_freq;
 	struct sugov_cpu *sg_cpu;
 	unsigned long flags;
 	bool pmu_throttle = false;
 	cpumask_t local_pmu_ignored_mask = CPU_MASK_NONE;
+
+#if IS_ENABLED(CONFIG_TICK_DRIVEN_LATGOV)
+	struct gs_cpu_perf_data perf_data;
+#else
+	unsigned long l2_cache_wb, l2_cachemiss, l3_cache_access, mem_count;
+#endif
 
 	while (cpu < pixel_cpu_num) {
 		policy = cpufreq_cpu_get(cpu);
@@ -1044,6 +1061,21 @@ static void pmu_limit_work(struct kthread_work *work)
 				goto update_next_max_freq;
 			}
 
+#if IS_ENABLED(CONFIG_TICK_DRIVEN_LATGOV)
+			ret = gs_perf_mon_get_data(ccpu, &perf_data);
+			if (ret) {
+				sg_policy->tunables->pmu_limit_enable = false;
+				pr_err_ratelimited("pmu ev_data read fail\n");
+				goto update_next_max_freq;
+			}
+
+			cyc = perf_data.perf_ev_last_delta[PERF_CYCLE_IDX];
+			cpu_freq = cyc / perf_data.time_delta_us;
+			l3_cachemiss = perf_data.perf_ev_last_delta[PERF_L3_CACHE_MISS_IDX];
+			inst = perf_data.perf_ev_last_delta[PERF_INST_IDX];
+			mem_stall = perf_data.perf_ev_last_delta[PERF_STALL_BACKEND_MEM_IDX];
+			stall = 0;
+#else
 			ret = get_ev_data(ccpu, &inst, &cyc, &stall, &l2_cachemiss,
 					  &l3_cachemiss, &mem_stall, &l2_cache_wb,
 					  &l3_cache_access, &mem_count, &cpu_freq);
@@ -1053,6 +1085,7 @@ static void pmu_limit_work(struct kthread_work *work)
 				pr_err_ratelimited("pmu ev_data read fail\n");
 				goto update_next_max_freq;
 			}
+#endif
 
 			if (inst == 0 || cyc == 0) {
 				pr_err_ratelimited("pmu read fail for cpu %d\n", ccpu);

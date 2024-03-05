@@ -14,6 +14,10 @@ config VH_PREEMPTIRQ_TRACEPOINTS
 	depends on VH_SCHED
 	default m
 
+config TICK_DRIVEN_LATGOV
+	tristate "Service latency governers in sched vh."
+	default n
+
 config UCLAMP_STATS
 	bool "Uclamp stats"
 	depends on VH_SCHED
