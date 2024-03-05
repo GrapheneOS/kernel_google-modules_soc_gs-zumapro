@@ -38,7 +38,7 @@
 		iommus = <&sysmmu_tpu>;
 		samsung,iommu-group = <&iommu_group_tpu>;
 		status = "okay";
-		memory-region = <&tpu_fw_reserved>;
+		memory-region = <&tpu_fw_reserved_zumapro>;
 		edgetpu,shareability = <0x1A320000>; /* SYSREG_TPU */
 		pmu-status-base = <0x15462504>; /* PMU TPU_STATUS */
 		gsa-device=<&gsa>;
