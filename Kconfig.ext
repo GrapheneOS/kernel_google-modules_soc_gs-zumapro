@@ -83,3 +83,5 @@ source "$(KCONFIG_EXT_PREFIX)drivers/block/zram/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)Kconfig.ext_modules"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/pwm/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/video/backlight/Kconfig"
