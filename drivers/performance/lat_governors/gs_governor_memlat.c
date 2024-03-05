@@ -31,6 +31,7 @@
  */
 struct memlat_data {
 	bool gov_is_on;
+	bool devfreq_initialized;
 	struct exynos_devfreq_data *devfreq_data;
 	struct attribute_group *attr_grp;
 	int num_cpu_clusters;
@@ -84,14 +85,16 @@ static void update_memlat_gov(struct gs_cpu_perf_data *data, void* private_data)
 	struct devfreq *df;
 	int err;
 
-	df = memlat_node.devfreq_data->devfreq;
-	mutex_lock(&df->lock);
-	df->governor_data = data;
-	err = update_devfreq(df);
-	if (err)
-		dev_err(&df->dev, "Memlat update failed: %d\n", err);
-	df->governor_data = NULL;
-	mutex_unlock(&df->lock);
+	if (memlat_node.devfreq_initialized) {
+		df = memlat_node.devfreq_data->devfreq;
+		mutex_lock(&df->lock);
+		df->governor_data = data;
+		err = update_devfreq(df);
+		if (err)
+			dev_err(&df->dev, "Memlat update failed: %d\n", err);
+		df->governor_data = NULL;
+		mutex_unlock(&df->lock);
+	}
 }
 
 /**
@@ -132,9 +135,11 @@ err_start:
 static int gov_suspend(struct devfreq *df)
 {
 	memlat_node.gov_is_on = false;
-	mutex_lock(&df->lock);
-	update_devfreq(df);
-	mutex_unlock(&df->lock);
+	if (memlat_node.devfreq_initialized) {
+		mutex_lock(&df->lock);
+		update_devfreq(df);
+		mutex_unlock(&df->lock);
+	}
 
 	return 0;
 }
@@ -148,9 +153,11 @@ static int gov_suspend(struct devfreq *df)
 static int gov_resume(struct devfreq *df)
 {
 	memlat_node.gov_is_on = true;
-	mutex_lock(&df->lock);
-	update_devfreq(df);
-	mutex_unlock(&df->lock);
+	if (memlat_node.devfreq_initialized) {
+		mutex_lock(&df->lock);
+		update_devfreq(df);
+		mutex_unlock(&df->lock);
+	}
 
 	return 0;
 }
@@ -167,12 +174,13 @@ static void gov_stop(struct devfreq *df)
 {
 	memlat_node.gov_is_on = false;
 	gs_perf_mon_remove_client(&memlat_perf_client);
+	if (memlat_node.devfreq_initialized) {
+		mutex_lock(&df->lock);
+		update_devfreq(df);
+		mutex_unlock(&df->lock);
 
-	mutex_lock(&df->lock);
-	update_devfreq(df);
-	mutex_unlock(&df->lock);
-
-	sysfs_remove_group(&df->dev.kobj, memlat_node.attr_grp);
+		sysfs_remove_group(&df->dev.kobj, memlat_node.attr_grp);
+	}
 }
 
 /**
@@ -413,6 +421,11 @@ void gs_memlat_governor_unregister(void)
 	devfreq_remove_governor(&gs_governor_memlat);
 }
 EXPORT_SYMBOL(gs_memlat_governor_unregister);
+
+void gs_memlat_governor_set_devfreq_ready(void) {
+	memlat_node.devfreq_initialized = true;
+}
+EXPORT_SYMBOL(gs_memlat_governor_set_devfreq_ready);
 
 MODULE_AUTHOR("Will Song <jinpengsong@google.com>");
 MODULE_LICENSE("GPL");
