@@ -77,6 +77,7 @@ governor_memlat.ko
 gpu_cooling.ko
 gs-chipid.ko
 gs_acpm.ko
+gs_perf_mon.ko
 pixel_metrics.ko
 gs_thermal.ko
 gsa.ko
