@@ -56,6 +56,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/devfreq/google/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/performance/gs_perf_mon/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/performance/lat_governors/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/iio/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/phy/Kconfig"
