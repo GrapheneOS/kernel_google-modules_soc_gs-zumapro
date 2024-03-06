@@ -150,8 +150,8 @@
 	};
 };
 
-&gs_memlat {
-	memlat_governor {
+&gs_governor_memlat {
+	governor_config {
 		gs_memlat_cl0 {
 			cpulist = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 			ratio_ceil = <1800>;
