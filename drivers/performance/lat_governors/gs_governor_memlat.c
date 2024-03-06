@@ -18,27 +18,37 @@
 #include <soc/google/exynos-devfreq.h>
 #include <trace/events/power.h>
 
-#include "gs_governor_memlat.h"
 #include "gs_governor_utils.h"
+
+/**
+ * struct frequency_vote - Contains configs and voting data.
+ * @vote_name:		The name of the device we will vote frequency for.
+ * @min_freq_req:	The min vote we assert for the device frequency.
+ */
+struct frequency_vote {
+	const char* vote_name;
+	struct exynos_pm_qos_request min_freq_req;
+};
 
 /**
  * struct memlat_data - Node containing memlat's global data.
  * @gov_is_on:		Governor's active state.
- * @devfreq_data:	Pointer to the memlat's devfreq.
  * @attr_grp:		Tuneable governor parameters exposed to userspace.
+ * @dev:		Reference to the governor's device.
  * @num_cpu_clusters:	Number of CPU clusters the governor will service.
  * @cpu_configs_arr:	Configurations for each cluster's latency vote.
+ * @target_freq_vote:	Primary target domain.
  */
 struct memlat_data {
 	bool gov_is_on;
-	bool devfreq_initialized;
-	struct exynos_devfreq_data *devfreq_data;
 	struct attribute_group *attr_grp;
+	struct device *dev;
 	int num_cpu_clusters;
 	struct cluster_config *cpu_configs_arr;
+	struct frequency_vote target_freq_vote;
 };
 
-static void update_memlat_gov(struct gs_cpu_perf_data *data, void* private_data);
+static void update_memlat_gov(struct gs_cpu_perf_data *data, void *private_data);
 
 /* Global monitor client used to get callbacks when gs_perf_mon data is updated. */
 static struct gs_perf_mon_client memlat_perf_client = {
@@ -49,7 +59,7 @@ static struct gs_perf_mon_client memlat_perf_client = {
 /* Memlat datastructure holding memlat governor configurations and metadata. */
 static struct memlat_data memlat_node;
 
-/* Macro Expansions for sysfs nodes.*/
+/* Macro expansions for sysfs nodes. */
 MAKE_CLUSTER_ATTR(memlat_node, stall_floor);
 MAKE_CLUSTER_ATTR(memlat_node, ratio_ceil);
 MAKE_CLUSTER_ATTR(memlat_node, cpuidle_state_depth_threshold);
@@ -72,206 +82,45 @@ static struct attribute_group memlat_dev_attr_group = {
 };
 
 /**
- * update_memlat_gov  -	Callback function from the perf monitor to service
- * 			the memlat governor.
- *
- * Input:
- * @data:		Performance Data from the monitor.
- * @private_data:	Unused.
- *
-*/
-static void update_memlat_gov(struct gs_cpu_perf_data *data, void* private_data)
-{
-	struct devfreq *df;
-	int err;
-
-	if (memlat_node.devfreq_initialized) {
-		df = memlat_node.devfreq_data->devfreq;
-		mutex_lock(&df->lock);
-		df->governor_data = data;
-		err = update_devfreq(df);
-		if (err)
-			dev_err(&df->dev, "Memlat update failed: %d\n", err);
-		df->governor_data = NULL;
-		mutex_unlock(&df->lock);
-	}
-}
-
-/**
- * gov_start - Starts the governor.
- *
- * This is invoked in devfreq_add_governor during probe.
- *
- * Input:
- * @df:	The devfreq to start.
-*/
-static int gov_start(struct devfreq *df)
-{
-	int ret = gs_perf_mon_add_client(&memlat_perf_client);
-	if (ret)
-		goto err_start;
-	memlat_node.gov_is_on = true;
-
-	ret = sysfs_create_group(&df->dev.kobj, memlat_node.attr_grp);
-	if (ret)
-		goto err_sysfs;
-	return 0;
-
-err_sysfs:
-	memlat_node.gov_is_on = false;
-	gs_perf_mon_remove_client(&memlat_perf_client);
-err_start:
-	return ret;
-}
-
-/**
- * gov_suspend - Pauses the governor.
- *
- * This is invoked when the entering system suspends.
- *
- * Input:
- * @df:	The devfreq to suspend.
-*/
-static int gov_suspend(struct devfreq *df)
-{
-	memlat_node.gov_is_on = false;
-	if (memlat_node.devfreq_initialized) {
-		mutex_lock(&df->lock);
-		update_devfreq(df);
-		mutex_unlock(&df->lock);
-	}
-
-	return 0;
-}
-
-/**
- * gov_resume - Restarts the governor.
- *
- * Input:
- * @df:	The devfreq to resume.
-*/
-static int gov_resume(struct devfreq *df)
-{
-	memlat_node.gov_is_on = true;
-	if (memlat_node.devfreq_initialized) {
-		mutex_lock(&df->lock);
-		update_devfreq(df);
-		mutex_unlock(&df->lock);
-	}
-
-	return 0;
-}
-
-/**
- * gov_stop - Stops the governor.
- *
- * This is invoked by devfreq_remove_governor.
- *
- * Input:
- * @df:	The devfreq to stop.
-*/
-static void gov_stop(struct devfreq *df)
-{
-	memlat_node.gov_is_on = false;
-	gs_perf_mon_remove_client(&memlat_perf_client);
-	if (memlat_node.devfreq_initialized) {
-		mutex_lock(&df->lock);
-		update_devfreq(df);
-		mutex_unlock(&df->lock);
-
-		sysfs_remove_group(&df->dev.kobj, memlat_node.attr_grp);
-	}
-}
-
-/**
- * gs_governor_memlat_ev_handler - Handles governor
- * Calls start/stop/resume/suspend events.
+ * gs_governor_memlat_update_target_freq_vote - Registers the vote for the memlat governor.
  *
  * Inputs:
- * @df:		The devfreq to signal.
- * @event:	Start/Stop/Suspend/Resume.
- * @data:	Unused.
+ * @vote:		The domain to vote on.
+ * @target_freq:	New target frequency.
  *
- * Return:	Non-zero on error. Notice this also returns
- *		0 if event is not found.
+ * Outputs:
+ *			Non-zero on error.
 */
-int gs_governor_memlat_ev_handler(struct devfreq *df, unsigned int event, void *data)
+static int gs_governor_memlat_update_target_freq_vote(struct frequency_vote *vote,
+					    unsigned long target_freq)
 {
-	int ret;
-
-	/* Check if the governor exists. */
-	if (!df) {
-		pr_err("Undefined devfreq for Memory Latency governor\n");
+	if (!exynos_pm_qos_request_active(&vote->min_freq_req))
 		return -ENODEV;
-	}
 
-	switch (event) {
-	case DEVFREQ_GOV_START:
-		ret = gov_start(df);
-		if (ret)
-			return ret;
+	exynos_pm_qos_update_request_async(&vote->min_freq_req, target_freq);
+	trace_clock_set_rate(vote->vote_name, target_freq, raw_smp_processor_id());
 
-		dev_dbg(df->dev.parent, "Enabled Memory Latency governor\n");
-		break;
-
-	case DEVFREQ_GOV_STOP:
-		gov_stop(df);
-		dev_dbg(df->dev.parent, "Disabled Memory Latency governor\n");
-		break;
-
-	case DEVFREQ_GOV_SUSPEND:
-		ret = gov_suspend(df);
-		if (ret) {
-			dev_err(df->dev.parent, "Unable to suspend Memory Latency governor (%d)\n", ret);
-			return ret;
-		}
-
-		dev_dbg(df->dev.parent, "Suspended Memory Latency governor\n");
-		break;
-
-	case DEVFREQ_GOV_RESUME:
-		ret = gov_resume(df);
-		if (ret) {
-			dev_err(df->dev.parent, "Unable to resume Memory Latency governor (%d)\n", ret);
-			return ret;
-		}
-
-		dev_dbg(df->dev.parent, "Resumed Memory Latency governor\n");
-		break;
-	}
 	return 0;
 }
-EXPORT_SYMBOL(gs_governor_memlat_ev_handler);
 
 /**
- * gs_governor_memlat_get_freq - Calculates memlat freq votes desired by each CPU cluster.
+ * gs_governor_memlat_compute_freq - Calculates memlat freq votes for each CPU cluster.
  *
  * This function determines the memlat target frequency.
  *
  * Input:
- * @df:		The devfreq we are deciding a vote for.
- * @freq:	Where to store the computed frequency.
+ * @cpu_perf_data_arr:	CPU data to use as input.
+ *
+ * Returns:
+ * @max_freq:		The computed target frequency.
 */
-int gs_governor_memlat_get_freq(struct devfreq *df, unsigned long *freq)
+static unsigned long gs_governor_memlat_compute_freq(struct gs_cpu_perf_data *cpu_perf_data_arr)
 {
 	int cpu;
 	int cluster_idx;
 	struct cluster_config *cluster;
 	unsigned long max_freq = 0;
 	char trace_name[] = { 'c', 'p', 'u', '0', 'm', 'i', 'f', '\0' };
-
-	/* Retrieving the CPU data array from the devfreq governor_data. */
-	struct gs_cpu_perf_data *cpu_perf_data_arr = df->governor_data;
-
-	/* If the memlat governor is not active. Reset our vote to minimum. */
-	if (!memlat_node.gov_is_on) {
-		*freq = 0;
-		goto trace_out;
-	}
-
-	/* If monitor data is not supplied. Maintain current vote. */
-	if (!cpu_perf_data_arr)
-		goto trace_out;
 
 	/* For each cluster, we make a frequency decision. */
 	for (cluster_idx = 0; cluster_idx < memlat_node.num_cpu_clusters; cluster_idx++) {
@@ -325,51 +174,107 @@ int gs_governor_memlat_get_freq(struct devfreq *df, unsigned long *freq)
 		}
 	}
 
-	/* We vote on the max score across all cpus. */
-	*freq = max_freq;
-
-trace_out:
-	trace_clock_set_rate("Memlat Governor", *freq, raw_smp_processor_id());
-	return 0;
+	return max_freq;
 }
-EXPORT_SYMBOL(gs_governor_memlat_get_freq);
 
 /**
- * gs_memlat_populate_governor - Parses memlat governor data from an input device tree node.
+ * update_memlat_gov  -	Callback function from the perf monitor to service
+ * 			the memlat governor.
  *
- * Inputs:
- * @dev:		The memlat governor's underlying device.
- * @governor_node:	The tree node contanin governor data.
+ * Input:
+ * @data:		Performance data from the monitor.
+ * @private_data:	Unused.
  *
- * Returns:		Non-zero on error.
 */
-static int gs_memlat_populate_governor(struct device *dev, struct device_node *governor_node)
+static void update_memlat_gov(struct gs_cpu_perf_data *data, void* private_data)
 {
-	struct device_node *cluster_node = NULL;
-	struct cluster_config *cluster;
-	int cluster_idx;
-	int ret = 0;
+	unsigned long next_frequency;
 
-	memlat_node.num_cpu_clusters = of_get_child_count(governor_node);
-
-	/* Allocate a container for clusters. */
-	memlat_node.cpu_configs_arr = devm_kzalloc(
-		dev, sizeof(struct cluster_config) * memlat_node.num_cpu_clusters, GFP_KERNEL);
-	if (!memlat_node.cpu_configs_arr) {
-		dev_err(dev, "no mem for cluster_config\n");
-		return -ENOMEM;
+	/* If the memlat governor is not active. Reset our vote to minimum. */
+	if (!memlat_node.gov_is_on || !data) {
+		dev_dbg(memlat_node.dev, "Memlat governor is not active. Leaving vote unchanged.\n");
+		return;
 	}
 
-	/* Populate the Components. */
-	cluster_idx = 0;
-	while ((cluster_node = of_get_next_child(governor_node, cluster_node)) != NULL) {
-		cluster = &memlat_node.cpu_configs_arr[cluster_idx];
-		if ((ret = populate_cluster_config(dev, cluster_node, cluster)))
-			return ret;
+	/* Step 1: compute the frequency. */
+	next_frequency = gs_governor_memlat_compute_freq(data);
 
-		/* Increment pointer. */
-		cluster_idx += 1;
+	/* Step 2: send it as a vote. */
+	gs_governor_memlat_update_target_freq_vote(&memlat_node.target_freq_vote, next_frequency);
+}
+
+/**
+ * gs_memlat_governor_remove_all_votes - Removes all the votes for memlat governor.
+*/
+static void gs_memlat_governor_remove_all_votes(void) {
+	/* Remove all votes. */
+	struct frequency_vote *vote = &memlat_node.target_freq_vote;
+	exynos_pm_qos_remove_request(&vote->min_freq_req);
+}
+
+/**
+ * gov_start - Starts the governor.
+*/
+static int gov_start(void)
+{
+	int ret;
+	if (memlat_node.gov_is_on)
+		return 0;
+
+	/* Add clients. */
+	ret = gs_perf_mon_add_client(&memlat_perf_client);
+	if (ret)
+		return ret;
+
+	memlat_node.gov_is_on = true;
+
+	return 0;
+}
+
+/**
+ * gov_stop - Stops the governor.
+*/
+static void gov_stop(void)
+{
+	if (!memlat_node.gov_is_on)
+		return;
+
+	memlat_node.gov_is_on = false;
+
+	/* Remove the client. */
+	gs_perf_mon_remove_client(&memlat_perf_client);
+
+	/* Reset the vote to minimum. */
+	gs_governor_memlat_update_target_freq_vote(&memlat_node.target_freq_vote, 0);
+
+}
+
+/**
+ * gs_memlat_governor_initialize_vote - Initializes the votes for the memlat.
+ *
+ * Input:
+ * @vote_node:	Node containing the vote config.
+ * @dev:	The device the governor is binded on.
+ *
+ * Output:	Non-zero on error.
+*/
+static int gs_memlat_governor_initialize_vote(struct device_node *vote_node, struct device *dev) {
+	struct frequency_vote *primary_frequency_vote = &memlat_node.target_freq_vote;
+	u32 pm_qos_class;
+
+	if (of_property_read_string(vote_node, "vote_name",
+				    &primary_frequency_vote->vote_name)) {
+		dev_err(dev, "The vote device name is undefined.\n");
+		return -ENODEV;
 	}
+
+	if (of_property_read_u32(vote_node, "pm_qos_class",
+				 &pm_qos_class)) {
+		dev_err(dev, "The pm_qos_class is undefined.\n");
+		return -ENODEV;
+	}
+
+	exynos_pm_qos_add_request(&primary_frequency_vote->min_freq_req, (int)pm_qos_class, 0);
 
 	return 0;
 }
@@ -383,50 +288,126 @@ static int gs_memlat_populate_governor(struct device *dev, struct device_node *g
  *
  * Returns:		Non-zero on error.
 */
-int gs_memlat_governor_initialize(struct device_node *governor_node,
-				  struct exynos_devfreq_data *data)
+static int gs_memlat_governor_initialize(struct device_node *governor_node, struct device *dev)
 {
 	int ret = 0;
-	struct device *dev = data->dev;
+	struct device_node *cluster_node = NULL;
+	struct cluster_config *cluster;
+	int cluster_idx;
 
-	/* Configure memlat governor. */
-	ret = gs_memlat_populate_governor(dev, governor_node);
-	if (ret)
-		return ret;
+	memlat_node.num_cpu_clusters = of_get_child_count(governor_node);
 
+	/* Allocate a container for clusters. */
+	memlat_node.cpu_configs_arr = devm_kzalloc(
+		dev, sizeof(struct cluster_config) * memlat_node.num_cpu_clusters, GFP_KERNEL);
+	if (!memlat_node.cpu_configs_arr) {
+		dev_err(dev, "No memory for cluster_configs.\n");
+		return -ENOMEM;
+	}
+
+	/* Populate the Components. */
+	cluster_idx = 0;
+	while ((cluster_node = of_get_next_child(governor_node, cluster_node)) != NULL) {
+		cluster = &memlat_node.cpu_configs_arr[cluster_idx];
+		if ((ret = populate_cluster_config(dev, cluster_node, cluster)))
+			return ret;
+
+		/* Increment pointer. */
+		cluster_idx += 1;
+	}
+	return 0;
+}
+
+static int gs_governor_memlat_driver_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct device_node *governor_config_node, *frequency_vote_node;
+	int ret;
+
+	memlat_node.dev = &pdev->dev;
 	memlat_node.attr_grp = &memlat_dev_attr_group;
-	memlat_node.devfreq_data = data;
+
+	/* Find and intitialize frequency votes. */
+	frequency_vote_node = of_get_child_by_name(dev->of_node, "primary_vote_config");
+	if (!frequency_vote_node) {
+		dev_err(dev, "Memlat frequency_votes not defined.\n");
+		return -ENODEV;
+	}
+
+	ret = gs_memlat_governor_initialize_vote(frequency_vote_node, dev);
+	if (ret) {
+		dev_err(dev, "Failed to parse memlat governor node data.\n");
+		return ret;
+	}
+
+	/* Find and initialize governor. */
+	governor_config_node = of_get_child_by_name(dev->of_node, "governor_config");
+	if (!governor_config_node) {
+		dev_err(dev, "Memlat Governor node not defined.\n");
+		ret = -ENODEV;
+		goto err_out;
+	}
+
+	ret = gs_memlat_governor_initialize(governor_config_node, dev);
+	if (ret) {
+		dev_err(dev, "Failed to parse private governor data.\n");
+		goto err_out;
+	}
+
+	/* Add sysfs nodes here. */
+	ret = sysfs_create_group(&dev->kobj, memlat_node.attr_grp);
+	if (ret) {
+		dev_err(dev, "Failed to initialize governor sysfs groups.\n");
+		goto err_out;
+	}
+
+	/* Start the governor servicing. */
+	ret = gov_start();
+	if (ret) {
+		dev_err(dev, "Failed to start memlat governor.\n");
+		goto err_gov_start;
+	}
+
 	return 0;
 
-}
-EXPORT_SYMBOL(gs_memlat_governor_initialize);
+err_gov_start:
+	sysfs_remove_group(&memlat_node.dev->kobj, memlat_node.attr_grp);
+err_out:
+	gs_memlat_governor_remove_all_votes();
 
-/* We hold the struct for the governor here. */
-static struct devfreq_governor gs_governor_memlat = {
-	.name = "gs_memlat",
-	.get_target_freq = gs_governor_memlat_get_freq,
-	.event_handler = gs_governor_memlat_ev_handler,
+	return ret;
+}
+
+static int gs_governor_memlat_driver_remove(struct platform_device *pdev)
+{
+	/* Stop governor servicing. */
+	gov_stop();
+
+	/* Remove Sysfs here. */
+	sysfs_remove_group(&memlat_node.dev->kobj, memlat_node.attr_grp);
+
+	/* Remove pm_qos vote here. */
+	gs_memlat_governor_remove_all_votes();
+
+	return 0;
+}
+
+static const struct of_device_id gs_governor_memlat_root_match[] = { {
+	.compatible = "google,gs_governor_memlat",
+} };
+
+static struct platform_driver gs_governor_memlat_platform_driver = {
+	.probe = gs_governor_memlat_driver_probe,
+	.remove = gs_governor_memlat_driver_remove,
+	.driver = {
+		.name = "gs_governor_memlat",
+		.owner = THIS_MODULE,
+		.of_match_table = gs_governor_memlat_root_match,
+		.suppress_bind_attrs = true,
+	},
 };
 
-/* Adds this governor to a devfreq.*/
-int gs_memlat_governor_register(void)
-{
-	return devfreq_add_governor(&gs_governor_memlat);
-}
-EXPORT_SYMBOL(gs_memlat_governor_register);
-
-/* Remove this governor to a devfreq.*/
-void gs_memlat_governor_unregister(void)
-{
-	devfreq_remove_governor(&gs_governor_memlat);
-}
-EXPORT_SYMBOL(gs_memlat_governor_unregister);
-
-void gs_memlat_governor_set_devfreq_ready(void) {
-	memlat_node.devfreq_initialized = true;
-}
-EXPORT_SYMBOL(gs_memlat_governor_set_devfreq_ready);
-
+module_platform_driver(gs_governor_memlat_platform_driver);
 MODULE_AUTHOR("Will Song <jinpengsong@google.com>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Google Source Memlat Governor");
