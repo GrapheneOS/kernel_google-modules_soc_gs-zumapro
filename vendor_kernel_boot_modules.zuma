@@ -86,7 +86,6 @@ gs_dsulat_devfreq.ko
 gs_governor_dsulat.ko
 gs_governor_memlat.ko
 gs_governor_utils.ko
-gs_memlat_devfreq.ko
 gs_perf_mon.ko
 gs_thermal.ko
 gsa.ko
