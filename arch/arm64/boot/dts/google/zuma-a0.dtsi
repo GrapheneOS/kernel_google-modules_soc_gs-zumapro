@@ -34,14 +34,14 @@
 	afbc_clk_ppc_margin = <118>; /* additional 18% margin for afbc layer clock */
 };
 
-&gs_dsulat {
-	/* Linearly Dependent Domains. */
-	secondary_domains {
+&gs_governor_dsulat {
+	secondary_frequency_votes {
 		bci_freq {
-			devfreq_domain_name = "DSU2BCI";
+			vote_name = "bcilat";
 			pm_qos_class = <PM_QOS_BCI_THROUGHPUT>;
+
 			core-dev-table-latency =
-			/* DSU     		BCI */
+			/* DSU     	BCI */
 			< 324000        324000 >,
 			< 615000        575000 >,
 			< 820000        840000 >,
@@ -49,7 +49,7 @@
 		};
 	};
 
-	dsulat_governor {
+	governor_config {
 		gs_dsulat_cl0 {
 			cpulist = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 			ratio_ceil = <700>;
@@ -57,7 +57,7 @@
 			cpuidle_state_depth_threshold = <2>;
 
 			core-dev-table-latency =
-			/* CL0   DSU */
+			/* CL0   	DSU */
 			< 351000        324000 >,
 			< 615000        324000 >,
 			< 820000        324000 >,
