@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2024 Google LLC.
  *
- * DSU latency governor main module.
+ * Dsu Latency Governor Main Module.
  */
 #define pr_fmt(fmt) "gs_governor_dsulat: " fmt
 
@@ -18,26 +18,50 @@
 #include <soc/google/exynos-devfreq.h>
 #include <trace/events/power.h>
 
-#include "gs_governor_dsulat.h"
 #include "gs_governor_utils.h"
 
-/* Todo: Combine with memlat governor. b/323458771 */
+/**
+ * struct frequency_vote - Contains configs and voting data.
+ * @vote_name:	The name of the device we will vote frequency for.
+ * @min_freq_req:	The min vote we assert for the device frequency.
+ */
+struct frequency_vote {
+	const char* vote_name;
+	struct exynos_pm_qos_request min_freq_req;
+};
+
+/**
+ * struct secondary_frequency_domain - Contains voting data for secondary domains.
+ * @vote:	Frequency voting mechanism for the secondary device frequency.
+ * @freq_map:	The mapping from primary freq vote to secondary vote.
+ */
+struct secondary_frequency_domain {
+	struct frequency_vote target_freq_vote;
+	struct gs_governor_core_dev_map *freq_map;
+};
 
 /**
  * struct dsulat_data - Node containing dsulat's global data.
- * @gov_is_on:		Governor's active state.
- * @devfreq_data:	Pointer to the dsulat's devfreq.
- * @attr_grp:		Tuneable governor parameters exposed to userspace.
- * @num_cpu_clusters:	Number of CPU clusters the governor will service.
- * @cpu_configs_arr:	Configurations for each cluster's latency vote.
+ * @gov_is_on:			Governor's active state.
+ * @attr_grp:			Tuneable governor parameters exposed to userspace.
+ * @dev:			Reference to the governor's device.
+ * @target_freq_vote:		Primary target domain.
+ * @num_cpu_clusters:		Number of CPU clusters the governor will service.
+ * @cpu_configs_arr:		Configurations for each cluster's latency vote.
+ * @num_secondary_votes:	Number of secondary vote domains.
+ * @secondary_vote_arr:		Array of secondary vote domains.
  */
 struct dsulat_data {
 	bool gov_is_on;
-	bool devfreq_initialized;
-	struct exynos_devfreq_data *devfreq_data;
 	struct attribute_group *attr_grp;
+	struct device *dev;
+	struct frequency_vote target_freq_vote;
+
 	int num_cpu_clusters;
 	struct cluster_config *cpu_configs_arr;
+
+	int num_secondary_votes;
+	struct secondary_frequency_domain *secondary_vote_arr;
 };
 
 static void update_dsulat_gov(struct gs_cpu_perf_data *data, void *private_data);
@@ -48,9 +72,10 @@ static struct gs_perf_mon_client dsulat_perf_client = {
 	.name = "dsulat"
 };
 
-/* Memlat datastructure holding dsulat governor configurations and metadata. */
+/* Dsulat datastructure holding dsulat governor configurations and metadata. */
 static struct dsulat_data dsulat_node;
 
+/* Macro expansions for sysfs nodes.*/
 MAKE_CLUSTER_ATTR(dsulat_node, stall_floor);
 MAKE_CLUSTER_ATTR(dsulat_node, ratio_ceil);
 MAKE_CLUSTER_ATTR(dsulat_node, cpuidle_state_depth_threshold);
@@ -58,7 +83,7 @@ MAKE_CLUSTER_ATTR(dsulat_node, cpuidle_state_depth_threshold);
 SHOW_CLUSTER_FREQ_MAP_ATTR(dsulat_node, latency_freq_table);
 SHOW_CLUSTER_FREQ_MAP_ATTR(dsulat_node, base_freq_table);
 
-/* Exposed tuning parameters. */
+/* These sysfs emitters also depend on the macro expansions from above. */
 static struct attribute *dsulat_dev_attr[] = {
 	&dev_attr_dsulat_node_stall_floor.attr,
 	&dev_attr_dsulat_node_ratio_ceil.attr,
@@ -68,214 +93,78 @@ static struct attribute *dsulat_dev_attr[] = {
 	NULL,
 };
 
-/* Container for our attributes. */
+/* Sysfs files to expose. */
 static struct attribute_group dsulat_dev_attr_group = {
 	.name = "dsulat_attr",
 	.attrs = dsulat_dev_attr,
 };
 
 /**
- * update_dsulat_gov  -	Callback function from the perf monitor to service
- * 			the dsulat governor.
- *
- * Input:
- * @data:		Performance Data from the monitor.
- * @private_data:	Unused.
-*/
-static void update_dsulat_gov(struct gs_cpu_perf_data *data, void* private_data)
-{
-	struct devfreq *df;
-	int err;
-
-	if (dsulat_node.devfreq_initialized) {
-		df = dsulat_node.devfreq_data->devfreq;
-		mutex_lock(&df->lock);
-		df->governor_data = data;
-		err = update_devfreq(df);
-		if (err)
-			dev_err(&df->dev, "dsulat update failed: %d\n", err);
-		df->governor_data = NULL;
-		mutex_unlock(&df->lock);
-	}
-}
-
-/**
- * gov_start - Starts the governor.
- *
- * This is invoked in devfreq_add_governor during probe.
- *
- * Input:
- * @df:	The devfreq to start.
-*/
-static int gov_start(struct devfreq *df)
-{
-	int ret = 0;
-
-	ret = gs_perf_mon_add_client(&dsulat_perf_client);
-	if (ret)
-		goto err_start;
-	dsulat_node.gov_is_on = true;
-
-	ret = sysfs_create_group(&df->dev.kobj, dsulat_node.attr_grp);
-	if (ret)
-		goto err_sysfs;
-
-	return 0;
-
-err_sysfs:
-	dsulat_node.gov_is_on = false;
-	gs_perf_mon_remove_client(&dsulat_perf_client);
-err_start:
-	return ret;
-}
-
-/**
- * gov_suspend - Pauses the governor.
- *
- * This is invoked when the entering system suspends.
- *
- * Input:
- * @df:	The devfreq to suspend.
-*/
-static int gov_suspend(struct devfreq *df)
-{
-	dsulat_node.gov_is_on = false;
-	if (dsulat_node.devfreq_initialized) {
-		mutex_lock(&df->lock);
-		update_devfreq(df);
-		mutex_unlock(&df->lock);
-	}
-
-	return 0;
-}
-
-/**
- * gov_resume - Restarts the governor.
- *
- * Input:
- * @df:	The devfreq to resume.
-*/
-static int gov_resume(struct devfreq *df)
-{
-	dsulat_node.gov_is_on = true;
-	if (dsulat_node.devfreq_initialized) {
-		mutex_lock(&df->lock);
-		update_devfreq(df);
-		mutex_unlock(&df->lock);
-	}
-
-	return 0;
-}
-
-/**
- * gov_stop - Stops the governor.
- *
- * This is invoked by devfreq_remove_governor.
- *
- * Input:
- * @df:	The devfreq to stop.
-*/
-static void gov_stop(struct devfreq *df)
-{
-	dsulat_node.gov_is_on = false;
-	gs_perf_mon_remove_client(&dsulat_perf_client);
-
-	if (dsulat_node.devfreq_initialized) {
-		mutex_lock(&df->lock);
-		update_devfreq(df);
-		mutex_unlock(&df->lock);
-
-		sysfs_remove_group(&df->dev.kobj, dsulat_node.attr_grp);
-	}
-}
-
-/**
- * gs_governor_dsulat_ev_handler - Handles governor
- * Calls start/stop/resume/suspend events.
+ * gs_governor_dsulat_update_target_freq_vote - Registers the vote for the dsulat governor.
  *
  * Inputs:
- * @df:		The devfreq to signal.
- * @event:	Start/Stop/Suspend/Resume.
- * @data:	Unused.
+ * @vote:		The node to vote on.
+ * @target_freq:	New target frequency.
  *
- * Return:	Non-zero on error. Notice this also returns
- *		0 if event is not found.
+ * Outputs:
+ *			Non-zero on error.
 */
-static int gs_governor_dsulat_ev_handler(struct devfreq *df, unsigned int event, void *data)
+static int gs_governor_dsulat_update_target_freq_vote(struct frequency_vote *vote,
+					    unsigned long target_freq)
 {
-	int ret;
-
-	/* Check if the governor exists. */
-	if (!df) {
-		pr_err("Undefined devfreq for DSU Latency governor\n");
+	if (!exynos_pm_qos_request_active(&vote->min_freq_req))
 		return -ENODEV;
-	}
 
-	switch (event) {
-	case DEVFREQ_GOV_START:
-		ret = gov_start(df);
-		if (ret)
-			return ret;
+	exynos_pm_qos_update_request_async(&vote->min_freq_req, target_freq);
+	trace_clock_set_rate(vote->vote_name, target_freq, raw_smp_processor_id());
 
-		dev_dbg(df->dev.parent, "Enabled DSU Latency governor\n");
-		break;
-
-	case DEVFREQ_GOV_STOP:
-		gov_stop(df);
-		dev_dbg(df->dev.parent, "Disabled DSU Latency governor\n");
-		break;
-
-	case DEVFREQ_GOV_SUSPEND:
-		ret = gov_suspend(df);
-		if (ret) {
-			dev_err(df->dev.parent, "Unable to suspend DSU Latency governor (%d)\n", ret);
-			return ret;
-		}
-		dev_dbg(df->dev.parent, "Suspended DSU Latency governor\n");
-		break;
-
-	case DEVFREQ_GOV_RESUME:
-		ret = gov_resume(df);
-		if (ret) {
-			dev_err(df->dev.parent, "Unable to resume DSU Latency governor (%d)\n", ret);
-			return ret;
-		}
-
-		dev_dbg(df->dev.parent, "Resumed DSU Latency governor\n");
-		break;
-	}
 	return 0;
 }
 
 /**
- * gs_governor_dsulat_get_freq - Calculates dsulat freq votes desired by each CPU cluster.
+ * gs_governor_dsulat_update_all_freq_votes - Updates the vote for primary and secondary vote comonents.
+ *
+ * Inputs:
+ * @primary_vote:	Primary frequency vote component.
+ *
+ * Outputs:
+ *			Non-zero on error.
+*/
+static void gs_governor_dsulat_update_all_freq_votes(unsigned long primary_vote)
+{
+	unsigned long secondary_vote;
+	struct secondary_frequency_domain *sub_vote;
+	int secondary_idx;
+
+	gs_governor_dsulat_update_target_freq_vote(&dsulat_node.target_freq_vote, primary_vote);
+
+	for (secondary_idx = 0; secondary_idx < dsulat_node.num_secondary_votes;
+	     secondary_idx++) {
+		sub_vote = &dsulat_node.secondary_vote_arr[secondary_idx];
+		secondary_vote =
+			gs_governor_core_to_dev_freq(sub_vote->freq_map, primary_vote);
+		gs_governor_dsulat_update_target_freq_vote(&sub_vote->target_freq_vote, secondary_vote);
+	}
+}
+
+/**
+ * gs_governor_dsulat_compute_freq - Calculates dsulat freq votes desired by each CPU cluster.
  *
  * This function determines the dsulat target frequency.
  *
  * Input:
- * @df:		The devfreq we are deciding a vote for.
- * @freq:	Where to store the computed frequency.
+ * @cpu_perf_data_arr:	CPU data to use as input.
+ *
+ * Returns:
+ * @max_freq:		The computed target frequency.
 */
-static int gs_governor_dsulat_get_freq(struct devfreq *df, unsigned long *freq)
+static unsigned long gs_governor_dsulat_compute_freq(struct gs_cpu_perf_data *cpu_perf_data_arr)
 {
 	int cpu;
 	int cluster_idx;
 	struct cluster_config *cluster;
 	unsigned long max_freq = 0;
 	char trace_name[] = { 'c', 'p', 'u', '0', 'd', 's', 'u', '\0' };
-
-	/* Retrieving the CPU data array from the devfreq governor_data. */
-	struct gs_cpu_perf_data *cpu_perf_data_arr = df->governor_data;
-
-	/* If the dsulat governor is not active. Reset our vote to minimum. */
-	if (!dsulat_node.gov_is_on) {
-		*freq = 0;
-		goto trace_out;
-	}
-
-	/* If monitor data is not supplied. Maintain current vote. */
-	if (!cpu_perf_data_arr)
-		goto trace_out;
 
 	/* For each cluster, we make a frequency decision. */
 	for (cluster_idx = 0; cluster_idx < dsulat_node.num_cpu_clusters; cluster_idx++) {
@@ -333,36 +222,196 @@ static int gs_governor_dsulat_get_freq(struct devfreq *df, unsigned long *freq)
 		}
 	}
 
-	/* We vote on the max score across all cpus. */
-	*freq = max_freq;
-trace_out:
-	trace_clock_set_rate("DSUlat Governor", *freq, raw_smp_processor_id());
+	return max_freq;
+}
+
+/**
+ * update_dsulat_gov  -	Callback function from the perf monitor to service
+ * 			the dsulat governor.
+ *
+ * Input:
+ * @data:		Performance data from the monitor.
+ * @private_data:	Unused.
+ *
+*/
+static void update_dsulat_gov(struct gs_cpu_perf_data *data, void *private_data)
+{
+	unsigned long next_frequency;
+
+	/* If the dsulat governor is not active. Reset our vote to minimum. */
+	if (!dsulat_node.gov_is_on || !data) {
+		dev_dbg(dsulat_node.dev, "Dsulat governor is not active. Leaving vote unchanged.\n");
+		return;
+	}
+
+	/* Step 1: compute the frequency. */
+	next_frequency = gs_governor_dsulat_compute_freq(data);
+
+	/* Step 2: process the frequency vote. */
+	gs_governor_dsulat_update_all_freq_votes(next_frequency);
+}
+
+/**
+ * gs_dsulat_governor_remove_all_votes - Initializes all the votes for dsulat governor.
+*/
+static void gs_dsulat_governor_remove_all_votes(void)
+{
+	struct frequency_vote *vote = &dsulat_node.target_freq_vote;
+	int secondary_idx;
+
+	/* Remove primary votes. */
+	exynos_pm_qos_remove_request(&vote->min_freq_req);
+
+	/* Remove secondary votes. */
+	for (secondary_idx = 0; secondary_idx < dsulat_node.num_secondary_votes;
+	     secondary_idx++) {
+		vote = &dsulat_node.secondary_vote_arr[secondary_idx].target_freq_vote;
+		exynos_pm_qos_remove_request(&vote->min_freq_req);
+	}
+}
+
+/**
+ * gov_start - Starts the governor.
+*/
+static int gov_start(void)
+{
+	int ret;
+	if (dsulat_node.gov_is_on)
+		return 0;
+
+	/* Add clients. */
+	ret = gs_perf_mon_add_client(&dsulat_perf_client);
+	if (ret)
+		return ret;
+
+	dsulat_node.gov_is_on = true;
+
 	return 0;
 }
 
 /**
- * gs_dsulat_populate_governor - Parses dsulat governor data from an input device tree node.
+ * gov_stop - Stops the governor.
+*/
+static void gov_stop(void)
+{
+	if (!dsulat_node.gov_is_on)
+		return;
+
+	dsulat_node.gov_is_on = false;
+
+	/* Remove the client. */
+	gs_perf_mon_remove_client(&dsulat_perf_client);
+
+	/* Reset all the votes to minimum. */
+	gs_governor_dsulat_update_all_freq_votes(0);
+}
+
+/**
+ * gs_dsulat_governor_vote_parse - Initializes the votes for the dsulat.
+ *
+ * Input:
+ * @vote_node:	Node containing the vote config.
+ * @dev:	The device the governor is bound to.
+ *
+ * Output:	Non-zero on error.
+*/
+static int gs_dsulat_governor_vote_parse(struct device_node *vote_node,
+					 struct frequency_vote *vote, struct device *dev)
+{
+	u32 pm_qos_class;
+
+	if (of_property_read_u32(vote_node, "pm_qos_class", &pm_qos_class)) {
+		dev_err(dev, "pm_qos_class undefined\n");
+		return -ENODEV;
+	}
+
+	if (of_property_read_string(vote_node, "vote_name",
+				    &vote->vote_name)) {
+		dev_err(dev, "vote_name undefined\n");
+		return -ENODEV;
+	}
+
+	exynos_pm_qos_add_request(&vote->min_freq_req, (int)pm_qos_class, 0);
+
+	return 0;
+}
+
+/**
+ * gs_dsulat_initialize_secondary_votes - Initializes the secondaty governors from a DT Node.
  *
  * Inputs:
- * @dev:		The dsulat governor's underlying device.
+ * @secondary_votes_node:	The tree node containing the list of secondary governor data.
+ * @dev:			The device the governor is bound to.
+ *
+ * Returns:			Non-zero on error.
+*/
+static int gs_dsulat_initialize_secondary_votes(struct device_node *secondary_votes_node,
+						  struct device *dev)
+{
+	struct device_node *sub_votes_node = NULL;
+	struct secondary_frequency_domain *sub_vote;
+	int sub_vote_idx;
+	int ret = 0;
+
+	dsulat_node.num_secondary_votes = of_get_child_count(secondary_votes_node);
+
+	/* Allocate a container for secondary domains. */
+	dsulat_node.secondary_vote_arr = devm_kzalloc(
+		dev, sizeof(struct secondary_frequency_domain) * dsulat_node.num_secondary_votes,
+		GFP_KERNEL);
+	if (!dsulat_node.secondary_vote_arr) {
+		dev_err(dev, "No memory for secondary_vote_arr.\n");
+		return -ENOMEM;
+	}
+
+	/* Populate the Components. */
+	sub_vote_idx = 0;
+	while ((sub_votes_node = of_get_next_child(secondary_votes_node, sub_votes_node)) !=
+	       NULL) {
+		sub_vote = &dsulat_node.secondary_vote_arr[sub_vote_idx];
+
+		/* Initialize the vote structure. */
+		if ((ret = gs_dsulat_governor_vote_parse(sub_votes_node, &sub_vote->target_freq_vote,
+							 dev)))
+			return ret;
+
+		/* Initialize the secondary translation map. */
+		sub_vote->freq_map = gs_governor_init_core_dev_map(dev, sub_votes_node,
+								     "core-dev-table-latency");
+		if (!sub_vote->freq_map) {
+			dev_err(dev, "Can't parse freq-table for sub-domain.");
+			return -ENODEV;
+		}
+
+		/* Increment pointer. */
+		sub_vote_idx += 1;
+	}
+	return 0;
+}
+
+/**
+ * gs_dsulat_governor_initialize - Initializes the dsulat governor from a DT Node.
+ *
+ * Inputs:
  * @governor_node:	The tree node contanin governor data.
+ * @data:		The devfreq data to update frequencies.
  *
  * Returns:		Non-zero on error.
 */
-static int gs_dsulat_populate_governor(struct device *dev, struct device_node *governor_node)
+static int gs_dsulat_governor_initialize(struct device_node *governor_node, struct device *dev)
 {
 	int ret = 0;
-	int cluster_idx;
 	struct device_node *cluster_node = NULL;
 	struct cluster_config *cluster;
+	int cluster_idx;
 
 	dsulat_node.num_cpu_clusters = of_get_child_count(governor_node);
 
-	/* Allocate a container for policies. */
+	/* Allocate a container for clusters. */
 	dsulat_node.cpu_configs_arr = devm_kzalloc(
 		dev, sizeof(struct cluster_config) * dsulat_node.num_cpu_clusters, GFP_KERNEL);
 	if (!dsulat_node.cpu_configs_arr) {
-		dev_err(dev, "no mem for cluster_config\n");
+		dev_err(dev, "No memory for cluster_configs.\n");
 		return -ENOMEM;
 	}
 
@@ -376,70 +425,112 @@ static int gs_dsulat_populate_governor(struct device *dev, struct device_node *g
 		/* Increment pointer. */
 		cluster_idx += 1;
 	}
-
 	return 0;
 }
 
-/**
- * gs_dsulat_governor_initialize - Initializes the dsulat governor from a DT Node.
- *
- * Inputs:
- * @governor_node:	The tree node contanin governor data.
- * @data:		The devfreq data to update frequencies.
- *
- * Returns:		Non-zero on error.
-*/
-int gs_dsulat_governor_initialize(struct device_node *governor_node,
-				  struct exynos_devfreq_data *data)
+static int gs_governor_dsulat_driver_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-	struct device *dev = data->dev;
+	struct device *dev = &pdev->dev;
+	struct device_node *governor_config_node, *frequency_vote_node, *secondary_votes_node;
+	int ret;
 
-	/* Configure dsulat governor. */
-	ret = gs_dsulat_populate_governor(dev, governor_node);
-	if (ret) {
-		dev_err(dev, "Pixel dsulat governor parse failed.\n");
-		goto err_parse;
-	}
-
-	dsulat_node.devfreq_data = data;
+	dsulat_node.dev = &pdev->dev;
 	dsulat_node.attr_grp = &dsulat_dev_attr_group;
 
+	/* Find and intitialize frequency votes. */
+	frequency_vote_node = of_get_child_by_name(dev->of_node, "primary_vote_config");
+	if (!frequency_vote_node) {
+		dev_err(dev, "Dsulat frequency_votes not defined.\n");
+		return -ENODEV;
+	}
+
+	ret = gs_dsulat_governor_vote_parse(frequency_vote_node, &dsulat_node.target_freq_vote,
+					    dev);
+	if (ret) {
+		dev_err(dev, "Failed to parse dsulat primary vote node data.\n");
+		return ret;
+	}
+
+	/* Find and initialize secondary votes. */
+	secondary_votes_node = of_get_child_by_name(dev->of_node, "secondary_frequency_votes");
+	if (secondary_votes_node) {
+		ret = gs_dsulat_initialize_secondary_votes(secondary_votes_node, dev);
+		if (ret) {
+			dev_err(dev, "Failed to parse secondary vote data.\n");
+			goto err_out;
+		}
+	} else {
+		dev_dbg(dev, "Dsulat secondary vote node not defined. Skipping\n");
+	}
+
+	/* Find and initialize governor. */
+	governor_config_node = of_get_child_by_name(dev->of_node, "governor_config");
+	if (!governor_config_node) {
+		dev_err(dev, "Dsulat governor node not defined.\n");
+		ret = -ENODEV;
+		goto err_out;
+	}
+
+	ret = gs_dsulat_governor_initialize(governor_config_node, dev);
+	if (ret) {
+		dev_err(dev, "Failed to parse private governor data.\n");
+		goto err_out;
+	}
+
+	/* Add sysfs nodes here. */
+	ret = sysfs_create_group(&dev->kobj, dsulat_node.attr_grp);
+	if (ret) {
+		dev_err(dev, "Failed to initialize governor sysfs groups.\n");
+		goto err_out;
+	}
+
+	/* Start the governor servicing. */
+	ret = gov_start();
+	if (ret) {
+		dev_err(dev, "Failed to start dsulat governor.\n");
+		goto err_gov_start;
+	}
+
 	return 0;
 
-err_parse:
+err_gov_start:
+	sysfs_remove_group(&dsulat_node.dev->kobj, dsulat_node.attr_grp);
+err_out:
+	gs_dsulat_governor_remove_all_votes();
+
 	return ret;
 }
-EXPORT_SYMBOL(gs_dsulat_governor_initialize);
 
-/* We hold the struct for the governor here. */
-static struct devfreq_governor gs_governor_dsulat = {
-	.name = "gs_dsulat",
-	.get_target_freq = gs_governor_dsulat_get_freq,
-	.event_handler = gs_governor_dsulat_ev_handler,
+static int gs_governor_dsulat_driver_remove(struct platform_device *pdev)
+{
+	/* Stop governor servicing. */
+	gov_stop();
+
+	/* Remove Sysfs here. */
+	sysfs_remove_group(&dsulat_node.dev->kobj, dsulat_node.attr_grp);
+
+	/* Remove pm_qos vote here. */
+	gs_dsulat_governor_remove_all_votes();
+
+	return 0;
+}
+
+static const struct of_device_id gs_governor_dsulat_root_match[] = { {
+	.compatible = "google,gs_governor_dsulat",
+} };
+
+static struct platform_driver gs_governor_dsulat_platform_driver = {
+	.probe = gs_governor_dsulat_driver_probe,
+	.remove = gs_governor_dsulat_driver_remove,
+	.driver = {
+		.name = "gs_governor_dsulat",
+		.owner = THIS_MODULE,
+		.of_match_table = gs_governor_dsulat_root_match,
+		.suppress_bind_attrs = true,
+	},
 };
 
-/* Adds this governor to a devfreq.*/
-int gs_dsulat_governor_register(void)
-{
-	return devfreq_add_governor(&gs_governor_dsulat);
-}
-EXPORT_SYMBOL(gs_dsulat_governor_register);
-
-/* Remove this governor to a devfreq.*/
-void gs_dsulat_governor_unregister(void)
-{
-	devfreq_remove_governor(&gs_governor_dsulat);
-}
-EXPORT_SYMBOL(gs_dsulat_governor_unregister);
-
-
-
-void gs_dsulat_governor_set_devfreq_ready(void) {
-	dsulat_node.devfreq_initialized = true;
-}
-EXPORT_SYMBOL(gs_dsulat_governor_set_devfreq_ready);
-
+module_platform_driver(gs_governor_dsulat_platform_driver);
 MODULE_AUTHOR("Will Song <jinpengsong@google.com>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Google Source Dsulat Governor");
