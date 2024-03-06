@@ -1063,27 +1063,15 @@
 		};
 	};
 
-	gs_dsulat_devfreq {
-		compatible = "gs-dsulat-devfreq-root";
-		#address-cells = <2>;
-		#size-cells = <1>;
-		ranges;
+	gs_governor_dsulat: gs-governor-dsulat {
+		compatible = "google,gs_governor_dsulat";
 
-		gs_dsulat: devfreq_dsulat@17000090 {
-			compatible = "gs-dsulat-devfreq";
-			devfreq_type = <DEVFREQ_DSU>;
-			devfreq_domain_name = "DSU";
+		primary_vote_config {
+			vote_name = "dsulat";
 			pm_qos_class = <PM_QOS_DSU_THROUGHPUT>;
-			pm_qos_class_max = <PM_QOS_DSU_THROUGHPUT_MAX>;
-			max-freq = <1800000>;
-			dm-index = <DM_DSU>;
-			clock-names = "DEVFREQ";
-			polling_ms = <10>;
-
-			/* governor data */
-			governor = <DSU_LATENCY>;
-			dfs_id = <ACPM_DVFS_DSU>;
 		};
+
+		/* governor configuration fields are defined in A0/B0 dtsi files */
 	};
 
 	gs_governor_memlat: gs-governor-memlat {
