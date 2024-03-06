@@ -353,12 +353,12 @@
 			";
 };
 
-&gs_dsulat {
-	/* Linearly Dependent Domains. */
-	secondary_domains {
+&gs_governor_dsulat {
+	secondary_frequency_votes {
 		bci_freq {
-			devfreq_domain_name = "DSU2BCI";
+			vote_name = "bcilat";
 			pm_qos_class = <PM_QOS_BCI_THROUGHPUT>;
+
 			core-dev-table-latency =
 			/* DSU           BCI */
 			<  324000        315000 >,
@@ -369,7 +369,7 @@
 		};
 	};
 
-	dsulat_governor {
+	governor_config {
 		gs_dsulat_cl0 {
 			cpulist = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 			ratio_ceil = <1700>;

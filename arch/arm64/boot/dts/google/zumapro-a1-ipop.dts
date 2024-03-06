@@ -688,8 +688,8 @@
 			";
 };
 
-&gs_dsulat {
-	dsulat_governor {
+&gs_governor_dsulat {
+	governor_config {
 		gs_dsulat_cl0 {
 			core-dev-table-latency =
 			/* CL0           DSU */
