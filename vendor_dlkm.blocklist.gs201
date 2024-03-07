@@ -1,3 +1,4 @@
+blocklist aoc_unit_test_dev
 blocklist bcmdhd4398
 blocklist bcmdhd4390
 blocklist bcmdhd4383
