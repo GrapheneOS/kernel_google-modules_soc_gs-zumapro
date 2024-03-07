@@ -76,40 +76,58 @@ static void rx_work(struct work_struct *ws)
 						rx_dwork.work);
 	struct gnss_ctl *gc = ld->gc;
 	struct io_device *iod = ld->iod;
-	struct sk_buff *skb;
+	struct sk_buff *skb = NULL;
+	char *buff = NULL;
 	unsigned int len = ld->spi_rx_size;
+	unsigned int max_len = ld->max_spi_rx_size;
 	unsigned int iter = 0;
 	int ret = 0;
 
 	atomic_set(&gc->rx_in_progress, 1);
 
 	do {
-		gc->ops.gnss_send_betp_int(gc, 1);
-		if (atomic_read(&gc->tx_in_progress) == 0) {
-			udelay(100);
-			gc->ops.gnss_send_betp_int(gc, 0);
+		if (!skb) {
+			gc->ops.gnss_send_betp_int(gc, 1);
+			if (atomic_read(&gc->tx_in_progress) == 0) {
+				udelay(100);
+				gc->ops.gnss_send_betp_int(gc, 0);
+			}
+
+			skb = alloc_skb(max_len, GFP_KERNEL);
+			if (!skb) {
+				gif_err("%s: ERR! rx alloc_skb fail (msg size:%u)\n",
+						iod->name, len);
+				goto exit;
+			}
 		}
 
-		skb = alloc_skb(len, GFP_KERNEL);
-		if (!skb) {
-			gif_err("%s: ERR! rx alloc_skb fail (msg size:%u)\n",
-					iod->name, len);
-			goto exit;
-		}
-		skb_put(skb, len);
-		ret = gnss_spi_recv((char *)skb->data, len);
+		buff = skb_put(skb, len);
+		ret = gnss_spi_recv(buff, len);
 		if (ret) {
 			gif_err("gnss_spi_recv() error:%d\n", ret);
 			dev_kfree_skb_any(skb);
 			goto exit;
 		}
 
-		gif_debug("Received %d bytes data from kepler. iter:%d\n", len, iter);
-		pr_buffer("RX", skb->data, len, len);
-		iod->recv_betp(iod, ld, skb);
 		iter++;
+		if (skb->len >= max_len) {
+			pr_buffer("RX", skb->data, skb->len, skb->len);
+			gif_debug("Received %d(%d * %d) bytes data from kepler.\n",
+					skb->len, len, iter);
+
+			iod->recv_betp(iod, ld, skb);
+			skb = NULL;	/* skb to be freed by gnss iod*/
+			iter = 0;
+		}
 	} while (gc->ops.gnss_spi_status(gc));
 
+	if (skb) {
+		pr_buffer("RX", skb->data, skb->len, skb->len);
+		gif_debug("Received %d(%d * %d) bytes data from kepler.\n",
+				skb->len, len, iter);
+
+		iod->recv_betp(iod, ld, skb);
+	}
 exit:
 	atomic_set(&gc->rx_in_progress, 0);
 	if (atomic_read(&gc->tx_in_progress) == 0)
@@ -202,6 +220,7 @@ struct link_device *create_link_device(struct platform_device *pdev)
 	ld->name = "GNSS_LINK_DEVICE";
 	ld->send = send_betp;
 	ld->spi_rx_size = DEFAULT_SPI_RX_SIZE;
+	ld->max_spi_rx_size = MAX_SPI_RX_SIZE;
 	ld->spi_tx_size = DEFAULT_SPI_TX_SIZE;
 
 	ld->rx_wq = alloc_workqueue("gnss_spi_wq",
