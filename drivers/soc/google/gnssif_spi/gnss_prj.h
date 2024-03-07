@@ -15,6 +15,7 @@
 #include "include/gnss.h"
 
 #define GNSS_RDY_TIMEOUT	msecs_to_jiffies(5000)
+#define ALIGNMENT_4BYTE		4
 
 struct io_device {
 	char *name;

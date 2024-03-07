@@ -116,7 +116,10 @@ static ssize_t misc_write(struct file *filp, const char __user *data,
 	int ret;
 
 	/* Store IPC message */
-	buff = kzalloc(count, GFP_KERNEL);
+	buff = kzalloc(roundup(count, ALIGNMENT_4BYTE), GFP_KERNEL);
+	if (!buff)
+		return -ENOMEM;
+
 	if (copy_from_user(buff, data, count)) {
 		gif_err("%s->%s: ERR! copy_from_user fail (count %ld)\n",
 			iod->name, ld->name, count);
@@ -124,7 +127,7 @@ static ssize_t misc_write(struct file *filp, const char __user *data,
 		return -EFAULT;
 	}
 
-	ret = ld->send(ld, iod, buff, count);
+	ret = ld->send(ld, iod, buff, roundup(count, ALIGNMENT_4BYTE));
 	if (ret < 0) {
 		gif_err("%s->%s: ERR! ld->send fail (err %d, count %ld)\n",
 			iod->name, ld->name, ret, count);

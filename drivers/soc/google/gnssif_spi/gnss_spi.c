@@ -20,19 +20,15 @@ int gnss_spi_send(char *buff, unsigned int size, char *rx_buff)
 	int ret = 0;
 	struct spi_message msg;
 	struct spi_transfer tx;
-	struct spi_transfer rx;
 
 	memset(&tx, 0, sizeof(struct spi_transfer));
 	spi_message_init(&msg);
 	tx.len = size;
 	tx.tx_buf = buff;
+	tx.bits_per_word = SPI_BITS_PER_WORD;
+	if (rx_buff)
+		tx.rx_buf = rx_buff;
 	spi_message_add_tail(&tx, &msg);
-	if (rx_buff) {
-		memset(&rx, 0, sizeof(struct spi_transfer));
-		rx.len = size;
-		rx.rx_buf = rx_buff;
-		spi_message_add_tail(&rx, &msg);
-	}
 	ret = spi_sync(gnss_if.spi, &msg);
 	if (ret < 0)
 		gif_err("spi_sync() error:%d\n", ret);
@@ -50,7 +46,7 @@ int gnss_spi_recv(char *buff, unsigned int size)
 	memset(&rx, 0, sizeof(struct spi_transfer));
 	rx.len = size;
 	rx.rx_buf = buff;
-	rx.bits_per_word = 32;
+	rx.bits_per_word = SPI_BITS_PER_WORD;
 	spi_message_init(&msg);
 	spi_message_add_tail(&rx, &msg);
 	ret = spi_sync(gnss_if.spi, &msg);
