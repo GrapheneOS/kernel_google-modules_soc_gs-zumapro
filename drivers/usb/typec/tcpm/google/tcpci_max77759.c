@@ -3306,7 +3306,9 @@ static int max77759_probe(struct i2c_client *client,
 
 	chip->dp_regulator = devm_regulator_get(chip->dev, "pullup");
 	if (IS_ERR_OR_NULL(chip->dp_regulator) ) {
-		dev_err(&client->dev, "devm_regulator_get failed\n");
+		dev_err(&client->dev, "pullup regulator get failed %ld\n",
+			PTR_ERR(chip->dp_regulator));
+		ret = -EPROBE_DEFER;
 		goto psy_put;
 	}
 	if (!of_property_read_u32(dn, "pullup-supply", &regulator_handle)) {
