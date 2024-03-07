@@ -26,10 +26,6 @@ struct cma_pixel_stat {
 	spinlock_t lock;
 	unsigned long latency[LATENCY_NUM_LEVELS];
 	unsigned long bound[LATENCY_NUM_LEVELS];
-	unsigned long alloc_pages_attempts;
-	unsigned long fail_pages;
-	unsigned long alloc_pages_failfast_attempts; /* GFP_NORERY */
-	unsigned long fail_failfast_pages; /* GFP_NORETRY */
 	struct kobject kobj;
 };
 
@@ -205,56 +201,12 @@ static ssize_t latency_mid_bound_store(struct kobject *kobj,
 }
 CMA_ATTR_RW(latency_mid_bound);
 
-static ssize_t alloc_pages_attempts_show(struct kobject *kobj,
-				 struct kobj_attribute *attr, char *buf)
-{
-	struct cma_pixel_stat *cma_stat =
-		container_of(kobj, struct cma_pixel_stat, kobj);
-
-	return sysfs_emit(buf, "%lu\n", cma_stat->alloc_pages_attempts);
-}
-CMA_ATTR_RO(alloc_pages_attempts);
-
-static ssize_t alloc_pages_failfast_attempts_show(struct kobject *kobj,
-				 struct kobj_attribute *attr, char *buf)
-{
-	struct cma_pixel_stat *cma_stat =
-		container_of(kobj, struct cma_pixel_stat, kobj);
-
-	return sysfs_emit(buf, "%lu\n", cma_stat->alloc_pages_failfast_attempts);
-}
-CMA_ATTR_RO(alloc_pages_failfast_attempts);
-
-static ssize_t fail_pages_show(struct kobject *kobj,
-				 struct kobj_attribute *attr, char *buf)
-{
-	struct cma_pixel_stat *cma_stat =
-		container_of(kobj, struct cma_pixel_stat, kobj);
-
-	return sysfs_emit(buf, "%lu\n", cma_stat->fail_pages);
-}
-CMA_ATTR_RO(fail_pages);
-
-static ssize_t fail_failfast_pages_show(struct kobject *kobj,
-				 struct kobj_attribute *attr, char *buf)
-{
-	struct cma_pixel_stat *cma_stat =
-		container_of(kobj, struct cma_pixel_stat, kobj);
-
-	return sysfs_emit(buf, "%lu\n", cma_stat->fail_failfast_pages);
-}
-CMA_ATTR_RO(fail_failfast_pages);
-
 static struct attribute *cma_attrs[] = {
 	&latency_low_attr.attr,
 	&latency_mid_attr.attr,
 	&latency_high_attr.attr,
 	&latency_mid_bound_attr.attr,
 	&latency_low_bound_attr.attr,
-	&alloc_pages_attempts_attr.attr,
-	&alloc_pages_failfast_attempts_attr.attr,
-	&fail_pages_attr.attr,
-	&fail_failfast_pages_attr.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(cma);
