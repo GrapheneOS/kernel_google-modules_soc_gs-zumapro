@@ -50,7 +50,8 @@
 					<&s5100_cp2ap_phone_active>,
 					<&s5100_ap2cp_cp_wrst_n>,
 					<&s5100_cp2ap_cp_wrst_n>,
-					<&s5100_ap2cp_pm_wrst_n>;
+					<&s5100_ap2cp_pm_wrst_n>,
+					<&s5100_ap2cp_partial_rst_n>;
 
 				/* Definition of GPIOs */
 				gpio_ap2cp_wake_up =	<&gpp16 0 0x1>;
@@ -61,6 +62,7 @@
 				gpio_ap2cp_cp_wrst_n =	<&gpp16 3 0x1>;
 				gpio_cp2ap_cp_wrst_n =  <&gpa7 3 0x1>;
 				gpio_ap2cp_pm_wrst_n =	<&gpp8 3 0x1>;
+				gpio_ap2cp_partial_rst_n = <&gpp21 6 0x1>;
 
 				gpio_cp2ap_phone_active = <&gpa5 2 0x1>;
 				gpio_cp2ap_cp_ps_hold =	<&gpa5 0 0x1>;
@@ -159,6 +161,16 @@
 
 	s5100_ap2cp_cp_wrst_n: s5100_ap2cp_cp_wrst_n {
 		samsung,pins = "gpp16-3";
+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+		samsung,pin-con-pdn = <EXYNOS_PIN_PDN_PREV>;
+		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_NONE>;
+	};
+};
+
+&pinctrl_12 {
+	s5100_ap2cp_partial_rst_n: s5100_ap2cp_partial_rst_n {
+		samsung,pins = "gpp21-6";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
 		samsung,pin-con-pdn = <EXYNOS_PIN_PDN_PREV>;
 		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_NONE>;
