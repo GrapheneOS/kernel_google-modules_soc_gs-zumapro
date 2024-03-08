@@ -379,6 +379,9 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 		dev_dbg(dev, "%s, evt compl wait cnt = %d\n",
 			 __func__, wait_counter);
 
+		/* hold gadget lock to prevent gadget driver bind during disconnect*/
+		device_lock(&dwc->gadget->dev);
+
 		/* disconnect gadget */
 		usb_udc_vbus_handler(dwc->gadget, false);
 
@@ -389,8 +392,7 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 		if (exynos->extra_delay)
 			msleep(100);
 
-		if (!dwc3_otg_check_usb_activity(exynos))
-			dev_err(dev, "too long to suspend after cable plug-out\n");
+		device_unlock(&dwc->gadget->dev);
 
 		mutex_lock(&dotg->lock);
 		pm_runtime_put_sync_suspend(dev);
@@ -484,21 +486,6 @@ bool dwc3_otg_check_usb_suspend(struct dwc3_exynos *exynos)
 	} while (wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT);
 
 	return wait_counter < DWC3_EXYNOS_MAX_WAIT_COUNT;
-}
-
-bool dwc3_otg_check_usb_activity(struct dwc3_exynos *exynos)
-{
-	int wait_counter = 0;
-
-	do {
-		if ((atomic_read(&exynos->dwc->dev->power.usage_count)) < 2)
-			break;
-
-		wait_counter++;
-		msleep(20);
-	} while (wait_counter < DWC3_EXYNOS_DISCONNECT_COUNT);
-
-	return wait_counter < DWC3_EXYNOS_DISCONNECT_COUNT;
 }
 
 static int dwc3_otg_reboot_notify(struct notifier_block *nb, unsigned long event, void *buf)
