@@ -461,7 +461,7 @@
 						iod,format = <IPC_RAW>;
 						iod,io_type = <IODEV_IPC>;
 						iod,link_type = <LINKDEV_PCIE>;
-						iod,attrs = <(IO_ATTR_NO_CHECK_MAXQ)>;
+						iod,attrs = <(IO_ATTR_NO_CHECK_MAXQ | IO_ATTR_STATE_RESET_NOTI)>;
 					};
 					io_device_16 {
 						iod,name = "gnss_dump";
