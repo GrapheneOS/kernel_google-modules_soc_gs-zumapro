@@ -110,7 +110,7 @@ static void rx_work(struct work_struct *ws)
 		}
 
 		iter++;
-		if (skb->len >= max_len) {
+		if (skb->len >= max_len || atomic_read(&gc->wait_rdy) == 1) {
 			pr_buffer("RX", skb->data, skb->len, skb->len);
 			gif_debug("Received %d(%d * %d) bytes data from kepler.\n",
 					skb->len, len, iter);
@@ -118,6 +118,15 @@ static void rx_work(struct work_struct *ws)
 			iod->recv_betp(iod, ld, skb);
 			skb = NULL;	/* skb to be freed by gnss iod*/
 			iter = 0;
+
+			if (atomic_read(&gc->wait_rdy) == 1) {
+				atomic_set(&gc->wait_rdy, 0);
+				complete_all(&gc->gnss_rdy_cmpl);
+				gif_debug("TX request while Rx is in-progress\n");
+
+				while (atomic_read(&gc->tx_in_progress) == 1)
+					udelay(10);
+			}
 		}
 	} while (gc->ops.gnss_spi_status(gc));
 
