@@ -223,6 +223,7 @@ static int pixel_ufs_register_fill_prdt(void)
 
 #else
 
+#if !IS_ENABLED(CONFIG_SCSI_UFS_CRYPTO_SW_KEYS_MODE)
 static void pixel_ufs_ise_self_test(void *data, struct ufs_hba *hba)
 {
 	/*
@@ -249,6 +250,12 @@ static int pixel_ufs_register_fips_self_test(void)
 	return register_trace_android_rvh_ufs_complete_init(
 		pixel_ufs_ise_self_test, NULL);
 }
+#else
+static int pixel_ufs_register_fips_self_test(void)
+{
+	return 0;
+}
+#endif
 
 static int pixel_ufs_register_fill_prdt(void)
 {
