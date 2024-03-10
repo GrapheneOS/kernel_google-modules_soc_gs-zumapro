@@ -30,7 +30,7 @@
  * values will be logged to kernel log upon loading.
  */
 #define UFS_PIXEL_FIPS140_MODULE_NAME "UFS Pixel FIPS CMVP Module"
-#define UFS_PIXEL_FIPS140_MODULE_VERSION "1.2.0"
+#define UFS_PIXEL_FIPS140_MODULE_VERSION "1.2.1"
 
 /*
  * As the verification logic will run before GPT data is available, module
@@ -645,6 +645,33 @@ static int __init unapply_text_relocations(void *section, int section_size,
 	return 0;
 }
 
+enum {
+       PACIASP         = 0xd503233f,
+       AUTIASP         = 0xd50323bf,
+       SCS_PUSH        = 0xf800865e,
+       SCS_POP         = 0xf85f8e5e,
+};
+
+/*
+ * To make the integrity check work with dynamic Shadow Call Stack (SCS),
+ * replace all instructions that push or pop from the SCS with the Pointer
+ * Authentication Code (PAC) instructions that were present originally.
+ */
+static void __init unapply_scs_patch(void *section, int section_size)
+{
+#if defined(CONFIG_ARM64) && defined(CONFIG_UNWIND_PATCH_PAC_INTO_SCS)
+       u32 *insns = section;
+       int i;
+
+       for (i = 0; i < section_size / sizeof(insns[0]); i++) {
+               if (insns[i] == SCS_PUSH)
+                       insns[i] = PACIASP;
+               else if (insns[i] == SCS_POP)
+                       insns[i] = AUTIASP;
+       }
+#endif
+}
+
 static const u8 ufs_pixel_fips_hmac_message[] = {
 	0x54, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, /* "This is " */
 	0x61, 0x20, 0x35, 0x38, 0x42, 0x20, 0x6D, 0x65, /* "a 58B me" */
@@ -736,6 +763,8 @@ static int __init ufs_pixel_self_integrity_test(void)
 		kfree_sensitive(hmac_buffer);
 		return ret;
 	}
+
+	unapply_scs_patch(hmac_buffer, text_len);
 
 	ufs_pixel_fips_hmac_sha256(hmac_buffer, text_len + rodata_len,
 				   fips140_integ_hmac_key,
