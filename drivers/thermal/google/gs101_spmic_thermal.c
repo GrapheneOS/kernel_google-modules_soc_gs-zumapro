@@ -379,11 +379,11 @@ static void gs101_spmic_thermal_wait_sensor(struct kthread_work *work)
 			dev_info(dev, "Sensor %d not ready, retry...\n", i);
 			msleep(SENSOR_WAIT_SLEEP_MS);
 		}
+
 		if (j < 0)
 			dev_warn(dev, "Sensor %d timeout, give up...\n", i);
 
-		thermal_zone_device_update(gs101_spmic_thermal->sensor[i].tzd,
-					   THERMAL_EVENT_UNSPECIFIED);
+		thermal_zone_device_enable(gs101_spmic_thermal->sensor[i].tzd);
 	}
 }
 
@@ -395,11 +395,10 @@ static int gs101_spmic_thermal_register_tzd(struct gs101_spmic_thermal_chip *gs1
 	unsigned int i;
 	struct thermal_zone_device *tzd;
 	struct device *dev = gs101_spmic_thermal->dev;
-	u8 mask = 0x1;
 	int temp;
 	int ret = 0;
 
-	for (i = 0; i < GTHERM_CHAN_NUM; i++, mask <<= 1) {
+	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
 		dev_info(dev, "Registering channel %u\n", i);
 		tzd = devm_thermal_of_zone_register(gs101_spmic_thermal->dev,
 						    i,
@@ -413,10 +412,11 @@ static int gs101_spmic_thermal_register_tzd(struct gs101_spmic_thermal_chip *gs1
 			continue;
 		}
 		gs101_spmic_thermal->sensor[i].tzd = tzd;
-		if (gs101_spmic_thermal->adc_chan_en & mask)
-			thermal_zone_device_enable(tzd);
-		else
-			thermal_zone_device_disable(tzd);
+		/*
+		 * Disable thermal zone until we have other resources ready like
+		 * interrupt, stats, etc.
+		 */
+		thermal_zone_device_disable(tzd);
 		gs101_spmic_thermal->kobjs[i] =
 			kobject_create_and_add("adc_channel", &tzd->device.kobj);
 		ret = sysfs_create_file(gs101_spmic_thermal->kobjs[i], &channel_temp_attr.attr);
