@@ -768,10 +768,9 @@ static int __init ufs_pixel_fips_init(void)
 	/* Perform module self integrity check */
 	if (ufs_pixel_self_integrity_test()) {
 		pr_err("Verify self HMAC failed\n");
-		/* TODO: (b/322850872) return -EINVAL on failure */
-	} else {
-		pr_info("Verify self HMAC passed\n");
+		return -EINVAL;
 	}
+	pr_info("Verify self HMAC passed\n");
 
 	ret = register_trace_android_vh_ufs_fill_prdt(
 				ufs_pixel_fips_crypto_fill_prdt, NULL);
