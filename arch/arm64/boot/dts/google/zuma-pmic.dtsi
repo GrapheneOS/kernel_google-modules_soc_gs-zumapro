@@ -1215,6 +1215,7 @@
 			 * ==> 139.81 minutes
 			 */
 			max-refresh-time-ms = <(120 * 60 * 1000)>;
+			ntc-thermal-driver-check;
 			channels {
 				ch13: channel@0 {
 					rail-name = "BUCK1S";
