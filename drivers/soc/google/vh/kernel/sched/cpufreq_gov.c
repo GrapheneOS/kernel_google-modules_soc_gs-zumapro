@@ -678,6 +678,7 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
  */
 static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time)
 {
+	s64 delta_ns = time - sg_cpu->last_update;
 	unsigned long boost;
 
 	/* No boost currently required */
@@ -687,6 +688,10 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time)
 	/* Reset boost if the CPU appears to have been idle enough */
 	if (sugov_iowait_reset(sg_cpu, time, false))
 		return;
+
+	/* Reduce boost only if a tick has elapsed since last request */
+	if (delta_ns <= TICK_NSEC)
+		goto apply_boost;
 
 	if (!sg_cpu->iowait_boost_pending) {
 		/*
@@ -699,6 +704,7 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time)
 		}
 	}
 
+apply_boost:
 	sg_cpu->iowait_boost_pending = false;
 
 	/*
