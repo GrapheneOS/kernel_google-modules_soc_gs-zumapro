@@ -7,9 +7,9 @@
  */
 
 #include <linux/module.h>
+#include <soc/google/meminfo.h>
 #include <trace/hooks/mm.h>
 #include "cma.h"
-#include "meminfo.h"
 #include "vmscan.h"
 #include "compaction.h"
 
