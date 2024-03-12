@@ -36,6 +36,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #endif
+#include "soc/google/exynos-modem-ctrl.h"
 
 static const struct platform_device_id google_id_table[] = {
 	{.name = "google_mitigation",},
@@ -78,16 +79,45 @@ static void bin_incr_ifpmic(struct bcl_device *bcl_dev, enum BCL_BATT_IRQ batt,
 				enum CONCURRENT_PWRWARN_IRQ pwrwarn, ktime_t end_time)
 {
 	ktime_t time_delta;
+	u8 lsb, msb, thr;
+	u16 odpm_pwr;
+
 	if (bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time == 0)
 		return;
 
 	time_delta = ktime_sub(end_time, bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time);
-	if (ktime_compare(time_delta, DELTA_10MS) < 0)
+	if (ktime_compare(time_delta, DELTA_5MS) < 0)
 		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].lt_5ms_count);
-	else if (ktime_compare(time_delta, DELTA_50MS) < 0)
+	else if (ktime_compare(time_delta, DELTA_10MS) < 0)
 		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].bt_5ms_10ms_count);
-	else
+	else {
 		atomic_inc(&bcl_dev->ifpmic_irq_bins[batt][pwrwarn].gt_10ms_count);
+		if (bcl_dev->rffe_mitigation_enable && pwrwarn == RFFE_BCL_BIN &&
+		    (batt == BATOILO_IRQ_BIN)) {
+			if (meter_read(CORE_PMIC_MAIN, bcl_dev, PWRWARN_LPF_RFFE_DATA_MAIN_0,
+				       &lsb)) {
+				dev_err(bcl_dev->device, "cannot read rffe power\n");
+				goto end_bin_incr_ifpmic;
+			}
+			if (meter_read(CORE_PMIC_MAIN, bcl_dev, PWRWARN_LPF_RFFE_DATA_MAIN_1,
+				       &msb)) {
+				dev_err(bcl_dev->device, "cannot read rffe power\n");
+				goto end_bin_incr_ifpmic;
+			}
+			if (meter_read(CORE_PMIC_MAIN, bcl_dev, PWRWARN_THRESH_MAIN, &thr)) {
+				dev_err(bcl_dev->device, "cannot read rffe power\n");
+				goto end_bin_incr_ifpmic;
+			}
+			odpm_pwr = (lsb | ((msb & PWRWARN_LPF_RFFE_MSB_MASK) << 8)) >>
+				    PWRWARN_LPF_RFFE_RSHIFT;
+			if (odpm_pwr < thr)
+				goto end_bin_incr_ifpmic;
+			modem_force_crash_exit_ext();
+			dev_err(bcl_dev->device, "BCL: RFFE ODPM pwr: %i, thresh: %i trig crash",
+				odpm_pwr, thr);
+		}
+	}
+end_bin_incr_ifpmic:
 
 	bcl_dev->ifpmic_irq_bins[batt][pwrwarn].start_time = 0;
 }
@@ -190,9 +220,9 @@ static void pwrwarn_update_end_time(struct bcl_device *bcl_dev, int id,
 		return;
 
 	time_delta = ktime_sub(end_time, bins[id].start_time);
-	if (ktime_compare(time_delta, DELTA_10MS) < 0)
+	if (ktime_compare(time_delta, DELTA_5MS) < 0)
 		atomic_inc(&(bins[id].lt_5ms_count));
-	else if (ktime_compare(time_delta, DELTA_50MS) < 0)
+	else if (ktime_compare(time_delta, DELTA_10MS) < 0)
 		atomic_inc(&(bins[id].bt_5ms_10ms_count));
 	else
 		atomic_inc(&(bins[id].gt_10ms_count));
