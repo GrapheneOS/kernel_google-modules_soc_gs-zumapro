@@ -51,6 +51,7 @@ struct gs101_spmic_thermal_chip {
 	struct kobject *kobjs[GTHERM_CHAN_NUM];
 	struct kthread_worker *wq;
 	struct kthread_delayed_work wait_sensor_work;
+	bool sensors_ready;
 };
 
 /**
@@ -175,6 +176,9 @@ static int gs101_spmic_thermal_get_temp(struct thermal_zone_device *tz,
 	int raw, ret = 0;
 	u8 mask = 0x1;
 
+	if (!gs101_spmic_thermal->sensors_ready)
+		return -EAGAIN;
+
 	emul_temp = s->emul_temperature;
 	if (emul_temp) {
 		*temp = emul_temp;
@@ -211,6 +215,9 @@ static int gs101_spmic_thermal_set_trips(struct thermal_zone_device *tz,
 	int emul_temp, low_volt, ret = 0;
 	u8 raw;
 
+	if (!gs101_spmic_thermal->sensors_ready)
+		return -EAGAIN;
+
 	/* Set threshold to extreme value when emul_temp set */
 	emul_temp = s->emul_temperature;
 	if (emul_temp) {
@@ -242,6 +249,9 @@ static int gs101_spmic_thermal_set_hot_trip(struct gs101_spmic_thermal_sensor *s
 	u8 raw = gs101_map_temp_volt(temp) >> 4 & 0xFF;
 	struct device *dev = gs101_spmic_thermal->dev;
 
+	if (!gs101_spmic_thermal->sensors_ready)
+		return -EAGAIN;
+
 	if (temp == THERMAL_TEMP_INVALID)
 		return -EINVAL;
 	ret = s2mpg11_write_reg(gs101_spmic_thermal->i2c, S2MPG11_METER_NTC_H_WARN0 + s->adc_chan,
@@ -261,6 +271,9 @@ static int gs101_spmic_thermal_set_trip_temp(struct thermal_zone_device *tz,
 	struct gs101_spmic_thermal_sensor *s = tz->devdata;
 	const struct thermal_trip *trip_points;
 	int ret = 0;
+
+	if (!s->chip->sensors_ready)
+		return -EAGAIN;
 
 	trip_points = of_thermal_get_trip_points(s->tzd);
 	if (!trip_points)
@@ -284,6 +297,9 @@ static int gs101_spmic_thermal_set_emul_temp(struct thermal_zone_device *tz,
 	struct gs101_spmic_thermal_sensor *sensor = tz->devdata;
 	int ret;
 	u8 value, mask = 0x1;
+
+	if (!sensor->chip->sensors_ready)
+		return -EAGAIN;
 
 	if (sensor->chip->adc_chan_en & (mask << sensor->adc_chan)) {
 		ret = s2mpg11_read_reg(sensor->chip->i2c, S2MPG11_METER_CTRL3, &value);
@@ -385,6 +401,7 @@ static void gs101_spmic_thermal_wait_sensor(struct kthread_work *work)
 
 		thermal_zone_device_enable(gs101_spmic_thermal->sensor[i].tzd);
 	}
+	gs101_spmic_thermal->sensors_ready = true;
 }
 
 /*
@@ -566,6 +583,9 @@ adc_chan_en_show(struct device *dev, struct device_attribute *devattr,
 	int ret;
 	u8 value;
 
+	if (!chip->sensors_ready)
+		return -EAGAIN;
+
 	ret = s2mpg11_read_reg(chip->i2c, S2MPG11_METER_CTRL3, &value);
 
 	return ret ? ret : scnprintf(buf, PAGE_SIZE, "0x%02X\n", value);
@@ -579,6 +599,9 @@ adc_chan_en_store(struct device *dev, struct device_attribute *devattr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gs101_spmic_thermal_chip *chip = platform_get_drvdata(pdev);
 	u8 value, mask = 0x1;
+
+	if (!chip->sensors_ready)
+		return -EAGAIN;
 
 	ret = sscanf(buf, "%hhx", &value);
 	if (ret != 1)
