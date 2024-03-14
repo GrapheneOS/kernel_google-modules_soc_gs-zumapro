@@ -5,4 +5,4 @@ ccflags-y += -I$(srctree)/drivers/performance
 ccflags-y += -I$(srctree)/drivers/devfreq
 
 obj-$(CONFIG_GS_LATENCY_GOVERNOR)		+= gs_governor_memlat.o gs_governor_dsulat.o gs_governor_utils.o
-obj-$(CONFIG_GS_LATENCY_DEVFREQ)		+= gs_memlat_devfreq.o gs_dsulat_devfreq.o
+obj-$(CONFIG_GS_LATENCY_DEVFREQ)		+= gs_dsulat_devfreq.o
