@@ -82,7 +82,6 @@ gs-chipid.ko
 gs-drm-connector.ko
 gs-panel.ko
 gs_acpm.ko
-gs_dsulat_devfreq.ko
 gs_governor_dsulat.ko
 gs_governor_memlat.ko
 gs_governor_utils.ko
