@@ -26,6 +26,7 @@
 #define ERRGSR_OFFSET		0x3000
 #define ERRGSR_NS_OFFSET	0x3100
 #define ERRGSR_COUNT		6
+#define ERRGSR_GROUP_COUNT  2
 #define ERRIRQ_COUNT		2
 #define ERRGSR_ERROR_OFFSET	0
 #define ERRGSR_FAULT_OFFSET	0x80
@@ -543,6 +544,22 @@ static struct bci_irq_desc *find_irq_desc(struct bci_dev *bci, int irq) {
 	return NULL;
 }
 
+static void dump_errgsr(struct bci_dev *bci, int errgsr_offset, const char* suffix) {
+	int i;
+	/*
+	 * error status registers are sprint into two parts secure and non-secure.
+	 * Every part has different offset from the BCI base address.
+	 * Inside of every part there are two groups of six registers. One for errors
+	 * and another one for faults coming one after another.
+	 * Since ERRGSR_COUNT represent the number of registers in one group,
+	 * multiply it by two to print both groups.
+	 */
+	for (i = 0; i < (ERRGSR_GROUP_COUNT * ERRGSR_COUNT); i++) {
+		u64 errgsr = read_bci_reg(bci->base + errgsr_offset + i * sizeof(u64));
+		dev_err(bci->dev, "por_cfgm_errgsr_%s[%d] = %#018llx\n", suffix, i, errgsr);
+	}
+}
+
 static irqreturn_t bci_irq_handler(int irq, void *data)
 {
 	int i;
@@ -557,6 +574,8 @@ static irqreturn_t bci_irq_handler(int irq, void *data)
 	errgsr_offset += irq_desc->is_error ? ERRGSR_ERROR_OFFSET : ERRGSR_FAULT_OFFSET;
 
 	dev_err(bci->dev, "irq = %d, errgsr_offset = %#010x\n", irq, errgsr_offset);
+	dump_errgsr(bci, ERRGSR_OFFSET, "S");
+	dump_errgsr(bci, ERRGSR_NS_OFFSET, "NS");
 
 	/* Check secure error groups */
 	for (i = 0; i < ERRGSR_COUNT; i++) {
