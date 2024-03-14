@@ -838,26 +838,15 @@
 		};
 	};
 
-	gs_memlat_devfreq {
-		compatible = "gs-memlat-devfreq-root";
-		#address-cells = <2>;
-		#size-cells = <1>;
-		ranges;
+	gs_governor_memlat: gs-governor-memlat {
+		compatible = "google,gs_governor_memlat";
 
-		gs_memlat: devfreq_mif_lat@17000010 {
-			compatible = "gs-memlat-devfreq";
-			devfreq_type = <DEVFREQ_MIF>;
-			devfreq_domain_name = "MIF";
+		primary_vote_config {
+			vote_name = "memlat";
 			pm_qos_class = <PM_QOS_BUS_THROUGHPUT>;
-			pm_qos_class_max = <PM_QOS_BUS_THROUGHPUT_MAX>;
-			dm-index = <DM_MIF>;
-			clock-names = "DEVFREQ";
-			polling_ms = <8>;
-
-			/* governor data */
-			governor = <MEM_LATENCY>;
-			dfs_id = <ACPM_DVFS_MIF>;
 		};
+
+		/* governor configuration fields are defined in A0/B0 dtsi files */
 	};
 
 	gs_perf_mon {
