@@ -1373,8 +1373,8 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	mutex_init(&domain->lock);
 
 	spin_lock_init(&domain->thermal_update_lock);
-	domain->capped_freq[TJ] = 0;
-	domain->capped_freq[TSKIN] = 0;
+	domain->capped_freq[TJ] = domain->max_freq;
+	domain->capped_freq[TSKIN] = domain->max_freq;
 	scnprintf(domain->capped_freq_name[TJ], (THERMAL_PRESSURE_STR_LEN), "TJ_THERMAL_PRESSURE_%d",
 		  domain->id);
 	scnprintf(domain->capped_freq_name[TSKIN], (THERMAL_PRESSURE_STR_LEN), "TSKIN_THERMAL_PRESSURE_%d",
