@@ -1201,8 +1201,8 @@
 			/* Delay time */
 			use_delay_time = "false";
 
-			freq_info = <324000 324000 324000 324000
-					2150000 324000>;
+			freq_info = <610000 610000 610000 610000
+					2150000 610000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
 
@@ -1226,8 +1226,8 @@
 			/* Delay time */
 			use_delay_time = "false";
 
-			freq_info = <315000 315000 315000 315000
-					2020000 315000>;
+			freq_info = <575000 575000 575000 575000
+					2020000 575000>;
 			/* <initial_freq, default_qos, suspend_freq, min,
 			max, reboot_freq> */
 
