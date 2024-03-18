@@ -103,12 +103,6 @@ static int init_ctl_device(struct gnss_ctl *gc, struct gnss_pdata *pdata)
 		return ret;
 	}
 
-	ret = enable_irq_wake(gc->irq_gnss2ap_spi.num);
-	if (ret) {
-	        gif_err("Failed to enable wakeup_source - kepler_spi_irq_handler(%d)\n", ret);
-		return ret;
-	}
-
 	gc->gpio_ap2gnss_spi.num =
 				of_get_named_gpio(np, "gpio_ap2gnss_spi", 0);
 	if (gc->gpio_ap2gnss_spi.num < 0) {
