@@ -218,52 +218,10 @@ void rvh_set_cpus_allowed_by_task(void *data, const struct cpumask *cpu_valid_ma
 	return;
 }
 
-void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
-	struct task_struct *p)
+
+void set_uclamp_inheritance(struct task_struct *p, struct task_struct *pi_task,
+	unsigned int *uclamp_pi)
 {
-	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
-
-	if (!t->from || vbinder->active)
-		return;
-
-	vbinder->active = true;
-
-	/* inherit uclamp */
-	vbinder->uclamp[UCLAMP_MIN] = uclamp_eff_value(current, UCLAMP_MIN);
-	vbinder->uclamp[UCLAMP_MAX] = uclamp_eff_value(current, UCLAMP_MAX);
-
-	/* inherit prefer_idle */
-	vbinder->prefer_idle = get_prefer_idle(current);
-
-	/* Inherit uclamp_fork_reset form get_vendor_binder_task_struct(current)->uclamp_fork_reset
-	 * or get_vendor_task_struct(current)->uclamp_fork_reset.
-	 */
-	if (get_uclamp_fork_reset(current, true) && !get_uclamp_fork_reset(p, true))
-		vbinder->uclamp_fork_reset = true;
-}
-
-void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction *t,
-	struct task_struct *p)
-{
-	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
-
-	if (vbinder->active) {
-		if (task_on_rq_queued(p) && vbinder->uclamp_fork_reset)
-			dec_adpf_counter(p, task_rq(p));
-
-		vbinder->uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
-		vbinder->uclamp[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
-		vbinder->uclamp_fork_reset = false;
-		vbinder->prefer_idle = false;
-		vbinder->active = false;
-	}
-}
-
-void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
-	struct task_struct *pi_task)
-{
-	struct vendor_task_struct *vp = get_vendor_task_struct(p);
-
 	if (pi_task) {
 		unsigned long p_util = task_util(p);
 		unsigned long p_uclamp_min = uclamp_eff_value_pixel_mod(p, UCLAMP_MIN);
@@ -290,16 +248,61 @@ void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
 		/* Inherit unclamp_min/max if they're inverted */
 
 		if (p_uclamp_min < pi_uclamp_min)
-			vp->uclamp_pi[UCLAMP_MIN] = pi_uclamp_min;
+			uclamp_pi[UCLAMP_MIN] = pi_uclamp_min;
 
 		if (p_uclamp_max < pi_uclamp_max || pi_uclamp_min > p_uclamp_max)
-			vp->uclamp_pi[UCLAMP_MAX] = pi_uclamp_max;
+			uclamp_pi[UCLAMP_MAX] = pi_uclamp_max;
 
 		return;
 	}
 
-	vp->uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
-	vp->uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
+	uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
+	uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
+}
+
+void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
+	struct task_struct *p)
+{
+	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
+
+	if (!t->from || vbinder->active)
+		return;
+
+	vbinder->active = true;
+
+	/* inherit uclamp */
+	set_uclamp_inheritance(p, current, vbinder->uclamp);
+
+	/* inherit prefer_idle */
+	vbinder->prefer_idle = get_prefer_idle(current);
+
+	/* Inherit uclamp_fork_reset form get_vendor_binder_task_struct(current)->uclamp_fork_reset
+	 * or get_vendor_task_struct(current)->uclamp_fork_reset.
+	 */
+	if (get_uclamp_fork_reset(current, true) && !get_uclamp_fork_reset(p, true))
+		vbinder->uclamp_fork_reset = true;
+}
+
+void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction *t,
+	struct task_struct *p)
+{
+	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
+
+	if (vbinder->active) {
+		if (task_on_rq_queued(p) && vbinder->uclamp_fork_reset)
+			dec_adpf_counter(p, task_rq(p));
+
+		set_uclamp_inheritance(p, NULL, vbinder->uclamp);
+		vbinder->uclamp_fork_reset = false;
+		vbinder->prefer_idle = false;
+		vbinder->active = false;
+	}
+}
+
+void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
+	struct task_struct *pi_task)
+{
+	set_uclamp_inheritance(p, pi_task, get_vendor_task_struct(p)->uclamp_pi);
 }
 
 void set_cluster_enabled_cb(int cluster, int enabled)
