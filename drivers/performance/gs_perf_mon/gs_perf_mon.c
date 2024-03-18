@@ -213,8 +213,8 @@ void gs_perf_mon_tick_update_counters(void)
 		for (perf_idx = 0; perf_idx < PERF_NUM_COMMON_EVS; perf_idx++) {
 			ev_data = &cpu_data->perf_ev_data[perf_idx];
 			if (read_perf_event(ev_data, &total)) {
-				pr_err("Perf event read failed on cpu=%u for event_idx=%u", cpu,
-				       perf_idx);
+				pr_debug("Perf event read failed on cpu=%u for event_idx=%u",
+				cpu, perf_idx);
 				continue;
 			}
 			ev_data->prev_count = ev_data->curr_count;
