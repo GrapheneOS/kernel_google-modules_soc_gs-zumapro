@@ -27,6 +27,8 @@ extern int ___update_load_sum(u64 now, struct sched_avg *sa, unsigned long load,
 extern void ___update_load_avg(struct sched_avg *sa, unsigned long load);
 extern int get_cluster_enabled(int cluster);
 
+extern struct cpumask cpu_skip_mask;
+
 /*****************************************************************************/
 /*                       Upstream Code Section                               */
 /*****************************************************************************/
@@ -190,6 +192,9 @@ static int find_least_loaded_cpu(struct task_struct *p, struct cpumask *lowest_m
 			cpu_importance[cpu] = UINT_MAX;
 			exit_lat[cpu] = pixel_cpd_exit_latency[pixel_cpu_to_cluster[cpu]];
 		}
+
+		if (cpumask_test_cpu(cpu, &cpu_skip_mask))
+			cpu_importance[cpu] = UINT_MAX;
 
 		trace_sched_cpu_util_rt(cpu, capacity[cpu], capacity_of(cpu), util[cpu],
 					exit_lat[cpu], cpu_importance[cpu], task_fits[cpu],
