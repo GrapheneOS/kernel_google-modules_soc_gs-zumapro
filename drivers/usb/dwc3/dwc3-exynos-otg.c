@@ -244,9 +244,18 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 		exynos->need_dr_role = 1;
 
 		ret = pm_runtime_get_sync(dev);
-		if (ret < 0) {
-			dev_err(dev, "failed to resume exynos device\n");
+		if (ret) {
+			dev_err(dev, "failed to resume exynos device, ret=%d\n", ret);
+			if (ret == 1)
+				/*
+				 * The DWC3 core initialization is required for role switching, the
+				 * process should be aborted if DWC3 is already active.
+				 * Reference bug: b/317947464
+				 */
+				dev_err(dev, "DWC3 device already active, skipping core "
+					"initialization.");
 			pm_runtime_set_suspended(dev);
+			exynos->need_dr_role = 0;
 			mutex_unlock(&dotg->lock);
 			device_unlock(&dwc->gadget->dev);
 			goto err1;
@@ -340,9 +349,23 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 		dwc->connected = true;
 
 		ret = pm_runtime_get_sync(dev);
-		if (ret < 0) {
-			dev_err(dev, "failed to resume exynos device\n");
+		if (ret) {
+			dev_err(dev, "failed to resume exynos device, ret=%d\n", ret);
+			if (ret == 1)
+				/*
+				 * The DWC3 core initialization is required for role switching, the
+				 * process should be aborted if DWC3 is already active.
+				 * Reference bug: b/317947464
+				 */
+				dev_err(dev, "DWC3 device already active, skipping core "
+					"initialization.");
 			pm_runtime_set_suspended(dev);
+			dwc->connected = false;
+			exynos->need_dr_role = 0;
+			mutex_unlock(&dotg->lock);
+			device_unlock(&dwc->gadget->dev);
+			__pm_relax(dotg->wakelock);
+			return ret;
 		}
 		exynos->need_dr_role = 0;
 		mutex_unlock(&dotg->lock);
@@ -405,7 +428,7 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 		__pm_relax(dotg->wakelock);
 	}
 
-	return 0;
+	return ret;
 }
 
 /* -------------------------------------------------------------------------- */
