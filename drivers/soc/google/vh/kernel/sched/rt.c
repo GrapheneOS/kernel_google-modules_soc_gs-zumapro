@@ -72,12 +72,6 @@ static inline void rt_task_fits_capacity(struct task_struct *p, int cpu,
 	unsigned long uclamp_max = uclamp_eff_value_pixel_mod(p, UCLAMP_MAX);
 	unsigned long util = task_util(p);
 
-	if (get_prefer_high_cap(p) && cpu < pixel_cluster_start_cpu[1]) {
-		*fits = false;
-		*fits_original = false;
-		return;
-	}
-
 	*fits = util_fits_cpu(util, uclamp_min, uclamp_max, cpu);
 	*fits_original = capacity_orig_of(cpu) >= clamp(util, uclamp_min, uclamp_max) ||
 			 cpu >= pixel_cluster_start_cpu[2];
