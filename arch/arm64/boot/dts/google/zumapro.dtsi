@@ -242,6 +242,7 @@
 
 	hdcp {
 		compatible = "samsung,exynos-hdcp";
+		interrupts = <GIC_SPI INTREQ__HDCP IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
 	/* GPIO_ALIVE */
