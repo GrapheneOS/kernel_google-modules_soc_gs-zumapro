@@ -33,6 +33,11 @@ config SOC_ZUMA
 	bool "Google Zuma"
 	depends on SOC_GOOGLE
 
+config SOC_ZUMAPRO
+	bool "Google Zuma Pro"
+	depends on SOC_GOOGLE
+	depends on SOC_ZUMA
+
 config BOARD_RIPCURRENT
 	bool "Google Ripcurrent Board"
 	depends on SOC_ZUMA
