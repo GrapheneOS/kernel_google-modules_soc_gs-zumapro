@@ -1757,23 +1757,22 @@ static int odpm_remove(struct platform_device *pdev)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(&pdev->dev);
 	struct odpm_info *info = iio_priv(indio_dev);
-	int ret;
+	int ret = 0;
 
-	ret = alarm_cancel(&info->alarmtimer_refresh);
-	if (ret < 0) {
-		pr_err("odpm: cannot delete the refresh timer\n");
-		ret = -EINVAL;
-	}
 	if (info->work_queue) {
+		ret = alarm_cancel(&info->alarmtimer_refresh);
+		if (ret < 0) {
+			pr_err("odpm: cannot delete the refresh timer\n");
+			ret = -EINVAL;
+		}
 		cancel_work_sync(&info->work_refresh);
 		flush_workqueue(info->work_queue);
 		destroy_workqueue(info->work_queue);
 	}
 
 	/* free the channel attributes memory */
-	kfree(indio_dev->channels);
-
-	iio_device_unregister(indio_dev);
+	if (indio_dev->channels)
+		indio_dev->channels = NULL;
 
 	if (info->ws)
 		wakeup_source_unregister(info->ws);
