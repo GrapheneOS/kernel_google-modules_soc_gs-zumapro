@@ -160,5 +160,23 @@ int s2mpg15_bulk_read(struct i2c_client *i2c, u8 reg, int count, u8 *buf);
 int s2mpg15_write_reg(struct i2c_client *i2c, u8 reg, u8 value);
 int s2mpg15_bulk_write(struct i2c_client *i2c, u8 reg, int count, u8 *buf);
 int s2mpg15_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask);
+typedef void (*client_exit_callback)(void);
 
+#if  IS_ENABLED(CONFIG_GSOC_PMIC_THERMAL_CAMBRIA)
+extern int s2mpg15_spmic_thermal_register_client (client_exit_callback);
+extern void s2mpg15_spmic_thermal_unregister_client (void);
+extern int s2mpg15_spmic_set_hw_lpf(bool);
+#else
+static inline int s2mpg15_spmic_thermal_register_client(
+	client_exit_callback client_cb)
+{
+	return -ENOSYS;
+}
+static inline void s2mpg15_spmic_thermal_unregister_client(void)
+{}
+static inline int s2mpg15_spmic_set_hw_lpf(bool enable)
+{
+	return -ENOSYS;
+}
+#endif /* IS_ENABLED(CONFIG_GSOC_PMIC_THERMAL_CAMBRIA)*/
 #endif /* __S2MPG15_MFD_H__ */
