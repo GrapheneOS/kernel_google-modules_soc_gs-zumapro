@@ -17,15 +17,9 @@
 /* handling interrupt by BETP messages from kepler through SPI */
 static irqreturn_t kepler_spi_irq_handler(int irq, void *data)
 {
-	struct gnss_ctl *gc = (struct gnss_ctl *)data;
+	struct gnss_ctl *gc = data;
 	struct io_device *iod = gc->iod;
 	struct link_device *ld = iod->ld;
-
-	if (!gc->iod) {
-		gif_err("probe is not done yet\n");
-		gif_disable_irq_nosync(&gc->irq_gnss2ap_spi);
-		return IRQ_HANDLED;
-	}
 
 	gif_debug("received SPI interrupt from GNSS\n");
 
@@ -92,26 +86,48 @@ static int init_ctl_device(struct gnss_ctl *gc, struct gnss_pdata *pdata)
 		return -ENODEV;
 	}
 	gc->gpio_gnss2ap_spi.label = "GNSS2AP_SPI";
-	gpio_request(gc->gpio_gnss2ap_spi.num, gc->gpio_gnss2ap_spi.label);
+	ret = gpio_request(gc->gpio_gnss2ap_spi.num, gc->gpio_gnss2ap_spi.label);
+	if (ret) {
+		gif_err("Request gpio fail - gpio_gnss2ap_spi.num failed(%d)\n", ret);
+		return ret;
+	}
 	gc->irq_gnss2ap_spi.num = gpio_to_irq(gc->gpio_gnss2ap_spi.num);
+
+	/* Disable the interrupt until gnss_main.c probe function finish */
 	gif_init_irq(&gc->irq_gnss2ap_spi, gc->irq_gnss2ap_spi.num,
-			"kepler_spi_irq_handler", IRQF_TRIGGER_HIGH);
+			"kepler_spi_irq_handler", IRQF_TRIGGER_HIGH | IRQF_NO_AUTOEN);
 
 	ret = gif_request_irq(&gc->irq_gnss2ap_spi, kepler_spi_irq_handler, gc);
 	if (ret) {
 		gif_err("Request irq fail - kepler_spi_irq_handler(%d)\n", ret);
-		return ret;
+		goto free_gpio_gnss2ap;
+	}
+
+	ret = enable_irq_wake(gc->irq_gnss2ap_spi.num);
+	if (ret) {
+		gif_err("Failed to enable wakeup_source - enable_irq_wake(%d)\n", ret);
+		goto free_gpio_irq;
 	}
 
 	gc->gpio_ap2gnss_spi.num =
 				of_get_named_gpio(np, "gpio_ap2gnss_spi", 0);
 	if (gc->gpio_ap2gnss_spi.num < 0) {
 		gif_err("Can't get gpio_ap2gnss_spi!\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto free_gpio_irq;
 	}
 	gc->gpio_ap2gnss_spi.label = "AP2GNSS_SPI";
-	gpio_request(gc->gpio_ap2gnss_spi.num, gc->gpio_ap2gnss_spi.label);
-	gpio_direction_output(gc->gpio_ap2gnss_spi.num, 0);
+	ret = gpio_request(gc->gpio_ap2gnss_spi.num, gc->gpio_ap2gnss_spi.label);
+	if (ret) {
+		gif_err("Request gpio fail - gpio_ap2gnss_spi.num failed(%d)\n", ret);
+		goto free_gpio_irq;
+	}
+
+	ret = gpio_direction_output(gc->gpio_ap2gnss_spi.num, 0);
+	if (ret) {
+		gif_err("Set gpio direction fail - gpio_ap2gnss_spi.num failed(%d)\n", ret);
+		goto free_gpio_ap2gnss;
+	}
 
 	/* initialize gpio values to all zero */
 	gpio_set_value(gc->gpio_ap2gnss_spi.num, 0);
@@ -123,6 +139,18 @@ static int init_ctl_device(struct gnss_ctl *gc, struct gnss_pdata *pdata)
 	atomic_set(&gc->rx_in_progress, 0);
 
 	return ret;
+
+free_gpio_ap2gnss:
+	gpio_free(gc->gpio_ap2gnss_spi.num);
+
+free_gpio_irq:
+	free_irq(gc->irq_gnss2ap_spi.num, &gc);
+
+free_gpio_gnss2ap:
+	gpio_free(gc->gpio_gnss2ap_spi.num);
+
+	return ret;
+
 }
 
 struct gnss_ctl *create_ctl_device(struct platform_device *pdev)
