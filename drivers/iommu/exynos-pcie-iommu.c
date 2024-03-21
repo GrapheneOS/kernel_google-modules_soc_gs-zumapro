@@ -1,5 +1,3 @@
-<<<<<<< TARGET BRANCH (b1558c drivers: thermal: spmic: Access hardware only when ready)
-=======
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * PCIe Exynos IOMMU driver
@@ -1897,4 +1895,3 @@ device_initcall(pcie_iommu_init);
 MODULE_AUTHOR("Kisang Lee <kisang80.lee@samsung.com>");
 MODULE_DESCRIPTION("Exynos PCIe SysMMU driver");
 MODULE_LICENSE("GPL v2");
->>>>>>> SOURCE BRANCH (b7e614 iommu: pcie: Set correct pgtable base for PAGE_SIZE != 4K am)
