@@ -69,6 +69,13 @@ struct s2mpg15_spmic_thermal_chip {
 	struct kthread_delayed_work wait_sensor_work;
 	bool sensors_ready;
 };
+static struct s2mpg15_spmic_thermal_chip *spmic_thermal_chip;
+
+/* ODPM driver is the only known client for now
+*  might want to scale this to handle more than 1 client
+*  in the future.
+*/
+static client_exit_callback cb;
 
 /**
  * struct s2mpg15_spmic_thermal_map_pt - Map data representation for ADC
@@ -181,6 +188,34 @@ static int s2mpg15_spmic_thermal_read_raw(struct s2mpg15_spmic_thermal_sensor *s
 
 	return ret;
 }
+/*
+ * s2mpg15_spmic_disable_hw_lpf() - disable hw low-pass filter.
+ * @s2mpg15_spmic_thermal: sub pmic chip
+ *
+ * disable hardware low pass filter.
+ *
+ * Return: register write status.
+*/
+
+static int s2mpg15_spmic_disable_hw_lpf(
+			struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal)
+{
+	int ret_code = 0, i;
+	struct device *dev = s2mpg15_spmic_thermal->dev;
+
+	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
+		u8 reg = S2MPG15_METER_NTC_LPF_C0_0 + i;
+
+		dev_dbg(dev, "Disabling sensor %d  LPF\n", i);
+		ret_code = s2mpg15_write_reg(s2mpg15_spmic_thermal->meter_i2c,
+			reg, HW_LPF_RESET_VALUE);
+		if (ret_code) {
+			dev_warn(dev, "Disable LPF for chan %d failed with %x\n", i, ret_code);
+			break;
+		}
+	}
+	return ret_code;
+}
 
 /*
  * Configure NTC channels in thermistor engine.
@@ -188,19 +223,13 @@ static int s2mpg15_spmic_thermal_read_raw(struct s2mpg15_spmic_thermal_sensor *s
 static int s2mpg15_spmic_set_ntc_channels(
 	struct s2mpg15_spmic_thermal_chip *s2mpg15_spmic_thermal, u8 adc_ch_en)
 {
-	int i, ret = 0;
+	int ret = 0;
 	struct device *dev = s2mpg15_spmic_thermal->dev;
 	struct i2c_client *meter_i2c = s2mpg15_spmic_thermal->meter_i2c;
 
 	// disable lpf before meter sw reset
-	for (i = 0; i < GTHERM_CHAN_NUM; i++) {
-		u8 reg = S2MPG15_METER_NTC_LPF_C0_0 + s2mpg15_spmic_thermal->sensor[i].adc_chan;
+	s2mpg15_spmic_disable_hw_lpf(s2mpg15_spmic_thermal);
 
-		dev_dbg(dev, "Disabling sensor %d  LPF\n", i);
-		ret = s2mpg15_write_reg(s2mpg15_spmic_thermal->meter_i2c, reg, HW_LPF_RESET_VALUE);
-		if (ret)
-			dev_warn(dev, "Sensor %d LPF write fail\n", i);
-	}
 	usleep_range(NTC_UPDATE_MIN_DELAY_US, NTC_UPDATE_MAX_DELAY_US);
 
 	dev_info(dev, "Applying NTC... disabling odpm [s2mpg15]\n");
@@ -270,22 +299,89 @@ static int s2mpg15_spmic_wait_for_sensors_ready(
 			dev_err(dev, "Sensor %d timeout, give up...\n", i);
 			ret_code = ret;
 		}
-
-		thermal_zone_device_update(s2mpg15_spmic_thermal->sensor[i].tzd,
-					   THERMAL_EVENT_UNSPECIFIED);
-
 		/* Enable HW LPF */
+		mutex_lock(&s2mpg15_spmic_thermal->adc_chan_lock);
 		dev_dbg(dev, "updating sensor %d  LPF CO to 0x%x\n",
 			i, s2mpg15_spmic_thermal->enable_hw_lpf[i]);
-		ret = s2mpg15_write_reg(s2mpg15_spmic_thermal->meter_i2c, reg,
+		ret_code = s2mpg15_write_reg(s2mpg15_spmic_thermal->meter_i2c, reg,
 			s2mpg15_spmic_thermal->enable_hw_lpf[i]);
-		if (ret)
-			dev_warn(dev, "Sensor %d LPF write fail with ret:%d\n", i, ret);
+		if (ret_code)
+			dev_warn(dev, "Sensor %d LPF write fail with ret:%d\n", i, ret_code);
+		mutex_unlock(&s2mpg15_spmic_thermal->adc_chan_lock);
+		thermal_zone_device_update(s2mpg15_spmic_thermal->sensor[i].tzd,
+					   THERMAL_EVENT_UNSPECIFIED);
 	}
-
+	/* set up spmic driver info for API access*/
+	spmic_thermal_chip = s2mpg15_spmic_thermal;
 	s2mpg15_spmic_thermal->sensors_ready = true;
 	return ret_code;
 }
+
+/*
+ * s2mpg15_spmic_set_hw_lpf() - enable/disable hw low-pass filter.
+ * @enable: 1: Enable, 0: Disable
+ *
+ * API to enable or disable hardware low pass filter.
+ *
+ * Return : register write status if driver ready, -ENODEV if not ready.
+*/
+int s2mpg15_spmic_set_hw_lpf(bool enable) {
+	int ret = 0;
+	/*
+	* We are not using a mutex/counter to guard the critical section
+	* and we can evaluate it later if needed.
+	*/
+	if (!spmic_thermal_chip) {
+		pr_err("%s:spmic thermal driver not ready \n", __func__);
+		return -ENODEV;
+	}
+	if (enable) {
+		ret = s2mpg15_spmic_wait_for_sensors_ready(
+			spmic_thermal_chip,spmic_thermal_chip->adc_chan_en);
+		if (ret)
+			spmic_thermal_chip->adc_chan_en = 0x00;
+	} else {
+		ret = s2mpg15_spmic_disable_hw_lpf(spmic_thermal_chip);
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(s2mpg15_spmic_set_hw_lpf);
+
+/*
+ * s2mpg15_spmic_thermal_register_client() - register client driver
+ * @client_cb: Client driver's callback pointer
+ *
+ * API for client driver to register itself with a callback pointer
+ * that spmic driver maintains to notify later when spmicdriver is removed.
+ *
+ * Return: success if spmic driver is ready, -EINVAL if not.
+*/
+int s2mpg15_spmic_thermal_register_client (client_exit_callback client_cb) {
+	if (cb) {
+		pr_warn("%s client already registered \n", __func__);
+		return -EALREADY;
+	}
+	if (client_cb && spmic_thermal_chip) {
+		cb = client_cb;
+		return 0;
+	}
+
+	/*spmic thermal driver not ready*/
+	return -EBUSY;
+}
+EXPORT_SYMBOL_GPL(s2mpg15_spmic_thermal_register_client);
+/*
+ * s2mpg15_spmic_thermal_unregister_client() - unregister client driver
+ *
+ * API for client driver to unregister itself so spmic driver can
+ * clear the callback pointer
+ *
+ * Return: void. just clear the client cb*
+*/
+void s2mpg15_spmic_thermal_unregister_client (void) {
+	cb = NULL;
+}
+EXPORT_SYMBOL_GPL(s2mpg15_spmic_thermal_unregister_client);
 
 /*
  * s2mpg15_spmic_temp_update: Update the temperature history.
@@ -1069,7 +1165,15 @@ static int s2mpg15_spmic_thermal_remove(struct platform_device *pdev)
 #endif
 	}
 	s2mpg15_spmic_thermal_unregister_tzd(chip);
-
+	spmic_thermal_chip = NULL;
+	/*
+	* Call the client driver's callback to set spmic driver status to
+	* not ready.
+	*/
+	if (cb) {
+		cb();
+		cb = NULL;
+	}
 	return 0;
 }
 
