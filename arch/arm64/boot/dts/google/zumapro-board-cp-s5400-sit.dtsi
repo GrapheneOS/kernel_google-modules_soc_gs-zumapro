@@ -24,6 +24,15 @@
 
 				delay_us = <10>;
 
+				pmic: pmic@0 {
+					reg = <0x0 0>;
+					compatible = "google,cp-pmic-spmi";
+					warm_reset_seq =
+						/*  reg  val delay_ms */
+						< 0x675 0xa1 0>,
+						< 0x67d 0xbe 0>;
+				};
+
 				s5910: s5910@5 {
 					reg = <0x05 0>;
 					compatible = "google,s5910-spmi";
@@ -77,6 +86,9 @@
 
 				/* phandle used for shutdown calls to s5910 clk-buffer*/
 				google,clk-buffer = <&s5910>;
+
+				/* phandle used for CP pmic warm reset sequence */
+				google,cp-pmic-spmi = <&pmic>;
 			};
 		};
 	};
