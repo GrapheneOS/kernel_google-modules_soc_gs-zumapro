@@ -23,9 +23,7 @@
 typedef u64 sysmmu_iova_t;
 typedef u32 sysmmu_pte_t;
 
-#define IOVM_NUM_PAGES(vmsize) ((vmsize) / PAGE_SIZE)
-#define IOVM_BITMAP_SIZE(vmsize) \
-		((IOVM_NUM_PAGES(vmsize) + BITS_PER_BYTE) / BITS_PER_BYTE)
+#define PT_BASE_SHIFT 12
 
 #define SECT_ORDER 20
 #define LPAGE_ORDER 16
