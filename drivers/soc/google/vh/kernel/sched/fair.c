@@ -2858,10 +2858,13 @@ void rvh_update_blocked_fair_pixel_mod(void *data, struct rq *rq)
 
 void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	bool force_cpufreq_update = false;
 
 	if (!static_branch_unlikely(&enqueue_dequeue_ready))
 		return;
+
+	vp->prev_sum_exec_runtime = p->se.sum_exec_runtime;
 
 	if (get_uclamp_fork_reset(p, true))
 		inc_adpf_counter(p, rq);
@@ -2895,6 +2898,8 @@ void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 
 	if (!static_branch_unlikely(&enqueue_dequeue_ready))
 		return;
+
+	vp->prev_sum_exec_runtime = p->se.sum_exec_runtime;
 
 	if (get_uclamp_fork_reset(p, true))
 		dec_adpf_counter(p, rq);

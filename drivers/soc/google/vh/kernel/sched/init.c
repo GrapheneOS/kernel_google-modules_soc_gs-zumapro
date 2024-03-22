@@ -208,6 +208,7 @@ static int init_vendor_task_data(void *data)
 		v_tsk = get_vendor_task_struct(t);
 		init_vendor_task_struct(v_tsk);
 		v_tsk->orig_prio = t->static_prio;
+		v_tsk->prev_sum_exec_runtime = t->se.prev_sum_exec_runtime;
 		put_task_struct(t);
 	}
 	rcu_read_unlock();

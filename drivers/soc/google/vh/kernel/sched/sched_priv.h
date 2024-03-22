@@ -849,6 +849,7 @@ static inline void __update_util_est_invariance(struct rq *rq,
 						struct task_struct *p,
 						bool update_cfs_rq)
 {
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	unsigned long se_enqueued, cfs_rq_enqueued;
 	struct cfs_rq *cfs_rq = &rq->cfs;
 	struct sched_entity *se = &p->se;
@@ -868,8 +869,9 @@ static inline void __update_util_est_invariance(struct rq *rq,
 	if (se->avg.util_avg >= arch_scale_cpu_capacity(cpu))
 		return;
 
-	delta_exec = (se->sum_exec_runtime - se->prev_sum_exec_runtime)/1000;
+	delta_exec = (se->sum_exec_runtime - vp->prev_sum_exec_runtime)/1000;
 	delta_exec = min_t(u64, delta_exec, TICK_USEC);
+	vp->prev_sum_exec_runtime = se->sum_exec_runtime;
 
 	se_enqueued = READ_ONCE(se->avg.util_est.enqueued) & ~UTIL_AVG_UNCHANGED;
 	se_enqueued = max_t(unsigned long, se->avg.util_est.ewma, se_enqueued);
