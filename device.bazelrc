@@ -39,13 +39,13 @@ build:download_gki --action_env=KLEAF_DOWNLOAD_BUILD_NUMBER_MAP="gki_prebuilts=1
 build:no_download_gki --use_prebuilt_gki=false
 
 # enable Pixel Staging Kernel (go/pixel-staging) by default
-build --config=use_source_tree_aosp_staging
+#build --config=use_source_tree_aosp_staging
 
 # disable GKI prebuilts by default
-build --config=no_download_gki
+#build --config=no_download_gki
 
 # enable GKI prebuilts by default
-#build --config=download_gki
+build --config=download_gki
 
 # enable dependencies for KUNIT
 build:pixel_kunit --//private/google-modules/soc/gs:enable_kunit
