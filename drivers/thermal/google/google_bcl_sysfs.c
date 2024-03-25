@@ -684,6 +684,35 @@ static ssize_t enable_mitigation_store(struct device *dev, struct device_attribu
 
 static DEVICE_ATTR_RW(enable_mitigation);
 
+static ssize_t enable_rffe_mitigation_show(struct device *dev, struct device_attribute *attr,
+					   char *buf)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+
+	return sysfs_emit(buf, "%d\n", bcl_dev->rffe_mitigation_enable);
+}
+
+static ssize_t enable_rffe_mitigation_store(struct device *dev, struct device_attribute *attr,
+					    const char *buf, size_t size)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+	struct bcl_device *bcl_dev = platform_get_drvdata(pdev);
+	bool value;
+	int ret;
+
+	ret = kstrtobool(buf, &value);
+	if (ret)
+		return ret;
+
+	if (bcl_dev->rffe_mitigation_enable == value)
+		return size;
+
+	bcl_dev->rffe_mitigation_enable = value;
+	return size;
+}
+static DEVICE_ATTR_RW(enable_rffe_mitigation);
+
 static ssize_t main_offsrc1_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
@@ -747,6 +776,7 @@ static struct attribute *instr_attrs[] = {
 	&dev_attr_mid_db_settings.attr,
 	&dev_attr_big_db_settings.attr,
 	&dev_attr_enable_mitigation.attr,
+	&dev_attr_enable_rffe_mitigation.attr,
 	&dev_attr_main_offsrc1.attr,
 	&dev_attr_main_offsrc2.attr,
 	&dev_attr_sub_offsrc1.attr,

@@ -38,11 +38,16 @@
 
 /* This driver determines if HW was throttled due to SMPL/OCP */
 
-#define DELTA_10MS		(10 * NSEC_PER_MSEC)
-#define DELTA_50MS		(50 * NSEC_PER_MSEC)
-#define VSHUNT_MULTIPLIER	10000
-#define MILLI_TO_MICRO		1000
-#define IRQ_ENABLE_DELAY_MS	50
+#define DELTA_5MS			(5 * NSEC_PER_MSEC)
+#define DELTA_10MS			(10 * NSEC_PER_MSEC)
+#define VSHUNT_MULTIPLIER		10000
+#define MILLI_TO_MICRO			1000
+#define IRQ_ENABLE_DELAY_MS		50
+#define PWRWARN_LPF_RFFE_DATA_MAIN_0	0xCF
+#define PWRWARN_LPF_RFFE_DATA_MAIN_1	0xD0
+#define PWRWARN_THRESH_MAIN		0x3C
+#define PWRWARN_LPF_RFFE_MSB_MASK	0x0F
+#define PWRWARN_LPF_RFFE_RSHIFT		4
 
 enum CPU_CLUSTER {
 	LITTLE_CLUSTER,
@@ -267,6 +272,8 @@ struct bcl_device {
 	int cpu0_cluster;
 	int cpu1_cluster;
 	int cpu2_cluster;
+
+	bool rffe_mitigation_enable;
 };
 
 extern void google_bcl_irq_update_lvl(struct bcl_device *bcl_dev, int index, unsigned int lvl);

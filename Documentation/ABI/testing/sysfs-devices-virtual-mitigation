@@ -102,6 +102,13 @@ Description:
 		The reported value indicates if brownout mitigation is enabled.
 		1 means enabled; 0 means disabled.
 
+What:		/sys/devices/virtual/pmic/mitigation/instruction/enable_rffe_mitigation
+Date:		Mar, 2024
+Contact:	"Hiroshi Akiyama" <hiroshiakiyama@google.com>
+Description:
+		Enable rffe peak power && BATOILO triggered modem crash.
+		1 means enabled; 0 means disabled.
+
 What:		/sys/devices/virtual/pmic/mitigation/instruction/pwronsrc
 Date:		May, 2023
 Contact:	"George Lee" <geolee@google.com>
