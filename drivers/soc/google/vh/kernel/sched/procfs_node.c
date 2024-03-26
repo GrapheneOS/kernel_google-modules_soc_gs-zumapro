@@ -26,6 +26,7 @@ DECLARE_PER_CPU(struct uclamp_stats, uclamp_stats);
 unsigned int __read_mostly vendor_sched_util_post_init_scale = DEF_UTIL_POST_INIT_SCALE;
 bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
 bool __read_mostly vendor_sched_reduce_prefer_idle = true;
+bool __read_mostly vendor_sched_auto_prefer_idle = false;
 bool __read_mostly vendor_sched_boost_adpf_prio = true;
 static struct proc_dir_entry *vendor_sched;
 struct proc_dir_entry *group_dirs[VG_MAX];
@@ -1622,6 +1623,37 @@ static ssize_t reduce_prefer_idle_store(struct file *filp, const char __user *ub
 
 PROC_OPS_RW(reduce_prefer_idle);
 
+static int auto_prefer_idle_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%s\n", vendor_sched_auto_prefer_idle ? "true" : "false");
+
+	return 0;
+}
+
+static ssize_t auto_prefer_idle_store(struct file *filp, const char __user *ubuf,
+					size_t count, loff_t *pos)
+{
+	bool enable;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	vendor_sched_auto_prefer_idle = enable;
+
+	return count;
+}
+
+PROC_OPS_RW(auto_prefer_idle);
+
 static int boost_adpf_prio_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "%s\n", vendor_sched_boost_adpf_prio ? "true" : "false");
@@ -2233,6 +2265,7 @@ static struct pentry entries[] = {
 	PROC_ENTRY(util_post_init_scale),
 	PROC_ENTRY(npi_packing),
 	PROC_ENTRY(reduce_prefer_idle),
+	PROC_ENTRY(auto_prefer_idle),
 	PROC_ENTRY(boost_adpf_prio),
 	PROC_ENTRY(dump_task),
 	// pmu limit attribute
