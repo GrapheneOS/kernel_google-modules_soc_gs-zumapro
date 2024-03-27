@@ -76,6 +76,14 @@ struct vendor_task_struct {
 	/* parameters for RT inheritance */
 	unsigned int uclamp_pi[UCLAMP_CNT];
 	u64 runnable_start_ns;
+	/*
+	 * A general field for time measurement in the same process context.
+	 * Be careful it should be used for stackwise, use the wrapper
+	 * functions to access this field:
+	 * - set_vendor_task_struct_private
+	 * - get_and_reset_vendor_task_struct_private
+	 */
+	unsigned long private;
 };
 
 ANDROID_VENDOR_CHECK_SIZE_ALIGN(u64 android_vendor_data1[64], struct vendor_task_struct t);
@@ -101,5 +109,19 @@ static inline void set_vendor_group(struct task_struct *p,  enum vendor_group gr
 	struct vendor_task_struct *vendor_task =
 		(struct vendor_task_struct *)p->android_vendor_data1;
 	vendor_task->group = group;
+}
+
+static inline void set_vendor_task_struct_private(struct vendor_task_struct *p, unsigned long val)
+{
+	WARN_ON(p->private != 0);
+	p->private = val;
+}
+
+static inline unsigned long get_and_reset_vendor_task_struct_private(struct vendor_task_struct *p)
+{
+	unsigned long val = p->private;
+
+	p->private = 0;
+	return val;
 }
 #endif
