@@ -864,10 +864,11 @@ static ssize_t sysfs_idle_profile_store(struct kobject *kobj,
 	parse_result = parse_idle_em_body(new_idle_profile, buf, count);
 	if (parse_result) {
 		struct pixel_idle_em *old_idle_profile = idle_profile;
+		unsigned long flags;
 		idle_profile = new_idle_profile;
-		raw_spin_lock(&vendor_sched_pixel_em_lock);
+		raw_spin_lock_irqsave(&vendor_sched_pixel_em_lock, flags);
 		WRITE_ONCE(vendor_sched_pixel_idle_em, idle_profile);
-		raw_spin_unlock(&vendor_sched_pixel_em_lock);
+		raw_spin_unlock_irqrestore(&vendor_sched_pixel_em_lock, flags);
 		pixel_em_free_idle(old_idle_profile);
 		res = count;
 	} else {
@@ -909,6 +910,7 @@ static ssize_t sysfs_idle_profile_enable_store(struct kobject *kobj,
 					  const char *buf,
 					  size_t count)
 {
+	unsigned long flags;
 	bool enable;
 	int res = kstrtobool(buf, &enable);
 	if (res) {
@@ -917,13 +919,13 @@ static ssize_t sysfs_idle_profile_enable_store(struct kobject *kobj,
 
 	mutex_lock(&sysfs_lock);
 
-	raw_spin_lock(&vendor_sched_pixel_em_lock);
+	raw_spin_lock_irqsave(&vendor_sched_pixel_em_lock, flags);
 	if (enable) {
 		WRITE_ONCE(vendor_sched_pixel_idle_em, idle_profile);
 	} else {
 		WRITE_ONCE(vendor_sched_pixel_idle_em, NULL);
 	}
-	raw_spin_unlock(&vendor_sched_pixel_em_lock);
+	raw_spin_unlock_irqrestore(&vendor_sched_pixel_em_lock, flags);
 
 	mutex_unlock(&sysfs_lock);
 
@@ -1161,6 +1163,7 @@ static int pixel_em_drv_probe(struct platform_device *dev)
 	int res;
 	struct pixel_em_profile *default_profile;
 	int num_dt_profiles;
+	unsigned long flags;
 	int i;
 
 	mutex_init(&sysfs_lock);
@@ -1190,9 +1193,9 @@ static int pixel_em_drv_probe(struct platform_device *dev)
 		idle_profile = NULL;
 		pr_warn("Pixel idle em not parsed!\n");
 	}
-	raw_spin_lock(&vendor_sched_pixel_em_lock);
+	raw_spin_lock_irqsave(&vendor_sched_pixel_em_lock, flags);
 	WRITE_ONCE(vendor_sched_pixel_idle_em, idle_profile);
-	raw_spin_unlock(&vendor_sched_pixel_em_lock);
+	raw_spin_unlock_irqrestore(&vendor_sched_pixel_em_lock, flags);
 #endif
 
 	res = pixel_em_initialize_sysfs_nodes();

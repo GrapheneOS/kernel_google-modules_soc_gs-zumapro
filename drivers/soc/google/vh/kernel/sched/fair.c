@@ -1267,12 +1267,13 @@ static inline unsigned long get_wakeup_energy(int cpu, int opp_level)
 {
 	unsigned long energy = 0;
 	struct pixel_idle_em *idle_em_snapshot;
-	raw_spin_lock(&vendor_sched_pixel_em_lock);
+	unsigned long flags;
+	raw_spin_lock_irqsave(&vendor_sched_pixel_em_lock, flags);
 	idle_em_snapshot = READ_ONCE(vendor_sched_pixel_idle_em);
 	if (idle_em_snapshot) {
 		energy = idle_em_snapshot->cpu_to_cluster[cpu]->idle_opps[opp_level].energy;
 	}
-	raw_spin_unlock(&vendor_sched_pixel_em_lock);
+	raw_spin_unlock_irqrestore(&vendor_sched_pixel_em_lock, flags);
 	return energy;
 }
 #endif
