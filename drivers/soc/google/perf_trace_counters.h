@@ -23,17 +23,27 @@
 #include <linux/sched.h>
 #include <linux/tracepoint.h>
 
+#if IS_ENABLED(CONFIG_GS_PERF_MON)
 #include <performance/gs_perf_mon/gs_perf_mon.h>
+#else
 #include "../../devfreq/google/governor_memlat.h"
+#endif
 
 /*
- * PMU common event index
+ * Legacy AMU/PMU common event index
  * 0: STALL_IDX - skipped
  * 1: L2D_CACHE_REFILL_IDX - skipped
  * 2: STALL_BACKEND_MEM_IDX
  * 3: L3_CACHE_MISS_IDX
  * 4: INST_IDX
  * 5: CYCLE_IDX
+ *
+ * gs_perf_mon AMU/PMU common event index
+ * 0: PERF_L2D_CACHE_REFILL_IDX - skipped
+ * 1: PERF_STALL_BACKEND_MEM_IDX
+ * 2: PERF_L3_CACHE_MISS_IDX
+ * 3: PERF_INST_IDX
+ * 4: PERF_CYCLE_IDX
  */
 #define NUM_EVENTS 4
 extern const unsigned int ev_idx[NUM_EVENTS];
@@ -67,7 +77,7 @@ TRACE_EVENT(sched_switch_with_ctrs,
 		memcpy(__entry->prev_comm, prev->comm, TASK_COMM_LEN);
 		__entry->prev_pid	= prev->pid;
 
-		/* Read the PMU event counts from arm-memlat-mon */
+		/* Read the PMU event counts from performance monitor. */
 		for (i = 0; i < NUM_EVENTS; i++) {
 			total_cnt = read_perf_event_local(cpu, ev_idx[i],
 				&count) ? 0 : count;
