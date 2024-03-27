@@ -19,6 +19,7 @@
 				google,charger = <&max77779_chg>;
 				google,pmic = <&max77779_pmic>;
 				google,power-supply = <&max77779_fg>;
+				google,vimon = <&max77779_vimon>;
 				google,main-power = <&s2mpg14mfd>;
 				google,sub-power = <&s2mpg15mfd>;
 				ppm_settings = <0>;
