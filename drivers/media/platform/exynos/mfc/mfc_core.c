@@ -522,25 +522,22 @@ static int __mfc_itmon_notifier(struct notifier_block *nb, unsigned long action,
 		is_client = 0;
 	}
 
-	if (!is_mfc_itmon)
+	if (!is_mfc_itmon) {
+		dev_err(core->device, "[MFCITMON] It is not mfc itmon\n\n");
 		return ret;
-
-	dev_err(core->device, "mfc_itmon_notifier: +\n");
-	dev_err(core->device, "MFC is %s\n", is_client ? "client" : "dest");
-	if (!core->itmon_notified) {
-		dev_err(core->device, "dump MFC information\n");
-		if (is_client || (!is_client && itmon_info->onoff))
-			call_dop(core, dump_and_stop_always, core);
-		else
-			call_dop(core, dump_info_without_regs, core);
-	} else {
-		dev_err(core->device, "MFC notifier has already been called. skip MFC information\n");
 	}
-	dev_err(core->device, "mfc_itmon_notifier: -\n");
-	core->itmon_notified = 1;
-	ret = NOTIFY_BAD;
 
-	BUG();
+	dev_err(core->device, "[MFCITMON] mfc_itmon_notifier: +\n");
+	dev_err(core->device, "[MFCITMON] MFC is %s\n", is_client ? "client" : "dest");
+	if (!core->itmon_notified) {
+		dev_err(core->device, "[MFCITMON] dump MFC information\n");
+		core->itmon_notified = 1;
+		call_dop(core, dump_and_stop_always, core);
+	} else {
+		dev_err(core->device, "[MFCITMON] MFC notifier has already been called. skip MFC information\n");
+	}
+	dev_err(core->device, "[MFCITMON] mfc_itmon_notifier: -\n");
+	ret = NOTIFY_BAD;
 
 	return ret;
 }
