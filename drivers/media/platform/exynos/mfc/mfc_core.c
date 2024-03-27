@@ -493,7 +493,7 @@ static int __mfc_core_imgloader_desc_init(struct platform_device *pdev, struct m
 }
 #endif
 
-#if IS_ENABLED(CONFIG_EXYNOS_ITMON)
+#ifdef CONFIG_MFC_USE_ITMON
 static int __mfc_itmon_notifier(struct notifier_block *nb, unsigned long action,
 				void *nb_data)
 {
@@ -732,7 +732,7 @@ static int mfc_core_probe(struct platform_device *pdev)
 
 	mfc_client_pt_register(core);
 
-#if IS_ENABLED(CONFIG_EXYNOS_ITMON)
+#ifdef CONFIG_MFC_USE_ITMON
 	core->itmon_nb.notifier_call = __mfc_itmon_notifier;
 	itmon_notifier_chain_register(&core->itmon_nb);
 #endif
