@@ -14,7 +14,7 @@
 #include "gnss_utils.h"
 
 
-void gif_init_irq(struct gnss_irq *irq, unsigned int num, const char *name,
+void gif_configure_irq(struct gnss_irq *irq, unsigned int num, const char *name,
 	unsigned long flags)
 {
 	spin_lock_init(&irq->lock);
