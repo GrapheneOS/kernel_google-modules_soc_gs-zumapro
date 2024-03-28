@@ -134,7 +134,7 @@ int read_perf_event_local(int cpu, unsigned int event_id, u64 *count)
 	/* Ignoring input cpu parameter. */
 	cpu = raw_smp_processor_id();
 
-	if (!perf_mon_metadata.perf_monitor_initialized)
+	if (!perf_mon_metadata.perf_monitor_initialized || event_id >= PERF_NUM_COMMON_EVS)
 		return -EINVAL;
 
 	cpu_data = &perf_mon_metadata.cpu_data_arr[cpu];
