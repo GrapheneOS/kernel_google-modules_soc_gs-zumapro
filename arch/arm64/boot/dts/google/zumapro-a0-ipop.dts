@@ -34,9 +34,9 @@
 		use-pi-thermal;
 		polling_delay_on = <25>;
 		polling_delay_off = <0>;
-		k_po = <68>;
-		k_pu = <68>;
-		k_i = <50>;
+		k_po = <60>;
+		k_pu = <20>;
+		k_i = <42>;
 		i_max = <5>;
 		integral_cutoff = <10>;
 		sustainable_power = <2000>;
@@ -44,8 +44,8 @@
 		junction_offset = <0 (-10000) (-10000) (-10000) 5000 0 0 0>; // mC
 
 		early_throttle_enable;
-		early_throttle_k_p = <50>;
-		early_throttle_offset = <10>; // in Celsius
+		early_throttle_k_p = <240>;
+		early_throttle_offset = <20>; // in Celsius
 
 		use-hardlimit-pid;
 
@@ -254,7 +254,7 @@
 					type = "active";
 				};
 				big_early_throttle: big-early_throttle {
-					temperature = <65000>; /* millicelsius */
+					temperature = <55000>; /* millicelsius */
 					hysteresis = <5000>; /* millicelsius */
 					type = "active";
 				};
