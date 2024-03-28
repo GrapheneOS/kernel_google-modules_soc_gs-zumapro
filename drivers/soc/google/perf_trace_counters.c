@@ -31,12 +31,26 @@ DEFINE_PER_CPU(u32, old_pid);
 DEFINE_PER_CPU(u32, hotplug_flag);
 
 static DEFINE_MUTEX(perf_trace_lock);
+
+#if IS_ENABLED(CONFIG_GS_PERF_MON)
+
+const unsigned int ev_idx[NUM_EVENTS] = {
+    PERF_INST_IDX,
+    PERF_CYCLE_IDX,
+    PERF_STALL_BACKEND_MEM_IDX,
+    PERF_L3_CACHE_MISS_IDX
+};
+
+#else
+
 const unsigned int ev_idx[NUM_EVENTS] = {
     INST_IDX,
     CYCLE_IDX,
     STALL_BACKEND_MEM_IDX,
     L3_CACHE_MISS_IDX
 };
+
+#endif
 
 enum tp_pid_state_type {
 	TP_DISABLED = 0,
@@ -55,7 +69,7 @@ static void setup_prev_cnts(u32 cpu)
 	int i;
 	u64 count;
 
-	/* Read the INST, CYC, L3DM counts from arm-memlat-mon */
+	/* Read the INST, CYC, L3DM counts from performance monitor. */
 	for (i = 0; i < NUM_EVENTS; i++) {
 		count = per_cpu(previous_cnts[i], cpu);
 		per_cpu(previous_cnts[i], cpu) =
