@@ -22,7 +22,7 @@
 			};
 
 			/* Modem interface information */
-			cpif {
+			cpif: cpif {
 				compatible = "samsung,exynos-cp";
 				status = "okay";
 
