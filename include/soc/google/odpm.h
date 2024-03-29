@@ -107,6 +107,7 @@ struct odpm_info {
 	u64 last_poll_ktime_boot_ns;
 	bool sleeping;
 	bool thermal_driver_check;
+	bool ready;
 };
 
 void odpm_get_raw_lpf_values(struct odpm_info *info, enum s2mpg1415_meter_mode mode,
