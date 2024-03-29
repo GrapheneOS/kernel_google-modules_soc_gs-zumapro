@@ -1959,7 +1959,7 @@ static int odpm_probe(struct platform_device *pdev)
 	mutex_init(&odpm_info->lock);
 
 	pr_info("odpm: %s: init completed\n", pdev->name);
-	
+	odpm_info->ready = true;
 	return ret;
 }
 
