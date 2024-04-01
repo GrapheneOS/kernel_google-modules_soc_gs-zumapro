@@ -550,7 +550,7 @@ static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata,
 	char err_msg[128];
 
 	pgtable = read_sec_info(MMU_VM_ADDR(sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM, vmid));
-	pgtable <<= PAGE_SHIFT;
+	pgtable <<= PT_BASE_SHIFT;
 
 	info0 = read_sec_info(MMU_VM_ADDR(sfrbase + REG_MMU_FAULT_INFO0_VM, vmid));
 	info1 = read_sec_info(MMU_VM_ADDR(sfrbase + REG_MMU_FAULT_INFO1_VM, vmid));
@@ -611,7 +611,7 @@ static void sysmmu_show_fault_info_simple(struct sysmmu_drvdata *drvdata, int in
 
 	pgtable = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase + REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM,
 					    vmid));
-	pgtable <<= PAGE_SHIFT;
+	pgtable <<= PT_BASE_SHIFT;
 
 	sysmmu_get_fault_msg(drvdata, intr_type, vmid, fault_addr,
 			     false, err_msg, sizeof(err_msg));
@@ -630,7 +630,7 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata, int in
 	for (i = 0; i < MAX_VIDS; i++) {
 		pgtable[i] = readl_relaxed(MMU_VM_ADDR(drvdata->sfrbase +
 						       REG_MMU_CONTEXT0_CFG_FLPT_BASE_VM, i));
-		pgtable[i] <<= PAGE_SHIFT;
+		pgtable[i] <<= PT_BASE_SHIFT;
 	}
 
 	pr_crit("----------------------------------------------------------\n");
