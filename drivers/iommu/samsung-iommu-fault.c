@@ -372,8 +372,7 @@ static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata,
 	}
 
 	pr_crit("AxID: %#x, AxLEN: %#x\n", info & 0xFFFF, (info >> 16) & 0xF);
-
-	if (!pfn_valid(pgtable >> PAGE_SHIFT)) {
+	if (!pfn_valid(PFN_DOWN(pgtable))) {
 		pr_crit("Page table base is not in a valid memory region\n");
 		pgtable = 0;
 	}
@@ -438,7 +437,7 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata,
 		if (pgtable[i] != drvdata->pgtable[i])
 			pr_crit("Page table (VID %u) base of driver: %pa\n", i,
 				&drvdata->pgtable[i]);
-		if (pgtable[i] && !pfn_valid(pgtable[i] >> PAGE_SHIFT)) {
+		if (pgtable[i] && !pfn_valid(PFN_DOWN(pgtable[i]))) {
 			pr_crit("Page table (VID %u) base is not in a valid memory region\n", i);
 			pgtable[i] = 0;
 		}
