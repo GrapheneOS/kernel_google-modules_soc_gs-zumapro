@@ -354,7 +354,7 @@ static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata,
 	char err_msg[128];
 
 	pgtable = read_sec_info(MMU_SEC_REG(drvdata, IDX_SEC_FLPT_BASE));
-	pgtable <<= PAGE_SHIFT;
+	pgtable <<= PT_BASE_SHIFT;
 
 	info = read_sec_info(MMU_SEC_REG(drvdata, IDX_FAULT_TRANS_INFO));
 
@@ -422,7 +422,7 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata,
 
 	for (i = 0; i < __max_vids(drvdata); i++) {
 		pgtable[i] = readl_relaxed(MMU_VM_REG(drvdata, IDX_FLPT_BASE, i));
-		pgtable[i] <<= PAGE_SHIFT;
+		pgtable[i] <<= PT_BASE_SHIFT;
 	}
 
 	pr_crit("----------------------------------------------------------\n");
@@ -590,7 +590,7 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 			phys_addr_t pgtable;
 
 			pgtable = readl_relaxed(MMU_VM_REG(drvdata, IDX_FLPT_BASE, vid));
-			pgtable <<= PAGE_SHIFT;
+			pgtable <<= PT_BASE_SHIFT;
 			if (!drvdata->hide_page_fault)
 				sysmmu_show_fault_info_simple(drvdata, itype, vid, addr, &pgtable);
 			sysmmu_clear_interrupt(drvdata, false);
