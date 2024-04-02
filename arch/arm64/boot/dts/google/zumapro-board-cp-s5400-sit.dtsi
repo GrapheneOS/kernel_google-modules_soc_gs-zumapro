@@ -89,6 +89,28 @@
 
 				/* phandle used for CP pmic warm reset sequence */
 				google,cp-pmic-spmi = <&pmic>;
+
+				/* TPMON: CP throughput monitor */
+				cpif_tpmon {
+
+					tpmon_irq_affinity_0 {
+						level = <0x30 0x70 0xF0>;
+
+						boost0 {
+							boost_threshold = <1500 3500>;
+							unboost_threshold_mbps = <1000 3000>;
+						};
+					};
+
+					tpmon_rps {
+						level = <0x30 0x70 0xF0>;
+
+						boost0 {
+							boost_threshold = <1500 3500>;
+							unboost_threshold_mbps = <1000 3000>;
+						};
+					};
+				};
 			};
 		};
 	};
