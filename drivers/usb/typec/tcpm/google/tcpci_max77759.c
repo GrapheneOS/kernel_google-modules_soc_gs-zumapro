@@ -3606,6 +3606,7 @@ static void max77759_shutdown(struct i2c_client *client)
 		kthread_cancel_delayed_work_sync(&chip->bcl_usb_votable_work);
 	/* Set current limit to 0. Will eventually happen after hi-Z as well */
 	max77759_vote_icl(chip, 0);
+	power_supply_unreg_notifier(&chip->psy_notifier);
 	/* Prevent re-enabling toggling */
 	/* Hi-z CC pins to trigger disconnection */
 	ret = gvotable_cast_vote(chip->toggle_disable_votable, "SHUTDOWN_VOTE",
