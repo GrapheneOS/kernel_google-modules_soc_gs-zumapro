@@ -34,7 +34,7 @@ int gif_request_irq(struct gnss_irq *irq, irq_handler_t isr, void *data)
 		return ret;
 	}
 
-	irq->active = true;
+	irq->active = irq->flags & IRQF_NO_AUTOEN ? false : true;
 	irq->registered = true;
 
 	gif_info("%s(#%d) handler registered (flags:0x%08lX)\n",
@@ -49,18 +49,12 @@ void gif_enable_irq(struct gnss_irq *irq)
 
 	spin_lock_irqsave(&irq->lock, flags);
 
-	if (irq->active) {
-		gif_debug("%s(#%d) is already active <%ps>\n",
-			irq->name, irq->num, CALLER);
+	if (irq->active)
 		goto exit;
-	}
 
 	enable_irq(irq->num);
 
 	irq->active = true;
-
-	gif_debug("%s(#%d) is enabled <%ps>\n",
-		irq->name, irq->num, CALLER);
 
 exit:
 	spin_unlock_irqrestore(&irq->lock, flags);
@@ -75,18 +69,10 @@ void gif_disable_irq_nosync(struct gnss_irq *irq)
 
 	spin_lock_irqsave(&irq->lock, flags);
 
-	if (!irq->active) {
-		gif_debug("%s(#%d) is not active <%ps>\n",
-			irq->name, irq->num, CALLER);
+	if (!irq->active)
 		goto exit;
-	}
-
 	disable_irq_nosync(irq->num);
-
 	irq->active = false;
-
-	gif_debug("%s(#%d) is disabled <%ps>\n",
-			irq->name, irq->num, CALLER);
 
 exit:
 	spin_unlock_irqrestore(&irq->lock, flags);
