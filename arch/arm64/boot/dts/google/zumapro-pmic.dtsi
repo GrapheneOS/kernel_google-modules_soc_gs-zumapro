@@ -238,6 +238,15 @@
 	rail-name = "LDO21S";
 };
 
+// Request from b/331556280
+&ch17 {
+	rail-name = "BUCK7S";
+};
+
+&ch20 {
+	rail-name = "BUCKBOOST";
+};
+
 &s2mpg14mfd {
 	init_time,year = <123>;
 	init_time,wday = <0>;
