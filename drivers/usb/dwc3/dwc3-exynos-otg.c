@@ -314,7 +314,6 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 	struct device	*dev = dotg->dwc->dev;
 	int ret = 0;
 	int wait_counter = 0;
-	u32 evt_count, evt_buf_cnt;
 
 	if (on) {
 		__pm_stay_awake(dotg->wakelock);
@@ -371,27 +370,6 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 		exynos->gadget_state = true;
 		dwc3_otg_set_peripheral_mode(dotg);
 	} else {
-		evt_buf_cnt = dwc->ev_buf->count;
-
-		/* Wait until gadget stop */
-		wait_counter = 0;
-		evt_count = dwc3_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
-		evt_count &= DWC3_GEVNTCOUNT_MASK;
-		while (evt_count || evt_buf_cnt) {
-			wait_counter++;
-			mdelay(20);
-
-			if (wait_counter > 20) {
-				dev_err(dev, "Can't wait event buffer empty!\n");
-				break;
-			}
-			evt_count = dwc3_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
-			evt_count &= DWC3_GEVNTCOUNT_MASK;
-			evt_buf_cnt = dwc->ev_buf->count;
-		}
-		dev_dbg(dev, "%s, evt compl wait cnt = %d\n",
-			 __func__, wait_counter);
-
 		/* hold gadget lock to prevent gadget driver bind during disconnect*/
 		device_lock(&dwc->gadget->dev);
 
