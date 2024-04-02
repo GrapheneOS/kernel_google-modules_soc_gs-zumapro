@@ -4,6 +4,7 @@
  *
  */
 #include <linux/init.h>
+#include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -124,6 +125,14 @@ static int gnss_remove(struct platform_device *pdev)
 	struct gnss_ctl *gc = platform_get_drvdata(pdev);
 
 	gif_disable_irq_sync(&gc->irq_gnss2ap_spi);
+
+	gpio_set_value(gc->gpio_ap2gnss_spi.num, 0);
+
+	free_irq(gc->irq_gnss2ap_spi.num, &gc);
+
+	gpio_free(gc->gpio_ap2gnss_spi.num);
+
+	gpio_free(gc->gpio_gnss2ap_spi.num);
 
 	platform_device_unregister(&sscd_dev);
 
