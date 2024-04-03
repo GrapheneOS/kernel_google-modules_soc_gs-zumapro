@@ -21,8 +21,8 @@
 #if IS_ENABLED(CONFIG_PIXEL_EM)
 #include "../../include/pixel_em.h"
 struct pixel_em_profile **vendor_sched_pixel_em_profile;
-EXPORT_SYMBOL_GPL(vendor_sched_pixel_em_profile);
 struct pixel_idle_em *vendor_sched_pixel_idle_em;
+EXPORT_SYMBOL_GPL(vendor_sched_pixel_em_profile);
 EXPORT_SYMBOL_GPL(vendor_sched_pixel_idle_em);
 raw_spinlock_t vendor_sched_pixel_em_lock;
 EXPORT_SYMBOL_GPL(vendor_sched_pixel_em_lock);
