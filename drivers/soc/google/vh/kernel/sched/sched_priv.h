@@ -56,6 +56,7 @@ extern int *pixel_cluster_enabled;
 extern unsigned int *pixel_cpd_exit_latency;
 
 DECLARE_STATIC_KEY_FALSE(auto_migration_margins_enable);
+DECLARE_STATIC_KEY_FALSE(auto_dvfs_headroom_enable);
 
 
 unsigned long approximate_util_avg(unsigned long util, u64 delta);
@@ -72,7 +73,10 @@ static inline void update_auto_fits_capacity(void)
 
 	for (cpu = 0; cpu < pixel_cpu_num; cpu++) {
 		u64 limit = approximate_runtime(capacity_orig_of(cpu)) * USEC_PER_MSEC;
-		limit = cap_scale(limit - TICK_USEC, capacity_orig_of(cpu));
+		if (static_branch_likely(&auto_dvfs_headroom_enable))
+			limit -= TICK_USEC;
+		else
+			limit = cap_scale(limit - TICK_USEC, capacity_orig_of(cpu));
 		sched_auto_fits_capacity[cpu] = approximate_util_avg(0, limit);
 	}
 }
@@ -232,7 +236,6 @@ DECLARE_STATIC_KEY_FALSE(uclamp_min_filter_enable);
 DECLARE_STATIC_KEY_FALSE(uclamp_max_filter_enable);
 
 DECLARE_STATIC_KEY_FALSE(tapered_dvfs_headroom_enable);
-DECLARE_STATIC_KEY_FALSE(auto_dvfs_headroom_enable);
 
 DECLARE_STATIC_KEY_FALSE(enqueue_dequeue_ready);
 
