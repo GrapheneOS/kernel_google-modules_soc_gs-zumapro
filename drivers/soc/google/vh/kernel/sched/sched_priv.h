@@ -446,6 +446,11 @@ uclamp_eff_value_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 	return (unsigned long)uc_eff.value;
 }
 
+static inline bool uclamp_boosted_pixel_mod(struct task_struct *p)
+{
+	return uclamp_eff_value_pixel_mod(p, UCLAMP_MIN) > 0;
+}
+
 /*****************************************************************************/
 /*                       New Code Section                                    */
 /*****************************************************************************/
@@ -563,7 +568,7 @@ static inline bool uclamp_can_ignore_uclamp_min(struct rq *rq,
 	if (get_uclamp_fork_reset(p, true))
 		return false;
 
-	if (p->in_iowait && uclamp_boosted(p))
+	if (p->in_iowait && uclamp_boosted_pixel_mod(p))
 		return false;
 
 	if (rt_task(p))
@@ -641,7 +646,7 @@ static inline bool uclamp_can_ignore_uclamp_max(struct rq *rq,
 	if (get_uclamp_fork_reset(p, true))
 		return false;
 
-	if (p->in_iowait && uclamp_boosted(p))
+	if (p->in_iowait && uclamp_boosted_pixel_mod(p))
 		return false;
 
 	/*
