@@ -1997,12 +1997,11 @@ void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
 	} else {
 		if (!boosted) {
 			vp->iowait_boost = 0;
-			return;
+		} else {
+			vp->iowait_boost >>= 1;
+			if (vp->iowait_boost < IOWAIT_BOOST_MIN)
+				vp->iowait_boost = 0;
 		}
-
-		vp->iowait_boost >>= 1;
-		if (vp->iowait_boost < IOWAIT_BOOST_MIN)
-			vp->iowait_boost = 0;
 	}
 
 	*should_iowait_boost = vp->iowait_boost;
