@@ -338,7 +338,7 @@
 						iod,format = <IPC_FMT>;
 						iod,io_type = <IODEV_IPC>;
 						iod,link_type = <LINKDEV_PCIE>;
-						iod,attrs = <(IO_ATTR_MULTI_CH)>;
+						iod,attrs = <(IO_ATTR_MULTI_CH | IO_ATTR_STATE_RESET_NOTI)>;
 						iod,ch_count = <2>;
 					};
 					io_device_1 {
