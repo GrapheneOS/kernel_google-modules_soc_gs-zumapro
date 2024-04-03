@@ -232,10 +232,20 @@ DECLARE_STATIC_KEY_FALSE(uclamp_min_filter_enable);
 DECLARE_STATIC_KEY_FALSE(uclamp_max_filter_enable);
 
 DECLARE_STATIC_KEY_FALSE(tapered_dvfs_headroom_enable);
+DECLARE_STATIC_KEY_FALSE(auto_dvfs_headroom_enable);
 
 DECLARE_STATIC_KEY_FALSE(enqueue_dequeue_ready);
 
 DECLARE_STATIC_KEY_FALSE(skip_inefficient_opps_enable);
+
+/*
+ * Any governor that relies on util signal to drive DVFS, must populate these
+ * percpu dvfs_update_delay variables.
+ *
+ * It should describe the rate/delay at which the governor sends DVFS freq
+ * update to the hardware in us.
+ */
+DECLARE_PER_CPU(u64, dvfs_update_delay);
 
 #define SCHED_PIXEL_FORCE_UPDATE		BIT(8)
 
