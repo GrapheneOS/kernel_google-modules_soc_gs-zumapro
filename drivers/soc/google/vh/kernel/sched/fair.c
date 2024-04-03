@@ -1985,7 +1985,7 @@ void rvh_set_iowait_pixel_mod(void *data, struct task_struct *p, struct rq *rq,
 {
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	struct vendor_rq_struct *vrq = get_vendor_rq_struct(task_rq(p));
-	bool boosted = uclamp_boosted(p);
+	bool boosted = uclamp_boosted_pixel_mod(p);
 
 	if (p->in_iowait && boosted) {
 		if (!vp->iowait_boost)
