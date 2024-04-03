@@ -75,7 +75,10 @@ struct vendor_task_struct {
 	struct vendor_binder_task_struct binder_task;
 	/* parameters for RT inheritance */
 	unsigned int uclamp_pi[UCLAMP_CNT];
+
 	u64 runnable_start_ns;
+	u64 prev_sum_exec_runtime;
+
 	/*
 	 * A general field for time measurement in the same process context.
 	 * Be careful it should be used for stackwise, use the wrapper
