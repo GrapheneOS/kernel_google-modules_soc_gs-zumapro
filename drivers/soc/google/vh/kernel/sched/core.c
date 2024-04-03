@@ -123,6 +123,7 @@ void vh_scheduler_tick_pixel_mod(void *data, struct rq *rq)
 	struct rq_flags rf;
 	rq_lock(rq, &rf);
 	task_tick_uclamp(rq, rq->curr);
+	__update_util_est_invariance(rq, rq->curr, true);
 	rq_unlock(rq, &rf);
 
 	/* Check if an RT task needs to move to a better fitting CPU */
@@ -137,6 +138,15 @@ void vh_scheduler_tick_pixel_mod(void *data, struct rq *rq)
 	 * up a helper thread to update memory frequencies.
 	 */
 	gs_perf_mon_tick_update_counters();
+}
+
+void vh_sched_switch_pixel_mod(void *data, bool preempt, struct task_struct *prev,
+			       struct task_struct *next, unsigned int prev_state)
+{
+	struct rq *rq = task_rq(prev);
+
+	if (task_is_running(prev))
+		__update_util_est_invariance(rq, prev, rq->nr_running > 1);
 }
 
 void rvh_enqueue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p, int flags)
