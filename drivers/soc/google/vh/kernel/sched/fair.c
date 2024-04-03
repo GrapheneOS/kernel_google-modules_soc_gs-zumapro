@@ -36,10 +36,9 @@ extern int ___update_load_sum(u64 now, struct sched_avg *sa,
 extern void ___update_load_avg(struct sched_avg *sa, unsigned long load);
 
 static struct vendor_util_group_property ug[UG_MAX];
-static struct vendor_cfs_util vendor_cfs_util[UG_MAX][CONFIG_VH_SCHED_MAX_CPU_NR];
+struct vendor_cfs_util vendor_cfs_util[UG_MAX][CONFIG_VH_SCHED_MAX_CPU_NR];
 #endif
 
-extern int vendor_sched_ug_bg_auto_prio;
 extern unsigned int vendor_sched_util_post_init_scale;
 extern bool vendor_sched_npi_packing;
 extern bool vendor_sched_boost_adpf_prio;
@@ -521,21 +520,6 @@ prio_changed_fair(struct rq *rq, struct task_struct *p, int oldprio)
 /*                       New Code Section                                    */
 /*****************************************************************************/
 // This part of code is new for this kernel, which are mostly helper functions.
-
-#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-static inline enum utilization_group get_utilization_group(struct task_struct *p, int group)
-{
-	if (vg[group].ug == UG_AUTO) {
-		// Always consider task prio >= vendor_sched_ug_bg_auto_prio as background util
-		if (p->prio >= vendor_sched_ug_bg_auto_prio)
-			return UG_BG;
-
-		return UG_FG;
-	}
-
-	return vg[group].ug;
-}
-#endif
 
 bool get_prefer_high_cap(struct task_struct *p)
 {

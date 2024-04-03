@@ -817,3 +817,83 @@ static inline void dec_adpf_counter(struct task_struct *p, struct rq *rq)
 	 */
 	atomic_dec_if_positive(&vrq->num_adpf_tasks);
 }
+
+extern int vendor_sched_ug_bg_auto_prio;
+
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+extern struct vendor_cfs_util vendor_cfs_util[UG_MAX][CONFIG_VH_SCHED_MAX_CPU_NR];
+static inline enum utilization_group get_utilization_group(struct task_struct *p, int group)
+{
+	if (vg[group].ug == UG_AUTO) {
+		// Always consider task prio >= vendor_sched_ug_bg_auto_prio as background util
+		if (p->prio >= vendor_sched_ug_bg_auto_prio)
+			return UG_BG;
+
+		return UG_FG;
+	}
+
+	return vg[group].ug;
+}
+#endif
+
+/*
+ * Counter the impact of utilization invariance which can slow down ramp-up
+ * time when tasks become suddenly busy.
+ *
+ * It is only enabled when auto_dvfs_headroom is enabled.
+ */
+static inline void __update_util_est_invariance(struct rq *rq,
+						struct task_struct *p,
+						bool update_cfs_rq)
+{
+	unsigned long se_enqueued, cfs_rq_enqueued;
+	struct cfs_rq *cfs_rq = &rq->cfs;
+	struct sched_entity *se = &p->se;
+	int cpu = cpu_of(rq);
+	u64 delta_exec;
+	int __maybe_unused group;
+
+	if (!static_branch_likely(&auto_dvfs_headroom_enable))
+		return;
+
+	if (!sched_feat(UTIL_EST))
+		return;
+
+	if (!fair_policy(p->policy) && !idle_policy(p->policy))
+		return;
+
+	if (se->avg.util_avg >= arch_scale_cpu_capacity(cpu))
+		return;
+
+	delta_exec = (se->sum_exec_runtime - se->prev_sum_exec_runtime)/1000;
+	delta_exec = min_t(u64, delta_exec, TICK_USEC);
+
+	se_enqueued = READ_ONCE(se->avg.util_est.enqueued) & ~UTIL_AVG_UNCHANGED;
+	se_enqueued = max_t(unsigned long, se->avg.util_est.ewma, se_enqueued);
+
+	cfs_rq_enqueued = READ_ONCE(cfs_rq->avg.util_est.enqueued);
+
+	if (update_cfs_rq) {
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+		group = get_utilization_group(p, get_vendor_group(p));
+		raw_spin_lock(&vendor_cfs_util[group][rq->cpu].lock);
+		lsub_positive(&vendor_cfs_util[group][rq->cpu].util_est, se_enqueued);
+#endif
+		lsub_positive(&cfs_rq_enqueued, se_enqueued);
+	}
+
+	se_enqueued = approximate_util_avg(se_enqueued, delta_exec);
+	WRITE_ONCE(se->avg.util_est.enqueued, se_enqueued | UTIL_AVG_UNCHANGED);
+	trace_sched_util_est_se_tp(se);
+
+	if (update_cfs_rq) {
+		cfs_rq_enqueued += se_enqueued;
+		WRITE_ONCE(cfs_rq->avg.util_est.enqueued, cfs_rq_enqueued);
+		trace_sched_util_est_cfs_tp(cfs_rq);
+
+#if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
+		vendor_cfs_util[group][rq->cpu].util_est += se_enqueued;
+		raw_spin_unlock(&vendor_cfs_util[group][rq->cpu].lock);
+#endif
+	}
+}
