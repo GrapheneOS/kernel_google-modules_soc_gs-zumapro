@@ -1848,7 +1848,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		cpumask_or(&idle_unpreferred, &idle_fit, &idle_unfit);
 		cpumask_andnot(&idle_unpreferred, &idle_unpreferred, preferred_idle_mask);
 		// If there is no fit idle CPU in preferred_idle_mask, ignore it
-		if (cpumask_intersects(&idle_fit, preferred_idle_mask))
+		if (task_fits_capacity(p, cpumask_last(preferred_idle_mask)))
 			cpumask_and(&idle_fit, &idle_fit, preferred_idle_mask);
 		cpumask_and(&idle_unfit, &idle_unfit, preferred_idle_mask);
 	}
