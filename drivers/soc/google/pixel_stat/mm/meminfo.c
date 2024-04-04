@@ -30,7 +30,6 @@ void vh_meminfo_proc_show(void *data, struct seq_file *m)
 	unsigned long misc_kb = 0;
 	unsigned long pages[NR_LRU_LISTS];
 	unsigned long sreclaimable, sunreclaim;
-	unsigned long dma_heap, dma_heap_pool;
 	unsigned long known_pages = 0;
 	unsigned long others_kb = 0;
 
@@ -41,11 +40,6 @@ void vh_meminfo_proc_show(void *data, struct seq_file *m)
 
         sreclaimable = global_node_page_state_pages(NR_SLAB_RECLAIMABLE_B);
         sunreclaim = global_node_page_state_pages(NR_SLAB_UNRECLAIMABLE_B);
-	dma_heap = dma_heap_inuse_pages();
-	dma_heap_pool = dma_heap_pool_pages();
-
-	seq_printf(m, "ION_heap:       %8lu kB\n", dma_heap * PAGE_SIZE / 1024);
-	seq_printf(m, "ION_heap_pool:  %8lu kB\n", dma_heap_pool * PAGE_SIZE / 1024);
 
 	mutex_lock(&meminfo_lock);
 	list_for_each_entry(meminfo, &meminfo_list, list) {
@@ -59,8 +53,7 @@ void vh_meminfo_proc_show(void *data, struct seq_file *m)
 		      pages[LRU_ACTIVE_FILE] + pages[LRU_INACTIVE_FILE] +
 		      pages[LRU_UNEVICTABLE] + sreclaimable + sunreclaim +
 		      global_node_page_state(NR_PAGETABLE) +
-		      vmalloc_nr_pages() + pcpu_nr_pages() +
-		      dma_heap + dma_heap_pool;
+		      vmalloc_nr_pages() + pcpu_nr_pages();
 
 	misc_kb = (i.totalram << (PAGE_SHIFT - 10)) - ((known_pages << (PAGE_SHIFT - 10)) +
 			        global_node_page_state(NR_KERNEL_STACK_KB) +
