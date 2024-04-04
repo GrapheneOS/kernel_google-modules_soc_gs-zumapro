@@ -16,7 +16,6 @@
 
 extern unsigned long cpu_util(int cpu);
 extern unsigned long task_util(struct task_struct *p);
-extern bool task_may_not_preempt(struct task_struct *task, int cpu);
 extern int cpu_is_idle(int cpu);
 extern int sched_cpu_idle(int cpu);
 extern bool get_prefer_high_cap(struct task_struct *p);
@@ -75,6 +74,15 @@ static inline void rt_task_fits_capacity(struct task_struct *p, int cpu,
 	*fits = util_fits_cpu(util, uclamp_min, uclamp_max, cpu);
 	*fits_original = capacity_orig_of(cpu) >= clamp(util, uclamp_min, uclamp_max) ||
 			 cpu >= pixel_cluster_start_cpu[2];
+}
+
+static inline bool
+task_may_not_preempt_pixel_mod(struct task_struct *task, int cpu)
+{
+	struct task_struct *cpu_ksoftirqd = per_cpu(ksoftirqd, cpu);
+
+	return cpu_busy_with_softirqs(cpu) &&
+	       (task == cpu_ksoftirqd || task_thread_info(task)->preempt_count & SOFTIRQ_MASK);
 }
 
 void check_migrate_rt_task(struct rq *rq, struct task_struct *p)
@@ -422,13 +430,13 @@ void rvh_select_task_rq_rt_pixel_mod(void *data, struct task_struct *p, int prev
 
 	if (target != -1) {
 		tgt_task = READ_ONCE(cpu_rq(target)->curr);
-		if (task_may_not_preempt(tgt_task, target) ||
+		if (task_may_not_preempt_pixel_mod(tgt_task, target) ||
 			p->prio >= cpu_rq(target)->rt.highest_prio.curr) {
 			target = -1;
 
 			for_each_cpu(i, &backup_mask) {
 				tgt_task = READ_ONCE(cpu_rq(i)->curr);
-				if (task_may_not_preempt(tgt_task, i) ||
+				if (task_may_not_preempt_pixel_mod(tgt_task, i) ||
 					p->prio >= cpu_rq(i)->rt.highest_prio.curr) {
 					continue;
 				} else {
