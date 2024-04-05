@@ -13,6 +13,8 @@
 #include <linux/interrupt.h>
 #include <linux/iommu.h>
 
+#define PT_BASE_SHIFT 12
+
 #define MAX_VIDS			8U
 
 struct tlb_config {
