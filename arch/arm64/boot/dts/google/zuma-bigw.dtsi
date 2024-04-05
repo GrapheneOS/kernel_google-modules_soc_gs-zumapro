@@ -25,7 +25,7 @@
 
 	vpu_opp_table: vpu_pp_table {
 		opp-100000000 {
-			freq-khz = <100000>;
+			freq-khz = <166000>;
 			/* 1920x1088@30fps */
 			load-pps = <61200>;
 		};
