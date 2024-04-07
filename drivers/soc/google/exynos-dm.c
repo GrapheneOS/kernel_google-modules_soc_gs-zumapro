@@ -756,7 +756,7 @@ int policy_update_call_to_DM(int dm_type, u32 min_freq, u32 max_freq)
 {
 	struct exynos_dm_data *dm;
 	u64 pre, before, after;
-#if IS_ENABLED(CONFIG_GS_ACPM)
+#if IS_ENABLED(CONFIG_GS_ACPM) && !IS_ENABLED(CONFIG_SOC_ZUMA)
 	struct ipc_config config;
 	unsigned int cmd[4];
 	int size, ch_num;
@@ -798,8 +798,8 @@ int policy_update_call_to_DM(int dm_type, u32 min_freq, u32 max_freq)
 	dm->policy_max = max_freq;
 	dm->policy_min = min_freq;
 
-	/* Send policy to FVP */
-#if IS_ENABLED(CONFIG_GS_ACPM)
+#if IS_ENABLED(CONFIG_GS_ACPM) && !IS_ENABLED(CONFIG_SOC_ZUMA)
+       /* Send policy to FVP */
 	if (dm->policy_use) {
 		ret = acpm_ipc_request_channel(exynos_dm->dev->of_node, NULL, &ch_num, &size);
 		if (ret) {
