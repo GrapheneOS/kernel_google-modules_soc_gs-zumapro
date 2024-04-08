@@ -49,10 +49,8 @@ void vh_cma_alloc_start(void *data, const char *name, unsigned long count,
 {
 	struct vendor_task_struct *tsk;
 
-	task_lock(current);
 	tsk = get_vendor_task_struct(current);
 	set_vendor_task_struct_private(tsk, jiffies);
-	task_unlock(current);
 }
 
 struct cma *cma;
@@ -84,10 +82,8 @@ void vh_cma_alloc_finish(void *data, const char *name, unsigned long pfn,
 	struct vendor_task_struct *tsk;
 	unsigned long old_ts;
 
-	task_lock(current);
 	tsk = get_vendor_task_struct(current);
 	old_ts = get_and_reset_vendor_task_struct_private(tsk);
-	task_unlock(current);
 
 	delta = jiffies_to_msecs(jiffies - old_ts);
 	WARN_ON_ONCE(delta < 0);
