@@ -55,10 +55,8 @@ void vh_direct_reclaim_begin(void *data, int order, gfp_t gfp_mask)
 {
 	struct vendor_task_struct *tsk;
 
-	task_lock(current);
 	tsk = get_vendor_task_struct(current);
 	tsk->direct_reclaim_ts = jiffies;
-	task_unlock(current);
 }
 
 void vh_direct_reclaim_end(void *data, unsigned long nr_reclaimed)
@@ -70,11 +68,9 @@ void vh_direct_reclaim_end(void *data, unsigned long nr_reclaimed)
 	struct vendor_task_struct *tsk;
 	unsigned long old_ts;
 
-	task_lock(current);
 	tsk = get_vendor_task_struct(current);
 	old_ts = tsk->direct_reclaim_ts;
 	oom_score_adj = current->signal->oom_score_adj;
-	task_unlock(current);
 
 	delta = jiffies_to_msecs(jiffies - old_ts);
 	WARN_ON_ONCE(delta < 0);
