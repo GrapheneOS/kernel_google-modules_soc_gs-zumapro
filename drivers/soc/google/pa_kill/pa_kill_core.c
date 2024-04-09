@@ -9,6 +9,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <uapi/linux/sched/types.h>
+#include <trace/hooks/systrace.h>
 
 #include "pa_kill_sysfs.h"
 
@@ -79,6 +80,9 @@ static int kill_task(struct task_struct *victim, struct mm_struct *mm)
 		return -EAGAIN;
 	}
 
+	ATRACE_BEGIN("kill_task");
+	ATRACE_BEGIN(victim->comm);
+
 	anon_kb = K(get_mm_counter(mm, MM_ANONPAGES));
 	file_kb = K(get_mm_counter(mm, MM_FILEPAGES));
 	swap_kb = K(get_mm_counter(mm, MM_SWAPENTS));
@@ -95,6 +99,8 @@ static int kill_task(struct task_struct *victim, struct mm_struct *mm)
 	__oom_reap_task_mm(mm);
 	mmap_read_unlock(mm);
 	atomic_long_inc(&pa_kill_count);
+	ATRACE_END();
+	ATRACE_END();
 
 	return 0;
 }
