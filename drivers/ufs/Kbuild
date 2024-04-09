@@ -12,7 +12,7 @@ ufs-exynos-gs-$(CONFIG_SCSI_UFS_CRYPTO) += ufs-pixel-crypto.o
 ccflags-y += -I $(srctree)/drivers/ufs
 
 obj-$(CONFIG_SCSI_UFS_PIXEL_FIPS140) += ufs-pixel-fips140.o
-ifeq ($(CONFIG_SCSI_UFS_CRYPTO_SW_KEYS_MODE),y)
+ifeq ($(CONFIG_SOC_GS101),y)
 ufs-pixel-fips140-y += ufs-pixel-fips-swkeys.o
 else
 ufs-pixel-fips140-y += ufs-pixel-fips.o
