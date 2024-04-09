@@ -811,8 +811,7 @@ irqreturn_t samsung_sysmmu_irq_thread(int irq, void *dev_id)
 	if (vmid)
 		fi.event.fault.event.flags |= IOMMU_FAULT_UNRECOV_PASID_VALID;
 	fi.event.fault.event.reason = reason;
-	if (reason == IOMMU_FAULT_REASON_PTE_FETCH ||
-	    reason == IOMMU_FAULT_REASON_PERMISSION)
+	if (reason == IOMMU_FAULT_REASON_PTE_FETCH)
 		fi.event.fault.type = IOMMU_FAULT_PAGE_REQ;
 
 	ret = iommu_group_for_each_dev(group, &fi,
