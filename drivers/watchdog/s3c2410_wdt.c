@@ -730,7 +730,10 @@ void s3c2410wdt_print_schedstat(const char *loglvl)
 	if (s3c_wdt[BIG_CLUSTER])
 		print_wd_owner(s3c_wdt[BIG_CLUSTER], loglvl);
 
-	if (!wdt || !wdt->schedstat) {
+	if (!wdt)
+		return;
+
+	if (!wdt->schedstat) {
 		dev_err(wdt->dev, "schedstat is invalid: %s not found",
 				wdt ? "little-wdt.schedstat" : "little-wdt");
 		return;
