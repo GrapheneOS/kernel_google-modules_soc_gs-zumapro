@@ -36,6 +36,8 @@ extern unsigned int vendor_sched_util_post_init_scale;
 extern bool vendor_sched_npi_packing;
 extern bool vendor_sched_boost_adpf_prio;
 
+extern struct cpumask cpu_skip_mask;
+
 static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
 
@@ -2413,7 +2415,8 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 
 	/* prefer prev cpu */
 	if (cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) &&
-	    task_fits_capacity(p, prev_cpu) && check_preferred_idle_mask(p, prev_cpu)) {
+	    task_fits_capacity(p, prev_cpu) && check_preferred_idle_mask(p, prev_cpu) &&
+	    !cpumask_test_cpu(prev_cpu, &cpu_skip_mask)) {
 
 		struct cpuidle_state *idle_state;
 		unsigned int exit_lat = UINT_MAX;
