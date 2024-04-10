@@ -29,6 +29,7 @@
 #define MAX_RC_NUM		2
 #define PHY_VREG_ON		1
 #define PHY_VREG_OFF		0
+#define NUM_LINK_SPEEDS		4
 
 #define to_exynos_pcie(x)	dev_get_drvdata((x)->dev)
 
@@ -166,6 +167,23 @@ struct power_stats {
 	u64	last_entry_ts;
 };
 
+enum link_duration_opcodes {
+	LINK_DURATION_INIT,
+	LINK_DURATION_RESET,
+	LINK_DURATION_UP,
+	LINK_DURATION_DOWN,
+	LINK_DURATION_SPD_CHG,
+	LINK_DURATION_OPCODE_MAX
+};
+struct link_duration_stats {
+	int last_link_speed;
+	struct link_entry {
+		u64 count;
+		u64 duration;
+		u64 last_entry_ts;
+	} speed[NUM_LINK_SPEEDS];
+};
+
 #define LINK_STATS_AVG_SAMPLE_SIZE 50
 
 struct link_stats {
@@ -286,6 +304,7 @@ struct exynos_pcie {
 	spinlock_t		reg_lock;		/* pcie config - reg_lock(reserved) */
 	spinlock_t		pcie_l1_exit_lock;	/* pcie l1.2 exit - ctrl_id_state */
 	spinlock_t		power_stats_lock;	/* pcie config - power state change */
+	spinlock_t		link_duration_lock; /* pcie link speed duration 		*/
 	spinlock_t		s2mpu_refcnt_lock;
 	struct workqueue_struct	*pcie_wq;
 	struct exynos_pcie_clks	clks;
@@ -316,6 +335,7 @@ struct exynos_pcie {
 	struct power_stats	link_up;
 	struct power_stats	link_down;
 	struct link_stats	link_stats;
+	struct link_duration_stats link_duration_stats;
 	bool l1ss_force;
 	bool l11_enable;
 	bool l12_enable;
