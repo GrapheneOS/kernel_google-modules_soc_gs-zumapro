@@ -36,13 +36,12 @@
 #define SYSMMU_FAULT_PAGE_FAULT   1
 #define SYSMMU_FAULT_ACCESS       2
 #define SYSMMU_FAULT_RESERVED     3
-#define SYSMMU_FAULT_UNKNOWN      4
 
 #define SYSMMU_SEC_FAULT_MASK		(BIT(SYSMMU_FAULT_PTW_ACCESS) | \
 					 BIT(SYSMMU_FAULT_PAGE_FAULT) | \
 					 BIT(SYSMMU_FAULT_ACCESS))
 
-#define SYSMMU_FAULTS_NUM         (SYSMMU_FAULT_UNKNOWN + 1)
+#define SYSMMU_FAULTS_NUM         (SYSMMU_FAULT_RESERVED + 1)
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
 #define SMC_DRM_SEC_SMMU_INFO		(0x820020D0)
@@ -96,14 +95,12 @@ static char *sysmmu_fault_name[SYSMMU_FAULTS_NUM] = {
 	"PAGE FAULT",
 	"ACCESS FAULT",
 	"RESERVED",
-	"UNKNOWN FAULT"
 };
 
 static unsigned int sysmmu_fault_type[SYSMMU_FAULTS_NUM] = {
 	IOMMU_FAULT_REASON_WALK_EABT,
 	IOMMU_FAULT_REASON_PTE_FETCH,
 	IOMMU_FAULT_REASON_ACCESS,
-	IOMMU_FAULT_REASON_UNKNOWN,
 	IOMMU_FAULT_REASON_UNKNOWN,
 };
 
@@ -364,13 +361,6 @@ static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata,
 			     true, err_msg, sizeof(err_msg));
 
 	pr_crit("%s (pgtable @ %pa)\n", err_msg, &pgtable);
-
-	if (intr_type == SYSMMU_FAULT_UNKNOWN) {
-		pr_crit("The fault is not caused by this System MMU.\n");
-		pr_crit("Please check IRQ and SFR base address.\n");
-		goto finish;
-	}
-
 	pr_crit("AxID: %#x, AxLEN: %#x\n", info & 0xFFFF, (info >> 16) & 0xF);
 	if (!pfn_valid(PFN_DOWN(pgtable))) {
 		pr_crit("Page table base is not in a valid memory region\n");
@@ -393,7 +383,6 @@ static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata,
 		read_sec_info(sfrbase + REG_MMU_CFG),
 		read_sec_info(sfrbase + REG_MMU_STATUS));
 
-finish:
 	pr_crit("----------------------------------------------------------\n");
 }
 
@@ -427,12 +416,6 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata,
 	pr_crit("----------------------------------------------------------\n");
 	sysmmu_show_fault_info_simple(drvdata, intr_type, vid, fault_addr, &pgtable[vid]);
 
-	if (intr_type == SYSMMU_FAULT_UNKNOWN) {
-		pr_crit("The fault is not caused by this System MMU.\n");
-		pr_crit("Please check IRQ and SFR base address.\n");
-		goto finish;
-	}
-
 	for (i = 0; i < __max_vids(drvdata); i++) {
 		if (pgtable[i] != drvdata->pgtable[i])
 			pr_crit("Page table (VID %u) base of driver: %pa\n", i,
@@ -461,7 +444,6 @@ static void sysmmu_show_fault_information(struct sysmmu_drvdata *drvdata,
 	}
 
 	dump_sysmmu_status(drvdata, pgtable, vid);
-finish:
 	pr_crit("----------------------------------------------------------\n");
 }
 
