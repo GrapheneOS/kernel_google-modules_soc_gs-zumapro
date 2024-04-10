@@ -40,6 +40,10 @@ static inline void dma_heap_dec_inuse(unsigned long pages)
 	atomic64_sub(pages, &inuse_pages);
 }
 
+unsigned long dma_heap_inuse_pages(void);
+unsigned long dma_heap_pool_pages(void);
+
+
 struct samsung_dma_buffer {
 	struct samsung_dma_heap *heap;
 	struct list_head attachments;
@@ -175,6 +179,8 @@ static inline int samsung_dma_buffer_unprotect(struct samsung_dma_buffer *buffer
 #if defined(CONFIG_DMABUF_HEAPS_SAMSUNG_SYSTEM)
 int __init system_dma_heap_init(void);
 void system_dma_heap_exit(void);
+unsigned long dma_heap_system_inuse_pages(void);
+unsigned long dma_heap_system_pool_pages(void);
 #else
 static inline int __init system_dma_heap_init(void)
 {
@@ -182,6 +188,15 @@ static inline int __init system_dma_heap_init(void)
 }
 
 #define system_dma_heap_exit() do { } while (0)
+
+static inline unsigned long dma_heap_system_inuse_pages(void)
+{
+	return 0;
+}
+static inline unsigned long dma_heap_system_pool_pages(void)
+{
+	return 0;
+}
 #endif
 
 #if defined(CONFIG_DMABUF_HEAPS_SAMSUNG_CMA)
