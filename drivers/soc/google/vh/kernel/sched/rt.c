@@ -46,7 +46,7 @@ static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 	 */
 	return sync && task_has_rt_policy(rq->curr) &&
 		p->prio <= rq->rt.highest_prio.next &&
-		rq->rt.rt_nr_running <= 2;
+		rq->rt.rt_nr_running <= 2 && !cpumask_test_cpu(rq->cpu, &cpu_skip_mask);
 }
 #else
 static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
