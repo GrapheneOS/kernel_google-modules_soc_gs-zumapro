@@ -1405,22 +1405,20 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 	vp = get_vendor_task_struct(p);
 	rq = task_rq_lock(p, &rf);
 
-	if (task_on_rq_queued(p)) {
-		if (!get_uclamp_fork_reset(p, true) && val)
-			inc_adpf_counter(p, rq);
-		else if (get_uclamp_fork_reset(p, false) && !val)
-			dec_adpf_counter(p, rq);
-	}
-
 	if (vp->uclamp_fork_reset != val) {
-		/* force reset uclamp_fork_reset inheritance */
-		if (val)
-			vp->binder_task.uclamp_fork_reset = false;
+		bool old_uclamp_fork_reset = get_uclamp_fork_reset(p, true);
 
 		vp->uclamp_fork_reset = val;
 
 		if (vendor_sched_boost_adpf_prio)
 			update_adpf_prio(p, vp, val);
+
+		if (task_on_rq_queued(p)) {
+			if (old_uclamp_fork_reset && !get_uclamp_fork_reset(p, true))
+				dec_adpf_counter(p, task_rq(p));
+			else if (!old_uclamp_fork_reset && get_uclamp_fork_reset(p, true))
+				inc_adpf_counter(p, task_rq(p));
+		}
 	}
 
 	task_rq_unlock(rq, p, &rf);

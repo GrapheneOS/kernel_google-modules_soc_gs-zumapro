@@ -491,7 +491,7 @@ static inline bool get_uclamp_fork_reset(struct task_struct *p, bool inherited)
 {
 	if (inherited)
 		return get_vendor_task_struct(p)->uclamp_fork_reset ||
-			get_vendor_binder_task_struct(p)->uclamp_fork_reset;
+			get_vendor_inheritance_struct(p)->uclamp_fork_reset;
 	else
 		return get_vendor_task_struct(p)->uclamp_fork_reset;
 }
@@ -499,12 +499,12 @@ static inline bool get_uclamp_fork_reset(struct task_struct *p, bool inherited)
 static inline bool get_prefer_idle(struct task_struct *p)
 {
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
-	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
+	struct vendor_inheritance_struct *vi = get_vendor_inheritance_struct(p);
 
 	// Always perfer idle for ADPF tasks or tasks with prefer_idle set explicitly.
 	// In auto_prefer_idle case, only allow high prio tasks of the prefer_idle group,
 	// or high prio task with wake_q_count value greater than 0 in top-app.
-	if (get_uclamp_fork_reset(p, true) || vp->prefer_idle || vbinder->prefer_idle)
+	if (get_uclamp_fork_reset(p, true) || vp->prefer_idle || vi->prefer_idle)
 		return true;
 	else if (vendor_sched_auto_prefer_idle)
 		return vp->group == VG_TOPAPP && p->prio <= DEFAULT_PRIO && p->wake_q_count;
@@ -513,6 +513,18 @@ static inline bool get_prefer_idle(struct task_struct *p)
 			uclamp_eff_value_pixel_mod(p, UCLAMP_MAX) == SCHED_CAPACITY_SCALE);
 	else
 		return vg[vp->group].prefer_idle;
+}
+
+static inline void init_vendor_inheritance_struct(struct vendor_inheritance_struct *vi)
+{
+	int i;
+
+	for (i = 0; i < VI_MAX; i++) {
+		vi->uclamp[i][UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
+		vi->uclamp[i][UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
+	}
+	vi->prefer_idle = 0;
+	vi->uclamp_fork_reset = 0;
 }
 
 static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
@@ -533,18 +545,12 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->uclamp_filter.uclamp_min_ignored = 0;
 	v_tsk->uclamp_filter.uclamp_max_ignored = 0;
 	v_tsk->iowait_boost = 0;
-	v_tsk->binder_task.uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
-	v_tsk->binder_task.uclamp[UCLAMP_MIN] = uclamp_none(UCLAMP_MAX);
-	v_tsk->binder_task.prefer_idle = false;
-	v_tsk->binder_task.active = false;
-	v_tsk->binder_task.uclamp_fork_reset = false;
-	v_tsk->uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
-	v_tsk->uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
 	v_tsk->runnable_start_ns = -1;
 	v_tsk->delta_exec = 0;
 	v_tsk->util_enqueued = 0;
 	v_tsk->prev_util_enqueued = 0;
 	v_tsk->ignore_util_est_update = false;
+	init_vendor_inheritance_struct(&v_tsk->vi);
 }
 
 extern u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se);

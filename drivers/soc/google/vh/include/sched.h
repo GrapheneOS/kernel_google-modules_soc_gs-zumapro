@@ -40,11 +40,16 @@ enum vendor_group {
 	VG_MAX,
 };
 
-struct vendor_binder_task_struct {
-	unsigned int uclamp[UCLAMP_CNT];
-	bool uclamp_fork_reset;
-	bool prefer_idle;
-	bool active;
+enum vendor_inheritnace_t {
+	VI_BINDER = 0,
+	VI_RTMUTEX,
+	VI_MAX,
+};
+
+struct vendor_inheritance_struct {
+	unsigned int uclamp[VI_MAX][UCLAMP_CNT];
+	short int uclamp_fork_reset;
+	short int prefer_idle;
 };
 
 struct uclamp_filter {
@@ -72,7 +77,7 @@ struct vendor_task_struct {
 	unsigned long iowait_boost;
 
 	/* parameters for binder inheritance */
-	struct vendor_binder_task_struct binder_task;
+	struct vendor_inheritance_struct vi;
 	/* parameters for RT inheritance */
 	unsigned int uclamp_pi[UCLAMP_CNT];
 
@@ -101,9 +106,9 @@ static inline struct vendor_task_struct *get_vendor_task_struct(struct task_stru
 	return (struct vendor_task_struct *)p->android_vendor_data1;
 }
 
-static inline struct vendor_binder_task_struct *get_vendor_binder_task_struct(struct task_struct *p)
+static inline struct vendor_inheritance_struct *get_vendor_inheritance_struct(struct task_struct *p)
 {
-	return &get_vendor_task_struct(p)->binder_task;
+	return &get_vendor_task_struct(p)->vi;
 }
 
 static inline int get_vendor_group(struct task_struct *p)
