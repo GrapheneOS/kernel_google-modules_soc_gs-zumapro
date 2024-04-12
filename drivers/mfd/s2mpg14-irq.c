@@ -230,12 +230,12 @@ static irqreturn_t s2mpg14_irq_thread(int irq, void *data)
 {
 	struct s2mpg14_dev *s2mpg14 = data;
 	u8 ibi_src[S2MPG14_IBI_CNT] = { 0 };
-	u32 val, ibi;
+	u32 val, ibi, pending;
 	int i, ret;
-	bool is_pm_irq = false;
 
 	/* Clear interrupt pending bit */
 	val = readl(s2mpg14->sysreg_pending);
+	pending = val;
 	writel(val, s2mpg14->sysreg_pending);
 
 	/* Read VGPIO_RX_MONITOR */
@@ -276,17 +276,15 @@ static irqreturn_t s2mpg14_irq_thread(int irq, void *data)
 
 		/* Report IRQ */
 		s2mpg14_report_irq(s2mpg14);
-		is_pm_irq = true;
 	}
 
 	/* notify SUB PMIC */
 	if (ibi_src[0] & S2MPG14_PMIC_S_MASK) {
 		s2mpg15_call_notifier();
-		is_pm_irq = true;
 	}
 
 	/* Log VGPIO2PMU_EINT wakeup reason with ibi */
-	if (ibi != 0 && !is_pm_irq) {
+	if (pending != 0) {
 		log_abnormal_wakeup_reason("VGPIO2PMU_EINT0x%08x", ibi);
 	}
 
