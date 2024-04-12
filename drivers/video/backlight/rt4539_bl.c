@@ -35,6 +35,8 @@
 #define RT4539_REG00_DIMMING_MODE_MASK		(0x07)
 #define RT4539_REG01_BOOST_SWITCH_FREQ_MASK	(0x0F)
 #define RT4539_REG03_BIT_SELECTION_MASK		(0x07)
+#define RT4539_REG03_LED_DRIVER_HEADROOM_MASK	(0x60)
+#define RT4539_REG03_LED_DRIVER_HEADROOM_SHIFT	(5)
 #define RT4539_REG03_ILED_MAPPING_MASK		(0x80)
 #define RT4539_REG03_ILED_MAPPING_SHIFT		(7)
 #define RT4539_REG04_BRIGHTNESS_MSB_MASK	(0x0F)
@@ -155,10 +157,13 @@ static int rt4539_configure(struct rt4539 *rt, u32 brightness)
 		return ret;
 
 	/* set mapping mode and bit selection */
-	mask = RT4539_REG03_ILED_MAPPING_MASK | RT4539_REG03_BIT_SELECTION_MASK;
+	mask = RT4539_REG03_ILED_MAPPING_MASK | RT4539_REG03_LED_DRIVER_HEADROOM_MASK |
+			RT4539_REG03_BIT_SELECTION_MASK;
 	data = (rt->pdata->exponential_mapping
 			? (1 << RT4539_REG03_ILED_MAPPING_SHIFT) : 0) &
 			RT4539_REG03_ILED_MAPPING_MASK;
+	data |= (rt->pdata->led_headroom << RT4539_REG03_LED_DRIVER_HEADROOM_SHIFT) &
+		RT4539_REG03_LED_DRIVER_HEADROOM_MASK;
 	data |= rt->pdata->bit_selection & RT4539_REG03_BIT_SELECTION_MASK;
 	ret = rt4539_update_field(rt, RT4539_REG03, mask, data);
 	if (ret < 0)
@@ -392,6 +397,7 @@ static int rt4539_parse_dt(struct rt4539 *rt)
 
 	of_property_read_string(node, "bl-name", &pdata->name);
 
+	of_property_read_u8(node, "led-headroom", &pdata->led_headroom);
 	of_property_read_u8(node, "bit-selection", &resolution);
 	if (resolution > BIT_SELECTION_MAX_BITS)
 		resolution = BIT_SELECTION_MAX_BITS;

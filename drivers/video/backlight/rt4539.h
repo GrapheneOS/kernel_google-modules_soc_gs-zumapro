@@ -33,6 +33,7 @@ enum rt4539_chip_id {
  */
 struct rt4539_platform_data {
 	const char *name;
+	u8 led_headroom;
 	u8 bit_selection;
 	u8 dimming_mode;
 	u8 boost_switch_freq;
