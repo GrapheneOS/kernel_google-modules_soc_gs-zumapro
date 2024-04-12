@@ -285,7 +285,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct s2mpu_data *data;
 	bool off_at_boot, has_sync, dma_at_boot;
-	int ret, nr_devs;
+	int ret, nr_devs = 0;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -337,6 +337,14 @@ static int s2mpu_probe(struct platform_device *pdev)
 			return ret;
 	}
 
+
+	if (nr_devs_total == nr_devs_registered) {
+		ret = pkvm_iommu_finalize(0);
+		if (!ret)
+			pr_info("List of devices successfully finalized for pkvm s2mpu\n");
+		else
+			pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
+	}
 
 	platform_set_drvdata(pdev, data);
 
@@ -408,33 +416,22 @@ static int s2mpu_driver_register(struct platform_driver *driver)
 		pr_err("Failed to set S2MPU PM OPS\n");
 		return ret;
 	}
-	/* No need to force probe devices if pKVM is not enabled. */
-	if (!is_protected_kvm_enabled())
-		return platform_driver_register(driver);
 
-	/* Only try to register the driver with pKVM if pKVM is enabled. */
-	ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
-	if (ret) {
-		pr_err("Failed to load s2mpu el2 module: %d\n", ret);
-		return ret;
+        if (is_protected_kvm_enabled()) {
+		ret = pkvm_load_el2_module(__kvm_nvhe_s2mpu_hyp_init, &token);
+		if (ret) {
+			pr_err("Failed to load s2mpu el2 module: %d\n", ret);
+			return ret;
+		}
+
+		ret = pkvm_iommu_s2mpu_init(token);
+		if (ret) {
+			pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
+			return ret;
+		}
 	}
 
-	ret = pkvm_iommu_s2mpu_init(token);
-	if (ret) {
-		pr_err("Can't initialize pkvm s2mpu driver: %d\n", ret);
-		return ret;
-	}
-
-	ret = platform_driver_probe(&s2mpu_driver, s2mpu_probe);
-
-	/* If one device is not probed it will not be controlled by the hypervisor. */
-	ret = pkvm_iommu_finalize(WARN_ON(nr_devs_total != nr_devs_registered) ? -ENXIO : 0);
-	if (!ret)
-		pr_info("List of devices successfully finalized for pkvm s2mpu\n");
-	else
-		pr_err("Couldn't finalize pkvm s2mpu: %d\n", ret);
-
-	return ret;
+	return platform_driver_register(driver);
 }
 
 module_driver(s2mpu_driver, s2mpu_driver_register, platform_driver_unregister);
