@@ -202,11 +202,6 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 	int ret1 = -1;
 	int wait_counter = 0;
 
-	if (!dwc->gadget) {
-		dev_err(dev, "%s does not have any gadget\n", __func__);
-		return -EINVAL;
-	}
-
 	__pm_stay_awake(dotg->wakelock);
 
 	if (on) {
@@ -320,11 +315,6 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 	int ret = 0;
 	int wait_counter = 0;
 	u32 evt_count, evt_buf_cnt;
-
-	if (!dwc->gadget) {
-		dev_err(dev, "%s does not have any gadget\n", __func__);
-		return -EINVAL;
-	}
 
 	if (on) {
 		__pm_stay_awake(dotg->wakelock);
