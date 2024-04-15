@@ -617,10 +617,14 @@ static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 				   unsigned long l, void *buf)
 {
 	char *kernel_panic_msg;
+	void *pc_tombstone;
+	void *lr_tombstone;
 	unsigned long cpu;
 
 	if (!dbg_snapshot_get_enable())
 		return 0;
+
+	dss_desc.in_panic = true;
 
 	kernel_panic_msg = kmalloc(DSS_PANIC_STRING_SZ, GFP_ATOMIC);
 	if (!kernel_panic_msg) {
@@ -629,27 +633,26 @@ static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 		return -ENOMEM;
 	}
 
-	dss_desc.in_panic = true;
-
-	if (tombstone) { /* tamper the panic message for Oops */
-		char pc_symn[KSYM_SYMBOL_LEN] = "<unknown>";
-		char lr_symn[KSYM_SYMBOL_LEN] = "<unknown>";
-
-#if defined(CONFIG_ARM)
-		sprint_symbol(pc_symn, tombstone->regs->ARM_pc);
-		sprint_symbol(lr_symn, tombstone->regs->ARM_lr);
-#elif defined(CONFIG_ARM64)
-		sprint_symbol(pc_symn, tombstone->regs->pc);
-		sprint_symbol(lr_symn, tombstone->regs->regs[30]);
-#endif
-		scnprintf(kernel_panic_msg, DSS_PANIC_STRING_SZ,
-				"KP: %s: comm:%s PC:%s LR:%s", (char *)buf,
-				current->comm, pc_symn, lr_symn);
-	} else {
+	if (!tombstone) {
 		scnprintf(kernel_panic_msg, DSS_PANIC_STRING_SZ, "KP: %s",
 				(char *)buf);
+		goto panic_msg_ready;
 	}
 
+	/* tamper the panic message for Oops */
+#if IS_ENABLED(CONFIG_ARM)
+	pc_tombstone = (void *)tombstone->regs->ARM_pc;
+	lr_tombstone = (void *)tombstone->regs->ARM_lr;
+#elif IS_ENABLED(CONFIG_ARM64)
+	pc_tombstone = (void *)tombstone->regs->pc;
+	lr_tombstone = (void *)tombstone->regs->regs[30];
+#endif
+
+	scnprintf(kernel_panic_msg, DSS_PANIC_STRING_SZ,
+			"KP: %s: comm:%s PC:%pSR LR:%pSR",
+			(char *)buf, current->comm, pc_tombstone, lr_tombstone);
+
+panic_msg_ready:
 	/* Again disable log_kevents */
 	dbg_snapshot_set_item_enable("log_kevents", false);
 	dbg_snapshot_dump_panic(kernel_panic_msg, strlen(kernel_panic_msg));
