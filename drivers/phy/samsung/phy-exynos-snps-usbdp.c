@@ -938,6 +938,33 @@ int phy_exynos_snps_usbdp_phy_enable(struct exynos_usbphy_info *info)
 	skip_check_ack = 1;
 	phy_exynos_snps_usbdp_cr_write(info, 0x31c5, 0x8000);
 	phy_exynos_snps_usbdp_cr_write(info, 0x32c5, 0x8000);
+
+	/* RAWAONLANEN_DIG_FAST_FLAGS_2.SKIP_TX_RTUNE_CAL */
+	phy_exynos_snps_usbdp_cr_write(info, 0x402d, (1<<13));
+	phy_exynos_snps_usbdp_cr_write(info, 0x412d, (1<<13));
+	phy_exynos_snps_usbdp_cr_write(info, 0x422d, (1<<13));
+	phy_exynos_snps_usbdp_cr_write(info, 0x432d, (1<<13));
+
+	/* RAWCMN_DIG_AON_CMN_RTUNE_TXDN_VAL_X */
+	phy_exynos_snps_usbdp_cr_write(info, 0x2021, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x2024, 0x0200);  // N =1
+	phy_exynos_snps_usbdp_cr_write(info, 0x2027, 0x0200);  // N =2
+	phy_exynos_snps_usbdp_cr_write(info, 0x202a, 0x0200);  // N =3
+	phy_exynos_snps_usbdp_cr_write(info, 0x202d, 0x0200);  // N =4
+	phy_exynos_snps_usbdp_cr_write(info, 0x2030, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x2033, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x2036, 0x0200);
+
+	/* RAWCMN_DIG_AON_CMN_RTUNE_TXUP_VAL_x */
+	phy_exynos_snps_usbdp_cr_write(info, 0x2022, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x2025, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x2028, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x202b, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x202e, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x2031, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x2034, 0x0200);
+	phy_exynos_snps_usbdp_cr_write(info, 0x2037, 0x0200);
+
 	skip_check_ack = 0;
 	if (get_usbdp_mode(info) == SNPS_USBDP_RAM_MODE) {
 		/* 3.boot up phy : RAM Mode -> SRAM f/w update
