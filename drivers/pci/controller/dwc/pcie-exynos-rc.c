@@ -1635,6 +1635,8 @@ static int exynos_pcie_rc_rd_other_conf(struct dw_pcie_rp *pp, struct pci_bus *b
 	busdev = EXYNOS_PCIE_ATU_BUS(bus->number) | EXYNOS_PCIE_ATU_DEV(PCI_SLOT(devfn)) |
 		 EXYNOS_PCIE_ATU_FUNC(PCI_FUNC(devfn));
 
+	exynos_elbi_write(exynos_pcie, 0x1, PCIE_APP_XFER_PENDING);
+
 	cpu_addr = pp->cfg0_base;
 	cfg_size = pp->cfg0_size;
 	va_cfg_base = pp->va_cfg0_base;
@@ -1643,6 +1645,7 @@ static int exynos_pcie_rc_rd_other_conf(struct dw_pcie_rp *pp, struct pci_bus *b
 
 	ret = dw_pcie_read(va_cfg_base + where, size, val);
 
+	exynos_elbi_write(exynos_pcie, 0x0, PCIE_APP_XFER_PENDING);
 	// Fake code for Samsung Modem.
 	if (exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
 
