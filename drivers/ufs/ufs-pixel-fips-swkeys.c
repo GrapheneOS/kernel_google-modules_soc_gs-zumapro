@@ -411,6 +411,15 @@ static const u8 pixel_fips_encryption_iv[] = {
 	0x63, 0x72, 0x79, 0x70, 0x74, 0x20, 0x49, 0x56, /* "crypt IV" */
 };
 
+static struct ufs_pixel_fips_info fips_info = {
+	.key_delivery_mode = KEY_DELIVERY_SW
+};
+const struct ufs_pixel_fips_info *ufs_pixel_fips_get_info(struct ufs_hba *hba)
+{
+	return &fips_info;
+}
+EXPORT_SYMBOL_GPL(ufs_pixel_fips_get_info);
+
 int ufs_pixel_fips_verify(struct ufs_hba *hba)
 {
 	int ret;
@@ -460,6 +469,7 @@ int ufs_pixel_fips_verify(struct ufs_hba *hba)
 	 * Write plaintext with specified crypto parameters, then read raw.
 	 * Compare vs expected ciphertext.
 	 */
+	fips_info.encryption_test_attempted++;
 	memset(bi.io_buffer, 0, UFS_PIXEL_BUFFER_SIZE);
 	memcpy(bi.io_buffer, pixel_fips_encryption_pt,
 	       sizeof(pixel_fips_encryption_pt));
@@ -482,6 +492,7 @@ int ufs_pixel_fips_verify(struct ufs_hba *hba)
 		goto out;
 	}
 
+	fips_info.encryption_test_passed++;
 	pr_info("Encryption verification passed\n");
 
 	/*
@@ -490,6 +501,7 @@ int ufs_pixel_fips_verify(struct ufs_hba *hba)
 	 * specified crypto parameters.
 	 * Compare vs expected plaintext.
 	 */
+	fips_info.decryption_test_attempted++;
 	memset(bi.io_buffer, 0, UFS_PIXEL_BUFFER_SIZE);
 
 	ret = ufs_pixel_fips_read(hba, &bi, pixel_fips_encryption_key,
@@ -503,6 +515,8 @@ int ufs_pixel_fips_verify(struct ufs_hba *hba)
 		ret = -EINVAL;
 		goto out;
 	}
+
+	fips_info.decryption_test_passed++;
 	pr_info("Decryption verification passed\n");
 
 out:
@@ -639,15 +653,21 @@ const u8 *__ufs_pixel_rodata_start = &__fips140_rodata_start;
 static int __init ufs_pixel_hmac_self_test(void)
 {
 	u8 hmac_digest[UFS_PIXEL_FIPS_SHA256_DIGEST_SIZE];
+	int ret;
 
+	fips_info.hmac_self_test_attempted++;
 	ufs_pixel_fips_hmac_sha256(ufs_pixel_fips_hmac_message,
 				   sizeof(ufs_pixel_fips_hmac_message),
 				   ufs_pixel_fips_hmac_key,
 				   sizeof(ufs_pixel_fips_hmac_key),
 				   hmac_digest);
 
-	return memcmp(hmac_digest, ufs_pixel_fips_hmac_expected,
+	ret = memcmp(hmac_digest, ufs_pixel_fips_hmac_expected,
 		      UFS_PIXEL_FIPS_SHA256_DIGEST_SIZE);
+	if (!ret)
+		fips_info.hmac_self_test_passed++;
+
+	return ret;
 }
 extern struct {
 	u32	offset;
@@ -662,6 +682,7 @@ static int __init ufs_pixel_self_integrity_test(void)
 	void *hmac_buffer;
 	int ret;
 
+	fips_info.self_integrity_test_attempted++;
 	text_len = &__fips140_text_end - &__fips140_text_start;
 	rodata_len = &__fips140_rodata_end - &__fips140_rodata_start;
 	hmac_buffer = kmalloc(text_len + rodata_len, GFP_KERNEL);
@@ -687,8 +708,12 @@ static int __init ufs_pixel_self_integrity_test(void)
 
 	kfree(hmac_buffer);
 
-	return memcmp(hmac_digest, fips140_integ_hmac_digest,
+	ret = memcmp(hmac_digest, fips140_integ_hmac_digest,
 		      UFS_PIXEL_FIPS_SHA256_DIGEST_SIZE);
+	if (!ret)
+		fips_info.self_integrity_test_passed++;
+
+	return ret;
 }
 
 static int __init ufs_pixel_fips_init(void)
