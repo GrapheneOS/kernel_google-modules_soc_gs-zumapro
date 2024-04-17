@@ -244,7 +244,7 @@
 };
 
 &ch20 {
-	rail-name = "BUCKBOOST";
+	rail-name = "BUCK3S";
 };
 
 &s2mpg14mfd {
