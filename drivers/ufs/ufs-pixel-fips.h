@@ -20,6 +20,5 @@
  * encryption/decryption error
  */
 int ufs_pixel_fips_verify(struct ufs_hba *hba);
-void ufs_report_ise_version_once(struct ufs_hba *hba);
 
 #endif
