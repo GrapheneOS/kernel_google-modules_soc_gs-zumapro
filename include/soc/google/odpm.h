@@ -106,7 +106,6 @@ struct odpm_info {
 
 	u64 last_poll_ktime_boot_ns;
 	bool sleeping;
-	bool thermal_driver_check;
 	bool ready;
 };
 
