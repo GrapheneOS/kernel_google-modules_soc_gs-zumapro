@@ -100,7 +100,6 @@
 		.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),          \
 		.info_mask_shared_by_dir = BIT(IIO_CHAN_INFO_SAMP_FREQ),       \
 	}
-static bool spmic_driver_status;
 
 static const struct iio_chan_spec s2mpg1415_single_channel[ODPM_CHANNEL_MAX * 3] = {
 	ODPM_ACC_CHANNEL(0), ODPM_ACC_CHANNEL(1),
@@ -319,7 +318,7 @@ int odpm_meter_sw_reset(struct odpm_info *info)
 	pr_info("odpm: %s: meter reset\n", info->chip.name);
 
 	// b/322027909: disable NTC LPF before meter reset
-	if (hw_id == ID_S2MPG15 && spmic_driver_status) {
+	if (hw_id == ID_S2MPG15 && s2mpg15_spmic_thermal_ready()) {
 		ret = s2mpg15_spmic_set_hw_lpf(false);
 		if (ret) {
 			pr_err("odpm: %s: LPF disable fail\n", info->chip.name);
@@ -329,7 +328,7 @@ int odpm_meter_sw_reset(struct odpm_info *info)
 	}
 	ret =  s2mpg1415_meter_sw_reset(hw_id, info->i2c);
 	// enable NTC LPF after sensors are ready
-	if (hw_id == ID_S2MPG15 && spmic_driver_status) {
+	if (hw_id == ID_S2MPG15 && s2mpg15_spmic_thermal_ready()) {
 		ret = s2mpg15_spmic_set_hw_lpf(true);
 		if (ret) {
 			pr_err("odpm: %s: LPF enable fail\n", info->chip.name);
@@ -706,7 +705,6 @@ static int odpm_parse_dt(struct device *dev, struct odpm_info *info)
 		pr_err("odpm: cannot read max refresh time value\n");
 		return -EINVAL;
 	}
-	info->thermal_driver_check = of_property_read_bool(odpm_np, "ntc-thermal-driver-check");
 	ret = odpm_parse_dt_rails(dev, info, pmic_np);
 	if (ret != 0)
 		return ret;
@@ -1841,12 +1839,6 @@ static void odpm_probe_init_device_specific(struct odpm_info *info, int id)
 	info->chip.rx_ext_config_confirmation = false;
 }
 
-void spmic_thermal_status(void)
-{
-	pr_info("%s spmic thermal driver is removed\n", __func__);
-	spmic_driver_status = false;
-}
-
 static int odpm_probe(struct platform_device *pdev)
 {
 	struct odpm_info *odpm_info;
@@ -1909,21 +1901,8 @@ static int odpm_probe(struct platform_device *pdev)
 		odpm_remove(pdev);
 		return ret;
 	}
-	/* If the NTC SPMIC thermal driver is not ready
-	* defer loading of ODPM since METER reset flow
-	* has a dependency on NTC LPF CO setting
-	*/
-	if (odpm_info->thermal_driver_check) {
-		ret = s2mpg15_spmic_thermal_register_client(&spmic_thermal_status);
-		if (ret) {
-			dev_err(&pdev->dev,"spmic thermal driver not ready\n");
-			odpm_remove(pdev);
-			return -EPROBE_DEFER;
-		}
-		spmic_driver_status = true;
-	}
 	/* Initialize other data in odpm_info */
-	
+
 	/* Configure ODPM channels based on device tree input */
 	ret = odpm_configure_chip(odpm_info);
 	if (ret < 0) {
@@ -2011,7 +1990,6 @@ subsys_initcall(odpm_init);
 
 static void __exit odpm_exit(void)
 {
-	s2mpg15_spmic_thermal_unregister_client();
 	platform_driver_unregister(&odpm_driver);
 }
 
