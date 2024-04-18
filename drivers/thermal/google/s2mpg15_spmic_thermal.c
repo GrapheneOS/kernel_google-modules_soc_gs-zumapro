@@ -75,7 +75,6 @@ static struct s2mpg15_spmic_thermal_chip *spmic_thermal_chip;
 *  might want to scale this to handle more than 1 client
 *  in the future.
 */
-static client_exit_callback cb;
 
 /**
  * struct s2mpg15_spmic_thermal_map_pt - Map data representation for ADC
@@ -348,40 +347,18 @@ int s2mpg15_spmic_set_hw_lpf(bool enable) {
 EXPORT_SYMBOL_GPL(s2mpg15_spmic_set_hw_lpf);
 
 /*
- * s2mpg15_spmic_thermal_register_client() - register client driver
- * @client_cb: Client driver's callback pointer
+ * s2mpg15_spmic_thermal_ready()
  *
- * API for client driver to register itself with a callback pointer
- * that spmic driver maintains to notify later when spmicdriver is removed.
+ * API for client driver to query spmic driver if it is ready.
  *
- * Return: success if spmic driver is ready, -EINVAL if not.
+ * Return: true if spmic driver is ready, false if not.
 */
-int s2mpg15_spmic_thermal_register_client (client_exit_callback client_cb) {
-	if (cb) {
-		pr_warn("%s client already registered \n", __func__);
-		return -EALREADY;
-	}
-	if (client_cb && spmic_thermal_chip) {
-		cb = client_cb;
-		return 0;
-	}
-
-	/*spmic thermal driver not ready*/
-	return -EBUSY;
+bool s2mpg15_spmic_thermal_ready(void) {
+	if (spmic_thermal_chip)
+		return true;
+	return false;
 }
-EXPORT_SYMBOL_GPL(s2mpg15_spmic_thermal_register_client);
-/*
- * s2mpg15_spmic_thermal_unregister_client() - unregister client driver
- *
- * API for client driver to unregister itself so spmic driver can
- * clear the callback pointer
- *
- * Return: void. just clear the client cb*
-*/
-void s2mpg15_spmic_thermal_unregister_client (void) {
-	cb = NULL;
-}
-EXPORT_SYMBOL_GPL(s2mpg15_spmic_thermal_unregister_client);
+EXPORT_SYMBOL_GPL(s2mpg15_spmic_thermal_ready);
 
 /*
  * s2mpg15_spmic_temp_update: Update the temperature history.
@@ -1166,14 +1143,6 @@ static int s2mpg15_spmic_thermal_remove(struct platform_device *pdev)
 	}
 	s2mpg15_spmic_thermal_unregister_tzd(chip);
 	spmic_thermal_chip = NULL;
-	/*
-	* Call the client driver's callback to set spmic driver status to
-	* not ready.
-	*/
-	if (cb) {
-		cb();
-		cb = NULL;
-	}
 	return 0;
 }
 
