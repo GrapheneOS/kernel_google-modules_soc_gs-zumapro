@@ -691,6 +691,23 @@
 };
 
 &gs_governor_dsulat {
+	secondary_frequency_votes {
+		bci_freq {
+			vote_name = "bcilat";
+
+			pm_qos_class = <PM_QOS_BCI_THROUGHPUT>;
+
+			core-dev-table-latency =
+			/* DSU           BCI */
+			<  820000        840000 >,
+			<  970000        951000 >,
+			< 1098000       1050000 >,
+			< 1197000       1205000 >,
+			< 1328000       1401000 >,
+			< 1548000       1598000 >;
+		};
+	};
+
 	governor_config {
 		gs_dsulat_cl0 {
 			core-dev-table-latency =
