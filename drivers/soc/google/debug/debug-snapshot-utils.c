@@ -31,15 +31,15 @@
 
 #include <trace/hooks/debug.h>
 
-static char *ecc_sel_str_dsu_l1_l2[] = {
+static const char * const ecc_sel_str_dsu_l1_l2[] = {
 	"DSU", "L1", "L2", NULL,
 };
 
-static char *ecc_sel_str_core_dsu[] = {
+static const char * const ecc_sel_str_core_dsu[] = {
 	"CORE", "DSU", NULL,
 };
 
-static char *ecc_sel_str_dsu_core[] = {
+static const char * const ecc_sel_str_dsu_core[] = {
 	"DSU", "CORE", NULL,
 };
 
@@ -89,7 +89,7 @@ static unsigned int dbg_snapshot_get_core_panic_stat(unsigned int cpu)
 {
 	void __iomem *header = dbg_snapshot_get_header_vaddr();
 
-	return header ?  __raw_readl(header + DSS_OFFSET_PANIC_STAT + cpu * 4) : 0;
+	return header ? __raw_readl(header + DSS_OFFSET_PANIC_STAT + cpu * 4) : 0;
 }
 
 static void dbg_snapshot_set_core_panic_stat(unsigned int val, unsigned int cpu)
@@ -187,11 +187,8 @@ int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 	char *reboot_msg;
 
 	reboot_msg = kmalloc(DSS_PANIC_STRING_SZ, GFP_ATOMIC);
-	if (!reboot_msg) {
-		dev_emerg(dss_desc.dev,
-			  "Out of memory! Couldn't allocate reboot message\n");
+	if (!reboot_msg)
 		return -ENOMEM;
-	}
 
 	/*
 	 * Set default "Emergency Reboot" message
@@ -199,7 +196,7 @@ int dbg_snapshot_emergency_reboot_timeout(const char *str, int tick)
 	scnprintf(reboot_msg, DSS_PANIC_STRING_SZ, "Emergency Reboot");
 
 	if (!dss_soc_ops.expire_watchdog) {
-		dev_emerg(dss_desc.dev, "There is no wdt functions!\n");
+		dev_emerg(dss_desc.dev, "There are no wdt functions\n");
 		return -ENODEV;
 	}
 
@@ -244,10 +241,11 @@ EXPORT_SYMBOL_GPL(dbg_snapshot_kick_watchdog);
 
 static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_main)
 {
-	char state_array[] = {'R', 'S', 'D', 'T', 't', 'X',
-			'Z', 'P', 'x', 'K', 'W', 'I', 'N'};
-	unsigned char idx = 0;
-	unsigned long state, pc = 0;
+	static const char state_array[] = {'R', 'S', 'D', 'T', 't', 'X',
+			'Z', 'P', 'x', 'K', 'W', 'I', 'N', '?'};
+	int idx;
+	unsigned int state;
+	unsigned long pc;
 
 	if ((!tsk) || !try_get_task_stack(tsk) || (tsk->flags & TASK_FROZEN) ||
 	    !(tsk->__state == TASK_RUNNING ||
@@ -257,10 +255,9 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 
 	state = tsk->__state | tsk->exit_state;
 	pc = KSTK_EIP(tsk);
-	while (state) {
-		idx++;
-		state >>= 1;
-	}
+	idx = fls(state);
+	if (idx >= sizeof(state_array))
+		idx = sizeof(state_array) - 1;
 
 	/*
 	 * kick watchdog to prevent unexpected reset during panic sequence
@@ -271,7 +268,7 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 	pr_info("%8d %16llu %16llu %16llu %c(%u) %3d %16pK %16pK %c %16s\n",
 		tsk->pid, tsk->utime, tsk->stime,
 		tsk->se.exec_start, state_array[idx], (tsk->__state),
-		task_cpu(tsk), (void *) pc, tsk, is_main ? '*' : ' ', tsk->comm);
+		task_cpu(tsk), (void *)pc, tsk, is_main ? '*' : ' ', tsk->comm);
 
 	sched_show_task(tsk);
 }
@@ -346,7 +343,8 @@ static void dbg_snapshot_save_system(void *unused)
 		"mrs x2, ELR_EL1\n\t"		/* ELR_EL1 */
 		"stp x1, x2, [%0, #0x50]\n\t"
 		"mrs x1, SP_EL0\n\t"		/* SP_EL0 */
-		"str x1, [%0, 0x60]\n\t" :	/* output */
+		"str x1, [%0, 0x60]\n\t"
+		:				/* output */
 		: "r"(mmu_reg)			/* input */
 		: "x1", "x2", "memory"		/* clobbered register */
 	);
@@ -364,7 +362,7 @@ static void clear_external_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
 	write_ERXMISC1_EL1(0);
 }
 
-const char *get_external_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
+static const char *get_external_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
 {
 	const char *ext_err;
 
@@ -380,7 +378,7 @@ const char *get_external_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
 	return ext_err;
 }
 
-const char *get_correct_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
+static const char *get_correct_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
 {
 	const char *cr_err;
 
@@ -401,7 +399,7 @@ const char *get_correct_ecc_err(ERXSTATUS_EL1_t erxstatus_el1)
 	return cr_err;
 }
 
-static void _dbg_snapshot_ecc_dump(bool call_panic, char *ecc_sel_str[])
+static void _dbg_snapshot_ecc_dump(bool call_panic, const char * const ecc_sel_str[])
 {
 	ERRSELR_EL1_t errselr_el1;
 	ERRIDR_EL1_t erridr_el1;
@@ -414,7 +412,7 @@ static void _dbg_snapshot_ecc_dump(bool call_panic, char *ecc_sel_str[])
 	erridr_el1.reg = read_ERRIDR_EL1();
 
 	for (i = 0; i < (int)erridr_el1.field.NUM; i++) {
-		char errbuf[SZ_256];
+		static char errbuf[SZ_256];
 		int n = 0;
 
 		errselr_el1.reg = read_ERRSELR_EL1();
@@ -534,8 +532,10 @@ static inline void dbg_snapshot_save_core(struct pt_regs *regs)
 				"stp x23, x24, [x0, #0xb8]\n\t"
 				"stp x25, x26, [x0, #0xc8]\n\t"
 				"stp x27, x28, [x0, #0xd8]\n\t"
-				"stp x29, x30, [x0, #0xe8]\n\t" :
-				: "r"(core_reg));
+				"stp x29, x30, [x0, #0xe8]\n\t"
+				:
+				: "r"(core_reg)
+				: "x0", "memory");
 		core_reg->sp = core_reg->regs[29];
 		core_reg->pc =
 			(unsigned long)(core_reg->regs[30] - sizeof(unsigned int));
@@ -627,11 +627,8 @@ static int dbg_snapshot_panic_handler(struct notifier_block *nb,
 	dss_desc.in_panic = true;
 
 	kernel_panic_msg = kmalloc(DSS_PANIC_STRING_SZ, GFP_ATOMIC);
-	if (!kernel_panic_msg) {
-		dev_emerg(dss_desc.dev,
-			  "Out of memory! Couldn't allocate panic string\n");
+	if (!kernel_panic_msg)
 		return -ENOMEM;
-	}
 
 	if (!tombstone) {
 		scnprintf(kernel_panic_msg, DSS_PANIC_STRING_SZ, "KP: %s",
