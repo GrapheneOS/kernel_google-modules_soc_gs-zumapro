@@ -2206,6 +2206,7 @@ void initialize_vendor_group_property(void)
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 		vg[i].ug = UG_AUTO;
 #endif
+		vg[i].rampup_multiplier = 1;
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)

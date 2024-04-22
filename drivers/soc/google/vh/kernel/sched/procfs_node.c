@@ -31,6 +31,7 @@ bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
 bool __read_mostly vendor_sched_reduce_prefer_idle = true;
 bool __read_mostly vendor_sched_auto_prefer_idle = false;
 bool __read_mostly vendor_sched_boost_adpf_prio = true;
+unsigned int __read_mostly vendor_sched_adpf_rampup_multiplier = 1;
 struct cpumask cpu_skip_mask;
 static struct proc_dir_entry *vendor_sched;
 struct proc_dir_entry *group_dirs[VG_MAX];
@@ -152,6 +153,7 @@ enum vendor_procfs_type {
 		__PROC_GROUP_ENTRY(uclamp_max_on_nice_low_prio, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(uclamp_max_on_nice_mid_prio, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(uclamp_max_on_nice_high_prio, __group_name, __vg),	\
+		__PROC_GROUP_ENTRY(rampup_multiplier, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_task_group, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_proc_group, __group_name, __vg)
 
@@ -431,6 +433,14 @@ static inline bool check_uclamp_##__uclamp_id##_on_nice_prio(enum vendor_group g
 	return true; \
 }
 
+static inline bool check_rampup_multiplier(enum vendor_group group)
+{
+	if (vg[group].rampup_multiplier > 4)
+		return false;
+
+	return true;
+}
+
 /// ******************************************************************************** ///
 /// ********************* Create vendor group procfs nodes*************************** ///
 /// ******************************************************************************** ///
@@ -479,6 +489,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ta, uclamp_max_on_nice_high_prio, VG_TOPAPP, \
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, uclamp_min_on_nice_enable, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, uclamp_max_on_nice_enable, VG_TOPAPP);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ta, rampup_multiplier, VG_TOPAPP, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ta, ug, VG_TOPAPP, check_ug);
 #endif
@@ -514,6 +526,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(fg, uclamp_max_on_nice_high_prio, VG_FOREGROUN
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, uclamp_min_on_nice_enable, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, uclamp_max_on_nice_enable, VG_FOREGROUND);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(fg, rampup_multiplier, VG_FOREGROUND, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(fg, ug, VG_FOREGROUND, check_ug);
 #endif
@@ -549,6 +563,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sys, uclamp_max_on_nice_high_prio, VG_SYSTEM, 
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, uclamp_min_on_nice_enable, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, uclamp_max_on_nice_enable, VG_SYSTEM);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sys, rampup_multiplier, VG_SYSTEM, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sys, ug, VG_SYSTEM, check_ug);
 #endif
@@ -584,6 +600,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam, uclamp_max_on_nice_high_prio, VG_CAMERA, 
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, uclamp_min_on_nice_enable, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, uclamp_max_on_nice_enable, VG_CAMERA);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam, rampup_multiplier, VG_CAMERA, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam, ug, VG_CAMERA, check_ug);
 #endif
@@ -619,6 +637,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam_power, uclamp_max_on_nice_high_prio, VG_CA
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, uclamp_min_on_nice_enable, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, uclamp_max_on_nice_enable, VG_CAMERA_POWER);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam_power, rampup_multiplier, VG_CAMERA_POWER, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(cam_power, ug, VG_CAMERA_POWER, check_ug);
 #endif
@@ -654,6 +674,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(bg, uclamp_max_on_nice_high_prio, VG_BACKGROUN
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, uclamp_min_on_nice_enable, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, uclamp_max_on_nice_enable, VG_BACKGROUND);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(bg, rampup_multiplier, VG_BACKGROUND, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(bg, ug, VG_BACKGROUND, check_ug);
 #endif
@@ -689,6 +711,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sysbg, uclamp_max_on_nice_high_prio, VG_SYSTEM
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, uclamp_min_on_nice_enable, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, uclamp_max_on_nice_enable, VG_SYSTEM_BACKGROUND);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sysbg, rampup_multiplier, VG_SYSTEM_BACKGROUND, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sysbg, ug, VG_SYSTEM_BACKGROUND, check_ug);
 #endif
@@ -724,6 +748,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(nnapi, uclamp_max_on_nice_high_prio, VG_NNAPI_
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, uclamp_min_on_nice_enable, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, uclamp_max_on_nice_enable, VG_NNAPI_HAL);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(nnapi, rampup_multiplier, VG_NNAPI_HAL, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(nnapi, ug, VG_NNAPI_HAL, check_ug);
 #endif
@@ -759,6 +785,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(rt, uclamp_max_on_nice_high_prio, VG_RT, \
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, uclamp_min_on_nice_enable, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, uclamp_max_on_nice_enable, VG_RT);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(rt, rampup_multiplier, VG_RT, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(rt, ug, VG_RT, check_ug);
 #endif
@@ -794,6 +822,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(dex2oat, uclamp_max_on_nice_high_prio, VG_DEX2
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, uclamp_min_on_nice_enable, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, uclamp_max_on_nice_enable, VG_DEX2OAT);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(dex2oat, rampup_multiplier, VG_DEX2OAT, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(dex2oat, ug, VG_DEX2OAT, check_ug);
 #endif
@@ -829,6 +859,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ota, uclamp_max_on_nice_high_prio, VG_OTA, \
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, uclamp_min_on_nice_enable, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, uclamp_max_on_nice_enable, VG_OTA);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ota, rampup_multiplier, VG_OTA, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(ota, ug, VG_OTA, check_ug);
 #endif
@@ -864,6 +896,8 @@ VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sf, uclamp_max_on_nice_high_prio, VG_SF, \
 	check_uclamp_max_on_nice_prio);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, uclamp_min_on_nice_enable, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, uclamp_max_on_nice_enable, VG_SF);
+VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sf, rampup_multiplier, VG_SF, \
+	check_rampup_multiplier);
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE_CHECK(sf, ug, VG_SF, check_ug);
 #endif
@@ -2196,6 +2230,38 @@ static ssize_t util_post_init_scale_store(struct file *filp,
 }
 PROC_OPS_RW(util_post_init_scale);
 
+static int adpf_rampup_multiplier_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%u\n", vendor_sched_adpf_rampup_multiplier);
+	return 0;
+}
+static ssize_t adpf_rampup_multiplier_store(struct file *filp,
+					    const char __user *ubuf,
+					    size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > 4)
+		return -EINVAL;
+
+	vendor_sched_adpf_rampup_multiplier = val;
+
+	return count;
+}
+PROC_OPS_RW(adpf_rampup_multiplier);
+
 static int per_task_iowait_boost_max_value_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "%d\n", sched_per_task_iowait_boost_max_value);
@@ -3056,6 +3122,7 @@ static struct pentry entries[] = {
 	PROC_ENTRY(dvfs_headroom),
 	PROC_ENTRY(tapered_dvfs_headroom_enable),
 	PROC_ENTRY(auto_dvfs_headroom_enable),
+	PROC_ENTRY(adpf_rampup_multiplier),
 	// teo
 	PROC_ENTRY(teo_util_threshold),
 	// iowait boost
