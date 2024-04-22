@@ -7,9 +7,9 @@
  */
 
 #include <linux/module.h>
+#include <soc/google/meminfo.h>
 #include <trace/hooks/mm.h>
 #include "cma.h"
-#include "meminfo.h"
 #include "vmscan.h"
 #include "compaction.h"
 
@@ -46,7 +46,7 @@ static int pixel_stat_mm_init(void)
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_vh_meminfo_proc_show(vh_meminfo_proc_show, NULL);
+	ret = register_trace_android_rvh_meminfo_proc_show(rvh_meminfo_proc_show, NULL);
 	if (ret)
 		return ret;
 
