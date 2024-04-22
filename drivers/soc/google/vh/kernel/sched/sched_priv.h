@@ -46,6 +46,7 @@ extern unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_per_cpu_iowait_boost_max_value[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_per_task_iowait_boost_max_value;
+extern unsigned int vendor_sched_adpf_rampup_multiplier;
 
 extern int pixel_cpu_num;
 extern int pixel_cluster_num;
@@ -164,6 +165,7 @@ struct vendor_group_property {
 	enum utilization_group ug;
 #endif
 	struct uclamp_se uc_req[UCLAMP_CNT];
+	unsigned int rampup_multiplier;
 };
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -860,6 +862,7 @@ static inline void __update_util_est_invariance(struct rq *rq,
 	unsigned long se_enqueued, cfs_rq_enqueued;
 	struct cfs_rq *cfs_rq = &rq->cfs;
 	struct sched_entity *se = &p->se;
+	unsigned int rampup_multiplier;
 	int cpu = cpu_of(rq);
 	u64 delta_exec;
 	int __maybe_unused group;
@@ -876,8 +879,17 @@ static inline void __update_util_est_invariance(struct rq *rq,
 	if (se->avg.util_avg >= arch_scale_cpu_capacity(cpu))
 		return;
 
+	if (get_uclamp_fork_reset(p, true))
+		rampup_multiplier = vendor_sched_adpf_rampup_multiplier;
+	else
+		rampup_multiplier = vg[get_vendor_group(p)].rampup_multiplier;
+
+	if (unlikely(!rampup_multiplier))
+		return;
+
 	delta_exec = (se->sum_exec_runtime - vp->prev_sum_exec_runtime)/1000;
 	delta_exec = min_t(u64, delta_exec, TICK_USEC);
+	delta_exec *= rampup_multiplier;
 	vp->prev_sum_exec_runtime = se->sum_exec_runtime;
 
 	se_enqueued = READ_ONCE(se->avg.util_est.enqueued) & ~UTIL_AVG_UNCHANGED;
