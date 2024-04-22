@@ -30,36 +30,37 @@ static void exynos_pd_hsi0_ldo_control(struct exynos_pd_hsi0_data *hsi0_data, bo
 {
 	int ret1, ret2, ret3;
 
-	if (hsi0_data->vdd085 == NULL || hsi0_data->vdd18 == NULL || hsi0_data->vdd30 == NULL) {
+	if (hsi0_data->vdd_low == NULL || hsi0_data->vdd_medium == NULL ||
+		hsi0_data->vdd_high == NULL) {
 		dev_err(hsi0_data->dev, "not defined regulators\n");
 		return;
 	}
 
 	if (on) {
-		ret1 = regulator_enable(hsi0_data->vdd085);
+		ret1 = regulator_enable(hsi0_data->vdd_low);
 		if (ret1) {
-			dev_err(hsi0_data->dev, "failed to enable vdd085\n");
+			dev_err(hsi0_data->dev, "failed to enable vdd_low\n");
 			return;
 		}
 
-		ret1 = regulator_enable(hsi0_data->vdd18);
+		ret1 = regulator_enable(hsi0_data->vdd_medium);
 		if (ret1) {
-			dev_err(hsi0_data->dev, "failed to enable vdd18\n");
-			regulator_disable(hsi0_data->vdd085);
+			dev_err(hsi0_data->dev, "failed to enable vdd_medium\n");
+			regulator_disable(hsi0_data->vdd_low);
 			return;
 		}
 
-		ret1 = regulator_enable(hsi0_data->vdd30);
+		ret1 = regulator_enable(hsi0_data->vdd_high);
 		if (ret1) {
-			dev_err(hsi0_data->dev, "failed to enable vdd30\n");
-			regulator_disable(hsi0_data->vdd085);
-			regulator_disable(hsi0_data->vdd18);
+			dev_err(hsi0_data->dev, "failed to enable vdd_high\n");
+			regulator_disable(hsi0_data->vdd_low);
+			regulator_disable(hsi0_data->vdd_medium);
 			return;
 		}
 	} else {
-		ret1 = regulator_disable(hsi0_data->vdd085);
-		ret2 = regulator_disable(hsi0_data->vdd18);
-		ret3 = regulator_disable(hsi0_data->vdd30);
+		ret1 = regulator_disable(hsi0_data->vdd_low);
+		ret2 = regulator_disable(hsi0_data->vdd_medium);
+		ret3 = regulator_disable(hsi0_data->vdd_high);
 		if (ret1 || ret2 || ret3)
 			dev_err(hsi0_data->dev, "failed to disable LDOs: %d %d %d\n",
 				ret1, ret2, ret3);
@@ -68,6 +69,7 @@ static void exynos_pd_hsi0_ldo_control(struct exynos_pd_hsi0_data *hsi0_data, bo
 	return;
 }
 
+#if IS_ENABLED(CONFIG_SOC_GS101) || IS_ENABLED(CONFIG_SOC_GS201)
 static void exynos_pd_hsi0_vdd_hsi_control(struct exynos_pd_hsi0_data *hsi0_data, bool on)
 {
 	int ret;
@@ -89,6 +91,7 @@ static void exynos_pd_hsi0_vdd_hsi_control(struct exynos_pd_hsi0_data *hsi0_data
 
 	return;
 }
+#endif
 
 int exynos_pd_hsi0_ldo_manual_control(bool on)
 {
@@ -107,6 +110,7 @@ int exynos_pd_hsi0_ldo_manual_control(bool on)
 }
 EXPORT_SYMBOL_GPL(exynos_pd_hsi0_ldo_manual_control);
 
+#if IS_ENABLED(CONFIG_SOC_GS101) || IS_ENABLED(CONFIG_SOC_GS201)
 int exynos_pd_hsi0_vdd_hsi_manual_control(bool on)
 {
 	struct exynos_pd_hsi0_data *hsi0_data;
@@ -120,6 +124,7 @@ int exynos_pd_hsi0_vdd_hsi_manual_control(bool on)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(exynos_pd_hsi0_vdd_hsi_manual_control);
+#endif
 
 bool exynos_pd_hsi0_get_ldo_status(void)
 {
@@ -129,8 +134,8 @@ bool exynos_pd_hsi0_get_ldo_status(void)
 	if (!hsi0_data)
 		return false;
 
-	if (regulator_is_enabled(hsi0_data->vdd085) && regulator_is_enabled(hsi0_data->vdd18) &&
-	    regulator_is_enabled(hsi0_data->vdd30))
+	if (regulator_is_enabled(hsi0_data->vdd_low) && regulator_is_enabled(hsi0_data->vdd_medium) &&
+	    regulator_is_enabled(hsi0_data->vdd_high))
 		return true;
 
 	return false;
@@ -149,32 +154,47 @@ static int exynos_pd_hsi0_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, hsi0_data);
 	hsi0_data->dev = dev;
 
+	/* vdd_hsi, vdd30, vdd18, and vdd085 are used in gs101/gs201 */
+	/* vdd33, vdd12, and vdd075 are used in zuma+ */
+#if IS_ENABLED(CONFIG_SOC_GS101) || IS_ENABLED(CONFIG_SOC_GS201)
 	hsi0_data->vdd_hsi = devm_regulator_get(dev, "vdd_hsi");
 	if (IS_ERR(hsi0_data->vdd_hsi)) {
 		dev_err(dev, "get vdd_hsi regulator failed: %ld\n", PTR_ERR(hsi0_data->vdd_hsi));
 		return PTR_ERR(hsi0_data->vdd_hsi);
 	}
+#endif
 
-	hsi0_data->vdd30 = devm_regulator_get(dev, "vdd30");
-	if (IS_ERR(hsi0_data->vdd30)) {
-		dev_err(dev, "get vdd30 regulator failed: %ld\n", PTR_ERR(hsi0_data->vdd30));
-		return PTR_ERR(hsi0_data->vdd30);
+	hsi0_data->vdd_high = devm_regulator_get_optional(dev, "vdd30");
+	if (IS_ERR(hsi0_data->vdd_high)) {
+		hsi0_data->vdd_high = devm_regulator_get(dev, "vdd33");
+		if (IS_ERR(hsi0_data->vdd_high)) {
+			dev_err(dev, "get vdd_high regulator failed: %ld\n", PTR_ERR(hsi0_data->vdd_high));
+			return PTR_ERR(hsi0_data->vdd_high);
+		}
 	}
 
-	hsi0_data->vdd18 = devm_regulator_get(dev, "vdd18");
-	if (IS_ERR(hsi0_data->vdd18)) {
-		dev_err(dev, "get vdd18 regulator failed: %ld\n", PTR_ERR(hsi0_data->vdd18));
-		return PTR_ERR(hsi0_data->vdd18);
+	hsi0_data->vdd_medium = devm_regulator_get_optional(dev, "vdd18");
+	if (IS_ERR(hsi0_data->vdd_medium)) {
+		hsi0_data->vdd_medium = devm_regulator_get(dev, "vdd12");
+		if (IS_ERR(hsi0_data->vdd_medium)) {
+			dev_err(dev, "get vdd_medium regulator failed: %ld\n", PTR_ERR(hsi0_data->vdd_medium));
+			return PTR_ERR(hsi0_data->vdd_medium);
+		}
 	}
 
-	hsi0_data->vdd085 = devm_regulator_get(dev, "vdd085");
-	if (IS_ERR(hsi0_data->vdd085)) {
-		dev_err(dev, "get vdd085 regulator failed: %ld\n", PTR_ERR(hsi0_data->vdd085));
-		return PTR_ERR(hsi0_data->vdd085);
+	hsi0_data->vdd_low = devm_regulator_get_optional(dev, "vdd085");
+	if (IS_ERR(hsi0_data->vdd_low)) {
+		hsi0_data->vdd_low = devm_regulator_get(dev, "vdd075");
+		if (IS_ERR(hsi0_data->vdd_low)) {
+			dev_err(dev, "get vdd_low regulator failed: %ld\n", PTR_ERR(hsi0_data->vdd_low));
+			return PTR_ERR(hsi0_data->vdd_low);
+		}
 	}
 
 	/* vote on due to the regulators already turned on */
+#if IS_ENABLED(CONFIG_SOC_GS101) || IS_ENABLED(CONFIG_SOC_GS201)
 	exynos_pd_hsi0_vdd_hsi_manual_control(true);
+#endif
 	exynos_pd_hsi0_ldo_manual_control(true);
 
 	pm_runtime_enable(dev);
