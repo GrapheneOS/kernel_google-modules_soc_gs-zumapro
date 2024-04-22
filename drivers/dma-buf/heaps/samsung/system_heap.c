@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/of.h>
+#include <soc/google/meminfo.h>
 
 #include <heaps/page_pool.h>
 
@@ -42,13 +43,12 @@ static const unsigned int orders[] = {9, 8, 4, 0};
 #define NUM_ORDERS ARRAY_SIZE(orders)
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 
-unsigned long dma_heap_system_inuse_pages(void)
+static unsigned long dma_heap_system_inuse_pages(void)
 {
 	return atomic64_read(&inuse_pages);
 }
-EXPORT_SYMBOL_GPL(dma_heap_system_inuse_pages);
 
-unsigned long dma_heap_system_pool_pages(void)
+static unsigned long dma_heap_system_pool_pages(void)
 {
 	int i;
 	unsigned long pages = 0;
@@ -58,7 +58,6 @@ unsigned long dma_heap_system_pool_pages(void)
 
 	return pages;
 }
-EXPORT_SYMBOL_GPL(dma_heap_system_pool_pages);
 
 static struct page *alloc_largest_available(unsigned long size,
 					    unsigned int max_order)
@@ -247,6 +246,29 @@ static struct platform_driver system_heap_driver = {
 	.probe		= system_heap_probe,
 };
 
+static unsigned long ion_heap_size(void *private)
+{
+	return (dma_heap_system_inuse_pages() + dma_heap_gcma_inuse_pages()) << (PAGE_SHIFT - 10);
+}
+
+static struct meminfo dma_heap_meminfo = {
+	.name = "ION_heap",
+	.size_kb = ion_heap_size,
+};
+
+static unsigned long ion_heap_pool_size(void *private)
+{
+	unsigned long pages;
+
+	pages = dma_heap_system_pool_pages();
+	return pages << (PAGE_SHIFT - 10);
+}
+
+static struct meminfo dma_heap_pool_meminfo = {
+	.name = "ION_heap_pool",
+	.size_kb = ion_heap_pool_size,
+};
+
 int __init system_dma_heap_init(void)
 {
 	int i;
@@ -262,6 +284,9 @@ int __init system_dma_heap_init(void)
 			return -ENOMEM;
 		}
 	}
+
+	register_meminfo(&dma_heap_meminfo);
+	register_meminfo(&dma_heap_pool_meminfo);
 
 	return platform_driver_register(&system_heap_driver);
 }
