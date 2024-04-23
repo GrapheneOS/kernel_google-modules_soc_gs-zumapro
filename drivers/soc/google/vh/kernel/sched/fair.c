@@ -2554,6 +2554,12 @@ static struct task_struct *detach_important_task(struct rq *src_rq, int dst_cpu)
 		if (!is_ui && !is_boost)
 			continue;
 
+		/*
+		 * Do not pull tasks in skip mask unless it is ADPF task.
+		 */
+		if(!is_ui && cpumask_test_cpu(dst_cpu, &cpu_skip_mask))
+			continue;
+
 		if (task_fits_capacity(p, dst_cpu)) {
 			if (!task_fits_capacity(p, src_rq->cpu)) {
 				// if task is fit for new cpu but not old cpu
@@ -2636,12 +2642,6 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	 * Do not pull tasks towards !active CPUs...
 	 */
 	if (!cpu_active(this_cpu))
-		return;
-
-	/*
-	 * Do not pull tasks in skip mask.
-	 */
-	if(cpumask_test_cpu(this_cpu, &cpu_skip_mask))
 		return;
 
 	/*
