@@ -1192,6 +1192,7 @@ static void pmu_limit_work(struct kthread_work *work)
 	unsigned long flags;
 	bool pmu_throttle = false;
 	cpumask_t local_pmu_ignored_mask = CPU_MASK_NONE;
+	bool all_cpu_ignored = true;
 
 #if IS_ENABLED(CONFIG_TICK_DRIVEN_LATGOV)
 	struct gs_cpu_perf_data perf_data;
@@ -1203,6 +1204,7 @@ static void pmu_limit_work(struct kthread_work *work)
 		policy = cpufreq_cpu_get(cpu);
 		sg_policy = policy->governor_data;
 		next_max_freq = policy->cpuinfo.max_freq;
+		pmu_throttle = false;
 
 		// If pmu_limit_enable is not set, or policy max is lower than pum limit freq,
 		// such as under thermal throttling, we don't need to call freq_qos_update_request
@@ -1223,11 +1225,25 @@ static void pmu_limit_work(struct kthread_work *work)
 		sg_policy->relax_pmu_throttle = false;
 		raw_spin_unlock_irqrestore(&sg_policy->update_lock, flags);
 
+		all_cpu_ignored = true;
+
 		for_each_cpu(ccpu, policy->cpus) {
 			if (!cpu_online(ccpu)) {
 				pr_info_ratelimited("cpu %d is offline, pmu read fail\n", ccpu);
 				goto update_next_max_freq;
 			}
+
+			sg_cpu = &per_cpu(sugov_cpu, ccpu);
+			sugov_get_util(sg_cpu);
+			freq = map_util_freq_pixel_mod(sg_cpu->util,
+				policy->cpuinfo.max_freq, sg_cpu->max, ccpu);
+			// Ignore this cpu if freq is <= limit freq.
+			if (freq <= sg_policy->tunables->limit_frequency) {
+				cpumask_set_cpu(ccpu, &local_pmu_ignored_mask);
+				continue;
+			}
+
+			all_cpu_ignored = false;
 
 #if IS_ENABLED(CONFIG_TICK_DRIVEN_LATGOV)
 			ret = gs_perf_mon_get_data(ccpu, &perf_data);
@@ -1271,23 +1287,14 @@ static void pmu_limit_work(struct kthread_work *work)
 				trace_clock_set_rate(trace_name, spc, raw_smp_processor_id());
 			}
 
-			if (!check_pmu_limit_conditions(lcpi, spc, sg_policy)) {
-				sg_cpu = &per_cpu(sugov_cpu, ccpu);
-				sugov_get_util(sg_cpu);
-				freq = map_util_freq_pixel_mod(sg_cpu->util,
-					policy->cpuinfo.max_freq, sg_cpu->max, ccpu);
-				// Ignore this cpu if freq is <= limit freq.
-				if (freq <= sg_policy->tunables->limit_frequency) {
-					cpumask_set_cpu(ccpu, &local_pmu_ignored_mask);
-					continue;
-				} else {
-					goto update_next_max_freq;
-				}
-			}
+			if (!check_pmu_limit_conditions(lcpi, spc, sg_policy))
+				goto update_next_max_freq;
 		}
 
-		next_max_freq = sg_policy->tunables->limit_frequency;
-		pmu_throttle = true;
+		if (!all_cpu_ignored) {
+			next_max_freq = sg_policy->tunables->limit_frequency;
+			pmu_throttle = true;
+		}
 
 update_next_max_freq:
 
