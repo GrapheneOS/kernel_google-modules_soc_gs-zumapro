@@ -168,6 +168,12 @@
 			reg = <0 DSS_LOG_ITMON_ADDR DSS_LOG_ITMON_SIZE>;
 			no-map;
 		};
+
+		log_s2d_extract: log_s2d_extract {
+			reg = <0 DSS_LOG_S2D_EXTRACT_ADDR
+					DSS_LOG_S2D_EXTRACT_SIZE>;
+			no-map;
+		};
 		/* end debug_memory rmem section */
 
 		seclog_mem: seclog_mem {
