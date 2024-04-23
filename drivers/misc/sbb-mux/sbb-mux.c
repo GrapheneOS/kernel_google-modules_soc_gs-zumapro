@@ -108,7 +108,7 @@ static int sbb_signal_set_value(enum sbbm_signal_id signal_id, int value)
 
 	if (tracker->value == value) {
 		spin_unlock_irqrestore(&tracker->lock, flags);
-		return -EINVAL;
+		return 0;
 	}
 
 	if (value != SBB_REFRESH_VALUE) {
@@ -153,11 +153,7 @@ static ssize_t sbb_signal_value_store(struct kobject *kobj,
 		return -EINVAL;
 	}
 
-	if (sbb_signal_set_value(signal_id, input_val == '1')) {
-		pr_err("sbb-mux: Signal %s is already set to %d!",
-		       signals[signal_id].name, input_val == '1');
-		return -EINVAL;
-	}
+	sbb_signal_set_value(signal_id, input_val == '1');
 
 	return buf_len;
 }
