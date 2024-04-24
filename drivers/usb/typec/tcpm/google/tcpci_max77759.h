@@ -40,6 +40,7 @@ struct max77759_plat {
 	struct gvotable_election *usb_icl_proto_el;
 	struct gvotable_election *usb_icl_el;
 	struct gvotable_election *charger_mode_votable;
+	struct gvotable_election *bcl_usb_votable;
 	bool vbus_enabled;
 	/* Data role notified to the data stack */
 	enum typec_data_role active_data_role;
@@ -146,11 +147,14 @@ struct max77759_plat {
 	int typec_current_max;
 	struct kthread_worker *wq;
 	struct kthread_worker *dp_notification_wq;
+	struct kthread_worker *bcl_usb_wq;
 	struct kthread_delayed_work icl_work;
 	struct kthread_delayed_work enable_vbus_work;
 	struct kthread_delayed_work vsafe0v_work;
 	struct kthread_delayed_work reset_ovp_work;
 	struct kthread_delayed_work check_missing_rp_work;
+	struct kthread_delayed_work bcl_usb_votable_work;
+	u8 bcl_usb_vote;
 
 	/* Notifier for data role */
 	struct usb_role_switch *usb_sw;
