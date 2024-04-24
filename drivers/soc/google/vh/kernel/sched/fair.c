@@ -2302,6 +2302,7 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 		return;
 
 	if (static_branch_likely(&auto_dvfs_headroom_enable)) {
+		struct vendor_task_struct *vp = get_vendor_task_struct(p);
 		unsigned int rampup_multiplier;
 		if (get_uclamp_fork_reset(p, true))
 			rampup_multiplier = vendor_sched_adpf_rampup_multiplier;
@@ -2313,6 +2314,9 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 			p->se.avg.util_est.ewma = 0;
 			return;
 		}
+
+		if (vp->ignore_util_est_update)
+			return;
 	}
 
 	/*
@@ -2327,8 +2331,10 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	 * skip the util_est update.
 	 */
 	ue = p->se.avg.util_est;
-	if (ue.enqueued & UTIL_AVG_UNCHANGED)
-		return;
+	if (!static_branch_likely(&auto_dvfs_headroom_enable)) {
+		if (ue.enqueued & UTIL_AVG_UNCHANGED)
+			return;
+	}
 
 	last_enqueued_diff = ue.enqueued;
 
@@ -2361,8 +2367,10 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	 * To avoid overestimation of actual task utilization, skip updates if
 	 * we cannot grant there is idle time in this CPU.
 	 */
-	if (task_util(p) > capacity_orig_of(cpu_of(rq_of(cfs_rq))))
-		return;
+	if (!static_branch_likely(&auto_dvfs_headroom_enable)) {
+		if (task_util(p) > capacity_orig_of(cpu_of(rq_of(cfs_rq))))
+			return;
+	}
 
 	/*
 	 * Update Task's estimated utilization
@@ -2902,7 +2910,30 @@ void rvh_enqueue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 	if (!static_branch_unlikely(&enqueue_dequeue_ready))
 		return;
 
-	vp->prev_sum_exec_runtime = p->se.sum_exec_runtime;
+	if (!task_on_rq_migrating(p)) {
+		vp->prev_sum_exec_runtime = p->se.sum_exec_runtime;
+		vp->util_enqueued = task_util(p);
+		vp->ignore_util_est_update = true;
+
+		/*
+		 * If the utilization is rising, keep accounting for delta_exec
+		 * so that we can catch up with a bursty task appropriately.
+		 *
+		 * If the utilization is stable, it is hard to know whether
+		 * this is due to the slow update rate (at top end util will
+		 * grow much slower) or due to the fact it has settled. If it
+		 * started to drop that's an indication the task is settling
+		 * and we can stop accounting for delta exec.
+		 *
+		 * We need to ensure util_est_update() doesn't mess up the
+		 * util_est we're building up, so set a flag to ignore it. But
+		 * allow us to latch back to util_avg once we have settled.
+		 */
+		if (vp->util_enqueued < vp->prev_util_enqueued) {
+			vp->delta_exec = 0;
+			vp->ignore_util_est_update = false;
+		}
+	}
 
 	if (get_uclamp_fork_reset(p, true))
 		inc_adpf_counter(p, rq);
@@ -2937,7 +2968,10 @@ void rvh_dequeue_task_fair_pixel_mod(void *data, struct rq *rq, struct task_stru
 	if (!static_branch_unlikely(&enqueue_dequeue_ready))
 		return;
 
-	vp->prev_sum_exec_runtime = p->se.sum_exec_runtime;
+	if (!task_on_rq_migrating(p)) {
+		vp->prev_sum_exec_runtime = p->se.sum_exec_runtime;
+		vp->prev_util_enqueued = vp->util_enqueued;
+	}
 
 	if (get_uclamp_fork_reset(p, true))
 		dec_adpf_counter(p, rq);
