@@ -63,7 +63,16 @@
 #define VBUS_RAMPUP_TIMEOUT_MS				250
 #define VBUS_RAMPUP_MAX_RETRY				8
 
-#define GBMS_MODE_VOTABLE "CHARGER_MODE"
+#define GBMS_MODE_VOTABLE	"CHARGER_MODE"
+
+/*
+ * BCL_USB needs to be voted for both source and sink. bcl_usb_votable's callback can take more
+ * than a msec to execute so this is invoke from its own workqueue to not block the rest of the
+ * state machine.
+ */
+#define BCL_USB_VOTABLE		"BCL_USB"
+#define BCL_USB_VOTER		"BCL_USB_VOTER"
+#define BCL_USB_VOTE		0
 
 #define MAX77759_DEVICE_ID_A1				0x2
 #define MAX77759_PRODUCT_ID				0x59
@@ -85,6 +94,11 @@ enum gbms_charger_modes {
 	GBMS_USB_BUCK_ON	= 0x30,
 	GBMS_USB_OTG_ON		= 0x31,
 	GBMS_USB_OTG_FRS_ON	= 0x32,
+};
+
+enum bcl_usb_mode {
+	USB_PLUGGED,
+	USB_UNPLUGGED,
 };
 
 #define CONTAMINANT_DETECT_DISABLE	0
@@ -1126,6 +1140,15 @@ void data_alt_path_active(struct max77759_plat *chip, bool active)
 }
 EXPORT_SYMBOL_GPL(data_alt_path_active);
 
+static void max777x9_bcl_usb_update(struct max77759_plat *chip, enum bcl_usb_mode mode)
+{
+	if (!IS_ERR_OR_NULL(chip->bcl_usb_wq)) {
+		chip->bcl_usb_vote = mode;
+		kthread_mod_delayed_work(chip->bcl_usb_wq, &chip->bcl_usb_votable_work,
+					 msecs_to_jiffies(0));
+	}
+}
+
 static void enable_vbus_work(struct kthread_work *work)
 {
 	struct max77759_plat *chip  =
@@ -1154,6 +1177,8 @@ static void enable_vbus_work(struct kthread_work *work)
 	if (ret < 0)
 		return;
 
+	max777x9_bcl_usb_update(chip, USB_PLUGGED);
+
 	if (!chip->sourcing_vbus)
 		chip->sourcing_vbus = 1;
 }
@@ -1178,7 +1203,6 @@ static int max77759_set_vbus(struct google_shim_tcpci *tcpci, struct google_shim
 			return 0;
 		}
 	}
-
 	kthread_flush_work(&chip->enable_vbus_work.work);
 
 	if (source && !sink) {
@@ -1187,10 +1211,12 @@ static int max77759_set_vbus(struct google_shim_tcpci *tcpci, struct google_shim
 	} else if (sink && !source) {
 		ret = gvotable_cast_vote(chip->charger_mode_votable, TCPCI_MODE_VOTER,
 					 (void *)GBMS_USB_BUCK_ON, true);
+		max777x9_bcl_usb_update(chip, USB_PLUGGED);
 	} else {
 		/* just one will do */
 		ret = gvotable_cast_vote(chip->charger_mode_votable, TCPCI_MODE_VOTER,
 					 (void *)GBMS_USB_BUCK_ON, false);
+		max777x9_bcl_usb_update(chip, USB_UNPLUGGED);
 	}
 
 	LOG(LOG_LVL_DEBUG, chip->log, "%s: GBMS_MODE_VOTABLE voting source:%c sink:%c ret:%d",
@@ -1282,6 +1308,23 @@ void disconnect_missing_rp_partner(struct max77759_plat *chip)
 	if (power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_USB_TYPE, &val))
 		LOG(LOG_LVL_DEBUG, chip->log, "missing_rp: usb_psy set unknown failed");
 	usb_psy_set_sink_state(chip->usb_psy_data, false);
+}
+
+static void bcl_usb_vote_work(struct kthread_work *work)
+{
+	int ret;
+	struct max77759_plat *chip  =
+		container_of(container_of(work, struct kthread_delayed_work, work),
+			     struct max77759_plat, bcl_usb_votable_work);
+
+	if (IS_ERR_OR_NULL(chip->bcl_usb_votable))
+		chip->bcl_usb_votable = gvotable_election_get_handle(BCL_USB_VOTABLE);
+
+	if (chip->bcl_usb_votable) {
+		ret = gvotable_cast_vote(chip->bcl_usb_votable, BCL_USB_VOTER,
+		                         (void *)BCL_USB_VOTE, chip->bcl_usb_vote);
+		LOG(LOG_LVL_DEBUG, chip->log, "bcl_usb_vote: %d : %d", ret, chip->bcl_usb_vote);
+	}
 }
 
 static void check_missing_rp_work(struct kthread_work *work)
@@ -3135,7 +3178,6 @@ static int max77759_probe(struct i2c_client *client,
 		if (!of_property_read_bool(dn, "gvotable-lazy-probe"))
 			return -EPROBE_DEFER;
 	}
-
 	kthread_init_work(&chip->reenable_auto_ultra_low_power_mode_work,
 			  reenable_auto_ultra_low_power_mode_work_item);
 	alarm_init(&chip->reenable_auto_ultra_low_power_mode_alarm, ALARM_BOOTTIME,
@@ -3173,6 +3215,12 @@ static int max77759_probe(struct i2c_client *client,
 	chip->sbu_mux_sel_gpio = of_get_named_gpio_flags(dn, "sbu-mux-sel-gpio", 0, &flags);
 	if (chip->sbu_mux_sel_gpio < 0) {
 		dev_err(&client->dev, "sbu-mux-sel-gpio not found\n");
+	}
+	if (of_property_read_bool(dn, "bcl-usb-voting")) {
+		chip->bcl_usb_votable = gvotable_election_get_handle(BCL_USB_VOTABLE);
+		if (IS_ERR_OR_NULL(chip->bcl_usb_votable))
+			dev_err(&client->dev, "TCPCI: BCL_USB_VOTABLE get failed: %ld",
+				PTR_ERR(chip->bcl_usb_votable));
 	}
 	chip->dev = &client->dev;
 	i2c_set_clientdata(client, chip);
@@ -3375,6 +3423,14 @@ static int max77759_probe(struct i2c_client *client,
 		ret = PTR_ERR(chip->dp_notification_wq);
 		goto destroy_worker;
 	}
+	if (of_property_read_bool(dn, "bcl-usb-voting")) {
+		chip->bcl_usb_wq = kthread_create_worker(0, "wq-bcl-usb");
+		if (IS_ERR_OR_NULL(chip->bcl_usb_wq)) {
+			ret = PTR_ERR(chip->bcl_usb_wq);
+			goto destroy_dp_worker;
+		}
+		kthread_init_delayed_work(&chip->bcl_usb_votable_work, bcl_usb_vote_work);
+	}
 
 	kthread_init_delayed_work(&chip->icl_work, icl_work_item);
 	kthread_init_delayed_work(&chip->enable_vbus_work, enable_vbus_work);
@@ -3395,7 +3451,7 @@ static int max77759_probe(struct i2c_client *client,
 	ret = power_supply_reg_notifier(&chip->psy_notifier);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to register power supply callback\n");
-		goto destroy_dp_worker;
+		goto destroy_usb_bcl_worker;
 	}
 
 	chip->usb_icl_proto_el = gvotable_election_get_handle(USB_ICL_PROTO_EL);
@@ -3481,6 +3537,9 @@ unreg_aicl_el:
 	gvotable_destroy_election(chip->aicl_active_el);
 unreg_notifier:
 	power_supply_unreg_notifier(&chip->psy_notifier);
+destroy_usb_bcl_worker:
+        if (!IS_ERR_OR_NULL(chip->bcl_usb_wq))
+		kthread_destroy_worker(chip->bcl_usb_wq);
 destroy_dp_worker:
 	kthread_destroy_worker(chip->dp_notification_wq);
 destroy_worker:
@@ -3529,6 +3588,8 @@ static void max77759_remove(struct i2c_client *client)
 		kthread_destroy_worker(chip->dp_notification_wq);
 	if (!IS_ERR_OR_NULL(chip->wq))
 		kthread_destroy_worker(chip->wq);
+	if (!IS_ERR_OR_NULL(chip->bcl_usb_wq))
+		kthread_destroy_worker(chip->bcl_usb_wq);
 	power_supply_unreg_notifier(&chip->psy_notifier);
 	max77759_teardown_data_notifier(chip);
 }
@@ -3541,6 +3602,8 @@ static void max77759_shutdown(struct i2c_client *client)
 	dev_info(&client->dev, "disabling Type-C upon shutdown\n");
 	kthread_cancel_delayed_work_sync(&chip->check_missing_rp_work);
 	kthread_cancel_delayed_work_sync(&chip->icl_work);
+	if (!IS_ERR_OR_NULL(chip->bcl_usb_wq))
+		kthread_cancel_delayed_work_sync(&chip->bcl_usb_votable_work);
 	/* Set current limit to 0. Will eventually happen after hi-Z as well */
 	max77759_vote_icl(chip, 0);
 	/* Prevent re-enabling toggling */
