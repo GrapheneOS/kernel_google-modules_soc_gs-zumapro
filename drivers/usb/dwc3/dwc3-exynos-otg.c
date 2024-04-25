@@ -658,10 +658,11 @@ void dwc3_exynos_otg_exit(struct dwc3 *dwc, struct dwc3_exynos *exynos)
 {
 	struct dwc3_otg *dotg = exynos->dotg;
 
+	power_supply_unreg_notifier(&dotg->psy_notifier);
 	sysfs_put(dotg->desired_role_kn);
 	unregister_pm_notifier(&dotg->pm_nb);
 	cancel_work_sync(&dotg->work);
 	wakeup_source_unregister(dotg->wakelock);
-	kfree(dotg);
+	devm_kfree(dwc->dev, dotg);
 	exynos->dotg = NULL;
 }
