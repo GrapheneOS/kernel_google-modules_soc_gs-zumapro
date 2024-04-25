@@ -758,6 +758,11 @@ void mfc_core_idle_checker(struct timer_list *t)
 		return;
 	}
 
+	if (atomic_read(&core->during_idle_resume)) {
+		mfc_core_idle_checker_start_tick(core);
+		return;
+	}
+
 #ifdef CONFIG_MFC_USE_BUS_DEVFREQ
 	if (!atomic_read(&core->during_release)) {
 	    mfc_core_change_idle_mode(core, MFC_IDLE_MODE_RUNNING);

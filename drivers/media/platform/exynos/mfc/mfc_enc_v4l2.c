@@ -520,9 +520,8 @@ static int mfc_enc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
 	enc->dst_buf_size = pix_fmt_mp->plane_fmt[0].sizeimage;
 	pix_fmt_mp->plane_fmt[0].bytesperline = 0;
 
-	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
 	core = mfc_get_main_core_wait(dev, ctx);
-	atomic_inc(&core->hw_run_cnt);
+	atomic_inc(&core->during_idle_resume);
 	/* Trigger idle resume if core is in the idle mode for starting NAL_Q */
 	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
@@ -532,6 +531,7 @@ static int mfc_enc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
 		return ret;
 	}
 
+	atomic_dec(&core->during_idle_resume);
 	mfc_debug_leave();
 	return 0;
 }
@@ -1007,9 +1007,8 @@ static int mfc_enc_streamoff(struct file *file, void *priv,
 		return -EINVAL;
 	}
 
-	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
 	core = mfc_get_main_core_wait(dev, ctx);
-	atomic_inc(&core->hw_run_cnt);
+	atomic_inc(&core->during_idle_resume);
 	/* Trigger idle resume if core is in the idle mode for stopping NAL_Q */
 	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
 
@@ -1025,6 +1024,7 @@ static int mfc_enc_streamoff(struct file *file, void *priv,
 		ret = vb2_streamoff(&ctx->vq_dst, type);
 	}
 
+	atomic_dec(&core->during_idle_resume);
 	mfc_debug_leave();
 
 	return ret;
