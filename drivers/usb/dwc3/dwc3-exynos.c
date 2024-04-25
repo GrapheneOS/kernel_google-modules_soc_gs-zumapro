@@ -1185,7 +1185,11 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	ret = pm_runtime_put(dev);
 	pm_runtime_allow(dev);
 
-	dwc3_exynos_otg_init(exynos->dwc, exynos);
+	ret = dwc3_exynos_otg_init(exynos->dwc, exynos);
+	if (ret < 0) {
+		dev_err(dev, "failed to initialize dwc3_exynos_otg\n");
+		goto populate_err;
+	}
 
 	/* disconnect gadget in probe */
 	usb_udc_vbus_handler(exynos->dwc->gadget, false);
@@ -1229,6 +1233,8 @@ static int dwc3_exynos_remove(struct platform_device *pdev)
 	struct dwc3_exynos	*exynos = platform_get_drvdata(pdev);
 	struct dwc3	*dwc = exynos->dwc;
 
+	dwc3_exynos_otg_exit(dwc, exynos);
+
 	pm_runtime_get_sync(&pdev->dev);
 
 	dwc3_ulpi_exit(dwc);
@@ -1266,6 +1272,8 @@ static void dwc3_exynos_shutdown(struct platform_device *pdev)
 	/* unregister the notifiers for USB and USB_HOST*/
 	extcon_unregister_notifier(exynos->edev, EXTCON_USB, &exynos->device_nb);
 	extcon_unregister_notifier(exynos->edev, EXTCON_USB_HOST, &exynos->host_nb);
+
+	dwc3_exynos_remove(pdev);
 
 	return;
 }
