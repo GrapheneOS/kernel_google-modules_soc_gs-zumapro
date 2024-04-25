@@ -833,6 +833,13 @@ static void fusb307b_remove(struct i2c_client *client)
 	fusb307b_teardown_data_notifier(chip);
 }
 
+static void fusb307b_shutdown(struct i2c_client *client)
+{
+	struct fusb307b_plat *chip = i2c_get_clientdata(client);
+
+	power_supply_unreg_notifier(&chip->psy_notifier);
+}
+
 static const struct i2c_device_id fusb307b_id[] = {
 	{ "fusb307b", 0 },
 	{ }
@@ -854,6 +861,7 @@ static struct i2c_driver fusb307b_i2c_driver = {
 	},
 	.probe = fusb307b_probe,
 	.remove = fusb307b_remove,
+	.shutdown = fusb307b_shutdown,
 	.id_table = fusb307b_id,
 };
 module_i2c_driver(fusb307b_i2c_driver);
