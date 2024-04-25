@@ -577,9 +577,7 @@ static int mfc_release(struct file *file)
 	v4l2_fh_del(&ctx->fh);
 	v4l2_fh_exit(&ctx->fh);
 
-	/* Increase hw_run_cnt to prevent the HW idle checker from entering idle mode */
 	maincore = mfc_get_main_core_wait(dev, ctx);
-	atomic_inc(&maincore->hw_run_cnt);
 	atomic_inc(&maincore->during_release);
 	subcore = mfc_get_sub_core(dev, ctx);
 	if (subcore)
