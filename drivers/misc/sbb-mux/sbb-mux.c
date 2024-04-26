@@ -63,7 +63,7 @@ static ssize_t sbb_signal_id_show(struct kobject *kobj,
 {
 	enum sbbm_signal_id signal_id = ((struct ext_kobj_attribute *)attr)->id;
 
-	return scnprintf(buf, PAGE_SIZE, "%d", signal_id);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", signal_id);
 }
 
 static ssize_t sbb_signal_type_show(struct kobject *kobj,
@@ -75,7 +75,7 @@ static ssize_t sbb_signal_type_show(struct kobject *kobj,
 	int signal_id = ((struct ext_kobj_attribute *)attr)->id;
 	int signal_type = signals[signal_id].type;
 
-	return scnprintf(buf, PAGE_SIZE, signal_type_strings[signal_type]);
+	return scnprintf(buf, PAGE_SIZE, "%s\n", signal_type_strings[signal_type]);
 }
 
 static ssize_t sbb_signal_value_show(struct kobject *kobj,
@@ -83,7 +83,7 @@ static ssize_t sbb_signal_value_show(struct kobject *kobj,
 {
 	enum sbbm_signal_id signal_id = ((struct ext_kobj_attribute *)attr)->id;
 
-	return scnprintf(buf, PAGE_SIZE, "%d",
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
 			 signal_trackers[signal_id].value);
 }
 
@@ -164,7 +164,7 @@ static ssize_t sbb_signal_toggle_count_show(struct kobject *kobj,
 {
 	enum sbbm_signal_id signal_id = ((struct ext_kobj_attribute *)attr)->id;
 
-	return scnprintf(buf, PAGE_SIZE, "%lu",
+	return scnprintf(buf, PAGE_SIZE, "%lu\n",
 			 signal_trackers[signal_id].toggle_count);
 }
 
@@ -384,7 +384,7 @@ static ssize_t sbb_gpio_tracked_signal_show(struct kobject *kobj,
 {
 	int gpio_id = ((struct ext_kobj_attribute *)attr)->id;
 
-	return scnprintf(buf, PAGE_SIZE, "%s",
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
 			 signals[gpio_trackers[gpio_id].tracked_signal].name);
 }
 
@@ -443,7 +443,7 @@ static ssize_t sbb_gpio_value_show(struct kobject *kobj,
 {
 	int gpio_id = ((struct ext_kobj_attribute *)attr)->id;
 
-	return scnprintf(buf, PAGE_SIZE, "%d",
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
 			 gpiod_get_value_cansleep(gpio_trackers[gpio_id].gd));
 }
 
