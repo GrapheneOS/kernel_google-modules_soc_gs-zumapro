@@ -45,6 +45,7 @@
 			    "mfc_8k_dec30",
 			    "g3d_performance",
 			    "dp_default",
+			    "dpu_qurgent_default",
 			    "camera_default",
 			    "mfc_uhd_enc60";
 
@@ -381,6 +382,19 @@
 				blocking_on = <0>;
 				ex_qurgent_on = <0>;
 			};
+			dpu_qurgent_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x0A>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
 			camera_default {
 				stat_on = <1>;
 				bypass = <0>;
@@ -486,6 +500,19 @@
 				wmo = <0x20>;
 				qurgent_on = <1>;
 				qurgent_th_r = <0x20>;
+				qurgent_th_w = <0x20>;
+				blocking_on = <0>;
+				ex_qurgent_on = <0>;
+			};
+			dpu_qurgent_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x8>;
+				awqos = <0x8>;
+				rmo = <0x60>;
+				wmo = <0x20>;
+				qurgent_on = <1>;
+				qurgent_th_r = <0x0A>;
 				qurgent_th_w = <0x20>;
 				blocking_on = <0>;
 				ex_qurgent_on = <0>;
@@ -668,6 +695,16 @@
 				qurgent_on = <0>;
 				blocking_on = <0>;
 			};
+			dpu_qurgent_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
 			camera_default {
 				stat_on = <1>;
 				bypass = <0>;
@@ -744,6 +781,16 @@
 				blocking_on = <0>;
 			};
 			dp_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			dpu_qurgent_default {
 				stat_on = <1>;
 				bypass = <0>;
 				arqos = <0x4>;
@@ -1283,6 +1330,16 @@
 				blocking_on = <0>;
 			};
 			dp_default {
+				stat_on = <1>;
+				bypass = <0>;
+				arqos = <0x4>;
+				awqos = <0x4>;
+				rmo = <0x20>;
+				wmo = <0x20>;
+				qurgent_on = <0>;
+				blocking_on = <0>;
+			};
+			dpu_qurgent_default {
 				stat_on = <1>;
 				bypass = <0>;
 				arqos = <0x4>;
