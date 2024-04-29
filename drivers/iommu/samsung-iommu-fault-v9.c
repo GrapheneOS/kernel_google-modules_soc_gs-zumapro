@@ -599,6 +599,10 @@ static void sysmmu_show_secure_fault_information(struct sysmmu_drvdata *drvdata,
 		MMU_VERSION_MAJOR(info0), MMU_VERSION_MINOR(info0), MMU_VERSION_REVISION(info0),
 		read_sec_info(sfrbase + REG_MMU_STATUS));
 
+	pr_crit("MMU_CTRL_VM: %#010x, MMU_CFG_VM: %#010x\n",
+		read_sec_info(MMU_VM_ADDR(sfrbase + REG_MMU_CTRL_VM, vmid)),
+		read_sec_info(MMU_VM_ADDR(sfrbase + REG_MMU_CONTEXT0_CFG_ATTRIBUTE_VM, vmid)));
+
 finish:
 	pr_crit("----------------------------------------------------------\n");
 }
