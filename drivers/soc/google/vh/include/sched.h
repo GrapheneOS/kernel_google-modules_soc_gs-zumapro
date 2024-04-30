@@ -57,6 +57,11 @@ struct uclamp_filter {
 	unsigned int uclamp_max_ignored : 1;
 };
 
+struct thermal_cap {
+	unsigned int uclamp_max;
+	unsigned int freq;
+};
+
 /*
  * Always remember to initialize any new fields added here in
  * init_vendor_task_struct() or you'll find newly forked tasks inheriting
@@ -99,7 +104,6 @@ struct vendor_task_struct {
 
 ANDROID_VENDOR_CHECK_SIZE_ALIGN(u64 android_vendor_data1[64], struct vendor_task_struct t);
 
-
 static inline struct vendor_task_struct *get_vendor_task_struct(struct task_struct *p)
 {
 	return (struct vendor_task_struct *)p->android_vendor_data1;
@@ -135,4 +139,6 @@ static inline unsigned long get_and_reset_vendor_task_struct_private(struct vend
 	p->private = 0;
 	return val;
 }
+
+int sched_thermal_freq_cap(unsigned int cpu, unsigned int freq);
 #endif

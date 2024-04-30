@@ -49,6 +49,7 @@ extern struct cpumask skip_prefer_prev_mask;
 
 static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
+static struct mutex thermal_cap_mutex;
 
 unsigned int sched_auto_fits_capacity[CONFIG_VH_SCHED_MAX_CPU_NR];
 unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR] =
@@ -58,6 +59,10 @@ unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
 
 unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = 1024 };
+
+struct thermal_cap thermal_cap[CONFIG_VH_SCHED_MAX_CPU_NR] = {
+	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].uclamp_max = 1024,
+	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].freq = UINT_MAX};
 
 unsigned int __read_mostly sched_per_task_iowait_boost_max_value = 0;
 
@@ -664,6 +669,7 @@ void init_pixel_em(void)
 #if IS_ENABLED(CONFIG_PIXEL_EM)
 	raw_spin_lock_init(&vendor_sched_pixel_em_lock);
 #endif
+	mutex_init(&thermal_cap_mutex);
 }
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -2164,6 +2170,10 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 		&& value < SCHED_CAPACITY_SCALE)
 		value = value + 1;
 
+	if (clamp_id == UCLAMP_MAX && !is_adpf) {
+		value = min(value, thermal_cap[task_cpu(p)].uclamp_max);
+	}
+
 	// For low prio unthrottled task, reduce its uclamp.max by 1 which
 	// would affect task importance in cpu_rq thus affect task placement.
 	// It should have no effect in cpufreq.
@@ -3009,3 +3019,99 @@ void vh_sched_resume_end(void *data, void *unused)
 	sysctl_sched_wakeup_granularity = vh_sched_wakeup_granularity_ns;
 	sysctl_sched_latency = vh_sched_latency_ns;
 }
+
+static int find_target_cap(unsigned int freq, unsigned int cpu)
+{
+	struct pixel_em_profile **profile_ptr_snapshot, *profile;
+	struct pixel_em_cluster *em_cluster;
+	struct task_struct *g, *p;
+	int target_cap = 0, i;
+
+	profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
+	if (!profile_ptr_snapshot) {
+		pr_err("Pixel EM profile not found\n");
+		return -EINVAL;
+	}
+
+	profile = READ_ONCE(*profile_ptr_snapshot);
+	if (!profile) {
+		pr_err("Pixel EM profile not found\n");
+		return -EINVAL;
+	}
+
+	em_cluster = profile->cpu_to_cluster[cpu];
+
+	for (i = 0; i < em_cluster->num_opps; i++) {
+		struct pixel_em_opp *opp = &em_cluster->opps[i];
+		if (opp->freq >= freq) {
+			/* use -3 to make sure the various conversion logic
+			 * which can end up rounding up or down by 1
+			 * doesn't lead to wrong results.
+			 */
+			target_cap =  opp->capacity - 3;
+			break;
+		}
+	}
+
+	if (target_cap <= 0)
+		return -EINVAL;
+
+	for_each_cpu(cpu, &em_cluster->cpus) {
+		pr_debug("updating CPU:%d uclamp value to :%u freq value to:%u \n",
+			cpu, target_cap, freq);
+		thermal_cap[cpu].uclamp_max = target_cap;
+		thermal_cap[cpu].freq = freq;
+	}
+
+	rcu_read_lock();
+	for_each_process_thread(g, p) {
+		if (!task_on_rq_queued(p))
+			continue;
+
+		if (!cpumask_test_cpu(task_cpu(p), &em_cluster->cpus))
+			continue;
+
+		uclamp_update_active(p, UCLAMP_MAX);
+	}
+	rcu_read_unlock();
+
+	return 0;
+}
+
+/**
+ * sched_thermal_freq_cap() - Thermal cooling device will use this API
+ * to place a max frequency cap for a cluster. Ideally the first CPU in that cluster will
+ * be given as input. Thermal will expect the freq cap be applied to all CPUs in
+ * that cluster.
+ *
+ * @cpu - Any cpu that belongs to a cluster.
+ * @freq - CPU frequency cap that needs to be applied to all CPUs in that cluster.
+ * Return: 0 on success or error value.
+ */
+int sched_thermal_freq_cap(unsigned int cpu, unsigned int freq)
+{
+	int ret;
+
+	mutex_lock(&thermal_cap_mutex);
+	ret = find_target_cap(freq, cpu);
+	mutex_unlock(&thermal_cap_mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(sched_thermal_freq_cap);
+
+/**
+ * update_thermal_freq_cap() - pixel_em will use this API to update thermal cap (ulcamp min)
+ * and keep original capped max frequency.
+ * @cpu - Any cpu whose energy model will be changed by pixel_em.
+ */
+void update_thermal_freq_cap(unsigned int cpu)
+{
+	if (cpu >= nr_cpu_ids)
+		return;
+
+	mutex_lock(&thermal_cap_mutex);
+	WARN_ON(!find_target_cap(thermal_cap[cpu].freq, cpu));
+	mutex_unlock(&thermal_cap_mutex);
+}
+EXPORT_SYMBOL_GPL(update_thermal_freq_cap);
