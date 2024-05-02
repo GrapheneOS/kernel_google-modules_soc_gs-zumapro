@@ -55,6 +55,7 @@ static void apply_uclamp_change(enum vendor_group group, enum uclamp_id clamp_id
 struct uclamp_se uclamp_default[UCLAMP_CNT];
 unsigned int pmu_poll_time_ms = 10;
 bool pmu_poll_enabled;
+bool pmu_force_limited = true;
 extern int pmu_poll_enable(void);
 extern void pmu_poll_disable(void);
 
@@ -2115,6 +2116,33 @@ static ssize_t pmu_poll_enable_store(struct file *filp,
 
 PROC_OPS_RW(pmu_poll_enable);
 
+static int pmu_force_limited_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%s\n", pmu_force_limited ? "true" : "false");
+	return 0;
+}
+static ssize_t pmu_force_limited_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtobool(buf, &pmu_force_limited))
+		return -EINVAL;
+
+	return count;
+}
+
+PROC_OPS_RW(pmu_force_limited);
+
 #if IS_ENABLED(CONFIG_RVH_SCHED_LIB)
 extern unsigned long sched_lib_mask_out_val;
 
@@ -2295,6 +2323,7 @@ static struct pentry entries[] = {
 	// pmu limit attribute
 	PROC_ENTRY(pmu_poll_time),
 	PROC_ENTRY(pmu_poll_enable),
+	PROC_ENTRY(pmu_force_limited),
 	// per-task attribute
 	PROC_ENTRY(prefer_idle_set),
 	PROC_ENTRY(prefer_idle_clear),
