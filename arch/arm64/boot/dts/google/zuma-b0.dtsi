@@ -137,12 +137,17 @@
 			cpuidle_state_depth_threshold = <2>;
 
 			core-dev-table-latency =
-			/* CL0         MIF */
+			/* CL0     MIF */
 			<  250000  546000 >,
 			<  610000  676000 >,
 			<  820000  845000 >,
 			<  955000 1014000 >,
 			< 1098000 1352000 >;
+
+			core-dev-table-base =
+			/* CL0     MIF */
+			< 955000   676000 >;
+
 		};
 		gs_memlat_cl1 {
 			cpulist = <&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
@@ -151,7 +156,7 @@
 			cpuidle_state_depth_threshold = <2>;
 
 			core-dev-table-latency =
-			/* CL1         MIF */
+			/* CL1     MIF */
 			<  320000  546000 >,
 			<  578000  676000 >,
 			<  697000  845000 >,
@@ -162,6 +167,12 @@
 			< 1836000 3172000 >,
 			< 1945000 3172000 >,
 			< 2130000 3744000 >;
+
+			core-dev-table-base =
+			/* CL1     MIF */
+			< 402000   421000 >,
+			< 1836000  845000 >,
+			< 2130000 1014000 >;
 		};
 		gs_memlat_cl2 {
 			cpulist = <&cpu8>;
@@ -170,7 +181,7 @@
 			cpuidle_state_depth_threshold = <2>;
 
 			core-dev-table-latency =
-			/* CL2         MIF */
+			/* CL2     MIF */
 			<  400000  546000 >,
 			<  880000  676000 >,
 			< 1164000  845000 >,
@@ -181,6 +192,12 @@
 			< 2147000 3172000 >,
 			< 2556000 3172000 >,
 			< 2687000 3744000 >;
+
+			core-dev-table-base =
+			/* CL2     MIF */
+			< 500000   421000 >,
+			< 2049000  845000 >,
+			< 2600000 1352000 >;
 		};
 	};
 };
