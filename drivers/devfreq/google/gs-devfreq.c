@@ -2170,6 +2170,7 @@ static int exynos_devfreq_resume(struct device *dev)
 	struct platform_device *pdev =
 		container_of(dev, struct platform_device, dev);
 	struct exynos_devfreq_data *data = platform_get_drvdata(pdev);
+	struct devfreq_simple_interactive_data *gov_data = data->devfreq->data;
 #if IS_ENABLED(CONFIG_EXYNOS_DVFS_MANAGER)
 #if IS_ENABLED(CONFIG_GS_ACPM)
 	int size, ch_num;
@@ -2215,7 +2216,9 @@ static int exynos_devfreq_resume(struct device *dev)
 		}
 #endif
 		data->suspend_flag = false;
+		gov_data->df_update_enable = true;
 		ret = update_devfreq(data->devfreq);
+		gov_data->df_update_enable = false;
 		if (ret && ret != -EAGAIN) {
 			dev_err(&data->devfreq->dev,
 				"devfreq failed with (%d) error\n", ret);
