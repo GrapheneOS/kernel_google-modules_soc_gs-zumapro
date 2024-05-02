@@ -27,12 +27,6 @@ enum pt_global_t {
 
 typedef int ptid_t; /* valid slc PID or PT_PTID_INVALID */
 typedef int ptpbha_t; /* valid PBHA or PT_PBHA_INVALID */
-
-/*
- * API for client requesting PT
- */
-struct pt_handle;
-
 /*
  * data: the "data" given in pt_client_register
  * id: the index in devicetree.
@@ -40,6 +34,20 @@ struct pt_handle;
  */
 typedef void (*pt_resize_callback_t)(void *data, int id,
 					size_t size_allocated);
+/*
+ * API for client requesting PT
+ */
+struct pt_handle { /* one per client */
+	spinlock_t lock; /* serialize write access to the handle */
+	struct list_head list;
+	pt_resize_callback_t resize_callback;
+	int id_cnt;
+	struct pt_pts *pts; /* client partitions */
+	struct device_node *node; /* client node */
+	struct ctl_table *sysctl_table;
+	struct ctl_table_header *sysctl_header;
+	void *data; /* client private data */
+};
 
 #if IS_ENABLED(CONFIG_SLC_PARTITION_MANAGER)
 
