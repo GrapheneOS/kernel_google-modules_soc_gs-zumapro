@@ -210,6 +210,7 @@ trusty-ipc.ko
 trusty-log.ko
 trusty-test.ko
 trusty-virtio.ko
+tzprot.ko
 ufs-exynos-gs.ko
 ufs-pixel-fips140.ko
 usb_f_dm.ko
