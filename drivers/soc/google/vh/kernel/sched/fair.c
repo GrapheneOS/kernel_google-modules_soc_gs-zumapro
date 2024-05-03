@@ -1944,7 +1944,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	/* Compute Energy */
 	best_exit_lat = UINT_MAX;
 	pd = rcu_dereference(rd->pd);
-	for_each_cpu_wrap(i, &candidates, cpumask_last(&candidates)) {
+	for_each_cpu(i, &candidates) {
 		exit_lat = 0;
 
 		if (cpu_is_idle(i)) {
