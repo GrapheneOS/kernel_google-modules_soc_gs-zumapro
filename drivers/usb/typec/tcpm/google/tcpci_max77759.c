@@ -1825,7 +1825,8 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		mutex_lock(&chip->rc_lock);
 		LOG(LOG_LVL_DEBUG, chip->log, "Servicing TCPC_ALERT_CC_STATUS");
 		if (!chip->usb_throttled && chip->contaminant_detection &&
-		    tcpm_port_is_toggling(tcpci->port)) {
+		    (tcpm_port_is_toggling(tcpci->port) ||
+		     max777x9_is_contaminant_detected(chip))) {
 			LOG(LOG_LVL_DEBUG, chip->log, "Invoking process_contaminant_alert");
 			ret = max777x9_process_contaminant_alert(chip->contaminant, false, true,
 								 &contaminant_cc_update_handled,
@@ -1833,7 +1834,8 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 			if (ret < 0) {
 				mutex_unlock(&chip->rc_lock);
 				goto reschedule;
-			} else if (chip->check_contaminant) {
+			} else if (chip->check_contaminant ||
+				   max777x9_is_contaminant_detected(chip)) {
 				/*
 				 * Taken in debounce path when the port is dry.
 				 * Move TCPM back to TOGGLING.
