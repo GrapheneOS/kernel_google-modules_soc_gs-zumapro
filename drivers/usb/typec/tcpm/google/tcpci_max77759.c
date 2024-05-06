@@ -2464,6 +2464,20 @@ static int max77759_usb_set_role(struct usb_role_switch *sw, enum usb_role role)
 		update_compliance_warnings(chip, COMPLIANCE_WARNING_INPUT_POWER_LIMITED, false);
 		/* Clear BC12 as fallback when hardware does not clear it on disconnect. */
 		update_compliance_warnings(chip, COMPLIANCE_WARNING_BC12, false);
+
+		/*
+		 * b/335901921
+		 * If someone calls tcpm_get_partner_src_caps before the charger sends the new Src
+		 * Caps, the caller will get the old Src Caps which might be from the previous PD
+		 * connection. To avoid this bug, clear nr_partner_src_caps if the attach session is
+		 * ended (from the Type-C's perspective).
+		 * The best solution is to call max77759_store_partner_src_caps vendor_hook from
+		 * TCPM to clear partner_src_caps and nr_partner_src_caps when the cable is
+		 * detached.
+		 */
+		spin_lock(&g_caps_lock);
+		nr_partner_src_caps = 0;
+		spin_unlock(&g_caps_lock);
 	}
 
 	return 0;
