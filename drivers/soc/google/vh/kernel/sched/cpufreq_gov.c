@@ -297,6 +297,7 @@ sugov_apply_response_time(unsigned long util, int cpu)
 	return mult >> SCHED_CAPACITY_SHIFT;
 }
 
+#if IS_ENABLED(CONFIG_SOC_GS101) || IS_ENABLED(CONFIG_SOC_GS201)
 static bool check_pmu_limit_conditions(u64 lcpi, u64 spc, struct sugov_policy *sg_policy)
 {
 	if (sg_policy->tunables->lcpi_threshold <= lcpi &&
@@ -305,6 +306,15 @@ static bool check_pmu_limit_conditions(u64 lcpi, u64 spc, struct sugov_policy *s
 
 	return false;
 }
+#else
+static bool check_pmu_limit_conditions(u64 spc, struct sugov_policy *sg_policy)
+{
+	if (sg_policy->tunables->spc_threshold <= spc)
+		return true;
+
+	return false;
+}
+#endif
 
 /*
  * Check those ignored cpus of pmu throttle - cpus did not meet pmu limit condidtion but have
@@ -1274,7 +1284,11 @@ static void pmu_limit_work(struct kthread_work *work)
 				trace_clock_set_rate(trace_name, spc, raw_smp_processor_id());
 			}
 
+#if IS_ENABLED(CONFIG_SOC_GS101) || IS_ENABLED(CONFIG_SOC_GS201)
 			if (!check_pmu_limit_conditions(lcpi, spc, sg_policy)) {
+#else
+			if (!check_pmu_limit_conditions(spc, sg_policy)) {
+#endif
 				sg_cpu = &per_cpu(sugov_cpu, ccpu);
 				sugov_get_util(sg_cpu);
 				freq = map_util_freq_pixel_mod(sg_cpu->util,
