@@ -563,6 +563,11 @@ static inline const cpumask_t *get_preferred_idle_mask(struct task_struct *p)
 	}
 }
 
+static inline cpumask_t *get_group_cfs_skip_mask(struct task_struct *p)
+{
+	return &vg[get_vendor_group(p)].group_cfs_skip_mask;
+}
+
 void init_vendor_group_data(void)
 {
 	int i;
@@ -1568,6 +1573,9 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 			if (!cpu_active(i))
 				continue;
 
+			if (cpumask_test_cpu(i, get_group_cfs_skip_mask(p)))
+				continue;
+
 			capacity = capacity_of(i);
 			is_idle = cpu_is_idle(i);
 			cpu_importance = READ_ONCE(cpu_rq(i)->uclamp[UCLAMP_MIN].value) +
@@ -2434,8 +2442,9 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 	}
 
 	/* prefer prev cpu */
-	if (cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) &&
-	    task_fits_capacity(p, prev_cpu) && check_preferred_idle_mask(p, prev_cpu)) {
+	if (cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) && task_fits_capacity(p, prev_cpu) &&
+	    cpumask_test_cpu(prev_cpu, p->cpus_ptr) && check_preferred_idle_mask(p, prev_cpu) &&
+	    !cpumask_test_cpu(prev_cpu, get_group_cfs_skip_mask(p))) {
 
 		struct cpuidle_state *idle_state;
 		unsigned int exit_lat = UINT_MAX;
@@ -2756,6 +2765,9 @@ void rvh_can_migrate_task_pixel_mod(void *data, struct task_struct *mp,
 		return;
 
 	if (atomic_read(&vrq->num_adpf_tasks))
+		*can_migrate = 0;
+
+	if (cpumask_test_cpu(dst_cpu, get_group_cfs_skip_mask(mp)))
 		*can_migrate = 0;
 }
 

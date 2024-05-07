@@ -96,6 +96,7 @@ struct vendor_group_property {
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	unsigned int group_throttle;
 #endif
+	cpumask_t group_cfs_skip_mask;
 	cpumask_t preferred_idle_mask_low;
 	cpumask_t preferred_idle_mask_mid;
 	cpumask_t preferred_idle_mask_high;
