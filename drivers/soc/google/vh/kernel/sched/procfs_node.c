@@ -135,6 +135,7 @@ enum vendor_procfs_type {
 		__PROC_GROUP_ENTRY(prefer_idle, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(prefer_high_cap, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(task_spreading, __group_name, __vg),	\
+		__PROC_GROUP_ENTRY(group_cfs_skip_mask, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(preferred_idle_mask_low, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(preferred_idle_mask_mid, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(preferred_idle_mask_high, __group_name, __vg),	\
@@ -465,6 +466,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(ta, task_spreading, VG_TOPAPP);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(ta, group_throttle, VG_TOPAPP);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(ta, group_cfs_skip_mask, VG_TOPAPP);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ta, preferred_idle_mask_low, VG_TOPAPP);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ta, preferred_idle_mask_mid, VG_TOPAPP);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ta, preferred_idle_mask_high, VG_TOPAPP);
@@ -502,6 +504,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(fg, task_spreading, VG_FOREGROUND);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(fg, group_throttle, VG_FOREGROUND);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(fg, group_cfs_skip_mask, VG_FOREGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(fg, preferred_idle_mask_low, VG_FOREGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(fg, preferred_idle_mask_mid, VG_FOREGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(fg, preferred_idle_mask_high, VG_FOREGROUND);
@@ -539,6 +542,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sys, task_spreading, VG_SYSTEM);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(sys, group_throttle, VG_SYSTEM);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(sys, group_cfs_skip_mask, VG_SYSTEM);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sys, preferred_idle_mask_low, VG_SYSTEM);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sys, preferred_idle_mask_mid, VG_SYSTEM);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sys, preferred_idle_mask_high, VG_SYSTEM);
@@ -576,6 +580,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(cam, task_spreading, VG_CAMERA);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(cam, group_throttle, VG_CAMERA);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam, group_cfs_skip_mask, VG_CAMERA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam, preferred_idle_mask_low, VG_CAMERA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam, preferred_idle_mask_mid, VG_CAMERA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam, preferred_idle_mask_high, VG_CAMERA);
@@ -613,6 +618,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, task_spreading, VG_CAMERA_POWER);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(cam_power, group_throttle, VG_CAMERA_POWER);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam_power, group_cfs_skip_mask, VG_CAMERA_POWER);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam_power, preferred_idle_mask_low, VG_CAMERA_POWER);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam_power, preferred_idle_mask_mid, VG_CAMERA_POWER);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(cam_power, preferred_idle_mask_high, VG_CAMERA_POWER);
@@ -650,6 +656,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(bg, task_spreading, VG_BACKGROUND);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(bg, group_throttle, VG_BACKGROUND);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(bg, group_cfs_skip_mask, VG_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(bg, preferred_idle_mask_low, VG_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(bg, preferred_idle_mask_mid, VG_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(bg, preferred_idle_mask_high, VG_BACKGROUND);
@@ -687,6 +694,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, task_spreading, VG_SYSTEM_BACKGROUND);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(sysbg, group_throttle, VG_SYSTEM_BACKGROUND);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(sysbg, group_cfs_skip_mask, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sysbg, preferred_idle_mask_low, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sysbg, preferred_idle_mask_mid, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sysbg, preferred_idle_mask_high, VG_SYSTEM_BACKGROUND);
@@ -724,6 +732,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, task_spreading, VG_NNAPI_HAL);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(nnapi, group_throttle, VG_NNAPI_HAL);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(nnapi, group_cfs_skip_mask, VG_NNAPI_HAL);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(nnapi, preferred_idle_mask_low, VG_NNAPI_HAL);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(nnapi, preferred_idle_mask_mid, VG_NNAPI_HAL);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(nnapi, preferred_idle_mask_high, VG_NNAPI_HAL);
@@ -761,6 +770,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(rt, task_spreading, VG_RT);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(rt, group_throttle, VG_RT);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(rt, group_cfs_skip_mask, VG_RT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(rt, preferred_idle_mask_low, VG_RT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(rt, preferred_idle_mask_mid, VG_RT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(rt, preferred_idle_mask_high, VG_RT);
@@ -798,6 +808,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, task_spreading, VG_DEX2OAT);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(dex2oat, group_throttle, VG_DEX2OAT);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(dex2oat, group_cfs_skip_mask, VG_DEX2OAT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(dex2oat, preferred_idle_mask_low, VG_DEX2OAT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(dex2oat, preferred_idle_mask_mid, VG_DEX2OAT);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(dex2oat, preferred_idle_mask_high, VG_DEX2OAT);
@@ -835,6 +846,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(ota, task_spreading, VG_OTA);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(ota, group_throttle, VG_OTA);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(ota, group_cfs_skip_mask, VG_OTA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ota, preferred_idle_mask_low, VG_OTA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ota, preferred_idle_mask_mid, VG_OTA);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(ota, preferred_idle_mask_high, VG_OTA);
@@ -872,6 +884,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sf, task_spreading, VG_SF);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 VENDOR_GROUP_UINT_ATTRIBUTE(sf, group_throttle, VG_SF);
 #endif
+VENDOR_GROUP_CPUMASK_ATTRIBUTE(sf, group_cfs_skip_mask, VG_SF);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sf, preferred_idle_mask_low, VG_SF);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sf, preferred_idle_mask_mid, VG_SF);
 VENDOR_GROUP_CPUMASK_ATTRIBUTE(sf, preferred_idle_mask_high, VG_SF);
