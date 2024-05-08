@@ -293,7 +293,7 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 				 */
 				dev_err(dev, "DWC3 device already active, skipping core "
 					"initialization.");
-			pm_runtime_set_suspended(dev);
+			pm_runtime_put_sync_suspend(dev);
 			exynos->need_dr_role = 0;
 			mutex_unlock(&dotg->lock);
 			device_unlock(&dwc->gadget->dev);
@@ -392,7 +392,7 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 				 */
 				dev_err(dev, "DWC3 device already active, skipping core "
 					"initialization.");
-			pm_runtime_set_suspended(dev);
+			pm_runtime_put_sync_suspend(dev);
 			dwc->connected = false;
 			exynos->need_dr_role = 0;
 			mutex_unlock(&dotg->lock);
