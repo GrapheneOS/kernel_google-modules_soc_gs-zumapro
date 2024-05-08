@@ -89,6 +89,8 @@
 
 #define AICL_CHECK_MS				       10000
 
+#define EXT_BST_OVP_CLEAR_DELAY_MS		       1000
+
 /* system use cases */
 enum gbms_charger_modes {
 	GBMS_USB_BUCK_ON	= 0x30,
@@ -226,6 +228,8 @@ static const struct regmap_config max77759_regmap_config = {
 	.max_register = REGMAP_REG_MAX_ADDR,
 	.wr_table = &max77759_tcpci_write_table,
 };
+
+static int max77759_get_vbus_voltage_mv(struct i2c_client *tcpc_client);
 
 static ssize_t frs_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -1392,6 +1396,56 @@ static void check_missing_rp(struct max77759_plat *chip, bool vbus_present,
 	}
 }
 
+/* Clears EXTBST_CTRL when ovp condition is detected while sourcing vbus */
+static bool check_and_clear_ext_bst(struct max77759_plat *chip)
+{
+	unsigned int pwr_status;
+	u16 vbus_mv;
+	bool ret = false;
+
+	mutex_lock(&chip->ext_bst_ovp_clear_lock);
+	regmap_read(chip->data.regmap, TCPC_POWER_STATUS, &pwr_status);
+	vbus_mv = max77759_get_vbus_voltage_mv(chip->client);
+	LOG(LOG_LVL_DEBUG, chip->log, "sourcing_vbus_high:0x%x vbus_mv:%u",
+	    pwr_status & TCPC_POWER_STATUS_SRC_HI_VOLT, vbus_mv);
+
+	if (chip->sourcing_vbus_high) {
+		ret = true;
+		goto ext_bst_ovp_clear_unlock;
+	}
+
+	if ((pwr_status & TCPC_POWER_STATUS_SRC_HI_VOLT) && chip->sourcing_vbus &&
+	    vbus_mv > chip->ext_bst_ovp_clear_mv) {
+		LOG(LOG_LVL_DEBUG, chip->log, "%s: clear TCPC_VENDOR_EXTBST_CTRL", __func__);
+		ret = max77759_write8(chip->tcpci->regmap, TCPC_VENDOR_EXTBST_CTRL, 0);
+		chip->sourcing_vbus_high = 1;
+		tcpm_vbus_change(chip->tcpci->port);
+		ret = true;
+		goto ext_bst_ovp_clear_unlock;
+	}
+
+ext_bst_ovp_clear_unlock:
+	mutex_unlock(&chip->ext_bst_ovp_clear_lock);
+	return ret;
+}
+
+/*
+ * Rechecks vbus ovp condition after a delay as POWER_STATUS_SRC_HI_VOLT is set whenever vbus
+ * voltage exceeds VSAFE5V(MAX). To avoid false positives when acting as source, vbus voltage
+ * is checked to see whether it exceeds ext-bst-ovp-clear-mv. The check is re-run after a
+ * delay as external voltage applied does not get reflected in the vbus voltage readings
+ * right away when POWER_STATUS_SRC_HI_VOLT is set.
+ */
+static void ext_bst_ovp_clear_work(struct kthread_work *work)
+{
+	struct max77759_plat *chip  =
+		container_of(container_of(work, struct kthread_delayed_work, work),
+			     struct max77759_plat, ext_bst_ovp_clear_work);
+
+	if (chip->ext_bst_ovp_clear_mv)
+		check_and_clear_ext_bst(chip);
+}
+
 static void process_power_status(struct max77759_plat *chip)
 {
 	struct google_shim_tcpci *tcpci = chip->tcpci;
@@ -1424,6 +1478,12 @@ static void process_power_status(struct max77759_plat *chip)
 			chip->in_frs = false;
 		}
 	}
+
+	if ((pwr_status & TCPC_POWER_STATUS_SRC_HI_VOLT) && chip->sourcing_vbus &&
+	    chip->ext_bst_ovp_clear_mv)
+		if (!check_and_clear_ext_bst(chip))
+			kthread_mod_delayed_work(chip->wq, &chip->ext_bst_ovp_clear_work,
+						 msecs_to_jiffies(EXT_BST_OVP_CLEAR_DELAY_MS));
 
 	if (chip->in_frs) {
 		chip->in_frs = false;
@@ -2006,6 +2066,9 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 			tcpm_vbus_change(tcpci->port);
 		}
 
+		if (vsafe0v)
+			chip->sourcing_vbus_high = 0;
+
 		chip->vsafe0v = vsafe0v;
 	}
 
@@ -2391,6 +2454,11 @@ static int max77759_get_vbus(struct google_shim_tcpci *tcpci, struct google_shim
 
 	if (chip->toggle_disable_status) {
 		LOG(LOG_LVL_DEBUG, chip->log, "%s: toggle disabled, return Vbus off", __func__);
+		return 0;
+	}
+
+	if (chip->sourcing_vbus_high) {
+		LOG(LOG_LVL_DEBUG, chip->log, "%s: sourcing vbus high, return Vbus off", __func__);
 		return 0;
 	}
 
@@ -3245,6 +3313,7 @@ static int max77759_probe(struct i2c_client *client,
 	mutex_init(&chip->rc_lock);
 	mutex_init(&chip->irq_status_lock);
 	mutex_init(&chip->ovp_lock);
+	mutex_init(&chip->ext_bst_ovp_clear_lock);
 	spin_lock_init(&g_caps_lock);
 	chip->first_toggle = true;
 	chip->first_rp_missing_timeout = true;
@@ -3453,6 +3522,7 @@ static int max77759_probe(struct i2c_client *client,
 	kthread_init_delayed_work(&chip->vsafe0v_work, vsafe0v_debounce_work);
 	kthread_init_delayed_work(&chip->max77759_io_error_work, max77759_io_error_work);
 	kthread_init_delayed_work(&chip->check_missing_rp_work, check_missing_rp_work);
+	kthread_init_delayed_work(&chip->ext_bst_ovp_clear_work, ext_bst_ovp_clear_work);
 
 	/*
 	 * b/218797880 Some OVP chips are restricted to quick Vin ramp-up time which means that if
@@ -3504,6 +3574,10 @@ static int max77759_probe(struct i2c_client *client,
 	chip->port = google_tcpci_shim_get_tcpm_port(chip->tcpci);
 
 	max77759_enable_voltage_alarm(chip, true, true);
+
+	if (!of_property_read_u32(dn, "ext-bst-ovp-clear-mv", &chip->ext_bst_ovp_clear_mv))
+		LOG(LOG_LVL_DEBUG, chip->log, "ext_bst_ovp_clear_mv set to %u",
+		    chip->ext_bst_ovp_clear_mv);
 
 	ret = max77759_init_alert(chip, client);
 	if (ret < 0)
