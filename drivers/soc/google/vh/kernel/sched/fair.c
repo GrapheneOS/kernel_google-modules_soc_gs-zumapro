@@ -2040,10 +2040,7 @@ void rvh_cpu_overutilized_pixel_mod(void *data, int cpu, int *overutilized)
 unsigned long map_util_freq_pixel_mod(unsigned long util, unsigned long freq,
 				      unsigned long cap, int cpu)
 {
-	freq = freq * util / cap;
-
 #if IS_ENABLED(CONFIG_PIXEL_EM)
-	if (static_branch_likely(&skip_inefficient_opps_enable))
 	{
 		struct pixel_em_profile **profile_ptr_snapshot;
 		profile_ptr_snapshot = READ_ONCE(vendor_sched_pixel_em_profile);
@@ -2052,22 +2049,28 @@ unsigned long map_util_freq_pixel_mod(unsigned long util, unsigned long freq,
 			if (profile) {
 				struct pixel_em_cluster *cluster = profile->cpu_to_cluster[cpu];
 				struct pixel_em_opp *opp;
+				bool efficient = true;
 				int i;
-
-				freq = map_scaling_freq(cpu, freq);
 
 				for (i = 0; i < cluster->num_opps; i++) {
 					opp = &cluster->opps[i];
-					if (opp->freq >= freq && !opp->inefficient)
+
+					if (static_branch_likely(&skip_inefficient_opps_enable))
+						efficient = !opp->inefficient;
+
+					if (opp->capacity >= util && efficient)
 						break;
 				}
 
-				SCHED_WARN_ON(opp->inefficient);
+				if (static_branch_likely(&skip_inefficient_opps_enable))
+					SCHED_WARN_ON(opp->inefficient);
 
 				freq = opp->freq;
 			}
 		}
 	}
+#else
+	freq = freq * util / cap;
 #endif
 
 	return map_scaling_freq(cpu, freq);
