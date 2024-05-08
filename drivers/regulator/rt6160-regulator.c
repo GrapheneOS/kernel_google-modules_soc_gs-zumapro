@@ -353,6 +353,12 @@ static int rt6160_probe(struct i2c_client *i2c)
 		return PTR_ERR(rdev);
 	}
 
+	ret = rt6160_disable(rdev);
+	if (ret) {
+		dev_err(&i2c->dev, "Failed to disable regulator on probe completion\n");
+		return ret;
+	}
+
 	return 0;
 }
 
