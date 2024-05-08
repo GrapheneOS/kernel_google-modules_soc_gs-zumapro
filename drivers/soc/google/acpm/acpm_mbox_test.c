@@ -910,6 +910,7 @@ unsigned int acpm_pt_clients_enable(void)
 	unsigned int client_cnt = 0;
 
 	list_for_each_entry(client, slc_pt_list, list) {
+		spin_lock_init(&client->lock);
 		mbox->slc->client_name[client_cnt] = client->node->name;
 		mbox->slc->ptid[client_cnt] = pt_client_enable(client, 0);
 		dev_info(mbox->device, "%s: node name: %s, slc-ptid[%d]: %d\n",

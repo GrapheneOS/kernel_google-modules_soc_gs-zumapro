@@ -59,18 +59,6 @@ struct pt_properties {
  *	driver->mt can be taken. They will be forwarded to resize_thread.
  */
 
-struct pt_handle { /* one per client */
-	spinlock_t lock; /* serialize write access to the handle */
-	struct list_head list;
-	pt_resize_callback_t resize_callback;
-	int id_cnt;
-	struct pt_pts *pts; /* client partitions */
-	struct device_node *node; /* client node */
-	struct ctl_table *sysctl_table;
-	struct ctl_table_header *sysctl_header;
-	void *data; /* client private data */
-};
-
 struct pt_driver { /* one per driver */
 	/* partition properties in driver node */
 	struct pt_properties *properties;

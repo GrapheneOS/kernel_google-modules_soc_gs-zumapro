@@ -316,18 +316,6 @@ struct acpm_mfd_validity {
 
 #define PT_PTID_MAX 64
 
-struct pt_handle {		/* one per client */
-	struct mutex mt;	/* serialize write access to the handle */
-	struct list_head list;
-	pt_resize_callback_t resize_callback;
-	int id_cnt;
-	struct pt_pts *pts;	/* client partitions */
-	struct device_node *node;	/* client node */
-	struct ctl_table *sysctl_table;
-	struct ctl_table_header *sysctl_header;
-	void *data;		/* client private data */
-};
-
 struct acpm_slc_validity {
 	struct delayed_work slc_request_wk[NUM_OF_WQ];
 	struct delayed_work mbox_stress_trigger_wk;
