@@ -100,6 +100,7 @@ struct max77759_plat {
 	u8 debug_acc_connected:1;
 	/* Cache status when sourcing vbus. Used to modify vbus_present status */
 	u8 sourcing_vbus:1;
+	u8 sourcing_vbus_high:1;
 	/* Cache vbus_present as MAX77759 reports vbus present = 0 when vbus < 4V */
 	u8 vbus_present:1;
 	u8 cc1;
@@ -207,6 +208,13 @@ struct max77759_plat {
 
 	/* When true debounce disconnects to prevent user notifications during brief disconnects */
 	bool debounce_adapter_disconnect;
+
+	/* Read from device tree and denotes the vbus voltage threshold for ovp during source */
+	u32 ext_bst_ovp_clear_mv;
+	/* Used to check voltage again after a second to see if it meets the ovp threshold */
+	struct kthread_delayed_work ext_bst_ovp_clear_work;
+	/* protects checking and setting sourcing_vbus_high in check_and_clear_ext_bst */
+	struct mutex ext_bst_ovp_clear_lock;
 
 	int device_id;
 	int product_id;
