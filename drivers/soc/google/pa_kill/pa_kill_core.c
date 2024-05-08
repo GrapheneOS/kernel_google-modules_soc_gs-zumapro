@@ -31,7 +31,7 @@ static LIST_HEAD(pa_task_list);
 static DECLARE_WAIT_QUEUE_HEAD(pa_kill_wait);
 static DEFINE_MUTEX(pa_kill_lock);
 
-unsigned long extra_free_kb = 200UL << 10;
+unsigned long extra_free_kb = 100UL << 10;
 unsigned int poll_interval_ms = 20;
 int origin_watermark_scale_factor = 0;
 int origin_vm_swappiness = 0;
@@ -262,19 +262,23 @@ static struct zone *pa_next_zone(struct zone *zone)
 	return zone;
 }
 
+/*
+ * Return the number of available pages after the kswapd high watermark.
+ * This proactively wakes kswapd, anticipating the upcoming burst memory request.
+ */
 static unsigned long available_pages(void)
 {
 	long available_pages;
 
 	struct pglist_data *pgdat;
 	struct zone *zone;
-	unsigned long min_free = 0;
+	unsigned long unusable_free = 0;
 
 	pgdat = NODE_DATA(first_online_node);
 	for (zone = pgdat->node_zones; zone; zone = pa_next_zone(zone))
-		min_free += zone->_watermark[WMARK_MIN];
+		unusable_free += zone->_watermark[WMARK_HIGH];
 
-	available_pages = global_zone_page_state(NR_FREE_PAGES) - min_free;
+	available_pages = global_zone_page_state(NR_FREE_PAGES) - unusable_free;
 	if (!movable_allowable)
 		available_pages -= global_zone_page_state(NR_FREE_CMA_PAGES);
 
