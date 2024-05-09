@@ -73,6 +73,19 @@ static int pixel_stat_mm_init(void)
 	if (ret)
 		return ret;
 
+	/* rvh_madvise_pageout_end depends on rvh_madvise_pageout_begin so do not reorder */
+	ret = register_trace_android_rvh_madvise_pageout_end(rvh_madvise_pageout_end, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_madvise_pageout_begin(rvh_madvise_pageout_begin, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_rvh_reclaim_folio_list(rvh_reclaim_folio_list, NULL);
+	if (ret)
+		return ret;
+
 	return 0;
 }
 
