@@ -15,6 +15,8 @@ extern void destroy_kill_threads(void);
 extern int create_kill_threads(unsigned int nr_thread);
 extern unsigned long extra_free_kb;
 extern atomic_long_t pa_kill_count;
+atomic_long_t pa_nr_attempt;
+extern atomic_long_t pa_nr_done;
 extern unsigned int poll_interval_ms;
 extern unsigned int killable_min_oom_adj;
 extern bool movable_allowable;
@@ -45,8 +47,10 @@ static ssize_t reclaim_kb_store(struct kobject *kobj,
 	if (kstrtoul(buf, 10, &reclaim_kb))
 		return -EINVAL;
 
-	if (reclaim_kb > 0)
+	if (reclaim_kb > 0) {
+		atomic_long_inc(&pa_nr_attempt);
 		reclaim_memory(reclaim_kb >> (PAGE_SHIFT - 10));
+	}
 
 	return len;
 }
@@ -207,6 +211,30 @@ static ssize_t kill_count_show(struct kobject *kobj,
 }
 PA_KILL_ATTR_RW(kill_count);
 
+static ssize_t nr_attempt_show(struct kobject *kobj,
+				  struct kobj_attribute *attr,
+				  char *buf)
+{
+	unsigned long val;
+
+	val = atomic_long_read(&pa_nr_attempt);
+
+	return sysfs_emit(buf, "%lu\n", val);
+}
+PA_KILL_ATTR_RO(nr_attempt);
+
+static ssize_t nr_done_show(struct kobject *kobj,
+				    struct kobj_attribute *attr,
+				    char *buf)
+{
+	unsigned long val;
+
+	val = atomic_long_read(&pa_nr_done);
+
+	return sysfs_emit(buf, "%lu\n", val);
+}
+PA_KILL_ATTR_RO(nr_done);
+
 static ssize_t movable_allowable_store(struct kobject *kobj,
 			       struct kobj_attribute *attr,
 			       const char *buf, size_t len)
@@ -296,6 +324,8 @@ static struct attribute *pa_kill_attrs[] = {
 	&cpu_affinity_attr.attr,
 	&killable_min_oom_adj_attr.attr,
 	&kill_count_attr.attr,
+	&nr_attempt_attr.attr,
+	&nr_done_attr.attr,
 	&movable_allowable_attr.attr,
 	&nr_kill_thread_attr.attr,
 	NULL,

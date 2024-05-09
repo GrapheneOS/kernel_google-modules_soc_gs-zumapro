@@ -20,6 +20,7 @@
 unsigned long target_pgfree;
 unsigned int killable_min_oom_adj = 900;
 atomic_long_t pa_kill_count = ATOMIC_LONG_INIT(0);
+atomic_long_t pa_nr_done = ATOMIC_LONG_INIT(0);
 /*
  * the pa_kill will stop after 1sec by default
  */
@@ -290,8 +291,11 @@ void reclaim_memory(unsigned long nr_demand_pages)
 		long nr_available_pages = available_pages();
 
 		/* system has enough free memory so no need to work */
-		if (nr_available_pages >= nr_demand_pages)
+		if (nr_available_pages >= nr_demand_pages) {
+			ATRACE_BEGIN("enough memory");
+			ATRACE_END();
 			goto out;
+		};
 
 		/* Too much request */
 		if (nr_demand_pages > MAX_DEMAND_PAGES) {
@@ -324,6 +328,7 @@ void reclaim_memory(unsigned long nr_demand_pages)
 	/* set or extend timer */
 	initiated_jiffes = jiffies;
 	wake_up_all(&pa_kill_wait);
+	atomic_long_inc(&pa_nr_done);
 out:
 	mutex_unlock(&pa_kill_lock);
 }
