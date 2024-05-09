@@ -357,6 +357,12 @@ static int pa_kill_thread(void *data)
 		if (kthread_should_stop())
 			break;
 
+		/*
+		 * Wait poll_interval_ms right after woken up to see how kswapd works
+		 * to avoid unnecessary kill and then on every attempt to avoid serial
+		 * killing.
+		 */
+		schedule_timeout_idle(msecs_to_jiffies(poll_interval_ms));
 		mutex_lock(&pa_kill_lock);
 		if (get_nr_freed() >= target_pgfree || expired_pa_kill()) {
 			/* Meet the target so ready to sleep */
@@ -373,15 +379,9 @@ static int pa_kill_thread(void *data)
 		 * reclaim.
 		 */
 		if (available_pages() > (extra_free_kb >> (PAGE_SHIFT - 10)))
-			goto polling;
-
-		if (!do_kill_process(killable_min_oom_adj))
 			continue;
-polling:
-		/*
-		 * sleep if we have enough memory or no more processes to be killed
-		 */
-		schedule_timeout_idle(msecs_to_jiffies(poll_interval_ms));
+
+		do_kill_process(killable_min_oom_adj);
 	}
 
 	mutex_lock(&pa_kill_lock);
