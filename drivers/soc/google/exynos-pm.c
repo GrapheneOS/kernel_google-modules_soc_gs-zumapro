@@ -117,7 +117,13 @@ static void exynos_show_wakeup_reason(bool sleep_abort)
 			for (i = 0; i < pm_info->num_gic; i++)
 				pr_info("GICD_ISPENDR[%d] = 0x%x\n", i,
 					__raw_readl(pm_info->gic_base + i * 4));
-		}
+		} else {
+#ifdef CONFIG_SUSPEND
+			// If there is no pending wakeup, it should be aborted
+			// by TF-A or ACPM.
+			log_abnormal_wakeup_reason("sleep abort (by tf-a or acpm)");
+#endif
+                }
 
 		pr_info("%s done.\n", EXYNOS_PM_PREFIX);
 		return;
