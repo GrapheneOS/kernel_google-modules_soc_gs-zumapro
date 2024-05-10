@@ -100,6 +100,7 @@ static u64 pmu_poll_last_update;
 static bool pmu_poll_cancelling;
 static bool pmu_poll_in_progress;
 extern bool pmu_poll_enabled;
+extern bool pmu_force_limited;
 extern unsigned int pmu_poll_time_ms;
 
 static void pmu_poll_defer_work(u64 time);
@@ -1035,6 +1036,8 @@ static void pmu_limit_work(struct kthread_work *work)
 		policy = cpufreq_cpu_get(cpu);
 		sg_policy = policy->governor_data;
 		next_max_freq = policy->cpuinfo.max_freq;
+		pmu_throttle = false;
+		local_pmu_ignored_mask = CPU_MASK_NONE;
 
 		// If pmu_limit_enable is not set, or policy max is lower than pum limit freq,
 		// such as under thermal throttling, we don't need to call freq_qos_update_request
@@ -1117,8 +1120,11 @@ static void pmu_limit_work(struct kthread_work *work)
 			}
 		}
 
-		next_max_freq = sg_policy->tunables->limit_frequency;
-		pmu_throttle = true;
+		if (pmu_force_limited ||
+		    (!pmu_force_limited && !cpumask_equal(&local_pmu_ignored_mask, policy->cpus))) {
+			next_max_freq = sg_policy->tunables->limit_frequency;
+			pmu_throttle = true;
+		}
 
 update_next_max_freq:
 
