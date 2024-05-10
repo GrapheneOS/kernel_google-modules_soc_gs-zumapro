@@ -95,17 +95,4 @@ exports_files([
     # keep sorted
     "Kconfig.ext",
     "Makefile",
-    "build.config.gs101",
-    "build.config.gs201",
-    "build.config.zuma",
-    "build.config.zumapro",
-    "system_dlkm.props.zuma",
-    "vendor_dlkm.blocklist.zuma",
-    "vendor_dlkm.blocklist.zumapro",
-    "vendor_dlkm.props.zuma",
-    "vendor_dlkm.props.zumapro",
-    "vendor_dlkm_modules.zuma",
-    "vendor_dlkm_modules.zumapro",
-    "vendor_kernel_boot_modules.zuma",
-    "vendor_kernel_boot_modules.zumapro",
 ])
