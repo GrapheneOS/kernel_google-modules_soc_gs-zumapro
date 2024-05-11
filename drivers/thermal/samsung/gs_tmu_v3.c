@@ -1521,7 +1521,7 @@ static int gs_get_mpmm_level(struct gs_tmu_data *data)
 static int gs_get_mpmm_enable(struct gs_tmu_data *data)
 {
 	void __iomem *addr;
-	u32 reg, mask, offset;
+	u32 reg;
 
 	if (!data)
 		return -EINVAL;
@@ -1530,29 +1530,15 @@ static int gs_get_mpmm_enable(struct gs_tmu_data *data)
 		return -ENOMEM;
 	}
 
-	switch (data->id) {
-		case TZ_BIG:
-			mask = BIG_MPMMEN_MASK;
-			offset = BIG_MPMMEN_OFFSET;
-			break;
-		case TZ_MID:
-			mask = MID_MPMMEN_MASK;
-			offset = MID_MPMMEN_OFFSET;
-			break;
-		case TZ_LIT:
-			mask = LIT_MPMMEN_MASK;
-			offset = LIT_MPMMEN_OFFSET;
-			break;
-		default:
-			return -ENODEV;
-	}
+	if (!(data->id == TZ_BIG || data->id == TZ_MID || data->id == TZ_LIT))
+		return -ENODEV;
 
 	addr = data->sysreg_cpucl0 + CLUSTER0_MPMMEN;
 	mutex_lock(&data->lock);
 	reg = __raw_readl(addr);
 	mutex_unlock(&data->lock);
 
-	reg = (reg >> offset) & mask;
+	reg = (reg >> data->mpmm_enable_offset) & data->mpmm_enable_mask;
 	return reg;
 }
 
@@ -2141,64 +2127,6 @@ static int gs_map_dt_data(struct platform_device *pdev)
 	}
 #endif
 
-#if IS_ENABLED(CONFIG_SOC_ZUMA)
-	data->sysreg_cpucl0 = devm_ioremap(&pdev->dev, SYSREG_CPUCL0_BASE, SZ_8K);
-	if (!data->sysreg_cpucl0) {
-		dev_err(&pdev->dev, "Failed to ioremap sysreg_cpucl0\n");
-	}
-
-	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_enable", &data->mpmm_enable);
-	if (ret < 0) {
-		data->mpmm_enable = 0;
-		dev_err(&pdev->dev, "No input mpmm_enable\n");
-	}
-
-	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_throttle_level",
-								&data->mpmm_throttle_level);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "No input mpmm_throttle_level\n");
-		data->mpmm_throttle_level = 0;
-	}
-
-	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_clr_throttle_level",
-								&data->mpmm_clr_throttle_level);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "No input mpmm_clr_throttle_level\n");
-		data->mpmm_clr_throttle_level = 0;
-	}
-#else
-	data->sysreg_cpucl0 = 0;
-
-	data->cpu_hw_throttling_enable = of_property_read_bool(pdev->dev.of_node,
-							       "cpu_hw_throttling_enable");
-	if (data->cpu_hw_throttling_enable) {
-		dev_info(&pdev->dev, "thermal zone use cpu hw throttling function\n");
-		of_property_read_u32(pdev->dev.of_node, "cpu_hw_throttling_trigger_threshold",
-				     &data->cpu_hw_throttling_trigger_threshold);
-
-		if (!data->cpu_hw_throttling_trigger_threshold)
-			dev_err(&pdev->dev, "No input cpu_hw_throttling_trigger_threshold\n");
-
-		of_property_read_u32(pdev->dev.of_node, "cpu_hw_throttling_clr_threshold",
-				     &data->cpu_hw_throttling_clr_threshold);
-
-		if (!data->cpu_hw_throttling_clr_threshold)
-			dev_err(&pdev->dev, "No input cpu_hw_throttling_clr_threshold\n");
-
-		of_property_read_u32(pdev->dev.of_node, "ppm_level",
-				     &data->ppm_throttle_level);
-
-		if (!data->ppm_throttle_level)
-			dev_err(&pdev->dev, "No input ppm_level\n");
-
-		of_property_read_u32(pdev->dev.of_node, "mpmm_level",
-				     &data->mpmm_throttle_level);
-
-		if (!data->mpmm_throttle_level)
-			dev_err(&pdev->dev, "No input mpmm_level\n");
-	}
-#endif
-
 	ret = of_property_read_string(pdev->dev.of_node, "tmu_work_affinity", &buf);
 	if (!ret)
 		cpulist_parse(buf, &data->tmu_work_affinity);
@@ -2425,6 +2353,67 @@ static int gs_map_dt_data(struct platform_device *pdev)
 	if (ret || (data->pressure_index >= NR_PRESSURE_TZ))
 		data->pressure_index = -1;
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+	data->sysreg_cpucl0 = devm_ioremap(&pdev->dev, SYSREG_CPUCL0_BASE, SZ_8K);
+	if (!data->sysreg_cpucl0) {
+		dev_err(&pdev->dev, "Failed to ioremap sysreg_cpucl0\n");
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_enable", &data->mpmm_enable);
+	if (ret < 0) {
+		data->mpmm_enable = 0;
+		dev_err(&pdev->dev, "No input mpmm_enable\n");
+	}
+	/* determine MPMMEN_MASK and MPMMEN_OFFSET from mapped cpumask */
+	data->mpmm_enable_offset = cpumask_first(&data->mapped_cpus);
+	data->mpmm_enable_mask = (1U << (cpumask_last(&data->mapped_cpus) -
+				    cpumask_first(&data->mapped_cpus) + 1)) - 1;
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_throttle_level",
+								&data->mpmm_throttle_level);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "No input mpmm_throttle_level\n");
+		data->mpmm_throttle_level = 0;
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mpmm_clr_throttle_level",
+								&data->mpmm_clr_throttle_level);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "No input mpmm_clr_throttle_level\n");
+		data->mpmm_clr_throttle_level = 0;
+	}
+#else
+	data->sysreg_cpucl0 = 0;
+
+	data->cpu_hw_throttling_enable = of_property_read_bool(pdev->dev.of_node,
+							       "cpu_hw_throttling_enable");
+	if (data->cpu_hw_throttling_enable) {
+		dev_info(&pdev->dev, "thermal zone use cpu hw throttling function\n");
+		of_property_read_u32(pdev->dev.of_node, "cpu_hw_throttling_trigger_threshold",
+				     &data->cpu_hw_throttling_trigger_threshold);
+
+		if (!data->cpu_hw_throttling_trigger_threshold)
+			dev_err(&pdev->dev, "No input cpu_hw_throttling_trigger_threshold\n");
+
+		of_property_read_u32(pdev->dev.of_node, "cpu_hw_throttling_clr_threshold",
+				     &data->cpu_hw_throttling_clr_threshold);
+
+		if (!data->cpu_hw_throttling_clr_threshold)
+			dev_err(&pdev->dev, "No input cpu_hw_throttling_clr_threshold\n");
+
+		of_property_read_u32(pdev->dev.of_node, "ppm_level",
+				     &data->ppm_throttle_level);
+
+		if (!data->ppm_throttle_level)
+			dev_err(&pdev->dev, "No input ppm_level\n");
+
+		of_property_read_u32(pdev->dev.of_node, "mpmm_level",
+				     &data->mpmm_throttle_level);
+
+		if (!data->mpmm_throttle_level)
+			dev_err(&pdev->dev, "No input mpmm_level\n");
+	}
+#endif
 	return 0;
 }
 
