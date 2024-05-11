@@ -35,6 +35,15 @@
 		k_pu = <36>;
 		k_i = <58>;
 	};
+
+	tmuctrl_5: TPU@100B0000 {
+		k_po = <20>;
+		k_pu = <20>;
+		k_i = <42>;
+		integral_cutoff = <10>;
+		sustainable_power = <2000>;
+	};
+
 	thermal_zones: thermal-zones {
 		big_thermal: BIG {
 			zone_name  = "BIG_THERMAL";
