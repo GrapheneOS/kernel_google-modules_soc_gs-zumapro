@@ -175,8 +175,7 @@ int populate_cluster_config(struct device *dev, struct device_node *cluster_node
 		gs_governor_init_core_dev_map(dev, cluster_node, "core-dev-table-base");
 	if (!cluster->base_freq_table) {
 		dev_err(dev,
-			"Couldn't find the core-dev-table-base! Defaulting to latency-table.\n");
-		cluster->base_freq_table = cluster->latency_freq_table;
+			"Couldn't find the core-dev-table-base! Disabling Base Vote!\n");
 	}
 	return ret;
 }
