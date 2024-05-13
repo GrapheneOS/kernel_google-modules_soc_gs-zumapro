@@ -44,6 +44,7 @@ extern bool vendor_sched_npi_packing;
 extern bool vendor_sched_boost_adpf_prio;
 extern bool vendor_sched_prefer_prev_cpu;
 extern unsigned int sysctl_sched_min_granularity;
+extern unsigned int sysctl_sched_wakeup_granularity;
 extern unsigned int sysctl_sched_idle_min_granularity;
 
 static unsigned int early_boot_boost_uclamp_min = 563;
@@ -68,6 +69,7 @@ bool wait_for_init = true;
 
 unsigned int vh_sched_max_load_balance_interval;
 unsigned int vh_sched_min_granularity_ns;
+unsigned int vh_sched_wakeup_granularity_ns;
 unsigned int vh_sched_latency_ns;
 
 unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
@@ -3046,5 +3048,6 @@ void vh_sched_resume_end(void *data, void *unused)
 {
 	max_load_balance_interval = vh_sched_max_load_balance_interval;
 	sysctl_sched_min_granularity = vh_sched_min_granularity_ns;
+	sysctl_sched_wakeup_granularity = vh_sched_wakeup_granularity_ns;
 	sysctl_sched_latency = vh_sched_latency_ns;
 }

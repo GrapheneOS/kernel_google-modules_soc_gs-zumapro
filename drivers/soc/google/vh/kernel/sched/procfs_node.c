@@ -2511,7 +2511,9 @@ static ssize_t min_granularity_ns_store(struct file *filp,
 		return -EINVAL;
 
 	vh_sched_min_granularity_ns = val;
+	vh_sched_wakeup_granularity_ns = val;
 	sysctl_sched_min_granularity = val;
+	sysctl_sched_wakeup_granularity = val;
 
 	return count;
 }

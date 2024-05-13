@@ -297,6 +297,7 @@ static void init_sched_params(void)
 {
 	vh_sched_max_load_balance_interval = max_load_balance_interval;
 	vh_sched_min_granularity_ns = sysctl_sched_min_granularity;
+	vh_sched_wakeup_granularity_ns = sysctl_sched_wakeup_granularity;
 	vh_sched_latency_ns = sysctl_sched_latency;
 }
 
