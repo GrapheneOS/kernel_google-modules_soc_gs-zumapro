@@ -58,6 +58,7 @@ extern unsigned int *pixel_cpd_exit_latency;
 
 extern unsigned int vh_sched_max_load_balance_interval;
 extern unsigned int vh_sched_min_granularity_ns;
+extern unsigned int vh_sched_wakeup_granularity_ns;
 extern unsigned int vh_sched_latency_ns;
 
 DECLARE_STATIC_KEY_FALSE(auto_migration_margins_enable);
