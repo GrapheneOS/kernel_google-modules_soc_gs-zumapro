@@ -13,6 +13,7 @@
 #include <trace/hooks/binder.h>
 #include <trace/hooks/cgroup.h>
 #include <trace/hooks/sched.h>
+#include <trace/hooks/suspend.h>
 #include <trace/hooks/topology.h>
 #include <trace/hooks/cpufreq.h>
 
@@ -115,6 +116,7 @@ extern void rvh_util_fits_cpu_pixel_mod(void *data, unsigned long util, unsigned
 extern int pmu_poll_init(void);
 extern void set_cluster_enabled_cb(int cluster, int enabled);
 extern void register_set_cluster_enabled_cb(void (*func)(int, int));
+extern void vh_sched_resume_end(void *data, void *unused);
 
 extern struct cpufreq_governor sched_pixel_gov;
 extern bool wait_for_init;
@@ -291,9 +293,18 @@ out_no_pixel_cluster_start_cpu:
 	return -ENOMEM;
 }
 
+static void init_sched_params(void)
+{
+	vh_sched_max_load_balance_interval = max_load_balance_interval;
+	vh_sched_min_granularity_ns = sysctl_sched_min_granularity;
+	vh_sched_latency_ns = sysctl_sched_latency;
+}
+
 static int vh_sched_init(void)
 {
 	int ret;
+
+	init_sched_params();
 
 	ret = init_pixel_cpu();
 	if (ret) {
@@ -550,6 +561,10 @@ static int vh_sched_init(void)
 #endif
 
 	ret = register_trace_android_rvh_util_fits_cpu(rvh_util_fits_cpu_pixel_mod, NULL);
+	if (ret)
+		return ret;
+
+	ret = register_trace_android_vh_resume_end(vh_sched_resume_end, NULL);
 	if (ret)
 		return ret;
 

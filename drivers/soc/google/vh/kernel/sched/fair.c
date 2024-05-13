@@ -65,6 +65,10 @@ extern struct vendor_group_list vendor_group_list[VG_MAX];
 
 bool wait_for_init = true;
 
+unsigned int vh_sched_max_load_balance_interval;
+unsigned int vh_sched_min_granularity_ns;
+unsigned int vh_sched_latency_ns;
+
 unsigned long schedutil_cpu_util_pixel_mod(int cpu, unsigned long util_cfs,
 				 unsigned long max, enum cpu_util_type type,
 				 struct task_struct *p);
@@ -3000,4 +3004,11 @@ out:
 	rq->misfit_task_load = 0;
 	*need_update = false;
 	rcu_read_unlock();
+}
+
+void vh_sched_resume_end(void *data, void *unused)
+{
+	max_load_balance_interval = vh_sched_max_load_balance_interval;
+	sysctl_sched_min_granularity = vh_sched_min_granularity_ns;
+	sysctl_sched_latency = vh_sched_latency_ns;
 }
