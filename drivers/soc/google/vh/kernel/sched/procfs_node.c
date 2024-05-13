@@ -2460,6 +2460,7 @@ static ssize_t max_load_balance_interval_store(struct file *filp,
 	if (kstrtouint(buf, 0, &val))
 		return -EINVAL;
 
+	vh_sched_max_load_balance_interval = val;
 	max_load_balance_interval = val;
 
 	return count;
@@ -2489,6 +2490,7 @@ static ssize_t min_granularity_ns_store(struct file *filp,
 	if (kstrtouint(buf, 0, &val))
 		return -EINVAL;
 
+	vh_sched_min_granularity_ns = val;
 	sysctl_sched_min_granularity = val;
 
 	return count;
@@ -2518,6 +2520,7 @@ static ssize_t latency_ns_store(struct file *filp,
 	if (kstrtouint(buf, 0, &val))
 		return -EINVAL;
 
+	vh_sched_latency_ns = val;
 	sysctl_sched_latency = val;
 
 	return count;
@@ -2528,7 +2531,6 @@ static int enable_hrtick_show(struct seq_file *m, void *v)
 {
 	bool enabled;
 
-	sysctl_sched_features |= 1UL << __SCHED_FEAT_HRTICK;
 	enabled = static_key_enabled(&sched_feat_keys[__SCHED_FEAT_HRTICK]);
 	seq_printf(m, "%d\n", enabled);
 	return 0;
