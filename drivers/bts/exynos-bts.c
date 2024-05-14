@@ -1396,9 +1396,9 @@ int exynos_bts_debugfs_init(void)
 	if (IS_ERR(den))
 		return -ENOMEM;
 
-	debugfs_create_file("status", 0440, den, NULL,
+	debugfs_create_file("status", 0444, den, NULL,
 			    &debug_bts_hwstatus_fops);
-	debugfs_create_file("scenario", 0440, den, NULL,
+	debugfs_create_file("scenario", 0444, den, NULL,
 			    &debug_bts_scenario_fops);
 	debugfs_create_file("qos", 0440, den, NULL, &debug_bts_qos_fops);
 	debugfs_create_file("mo", 0440, den, NULL, &debug_bts_mo_fops);
@@ -1408,7 +1408,7 @@ int exynos_bts_debugfs_init(void)
 	debugfs_create_file("log", 0440, den, NULL, &debug_bts_log_fops);
 	debugfs_create_file("bw", 0440, den, NULL, &debug_bts_bw_fops);
 	debugfs_create_file("bw_hist", 0440, den, NULL, &debug_bts_bw_hist_fops);
-	debugfs_create_file("vc", 0440, den, NULL, &debug_bts_vc_fops);
+	debugfs_create_file("vc", 0444, den, NULL, &debug_bts_vc_fops);
 
 	return 0;
 }
