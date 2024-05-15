@@ -6,6 +6,7 @@
  */
 
 #include "mfc_slc.h"
+#include "mfc_rm.h"
 
 #include "mfc_core_reg_api.h"
 
@@ -96,11 +97,16 @@ void mfc_slc_flush(struct mfc_core *core, struct mfc_ctx *ctx)
 	if (slc_disable)
 		goto done;
 
+	atomic_inc(&core->during_idle_resume);
+	/* Trigger idle resume if core is in the idle mode */
+	mfc_rm_qos_control(ctx, MFC_QOS_TRIGGER);
+
 	mfc_slc_disable(core);
 	mfc_slc_enable(core);
 
 	mfc_slc_update_partition(core, ctx);
 
+	atomic_dec(&core->during_idle_resume);
 	mfc_core_debug(2, "[SLC] flushed\n");
 	MFC_TRACE_CORE("[SLC] flushed\n");
 
