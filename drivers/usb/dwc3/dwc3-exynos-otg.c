@@ -430,7 +430,7 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 		device_unlock(&dwc->gadget->dev);
 
 		mutex_lock(&dotg->lock);
-		pm_runtime_put_sync_suspend(dev);
+		pm_runtime_put_sync(dev);
 		mutex_unlock(&dotg->lock);
 
 		exynos->gadget_state = false;
