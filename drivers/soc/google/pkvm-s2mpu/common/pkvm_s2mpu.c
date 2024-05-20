@@ -286,6 +286,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct s2mpu_data *data;
 	bool off_at_boot, has_sync, dma_at_boot;
 	int ret, nr_devs = 0;
+	u8 flags = 0;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -317,10 +318,13 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 */
 	s2mpu_probe_irq(pdev, data);
 
+	if (has_sync)
+		flags |= S2MPU_HAS_SYNC;
+
 	/* If a device have a dma-cons property link it as a consumer. */
 	WARN_ON(pkvm_s2mpu_of_link_with_cons(dev));
 
-	ret = pkvm_iommu_s2mpu_register(dev, res->start, has_sync);
+	ret = pkvm_iommu_s2mpu_register(dev, res->start, flags);
 	if (ret && ret != -ENODEV) {
 		dev_err(dev, "could not register: %d\n", ret);
 		return ret;

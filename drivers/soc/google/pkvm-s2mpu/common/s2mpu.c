@@ -93,10 +93,8 @@ int pkvm_iommu_s2mpu_init(u64 token)
 }
 EXPORT_SYMBOL_GPL(pkvm_iommu_s2mpu_init);
 
-int pkvm_iommu_s2mpu_register(struct device *dev, phys_addr_t addr, bool has_sync)
+int pkvm_iommu_s2mpu_register(struct device *dev, phys_addr_t addr, u8 flags)
 {
-	u8 flags = has_sync ? S2MPU_HAS_SYNC : 0;
-
 	if (!is_protected_kvm_enabled())
 		return -ENODEV;
 
