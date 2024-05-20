@@ -900,6 +900,11 @@ static int mfc_core_suspend(struct device *device)
 		return -EINVAL;
 	}
 
+	if (core->state == MFCCORE_ERROR) {
+		dev_err(device, "Couldn't run HW. It's Error state\n");
+		return -EINVAL;
+	}
+
 	if (core->num_inst == 0)
 		return 0;
 
