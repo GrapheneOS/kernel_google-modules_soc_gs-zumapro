@@ -903,6 +903,11 @@ static int mfc_core_suspend(struct device *device)
 		return -EINVAL;
 	}
 
+	if (core->state == MFCCORE_ERROR) {
+		dev_err(device, "MFC core in error state\n");
+		return -EINVAL;
+	}
+
 	if (core->num_inst == 0)
 		return 0;
 
