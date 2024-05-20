@@ -432,11 +432,17 @@ static void s2mpu_host_stage2_idmap_apply(struct pkvm_iommu *dev,
 	if (!to_valid_range(&start, &end))
 		return;
 
+	if (dev->flags & S2MPU_DENY_ALL)
+		return;
+
 	__mpt_idmap_apply(dev, &host_mpt, start, end - 1);
 }
 
 static void s2mpu_host_stage2_idmap_complete(struct pkvm_iommu *dev)
 {
+	if (dev->flags & S2MPU_DENY_ALL)
+		return;
+
 	__mpt_idmap_complete(dev, &host_mpt);
 }
 
@@ -448,6 +454,9 @@ static int s2mpu_resume(struct pkvm_iommu *dev)
 	 * otherwise the host would not be forced to call the resume HVC
 	 * before issuing DMA traffic.
 	 */
+	if (dev->flags & S2MPU_DENY_ALL)
+		return 0;
+
 	return initialize_with_mpt(dev, &host_mpt);
 }
 
