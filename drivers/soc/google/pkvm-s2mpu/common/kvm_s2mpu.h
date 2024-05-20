@@ -388,6 +388,17 @@ static_assert(SMPT_GRAN <= PAGE_SIZE);
 #define S2MPU_HAS_SYNC				BIT(0)
 
 /*
+ * Some S2MPUs are connected to an initiator that doesn't issue NS
+ * traffic.
+ * SysMMU has an emulation feature that can be misused to read from arbitrary
+ * memory locations, and with SysMMU under the control of the kernel, we need
+ * to configure S2MPU to block such potentially malicious transactions.
+ * For that they must be unmap the S2MPU from the kernel so they can't
+ * be used.
+ */
+#define S2MPU_DENY_ALL				BIT(1)
+
+/*
  * Iterate over S2MPU gigabyte regions. Skip those that cannot be modified
  * (the MMIO registers are read only, with reset value MPT_PROT_NONE).
  */
