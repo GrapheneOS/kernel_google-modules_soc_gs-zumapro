@@ -315,6 +315,7 @@ out:
 	 * save current frequency and time
 	 * to use when update_devfreq is called next
 	 */
+	*freq = max_t(unsigned long, data->governor_freq, *freq);
 	data->prev_freq = df->previous_freq;
 	*freq = min(exynos_pm_qos_max, *freq);
 #if IS_ENABLED(CONFIG_EXYNOS_ALT_DVFS)
