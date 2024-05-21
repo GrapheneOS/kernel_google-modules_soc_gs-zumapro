@@ -288,6 +288,7 @@ struct exynos_pcie {
 	int			linkdown_cnt;
 	int			idle_ip_index;
 	int			separated_msi;
+	int			de_emphasis_level;
 	bool			use_msi;
 	bool			support_msi64_addressing;
 	bool			use_cache_coherency;
