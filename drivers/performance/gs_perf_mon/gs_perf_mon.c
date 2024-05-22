@@ -34,6 +34,9 @@
 #include <performance/gs_perf_mon/gs_perf_mon.h>
 #include "gs_perf_mon_priv.h"
 
+#define CREATE_TRACE_POINTS
+#include "gs_perf_mon_trace.h"
+
 static struct gs_perf_mon_config perf_mon_config;
 static struct gs_perf_mon_state perf_mon_metadata;
 
@@ -424,6 +427,7 @@ void gs_perf_mon_update_clients(void)
 			ret = gs_perf_mon_get_data(cpu, &perf_mon_metadata.client_shared_data[cpu]);
 			if (ret)
 				perf_mon_metadata.client_shared_data[cpu].cpu_mon_on = false;
+			trace_gs_perf_mon(cpu, &perf_mon_metadata.client_shared_data[cpu]);
 		}
 
 		/* Update all clients supplying a callback pointer to monitor data. */
