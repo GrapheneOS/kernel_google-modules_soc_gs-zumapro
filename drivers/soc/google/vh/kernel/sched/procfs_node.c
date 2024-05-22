@@ -31,6 +31,7 @@ bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
 bool __read_mostly vendor_sched_reduce_prefer_idle = true;
 bool __read_mostly vendor_sched_auto_prefer_idle = false;
 bool __read_mostly vendor_sched_boost_adpf_prio = true;
+bool __read_mostly vendor_sched_prefer_prev_cpu = true;
 unsigned int __read_mostly vendor_sched_adpf_rampup_multiplier = 1;
 struct cpumask cpu_skip_mask_rt;
 static struct proc_dir_entry *vendor_sched;
@@ -1883,6 +1884,31 @@ static ssize_t boost_adpf_prio_store(struct file *filp, const char __user *ubuf,
 
 PROC_OPS_RW(boost_adpf_prio);
 
+static int prefer_prev_cpu_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%s\n", vendor_sched_prefer_prev_cpu ? "true" : "false");
+
+	return 0;
+}
+
+static ssize_t prefer_prev_cpu_store(struct file *filp, const char __user *ubuf,
+				     size_t count, loff_t *pos)
+{
+	bool enable;
+	int err;
+
+	err = kstrtobool_from_user(ubuf, count, &enable);
+
+	if (err)
+		return err;
+
+	vendor_sched_prefer_prev_cpu = enable;
+
+	return count;
+}
+
+PROC_OPS_RW(prefer_prev_cpu);
+
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 static int uclamp_stats_show(struct seq_file *m, void *v)
 {
@@ -3140,6 +3166,7 @@ static struct pentry entries[] = {
 	PROC_ENTRY(reduce_prefer_idle),
 	PROC_ENTRY(auto_prefer_idle),
 	PROC_ENTRY(boost_adpf_prio),
+	PROC_ENTRY(prefer_prev_cpu),
 	PROC_ENTRY(dump_task),
 	// pmu limit attribute
 	PROC_ENTRY(pmu_poll_time),
