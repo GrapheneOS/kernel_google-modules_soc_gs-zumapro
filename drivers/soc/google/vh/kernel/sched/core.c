@@ -161,6 +161,20 @@ void rvh_enqueue_task_pixel_mod(void *data, struct rq *rq, struct task_struct *p
 	if (!static_branch_unlikely(&enqueue_dequeue_ready))
 		return;
 
+	if (static_branch_likely(&auto_dvfs_headroom_enable)) {
+		unsigned int rampup_multiplier;
+		if (get_uclamp_fork_reset(p, true))
+			rampup_multiplier = vendor_sched_adpf_rampup_multiplier;
+		else
+			rampup_multiplier = vg[get_vendor_group(p)].rampup_multiplier;
+
+		if (!rampup_multiplier) {
+			p->se.avg.util_est.enqueued = 0;
+			p->se.avg.util_est.ewma = 0;
+			return;
+		}
+	}
+
 	raw_spin_lock(&vp->lock);
 	if (vp->queued_to_list == LIST_NOT_QUEUED) {
 		group = get_vendor_group(p);
