@@ -18,6 +18,11 @@
 
 #define NUM_FREQ_TABLE_COLS 2
 
+/* Initialize the tracepoints from this file. */
+#define CREATE_TRACE_POINTS
+#include "gs_lat_governors_trace.h"
+EXPORT_TRACEPOINT_SYMBOL_GPL(gs_lat_governor);
+
 long gs_governor_core_to_dev_freq(struct gs_governor_core_dev_map *map, unsigned long input_freq)
 {
 	unsigned long freq = 0;
