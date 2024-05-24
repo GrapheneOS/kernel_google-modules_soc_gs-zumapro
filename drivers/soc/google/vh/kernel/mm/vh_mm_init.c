@@ -8,6 +8,7 @@
 
 #include <linux/kobject.h>
 #include <linux/module.h>
+#include <linux/string.h>
 
 #include "../../include/mm.h"
 
@@ -60,8 +61,67 @@ static ssize_t kswapd_cpu_affinity_store(struct kobject *kobj,
 }
 VENDOR_MM_RW(kswapd_cpu_affinity);
 
+static bool is_kcompactd(struct task_struct *tsk)
+{
+	char comm[TASK_COMM_LEN];
+
+	return (tsk->flags & PF_KTHREAD) &&
+		strstarts(get_task_comm(comm, tsk), "kcompactd");
+}
+
+static ssize_t kcompactd_cpu_affinity_show(struct kobject *kobj,
+					   struct kobj_attribute *attr,
+					   char *buf)
+{
+	struct task_struct *tsk;
+	cpumask_t cpumask;
+
+	rcu_read_lock();
+	for_each_process(tsk) {
+		/* assume we only have 1 kcompactd */
+		if (is_kcompactd(tsk)) {
+			cpumask = tsk->cpus_mask;
+			break;
+		}
+	}
+	rcu_read_unlock();
+
+	return cpumap_print_to_pagebuf(false, buf, &cpumask);
+}
+
+static ssize_t kcompactd_cpu_affinity_store(struct kobject *kobj,
+					    struct kobj_attribute *attr,
+					    const char *buf,
+					    size_t len)
+{
+	struct task_struct *tsk;
+	cpumask_t requested_cpumask, dest_cpumask;
+	int ret;
+
+	ret = cpumask_parse(buf, &requested_cpumask);
+	if (ret < 0 || cpumask_empty(&requested_cpumask))
+		return -EINVAL;
+
+	cpumask_and(&dest_cpumask, &requested_cpumask, cpu_possible_mask);
+
+	rcu_read_lock();
+	for_each_process(tsk) {
+		/* assume we only have 1 kcompactd */
+		if (is_kcompactd(tsk)) {
+			set_cpus_allowed_ptr(tsk, &dest_cpumask);
+			break;
+		}
+	}
+	rcu_read_unlock();
+
+	return len;
+}
+
+VENDOR_MM_RW(kcompactd_cpu_affinity);
+
 static struct attribute *vendor_mm_attrs[] = {
 	&kswapd_cpu_affinity_attr.attr,
+	&kcompactd_cpu_affinity_attr.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(vendor_mm);
