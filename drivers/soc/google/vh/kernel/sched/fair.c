@@ -2299,6 +2299,20 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	if (!sched_feat(UTIL_EST))
 		return;
 
+	if (static_branch_likely(&auto_dvfs_headroom_enable)) {
+		unsigned int rampup_multiplier;
+		if (get_uclamp_fork_reset(p, true))
+			rampup_multiplier = vendor_sched_adpf_rampup_multiplier;
+		else
+			rampup_multiplier = vg[get_vendor_group(p)].rampup_multiplier;
+
+		if (!rampup_multiplier) {
+			p->se.avg.util_est.enqueued = 0;
+			p->se.avg.util_est.ewma = 0;
+			return;
+		}
+	}
+
 	/*
 	 * Skip update of task's estimated utilization when the task has not
 	 * yet completed an activation, e.g. being migrated.
