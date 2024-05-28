@@ -540,6 +540,10 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->uclamp_pi[UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 	v_tsk->uclamp_pi[UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
 	v_tsk->runnable_start_ns = -1;
+	v_tsk->delta_exec = 0;
+	v_tsk->util_enqueued = 0;
+	v_tsk->prev_util_enqueued = 0;
+	v_tsk->ignore_util_est_update = false;
 }
 
 extern u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se);
@@ -864,11 +868,10 @@ static inline void __update_util_est_invariance(struct rq *rq,
 						bool update_cfs_rq)
 {
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
-	unsigned long se_enqueued, cfs_rq_enqueued;
+	unsigned long se_enqueued, cfs_rq_enqueued, new_util_est;
 	struct cfs_rq *cfs_rq = &rq->cfs;
 	struct sched_entity *se = &p->se;
 	unsigned int rampup_multiplier;
-	int cpu = cpu_of(rq);
 	u64 delta_exec;
 	int __maybe_unused group;
 
@@ -881,9 +884,6 @@ static inline void __update_util_est_invariance(struct rq *rq,
 	if (!fair_policy(p->policy) && !idle_policy(p->policy))
 		return;
 
-	if (se->avg.util_avg >= arch_scale_cpu_capacity(cpu))
-		return;
-
 	if (get_uclamp_fork_reset(p, true))
 		rampup_multiplier = vendor_sched_adpf_rampup_multiplier;
 	else
@@ -893,9 +893,16 @@ static inline void __update_util_est_invariance(struct rq *rq,
 		return;
 
 	delta_exec = (se->sum_exec_runtime - vp->prev_sum_exec_runtime)/1000;
-	delta_exec = min_t(u64, delta_exec, TICK_USEC);
 	delta_exec *= rampup_multiplier;
+
+	vp->delta_exec += delta_exec;
 	vp->prev_sum_exec_runtime = se->sum_exec_runtime;
+
+	/* Is the task util increasing? */
+	if (task_util(p) < vp->util_enqueued)
+		return;
+
+	new_util_est = approximate_util_avg(vp->util_enqueued, vp->delta_exec);
 
 	se_enqueued = READ_ONCE(se->avg.util_est.enqueued) & ~UTIL_AVG_UNCHANGED;
 	se_enqueued = max_t(unsigned long, se->avg.util_est.ewma, se_enqueued);
@@ -911,17 +918,16 @@ static inline void __update_util_est_invariance(struct rq *rq,
 		lsub_positive(&cfs_rq_enqueued, se_enqueued);
 	}
 
-	se_enqueued = approximate_util_avg(se_enqueued, delta_exec);
-	WRITE_ONCE(se->avg.util_est.enqueued, se_enqueued | UTIL_AVG_UNCHANGED);
+	WRITE_ONCE(se->avg.util_est.enqueued, new_util_est);
 	trace_sched_util_est_se_tp(se);
 
 	if (update_cfs_rq) {
-		cfs_rq_enqueued += se_enqueued;
+		cfs_rq_enqueued += new_util_est;
 		WRITE_ONCE(cfs_rq->avg.util_est.enqueued, cfs_rq_enqueued);
 		trace_sched_util_est_cfs_tp(cfs_rq);
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
-		vendor_cfs_util[group][rq->cpu].util_est += se_enqueued;
+		vendor_cfs_util[group][rq->cpu].util_est += new_util_est;
 		raw_spin_unlock(&vendor_cfs_util[group][rq->cpu].lock);
 #endif
 	}
