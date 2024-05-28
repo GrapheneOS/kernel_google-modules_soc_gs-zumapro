@@ -868,8 +868,8 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time)
 	if (sugov_iowait_reset(sg_cpu, time, false))
 		return;
 
-	/* Reduce boost only if a tick has elapsed since last request */
-	if (delta_ns <= TICK_NSEC)
+	/* Reduce boost only if a 1ms has elapsed since last request */
+	if (delta_ns <= NSEC_PER_MSEC)
 		goto apply_boost;
 
 	if (!sg_cpu->iowait_boost_pending) {
