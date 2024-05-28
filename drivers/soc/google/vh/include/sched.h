@@ -78,6 +78,10 @@ struct vendor_task_struct {
 
 	u64 runnable_start_ns;
 	u64 prev_sum_exec_runtime;
+	u64 delta_exec;
+	unsigned long util_enqueued;
+	unsigned long prev_util_enqueued;
+	bool ignore_util_est_update;
 
 	/*
 	 * A general field for time measurement in the same process context.
