@@ -2430,13 +2430,21 @@ void rvh_cpu_cgroup_online_pixel_mod(void *data, struct cgroup_subsys_state *css
 
 void rvh_post_init_entity_util_avg_pixel_mod(void *data, struct sched_entity *se)
 {
-	struct cfs_rq *cfs_rq = cfs_rq_of(se);
-	struct sched_avg *sa = &se->avg;
-	long cpu_scale = arch_scale_cpu_capacity(cpu_of(rq_of(cfs_rq)));
+	if (!static_branch_likely(&auto_dvfs_headroom_enable)) {
+		struct cfs_rq *cfs_rq = cfs_rq_of(se);
+		struct sched_avg *sa = &se->avg;
+		long cpu_scale = arch_scale_cpu_capacity(cpu_of(rq_of(cfs_rq)));
 
-	if (cfs_rq->avg.util_avg == 0) {
-		sa->util_avg = vendor_sched_util_post_init_scale * cpu_scale / SCHED_CAPACITY_SCALE;
-		sa->runnable_avg = sa->util_avg;
+		if (cfs_rq->avg.util_avg == 0) {
+			sa->util_avg = vendor_sched_util_post_init_scale * cpu_scale / SCHED_CAPACITY_SCALE;
+			sa->runnable_avg = sa->util_avg;
+		}
+	} else {
+		struct sched_avg *sa = &se->avg;
+		sa->util_avg = 0;
+		sa->runnable_avg = 0;
+		sa->util_est.enqueued = 0 | UTIL_AVG_UNCHANGED;
+		sa->util_est.ewma = 0;
 	}
 }
 
