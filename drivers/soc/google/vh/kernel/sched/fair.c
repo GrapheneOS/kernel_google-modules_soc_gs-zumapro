@@ -42,10 +42,10 @@ struct vendor_cfs_util vendor_cfs_util[UG_MAX][CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int vendor_sched_util_post_init_scale;
 extern bool vendor_sched_npi_packing;
 extern bool vendor_sched_boost_adpf_prio;
-extern bool vendor_sched_prefer_prev_cpu;
 extern unsigned int sysctl_sched_min_granularity;
 extern unsigned int sysctl_sched_wakeup_granularity;
 extern unsigned int sysctl_sched_idle_min_granularity;
+extern struct cpumask skip_prefer_prev_mask;
 
 static unsigned int early_boot_boost_uclamp_min = 563;
 module_param(early_boot_boost_uclamp_min, uint, 0644);
@@ -2538,9 +2538,9 @@ void rvh_select_task_rq_fair_pixel_mod(void *data, struct task_struct *p, int pr
 	}
 
 	/* prefer prev cpu */
-	if (vendor_sched_prefer_prev_cpu && cpu_active(prev_cpu) && cpu_is_idle(prev_cpu) &&
-	    task_fits_capacity(p, prev_cpu) && cpumask_test_cpu(prev_cpu, p->cpus_ptr) &&
-	    check_preferred_idle_mask(p, prev_cpu) &&
+	if (!cpumask_test_cpu(prev_cpu, &skip_prefer_prev_mask) && cpu_active(prev_cpu) &&
+	    cpu_is_idle(prev_cpu) && task_fits_capacity(p, prev_cpu) &&
+	    cpumask_test_cpu(prev_cpu, p->cpus_ptr) && check_preferred_idle_mask(p, prev_cpu) &&
 	    !cpumask_test_cpu(prev_cpu, get_group_cfs_skip_mask(p))) {
 
 		struct cpuidle_state *idle_state;
