@@ -41,9 +41,9 @@ extern void rvh_cpu_overutilized_pixel_mod(void *data, int cpu, int *overutilize
 extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p,
 					 enum uclamp_id clamp_id, struct uclamp_se *uclamp_max,
 					 struct uclamp_se *uclamp_eff, int *ret);
-#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 extern void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct task_struct *p,
 					   bool task_sleep, int *ret);
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 extern void rvh_cpu_cgroup_online_pixel_mod(void *data, struct cgroup_subsys_state *css);
 #endif
 extern void rvh_post_init_entity_util_avg_pixel_mod(void *data, struct sched_entity *se);
@@ -450,10 +450,11 @@ static int vh_sched_init(void)
 	if (ret)
 		return ret;
 
-#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	ret = register_trace_android_rvh_util_est_update(rvh_util_est_update_pixel_mod, NULL);
 	if (ret)
 		return ret;
+
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 
 	ret = register_trace_android_rvh_cpu_cgroup_online(
 		rvh_cpu_cgroup_online_pixel_mod, NULL);

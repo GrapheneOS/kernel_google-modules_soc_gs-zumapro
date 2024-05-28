@@ -87,6 +87,7 @@ extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum
  * Any change for these functions in upstream GKI would require extensive review
  * to make proper adjustment in vendor hook.
  */
+#define UTIL_EST_MARGIN (SCHED_CAPACITY_SCALE / 100)
 
 #define for_each_clamp_id(clamp_id) \
 	for ((clamp_id) = 0; (clamp_id) < UCLAMP_CNT; (clamp_id)++)
@@ -2287,14 +2288,11 @@ void rvh_check_preempt_wakeup_pixel_mod(void *data, struct rq *rq, struct task_s
 
 }
 
-#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct task_struct *p,
 				    bool task_sleep, int *ret)
 {
-	long last_ewma_diff;
+	long last_ewma_diff, last_enqueued_diff;
 	struct util_est ue;
-	int cpu;
-	unsigned long scale_cpu;
 
 	*ret = 1;
 
@@ -2316,28 +2314,13 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	if (ue.enqueued & UTIL_AVG_UNCHANGED)
 		return;
 
+	last_enqueued_diff = ue.enqueued;
+
 	/*
 	 * Reset EWMA on utilization increases, the moving average is used only
 	 * to smooth utilization decreases.
 	 */
 	ue.enqueued = task_util(p);
-
-	cpu = cpu_of(rq_of(cfs_rq));
-	scale_cpu = arch_scale_cpu_capacity(cpu);
-	// TODO: make util_est to sub cfs-rq and aggregate.
-#if IS_ENABLED(CONFIG_UCLAMP_TASK)
-	// Currently util_est is done only in the root group
-	// Current solution apply the clamp in the per-task level for simplicity.
-	// However it may
-	// 1) over grow by the group limit
-	// 2) out of sync when task migrated between cgroups (cfs_rq)
-	ue.enqueued = min((unsigned long)ue.enqueued, uclamp_eff_value_pixel_mod(p, UCLAMP_MAX));
-#if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
-	ue.enqueued = min_t(unsigned long, ue.enqueued,
-			cap_scale(get_group_throttle(task_group(p)), scale_cpu));
-#endif
-#endif
-
 	if (sched_feat(UTIL_EST_FASTUP)) {
 		if (ue.ewma < ue.enqueued) {
 			ue.ewma = ue.enqueued;
@@ -2346,19 +2329,23 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	}
 
 	/*
-	 * Skip update of task's estimated utilization when its EWMA is
+	 * Skip update of task's estimated utilization when its members are
 	 * already ~1% close to its last activation value.
 	 */
 	last_ewma_diff = ue.enqueued - ue.ewma;
-	if (within_margin(last_ewma_diff, (SCHED_CAPACITY_SCALE / 100)))
+	last_enqueued_diff -= ue.enqueued;
+	if (within_margin(last_ewma_diff, UTIL_EST_MARGIN)) {
+		if (!within_margin(last_enqueued_diff, UTIL_EST_MARGIN))
+			goto done;
+
 		return;
+	}
 
 	/*
 	 * To avoid overestimation of actual task utilization, skip updates if
 	 * we cannot grant there is idle time in this CPU.
 	 */
-
-	if (task_util(p) > capacity_orig_of(cpu))
+	if (task_util(p) > capacity_orig_of(cpu_of(rq_of(cfs_rq))))
 		return;
 
 	/*
@@ -2381,13 +2368,6 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 	ue.ewma <<= UTIL_EST_WEIGHT_SHIFT;
 	ue.ewma  += last_ewma_diff;
 	ue.ewma >>= UTIL_EST_WEIGHT_SHIFT;
-#if IS_ENABLED(CONFIG_UCLAMP_TASK)
-	ue.ewma = min((unsigned long)ue.ewma, uclamp_eff_value_pixel_mod(p, UCLAMP_MAX));
-#if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
-	ue.ewma = min_t(unsigned long, ue.ewma,
-			cap_scale(get_group_throttle(task_group(p)), scale_cpu));
-#endif
-#endif
 done:
 	ue.enqueued |= UTIL_AVG_UNCHANGED;
 	WRITE_ONCE(p->se.avg.util_est, ue);
@@ -2395,6 +2375,7 @@ done:
 	trace_sched_util_est_se_tp(&p->se);
 }
 
+#if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 void rvh_cpu_cgroup_online_pixel_mod(void *data, struct cgroup_subsys_state *css)
 {
 	struct vendor_task_group_struct *vtg;
