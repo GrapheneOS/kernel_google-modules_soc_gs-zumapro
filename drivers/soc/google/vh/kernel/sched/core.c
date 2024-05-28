@@ -214,6 +214,8 @@ void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
 {
 	struct vendor_binder_task_struct *vbinder = get_vendor_binder_task_struct(p);
 
+	get_vendor_task_struct(p)->is_binder_task = true;
+
 	if (!t->from || vbinder->active)
 		return;
 
