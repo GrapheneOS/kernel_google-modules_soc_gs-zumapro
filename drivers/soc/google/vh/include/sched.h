@@ -75,6 +75,7 @@ struct vendor_task_struct {
 	struct uclamp_filter uclamp_filter;
 	int orig_prio;
 	unsigned long iowait_boost;
+	bool is_binder_task;
 
 	/* parameters for binder inheritance */
 	struct vendor_inheritance_struct vi;
