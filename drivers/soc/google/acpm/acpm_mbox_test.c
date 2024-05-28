@@ -1200,7 +1200,7 @@ static int acpm_dvfs_set_devfreq(unsigned int dm_id, unsigned int rate,
 	latency = after - before;
 
 	if (ret < 0)
-		dev_err(mbox->device, "exynos_devfreq_lock_freq ret=%d\n", ret);
+		dev_err(mbox->device, "exynos_devfreq_lock_freq: dm=%d, ret=%d\n", dm_id, ret);
 
 	mdelay(10);
 
@@ -1411,6 +1411,10 @@ static int dvfs_latency_stats_setting(struct acpm_info *acpm, u64 subcmd)
 	switch (domain) {
 	case ACPM_DVFS_TEST_MIF:
 	case ACPM_DVFS_TEST_INT:
+#if defined(CONFIG_SOC_ZUMA)
+	case ACPM_DVFS_TEST_DSU:
+	case ACPM_DVFS_TEST_BCI:
+#endif
 	case ACPM_DVFS_TEST_INTCAM:
 	case ACPM_DVFS_TEST_TNR:
 	case ACPM_DVFS_TEST_CAM:
@@ -1621,6 +1625,10 @@ static int init_domain_freq_table(struct acpm_dvfs_test *dvfs, int dm_id)
 	switch (cal_id) {
 	case ACPM_DVFS_MIF:
 	case ACPM_DVFS_INT:
+#if defined(CONFIG_SOC_ZUMA)
+	case ACPM_DVFS_DSU:
+	case ACPM_DVFS_BCI:
+#endif
 	case ACPM_DVFS_INTCAM:
 	case ACPM_DVFS_TNR:
 	case ACPM_DVFS_CAM:

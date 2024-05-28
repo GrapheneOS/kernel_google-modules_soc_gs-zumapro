@@ -51,6 +51,10 @@ enum acpm_dvfs_test_commands {
 	ACPM_DVFS_TEST_CPUCL0,
 	ACPM_DVFS_TEST_CPUCL1,
 	ACPM_DVFS_TEST_CPUCL2,
+#if defined(CONFIG_SOC_ZUMA)
+	ACPM_DVFS_TEST_DSU,
+	ACPM_DVFS_TEST_BCI,
+#endif
 	ACPM_DVFS_TEST_G3D,
 	ACPM_DVFS_TEST_G3DL2,
 	ACPM_DVFS_TEST_TPU,
@@ -67,6 +71,10 @@ enum domains {
 	DVFS_CPUCL0,
 	DVFS_CPUCL1,
 	DVFS_CPUCL2,
+#if defined(CONFIG_SOC_ZUMA)
+	DVFS_DSU,
+	DVFS_BCI,
+#endif
 	DVFS_G3D,		/*not support */
 	DVFS_G3DL2,		/*not support */
 	DVFS_TPU,		/*not support */
@@ -399,6 +407,20 @@ static struct acpm_dvfs_domains dvfs_dm_list[] = {
 			 .devfreq_id = -1,
 			 .cpu_policy_id = CPUCL2_POLICY,
 			  },
+#if defined(CONFIG_SOC_ZUMA)
+	[DVFS_DSU] = {
+			 .name = "DSU",
+			 .cal_id = ACPM_DVFS_DSU,
+			 .devfreq_id = DEVFREQ_DSU,
+			 .cpu_policy_id = -1,
+			  },
+	[DVFS_BCI] = {
+			 .name = "BCI",
+			 .cal_id = ACPM_DVFS_BCI,
+			 .devfreq_id = DEVFREQ_BCI,
+			 .cpu_policy_id = -1,
+			  },
+#endif
 	[DVFS_G3D] = {
 		      .name = "G3D",
 		      .cal_id = ACPM_DVFS_G3D,
