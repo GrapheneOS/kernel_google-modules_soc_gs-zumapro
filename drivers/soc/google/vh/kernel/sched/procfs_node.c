@@ -438,9 +438,6 @@ static inline bool check_uclamp_##__uclamp_id##_on_nice_prio(enum vendor_group g
 
 static inline bool check_rampup_multiplier(enum vendor_group group)
 {
-	if (vg[group].rampup_multiplier > 4)
-		return false;
-
 	return true;
 }
 
@@ -2291,9 +2288,6 @@ static ssize_t adpf_rampup_multiplier_store(struct file *filp,
 	buf[count] = '\0';
 
 	if (kstrtouint(buf, 0, &val))
-		return -EINVAL;
-
-	if (val > 4)
 		return -EINVAL;
 
 	vendor_sched_adpf_rampup_multiplier = val;
