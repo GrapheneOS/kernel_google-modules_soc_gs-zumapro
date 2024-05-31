@@ -270,8 +270,10 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 			ret = dwc3_exynos_host_init(exynos);
 			if (ret) {
 				dev_err(dev, "%s: failed to init dwc3 host\n", __func__);
+				dotg->otg_connection = 0;
 				device_unlock(&dwc->gadget->dev);
-				goto err1;
+				__pm_relax(dotg->wakelock);
+				return ret;
 			}
 		}
 
@@ -296,8 +298,16 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 			pm_runtime_put_sync_suspend(dev);
 			exynos->need_dr_role = 0;
 			mutex_unlock(&dotg->lock);
+			dwc->gadget_driver = temp_gadget_driver;
+			temp_gadget_driver = NULL;
+			if (dwc->xhci) {
+				platform_device_put(dwc->xhci);
+				dwc->xhci = NULL;
+			}
+			dotg->otg_connection = 0;
 			device_unlock(&dwc->gadget->dev);
-			goto err1;
+			__pm_relax(dotg->wakelock);
+			return ret;
 		}
 		exynos->need_dr_role = 0;
 
