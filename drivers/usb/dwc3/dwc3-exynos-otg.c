@@ -249,11 +249,11 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 	__pm_stay_awake(dotg->wakelock);
 
 	if (on) {
-		/* hold gadget lock to prevent gadget driver bind and undesirable resume */
-		device_lock(&dwc->gadget->dev);
-
 		if (!dwc3_otg_check_usb_suspend(exynos))
 			dev_err(dev, "too long to wait for dwc3 suspended\n");
+
+		/* hold gadget lock to prevent gadget driver bind and undesirable resume */
+		device_lock(&dwc->gadget->dev);
 
 		dotg->otg_connection = 1;
 		while (dwc->gadget_driver == NULL) {
@@ -361,11 +361,12 @@ int dwc3_otg_start_gadget(struct dwc3_otg *dotg, int on)
 
 	if (on) {
 		__pm_stay_awake(dotg->wakelock);
-		/* hold gadget lock to prevent gadget driver bind and undesirable resume */
-		device_lock(&dwc->gadget->dev);
 
 		if (!dwc3_otg_check_usb_suspend(exynos))
 			dev_err(dev, "too long to wait for dwc3 suspended\n");
+
+		/* hold gadget lock to prevent gadget driver bind and undesirable resume */
+		device_lock(&dwc->gadget->dev);
 
 		while (dwc->gadget_driver == NULL) {
 			wait_counter++;
