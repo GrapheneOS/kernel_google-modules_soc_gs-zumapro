@@ -181,8 +181,6 @@ static void __sysmmu_disable_nocount(struct sysmmu_drvdata *drvdata, int pcie_vi
 	ctrl_val = readl_relaxed(drvdata->sfrbase + REG_MMU_CTRL_VID(pcie_vid));
 	ctrl_val &= ~CTRL_MMU_ENABLE;
 	writel(ctrl_val, drvdata->sfrbase + REG_MMU_CTRL_VID(pcie_vid));
-	/* Disable SysMMU for specific VID */
-	writel(CTRL_DISABLE, drvdata->sfrbase + REG_MMU_CTRL_VID(pcie_vid));
 
 	spin_lock(&drvdata->mmu_ctrl_lock);
 	set_sysmmu_inactive(drvdata, pcie_vid);
