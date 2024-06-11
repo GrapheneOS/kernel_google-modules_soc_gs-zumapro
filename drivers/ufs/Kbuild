@@ -26,3 +26,12 @@ CFLAGS_ufs-pixel-fips_sha256.o := -DBUILD_FIPS140_KO
 hostprogs := ufs-pixel-fips_gen_hmac
 HOSTLDLIBS_ufs-pixel-fips_gen_hmac := -lcrypto -lelf
 $(obj)/ufs-pixel-fips140.o: $(obj)/ufs-pixel-fips_gen_hmac
+
+ifdef CONFIG_FUNCTION_TRACER
+CFLAGS_REMOVE_ufs-pixel-fips140.o = $(CC_FLAGS_FTRACE)
+CFLAGS_REMOVE_ufs-pixel-fips.o = $(CC_FLAGS_FTRACE)
+CFLAGS_REMOVE_ufs-pixel-fips-swkeys.o = $(CC_FLAGS_FTRACE)
+CFLAGS_REMOVE_ufs-pixel-fips_sha256.o = $(CC_FLAGS_FTRACE)
+CFLAGS_REMOVE_ufs-pixel-fips140-refs.o = $(CC_FLAGS_FTRACE)
+CFLAGS_REMOVE_ufs-pixel-fips-exynos.o = $(CC_FLAGS_FTRACE)
+endif
