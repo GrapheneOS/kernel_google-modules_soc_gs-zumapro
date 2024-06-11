@@ -80,5 +80,5 @@ void register_bus_suspend_callback(void (*callback)(void *bus_suspend_payload, b
 						    bool suspend),
 				   void *data);
 
-void usb_power_notify_control(int on);
+int usb_power_notify_control(int on);
 #endif	/* _XHCI_EXYNOS_H */
