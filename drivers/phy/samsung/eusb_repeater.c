@@ -15,6 +15,24 @@
 
 struct eusb_repeater_data *g_tud;
 
+/*
+ * Time 3 ms is required for the eusb repeater to be ready to accept RAP and I2C requests.
+ * See eUSB2 Repeater 7.7 for timing requirement.
+ */
+static void ensure_eusb_repeater_ready(struct eusb_repeater_data *tud)
+{
+	mutex_lock(&tud->mutex);
+	ktime_t now = ktime_get();
+	const ktime_t target = ktime_add_us(tud->start_time, TIME_RH_READY);
+
+	if (!tud->ready) {
+		if (ktime_before(now, target))
+			udelay(ktime_us_delta(target, now));
+		tud->ready = true;
+	}
+	mutex_unlock(&tud->mutex);
+}
+
 int eusb_repeater_i2c_write(struct eusb_repeater_data *tud, u8 reg, u8 *data, int len)
 {
 	u8 buf[I2C_WRITE_BUFFER_SIZE + 1];
@@ -34,7 +52,9 @@ int eusb_repeater_i2c_write(struct eusb_repeater_data *tud, u8 reg, u8 *data, in
 	msg.flags = 0;
 	msg.len = len + 1;
 	msg.buf = buf;
+
 	mutex_lock(&tud->i2c_mutex);
+
 	for (retry = 0; retry < TUSB_I2C_RETRY_CNT; retry++) {
 		ret = i2c_transfer(tud->client->adapter, &msg, 1);
 		if (ret == 1)
@@ -106,6 +126,7 @@ static int eusb_repeater_write_reg(struct eusb_repeater_data *tud, u8 reg, u8 *d
 {
 	int ret = 0;
 
+	ensure_eusb_repeater_ready(tud);
 	ret = eusb_repeater_i2c_write(tud, reg, data, len);
 	if (ret < 0) {
 		dev_err(tud->dev, "%s: reg(0x%x), ret(%d)\n",
@@ -118,6 +139,7 @@ static int eusb_repeater_read_reg(struct eusb_repeater_data *tud, u8 reg, u8 *da
 {
 	int ret = 0;
 
+	ensure_eusb_repeater_ready(tud);
 	ret = eusb_repeater_i2c_read(tud, reg, data, len);
 	if (ret < 0) {
 		dev_err(tud->dev, "%s: reg(0x%x), ret(%d)\n",
@@ -251,8 +273,6 @@ eusb_repeater_store(struct device *dev,
 		ret = eusb_repeater_ctrl(true);
 		if (ret < 0)
 			return -EBUSY;
-
-		mdelay(3);
 	}
 
 	for (i = 0; i < tud->tune_cnt; i++) {
@@ -836,16 +856,18 @@ static const struct of_device_id eusb_repeater_match_table[] = {
 		{},
 };
 
-void eusb_repeater_update_usb_state(bool data_enabled)
+void eusb_repeater_update_usb_state(bool on)
 {
 	struct eusb_repeater_data *tud = g_tud;
 
 	if (!tud)
 		return;
 
-	tud->eusb_data_enabled = data_enabled;
-	if (tud->eusb_pm_status && !tud->eusb_data_enabled)
-		eusb_repeater_ctrl(false);
+	mutex_lock(&tud->mutex);
+	if (on)
+		tud->start_time = ktime_get();
+	tud->ready = false;
+	mutex_unlock(&tud->mutex);
 
 	return;
 }
@@ -876,8 +898,6 @@ int eusb_repeater_power_on(void)
 	ret = eusb_repeater_ctrl(true);
 	if (ret < 0)
 		goto err;
-
-	mdelay(3);
 
 	ret = eusb_repeater_read_reg(tud, 0x50,
 				&read_data, 1);
@@ -1041,6 +1061,7 @@ static int eusb_repeater_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, tud);
+	mutex_init(&tud->mutex);
 	mutex_init(&tud->i2c_mutex);
 
 	/*
