@@ -1923,7 +1923,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	}
 
 	cpumask_andnot(&candidates_temp, &candidates, get_group_cfs_skip_mask(p));
-	if (cpumask_weight(&candidates_temp))
+	if (!cpumask_empty(&candidates_temp))
 		cpumask_copy(&candidates, &candidates_temp);
 
 	weight = cpumask_weight(&candidates);
