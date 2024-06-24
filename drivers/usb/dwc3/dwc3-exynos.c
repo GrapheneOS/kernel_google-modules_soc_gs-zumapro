@@ -562,16 +562,15 @@ int dwc3_exynos_phy_enable(int owner, bool on)
 	dev = dwc->dev;
 	dotg = exynos->dotg;
 	if (on) {
-		if (!dwc3_exynos_check_usb_suspend(dotg))
+		if (!exynos->phy_owner_bits && !dwc3_exynos_check_usb_suspend(dotg))
 			dev_err(dev, "too long to wait for dwc3 suspended\n");
 
 		mutex_lock(&dotg->lock);
 		exynos->need_dr_role = 1;
-		ret = pm_runtime_get_sync(dev);
+		ret = pm_runtime_resume_and_get(dev);
 		if (ret < 0) {
 			dev_err(dwc->dev, "%s: failed to initialize core: %d\n",
 					__func__, ret);
-			pm_runtime_set_suspended(dev);
 		}
 		exynos->need_dr_role = 0;
 		exynos->phy_owner_bits |= BIT(owner);
