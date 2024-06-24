@@ -843,7 +843,7 @@ static int post_process_pd_message(struct max77759_plat *chip, struct pd_message
 		    (payload[1] & DP_STATUS_IRQ_HPD)) {
 			chip->irq_hpd_count++;
 			LOG(LOG_LVL_DEBUG, chip->log, "DP IRQ_HPD:%d count:%u",
-			    (payload[1] & DP_STATUS_IRQ_HPD), chip->irq_hpd_count);
+			    !!(payload[1] & DP_STATUS_IRQ_HPD), chip->irq_hpd_count);
 			// sysfs_notify(&chip->dev->kobj, NULL, "irq_hpd_count");
 			kobject_uevent(&chip->dev->kobj, KOBJ_CHANGE);
 		}
@@ -1406,8 +1406,8 @@ static bool check_and_clear_ext_bst(struct max77759_plat *chip)
 	mutex_lock(&chip->ext_bst_ovp_clear_lock);
 	regmap_read(chip->data.regmap, TCPC_POWER_STATUS, &pwr_status);
 	vbus_mv = max77759_get_vbus_voltage_mv(chip->client);
-	LOG(LOG_LVL_DEBUG, chip->log, "sourcing_vbus_high:0x%x vbus_mv:%u",
-	    pwr_status & TCPC_POWER_STATUS_SRC_HI_VOLT, vbus_mv);
+	LOG(LOG_LVL_DEBUG, chip->log, "sourcing_vbus_high:%d vbus_mv:%u",
+	    !!(pwr_status & TCPC_POWER_STATUS_SRC_HI_VOLT), vbus_mv);
 
 	if (chip->sourcing_vbus_high) {
 		ret = true;
