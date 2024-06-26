@@ -87,6 +87,7 @@ struct eusb_repeater_tune_param {
 
 struct eusb_repeater_data {
 	struct device			*dev;
+	struct extcon_dev		*edev;
 	struct i2c_client		*client;
 	struct mutex			mutex;
 	struct mutex			i2c_mutex;

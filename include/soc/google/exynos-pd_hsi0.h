@@ -52,5 +52,4 @@ static inline int exynos_pd_hsi0_vdd_hsi_manual_control(bool on)
 	return 0;
 }
 #endif
-
 #endif  /* __EXYNOS_PD_HSI0_H */

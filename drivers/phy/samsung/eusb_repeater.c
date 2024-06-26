@@ -11,6 +11,8 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/extcon.h>
+
 #include "eusb_repeater.h"
 
 struct eusb_repeater_data *g_tud;
@@ -867,7 +869,12 @@ void eusb_repeater_update_usb_state(bool on)
 	if (on)
 		tud->start_time = ktime_get();
 	tud->ready = false;
+	tud->eusb_data_enabled = (extcon_get_state(tud->edev, EXTCON_USB) > 0 ||
+				  extcon_get_state(tud->edev, EXTCON_USB_HOST) > 0);
 	mutex_unlock(&tud->mutex);
+
+	if (on && tud->eusb_pm_status && !tud->eusb_data_enabled)
+		eusb_repeater_ctrl(false);
 
 	return;
 }
@@ -1009,10 +1016,18 @@ static int eusb_repeater_probe(struct i2c_client *client,
 
 	tud = kzalloc(sizeof(*tud), GFP_KERNEL);
 	if (tud == NULL) {
+		dev_err(&client->dev, "%s: couldn't allocate eusb_repeater_data\n", __func__);
 		ret = -ENOMEM;
 		goto err_repeater_nomem;
 	}
 	tud->dev = &client->dev;
+
+	tud->edev = extcon_get_edev_by_phandle(tud->dev, 0);
+	if (IS_ERR_OR_NULL(tud->edev)) {
+		dev_err(&client->dev, "%s: couldn't get extcon\n", __func__);
+		ret = -EPROBE_DEFER;
+		goto err_repeater_func;
+	}
 
 	if (of_node) {
 		pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
@@ -1030,7 +1045,7 @@ static int eusb_repeater_probe(struct i2c_client *client,
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "%s: EIO err!\n", __func__);
-		ret = -ENOMEM;
+		ret = -EIO;
 		goto err_parse_dt;
 	}
 
@@ -1080,7 +1095,7 @@ err_parse_dt:
 err_repeater_func:
 	kfree(tud);
 err_repeater_nomem:
-	dev_info(&client->dev, "%s: err = %d\n", __func__, ret);
+	dev_err(&client->dev, "%s: err = %d\n", __func__, ret);
 
 	return ret;
 }
