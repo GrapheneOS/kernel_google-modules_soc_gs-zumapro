@@ -215,6 +215,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct s2mpu_data *data;
 	bool off_at_boot, has_sync;
 	int ret, nr_devs;
+	u8 flags = 0;
 
 	data = devm_kmalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -245,7 +246,10 @@ static int s2mpu_probe(struct platform_device *pdev)
 	 */
 	s2mpu_probe_irq(pdev, data);
 
-	ret = pkvm_iommu_s2mpu_register(dev, res->start, has_sync);
+	if (has_sync)
+		flags |= S2MPU_HAS_SYNC;
+
+	ret = pkvm_iommu_s2mpu_register(dev, res->start, flags);
 	if (ret && ret != -ENODEV) {
 		dev_err(dev, "could not register: %d\n", ret);
 		return ret;
