@@ -20,4 +20,8 @@ void pcie_sysmmu_disable(int hsi_block_num);
 void pcie_sysmmu_all_buff_free(int hsi_block_num);
 void print_pcie_sysmmu_tlb(int hsi_block_num);
 
+#if IS_ENABLED(CONFIG_SOC_ZUMA)
+void pcie_sysmmu_dump_registers(int hsi_block_num);
+#endif
+
 #endif /* _EXYNOS_PCIE_IOMMU_EXP_H_ */
