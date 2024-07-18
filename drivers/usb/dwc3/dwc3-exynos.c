@@ -574,12 +574,14 @@ int dwc3_exynos_phy_enable(int owner, bool on)
 			pm_runtime_set_suspended(dev);
 		}
 		exynos->need_dr_role = 0;
+		exynos->phy_owner_bits |= BIT(owner);
 		mutex_unlock(&dotg->lock);
 	} else {
 		mutex_lock(&dotg->lock);
 		if (!dotg->otg_connection)
 			exynos->dwc->current_dr_role = DWC3_GCTL_PRTCAP_DEVICE;
 		pm_runtime_put_sync_suspend(dev);
+		exynos->phy_owner_bits &= ~BIT(owner);
 		mutex_unlock(&dotg->lock);
 	}
 
