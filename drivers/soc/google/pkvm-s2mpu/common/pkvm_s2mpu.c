@@ -213,7 +213,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	struct s2mpu_data *data;
-	bool off_at_boot, has_sync;
+	bool off_at_boot, has_sync, deny_all;
 	int ret, nr_devs;
 	u8 flags = 0;
 
@@ -239,6 +239,7 @@ static int s2mpu_probe(struct platform_device *pdev)
 	off_at_boot = !!of_get_property(np, "off-at-boot", NULL);
 	has_sync = !!of_get_property(np, "built-in-sync", NULL);
 	data->has_pd = !!of_get_property(np, "power-domains", NULL);
+	deny_all = !!of_get_property(np, "deny-all", NULL);
 	/*
 	 * Try to parse IRQ information. This is optional as it only affects
 	 * runtime fault reporting, and therefore errors do not fail the whole
@@ -248,6 +249,8 @@ static int s2mpu_probe(struct platform_device *pdev)
 
 	if (has_sync)
 		flags |= S2MPU_HAS_SYNC;
+	if (deny_all)
+		flags |= S2MPU_DENY_ALL;
 
 	ret = pkvm_iommu_s2mpu_register(dev, res->start, flags);
 	if (ret && ret != -ENODEV) {
@@ -274,7 +277,9 @@ static int s2mpu_probe(struct platform_device *pdev)
 	if (!off_at_boot)
 		WARN_ON(__pkvm_s2mpu_suspend(dev));
 
-	pm_runtime_enable(dev);
+	if (!deny_all)
+		pm_runtime_enable(dev);
+
 	if (data->always_on)
 		pm_runtime_get_sync(dev);
 
