@@ -22,8 +22,10 @@ struct s5910_seq_step {
 struct s5910_info {
 	struct spmi_device	*sdev;
 	struct regmap		*regmap;
-	struct s5910_seq_step   *sequence;
-	size_t			step_cnt;
+	struct s5910_seq_step   *off_sequence;
+	struct s5910_seq_step   *on_sequence;
+	size_t			off_step_cnt;
+	size_t			on_step_cnt;
 };
 
 static int of_dev_node_match(struct device *dev, const void *node)
@@ -83,7 +85,7 @@ static int s5910_dt_init(struct device *dev, struct s5910_info *info)
 	size_t num_bytes;
 	size_t num_cells;
 	size_t num_steps;
-	struct s5910_seq_step *lseq;
+	struct s5910_seq_step *lseq, *oseq;
 	size_t step_ndx;
 	size_t cell_ndx;
 	u32 *val;
@@ -122,8 +124,40 @@ static int s5910_dt_init(struct device *dev, struct s5910_info *info)
 		lseq[step_ndx].reg = be32_to_cpu(val[cell_ndx + 1]);
 		lseq[step_ndx].val = be32_to_cpu(val[cell_ndx + 2]);
 	}
-	info->sequence = lseq;
-	info->step_cnt = num_steps;
+	info->off_sequence = lseq;
+	info->off_step_cnt = num_steps;
+
+	prop = of_find_property(dev->of_node, "s5910,on_seq", NULL);
+	if (!prop) {
+		dev_err(dev, "Unable to read s5910,on_seq\n");
+		return -ENODATA;
+	}
+
+	num_bytes = prop->length;
+	num_cells = num_bytes / sizeof(u32);
+	num_steps = num_cells / 3;
+
+	oseq = devm_kzalloc(dev,
+			num_steps*sizeof(struct s5910_seq_step),
+			GFP_KERNEL);
+	if (!oseq)
+		return -ENOMEM;
+
+	val = prop->value;
+	if (!val) {
+		dev_err(dev, "Invalid s5910,on_seq value\n");
+		return -EINVAL;
+	}
+
+	for (step_ndx = 0; step_ndx < num_steps; step_ndx++) {
+		cell_ndx = step_ndx * 3;
+
+		oseq[step_ndx].delay = be32_to_cpu(val[cell_ndx + 0]);
+		oseq[step_ndx].reg = be32_to_cpu(val[cell_ndx + 1]);
+		oseq[step_ndx].val = be32_to_cpu(val[cell_ndx + 2]);
+	}
+	info->on_sequence = oseq;
+	info->on_step_cnt = num_steps;
 
 	return 0;
 }
@@ -141,11 +175,18 @@ static int s5910_probe(struct spmi_device *sdev)
 
 	rc = s5910_dt_init(dev, info);
 	if (!rc) {
-		for (step_ndx = 0; step_ndx < info->step_cnt; step_ndx++) {
-			dev_info(dev, "%zd %d %#03x %#02x\n", step_ndx,
-					info->sequence[step_ndx].delay,
-					info->sequence[step_ndx].reg,
-					info->sequence[step_ndx].val);
+		for (step_ndx = 0; step_ndx < info->off_step_cnt; step_ndx++) {
+			dev_info(dev, "off: %zd %d %#03x %#02x\n", step_ndx,
+					info->off_sequence[step_ndx].delay,
+					info->off_sequence[step_ndx].reg,
+					info->off_sequence[step_ndx].val);
+		}
+
+		for (step_ndx = 0; step_ndx < info->on_step_cnt; step_ndx++) {
+			dev_info(dev, "on: %zd %d %#03x %#02x\n", step_ndx,
+					info->on_sequence[step_ndx].delay,
+					info->on_sequence[step_ndx].reg,
+					info->on_sequence[step_ndx].val);
 		}
 	}
 
@@ -218,10 +259,10 @@ int s5910_shutdown_sequence(struct device *dev)
 	u32 reg; /* target register */
 	u32 val; /* value to write */
 
-	for (ndx = 0; ndx < info->step_cnt; ndx++) {
-		delay_ms = info->sequence[ndx].delay;
-		reg = info->sequence[ndx].reg;
-		val = info->sequence[ndx].val;
+	for (ndx = 0; ndx < info->off_step_cnt; ndx++) {
+		delay_ms = info->off_sequence[ndx].delay;
+		reg = info->off_sequence[ndx].reg;
+		val = info->off_sequence[ndx].val;
 
 		dev_info(dev, "%zu %d %#03x %#02x\n", ndx, delay_ms, reg, val);
 		if (delay_ms > 0)
@@ -232,6 +273,29 @@ int s5910_shutdown_sequence(struct device *dev)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(s5910_shutdown_sequence);
+
+int s5910_turn_on_sequence(struct device *dev)
+{
+	struct s5910_info *info = dev_get_drvdata(dev);
+	size_t ndx;
+	u32 delay_ms; /* delay before sending cmd */
+	u32 reg; /* target register */
+	u32 val; /* value to write */
+
+	for (ndx = 0; ndx < info->on_step_cnt; ndx++) {
+		delay_ms = info->on_sequence[ndx].delay;
+		reg = info->on_sequence[ndx].reg;
+		val = info->on_sequence[ndx].val;
+
+		dev_info(dev, "%zu %d %#03x %#02x\n", ndx, delay_ms, reg, val);
+		if (delay_ms > 0)
+			msleep(delay_ms);
+		s5910_write(dev, reg, val);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(s5910_turn_on_sequence);
 
 struct device *s5910_get_device(struct device_node *node)
 {
