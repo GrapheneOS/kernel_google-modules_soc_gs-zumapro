@@ -297,6 +297,23 @@ int s5910_turn_on_sequence(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(s5910_turn_on_sequence);
 
+int s5910_check_lpm_mode(struct device *dev)
+{
+	int rc;
+	u32 val;
+
+	struct s5910_info *info = dev_get_drvdata(dev);
+	rc = regmap_read(info->regmap, 0x020e, &val);
+	if (rc < 0) {
+		dev_err(dev, "ERROR: read LPM mode failed (%d)\n", rc);
+		return rc;
+	}
+
+	dev_info(dev, "s5910 DCXO LPM mode: %#02x\n", val);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(s5910_check_lpm_mode);
+
 struct device *s5910_get_device(struct device_node *node)
 {
 	struct device *dev = NULL;
