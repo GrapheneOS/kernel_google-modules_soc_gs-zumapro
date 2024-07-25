@@ -34,18 +34,18 @@ build:use_source_tree_aosp --//private/google-modules/soc/gs:gki_kernel_dir=aosp
 build:use_source_tree_aosp_staging --//private/google-modules/soc/gs:gki_kernel_dir=aosp-staging
 
 build:download_gki --use_prebuilt_gki
-#build:download_gki --use_signed_prebuilts
-build:download_gki --action_env=KLEAF_DOWNLOAD_BUILD_NUMBER_MAP="gki_prebuilts=11790095"
+build:download_gki --use_signed_prebuilts
+build:download_gki --action_env=KLEAF_DOWNLOAD_BUILD_NUMBER_MAP="gki_prebuilts=12035949"
 build:no_download_gki --use_prebuilt_gki=false
 
 # enable Pixel Staging Kernel (go/pixel-staging) by default
 #build --config=use_source_tree_aosp_staging
 
 # disable GKI prebuilts by default
-build --config=no_download_gki
+#build --config=no_download_gki
 
 # enable GKI prebuilts by default
-#build --config=download_gki
+build --config=download_gki
 
 # Placeholders for device specific bazelrc files. Add as many as you need.
 try-import %workspace%/.d1.bazelrc
