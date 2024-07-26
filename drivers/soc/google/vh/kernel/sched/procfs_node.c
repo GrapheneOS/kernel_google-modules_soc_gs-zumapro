@@ -31,10 +31,9 @@ bool __read_mostly vendor_sched_npi_packing = true; //non prefer idle packing
 bool __read_mostly vendor_sched_reduce_prefer_idle = true;
 bool __read_mostly vendor_sched_auto_prefer_idle = false;
 bool __read_mostly vendor_sched_boost_adpf_prio = true;
+bool __read_mostly vendor_sched_prefer_prev_cpu = true;
 unsigned int __read_mostly vendor_sched_adpf_rampup_multiplier = 1;
 struct cpumask cpu_skip_mask_rt;
-struct cpumask skip_prefer_prev_mask;
-
 static struct proc_dir_entry *vendor_sched;
 struct proc_dir_entry *group_dirs[VG_MAX];
 extern struct vendor_group_list vendor_group_list[VG_MAX];
@@ -1881,25 +1880,30 @@ static ssize_t boost_adpf_prio_store(struct file *filp, const char __user *ubuf,
 
 PROC_OPS_RW(boost_adpf_prio);
 
-static int skip_prefer_prev_mask_show(struct seq_file *m, void *v)
+static int prefer_prev_cpu_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "0x%lx\n", skip_prefer_prev_mask.bits[0]);
+	seq_printf(m, "%s\n", vendor_sched_prefer_prev_cpu ? "true" : "false");
 
 	return 0;
 }
-static ssize_t skip_prefer_prev_mask_store(struct file *filp,
-					  const char __user *ubuf,
-					  size_t count, loff_t *pos)
-{
-	int ret;
 
-	ret = cpumask_parse_user(ubuf, count, &skip_prefer_prev_mask);
-	if (ret)
-		return ret;
+static ssize_t prefer_prev_cpu_store(struct file *filp, const char __user *ubuf,
+				     size_t count, loff_t *pos)
+{
+	bool enable;
+	int err;
+
+	err = kstrtobool_from_user(ubuf, count, &enable);
+
+	if (err)
+		return err;
+
+	vendor_sched_prefer_prev_cpu = enable;
 
 	return count;
 }
-PROC_OPS_RW(skip_prefer_prev_mask);
+
+PROC_OPS_RW(prefer_prev_cpu);
 
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 static int uclamp_stats_show(struct seq_file *m, void *v)
@@ -3128,6 +3132,7 @@ static struct pentry entries[] = {
 	PROC_ENTRY(reduce_prefer_idle),
 	PROC_ENTRY(auto_prefer_idle),
 	PROC_ENTRY(boost_adpf_prio),
+	PROC_ENTRY(prefer_prev_cpu),
 	PROC_ENTRY(dump_task),
 	// pmu limit attribute
 	PROC_ENTRY(pmu_poll_time),
@@ -3186,8 +3191,6 @@ static struct pentry entries[] = {
 	PROC_ENTRY(skip_inefficient_opps),
 	// skip mask for RT wake up
 	PROC_ENTRY(cpu_skip_mask),
-	// skip mask for prefer prev cpu
-	PROC_ENTRY(skip_prefer_prev_mask),
 };
 
 
@@ -3285,6 +3288,7 @@ int create_procfs_node(void)
 		goto out;
 	idle_inject_set_duration(iidev_b, 2000, 14000);
 	idle_inject_set_latency(iidev_b, 5000);
+
 
 	return 0;
 

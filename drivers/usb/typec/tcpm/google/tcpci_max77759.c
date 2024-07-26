@@ -843,7 +843,7 @@ static int post_process_pd_message(struct max77759_plat *chip, struct pd_message
 		    (payload[1] & DP_STATUS_IRQ_HPD)) {
 			chip->irq_hpd_count++;
 			LOG(LOG_LVL_DEBUG, chip->log, "DP IRQ_HPD:%d count:%u",
-			    !!(payload[1] & DP_STATUS_IRQ_HPD), chip->irq_hpd_count);
+			    (payload[1] & DP_STATUS_IRQ_HPD), chip->irq_hpd_count);
 			// sysfs_notify(&chip->dev->kobj, NULL, "irq_hpd_count");
 			kobject_uevent(&chip->dev->kobj, KOBJ_CHANGE);
 		}
@@ -1362,7 +1362,7 @@ static void check_missing_rp_work(struct kthread_work *work)
 		ret = power_supply_set_property(chip->usb_psy, POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
 		if (ret < 0)
 			LOG(LOG_LVL_DEBUG, chip->log, "%s: unable to set max voltage to %d, ret=%d",
-			    __func__, chip->vbus_mv * 1000, ret);
+			    chip->vbus_mv * 1000, ret, __func__);
 		update_compliance_warnings(chip, COMPLIANCE_WARNING_MISSING_RP, true);
 		usb_psy_set_sink_state(chip->usb_psy_data, true);
 	} else if (chip->compliance_warnings->missing_rp) {
@@ -1406,8 +1406,8 @@ static bool check_and_clear_ext_bst(struct max77759_plat *chip)
 	mutex_lock(&chip->ext_bst_ovp_clear_lock);
 	regmap_read(chip->data.regmap, TCPC_POWER_STATUS, &pwr_status);
 	vbus_mv = max77759_get_vbus_voltage_mv(chip->client);
-	LOG(LOG_LVL_DEBUG, chip->log, "sourcing_vbus_high:%d vbus_mv:%u",
-	    !!(pwr_status & TCPC_POWER_STATUS_SRC_HI_VOLT), vbus_mv);
+	LOG(LOG_LVL_DEBUG, chip->log, "sourcing_vbus_high:0x%x vbus_mv:%u",
+	    pwr_status & TCPC_POWER_STATUS_SRC_HI_VOLT, vbus_mv);
 
 	if (chip->sourcing_vbus_high) {
 		ret = true;
@@ -1986,7 +1986,7 @@ static irqreturn_t _max77759_irq_locked(struct max77759_plat *chip, u16 status,
 		max77759_enable_voltage_alarm(chip, true, true);
 
 		ret = extcon_set_state_sync(chip->extcon, EXTCON_MECHANICAL, 0);
-		LOG(LOG_LVL_DEBUG, chip->log, "%s: %s turning off connected, ret=%d",
+		LOG(LOG_LVL_DEBUG, chip->log, "%s turning off connected, ret=%d",
 		    __func__, ret < 0 ? "Failed" : "Succeeded", ret);
 	}
 

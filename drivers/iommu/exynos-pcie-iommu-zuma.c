@@ -345,14 +345,14 @@ static inline void sysmmu_ptlb_compare(phys_addr_t pgtable, u32 vpn, u32 ppn)
 	entry = section_entry(phys_to_virt(pgtable), vaddr);
 
 	if (lv1ent_section(entry)) {
-		phys = section_phys(entry);
+		phys = section_phys(entry) + section_offs(vaddr);
 	} else if (lv1ent_page(entry)) {
 		entry = page_entry(entry, vaddr);
 
 		if (lv2ent_large(entry))
-			phys = lpage_phys(entry);
+			phys = lpage_phys(entry) + lpage_offs(vaddr);
 		else if (lv2ent_small(entry))
-			phys = spage_phys(entry);
+			phys = spage_phys(entry) + spage_offs(vaddr);
 	} else {
 		pr_crit(">> Invalid address detected! entry: %#lx", (unsigned long)*entry);
 		return;
@@ -446,14 +446,14 @@ static inline void sysmmu_stlb_compare(phys_addr_t pgtable, int idx_sub, u32 vpn
 	entry = section_entry(phys_to_virt(pgtable), vaddr);
 
 	if (lv1ent_section(entry)) {
-		phys = section_phys(entry);
+		phys = section_phys(entry) + section_offs(vaddr);
 	} else if (lv1ent_page(entry)) {
 		entry = page_entry(entry, vaddr);
 
 		if (lv2ent_large(entry))
-			phys = lpage_phys(entry);
+			phys = lpage_phys(entry) + lpage_offs(vaddr);
 		else if (lv2ent_small(entry))
-			phys = spage_phys(entry);
+			phys = spage_phys(entry) + spage_offs(vaddr);
 	} else {
 		pr_crit(">> Invalid address detected! entry: %#lx",
 			(unsigned long)*entry);
@@ -686,6 +686,157 @@ void print_pcie_sysmmu_tlb(int hsi_block_num)
 }
 EXPORT_SYMBOL(print_pcie_sysmmu_tlb);
 
+void pcie_sysmmu_dump_registers(int hsi_block_num)
+{
+	u32 i, pcie_vid;
+	void __iomem *sfrbase = NULL;
+	phys_addr_t pgtable;
+
+	if (!g_sysmmu_drvdata[hsi_block_num]) {
+		pr_err("PCIe SysMMU feature is disabled!!!\n");
+		return;
+	}
+
+	sfrbase = g_sysmmu_drvdata[hsi_block_num]->sfrbase;
+	pcie_vid = g_sysmmu_drvdata[hsi_block_num]->pcie_vid;
+
+	pr_err("SysMMU Dump: ctrl@0x0000 %x, status@0x0008 %x, version@0x0034 %x",
+		readl_relaxed(sfrbase + 0x0000),
+		readl_relaxed(sfrbase + 0x0008),
+		readl_relaxed(sfrbase + 0x0034));
+
+	pr_err("offset: 0 4 8 C\n");
+	pr_err("SysMMU %x: %x %x %x %x\n",
+		0x0040,
+		readl_relaxed(sfrbase + 0x0040),
+		readl_relaxed(sfrbase + 0x0044),
+		readl_relaxed(sfrbase + 0x0048),
+		readl_relaxed(sfrbase + 0x004C));
+
+	pr_err("SysMMU %x: %x %x %x %x\n",
+		0x0060,
+		readl_relaxed(sfrbase + 0x0060),
+		readl_relaxed(sfrbase + 0x0064),
+		readl_relaxed(sfrbase + 0x0068),
+		readl_relaxed(sfrbase + 0x006C));
+
+	pr_err("SysMMU %x: %x\n",
+		0x0100,
+		readl_relaxed(sfrbase + 0x0100));
+
+	pr_err("SysMMU %x: %x %x %x %x\n",
+		0x0140,
+		readl_relaxed(sfrbase + 0x0140),
+		readl_relaxed(sfrbase + 0x0144),
+		readl_relaxed(sfrbase + 0x0148),
+		readl_relaxed(sfrbase + 0x014C));
+
+	pr_err("SysMMU %x: %x %x %x %x\n",
+		0x0200,
+		readl_relaxed(sfrbase + 0x0200),
+		readl_relaxed(sfrbase + 0x0204),
+		readl_relaxed(sfrbase + 0x0208),
+		readl_relaxed(sfrbase + 0x020C));
+
+	pr_err("SysMMU %x: %x\n",
+		0x2000,
+		readl_relaxed(sfrbase + 0x2000));
+
+	pr_err("SysMMU %x: %x\n",
+		0x2FF0,
+		readl_relaxed(sfrbase + 0x2FF0));
+
+	pr_err("SysMMU %x: %x\n",
+		0x2FFC,
+		readl_relaxed(sfrbase + 0x2FFC));
+
+	pr_err("SysMMU %x: %x %x\n",
+		0x3000,
+		readl_relaxed(sfrbase + 0x3000),
+		readl_relaxed(sfrbase + 0x3004));
+
+	pr_err("SysMMU %x: %x\n",
+		0x3400,
+		readl_relaxed(sfrbase + 0x3400));
+
+	pr_err("SysMMU %x: %x\n",
+		0x3800,
+		readl_relaxed(sfrbase + 0x3800));
+
+	pr_err("SysMMU %x: %x\n",
+		0x3C00,
+		readl_relaxed(sfrbase + 0x3C00));
+
+	for (i = 0x4000; i < 0x4030; i += 0x10) {
+		pr_err("SysMMU %x: %x\n",
+			i,
+			readl_relaxed(sfrbase + i + 0x0));
+	}
+
+	for (i = 0x4800; i < 0x4830; i += 0x10) {
+		pr_err("SysMMU %x: %x\n",
+			i,
+			readl_relaxed(sfrbase + i + 0x0));
+	}
+
+
+	for (i = 0x5000; i < 0x5030; i += 0x10) {
+		pr_err("SysMMU %x: %x %x %x %x\n",
+			i,
+			readl_relaxed(sfrbase + i + 0x0),
+			readl_relaxed(sfrbase + i + 0x4),
+			readl_relaxed(sfrbase + i + 0x8),
+			readl_relaxed(sfrbase + i + 0xC));
+	}
+
+	pr_err("SysMMU %x: %x\n",
+		0x8000,
+		readl_relaxed(sfrbase + 0x8000));
+
+	pr_err("SysMMU %x: %x %x\n",
+		0x8010,
+		readl_relaxed(sfrbase + 0x8010),
+		readl_relaxed(sfrbase + 0x8014));
+
+	pr_err("SysMMU %x: %x %x\n",
+		0x8020,
+		readl_relaxed(sfrbase + 0x8020),
+		readl_relaxed(sfrbase + 0x8024));
+
+	pr_err("SysMMU %x: %x\n",
+		0x8040,
+		readl_relaxed(sfrbase + 0x8040));
+
+	pr_err("SysMMU %x: %x %x\n",
+		0x8060,
+		readl_relaxed(sfrbase + 0x8060),
+		readl_relaxed(sfrbase + 0x8064));
+
+	pr_err("SysMMU %x: %x %x %x %x\n",
+		0x8070,
+		readl_relaxed(sfrbase + 0x8070),
+		readl_relaxed(sfrbase + 0x8074),
+		readl_relaxed(sfrbase + 0x8078),
+		readl_relaxed(sfrbase + 0x807C));
+
+	pr_err("SysMMU %x: %x %x %x\n",
+		0x8400,
+		readl_relaxed(sfrbase + 0x8400),
+		readl_relaxed(sfrbase + 0x8404),
+		readl_relaxed(sfrbase + 0x8408));
+
+	pr_err("SysMMU %x: %x %x\n",
+		0x8410,
+		readl_relaxed(sfrbase + 0x8410),
+		readl_relaxed(sfrbase + 0x8414));
+
+	pgtable = __raw_readl(sfrbase + REG_PT_BASE_PPN_VID(pcie_vid));
+	pgtable <<= PT_BASE_SHIFT;
+
+	pr_err("SysMMU page table @ %pa\n", &pgtable);
+	dump_sysmmu_tlb_port(g_sysmmu_drvdata[hsi_block_num], pgtable, 0, 0);
+}
+
 static int show_fault_information(struct sysmmu_drvdata *drvdata, int flags,
 				  unsigned long fault_addr, int pcie_vid)
 {
@@ -696,6 +847,7 @@ static int show_fault_information(struct sysmmu_drvdata *drvdata, int flags,
 	int ret = 0;
 	u32 info0, info1, info2;
 	int pmmu_id, stream_id;
+	int hsi_block_num = drvdata->hsi_block_num;
 
 	pgtable = __raw_readl(drvdata->sfrbase + REG_PT_BASE_PPN_VID(pcie_vid));
 	pgtable <<= PT_BASE_SHIFT;
@@ -777,6 +929,8 @@ static int show_fault_information(struct sysmmu_drvdata *drvdata, int flags,
 	}
 
 	dump_sysmmu_tlb_port(drvdata, pgtable, pmmu_id, stream_id);
+
+	pcie_sysmmu_dump_registers(hsi_block_num);
 finish:
 	pr_crit("----------------------------------------------------------\n");
 
