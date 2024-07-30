@@ -328,6 +328,13 @@ void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
 	set_uclamp_inheritance(p, pi_task, get_vendor_task_struct(p)->uclamp_pi);
 }
 
+void rvh_try_to_wake_up_success_pixel_mod(void *data, struct task_struct *p)
+{
+	trace_sched_wakeup_task_attr(p, p->cpus_ptr, task_util_est(p),
+				     uclamp_eff_value_pixel_mod(p, UCLAMP_MIN),
+				     p->se.vruntime);
+}
+
 void set_cluster_enabled_cb(int cluster, int enabled)
 {
 	pixel_cluster_enabled[cluster] = enabled;
