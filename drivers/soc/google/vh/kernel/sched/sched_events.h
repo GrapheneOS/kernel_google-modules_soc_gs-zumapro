@@ -352,6 +352,34 @@ TRACE_EVENT(sched_find_energy_efficient_cpu,
 		  __entry->max_spare_cap, __entry->idle_unpreferred, __entry->best_energy_cpu)
 );
 
+TRACE_EVENT(sched_wakeup_task_attr,
+
+	TP_PROTO(struct task_struct *tsk, const cpumask_t *cpu_affinity,
+		 unsigned long task_util, int uclamp_min, u64 vruntime),
+
+	TP_ARGS(tsk, cpu_affinity, task_util, uclamp_min, vruntime),
+
+	TP_STRUCT__entry(
+		__field(pid_t,		pid)
+		__field(unsigned long,  cpu_affinity)
+		__field(unsigned long,	task_util)
+		__field(unsigned long,	uclamp_min)
+		__field(u64,	        vruntime)
+		),
+
+	TP_fast_assign(
+		__entry->pid             = tsk->pid;
+		__entry->cpu_affinity    = *cpu_affinity->bits;
+		__entry->task_util       = task_util;
+		__entry->uclamp_min      = uclamp_min;
+		__entry->vruntime        = vruntime;
+		),
+
+	TP_printk("pid=%d cpu_affinity=0x%lx, task_util=%lu, uclamp.min=%lu vruntime=%Lu [ns]",
+		  __entry->pid,  __entry->cpu_affinity, __entry->task_util, __entry->uclamp_min,
+		  (unsigned long long)__entry->vruntime)
+);
+
 TRACE_EVENT(sched_select_task_rq_fair,
 
 	TP_PROTO(struct task_struct *tsk, unsigned long task_util, bool sync_wakeup,
@@ -391,7 +419,7 @@ TRACE_EVENT(sched_select_task_rq_fair,
 
 	TP_printk("pid=%d comm=%s task_util=%lu sync_wakeup=%d prefer_prev=%d sync_boost=%d " \
 		  "group=%d uclamp.min=%lu uclamp.max=%lu prev_cpu=%d target_cpu=%d",
-		  __entry->pid, __entry->comm,  __entry->task_util, __entry->sync_wakeup,
+		  __entry->pid, __entry->comm, __entry->task_util, __entry->sync_wakeup,
 		  __entry->prefer_prev, __entry->sync_boost, __entry->group, __entry->uclamp_min,
 		  __entry->uclamp_max, __entry->prev_cpu, __entry->target_cpu)
 );
