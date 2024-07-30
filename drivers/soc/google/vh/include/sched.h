@@ -77,10 +77,8 @@ struct vendor_task_struct {
 	unsigned long iowait_boost;
 	bool is_binder_task;
 
-	/* parameters for binder inheritance */
+	/* parameters for inheritance */
 	struct vendor_inheritance_struct vi;
-	/* parameters for RT inheritance */
-	unsigned int uclamp_pi[UCLAMP_CNT];
 
 	u64 runnable_start_ns;
 	u64 prev_sum_exec_runtime;
