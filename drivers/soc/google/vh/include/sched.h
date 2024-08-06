@@ -68,6 +68,7 @@ struct vendor_task_struct {
 	int auto_uclamp_max_flags;	// Relative to cpu instead of absolute
 	struct uclamp_filter uclamp_filter;
 	int orig_prio;
+	bool is_binder_task;
 
 	/* parameters for binder inheritance */
 	struct vendor_binder_task_struct binder_task;
