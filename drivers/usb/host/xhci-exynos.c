@@ -1015,6 +1015,9 @@ static int __maybe_unused xhci_exynos_suspend(struct device *dev)
 	if (ret)
 		return ret;
 
+	if (bus_suspend_callback)
+		(*bus_suspend_callback)(bus_suspend_payload, hcd == xhci->main_hcd, true);
+
 	return  ret;
 }
 
@@ -1050,6 +1053,9 @@ static int __maybe_unused xhci_exynos_resume(struct device *dev)
 			dev_info(xhci_exynos->dev, "%s: phy vendor set fail, ret:%d\n",
 				 __func__, ret_phy);
 	}
+
+	if (bus_suspend_callback)
+		(*bus_suspend_callback)(bus_suspend_payload, hcd == xhci->main_hcd, false);
 
 	return ret;
 }
