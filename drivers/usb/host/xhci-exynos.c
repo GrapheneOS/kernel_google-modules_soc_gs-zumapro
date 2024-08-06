@@ -61,6 +61,40 @@ void register_bus_suspend_callback(void (*callback)(void *bus_suspend_payload, b
 }
 EXPORT_SYMBOL_GPL(register_bus_suspend_callback);
 
+/*
+ * list of VID:PID pair of udevs which are allowed to enter Suspend state regardless of the
+ * remote_wakeup bit in their descriptors.
+ * Both VID and PID are required in each entry.
+ */
+static const struct xhci_exynos_udev_ids autosuspend_accessories[] = {
+	{
+		.vendor = cpu_to_le16(0x18d1),
+		.product = cpu_to_le16(0x9480),
+	},
+	{
+		.vendor = cpu_to_le16(0x18d1),
+		.product = cpu_to_le16(0x4f60),
+	},
+	{
+		.vendor = cpu_to_le16(0x18d1),
+		.product = cpu_to_le16(0x4fa3),
+	},
+	{ },
+};
+
+static bool xhci_exynos_match_udev(const struct xhci_exynos_udev_ids *list, const u16 vid,
+				   const u16 pid)
+{
+	if (list) {
+		while (list->vendor && list->product) {
+			if (list->vendor == cpu_to_le16(vid) && list->product == cpu_to_le16(pid))
+				return true;
+			list++;
+		}
+	}
+	return false;
+}
+
 static void xhci_exynos_early_stop_set(struct xhci_hcd_exynos *xhci_exynos, struct usb_hcd *hcd)
 {
 	struct usb_device *rhdev = hcd->self.root_hub;
@@ -215,6 +249,11 @@ static bool xhci_exynos_allow_suspend_by_descriptor(struct usb_device *udev)
 	struct usb_interface_descriptor *desc;
 	bool allow_suspend = false;
 	int i;
+
+	/* Allow suspend if it is a specific accessory */
+	if (xhci_exynos_match_udev(autosuspend_accessories, le16_to_cpu(udev->descriptor.idVendor),
+				   le16_to_cpu(udev->descriptor.idProduct)))
+		return true;
 
 	/* If @udev is a hub, directly check bmAttributes in the descriptor. */
 	if (udev->descriptor.bDeviceClass == USB_CLASS_HUB)
