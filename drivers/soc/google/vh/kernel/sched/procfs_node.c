@@ -314,11 +314,13 @@ enum vendor_procfs_type {
 				return -EINVAL;						      \
 			if (val == gp->uc_req[__cid].value)				      \
 				return count;						      \
-			if (val == AUTO_UCLAMP_MAX_MAGIC) {				      \
-				gp->auto_uclamp_max = true;				      \
-				val = uclamp_none(UCLAMP_MAX);				      \
-			} else {							      \
-				gp->auto_uclamp_max = false;				      \
+			if (__cid == UCLAMP_MAX) {					      \
+				if (val == AUTO_UCLAMP_MAX_MAGIC) {			      \
+					gp->auto_uclamp_max = true;			      \
+					val = uclamp_none(UCLAMP_MAX);			      \
+				} else {						      \
+					gp->auto_uclamp_max = false;			      \
+				}							      \
 			}								      \
 			gp->uc_req[__cid].value = val;					      \
 			gp->uc_req[__cid].bucket_id = get_bucket_id(val);		      \
