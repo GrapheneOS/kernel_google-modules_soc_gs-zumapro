@@ -37,6 +37,7 @@ enum vendor_group {
 	VG_DEX2OAT,
 	VG_OTA,
 	VG_SF,
+	VG_FOREGROUND_WINDOW,
 	VG_MAX,
 };
 
