@@ -332,10 +332,6 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 	case PORT_EMPTY:
 		dev_dbg(dev, "Port check empty\n");
 		xhci_exynos->is_otg_only = 1;
-		if (!xhci_exynos->usb3_phy_control) {
-			usb_power_notify_control(1);
-			xhci_exynos->usb3_phy_control = true;
-		}
 		if (xhci_exynos->port_ctrl_allowed)
 			xhci_exynos_port_power_set(xhci_exynos, 1, 1);
 		break;
@@ -344,8 +340,6 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 		xhci_exynos->is_otg_only = 0;
 		if (xhci_exynos->port_ctrl_allowed)
 			xhci_exynos_port_power_set(xhci_exynos, 0, 1);
-		usb_power_notify_control(0);
-		xhci_exynos->usb3_phy_control = false;
 		break;
 	case PORT_USB3:
 		xhci_exynos->is_otg_only = 0;
