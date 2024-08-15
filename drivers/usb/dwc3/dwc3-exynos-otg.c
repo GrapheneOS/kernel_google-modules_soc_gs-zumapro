@@ -252,7 +252,7 @@ static struct dwc3_exynos *exynos_dwusb_get_struct(void)
 	return NULL;
 }
 
-int usb_power_notify_control(int on)
+void usb_power_notify_control(int on)
 {
 	struct dwc3_exynos *exynos;
 	struct dwc3_otg	*dotg;
@@ -262,7 +262,7 @@ int usb_power_notify_control(int on)
 	exynos = exynos_dwusb_get_struct();
 	if (!exynos) {
 		pr_err("%s: error\n", __func__);
-		return -ENODEV;
+		return;
 	}
 
 	dwc = exynos->dwc;
@@ -272,18 +272,12 @@ int usb_power_notify_control(int on)
 		dev = dwc->dev;
 	} else {
 		pr_err("%s: dwc or dotg or dev NULL\n", __func__);
-		return -ENODEV;
-	}
-
-	// Don't let xhci control power state if dp is active
-	if (exynos->phy_owner_bits & DWC3_EXYNOS_PHY_OWNER_DP) {
-		pr_warn("%s: DP active, ignoring phy control\n", __func__);
-		return -EINVAL;
+		return;
 	}
 
 	if (dwc->maximum_speed == USB_SPEED_HIGH) {
 		dev_dbg(dev, "%s: Ignore USB3.0 phy control.\n", __func__);
-		return -EINVAL;
+		return;
 	}
 
 	dev_dbg(dev, "%s: on=%d\n", __func__, on);
@@ -292,7 +286,7 @@ int usb_power_notify_control(int on)
 	usb3_phy_control(dotg, SSPHY_USB, on);
 	mutex_unlock(&dotg->lock);
 
-	return 0;
+	return;
 }
 EXPORT_SYMBOL(usb_power_notify_control);
 

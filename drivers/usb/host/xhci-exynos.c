@@ -317,7 +317,6 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 	struct xhci_hcd_exynos *xhci_exynos = priv->xhci_exynos;
 	struct device *dev = &udev->dev;
 	int check_port;
-	int ret;
 
 	if (!xhci_exynos) {
 		dev_err(dev, "Couldn't get exynos xhci!\n");
@@ -332,19 +331,11 @@ static void xhci_exynos_set_port(struct usb_device *udev, bool on)
 	switch (check_port) {
 	case PORT_EMPTY:
 		dev_dbg(dev, "Port check empty\n");
-
 		xhci_exynos->is_otg_only = 1;
-
-		if (xhci_exynos->usb3_phy_control)
-			break;
-
-		ret = usb_power_notify_control(1);
-		if (ret) {
-			dev_warn(dev, "usb power control request ignored/rejected: %d\n", ret);
-			break;
+		if (!xhci_exynos->usb3_phy_control) {
+			usb_power_notify_control(1);
+			xhci_exynos->usb3_phy_control = true;
 		}
-
-		xhci_exynos->usb3_phy_control = true;
 		if (xhci_exynos->port_ctrl_allowed)
 			xhci_exynos_port_power_set(xhci_exynos, 1, 1);
 		break;
