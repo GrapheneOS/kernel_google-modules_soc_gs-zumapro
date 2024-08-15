@@ -1793,7 +1793,7 @@ static int exynos_pcie_rc_rd_other_conf(struct dw_pcie_rp *pp, struct pci_bus *b
 				      &exynos_pcie->cfg_access_work,
 				      msecs_to_jiffies(EP_CONFIG_ACCESS_TIMEOUT_MS));
 		ret = dw_pcie_read(va_cfg_base + where, size, val);
-		cancel_delayed_work_sync(&exynos_pcie->cfg_access_work);
+		cancel_delayed_work(&exynos_pcie->cfg_access_work);
 	}
 	else
 		ret = dw_pcie_read(va_cfg_base + where, size, val);
@@ -3303,7 +3303,7 @@ static irqreturn_t exynos_pcie_rc_irq_handler(int irq, void *arg)
 					      "in cpl recovery");
 			else {
 				logbuffer_log(exynos_pcie->log, "start cpl recovery");
-				cancel_delayed_work_sync(&exynos_pcie->cfg_access_work);
+				cancel_delayed_work(&exynos_pcie->cfg_access_work);
 				exynos_pcie->cpl_timeout_recovery = 1;
 				exynos_pcie->state = STATE_LINK_DOWN_TRY;
 				queue_work(exynos_pcie->pcie_wq,
