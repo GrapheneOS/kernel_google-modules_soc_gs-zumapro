@@ -172,6 +172,7 @@ struct vendor_group_property {
 #endif
 	struct uclamp_se uc_req[UCLAMP_CNT];
 	unsigned int rampup_multiplier;
+	bool disable_util_est;
 };
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)

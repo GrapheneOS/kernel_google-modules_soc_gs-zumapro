@@ -2243,6 +2243,7 @@ void initialize_vendor_group_property(void)
 		vg[i].ug = UG_AUTO;
 #endif
 		vg[i].rampup_multiplier = 1;
+		vg[i].disable_util_est = false;
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -2310,13 +2311,13 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 		else
 			rampup_multiplier = vg[get_vendor_group(p)].rampup_multiplier;
 
-		if (!rampup_multiplier) {
+		if (vg[get_vendor_group(p)].disable_util_est) {
 			p->se.avg.util_est.enqueued = 0;
 			p->se.avg.util_est.ewma = 0;
 			return;
 		}
 
-		if (vp->ignore_util_est_update)
+		if (vp->ignore_util_est_update && rampup_multiplier)
 			return;
 	}
 
