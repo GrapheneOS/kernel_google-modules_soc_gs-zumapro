@@ -3400,8 +3400,10 @@ static int max77759_probe(struct i2c_client *client,
 	gvotable_set_vote2str(chip->toggle_disable_votable, gvotable_v2s_int);
 	gvotable_election_set_name(chip->toggle_disable_votable, "TOGGLE_DISABLE");
 
+#if 0
 	if (modparam_disable_cc_toggling_by_default)
 		cc_toggle_enable_set(chip, 0);
+#endif
 
 	chip->data_path_enabled = true;
 
