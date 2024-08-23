@@ -58,10 +58,10 @@ unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = DEF_UTIL_THRESHOLD };
 
 unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
-	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = 1024 };
+	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = SCHED_CAPACITY_SCALE };
 
 struct thermal_cap thermal_cap[CONFIG_VH_SCHED_MAX_CPU_NR] = {
-	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].uclamp_max = 1024,
+	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].uclamp_max = SCHED_CAPACITY_SCALE,
 	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].freq = UINT_MAX};
 
 unsigned int __read_mostly sched_per_task_iowait_boost_max_value = 0;
@@ -3042,15 +3042,19 @@ static int find_target_cap(unsigned int freq, unsigned int cpu)
 
 	em_cluster = profile->cpu_to_cluster[cpu];
 
-	for (i = 0; i < em_cluster->num_opps; i++) {
-		struct pixel_em_opp *opp = &em_cluster->opps[i];
-		if (opp->freq >= freq) {
-			/* use -3 to make sure the various conversion logic
-			 * which can end up rounding up or down by 1
-			 * doesn't lead to wrong results.
-			 */
-			target_cap =  opp->capacity - 3;
-			break;
+	if (freq >= em_cluster->opps[em_cluster->num_opps - 1].freq)
+		target_cap = SCHED_CAPACITY_SCALE;
+	else {
+		for (i = 0; i < em_cluster->num_opps; i++) {
+			struct pixel_em_opp *opp = &em_cluster->opps[i];
+			if (opp->freq >= freq) {
+				/* use -3 to make sure the various conversion logic
+				* which can end up rounding up or down by 1
+				* doesn't lead to wrong results.
+				*/
+				target_cap =  opp->capacity - 3;
+				break;
+			}
 		}
 	}
 
