@@ -3400,11 +3400,6 @@ static int max77759_probe(struct i2c_client *client,
 	gvotable_set_vote2str(chip->toggle_disable_votable, gvotable_v2s_int);
 	gvotable_election_set_name(chip->toggle_disable_votable, "TOGGLE_DISABLE");
 
-	if (modparam_disable_cc_toggling_by_default)
-		cc_toggle_enable_set(chip, 0);
-
-	chip->data_path_enabled = true;
-
 	chip->usb_throttle_votable =
 		gvotable_create_bool_election(NULL, usb_throttle_votable_callback, chip);
 	if (IS_ERR_OR_NULL(chip->usb_throttle_votable)) {
@@ -3645,6 +3640,11 @@ static int max77759_probe(struct i2c_client *client,
 	if (!of_property_read_u32(dn, "ext-bst-ovp-clear-mv", &chip->ext_bst_ovp_clear_mv))
 		LOG(LOG_LVL_DEBUG, chip->log, "ext_bst_ovp_clear_mv set to %u",
 		    chip->ext_bst_ovp_clear_mv);
+
+	if (modparam_disable_cc_toggling_by_default)
+		cc_toggle_enable_set(chip, 0);
+
+	chip->data_path_enabled = true;
 
 	ret = max77759_init_alert(chip, client);
 	if (ret < 0)
