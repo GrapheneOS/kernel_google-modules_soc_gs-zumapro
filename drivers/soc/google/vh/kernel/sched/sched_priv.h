@@ -13,6 +13,7 @@
 #define THREAD_PRIORITY_LOWEST        139
 #define LIST_QUEUED         0xa5a55a5a
 #define LIST_NOT_QUEUED     0x5a5aa5a5
+#define LIB_PATH_LENGTH 512
 /*
  * For cpu running normal tasks, its uclamp.min will be 0 and uclamp.max will be 1024,
  * and the sum will be 1024. We use this as index that cpu is not running important tasks.

@@ -34,6 +34,7 @@ bool __read_mostly vendor_sched_boost_adpf_prio = true;
 unsigned int __read_mostly vendor_sched_adpf_rampup_multiplier = 1;
 struct cpumask cpu_skip_mask_rt;
 struct cpumask skip_prefer_prev_mask;
+unsigned int __read_mostly vendor_sched_priority_task_boost_value = 0;
 
 static struct proc_dir_entry *vendor_sched;
 struct proc_dir_entry *group_dirs[VG_MAX];
@@ -70,6 +71,9 @@ extern void pmu_poll_disable(void);
 
 extern unsigned int sysctl_sched_uclamp_min_filter_us;
 extern unsigned int sysctl_sched_uclamp_max_filter_divider;
+
+extern char priority_task_name[LIB_PATH_LENGTH];
+extern struct mutex priority_task_name_mutex;
 
 #define MAX_PROC_SIZE 128
 
@@ -3105,6 +3109,68 @@ static ssize_t cpu_skip_mask_store(struct file *filp,
 }
 PROC_OPS_RW(cpu_skip_mask);
 
+int priority_task_name_show(struct seq_file *m, void *v)
+{
+	mutex_lock(&priority_task_name_mutex);
+	seq_printf(m, "%s\n", priority_task_name);
+	mutex_unlock(&priority_task_name_mutex);
+	return 0;
+}
+
+/*
+ * Accept multiple partial task names with comma separated
+ */
+ssize_t priority_task_name_store(struct file *filp, const char __user *ubuf, size_t count,
+				 loff_t *ppos)
+{
+	if (count >= sizeof(priority_task_name))
+		return -EINVAL;
+
+	mutex_lock(&priority_task_name_mutex);
+
+	if (copy_from_user(priority_task_name, ubuf, count)) {
+		priority_task_name[0] = '\0';
+		mutex_unlock(&priority_task_name_mutex);
+		return -EFAULT;
+	}
+
+	priority_task_name[count] = '\0';
+	mutex_unlock(&priority_task_name_mutex);
+	return count;
+}
+PROC_OPS_RW(priority_task_name);
+
+static int priority_task_boost_value_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%u\n", vendor_sched_priority_task_boost_value);
+	return 0;
+}
+static ssize_t priority_task_boost_value_store(struct file *filp, const char __user *ubuf,
+					       size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > SCHED_CAPACITY_SCALE)
+		return -EINVAL;
+
+	vendor_sched_priority_task_boost_value = val;
+
+	return count;
+}
+PROC_OPS_RW(priority_task_boost_value);
+
 struct pentry {
 	const char *name;
 	enum vendor_procfs_type type;
@@ -3217,6 +3283,10 @@ static struct pentry entries[] = {
 	PROC_ENTRY(cpu_skip_mask),
 	// skip mask for prefer prev cpu
 	PROC_ENTRY(skip_prefer_prev_mask),
+	// names for the priority task
+	PROC_ENTRY(priority_task_name),
+	// boost value for the priority task
+	PROC_ENTRY(priority_task_boost_value),
 };
 
 
