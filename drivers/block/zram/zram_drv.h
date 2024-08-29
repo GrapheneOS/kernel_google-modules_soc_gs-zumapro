@@ -60,7 +60,7 @@ struct zram_table_entry {
 		unsigned long element;
 	};
 	unsigned long flags;
-#ifdef CONFIG_ZRAM_MEMORY_TRACKING
+#ifdef CONFIG_ZRAM_GS_MEMORY_TRACKING
 	ktime_t ac_time;
 #endif
 };
@@ -125,7 +125,7 @@ struct zram {
 	unsigned long *bitmap;
 	unsigned long nr_pages;
 #endif
-#ifdef CONFIG_ZRAM_MEMORY_TRACKING
+#ifdef CONFIG_ZRAM_GS_MEMORY_TRACKING
 	struct dentry *debugfs_dir;
 #endif
 };

@@ -46,7 +46,7 @@ config ZRAM_GS_WRITEBACK
 
 	 See Documentation/admin-guide/blockdev/zram.rst for more information.
 
-config ZRAM_MEMORY_TRACKING
+config ZRAM_GS_MEMORY_TRACKING
 	bool "Track zRam block status"
 	depends on ZRAM_GS && DEBUG_FS
 	help
