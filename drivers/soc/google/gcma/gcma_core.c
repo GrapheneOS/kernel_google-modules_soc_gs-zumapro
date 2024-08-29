@@ -52,7 +52,7 @@ static inline void set_inode_index(struct page *page, unsigned long index)
 
 static inline struct gcma_inode *get_inode_mapping(struct page *page)
 {
-	return (struct gcma_inode *)page->mapping;
+	return (void *)page->mapping;
 }
 
 static inline void set_inode_mapping(struct page *page,
@@ -408,7 +408,7 @@ static void gcma_put_page(struct page *page)
 {
 	if (put_page_testzero(page)) {
 		unsigned long flags;
-		struct gcma_inode *inode = (struct gcma_inode *)page->mapping;
+		struct gcma_inode *inode = (void *)page->mapping;
 
 		local_irq_save(flags);
 		delete_page_from_lru(page);
