@@ -7,6 +7,7 @@
 #define UCLAMP_STATS_STEP   (100 / (UCLAMP_STATS_SLOTS - 1))
 #define DEF_UTIL_THRESHOLD  1280
 #define DEF_UTIL_POST_INIT_SCALE  512
+#define DEF_THERMAL_CAP_MARGIN  1536
 #define C1_EXIT_LATENCY     1
 #define THREAD_PRIORITY_TOP_APP_BOOST 110
 #define THREAD_PRIORITY_BACKGROUND    130
@@ -41,6 +42,7 @@
 		      __val / DIV_ROUND_CLOSEST(SCHED_CAPACITY_SCALE, UCLAMP_BUCKETS),	      \
 		      UCLAMP_BUCKETS - 1)
 
+extern unsigned int thermal_cap_margin[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_auto_fits_capacity[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR];
@@ -230,6 +232,14 @@ void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum uclamp
 enum vendor_group_attribute {
 	VTA_TASK_GROUP,
 	VTA_PROC_GROUP,
+};
+
+enum VENDOR_TUNABLE_TYPE {
+	SCHED_CAPACITY_MARGIN,
+	SCHED_AUTO_UCLAMP_MAX,
+	SCHED_DVFS_HEADROOM,
+	SCHED_IOWAIT_BOOST_MAX,
+	THERMAL_CAP_MARGIN,
 };
 
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)

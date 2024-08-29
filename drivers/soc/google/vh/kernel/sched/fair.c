@@ -60,6 +60,9 @@ unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
 unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = SCHED_CAPACITY_SCALE };
 
+unsigned int thermal_cap_margin[CONFIG_VH_SCHED_MAX_CPU_NR] =
+	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = DEF_THERMAL_CAP_MARGIN };
+
 struct thermal_cap thermal_cap[CONFIG_VH_SCHED_MAX_CPU_NR] = {
 	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].uclamp_max = SCHED_CAPACITY_SCALE,
 	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].freq = UINT_MAX};
@@ -2129,6 +2132,7 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 #if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
 	unsigned int tg_min, tg_max, vnd_min, vnd_max, value;
 	unsigned int nice_min = uclamp_none(UCLAMP_MIN), nice_max = uclamp_none(UCLAMP_MAX);
+	unsigned int thermal_uclamp_max = thermal_cap[task_cpu(p)].uclamp_max;
 
 	// Task prio specific restriction
 	get_uclamp_on_nice(p, UCLAMP_MIN, &nice_min);
@@ -2177,8 +2181,13 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 		&& value < SCHED_CAPACITY_SCALE)
 		value = value + 1;
 
-	if (clamp_id == UCLAMP_MAX && !is_adpf) {
-		value = min(value, thermal_cap[task_cpu(p)].uclamp_max);
+	if (clamp_id == UCLAMP_MAX && thermal_uclamp_max != SCHED_CAPACITY_SCALE) {
+		if (!is_adpf)
+			value = min(value, thermal_uclamp_max);
+		else {
+			value = min(value, min_t(unsigned int, SCHED_CAPACITY_SCALE, thermal_uclamp_max *
+				thermal_cap_margin[task_cpu(p)] >> SCHED_CAPACITY_SHIFT));
+		}
 	}
 
 	// For low prio unthrottled task, reduce its uclamp.max by 1 which

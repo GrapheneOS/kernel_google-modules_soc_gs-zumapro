@@ -1020,12 +1020,12 @@ static inline bool check_cred(struct task_struct *p)
 	return ret;
 }
 
-
-static int update_sched_capacity_margin(const char *buf, int count)
+static int update_vendor_tunables(const char *buf, int count, int type)
 {
 	char *tok, *str1, *str2;
 	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
 	int index = 0;
+	unsigned int *updated_tunables;
 
 	str1 = kstrndup(buf, count, GFP_KERNEL);
 	str2 = str1;
@@ -1042,9 +1042,35 @@ static int update_sched_capacity_margin(const char *buf, int count)
 		if (kstrtouint(tok, 0, &val))
 			goto fail;
 
-		if (val < SCHED_CAPACITY_SCALE)
-			goto fail;
-
+		switch (type) {
+			case SCHED_CAPACITY_MARGIN:
+				if (val < SCHED_CAPACITY_SCALE)
+					goto fail;
+				updated_tunables = sched_capacity_margin;
+				break;
+			case THERMAL_CAP_MARGIN:
+				if (val < SCHED_CAPACITY_SCALE)
+					goto fail;
+				updated_tunables = thermal_cap_margin;
+				break;
+			case SCHED_AUTO_UCLAMP_MAX:
+				if (val > SCHED_CAPACITY_SCALE)
+					goto fail;
+				updated_tunables = sched_auto_uclamp_max;
+				break;
+			case SCHED_DVFS_HEADROOM:
+				if (val > DEF_UTIL_THRESHOLD || val < SCHED_CAPACITY_SCALE)
+					goto fail;
+				updated_tunables = sched_dvfs_headroom;
+				break;
+			case SCHED_IOWAIT_BOOST_MAX:
+				if (val > SCHED_CAPACITY_SCALE)
+					goto fail;
+				updated_tunables = sched_per_cpu_iowait_boost_max_value;
+				break;
+			default:
+				goto fail;
+		}
 		tmp[index] = val;
 		index++;
 
@@ -1054,76 +1080,19 @@ static int update_sched_capacity_margin(const char *buf, int count)
 
 	if (index == 1) {
 		for (index = 0; index < pixel_cpu_num; index++) {
-			sched_capacity_margin[index] = tmp[0];
+			updated_tunables[index] = tmp[0];
 		}
 	} else if (index == pixel_cluster_num) {
 		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
-			sched_capacity_margin[index] = tmp[0];
+			updated_tunables[index] = tmp[0];
 
 		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
-			sched_capacity_margin[index] = tmp[1];
+			updated_tunables[index] = tmp[1];
 
 		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
-			sched_capacity_margin[index] = tmp[2];
+			updated_tunables[index] = tmp[2];
 	} else if (index == pixel_cpu_num) {
-		memcpy(sched_capacity_margin, tmp, sizeof(sched_capacity_margin));
-	} else {
-		goto fail;
-	}
-
-	kfree(str1);
-	return count;
-fail:
-	kfree(str1);
-	return -EINVAL;
-}
-
-static int update_sched_dvfs_headroom(const char *buf, int count)
-{
-	char *tok, *str1, *str2;
-	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
-	int index = 0;
-
-	str1 = kstrndup(buf, count, GFP_KERNEL);
-	str2 = str1;
-
-	if (!str2)
-		return -ENOMEM;
-
-	while (1) {
-		tok = strsep(&str2, " ");
-
-		if (tok == NULL)
-			break;
-
-		if (kstrtouint(tok, 0, &val))
-			goto fail;
-
-		if (val > DEF_UTIL_THRESHOLD || val < SCHED_CAPACITY_SCALE)
-			goto fail;
-
-		tmp[index] = val;
-		index++;
-
-		if (index == pixel_cpu_num)
-			break;
-	}
-
-	if (index == 1) {
-		for (index = 0; index < pixel_cpu_num; index++) {
-			sched_dvfs_headroom[index] = tmp[0];
-		}
-	} else if (index == pixel_cluster_num) {
-		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
-			sched_dvfs_headroom[index] = tmp[0];
-
-		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
-			sched_dvfs_headroom[index] = tmp[1];
-
-		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
-			sched_dvfs_headroom[index] = tmp[2];
-	} else if (index == pixel_cpu_num) {
-		memcpy(sched_dvfs_headroom, tmp, sizeof(sched_dvfs_headroom));
+		memcpy(updated_tunables, tmp, sizeof(tmp));
 	} else {
 		goto fail;
 	}
@@ -1183,121 +1152,6 @@ static int update_teo_util_threshold(const char *buf, int count)
 		for (index = 0; index < pixel_cpu_num; index++) {
 			teo_cpu_set_util_threshold(index, tmp[index]);
 		}
-	} else {
-		goto fail;
-	}
-
-	kfree(str1);
-	return count;
-fail:
-	kfree(str1);
-	return -EINVAL;
-}
-
-static int update_sched_auto_uclamp_max(const char *buf, int count)
-{
-	char *tok, *str1, *str2;
-	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
-	int index = 0;
-
-	str1 = kstrndup(buf, count, GFP_KERNEL);
-	str2 = str1;
-
-	if (!str2)
-		return -ENOMEM;
-
-	while (1) {
-		tok = strsep(&str2, " ");
-
-		if (tok == NULL)
-			break;
-
-		if (kstrtouint(tok, 0, &val))
-			goto fail;
-
-		if (val > SCHED_CAPACITY_SCALE)
-			goto fail;
-
-		tmp[index] = val;
-		index++;
-
-		if (index == pixel_cpu_num)
-			break;
-	}
-
-	if (index == 1) {
-		for (index = 0; index < pixel_cpu_num; index++) {
-			sched_auto_uclamp_max[index] = tmp[0];
-		}
-	} else if (index == pixel_cluster_num) {
-		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
-			sched_auto_uclamp_max[index] = tmp[0];
-
-		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
-			sched_auto_uclamp_max[index] = tmp[1];
-
-		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
-			sched_auto_uclamp_max[index] = tmp[2];
-	} else if (index == pixel_cpu_num) {
-		memcpy(sched_auto_uclamp_max, tmp, sizeof(sched_auto_uclamp_max));
-	} else {
-		goto fail;
-	}
-
-	kfree(str1);
-	return count;
-fail:
-	kfree(str1);
-	return -EINVAL;
-}
-
-static int update_sched_per_cpu_iowait_boost_max_value(const char *buf, int count)
-{
-	char *tok, *str1, *str2;
-	unsigned int val, tmp[CONFIG_VH_SCHED_MAX_CPU_NR];
-	int index = 0;
-
-	str1 = kstrndup(buf, count, GFP_KERNEL);
-	str2 = str1;
-
-	if (!str2)
-		return -ENOMEM;
-
-	while (1) {
-		tok = strsep(&str2, " ");
-
-		if (tok == NULL)
-			break;
-
-		if (kstrtouint(tok, 0, &val))
-			goto fail;
-
-		if (val > SCHED_CAPACITY_SCALE)
-			goto fail;
-
-		tmp[index] = val;
-		index++;
-
-		if (index == pixel_cpu_num)
-			break;
-	}
-
-	if (index == 1) {
-		for (index = 0; index < pixel_cpu_num; index++) {
-			sched_per_cpu_iowait_boost_max_value[index] = tmp[0];
-		}
-	} else if (index == pixel_cluster_num) {
-		for (index = pixel_cluster_start_cpu[0]; index < pixel_cluster_start_cpu[1]; index++)
-			sched_per_cpu_iowait_boost_max_value[index] = tmp[0];
-
-		for (index = pixel_cluster_start_cpu[1]; index < pixel_cluster_start_cpu[2]; index++)
-			sched_per_cpu_iowait_boost_max_value[index] = tmp[1];
-
-		for (index = pixel_cluster_start_cpu[2]; index < pixel_cpu_num; index++)
-			sched_per_cpu_iowait_boost_max_value[index] = tmp[2];
-	} else if (index == pixel_cpu_num) {
-		memcpy(sched_per_cpu_iowait_boost_max_value, tmp,
-		       sizeof(sched_per_cpu_iowait_boost_max_value));
 	} else {
 		goto fail;
 	}
@@ -1633,10 +1487,42 @@ static ssize_t util_threshold_store(struct file *filp,
 
 	buf[count] = '\0';
 
-	return update_sched_capacity_margin(buf, count);
+	return update_vendor_tunables(buf, count, SCHED_CAPACITY_MARGIN);
 }
 
 PROC_OPS_RW(util_threshold);
+
+static int thermal_cap_margin_show(struct seq_file *m, void *v)
+{
+	int i;
+
+	for (i = 0; i < pixel_cpu_num; i++) {
+		seq_printf(m, "%u ", thermal_cap_margin[i]);
+	}
+
+	seq_printf(m, "\n");
+
+	return 0;
+}
+
+static ssize_t thermal_cap_margin_store(struct file *filp,
+							const char __user *ubuf,
+							size_t count, loff_t *pos)
+{
+	char buf[MAX_PROC_SIZE];
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	return update_vendor_tunables(buf, count, THERMAL_CAP_MARGIN);
+}
+
+PROC_OPS_RW(thermal_cap_margin);
 
 static int dvfs_headroom_show(struct seq_file *m, void *v)
 {
@@ -1664,7 +1550,7 @@ static ssize_t dvfs_headroom_store(struct file *filp,
 
 	buf[count] = '\0';
 
-	return update_sched_dvfs_headroom(buf, count);
+	return update_vendor_tunables(buf, count, SCHED_DVFS_HEADROOM);
 }
 PROC_OPS_RW(dvfs_headroom);
 
@@ -2258,7 +2144,7 @@ static ssize_t auto_uclamp_max_store(struct file *filp,
 
 	buf[count] = '\0';
 
-	return update_sched_auto_uclamp_max(buf, count);
+	return update_vendor_tunables(buf, count, SCHED_AUTO_UCLAMP_MAX);
 }
 PROC_OPS_RW(auto_uclamp_max);
 
@@ -2381,7 +2267,7 @@ static ssize_t per_cpu_iowait_boost_max_value_store(struct file *filp,
 
 	buf[count] = '\0';
 
-	return update_sched_per_cpu_iowait_boost_max_value(buf, count);
+	return update_vendor_tunables(buf, count, SCHED_IOWAIT_BOOST_MAX);
 }
 PROC_OPS_RW(per_cpu_iowait_boost_max_value);
 
@@ -3222,6 +3108,7 @@ static struct pentry entries[] = {
 	PROC_ENTRY(reset_uclamp_stats),
 #endif
 	PROC_ENTRY(util_threshold),
+	PROC_ENTRY(thermal_cap_margin),
 	PROC_ENTRY(util_post_init_scale),
 	PROC_ENTRY(npi_packing),
 	PROC_ENTRY(reduce_prefer_idle),
