@@ -271,6 +271,8 @@ DECLARE_PER_CPU(u64, dvfs_update_delay);
  * Any change for these functions in upstream GKI would require extensive review
  * to make proper adjustment in vendor hook.
  */
+#define UTIL_EST_MARGIN (SCHED_CAPACITY_SCALE / 100)
+
 extern struct uclamp_se uclamp_default[UCLAMP_CNT];
 
 void set_next_buddy(struct sched_entity *se);
@@ -981,7 +983,7 @@ static inline void __update_util_est_invariance(struct rq *rq,
 	vp->prev_sum_exec_runtime = se->sum_exec_runtime;
 
 	/* Is the task util increasing? */
-	if (task_util(p) < vp->util_enqueued)
+	if (task_util(p) < vp->util_enqueued + UTIL_EST_MARGIN)
 		return;
 
 	new_util_est = approximate_util_avg(vp->util_enqueued, vp->delta_exec);
