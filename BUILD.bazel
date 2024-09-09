@@ -14,11 +14,6 @@ filegroup(
 )
 
 label_flag(
-    name = "gs_kernel_build",
-    build_setting_default = ":gs_undefined",
-)
-
-label_flag(
     name = "gs_soc_module",
     build_setting_default = ":gs_undefined",
 )
