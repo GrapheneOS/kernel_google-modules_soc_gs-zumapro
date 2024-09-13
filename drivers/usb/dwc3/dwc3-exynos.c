@@ -862,9 +862,22 @@ dwc3_exynos_otg_state_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
+	struct dwc3_otg		*dotg;
+	int			ret = 0;
 
-	return sysfs_emit(buf, "%s\n",
-			usb_role_string(exynos->dotg->current_role));
+	mutex_lock(&exynos->dotg_lock);
+
+	dotg = exynos->dotg;
+	if (!dotg) {
+		mutex_unlock(&exynos->dotg_lock);
+		return -ENOENT;
+	}
+
+	ret = sysfs_emit(buf, "%s\n", usb_role_string(dotg->current_role));
+
+	mutex_unlock(&exynos->dotg_lock);
+
+	return ret;
 }
 
 static DEVICE_ATTR_RO(dwc3_exynos_otg_state);
@@ -874,8 +887,21 @@ dwc3_exynos_otg_b_sess_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
+	struct dwc3_otg		*dotg;
+	int			ret = 0;
 
-	return sysfs_emit(buf, "%d\n", exynos->dotg->device_on);
+	mutex_lock(&exynos->dotg_lock);
+
+	dotg = exynos->dotg;
+	if (!dotg) {
+		mutex_unlock(&exynos->dotg_lock);
+		return -ENOENT;
+	}
+
+	ret = sysfs_emit(buf, "%d\n", dotg->device_on);
+
+	mutex_unlock(&exynos->dotg_lock);
+	return ret;
 }
 
 static ssize_t
@@ -883,15 +909,24 @@ dwc3_exynos_otg_b_sess_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t n)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct dwc3_otg		*dotg = exynos->dotg;
+	struct dwc3_otg		*dotg;
 	int		b_sess_vld;
 
 	if (kstrtoint(buf, 10, &b_sess_vld) != 0)
 		return -EINVAL;
 
+	mutex_lock(&exynos->dotg_lock);
+
+	dotg = exynos->dotg;
+	if (!dotg) {
+		mutex_unlock(&exynos->dotg_lock);
+		return -ENOENT;
+	}
+
 	dwc3_exynos_device_event(exynos->dev, !!b_sess_vld);
 	dwc3_exynos_wait_role(dotg);
 
+	mutex_unlock(&exynos->dotg_lock);
 	return n;
 }
 
@@ -902,9 +937,22 @@ dwc3_exynos_otg_id_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
+	struct dwc3_otg		*dotg;
+	int			ret = 0;
+
+	mutex_lock(&exynos->dotg_lock);
+
+	dotg = exynos->dotg;
+	if (!dotg) {
+		mutex_unlock(&exynos->dotg_lock);
+		return -ENOENT;
+	}
 
 	// id state is true when host mode is off, vice versa.
-	return sysfs_emit(buf, "%d\n", !exynos->dotg->host_on);
+	ret = sysfs_emit(buf, "%d\n", !dotg->host_on);
+
+	mutex_unlock(&exynos->dotg_lock);
+	return ret;
 }
 
 static ssize_t
@@ -912,15 +960,24 @@ dwc3_exynos_otg_id_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t n)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct dwc3_otg		*dotg = exynos->dotg;
+	struct dwc3_otg		*dotg;
 	int id;
 
 	if (kstrtoint(buf, 10, &id) != 0)
 		return -EINVAL;
 
+	mutex_lock(&exynos->dotg_lock);
+
+	dotg = exynos->dotg;
+	if (!dotg) {
+		mutex_unlock(&exynos->dotg_lock);
+		return -ENOENT;
+	}
+
 	dwc3_exynos_host_event(exynos->dev, !id);
 	dwc3_exynos_wait_role(dotg);
 
+	mutex_unlock(&exynos->dotg_lock);
 	return n;
 }
 
@@ -982,7 +1039,7 @@ static ssize_t force_speed_store(struct device *dev, struct device_attribute *at
 				 size_t n)
 {
 	struct dwc3_exynos *exynos = dev_get_drvdata(dev);
-	struct dwc3_otg *dotg = exynos->dotg;
+	struct dwc3_otg *dotg;
 	bool toggle_gadget;
 
 	if (sysfs_streq(buf, "super-speed-plus")) {
@@ -995,6 +1052,14 @@ static ssize_t force_speed_store(struct device *dev, struct device_attribute *at
 		exynos->force_speed = USB_SPEED_FULL;
 	} else {
 		return -EINVAL;
+	}
+
+	mutex_lock(&exynos->dotg_lock);
+
+	dotg = exynos->dotg;
+	if (!dotg) {
+		mutex_unlock(&exynos->dotg_lock);
+		return -ENOENT;
 	}
 
 	toggle_gadget = dotg->device_on;
@@ -1011,6 +1076,7 @@ static ssize_t force_speed_store(struct device *dev, struct device_attribute *at
 		dwc3_exynos_wait_role(dotg);
 	}
 
+	mutex_unlock(&exynos->dotg_lock);
 	return n;
 }
 static DEVICE_ATTR_RW(force_speed);
@@ -1030,9 +1096,21 @@ new_data_role_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct dwc3_exynos	*exynos = dev_get_drvdata(dev);
-	struct dwc3_otg		*dotg = exynos->dotg;
+	struct dwc3_otg		*dotg;
+	int			ret = 0;
 
-	return sysfs_emit(buf, "%s", usb_role_string(dotg->desired_role));
+	mutex_lock(&exynos->dotg_lock);
+
+	dotg = exynos->dotg;
+	if (!dotg) {
+		mutex_unlock(&exynos->dotg_lock);
+		return -ENOENT;
+	}
+
+	ret = sysfs_emit(buf, "%s", usb_role_string(dotg->desired_role));
+
+	mutex_unlock(&exynos->dotg_lock);
+	return ret;
 }
 
 static DEVICE_ATTR_RO(new_data_role);
@@ -1177,6 +1255,7 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	pm_runtime_dont_use_autosuspend(exynos->dwc->dev);
 
 	/* set the initial value */
+	mutex_init(&exynos->dotg_lock);
 	exynos->usb_data_enabled = true;
 
 	exynos_usbdrd_phy_tune(exynos->dwc->usb2_generic_phy, 0);
@@ -1233,7 +1312,9 @@ static int dwc3_exynos_remove(struct platform_device *pdev)
 	struct dwc3_exynos	*exynos = platform_get_drvdata(pdev);
 	struct dwc3	*dwc = exynos->dwc;
 
+	mutex_lock(&exynos->dotg_lock);
 	dwc3_exynos_otg_exit(dwc, exynos);
+	mutex_unlock(&exynos->dotg_lock);
 
 	pm_runtime_get_sync(&pdev->dev);
 

@@ -89,6 +89,8 @@ struct dwc3_exynos {
 	struct notifier_block	device_nb;
 	struct notifier_block	host_nb;
 
+	struct mutex		dotg_lock;
+
 	bool			usb_data_enabled;
 	bool			extra_delay;
 	bool			gadget_state;
