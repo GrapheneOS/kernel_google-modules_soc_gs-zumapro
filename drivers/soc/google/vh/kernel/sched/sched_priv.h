@@ -522,6 +522,12 @@ static inline bool should_auto_prefer_idle(struct task_struct *p, int group)
 			if (p->prio <= DEFAULT_PRIO && current->tgid != p->tgid)
 				return true;
 		}
+	} else if (group == VG_FOREGROUND) {
+		/*
+		 * Binder Task
+		 */
+		if (is_binder_task(p))
+			return true;
 	}
 
 	return false;
