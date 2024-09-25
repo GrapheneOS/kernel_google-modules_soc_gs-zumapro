@@ -2164,13 +2164,14 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 		&& value < SCHED_CAPACITY_SCALE)
 		value = value + 1;
 
+	// adding 1 to ensure we can detect tasks that has
+	// uclamp_max == thermal_uclamp_max in util_fits_cpu
 	if (clamp_id == UCLAMP_MAX && thermal_uclamp_max != SCHED_CAPACITY_SCALE) {
 		if (!is_adpf)
-			value = min(value, thermal_uclamp_max);
-		else {
+			value = min(value, thermal_uclamp_max + 1);
+		else
 			value = min(value, min_t(unsigned int, SCHED_CAPACITY_SCALE, thermal_uclamp_max *
-				thermal_cap_margin[task_cpu(p)] >> SCHED_CAPACITY_SHIFT));
-		}
+					thermal_cap_margin[task_cpu(p)] >> SCHED_CAPACITY_SHIFT));
 	}
 
 	// For low prio unthrottled task, reduce its uclamp.max by 1 which

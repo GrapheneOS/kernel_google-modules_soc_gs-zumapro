@@ -58,6 +58,7 @@ extern int *pixel_cluster_cpu_num;
 extern int *pixel_cpu_to_cluster;
 extern int *pixel_cluster_enabled;
 extern unsigned int *pixel_cpd_exit_latency;
+extern struct thermal_cap thermal_cap[CONFIG_VH_SCHED_MAX_CPU_NR];
 
 extern unsigned int vh_sched_max_load_balance_interval;
 extern unsigned int vh_sched_min_granularity_ns;
@@ -457,6 +458,7 @@ static inline int util_fits_cpu(unsigned long util,
 	 */
 	uclamp_max_fits = (capacity_orig == SCHED_CAPACITY_SCALE) && (uclamp_max == SCHED_CAPACITY_SCALE);
 	uclamp_max_fits = !uclamp_max_fits && (uclamp_max <= capacity_orig);
+	uclamp_max_fits = uclamp_max_fits && (uclamp_max <= thermal_cap[cpu].uclamp_max);
 	fits = fits || uclamp_max_fits;
 
 	/*
