@@ -383,17 +383,18 @@ TRACE_EVENT(sched_wakeup_task_attr,
 TRACE_EVENT(sched_select_task_rq_fair,
 
 	TP_PROTO(struct task_struct *tsk, unsigned long task_util, bool sync_wakeup,
-		 bool prefer_prev, bool sync_boost, int group, int uclamp_min, int uclamp_max,
-		 int prev_cpu, int target_cpu),
+		 bool uclamp_fork_reset, bool prefer_prev, bool sync_boost, int group,
+		 int uclamp_min, int uclamp_max, int prev_cpu, int target_cpu),
 
-	TP_ARGS(tsk, task_util, sync_wakeup, prefer_prev, sync_boost, group, uclamp_min, uclamp_max,
-		prev_cpu, target_cpu),
+	TP_ARGS(tsk, task_util, sync_wakeup, uclamp_fork_reset, prefer_prev, sync_boost,
+		group, uclamp_min, uclamp_max, prev_cpu, target_cpu),
 
 	TP_STRUCT__entry(
 		__array(char,		comm, TASK_COMM_LEN)
 		__field(pid_t,		pid)
 		__field(unsigned long,	task_util)
 		__field(bool,		sync_wakeup)
+		__field(bool,		uclamp_fork_reset)
 		__field(bool,		prefer_prev)
 		__field(bool,		sync_boost)
 		__field(int,		group)
@@ -408,6 +409,7 @@ TRACE_EVENT(sched_select_task_rq_fair,
 		__entry->pid             = tsk->pid;
 		__entry->task_util       = task_util;
 		__entry->sync_wakeup     = sync_wakeup;
+		__entry->uclamp_fork_reset     = uclamp_fork_reset;
 		__entry->prefer_prev     = prefer_prev;
 		__entry->sync_boost      = sync_boost;
 		__entry->group           = group;
@@ -417,11 +419,12 @@ TRACE_EVENT(sched_select_task_rq_fair,
 		__entry->target_cpu      = target_cpu;
 		),
 
-	TP_printk("pid=%d comm=%s task_util=%lu sync_wakeup=%d prefer_prev=%d sync_boost=%d " \
-		  "group=%d uclamp.min=%lu uclamp.max=%lu prev_cpu=%d target_cpu=%d",
+	TP_printk("pid=%d comm=%s task_util=%lu sync_wakeup=%d uclamp_fork_reset=%d prefer_prev=%d " \
+		  "sync_boost=%d group=%d uclamp.min=%lu uclamp.max=%lu prev_cpu=%d target_cpu=%d",
 		  __entry->pid, __entry->comm, __entry->task_util, __entry->sync_wakeup,
-		  __entry->prefer_prev, __entry->sync_boost, __entry->group, __entry->uclamp_min,
-		  __entry->uclamp_max, __entry->prev_cpu, __entry->target_cpu)
+		  __entry->uclamp_fork_reset, __entry->prefer_prev, __entry->sync_boost,
+		  __entry->group, __entry->uclamp_min, __entry->uclamp_max,
+		  __entry->prev_cpu, __entry->target_cpu)
 );
 
 TRACE_EVENT(sched_cpu_util_cfs,
