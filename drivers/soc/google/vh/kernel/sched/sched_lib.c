@@ -20,7 +20,7 @@ unsigned long sched_lib_mask_in_val;
 
 extern unsigned int vendor_sched_priority_task_boost_value;
 char priority_task_name[LIB_PATH_LENGTH];
-DEFINE_MUTEX(priority_task_name_mutex);
+DEFINE_SPINLOCK(priority_task_name_lock);
 
 static DEFINE_MUTEX(__sched_lib_name_mutex);
 
@@ -155,10 +155,11 @@ void vh_set_task_comm_pixel_mod(void *data, struct task_struct *p)
 {
 	char tmp[LIB_PATH_LENGTH];
 	char *tok, *str;
+	unsigned long flags;
 
-	mutex_lock(&priority_task_name_mutex);
+	spin_lock_irqsave(&priority_task_name_lock, flags);
 	strlcpy(tmp, priority_task_name, LIB_PATH_LENGTH);
-	mutex_unlock(&priority_task_name_mutex);
+	spin_unlock_irqrestore(&priority_task_name_lock, flags);
 	str = tmp;
 
 	if (*tmp != '\0') {

@@ -73,7 +73,7 @@ extern unsigned int sysctl_sched_uclamp_min_filter_us;
 extern unsigned int sysctl_sched_uclamp_max_filter_divider;
 
 extern char priority_task_name[LIB_PATH_LENGTH];
-extern struct mutex priority_task_name_mutex;
+extern spinlock_t priority_task_name_lock;
 
 #define MAX_PROC_SIZE 128
 
@@ -3111,9 +3111,11 @@ PROC_OPS_RW(cpu_skip_mask);
 
 int priority_task_name_show(struct seq_file *m, void *v)
 {
-	mutex_lock(&priority_task_name_mutex);
+	unsigned long flags;
+
+	spin_lock_irqsave(&priority_task_name_lock, flags);
 	seq_printf(m, "%s\n", priority_task_name);
-	mutex_unlock(&priority_task_name_mutex);
+	spin_unlock_irqrestore(&priority_task_name_lock, flags);
 	return 0;
 }
 
@@ -3123,19 +3125,21 @@ int priority_task_name_show(struct seq_file *m, void *v)
 ssize_t priority_task_name_store(struct file *filp, const char __user *ubuf, size_t count,
 				 loff_t *ppos)
 {
+	unsigned long flags;
+
 	if (count >= sizeof(priority_task_name))
 		return -EINVAL;
 
-	mutex_lock(&priority_task_name_mutex);
+	spin_lock_irqsave(&priority_task_name_lock, flags);
 
 	if (copy_from_user(priority_task_name, ubuf, count)) {
 		priority_task_name[0] = '\0';
-		mutex_unlock(&priority_task_name_mutex);
+		spin_unlock_irqrestore(&priority_task_name_lock, flags);
 		return -EFAULT;
 	}
 
 	priority_task_name[count] = '\0';
-	mutex_unlock(&priority_task_name_mutex);
+	spin_unlock_irqrestore(&priority_task_name_lock, flags);
 	return count;
 }
 PROC_OPS_RW(priority_task_name);
