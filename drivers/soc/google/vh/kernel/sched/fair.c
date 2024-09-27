@@ -1564,11 +1564,8 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 {
 	struct root_domain *rd;
 	struct perf_domain *pd;
-	cpumask_t idle_fit = { CPU_BITS_NONE }, idle_unfit = { CPU_BITS_NONE },
-		  unimportant_fit = { CPU_BITS_NONE }, unimportant_unfit = { CPU_BITS_NONE },
-		  max_spare_cap = { CPU_BITS_NONE }, packing = { CPU_BITS_NONE },
-		  idle_unpreferred = { CPU_BITS_NONE }, max_spare_cap_running_rt = { CPU_BITS_NONE },
-		  candidates = { CPU_BITS_NONE }, candidates_temp = { CPU_BITS_NONE };
+	cpumask_t cm[CC_MAX] = { [0 ... CC_MAX-1] = {CPU_BITS_NONE} };
+	cpumask_t candidates = { CPU_BITS_NONE }, candidates_temp = { CPU_BITS_NONE };
 	int i, weight, best_energy_cpu = -1, this_cpu = smp_processor_id();
 	long cur_energy, best_energy = LONG_MAX;
 	unsigned long p_util_min = uclamp_is_used() ? uclamp_eff_value_pixel_mod(p, UCLAMP_MIN) : 0;
@@ -1807,16 +1804,16 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 				/* find max spare capacity cpu, used as backup */
 				if (spare_cap > target_max_spare_cap) {
 					target_max_spare_cap = spare_cap;
-					cpumask_clear(&max_spare_cap);
-					cpumask_set_cpu(i, &max_spare_cap);
+					cpumask_clear(&cm[MAX_SPARE_CAP]);
+					cpumask_set_cpu(i, &cm[MAX_SPARE_CAP]);
 				} else if (spare_cap == target_max_spare_cap) {
 					/*
 					 * When spare capacity is the same, clear the choice
 					 * randomly based on task_util.
 					 */
 					if ((task_util_est(p) % 2))
-						cpumask_clear(&max_spare_cap);
-					cpumask_set_cpu(i, &max_spare_cap);
+						cpumask_clear(&cm[MAX_SPARE_CAP]);
+					cpumask_set_cpu(i, &cm[MAX_SPARE_CAP]);
 				}
 			} else { /* Below path is for non-prefer idle case */
 				if (spare_cap > target_max_spare_cap) {
@@ -1892,52 +1889,52 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		}
 
 		if (pd_max_spare_cap_running_rt_cpu != -1) {
-			cpumask_set_cpu(pd_max_spare_cap_running_rt_cpu, &max_spare_cap_running_rt);
+			cpumask_set_cpu(pd_max_spare_cap_running_rt_cpu, &cm[MAX_SPARE_CAP_RUNNING_RT]);
 		}
 
 		/* set the best_idle_cpu of each cluster */
 		if (pd_best_idle_cpu != -1) {
 			if (task_fits) {
-				cpumask_set_cpu(pd_best_idle_cpu, &idle_fit);
+				cpumask_set_cpu(pd_best_idle_cpu, &cm[IDLE_FIT]);
 			} else {
-				cpumask_set_cpu(pd_best_idle_cpu, &idle_unfit);
+				cpumask_set_cpu(pd_best_idle_cpu, &cm[IDLE_UNFIT]);
 			}
 		}
 
 		/* set the best_important_cpu of each cluster */
 		if (pd_most_unimportant_cpu != -1) {
 			if (task_fits) {
-				cpumask_set_cpu(pd_most_unimportant_cpu, &unimportant_fit);
+				cpumask_set_cpu(pd_most_unimportant_cpu, &cm[UNIMPORTANT_FIT]);
 			} else {
-				cpumask_set_cpu(pd_most_unimportant_cpu, &unimportant_unfit);
+				cpumask_set_cpu(pd_most_unimportant_cpu, &cm[UNIMPORTANT_UNFIT]);
 			}
 		}
 
 		/* set the packing cpu of max_spare_cap of each cluster */
 		if (pd_best_packing_cpu != -1)
-			cpumask_set_cpu(pd_best_packing_cpu, &packing);
+			cpumask_set_cpu(pd_best_packing_cpu, &cm[PACKING]);
 
 		/* set the max_spare_cap_cpu of each cluster */
 		if (pd_max_spare_cap_cpu != -1)
-			cpumask_set_cpu(pd_max_spare_cap_cpu, &max_spare_cap);
+			cpumask_set_cpu(pd_max_spare_cap_cpu, &cm[MAX_SPARE_CAP]);
 	}
 
 	if (prefer_idle) {
 		preferred_idle_mask = get_preferred_idle_mask(p);
-		cpumask_or(&idle_unpreferred, &idle_fit, &idle_unfit);
-		cpumask_andnot(&idle_unpreferred, &idle_unpreferred, preferred_idle_mask);
+		cpumask_or(&cm[IDLE_UNPREFERRED], &cm[IDLE_FIT], &cm[IDLE_UNFIT]);
+		cpumask_andnot(&cm[IDLE_UNPREFERRED], &cm[IDLE_UNPREFERRED], preferred_idle_mask);
 		// If there is no fit idle CPU in preferred_idle_mask, ignore it
 		if (task_fits_capacity(p, cpumask_last(preferred_idle_mask)))
-			cpumask_and(&idle_fit, &idle_fit, preferred_idle_mask);
-		cpumask_and(&idle_unfit, &idle_unfit, preferred_idle_mask);
+			cpumask_and(&cm[IDLE_FIT], &cm[IDLE_FIT], preferred_idle_mask);
+		cpumask_and(&cm[IDLE_UNFIT], &cm[IDLE_UNFIT], preferred_idle_mask);
 	}
 
 	/* Assign candidates based on search order. */
 	if (prefer_fit) {
-		if (!cpumask_empty(&idle_fit)) {
-			cpumask_copy(&candidates, &idle_fit);
-		} else if (!cpumask_empty(&unimportant_fit)) {
-			cpumask_copy(&candidates, &unimportant_fit);
+		if (!cpumask_empty(&cm[IDLE_FIT])) {
+			cpumask_copy(&candidates, &cm[IDLE_FIT]);
+		} else if (!cpumask_empty(&cm[UNIMPORTANT_FIT])) {
+			cpumask_copy(&candidates, &cm[UNIMPORTANT_FIT]);
 		} else if (idle_max_cap_cpu != -1 && unimportant_max_spare_cap_cpu == -1) {
 			cpumask_set_cpu(idle_max_cap_cpu, &candidates);
 		} else if (idle_max_cap_cpu == -1 && unimportant_max_spare_cap_cpu != -1) {
@@ -1947,27 +1944,27 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 				cpumask_set_cpu(idle_max_cap_cpu, &candidates);
 			else
 				cpumask_set_cpu(unimportant_max_spare_cap_cpu, &candidates);
-		} else if (!cpumask_empty(&max_spare_cap)) {
-			cpumask_copy(&candidates, &max_spare_cap);
-		} else if (!cpumask_empty(&max_spare_cap_running_rt)){
-			cpumask_copy(&candidates, &max_spare_cap_running_rt);
+		} else if (!cpumask_empty(&cm[MAX_SPARE_CAP])) {
+			cpumask_copy(&candidates, &cm[MAX_SPARE_CAP]);
+		} else if (!cpumask_empty(&cm[MAX_SPARE_CAP_RUNNING_RT])){
+			cpumask_copy(&candidates, &cm[MAX_SPARE_CAP_RUNNING_RT]);
 		}
 	} else {
-		if (!cpumask_empty(&idle_fit)) {
-			cpumask_copy(&candidates, &idle_fit);
-		} else if (!cpumask_empty(&idle_unfit)) {
+		if (!cpumask_empty(&cm[IDLE_FIT])) {
+			cpumask_copy(&candidates, &cm[IDLE_FIT]);
+		} else if (!cpumask_empty(&cm[IDLE_UNFIT])) {
 			/* Assign biggest cpu core found for unfit case. */
-			cpumask_set_cpu(cpumask_last(&idle_unfit), &candidates);
-		} else if (!cpumask_empty(&unimportant_fit)) {
-			cpumask_copy(&candidates, &unimportant_fit);
-		} else if (!cpumask_empty(&unimportant_unfit)) {
-			cpumask_set_cpu(cpumask_last(&unimportant_unfit), &candidates);
-		} else if (!cpumask_empty(&idle_unpreferred)) {
-			cpumask_copy(&candidates, &idle_unpreferred);
-		} else if (!cpumask_empty(&packing)) {
-			cpumask_copy(&candidates, &packing);
-		} else if (!cpumask_empty(&max_spare_cap)) {
-			cpumask_copy(&candidates, &max_spare_cap);
+			cpumask_set_cpu(cpumask_last(&cm[IDLE_UNFIT]), &candidates);
+		} else if (!cpumask_empty(&cm[UNIMPORTANT_FIT])) {
+			cpumask_copy(&candidates, &cm[UNIMPORTANT_FIT]);
+		} else if (!cpumask_empty(&cm[UNIMPORTANT_UNFIT])) {
+			cpumask_set_cpu(cpumask_last(&cm[UNIMPORTANT_UNFIT]), &candidates);
+		} else if (!cpumask_empty(&cm[IDLE_UNPREFERRED])) {
+			cpumask_copy(&candidates, &cm[IDLE_UNPREFERRED]);
+		} else if (!cpumask_empty(&cm[PACKING])) {
+			cpumask_copy(&candidates, &cm[PACKING]);
+		} else if (!cpumask_empty(&cm[MAX_SPARE_CAP])) {
+			cpumask_copy(&candidates, &cm[MAX_SPARE_CAP]);
 		}
 	}
 
@@ -2023,9 +2020,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 out:
 	rcu_read_unlock();
 	trace_sched_find_energy_efficient_cpu(p, prefer_idle, prefer_fit,
-					 task_importance, &idle_fit, &idle_unfit, &unimportant_fit,
-					 &unimportant_unfit, &packing, &max_spare_cap, &idle_unpreferred,
-					 best_energy_cpu);
+					 task_importance, cm, best_energy_cpu);
 
 	return best_energy_cpu;
 }
