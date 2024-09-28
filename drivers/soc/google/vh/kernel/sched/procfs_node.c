@@ -87,6 +87,7 @@ static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "b
 enum vendor_procfs_type {
 	DEFAULT_TYPE = 0,
 	GROUPED_CONTROL,
+	SCHED_QOS_CONTROL,
 };
 
 #define PROC_OPS_RW(__name) \
@@ -179,6 +180,9 @@ enum vendor_procfs_type {
 		__PROC_GROUP_ENTRIES(__group_name, __vg),	\
 		__PROC_GROUP_ENTRY(group_throttle, __group_name, __vg)
 #endif
+
+#define PROC_SCHED_QOS_ENTRY(__name)	\
+		 {__stringify(__name), SCHED_QOS_CONTROL, -1, &__name##_proc_ops}
 
 #define SET_VENDOR_GROUP_STORE(__grp, __vg)						      \
 		static ssize_t set_task_group_##__grp##_store(struct file *filp, \
@@ -3231,6 +3235,7 @@ int create_procfs_node(void)
 	enum uclamp_id clamp_id;
 	struct proc_dir_entry *parent_directory;
 	struct proc_dir_entry *group_root_dir;
+	struct proc_dir_entry *sched_qos_dir;
 	cpumask_t cpumask;
 
 	/* create vendor sched root directory */
@@ -3241,6 +3246,11 @@ int create_procfs_node(void)
 	/* create vendor group directories */
 	group_root_dir = proc_mkdir("groups", vendor_sched);
 	if (!group_root_dir)
+		goto out;
+
+	/* create sched qos directory */
+	sched_qos_dir = proc_mkdir("sched_qos", vendor_sched);
+	if (!sched_qos_dir)
 		goto out;
 
 	for (i = 0; i < VG_MAX; i++) {
@@ -3268,6 +3278,8 @@ int create_procfs_node(void)
 			} else {
 				parent_directory = group_root_dir;
 			}
+		} else if (entries[i].type == SCHED_QOS_CONTROL) {
+			parent_directory = sched_qos_dir;
 		} else {
 			parent_directory = vendor_sched;
 		}
