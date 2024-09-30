@@ -96,6 +96,7 @@ struct vendor_task_struct {
 	bool boost_prio;
 	bool prefer_fit;
 	bool prefer_idle;
+	bool adpf;
 
 	/*
 	 * A general field for time measurement in the same process context.

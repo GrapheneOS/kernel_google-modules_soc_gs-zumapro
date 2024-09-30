@@ -540,6 +540,9 @@ static inline struct vendor_rq_struct *get_vendor_rq_struct(struct rq *rq)
 
 static inline bool get_uclamp_fork_reset(struct task_struct *p, bool inherited)
 {
+	if (get_vendor_task_struct(p)->adpf)
+		return true;
+
 	if (inherited)
 		return get_vendor_task_struct(p)->uclamp_fork_reset ||
 			get_vendor_inheritance_struct(p)->uclamp_fork_reset;
@@ -640,6 +643,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->boost_prio = false;
 	v_tsk->prefer_fit = false;
 	v_tsk->prefer_idle = false;
+	v_tsk->adpf = false;
 	init_vendor_inheritance_struct(&v_tsk->vi);
 }
 
