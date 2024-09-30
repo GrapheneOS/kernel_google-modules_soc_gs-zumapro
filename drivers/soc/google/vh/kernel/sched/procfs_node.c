@@ -59,7 +59,7 @@ extern struct vendor_util_group_property *get_vendor_util_group_property(
 	enum utilization_group group);
 #endif
 
-extern void update_adpf_prio(struct task_struct *p, struct vendor_task_struct *vp, bool val);
+extern void update_task_prio(struct task_struct *p, struct vendor_task_struct *vp, bool val);
 
 static void apply_uclamp_change(enum vendor_group group, enum uclamp_id clamp_id);
 
@@ -1306,7 +1306,7 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 		vp->uclamp_fork_reset = val;
 
 		if (vendor_sched_boost_adpf_prio)
-			update_adpf_prio(p, vp, val);
+			update_task_prio(p, vp, val);
 
 		if (task_on_rq_queued(p)) {
 			if (old_uclamp_fork_reset && !get_uclamp_fork_reset(p, true))
@@ -1318,6 +1318,47 @@ static int update_uclamp_fork_reset(const char *buf, bool val)
 
 	task_rq_unlock(rq, p, &rf);
 	put_task_struct(p);
+
+	return 0;
+}
+
+static int update_boost_prio(const char *buf, bool val)
+{
+	struct vendor_task_struct *vp;
+	struct task_struct *p;
+	pid_t pid;
+	struct rq_flags rf;
+	struct rq *rq;
+
+	if (kstrtoint(buf, 0, &pid) || pid <= 0)
+		return -EINVAL;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (!p) {
+		rcu_read_unlock();
+		return -ESRCH;
+	}
+
+	get_task_struct(p);
+
+	if (!check_cred(p)) {
+		put_task_struct(p);
+		rcu_read_unlock();
+		return -EACCES;
+	}
+
+	vp = get_vendor_task_struct(p);
+
+	if (vp->boost_prio != val) {
+		vp->boost_prio = val;
+		rq = task_rq_lock(p, &rf);
+		update_task_prio(p, vp, val);
+		task_rq_unlock(rq, p, &rf);
+	}
+
+	put_task_struct(p);
+	rcu_read_unlock();
 
 	return 0;
 }
@@ -1429,6 +1470,7 @@ SET_VENDOR_GROUP_STORE(fg_wi, VG_FOREGROUND_WINDOW);
 // Create per-task attribute nodes
 PER_TASK_BOOL_ATTRIBUTE(prefer_idle);
 PER_TASK_BOOL_ATTRIBUTE(uclamp_fork_reset);
+PER_TASK_BOOL_ATTRIBUTE(boost_prio);
 
 static int dump_task_show(struct seq_file *m, void *v)
 {									      \
@@ -3130,6 +3172,9 @@ static struct pentry entries[] = {
 	PROC_GROUP_ENTRIES(ota, VG_OTA),
 	PROC_GROUP_ENTRIES(sf, VG_SF),
 	PROC_GROUP_ENTRIES(fg_wi, VG_FOREGROUND_WINDOW),
+	// sched qos attributes
+	PROC_SCHED_QOS_ENTRY(boost_prio_set),
+	PROC_SCHED_QOS_ENTRY(boost_prio_clear),
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	// FG util group attributes
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)

@@ -93,6 +93,9 @@ struct vendor_task_struct {
 	unsigned long prev_util_enqueued;
 	bool ignore_util_est_update;
 
+	/* sched qos attributes */
+	bool boost_prio;
+
 	/*
 	 * A general field for time measurement in the same process context.
 	 * Be careful it should be used for stackwise, use the wrapper

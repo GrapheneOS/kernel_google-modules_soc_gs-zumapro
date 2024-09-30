@@ -1483,7 +1483,7 @@ static void prio_changed(struct task_struct *p, int old_prio, int new_prio)
 	prio_changed_fair(rq, p, old_prio);
 }
 
-void update_adpf_prio(struct task_struct *p, struct vendor_task_struct *vp, bool val)
+void update_task_prio(struct task_struct *p, struct vendor_task_struct *vp, bool val)
 {
 	int new_prio, old_prio;
 
@@ -2619,7 +2619,7 @@ void rvh_set_user_nice_locked_pixel_mod(void *data, struct task_struct *p, long 
 		return;
 
 	vp = get_vendor_task_struct(p);
-	if (get_uclamp_fork_reset(p, false)) {
+	if (get_uclamp_fork_reset(p, false) || vp->boost_prio) {
 		raw_spin_lock_irqsave(&vp->lock, flags);
 		p->normal_prio = p->static_prio = vp->orig_prio = NICE_TO_PRIO(*nice);
 		raw_spin_unlock_irqrestore(&vp->lock, flags);
@@ -2643,7 +2643,7 @@ void rvh_setscheduler_pixel_mod(void *data, struct task_struct *p)
 		return;
 
 	vp = get_vendor_task_struct(p);
-	if (get_uclamp_fork_reset(p, false)) {
+	if (get_uclamp_fork_reset(p, false) || vp->boost_prio) {
 		raw_spin_lock_irqsave(&vp->lock, flags);
 		vp->orig_prio = p->static_prio;
 		raw_spin_unlock_irqrestore(&vp->lock, flags);
