@@ -1363,6 +1363,39 @@ static int update_boost_prio(const char *buf, bool val)
 	return 0;
 }
 
+static int update_prefer_fit(const char *buf, bool val)
+{
+	struct vendor_task_struct *vp;
+	struct task_struct *p;
+	pid_t pid;
+
+	if (kstrtoint(buf, 0, &pid) || pid <= 0)
+		return -EINVAL;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (!p) {
+		rcu_read_unlock();
+		return -ESRCH;
+	}
+
+	get_task_struct(p);
+
+	if (!check_cred(p)) {
+		put_task_struct(p);
+		rcu_read_unlock();
+		return -EACCES;
+	}
+
+	vp = get_vendor_task_struct(p);
+	vp->prefer_fit = val;
+
+	put_task_struct(p);
+	rcu_read_unlock();
+
+	return 0;
+}
+
 static int update_vendor_group_attribute(const char *buf, enum vendor_group_attribute vta,
 					 unsigned int new)
 {
@@ -1471,6 +1504,7 @@ SET_VENDOR_GROUP_STORE(fg_wi, VG_FOREGROUND_WINDOW);
 PER_TASK_BOOL_ATTRIBUTE(prefer_idle);
 PER_TASK_BOOL_ATTRIBUTE(uclamp_fork_reset);
 PER_TASK_BOOL_ATTRIBUTE(boost_prio);
+PER_TASK_BOOL_ATTRIBUTE(prefer_fit);
 
 static int dump_task_show(struct seq_file *m, void *v)
 {									      \
@@ -3175,6 +3209,8 @@ static struct pentry entries[] = {
 	// sched qos attributes
 	PROC_SCHED_QOS_ENTRY(boost_prio_set),
 	PROC_SCHED_QOS_ENTRY(boost_prio_clear),
+	PROC_SCHED_QOS_ENTRY(prefer_fit_set),
+	PROC_SCHED_QOS_ENTRY(prefer_fit_clear),
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	// FG util group attributes
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)

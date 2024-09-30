@@ -639,6 +639,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->prev_util_enqueued = 0;
 	v_tsk->ignore_util_est_update = false;
 	v_tsk->boost_prio = false;
+	v_tsk->prefer_fit = false;
 	init_vendor_inheritance_struct(&v_tsk->vi);
 }
 

@@ -564,6 +564,11 @@ static inline bool get_auto_prefer_fit(struct task_struct *p)
 	return vg[get_vendor_group(p)].auto_prefer_fit && p->prio <= THREAD_PRIORITY_TOP_APP_BOOST;
 }
 
+static inline bool get_prefer_fit(struct task_struct *p)
+{
+	return get_vendor_task_struct(p)->prefer_fit;
+}
+
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 static inline unsigned int get_task_group_throttle(struct task_struct *p)
 {
@@ -1603,7 +1608,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 
 	p_util_min = max(p_util_min, get_vendor_task_struct(p)->iowait_boost);
 
-	if (get_uclamp_fork_reset(p, true) || get_auto_prefer_fit(p))
+	if (get_uclamp_fork_reset(p, true) || get_prefer_fit(p) || get_auto_prefer_fit(p))
 		prefer_fit = true;
 
 	for (; pd; pd = pd->next) {

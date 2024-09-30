@@ -95,6 +95,7 @@ struct vendor_task_struct {
 
 	/* sched qos attributes */
 	bool boost_prio;
+	bool prefer_fit;
 
 	/*
 	 * A general field for time measurement in the same process context.
