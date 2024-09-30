@@ -1544,12 +1544,17 @@ static int dump_task_show(struct seq_file *m, void *v)
 {									      \
 	struct task_struct *p, *t;
 	struct vendor_task_struct *vp;
-	int pid;
 	unsigned int uclamp_min, uclamp_max, uclamp_eff_min, uclamp_eff_max;
 	enum vendor_group group;
 	const char *grp_name = "unknown";
 	bool uclamp_fork_reset;
+	bool adpf;
 	bool prefer_idle;
+	bool prefer_fit;
+	bool boost_prio;
+
+	seq_printf(m, "pid comm group uclamp_min uclamp_max uclamp_eff_min uclamp_eff_max " \
+		   "uclamp_fork_reset adpf prefer_idle prefer_fit boost_prio\n");
 
 	rcu_read_lock();
 
@@ -1563,12 +1568,15 @@ static int dump_task_show(struct seq_file *m, void *v)
 		uclamp_max = t->uclamp_req[UCLAMP_MAX].value;
 		uclamp_eff_min = uclamp_eff_value_pixel_mod(t, UCLAMP_MIN);
 		uclamp_eff_max = uclamp_eff_value_pixel_mod(t, UCLAMP_MAX);
-		pid = t->pid;
 		uclamp_fork_reset = vp->uclamp_fork_reset;
+		adpf = vp->adpf;
 		prefer_idle = vp->prefer_idle;
+		prefer_fit = vp->prefer_fit;
+		boost_prio = vp->boost_prio;
 		put_task_struct(t);
-		seq_printf(m, "%u %s %u %u %u %u %d %d\n", pid, grp_name, uclamp_min, uclamp_max,
-			uclamp_eff_min, uclamp_eff_max, uclamp_fork_reset, prefer_idle);
+		seq_printf(m, "%u %s %s %u %u %u %u %d %d %d %d %d\n", t->pid, t->comm, grp_name,
+			   uclamp_min, uclamp_max, uclamp_eff_min, uclamp_eff_max,
+			   uclamp_fork_reset, adpf, prefer_idle, prefer_fit, boost_prio);
 	}
 
 	rcu_read_unlock();
