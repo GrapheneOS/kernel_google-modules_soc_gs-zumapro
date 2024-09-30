@@ -50,7 +50,9 @@ enum vendor_inheritnace_t {
 struct vendor_inheritance_struct {
 	unsigned int uclamp[VI_MAX][UCLAMP_CNT];
 	short int uclamp_fork_reset;
+	short int adpf;
 	short int prefer_idle;
+	short int prefer_fit;
 };
 
 struct uclamp_filter {

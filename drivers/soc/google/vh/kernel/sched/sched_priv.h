@@ -540,14 +540,13 @@ static inline struct vendor_rq_struct *get_vendor_rq_struct(struct rq *rq)
 
 static inline bool get_uclamp_fork_reset(struct task_struct *p, bool inherited)
 {
-	if (get_vendor_task_struct(p)->adpf)
-		return true;
-
 	if (inherited)
 		return get_vendor_task_struct(p)->uclamp_fork_reset ||
-			get_vendor_inheritance_struct(p)->uclamp_fork_reset;
+			get_vendor_inheritance_struct(p)->uclamp_fork_reset ||
+			get_vendor_task_struct(p)->adpf || get_vendor_inheritance_struct(p)->adpf;
 	else
-		return get_vendor_task_struct(p)->uclamp_fork_reset;
+		return get_vendor_task_struct(p)->uclamp_fork_reset ||
+			get_vendor_task_struct(p)->adpf;
 }
 
 static inline bool is_binder_task(struct task_struct *p)
@@ -605,6 +604,11 @@ static inline bool get_prefer_idle(struct task_struct *p)
 		return vg[vp->group].prefer_idle;
 }
 
+static inline bool get_prefer_fit(struct task_struct *p)
+{
+	return get_vendor_task_struct(p)->prefer_fit;
+}
+
 static inline void init_vendor_inheritance_struct(struct vendor_inheritance_struct *vi)
 {
 	int i;
@@ -613,8 +617,10 @@ static inline void init_vendor_inheritance_struct(struct vendor_inheritance_stru
 		vi->uclamp[i][UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 		vi->uclamp[i][UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
 	}
-	vi->prefer_idle = 0;
 	vi->uclamp_fork_reset = 0;
+	vi->adpf = 0;
+	vi->prefer_idle = 0;
+	vi->prefer_fit = 0;
 }
 
 static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)

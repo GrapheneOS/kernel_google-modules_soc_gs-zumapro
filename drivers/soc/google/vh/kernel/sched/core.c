@@ -71,12 +71,30 @@ DEFINE_STATIC_KEY_FALSE(skip_inefficient_opps_enable);
         } \
     } while (0)
 
+#define vi_set_adpf(vi, type, value) \
+    do { \
+        if (value) { \
+            (vi)->adpf |= (1 << (type)); \
+        } else { \
+            (vi)->adpf &= ~(1 << (type)); \
+        } \
+    } while (0)
+
 #define vi_set_prefer_idle(vi, type, value) \
     do { \
         if (value) { \
             (vi)->prefer_idle |= (1 << (type)); \
         } else { \
             (vi)->prefer_idle &= ~(1 << (type)); \
+        } \
+    } while (0)
+
+#define vi_set_prefer_fit(vi, type, value) \
+    do { \
+        if (value) { \
+            (vi)->prefer_fit |= (1 << (type)); \
+        } else { \
+            (vi)->prefer_fit &= ~(1 << (type)); \
         } \
     } while (0)
 
@@ -265,13 +283,16 @@ static void set_latency_sensitive_inheritance(struct task_struct *p, unsigned in
 		bool old_uclamp_fork_reset = get_uclamp_fork_reset(p, true);
 
 		vi_set_latency_sensitive(vi, type, val);
+		vi_set_adpf(vi, type, val);
 
 		if (!old_uclamp_fork_reset && get_uclamp_fork_reset(p, true))
 			inc_adpf_counter(p, task_rq(p));
 		else if (old_uclamp_fork_reset && !get_uclamp_fork_reset(p, true))
 			dec_adpf_counter(p, task_rq(p));
-	} else
+	} else {
 		vi_set_latency_sensitive(vi, type, val);
+		vi_set_adpf(vi, type, val);
+	}
 }
 
 static void set_performance_inheritance(struct task_struct *p, struct task_struct *pi_task,
@@ -317,6 +338,9 @@ static void set_performance_inheritance(struct task_struct *p, struct task_struc
 
 		if (!!get_prefer_idle(pi_task))
 			vi_set_prefer_idle(vi, type, 1);
+
+		if (!!get_prefer_fit(pi_task))
+			vi_set_prefer_fit(vi, type, 1);
 	} else {
 		vi->uclamp[type][UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 		vi->uclamp[type][UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
@@ -324,6 +348,8 @@ static void set_performance_inheritance(struct task_struct *p, struct task_struc
 		set_latency_sensitive_inheritance(p, type, 0);
 
 		vi_set_prefer_idle(vi, type, 0);
+
+		vi_set_prefer_fit(vi, type, 0);
 	}
 }
 
