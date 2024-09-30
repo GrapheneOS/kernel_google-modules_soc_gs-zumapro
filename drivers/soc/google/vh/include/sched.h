@@ -75,7 +75,6 @@ struct vendor_task_struct {
 	struct list_head node;
 	int queued_to_list;
 	bool uclamp_fork_reset;
-	bool prefer_idle;
 	bool prefer_high_cap;
 	int auto_uclamp_max_flags;	// Relative to cpu instead of absolute
 	struct uclamp_filter uclamp_filter;
@@ -96,6 +95,7 @@ struct vendor_task_struct {
 	/* sched qos attributes */
 	bool boost_prio;
 	bool prefer_fit;
+	bool prefer_idle;
 
 	/*
 	 * A general field for time measurement in the same process context.
