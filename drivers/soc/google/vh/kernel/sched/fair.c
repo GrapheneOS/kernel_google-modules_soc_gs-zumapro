@@ -2269,6 +2269,11 @@ void initialize_vendor_group_property(void)
 #endif
 		vg[i].rampup_multiplier = 1;
 		vg[i].disable_util_est = false;
+
+		vg[i].qos_adpf_enable = false;
+		vg[i].qos_prefer_idle_enable = false;
+		vg[i].qos_prefer_fit_enable = false;
+		vg[i].qos_boost_prio_enable = false;
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)

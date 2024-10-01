@@ -177,6 +177,11 @@ struct vendor_group_property {
 	struct uclamp_se uc_req[UCLAMP_CNT];
 	unsigned int rampup_multiplier;
 	bool disable_util_est;
+
+	bool qos_adpf_enable;
+	bool qos_prefer_idle_enable;
+	bool qos_prefer_fit_enable;
+	bool qos_boost_prio_enable;
 };
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -540,13 +545,14 @@ static inline struct vendor_rq_struct *get_vendor_rq_struct(struct rq *rq)
 
 static inline bool get_uclamp_fork_reset(struct task_struct *p, bool inherited)
 {
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_inheritance_struct *vi = get_vendor_inheritance_struct(p);
+
 	if (inherited)
-		return get_vendor_task_struct(p)->uclamp_fork_reset ||
-			get_vendor_inheritance_struct(p)->uclamp_fork_reset ||
-			get_vendor_task_struct(p)->adpf || get_vendor_inheritance_struct(p)->adpf;
+		return vp->uclamp_fork_reset || vi->uclamp_fork_reset ||
+		       ((vp->adpf || vi->adpf) && vg[vp->group].qos_adpf_enable);
 	else
-		return get_vendor_task_struct(p)->uclamp_fork_reset ||
-			get_vendor_task_struct(p)->adpf;
+		return vp->uclamp_fork_reset || (vp->adpf && vg[vp->group].qos_adpf_enable);
 }
 
 static inline bool is_binder_task(struct task_struct *p)
@@ -593,7 +599,8 @@ static inline bool get_prefer_idle(struct task_struct *p)
 	// Always perfer idle for ADPF tasks or tasks with prefer_idle set explicitly.
 	// In auto_prefer_idle case, only allow high prio tasks of the prefer_idle group,
 	// or high prio task with wake_q_count value greater than 0 in top-app.
-	if (get_uclamp_fork_reset(p, true) || vp->prefer_idle || vi->prefer_idle)
+	if (get_uclamp_fork_reset(p, true) ||
+	    ((vp->prefer_idle || vi->prefer_idle) && vg[vp->group].qos_prefer_idle_enable))
 		return true;
 	else if (vendor_sched_auto_prefer_idle)
 		return should_auto_prefer_idle(p, vp->group);
@@ -606,7 +613,10 @@ static inline bool get_prefer_idle(struct task_struct *p)
 
 static inline bool get_prefer_fit(struct task_struct *p)
 {
-	return get_vendor_task_struct(p)->prefer_fit;
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_inheritance_struct *vi = get_vendor_inheritance_struct(p);
+
+	return (vp->prefer_fit || vi->prefer_fit) && vg[vp->group].qos_prefer_fit_enable;
 }
 
 static inline void init_vendor_inheritance_struct(struct vendor_inheritance_struct *vi)
