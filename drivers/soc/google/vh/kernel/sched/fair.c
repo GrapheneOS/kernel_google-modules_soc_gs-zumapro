@@ -557,6 +557,11 @@ static inline bool get_task_spreading(struct task_struct *p)
 	return vg[get_vendor_group(p)].task_spreading;
 }
 
+static inline bool get_auto_prefer_fit(struct task_struct *p)
+{
+	return vg[get_vendor_group(p)].auto_prefer_fit && p->prio <= THREAD_PRIORITY_TOP_APP_BOOST;
+}
+
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
 static inline unsigned int get_task_group_throttle(struct task_struct *p)
 {
@@ -1584,7 +1589,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	struct cpuidle_state *idle_state;
 	unsigned long unimportant_max_spare_cap = 0, idle_max_cap = 0;
 	unsigned long cfs_load, min_load = ULONG_MAX;
-	bool prefer_fit = get_uclamp_fork_reset(p, true);
+	bool prefer_fit;
 	const cpumask_t *preferred_idle_mask;
 
 	rd = cpu_rq(this_cpu)->rd;
@@ -1595,6 +1600,9 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		goto out;
 
 	p_util_min = max(p_util_min, get_vendor_task_struct(p)->iowait_boost);
+
+	if (get_uclamp_fork_reset(p, true) || get_auto_prefer_fit(p))
+		prefer_fit = true;
 
 	for (; pd; pd = pd->next) {
 		unsigned long util_min = p_util_min, util_max = p_util_max;
@@ -2217,6 +2225,7 @@ void initialize_vendor_group_property(void)
 		vg[i].prefer_idle = false;
 		vg[i].prefer_high_cap = false;
 		vg[i].task_spreading = false;
+		vg[i].auto_prefer_fit = false;
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 		vg[i].group_throttle = max_val;
 #endif
