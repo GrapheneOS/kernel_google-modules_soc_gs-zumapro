@@ -27,8 +27,3 @@ void vh_filemap_get_folio_mod(void *data, struct address_space *mapping,
 	else
 		this_cpu_inc(pgcache_hit);
 }
-
-void rvh_mapping_shrinkable(void *data, bool *shrinkable)
-{
-	*shrinkable = true;
-}

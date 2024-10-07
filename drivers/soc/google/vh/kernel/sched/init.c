@@ -42,8 +42,7 @@ extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p,
 					 enum uclamp_id clamp_id, struct uclamp_se *uclamp_max,
 					 struct uclamp_se *uclamp_eff, int *ret);
 extern void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct task_struct *p,
-					  bool task_sleep, int *ret);
-
+					   bool task_sleep, int *ret);
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 extern void rvh_cpu_cgroup_online_pixel_mod(void *data, struct cgroup_subsys_state *css);
 #endif
@@ -111,7 +110,6 @@ extern void rvh_find_lowest_rq_pixel_mod(void *data, struct task_struct *p,
 					 int ret, int *cpu);
 extern void rvh_util_fits_cpu_pixel_mod(void *data, unsigned long util, unsigned long uclamp_min,
 	unsigned long uclamp_max, int cpu, bool *fits, bool *done);
-extern void rvh_try_to_wake_up_success_pixel_mod(void *data, struct task_struct *task);
 
 extern int pmu_poll_init(void);
 extern void set_cluster_enabled_cb(int cluster, int enabled);
@@ -562,11 +560,6 @@ static int vh_sched_init(void)
 		return ret;
 
 	ret = register_trace_android_vh_resume_end(vh_sched_resume_end, NULL);
-	if (ret)
-		return ret;
-
-	ret = register_trace_android_rvh_try_to_wake_up_success(
-		rvh_try_to_wake_up_success_pixel_mod, NULL);
 	if (ret)
 		return ret;
 

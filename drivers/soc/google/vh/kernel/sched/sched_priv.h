@@ -146,7 +146,6 @@ struct vendor_group_property {
 	bool prefer_high_cap;
 	bool task_spreading;
 	bool auto_uclamp_max;
-	bool auto_prefer_fit;
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	unsigned int group_throttle;
 #endif
