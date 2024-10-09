@@ -14,6 +14,9 @@ static char sched_lib_name[LIB_PATH_LENGTH];
 unsigned long sched_lib_mask_out_val;
 unsigned long sched_lib_mask_in_val;
 
+char prefer_idle_task_name[LIB_PATH_LENGTH];
+DEFINE_SPINLOCK(prefer_idle_task_name_lock);
+
 static DEFINE_MUTEX(__sched_lib_name_mutex);
 
 ssize_t sched_lib_name_store(struct file *filp,
@@ -120,4 +123,37 @@ void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
 
 	pr_debug("schedlib setaff tid: %d, mask out: %*pb\n",
 		 task_pid_nr(task), cpumask_pr_args(in_mask));
+}
+
+int set_prefer_idle_task_name(void)
+{
+	char tmp[LIB_PATH_LENGTH];
+	char *tok, *str;
+	struct task_struct *p, *t;
+	int ret = -1;
+
+	spin_lock(&prefer_idle_task_name_lock);
+	strlcpy(tmp, prefer_idle_task_name, LIB_PATH_LENGTH);
+	spin_unlock(&prefer_idle_task_name_lock);
+
+	if (*tmp != '\0') {
+		str = tmp;
+
+		while (1) {
+			tok = strsep(&str, ",");
+
+			if (tok == NULL)
+				break;
+
+			for_each_process_thread(p, t) {
+				if (strstr(t->comm, tok) != NULL) {
+					get_vendor_task_struct(t)->prefer_idle = true;
+					ret = 0;
+					break;
+				}
+			}
+		}
+	}
+
+	return ret;
 }
