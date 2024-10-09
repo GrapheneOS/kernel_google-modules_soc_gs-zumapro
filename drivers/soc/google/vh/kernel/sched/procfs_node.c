@@ -21,6 +21,8 @@
 
 #include "sched_priv.h"
 
+#define LIB_PATH_LENGTH 512
+
 #if IS_ENABLED(CONFIG_UCLAMP_STATS)
 extern void reset_uclamp_stats(void);
 DECLARE_PER_CPU(struct uclamp_stats, uclamp_stats);
@@ -69,6 +71,10 @@ extern void pmu_poll_disable(void);
 
 extern unsigned int sysctl_sched_uclamp_min_filter_us;
 extern unsigned int sysctl_sched_uclamp_max_filter_divider;
+
+extern int set_prefer_idle_task_name(void);
+extern char prefer_idle_task_name[LIB_PATH_LENGTH];
+extern spinlock_t prefer_idle_task_name_lock;
 
 #define MAX_PROC_SIZE 128
 
@@ -3109,6 +3115,43 @@ static ssize_t cpu_skip_mask_store(struct file *filp,
 }
 PROC_OPS_RW(cpu_skip_mask);
 
+int prefer_idle_task_name_show(struct seq_file *m, void *v)
+{
+
+	spin_lock(&prefer_idle_task_name_lock);
+	seq_printf(m, "%s\n", prefer_idle_task_name);
+	spin_unlock(&prefer_idle_task_name_lock);
+	return 0;
+}
+
+/*
+ * Accept multiple partial task names with comma separated
+ */
+ssize_t prefer_idle_task_name_store(struct file *filp, const char __user *ubuf, size_t count,
+				 loff_t *ppos)
+{
+
+	if (count >= sizeof(prefer_idle_task_name))
+		return -EINVAL;
+
+	spin_lock(&prefer_idle_task_name_lock);
+
+	if (copy_from_user(prefer_idle_task_name, ubuf, count)) {
+		prefer_idle_task_name[0] = '\0';
+		spin_unlock(&prefer_idle_task_name_lock);
+		return -EFAULT;
+	}
+
+	prefer_idle_task_name[count] = '\0';
+	spin_unlock(&prefer_idle_task_name_lock);
+
+	if (set_prefer_idle_task_name())
+		return -EINVAL;
+
+	return count;
+}
+PROC_OPS_RW(prefer_idle_task_name);
+
 struct pentry {
 	const char *name;
 	enum vendor_procfs_type type;
@@ -3219,6 +3262,8 @@ static struct pentry entries[] = {
 	PROC_ENTRY(skip_inefficient_opps),
 	// skip mask for RT wake up
 	PROC_ENTRY(cpu_skip_mask),
+	// names for the prefer_idle task
+	PROC_ENTRY(prefer_idle_task_name),
 };
 
 
