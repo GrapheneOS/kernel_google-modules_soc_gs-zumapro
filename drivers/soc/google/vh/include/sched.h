@@ -102,6 +102,7 @@ struct vendor_task_struct {
 	bool prefer_idle;
 	bool adpf;
 	bool preempt_wakeup;
+	bool auto_uclamp_max;
 
 	/*
 	 * A general field for time measurement in the same process context.

@@ -2151,7 +2151,7 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 	vnd_min = vg[vp->group].uc_req[UCLAMP_MIN].value;
 	vnd_max = is_adpf ?
 		uclamp_none(UCLAMP_MAX) : vg[vp->group].uc_req[UCLAMP_MAX].value;
-	if (vg[vp->group].auto_uclamp_max && !is_adpf) {
+	if (get_auto_uclamp_max(p) && !is_adpf) {
 		vp->auto_uclamp_max_flags |= AUTO_UCLAMP_MAX_FLAG_GROUP;
 		vnd_max = sched_auto_uclamp_max[task_cpu(p)];
 	} else {
@@ -2271,6 +2271,7 @@ void initialize_vendor_group_property(void)
 		vg[i].qos_prefer_fit_enable = false;
 		vg[i].qos_boost_prio_enable = false;
 		vg[i].qos_preempt_wakeup_enable = false;
+		vg[i].qos_auto_uclamp_max_enable = false;
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)

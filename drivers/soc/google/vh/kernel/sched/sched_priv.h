@@ -183,6 +183,7 @@ struct vendor_group_property {
 	bool qos_prefer_fit_enable;
 	bool qos_boost_prio_enable;
 	bool qos_preempt_wakeup_enable;
+	bool qos_auto_uclamp_max_enable;
 };
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -629,6 +630,14 @@ static inline bool get_preempt_wakeup(struct task_struct *p)
 	       vg[vp->group].qos_preempt_wakeup_enable;
 }
 
+static inline bool get_auto_uclamp_max(struct task_struct *p)
+{
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+
+	return (vg[vp->group].auto_uclamp_max ||
+		(vp->auto_uclamp_max && vg[vp->group].qos_auto_uclamp_max_enable));
+}
+
 static inline void init_vendor_inheritance_struct(struct vendor_inheritance_struct *vi)
 {
 	int i;
@@ -673,6 +682,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->prefer_idle = false;
 	v_tsk->adpf = false;
 	v_tsk->preempt_wakeup = false;
+	v_tsk->auto_uclamp_max = false;
 	init_vendor_inheritance_struct(&v_tsk->vi);
 }
 
