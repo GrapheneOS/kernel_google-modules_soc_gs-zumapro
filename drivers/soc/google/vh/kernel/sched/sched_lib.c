@@ -145,6 +145,7 @@ int set_prefer_idle_task_name(void)
 			if (tok == NULL)
 				break;
 
+			rcu_read_lock();
 			for_each_process_thread(p, t) {
 				if (strstr(t->comm, tok) != NULL) {
 					get_vendor_task_struct(t)->prefer_idle = true;
@@ -152,6 +153,7 @@ int set_prefer_idle_task_name(void)
 					break;
 				}
 			}
+			rcu_read_unlock();
 		}
 	}
 
