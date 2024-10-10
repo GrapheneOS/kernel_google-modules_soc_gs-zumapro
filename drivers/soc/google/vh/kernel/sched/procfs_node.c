@@ -3307,6 +3307,52 @@ ssize_t prefer_idle_task_name_store(struct file *filp, const char __user *ubuf, 
 }
 PROC_OPS_RW(prefer_idle_task_name);
 
+static ssize_t is_tgid_system_ui_store(struct file *filp,
+						const char __user *ubuf,
+						size_t count, loff_t *pos)
+{
+	unsigned int val;
+	char buf[MAX_PROC_SIZE];
+	struct task_struct *p;
+	char tgid_comm[TASK_COMM_LEN] = {0};
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 0, &val) || val > PID_MAX_LIMIT)
+		return -EINVAL;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(val);
+	if (!p) {
+		rcu_read_unlock();
+		return -ESRCH;
+	}
+
+	get_task_struct(p);
+	if (!check_cred(p)) {
+		put_task_struct(p);
+		rcu_read_unlock();
+		return -EACCES;
+	}
+
+	strlcpy(tgid_comm, p->comm, TASK_COMM_LEN);
+	put_task_struct(p);
+	rcu_read_unlock();
+
+	if (strstr(tgid_comm, "systemui") || strstr(tgid_comm, "nexuslauncher")) {
+		return count;
+	}  else {
+		return -ENOMSG;
+	}
+}
+PROC_OPS_WO(is_tgid_system_ui);
+
 struct pentry {
 	const char *name;
 	enum vendor_procfs_type type;
@@ -3433,6 +3479,8 @@ static struct pentry entries[] = {
 	PROC_ENTRY(priority_task_boost_value),
 	// names for the prefer_idle task
 	PROC_ENTRY(prefer_idle_task_name),
+	// check whether tgid belongs to systemui/nexuslauncher
+	PROC_ENTRY(is_tgid_system_ui),
 };
 
 
