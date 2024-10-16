@@ -279,6 +279,8 @@ static void set_performance_inheritance(struct task_struct *p, struct task_struc
 {
 	struct vendor_inheritance_struct *vi = get_vendor_inheritance_struct(p);
 
+	lockdep_assert_held(&pi_task->pi_lock);
+
 	if (pi_task) {
 		unsigned long p_util = task_util(p);
 		unsigned long p_uclamp_min = uclamp_eff_value_pixel_mod(p, UCLAMP_MIN);
@@ -286,8 +288,6 @@ static void set_performance_inheritance(struct task_struct *p, struct task_struc
 		unsigned long pi_util = task_util(pi_task);
 		unsigned long pi_uclamp_min = uclamp_eff_value_pixel_mod(pi_task, UCLAMP_MIN);
 		unsigned long pi_uclamp_max = uclamp_eff_value_pixel_mod(pi_task, UCLAMP_MAX);
-
-		lockdep_assert_held(&pi_task->pi_lock);
 
 		/*
 		 * Take task's util into consideration first to do full

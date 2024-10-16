@@ -60,9 +60,6 @@ unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR] =
 unsigned int sched_auto_uclamp_max[CONFIG_VH_SCHED_MAX_CPU_NR] =
 	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = SCHED_CAPACITY_SCALE };
 
-unsigned int thermal_cap_margin[CONFIG_VH_SCHED_MAX_CPU_NR] =
-	{ [0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1] = DEF_THERMAL_CAP_MARGIN };
-
 struct thermal_cap thermal_cap[CONFIG_VH_SCHED_MAX_CPU_NR] = {
 	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].uclamp_max = SCHED_CAPACITY_SCALE,
 	[0 ... CONFIG_VH_SCHED_MAX_CPU_NR - 1].freq = UINT_MAX};
@@ -97,6 +94,7 @@ extern void rvh_uclamp_eff_get_pixel_mod(void *data, struct task_struct *p, enum
  * Any change for these functions in upstream GKI would require extensive review
  * to make proper adjustment in vendor hook.
  */
+#define UTIL_EST_MARGIN (SCHED_CAPACITY_SCALE / 100)
 
 #define for_each_clamp_id(clamp_id) \
 	for ((clamp_id) = 0; (clamp_id) < UCLAMP_CNT; (clamp_id)++)
@@ -557,11 +555,6 @@ inline void set_prefer_high_cap(struct task_struct *p, bool val)
 static inline bool get_task_spreading(struct task_struct *p)
 {
 	return vg[get_vendor_group(p)].task_spreading;
-}
-
-static inline bool get_auto_prefer_fit(struct task_struct *p)
-{
-	return vg[get_vendor_group(p)].auto_prefer_fit && p->prio <= THREAD_PRIORITY_TOP_APP_BOOST;
 }
 
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
@@ -1591,7 +1584,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	struct cpuidle_state *idle_state;
 	unsigned long unimportant_max_spare_cap = 0, idle_max_cap = 0;
 	unsigned long cfs_load, min_load = ULONG_MAX;
-	bool prefer_fit = false;
+	bool prefer_fit = get_uclamp_fork_reset(p, true);
 	const cpumask_t *preferred_idle_mask;
 
 	rd = cpu_rq(this_cpu)->rd;
@@ -1602,9 +1595,6 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		goto out;
 
 	p_util_min = max(p_util_min, get_vendor_task_struct(p)->iowait_boost);
-
-	if (get_uclamp_fork_reset(p, true) || get_auto_prefer_fit(p))
-		prefer_fit = true;
 
 	for (; pd; pd = pd->next) {
 		unsigned long util_min = p_util_min, util_max = p_util_max;
@@ -2022,7 +2012,7 @@ int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 
 out:
 	rcu_read_unlock();
-	trace_sched_find_energy_efficient_cpu(p, prefer_idle, prefer_fit,
+	trace_sched_find_energy_efficient_cpu(p, prefer_idle, get_prefer_high_cap(p),
 					 task_importance, &idle_fit, &idle_unfit, &unimportant_fit,
 					 &unimportant_unfit, &packing, &max_spare_cap, &idle_unpreferred,
 					 best_energy_cpu);
@@ -2132,7 +2122,6 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 #if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
 	unsigned int tg_min, tg_max, vnd_min, vnd_max, value;
 	unsigned int nice_min = uclamp_none(UCLAMP_MIN), nice_max = uclamp_none(UCLAMP_MAX);
-	unsigned int thermal_uclamp_max = thermal_cap[task_cpu(p)].uclamp_max;
 
 	// Task prio specific restriction
 	get_uclamp_on_nice(p, UCLAMP_MIN, &nice_min);
@@ -2181,13 +2170,8 @@ uclamp_tg_restrict_pixel_mod(struct task_struct *p, enum uclamp_id clamp_id)
 		&& value < SCHED_CAPACITY_SCALE)
 		value = value + 1;
 
-	if (clamp_id == UCLAMP_MAX && thermal_uclamp_max != SCHED_CAPACITY_SCALE) {
-		if (!is_adpf)
-			value = min(value, thermal_uclamp_max);
-		else {
-			value = min(value, min_t(unsigned int, SCHED_CAPACITY_SCALE, thermal_uclamp_max *
-				thermal_cap_margin[task_cpu(p)] >> SCHED_CAPACITY_SHIFT));
-		}
+	if (clamp_id == UCLAMP_MAX && !is_adpf) {
+		value = min(value, thermal_cap[task_cpu(p)].uclamp_max);
 	}
 
 	// For low prio unthrottled task, reduce its uclamp.max by 1 which
@@ -2233,7 +2217,6 @@ void initialize_vendor_group_property(void)
 		vg[i].prefer_idle = false;
 		vg[i].prefer_high_cap = false;
 		vg[i].task_spreading = false;
-		vg[i].auto_prefer_fit = false;
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 		vg[i].group_throttle = max_val;
 #endif
@@ -2597,7 +2580,6 @@ out:
 	if (trace_sched_select_task_rq_fair_enabled())
 		trace_sched_select_task_rq_fair(p, task_util_est(p),
 						sync_wakeup, prefer_prev,
-						get_uclamp_fork_reset(p, true),
 						get_prefer_high_cap(p),
 						get_vendor_group(p),
 						uclamp_eff_value_pixel_mod(p, UCLAMP_MIN),

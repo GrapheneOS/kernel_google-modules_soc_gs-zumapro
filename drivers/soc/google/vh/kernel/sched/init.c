@@ -117,7 +117,6 @@ extern int pmu_poll_init(void);
 extern void set_cluster_enabled_cb(int cluster, int enabled);
 extern void register_set_cluster_enabled_cb(void (*func)(int, int));
 extern void vh_sched_resume_end(void *data, void *unused);
-extern void vh_set_task_comm_pixel_mod(void *data, struct task_struct *p);
 
 extern struct cpufreq_governor sched_pixel_gov;
 extern bool wait_for_init;
@@ -568,10 +567,6 @@ static int vh_sched_init(void)
 
 	ret = register_trace_android_rvh_try_to_wake_up_success(
 		rvh_try_to_wake_up_success_pixel_mod, NULL);
-	if (ret)
-		return ret;
-
-	ret = register_trace_android_vh_set_task_comm(vh_set_task_comm_pixel_mod, NULL);
 	if (ret)
 		return ret;
 

@@ -12,18 +12,10 @@
 #include <kernel/sched/sched.h>
 #include <../../../vh/include/sched.h>
 
-#include "sched_priv.h"
-
+#define LIB_PATH_LENGTH 512
 static char sched_lib_name[LIB_PATH_LENGTH];
 unsigned long sched_lib_mask_out_val;
 unsigned long sched_lib_mask_in_val;
-
-extern unsigned int vendor_sched_priority_task_boost_value;
-char priority_task_name[LIB_PATH_LENGTH];
-DEFINE_SPINLOCK(priority_task_name_lock);
-
-char prefer_idle_task_name[LIB_PATH_LENGTH];
-DEFINE_SPINLOCK(prefer_idle_task_name_lock);
 
 static DEFINE_MUTEX(__sched_lib_name_mutex);
 
@@ -137,80 +129,4 @@ void rvh_sched_setaffinity_mod(void *data, struct task_struct *task,
 
 	pr_debug("schedlib setaff tid: %d, mask out: %*pb\n",
 		 task_pid_nr(task), cpumask_pr_args(&out_mask));
-}
-
-/*
- * boost uclamp.min of priority task to above LC capacity
- */
-static inline void boost_priority_task(struct task_struct *p)
-{
-	struct rq *rq = task_rq(p);
-	struct rq_flags rf;
-
-	rq_lock_irqsave(rq, &rf);
-	uclamp_rq_dec_id(task_rq(p), p, UCLAMP_MIN);
-	uclamp_se_set(&p->uclamp_req[UCLAMP_MIN], vendor_sched_priority_task_boost_value, true);
-	uclamp_rq_inc_id(task_rq(p), p, UCLAMP_MIN);
-	rq_unlock_irqrestore(rq, &rf);
-}
-
-void vh_set_task_comm_pixel_mod(void *data, struct task_struct *p)
-{
-	char tmp[LIB_PATH_LENGTH];
-	char *tok, *str;
-	unsigned long flags;
-
-	spin_lock_irqsave(&priority_task_name_lock, flags);
-	strlcpy(tmp, priority_task_name, LIB_PATH_LENGTH);
-	spin_unlock_irqrestore(&priority_task_name_lock, flags);
-	str = tmp;
-
-	if (*tmp != '\0') {
-		while (1) {
-			tok = strsep(&str, ",");
-
-			if (tok == NULL)
-				break;
-
-			if (strstr(p->comm, tok) != NULL) {
-				boost_priority_task(p);
-				break;
-			}
-		}
-	}
-}
-
-int set_prefer_idle_task_name(void)
-{
-	char tmp[LIB_PATH_LENGTH];
-	char *tok, *str;
-	struct task_struct *p, *t;
-	int ret = -1;
-
-	spin_lock(&prefer_idle_task_name_lock);
-	strlcpy(tmp, prefer_idle_task_name, LIB_PATH_LENGTH);
-	spin_unlock(&prefer_idle_task_name_lock);
-
-	if (*tmp != '\0') {
-		str = tmp;
-
-		while (1) {
-			tok = strsep(&str, ",");
-
-			if (tok == NULL)
-				break;
-
-			rcu_read_lock();
-			for_each_process_thread(p, t) {
-				if (strstr(t->comm, tok) != NULL) {
-					get_vendor_task_struct(t)->prefer_idle = true;
-					ret = 0;
-					break;
-				}
-			}
-			rcu_read_unlock();
-		}
-	}
-
-	return ret;
 }
