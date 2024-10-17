@@ -7,12 +7,14 @@
 #define UCLAMP_STATS_STEP   (100 / (UCLAMP_STATS_SLOTS - 1))
 #define DEF_UTIL_THRESHOLD  1280
 #define DEF_UTIL_POST_INIT_SCALE  512
+#define DEF_THERMAL_CAP_MARGIN  1536
 #define C1_EXIT_LATENCY     1
 #define THREAD_PRIORITY_TOP_APP_BOOST 110
 #define THREAD_PRIORITY_BACKGROUND    130
 #define THREAD_PRIORITY_LOWEST        139
 #define LIST_QUEUED         0xa5a55a5a
 #define LIST_NOT_QUEUED     0x5a5aa5a5
+#define LIB_PATH_LENGTH 512
 /*
  * For cpu running normal tasks, its uclamp.min will be 0 and uclamp.max will be 1024,
  * and the sum will be 1024. We use this as index that cpu is not running important tasks.
@@ -40,6 +42,7 @@
 		      __val / DIV_ROUND_CLOSEST(SCHED_CAPACITY_SCALE, UCLAMP_BUCKETS),	      \
 		      UCLAMP_BUCKETS - 1)
 
+extern unsigned int thermal_cap_margin[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_capacity_margin[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_auto_fits_capacity[CONFIG_VH_SCHED_MAX_CPU_NR];
 extern unsigned int sched_dvfs_headroom[CONFIG_VH_SCHED_MAX_CPU_NR];
@@ -146,6 +149,7 @@ struct vendor_group_property {
 	bool prefer_high_cap;
 	bool task_spreading;
 	bool auto_uclamp_max;
+	bool auto_prefer_fit;
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	unsigned int group_throttle;
 #endif
@@ -230,6 +234,14 @@ enum vendor_group_attribute {
 	VTA_PROC_GROUP,
 };
 
+enum VENDOR_TUNABLE_TYPE {
+	SCHED_CAPACITY_MARGIN,
+	SCHED_AUTO_UCLAMP_MAX,
+	SCHED_DVFS_HEADROOM,
+	SCHED_IOWAIT_BOOST_MAX,
+	THERMAL_CAP_MARGIN,
+};
+
 #if !IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 struct vendor_task_group_struct {
 	enum vendor_group group;
@@ -270,6 +282,8 @@ DECLARE_PER_CPU(u64, dvfs_update_delay);
  * Any change for these functions in upstream GKI would require extensive review
  * to make proper adjustment in vendor hook.
  */
+#define UTIL_EST_MARGIN (SCHED_CAPACITY_SCALE / 100)
+
 extern struct uclamp_se uclamp_default[UCLAMP_CNT];
 
 void set_next_buddy(struct sched_entity *se);
@@ -538,6 +552,37 @@ static inline bool is_binder_task(struct task_struct *p)
 	return get_vendor_task_struct(p)->is_binder_task;
 }
 
+static inline bool should_auto_prefer_idle(struct task_struct *p, int group)
+{
+	if (group == VG_TOPAPP) {
+		/*
+		 * Binder Task
+		 */
+		if (is_binder_task(p))
+			return true;
+		/*
+		 * Task of prio <= 120 and with possitive wake_q_count
+		 */
+		if (p->prio <= DEFAULT_PRIO && p->wake_q_count)
+			return true;
+		/*
+		 * Task of prio <= 120 and waked up by another process
+		 */
+		if (current) {
+			if (p->prio <= DEFAULT_PRIO && current->tgid != p->tgid)
+				return true;
+		}
+	} else if (group == VG_FOREGROUND) {
+		/*
+		 * Binder Task
+		 */
+		if (is_binder_task(p))
+			return true;
+	}
+
+	return false;
+}
+
 static inline bool get_prefer_idle(struct task_struct *p)
 {
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
@@ -549,8 +594,7 @@ static inline bool get_prefer_idle(struct task_struct *p)
 	if (get_uclamp_fork_reset(p, true) || vp->prefer_idle || vi->prefer_idle)
 		return true;
 	else if (vendor_sched_auto_prefer_idle)
-		return vp->group == VG_TOPAPP && ((p->prio <= DEFAULT_PRIO && p->wake_q_count) ||
-			is_binder_task(p));
+		return should_auto_prefer_idle(p, vp->group);
 	else if (vendor_sched_reduce_prefer_idle)
 		return (vg[vp->group].prefer_idle && p->prio <= DEFAULT_PRIO &&
 			uclamp_eff_value_pixel_mod(p, UCLAMP_MAX) == SCHED_CAPACITY_SCALE);
@@ -950,7 +994,7 @@ static inline void __update_util_est_invariance(struct rq *rq,
 	vp->prev_sum_exec_runtime = se->sum_exec_runtime;
 
 	/* Is the task util increasing? */
-	if (task_util(p) < vp->util_enqueued)
+	if (task_util(p) < vp->util_enqueued + UTIL_EST_MARGIN)
 		return;
 
 	new_util_est = approximate_util_avg(vp->util_enqueued, vp->delta_exec);
