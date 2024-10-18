@@ -2269,6 +2269,7 @@ void initialize_vendor_group_property(void)
 		vg[i].qos_prefer_idle_enable = false;
 		vg[i].qos_prefer_fit_enable = false;
 		vg[i].qos_boost_prio_enable = false;
+		vg[i].qos_preempt_wakeup_enable = false;
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -2286,33 +2287,18 @@ void rvh_check_preempt_wakeup_pixel_mod(void *data, struct rq *rq, struct task_s
 			bool *preempt, bool *nopreempt, int wake_flags, struct sched_entity *se,
 			struct sched_entity *pse, int next_buddy_marked, unsigned int granularity)
 {
-	unsigned long ideal_runtime, delta_exec;
-
-	if (entity_is_task(pse) || entity_is_task(se))
-		return;
-
 	/*
 	 * Let ADPF task preempt non-ADPF task.
 	 */
-	if(!get_uclamp_fork_reset(task_of(se), true) && get_uclamp_fork_reset(task_of(pse), true)) {
+	if((!get_uclamp_fork_reset(task_of(se), true) &&
+	    get_uclamp_fork_reset(task_of(pse), true)) ||
+	   (!get_uclamp_fork_reset(task_of(se), true) && !get_preempt_wakeup(task_of(se)) &&
+	    get_preempt_wakeup(task_of(pse)))) {
 		if (!next_buddy_marked)
 			set_next_buddy(pse);
 
 		*preempt = true;
 		return;
-	}
-
-	ideal_runtime = sched_slice(cfs_rq_of(se), se);
-	delta_exec = se->sum_exec_runtime - se->prev_sum_exec_runtime;
-	/*
-	 * If the current group has run enough time for its slice and the new
-	 * group has bigger weight, go ahead and preempt.
-	 */
-	if (ideal_runtime <= delta_exec && se->load.weight < pse->load.weight) {
-		if (!next_buddy_marked)
-			set_next_buddy(pse);
-
-		*preempt = true;
 	}
 
 }

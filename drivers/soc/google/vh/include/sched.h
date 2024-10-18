@@ -53,6 +53,7 @@ struct vendor_inheritance_struct {
 	short int adpf;
 	short int prefer_idle;
 	short int prefer_fit;
+	short int preempt_wakeup;
 };
 
 struct uclamp_filter {
@@ -99,6 +100,7 @@ struct vendor_task_struct {
 	bool prefer_fit;
 	bool prefer_idle;
 	bool adpf;
+	bool preempt_wakeup;
 
 	/*
 	 * A general field for time measurement in the same process context.

@@ -172,6 +172,7 @@ enum vendor_procfs_type {
 		__PROC_GROUP_ENTRY(qos_prefer_idle_enable, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(qos_prefer_fit_enable, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(qos_boost_prio_enable, __group_name, __vg),	\
+		__PROC_GROUP_ENTRY(qos_preempt_wakeup_enable, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_task_group, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_proc_group, __group_name, __vg)
 
@@ -521,6 +522,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_adpf_enable, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_prefer_idle_enable, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_prefer_fit_enable, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_boost_prio_enable, VG_TOPAPP);
+VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_preempt_wakeup_enable, VG_TOPAPP);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, prefer_idle, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, prefer_high_cap, VG_FOREGROUND);
@@ -565,6 +567,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_adpf_enable, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_prefer_idle_enable, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_prefer_fit_enable, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_boost_prio_enable, VG_FOREGROUND);
+VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_preempt_wakeup_enable, VG_FOREGROUND);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, prefer_idle, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, prefer_high_cap, VG_SYSTEM);
@@ -609,6 +612,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_adpf_enable, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_prefer_idle_enable, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_prefer_fit_enable, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_boost_prio_enable, VG_SYSTEM);
+VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_preempt_wakeup_enable, VG_SYSTEM);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, prefer_idle, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, prefer_high_cap, VG_CAMERA);
@@ -653,6 +657,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_adpf_enable, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_prefer_idle_enable, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_prefer_fit_enable, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_boost_prio_enable, VG_CAMERA);
+VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_preempt_wakeup_enable, VG_CAMERA);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, prefer_idle, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, prefer_high_cap, VG_CAMERA_POWER);
@@ -697,6 +702,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_adpf_enable, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_prefer_idle_enable, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_prefer_fit_enable, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_boost_prio_enable, VG_CAMERA_POWER);
+VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_preempt_wakeup_enable, VG_CAMERA_POWER);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, prefer_idle, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, prefer_high_cap, VG_BACKGROUND);
@@ -741,6 +747,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_adpf_enable, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_prefer_idle_enable, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_prefer_fit_enable, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_boost_prio_enable, VG_BACKGROUND);
+VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_preempt_wakeup_enable, VG_BACKGROUND);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, prefer_idle, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, prefer_high_cap, VG_SYSTEM_BACKGROUND);
@@ -785,6 +792,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_adpf_enable, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_prefer_idle_enable, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_prefer_fit_enable, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_boost_prio_enable, VG_SYSTEM_BACKGROUND);
+VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_preempt_wakeup_enable, VG_SYSTEM_BACKGROUND);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, prefer_idle, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, prefer_high_cap, VG_NNAPI_HAL);
@@ -829,6 +837,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_adpf_enable, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_prefer_idle_enable, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_prefer_fit_enable, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_boost_prio_enable, VG_NNAPI_HAL);
+VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_preempt_wakeup_enable, VG_NNAPI_HAL);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, prefer_idle, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, prefer_high_cap, VG_RT);
@@ -873,6 +882,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_adpf_enable, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_prefer_idle_enable, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_prefer_fit_enable, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_boost_prio_enable, VG_RT);
+VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_preempt_wakeup_enable, VG_RT);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, prefer_idle, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, prefer_high_cap, VG_DEX2OAT);
@@ -917,6 +927,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_adpf_enable, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_prefer_idle_enable, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_prefer_fit_enable, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_boost_prio_enable, VG_DEX2OAT);
+VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_preempt_wakeup_enable, VG_DEX2OAT);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, prefer_idle, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, prefer_high_cap, VG_OTA);
@@ -961,6 +972,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_adpf_enable, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_prefer_idle_enable, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_prefer_fit_enable, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_boost_prio_enable, VG_OTA);
+VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_preempt_wakeup_enable, VG_OTA);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, prefer_idle, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, prefer_high_cap, VG_SF);
@@ -1005,6 +1017,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_adpf_enable, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_prefer_idle_enable, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_prefer_fit_enable, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_boost_prio_enable, VG_SF);
+VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_preempt_wakeup_enable, VG_SF);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, prefer_idle, VG_FOREGROUND_WINDOW);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, prefer_high_cap, VG_FOREGROUND_WINDOW);
@@ -1049,6 +1062,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_adpf_enable, VG_FOREGROUND_WINDOW);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_prefer_idle_enable, VG_FOREGROUND_WINDOW);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_prefer_fit_enable, VG_FOREGROUND_WINDOW);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_boost_prio_enable, VG_FOREGROUND_WINDOW);
+VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_preempt_wakeup_enable, VG_FOREGROUND_WINDOW);
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
@@ -1488,6 +1502,39 @@ static int update_adpf(const char *buf, bool val)
 	return 0;
 }
 
+static int update_preempt_wakeup(const char *buf, bool val)
+{
+	struct vendor_task_struct *vp;
+	struct task_struct *p;
+	pid_t pid;
+
+	if (kstrtoint(buf, 0, &pid) || pid <= 0)
+		return -EINVAL;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (!p) {
+		rcu_read_unlock();
+		return -ESRCH;
+	}
+
+	get_task_struct(p);
+
+	if (!check_cred(p)) {
+		put_task_struct(p);
+		rcu_read_unlock();
+		return -EACCES;
+	}
+
+	vp = get_vendor_task_struct(p);
+	vp->preempt_wakeup = val;
+
+	put_task_struct(p);
+	rcu_read_unlock();
+
+	return 0;
+}
+
 static inline void migrate_boost_prio(struct task_struct *p, unsigned int old, unsigned int new)
 {
 	struct rq_flags rf;
@@ -1622,6 +1669,7 @@ PER_TASK_BOOL_ATTRIBUTE(uclamp_fork_reset);
 PER_TASK_BOOL_ATTRIBUTE(boost_prio);
 PER_TASK_BOOL_ATTRIBUTE(prefer_fit);
 PER_TASK_BOOL_ATTRIBUTE(adpf);
+PER_TASK_BOOL_ATTRIBUTE(preempt_wakeup);
 
 static int dump_task_show(struct seq_file *m, void *v)
 {									      \
@@ -1635,9 +1683,10 @@ static int dump_task_show(struct seq_file *m, void *v)
 	bool prefer_idle;
 	bool prefer_fit;
 	bool boost_prio;
+	bool preempt_wakeup;
 
 	seq_printf(m, "pid comm group uclamp_min uclamp_max uclamp_eff_min uclamp_eff_max " \
-		   "uclamp_fork_reset adpf prefer_idle prefer_fit boost_prio\n");
+		   "uclamp_fork_reset adpf prefer_idle prefer_fit boost_prio preempt_wakeup\n");
 
 	rcu_read_lock();
 
@@ -1656,10 +1705,12 @@ static int dump_task_show(struct seq_file *m, void *v)
 		prefer_idle = vp->prefer_idle;
 		prefer_fit = vp->prefer_fit;
 		boost_prio = vp->boost_prio;
+		preempt_wakeup = vp->preempt_wakeup;
 		put_task_struct(t);
-		seq_printf(m, "%u %s %s %u %u %u %u %d %d %d %d %d\n", t->pid, t->comm, grp_name,
+		seq_printf(m, "%u %s %s %u %u %u %u %d %d %d %d %d %d\n", t->pid, t->comm, grp_name,
 			   uclamp_min, uclamp_max, uclamp_eff_min, uclamp_eff_max,
-			   uclamp_fork_reset, adpf, prefer_idle, prefer_fit, boost_prio);
+			   uclamp_fork_reset, adpf, prefer_idle, prefer_fit, boost_prio,
+			   preempt_wakeup);
 	}
 
 	rcu_read_unlock();
@@ -3386,6 +3437,8 @@ static struct pentry entries[] = {
 	PROC_SCHED_QOS_ENTRY(prefer_idle_clear),
 	PROC_SCHED_QOS_ENTRY(adpf_set),
 	PROC_SCHED_QOS_ENTRY(adpf_clear),
+	PROC_SCHED_QOS_ENTRY(preempt_wakeup_set),
+	PROC_SCHED_QOS_ENTRY(preempt_wakeup_clear),
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	// FG util group attributes
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
