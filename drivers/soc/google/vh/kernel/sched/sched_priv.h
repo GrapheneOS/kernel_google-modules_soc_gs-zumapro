@@ -908,17 +908,25 @@ static inline bool uclamp_is_ignore_uclamp_max(struct task_struct *p)
 
 static inline bool apply_uclamp_filters(struct rq *rq, struct task_struct *p)
 {
-	bool auto_uclamp_max = get_vendor_task_struct(p)->auto_uclamp_max_flags;
+	int auto_uclamp_max = get_vendor_task_struct(p)->auto_uclamp_max_flags;
 	unsigned long rq_uclamp_min = rq->uclamp[UCLAMP_MIN].value;
 	unsigned long rq_uclamp_max = rq->uclamp[UCLAMP_MAX].value;
 	bool force_cpufreq_update;
 
-	if (auto_uclamp_max) {
+	/*
+	 * For AUTO_UCLAMP_MAX_FLAG_GROUP the effective value should have been
+	 * updated correctly already by uclamp_rq_inc_id() by GKI. But for
+	 * per-task auto_uclamp_max we need to ensure we update
+	 * p->uclamp_req[] to reflect the CPU we are currently running on.
+	 */
+	if (auto_uclamp_max & AUTO_UCLAMP_MAX_FLAG_TASK) {
 		/* GKI has incremented it already, undo that */
 		uclamp_rq_dec_id(rq, p, UCLAMP_MAX);
+
 		/* update uclamp_max if set to auto */
 		uclamp_se_set(&p->uclamp_req[UCLAMP_MAX],
 			      sched_auto_uclamp_max[task_cpu(p)], true);
+
 		/*
 		 * re-apply uclamp_max applying the potentially new
 		 * auto value
