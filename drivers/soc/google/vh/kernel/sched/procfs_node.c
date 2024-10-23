@@ -331,7 +331,8 @@ enum vendor_procfs_type {
 				return -EINVAL;						      \
 			if (val > 1024 && val != AUTO_UCLAMP_MAX_MAGIC)			      \
 				return -EINVAL;						      \
-			if (val == gp->uc_req[__cid].value)				      \
+			if (val == gp->uc_req[__cid].value && (__cid != UCLAMP_MAX ||	      \
+			    !gp->auto_uclamp_max))					      \
 				return count;						      \
 			if (__cid == UCLAMP_MAX) {					      \
 				if (val == AUTO_UCLAMP_MAX_MAGIC) {			      \
