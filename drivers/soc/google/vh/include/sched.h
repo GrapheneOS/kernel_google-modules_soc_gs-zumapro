@@ -53,6 +53,7 @@ struct vendor_inheritance_struct {
 	short int adpf;
 	short int prefer_idle;
 	short int prefer_fit;
+	short int prefer_high_cap;
 	short int preempt_wakeup;
 };
 

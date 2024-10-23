@@ -546,7 +546,8 @@ static inline unsigned long cpu_load(struct rq *rq)
 bool get_prefer_high_cap(struct task_struct *p)
 {
 	return vg[get_vendor_group(p)].prefer_high_cap ||
-		get_vendor_task_struct(p)->prefer_high_cap;
+		get_vendor_task_struct(p)->prefer_high_cap ||
+		get_vendor_inheritance_struct(p)->prefer_high_cap;
 }
 
 inline void set_prefer_high_cap(struct task_struct *p, bool val)

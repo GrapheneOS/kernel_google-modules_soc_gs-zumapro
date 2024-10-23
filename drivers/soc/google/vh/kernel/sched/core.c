@@ -98,6 +98,15 @@ DEFINE_STATIC_KEY_FALSE(skip_inefficient_opps_enable);
         } \
     } while (0)
 
+#define vi_set_prefer_high_cap(vi, type, value) \
+    do { \
+        if (value) { \
+            (vi)->prefer_high_cap |= (1 << (type)); \
+        } else { \
+            (vi)->prefer_high_cap &= ~(1 << (type)); \
+        } \
+    } while (0)
+
 #define vi_set_preempt_wakeup(vi, type, value) \
     do { \
         if (value) { \
@@ -353,6 +362,9 @@ static void set_performance_inheritance_locked(struct task_struct *p, struct tas
 
 		if (!!get_preempt_wakeup(pi_task))
 			vi_set_preempt_wakeup(vi, type, 1);
+
+		if (task_cpu(pi_task) >= pixel_cluster_start_cpu[1])
+			vi_set_prefer_high_cap(vi, type, 1);
 	} else {
 		vi->uclamp[type][UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 		vi->uclamp[type][UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
@@ -364,6 +376,8 @@ static void set_performance_inheritance_locked(struct task_struct *p, struct tas
 		vi_set_prefer_fit(vi, type, 0);
 
 		vi_set_preempt_wakeup(vi, type, 0);
+
+		vi_set_prefer_high_cap(vi, type, 0);
 	}
 }
 

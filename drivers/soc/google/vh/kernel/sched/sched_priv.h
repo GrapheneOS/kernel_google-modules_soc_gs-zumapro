@@ -640,6 +640,7 @@ static inline void init_vendor_inheritance_struct(struct vendor_inheritance_stru
 	vi->uclamp_fork_reset = 0;
 	vi->adpf = 0;
 	vi->prefer_idle = 0;
+	vi->prefer_high_cap = 0;
 	vi->prefer_fit = 0;
 	vi->preempt_wakeup = 0;
 }
