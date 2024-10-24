@@ -363,7 +363,7 @@ static void set_performance_inheritance_locked(struct task_struct *p, struct tas
 		if (!!get_preempt_wakeup(pi_task))
 			vi_set_preempt_wakeup(vi, type, 1);
 
-		if (task_cpu(pi_task) >= pixel_cluster_start_cpu[1])
+		if (!!get_prefer_high_cap(pi_task) || task_cpu(pi_task) >= pixel_cluster_start_cpu[1])
 			vi_set_prefer_high_cap(vi, type, 1);
 	} else {
 		vi->uclamp[type][UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);

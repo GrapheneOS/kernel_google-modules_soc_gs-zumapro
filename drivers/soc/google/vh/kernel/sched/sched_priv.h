@@ -184,6 +184,7 @@ struct vendor_group_property {
 	bool qos_boost_prio_enable;
 	bool qos_preempt_wakeup_enable;
 	bool qos_auto_uclamp_max_enable;
+	bool qos_prefer_high_cap_enable;
 };
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -638,6 +639,21 @@ static inline bool get_auto_uclamp_max(struct task_struct *p)
 		(vp->auto_uclamp_max && vg[vp->group].qos_auto_uclamp_max_enable));
 }
 
+static inline bool get_prefer_high_cap(struct task_struct *p)
+{
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+	struct vendor_inheritance_struct *vi = get_vendor_inheritance_struct(p);
+
+	return vg[get_vendor_group(p)].prefer_high_cap || vp->auto_prefer_high_cap ||
+	       ((vp->prefer_high_cap || vi->prefer_high_cap) &&
+	        vg[vp->group].qos_prefer_high_cap_enable);
+}
+
+static inline void set_auto_prefer_high_cap(struct task_struct *p, bool val)
+{
+	get_vendor_task_struct(p)->auto_prefer_high_cap = val;
+}
+
 static inline void init_vendor_inheritance_struct(struct vendor_inheritance_struct *vi)
 {
 	int i;
@@ -666,7 +682,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	INIT_LIST_HEAD(&v_tsk->node);
 	v_tsk->queued_to_list = LIST_NOT_QUEUED;
 	v_tsk->uclamp_fork_reset = false;
-	v_tsk->prefer_high_cap = false;
+	v_tsk->auto_prefer_high_cap = false;
 	v_tsk->auto_uclamp_max_flags = 0;
 	v_tsk->uclamp_filter.uclamp_min_ignored = 0;
 	v_tsk->uclamp_filter.uclamp_max_ignored = 0;
@@ -683,6 +699,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->adpf = false;
 	v_tsk->preempt_wakeup = false;
 	v_tsk->auto_uclamp_max = false;
+	v_tsk->prefer_high_cap = false;
 	init_vendor_inheritance_struct(&v_tsk->vi);
 }
 
