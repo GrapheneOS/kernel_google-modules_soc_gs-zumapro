@@ -385,9 +385,11 @@ static void set_performance_inheritance_locked(struct task_struct *p, struct tas
 static inline void set_performance_inheritance(struct task_struct *p, struct task_struct *pi_task,
 	unsigned int type)
 {
-	raw_spin_lock(&p->pi_lock);
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&p->pi_lock, flags);
 	set_performance_inheritance_locked(p, pi_task, type);
-	raw_spin_unlock(&p->pi_lock);
+	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 }
 
 void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
