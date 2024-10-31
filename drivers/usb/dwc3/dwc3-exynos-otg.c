@@ -325,7 +325,6 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 		dwc3_otg_phy_tune(dwc, 1);
 
 		dwc3_exynos_core_init(dwc, exynos);
-		dwc3_core_susphy_set(dwc, 1);
 		dwc3_otg_set_host_mode(dotg);
 
 		ret = platform_device_add(dwc->xhci);
@@ -355,7 +354,6 @@ int dwc3_otg_start_host(struct dwc3_otg *dotg, int on)
 				dwc->gadget_driver = temp_gadget_driver;
 		}
 
-		dwc3_core_susphy_set(dwc, 0);
 		dwc3_exynos_host_exit(exynos);
 		dwc->xhci = NULL;
 err1:
