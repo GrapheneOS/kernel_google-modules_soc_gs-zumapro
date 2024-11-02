@@ -75,6 +75,10 @@ extern unsigned int sysctl_sched_uclamp_max_filter_divider;
 extern char priority_task_name[LIB_PATH_LENGTH];
 extern spinlock_t priority_task_name_lock;
 
+extern int set_prefer_idle_task_name(void);
+extern char prefer_idle_task_name[LIB_PATH_LENGTH];
+extern spinlock_t prefer_idle_task_name_lock;
+
 #define MAX_PROC_SIZE 128
 
 static const char *GRP_NAME[VG_MAX] = {"sys", "ta", "fg", "cam", "cam_power", "bg", "sys_bg",
@@ -3061,6 +3065,43 @@ static ssize_t priority_task_boost_value_store(struct file *filp, const char __u
 }
 PROC_OPS_RW(priority_task_boost_value);
 
+int prefer_idle_task_name_show(struct seq_file *m, void *v)
+{
+
+	spin_lock(&prefer_idle_task_name_lock);
+	seq_printf(m, "%s\n", prefer_idle_task_name);
+	spin_unlock(&prefer_idle_task_name_lock);
+	return 0;
+}
+
+/*
+ * Accept multiple partial task names with comma separated
+ */
+ssize_t prefer_idle_task_name_store(struct file *filp, const char __user *ubuf, size_t count,
+				 loff_t *ppos)
+{
+
+	if (count >= sizeof(prefer_idle_task_name))
+		return -EINVAL;
+
+	spin_lock(&prefer_idle_task_name_lock);
+
+	if (copy_from_user(prefer_idle_task_name, ubuf, count)) {
+		prefer_idle_task_name[0] = '\0';
+		spin_unlock(&prefer_idle_task_name_lock);
+		return -EFAULT;
+	}
+
+	prefer_idle_task_name[count] = '\0';
+	spin_unlock(&prefer_idle_task_name_lock);
+
+	if (set_prefer_idle_task_name())
+		return -EINVAL;
+
+	return count;
+}
+PROC_OPS_RW(prefer_idle_task_name);
+
 struct pentry {
 	const char *name;
 	enum vendor_procfs_type type;
@@ -3178,6 +3219,8 @@ static struct pentry entries[] = {
 	PROC_ENTRY(priority_task_name),
 	// boost value for the priority task
 	PROC_ENTRY(priority_task_boost_value),
+	// names for the prefer_idle task
+	PROC_ENTRY(prefer_idle_task_name),
 };
 
 
