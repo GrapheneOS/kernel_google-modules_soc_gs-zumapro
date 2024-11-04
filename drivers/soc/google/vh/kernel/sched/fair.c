@@ -2261,6 +2261,7 @@ void initialize_vendor_group_property(void)
 		vg[i].qos_preempt_wakeup_enable = false;
 		vg[i].qos_auto_uclamp_max_enable = false;
 		vg[i].qos_prefer_high_cap_enable = false;
+		vg[i].qos_rampup_multiplier_enable = false;
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -2307,11 +2308,7 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 
 	if (static_branch_likely(&auto_dvfs_headroom_enable)) {
 		struct vendor_task_struct *vp = get_vendor_task_struct(p);
-		unsigned int rampup_multiplier;
-		if (get_uclamp_fork_reset(p, true))
-			rampup_multiplier = vendor_sched_adpf_rampup_multiplier;
-		else
-			rampup_multiplier = vg[get_vendor_group(p)].rampup_multiplier;
+		unsigned int rampup_multiplier = get_rampup_multiplier(p);
 
 		if (vg[get_vendor_group(p)].disable_util_est) {
 			p->se.avg.util_est.enqueued = 0;

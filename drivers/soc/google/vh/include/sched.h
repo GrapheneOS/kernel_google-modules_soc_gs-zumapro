@@ -104,6 +104,7 @@ struct vendor_task_struct {
 	bool preempt_wakeup;
 	bool auto_uclamp_max;
 	bool prefer_high_cap;
+	unsigned int rampup_multiplier;
 
 	/*
 	 * A general field for time measurement in the same process context.

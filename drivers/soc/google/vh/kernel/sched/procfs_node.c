@@ -175,6 +175,7 @@ enum vendor_procfs_type {
 		__PROC_GROUP_ENTRY(qos_preempt_wakeup_enable, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(qos_auto_uclamp_max_enable, __group_name, __vg),	\
 		__PROC_GROUP_ENTRY(qos_prefer_high_cap_enable, __group_name, __vg),	\
+		__PROC_GROUP_ENTRY(qos_rampup_multiplier_enable, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_task_group, __group_name, __vg),	\
 		__PROC_SET_GROUP_ENTRY(set_proc_group, __group_name, __vg)
 
@@ -384,6 +385,39 @@ enum vendor_procfs_type {
 		}									      \
 		PROC_OPS_WO(__attr##_clear);
 
+#define PER_TASK_UINT_ATTRIBUTE(__attr)						      \
+		static ssize_t __attr##_set##_store(struct file *filp, \
+			const char __user *ubuf, \
+			size_t count, loff_t *pos) \
+		{									      \
+			char buf[MAX_PROC_SIZE];	\
+			int ret;	\
+			if (count >= sizeof(buf))	\
+				return -EINVAL;	\
+			if (copy_from_user(buf, ubuf, count))	\
+				return -EFAULT;	\
+			buf[count] = '\0';	\
+			ret = update_##__attr(buf, true, count);   \
+			return ret ?: count;						      \
+		}									      \
+		PROC_OPS_WO(__attr##_set);	\
+		static ssize_t __attr##_clear##_store(struct file *filp, \
+			const char __user *ubuf, \
+			size_t count, loff_t *pos) \
+		{									      \
+			char buf[MAX_PROC_SIZE];	\
+			int ret;	\
+			if (count >= sizeof(buf))	\
+				return -EINVAL;	\
+			if (copy_from_user(buf, ubuf, count))	\
+				return -EFAULT;	\
+			buf[count] = '\0';	\
+			ret = update_##__attr(buf, false, count);   \
+			return ret ?: count;						      \
+		}									      \
+		PROC_OPS_WO(__attr##_clear);
+
+
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 #define UTILIZATION_GROUP_UINT_ATTRIBUTE(__grp, __attr, __ug)				      \
 		static int __grp##_##__attr##_show(struct seq_file *m, void *v) 	\
@@ -528,6 +562,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_boost_prio_enable, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_preempt_wakeup_enable, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_auto_uclamp_max_enable, VG_TOPAPP);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_prefer_high_cap_enable, VG_TOPAPP);
+VENDOR_GROUP_BOOL_ATTRIBUTE(ta, qos_rampup_multiplier_enable, VG_TOPAPP);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, prefer_idle, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, prefer_high_cap, VG_FOREGROUND);
@@ -575,6 +610,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_boost_prio_enable, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_preempt_wakeup_enable, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_auto_uclamp_max_enable, VG_FOREGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_prefer_high_cap_enable, VG_FOREGROUND);
+VENDOR_GROUP_BOOL_ATTRIBUTE(fg, qos_rampup_multiplier_enable, VG_FOREGROUND);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, prefer_idle, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, prefer_high_cap, VG_SYSTEM);
@@ -622,6 +658,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_boost_prio_enable, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_preempt_wakeup_enable, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_auto_uclamp_max_enable, VG_SYSTEM);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_prefer_high_cap_enable, VG_SYSTEM);
+VENDOR_GROUP_BOOL_ATTRIBUTE(sys, qos_rampup_multiplier_enable, VG_SYSTEM);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, prefer_idle, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, prefer_high_cap, VG_CAMERA);
@@ -669,6 +706,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_boost_prio_enable, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_preempt_wakeup_enable, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_auto_uclamp_max_enable, VG_CAMERA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_prefer_high_cap_enable, VG_CAMERA);
+VENDOR_GROUP_BOOL_ATTRIBUTE(cam, qos_rampup_multiplier_enable, VG_CAMERA);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, prefer_idle, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, prefer_high_cap, VG_CAMERA_POWER);
@@ -716,6 +754,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_boost_prio_enable, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_preempt_wakeup_enable, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_auto_uclamp_max_enable, VG_CAMERA_POWER);
 VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_prefer_high_cap_enable, VG_CAMERA_POWER);
+VENDOR_GROUP_BOOL_ATTRIBUTE(cam_power, qos_rampup_multiplier_enable, VG_CAMERA_POWER);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, prefer_idle, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, prefer_high_cap, VG_BACKGROUND);
@@ -763,6 +802,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_boost_prio_enable, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_preempt_wakeup_enable, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_auto_uclamp_max_enable, VG_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_prefer_high_cap_enable, VG_BACKGROUND);
+VENDOR_GROUP_BOOL_ATTRIBUTE(bg, qos_rampup_multiplier_enable, VG_BACKGROUND);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, prefer_idle, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, prefer_high_cap, VG_SYSTEM_BACKGROUND);
@@ -810,6 +850,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_boost_prio_enable, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_preempt_wakeup_enable, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_auto_uclamp_max_enable, VG_SYSTEM_BACKGROUND);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_prefer_high_cap_enable, VG_SYSTEM_BACKGROUND);
+VENDOR_GROUP_BOOL_ATTRIBUTE(sysbg, qos_rampup_multiplier_enable, VG_SYSTEM_BACKGROUND);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, prefer_idle, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, prefer_high_cap, VG_NNAPI_HAL);
@@ -857,6 +898,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_boost_prio_enable, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_preempt_wakeup_enable, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_auto_uclamp_max_enable, VG_NNAPI_HAL);
 VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_prefer_high_cap_enable, VG_NNAPI_HAL);
+VENDOR_GROUP_BOOL_ATTRIBUTE(nnapi, qos_rampup_multiplier_enable, VG_NNAPI_HAL);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, prefer_idle, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, prefer_high_cap, VG_RT);
@@ -904,6 +946,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_boost_prio_enable, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_preempt_wakeup_enable, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_auto_uclamp_max_enable, VG_RT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_prefer_high_cap_enable, VG_RT);
+VENDOR_GROUP_BOOL_ATTRIBUTE(rt, qos_rampup_multiplier_enable, VG_RT);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, prefer_idle, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, prefer_high_cap, VG_DEX2OAT);
@@ -951,6 +994,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_boost_prio_enable, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_preempt_wakeup_enable, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_auto_uclamp_max_enable, VG_DEX2OAT);
 VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_prefer_high_cap_enable, VG_DEX2OAT);
+VENDOR_GROUP_BOOL_ATTRIBUTE(dex2oat, qos_rampup_multiplier_enable, VG_DEX2OAT);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, prefer_idle, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, prefer_high_cap, VG_OTA);
@@ -998,6 +1042,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_boost_prio_enable, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_preempt_wakeup_enable, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_auto_uclamp_max_enable, VG_OTA);
 VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_prefer_high_cap_enable, VG_OTA);
+VENDOR_GROUP_BOOL_ATTRIBUTE(ota, qos_rampup_multiplier_enable, VG_OTA);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, prefer_idle, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, prefer_high_cap, VG_SF);
@@ -1045,6 +1090,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_boost_prio_enable, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_preempt_wakeup_enable, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_auto_uclamp_max_enable, VG_SF);
 VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_prefer_high_cap_enable, VG_SF);
+VENDOR_GROUP_BOOL_ATTRIBUTE(sf, qos_rampup_multiplier_enable, VG_SF);
 
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, prefer_idle, VG_FOREGROUND_WINDOW);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, prefer_high_cap, VG_FOREGROUND_WINDOW);
@@ -1092,6 +1138,7 @@ VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_boost_prio_enable, VG_FOREGROUND_WINDOW);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_preempt_wakeup_enable, VG_FOREGROUND_WINDOW);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_auto_uclamp_max_enable, VG_FOREGROUND_WINDOW);
 VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_prefer_high_cap_enable, VG_FOREGROUND_WINDOW);
+VENDOR_GROUP_BOOL_ATTRIBUTE(fg_wi, qos_rampup_multiplier_enable, VG_FOREGROUND_WINDOW);
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
@@ -1630,6 +1677,87 @@ static int update_prefer_high_cap(const char *buf, bool val)
 	return 0;
 }
 
+static int update_rampup_multiplier(const char *buf, bool set, int count)
+{
+	struct vendor_task_struct *vp;
+	struct task_struct *p;
+	pid_t pid;
+	unsigned int multiplier;
+	char *str1, *str2, *pid_str, *multiplier_str;
+	int ret = 0;
+
+	if (set) {
+		str1 = kstrndup(buf, count, GFP_KERNEL);
+		if (!str1)
+			return -ENOMEM;
+
+		str2 = str1;
+		pid_str = strsep(&str2, ":");
+		multiplier_str = str2;
+
+		if (pid_str == NULL || multiplier_str == NULL) {
+			ret = -EINVAL;
+			goto error_free;
+		}
+
+		if (kstrtouint(pid_str, 0, &pid) || kstrtouint(multiplier_str, 0, &multiplier)) {
+			ret = -EINVAL;
+			goto error_free;
+		}
+
+		rcu_read_lock();
+		p = find_task_by_vpid(pid);
+		if (!p) {
+			ret = -ESRCH;
+			goto error_unlock_set;
+		}
+
+		get_task_struct(p);
+
+		if (!check_cred(p)) {
+			ret = -EACCES;
+			goto error_put_task_set;
+		}
+
+		vp = get_vendor_task_struct(p);
+		vp->rampup_multiplier = multiplier;
+error_put_task_set:
+		put_task_struct(p);
+error_unlock_set:
+		rcu_read_unlock();
+error_free:
+		kfree(str1);
+
+	} else {
+
+		if (kstrtoint(buf, 0, &pid) || pid <= 0)
+			return -EINVAL;
+
+		rcu_read_lock();
+		p = find_task_by_vpid(pid);
+		if (!p) {
+			ret = -ESRCH;
+			goto error_put_task_clear;
+		}
+
+		get_task_struct(p);
+
+		if (!check_cred(p)) {
+			ret = -EACCES;
+			goto error_unlock_clear;
+		}
+
+		vp = get_vendor_task_struct(p);
+		vp->rampup_multiplier = 1;
+error_put_task_clear:
+		put_task_struct(p);
+error_unlock_clear:
+		rcu_read_unlock();
+	}
+
+	return ret;
+}
+
 static inline void migrate_boost_prio(struct task_struct *p, unsigned int old, unsigned int new)
 {
 	struct rq_flags rf;
@@ -1767,6 +1895,7 @@ PER_TASK_BOOL_ATTRIBUTE(adpf);
 PER_TASK_BOOL_ATTRIBUTE(preempt_wakeup);
 PER_TASK_BOOL_ATTRIBUTE(auto_uclamp_max);
 PER_TASK_BOOL_ATTRIBUTE(prefer_high_cap);
+PER_TASK_UINT_ATTRIBUTE(rampup_multiplier);
 
 static int dump_task_show(struct seq_file *m, void *v)
 {
@@ -1783,10 +1912,11 @@ static int dump_task_show(struct seq_file *m, void *v)
 	bool preempt_wakeup;
 	bool auto_uclamp_max;
 	bool prefer_high_cap;
+	unsigned int rampup_multiplier;
 
 	seq_printf(m, "pid comm group uclamp_min uclamp_max uclamp_eff_min uclamp_eff_max " \
 		   "uclamp_fork_reset adpf prefer_idle prefer_fit boost_prio " \
-		   "preempt_wakeup auto_uclamp_max prefer_high_cap\n");
+		   "preempt_wakeup auto_uclamp_max prefer_high_cap rampup_multiplier\n");
 
 	rcu_read_lock();
 
@@ -1808,11 +1938,13 @@ static int dump_task_show(struct seq_file *m, void *v)
 		preempt_wakeup = vp->preempt_wakeup;
 		auto_uclamp_max = vp->auto_uclamp_max;
 		prefer_high_cap = vp->prefer_high_cap;
+		rampup_multiplier = vp->rampup_multiplier;
 		put_task_struct(t);
-		seq_printf(m, "%u %s %s %u %u %u %u %d %d %d %d %d %d %d %d\n", t->pid, t->comm,
+
+		seq_printf(m, "%u %s %s %u %u %u %u %d %d %d %d %d %d %d %d %u\n", t->pid, t->comm,
 			   grp_name, uclamp_min, uclamp_max, uclamp_eff_min, uclamp_eff_max,
 			   uclamp_fork_reset, adpf, prefer_idle, prefer_fit, boost_prio,
-			   preempt_wakeup, auto_uclamp_max, prefer_high_cap);
+			   preempt_wakeup, auto_uclamp_max, prefer_high_cap, rampup_multiplier);
 	}
 
 	rcu_read_unlock();
@@ -3545,6 +3677,8 @@ static struct pentry entries[] = {
 	PROC_SCHED_QOS_ENTRY(auto_uclamp_max_clear),
 	PROC_SCHED_QOS_ENTRY(prefer_high_cap_set),
 	PROC_SCHED_QOS_ENTRY(prefer_high_cap_clear),
+	PROC_SCHED_QOS_ENTRY(rampup_multiplier_set),
+	PROC_SCHED_QOS_ENTRY(rampup_multiplier_clear),
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
 	// FG util group attributes
 #if IS_ENABLED(CONFIG_USE_GROUP_THROTTLE)
