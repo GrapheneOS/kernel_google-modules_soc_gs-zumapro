@@ -71,12 +71,48 @@ DEFINE_STATIC_KEY_FALSE(skip_inefficient_opps_enable);
         } \
     } while (0)
 
+#define vi_set_adpf(vi, type, value) \
+    do { \
+        if (value) { \
+            (vi)->adpf |= (1 << (type)); \
+        } else { \
+            (vi)->adpf &= ~(1 << (type)); \
+        } \
+    } while (0)
+
 #define vi_set_prefer_idle(vi, type, value) \
     do { \
         if (value) { \
             (vi)->prefer_idle |= (1 << (type)); \
         } else { \
             (vi)->prefer_idle &= ~(1 << (type)); \
+        } \
+    } while (0)
+
+#define vi_set_prefer_fit(vi, type, value) \
+    do { \
+        if (value) { \
+            (vi)->prefer_fit |= (1 << (type)); \
+        } else { \
+            (vi)->prefer_fit &= ~(1 << (type)); \
+        } \
+    } while (0)
+
+#define vi_set_prefer_high_cap(vi, type, value) \
+    do { \
+        if (value) { \
+            (vi)->prefer_high_cap |= (1 << (type)); \
+        } else { \
+            (vi)->prefer_high_cap &= ~(1 << (type)); \
+        } \
+    } while (0)
+
+#define vi_set_preempt_wakeup(vi, type, value) \
+    do { \
+        if (value) { \
+            (vi)->preempt_wakeup |= (1 << (type)); \
+        } else { \
+            (vi)->preempt_wakeup &= ~(1 << (type)); \
         } \
     } while (0)
 
@@ -265,19 +301,24 @@ static void set_latency_sensitive_inheritance(struct task_struct *p, unsigned in
 		bool old_uclamp_fork_reset = get_uclamp_fork_reset(p, true);
 
 		vi_set_latency_sensitive(vi, type, val);
+		vi_set_adpf(vi, type, val);
 
 		if (!old_uclamp_fork_reset && get_uclamp_fork_reset(p, true))
 			inc_adpf_counter(p, task_rq(p));
 		else if (old_uclamp_fork_reset && !get_uclamp_fork_reset(p, true))
 			dec_adpf_counter(p, task_rq(p));
-	} else
+	} else {
 		vi_set_latency_sensitive(vi, type, val);
+		vi_set_adpf(vi, type, val);
+	}
 }
 
-static void set_performance_inheritance(struct task_struct *p, struct task_struct *pi_task,
+static void set_performance_inheritance_locked(struct task_struct *p, struct task_struct *pi_task,
 	unsigned int type)
 {
 	struct vendor_inheritance_struct *vi = get_vendor_inheritance_struct(p);
+
+	lockdep_assert_held(&p->pi_lock);
 
 	if (pi_task) {
 		unsigned long p_util = task_util(p);
@@ -286,8 +327,6 @@ static void set_performance_inheritance(struct task_struct *p, struct task_struc
 		unsigned long pi_util = task_util(pi_task);
 		unsigned long pi_uclamp_min = uclamp_eff_value_pixel_mod(pi_task, UCLAMP_MIN);
 		unsigned long pi_uclamp_max = uclamp_eff_value_pixel_mod(pi_task, UCLAMP_MAX);
-
-		lockdep_assert_held(&pi_task->pi_lock);
 
 		/*
 		 * Take task's util into consideration first to do full
@@ -317,6 +356,15 @@ static void set_performance_inheritance(struct task_struct *p, struct task_struc
 
 		if (!!get_prefer_idle(pi_task))
 			vi_set_prefer_idle(vi, type, 1);
+
+		if (!!get_prefer_fit(pi_task))
+			vi_set_prefer_fit(vi, type, 1);
+
+		if (!!get_preempt_wakeup(pi_task))
+			vi_set_preempt_wakeup(vi, type, 1);
+
+		if (!!get_prefer_high_cap(pi_task) || task_cpu(pi_task) >= pixel_cluster_start_cpu[1])
+			vi_set_prefer_high_cap(vi, type, 1);
 	} else {
 		vi->uclamp[type][UCLAMP_MIN] = uclamp_none(UCLAMP_MIN);
 		vi->uclamp[type][UCLAMP_MAX] = uclamp_none(UCLAMP_MAX);
@@ -324,7 +372,21 @@ static void set_performance_inheritance(struct task_struct *p, struct task_struc
 		set_latency_sensitive_inheritance(p, type, 0);
 
 		vi_set_prefer_idle(vi, type, 0);
+
+		vi_set_prefer_fit(vi, type, 0);
+
+		vi_set_preempt_wakeup(vi, type, 0);
+
+		vi_set_prefer_high_cap(vi, type, 0);
 	}
+}
+
+static inline void set_performance_inheritance(struct task_struct *p, struct task_struct *pi_task,
+	unsigned int type)
+{
+	raw_spin_lock(&p->pi_lock);
+	set_performance_inheritance_locked(p, pi_task, type);
+	raw_spin_unlock(&p->pi_lock);
 }
 
 void vh_binder_set_priority_pixel_mod(void *data, struct binder_transaction *t,
@@ -347,7 +409,7 @@ void vh_binder_restore_priority_pixel_mod(void *data, struct binder_transaction 
 void rvh_rtmutex_prepare_setprio_pixel_mod(void *data, struct task_struct *p,
 	struct task_struct *pi_task)
 {
-	set_performance_inheritance(p, pi_task, VI_RTMUTEX);
+	set_performance_inheritance_locked(p, pi_task, VI_RTMUTEX);
 }
 
 void rvh_try_to_wake_up_success_pixel_mod(void *data, struct task_struct *p)
