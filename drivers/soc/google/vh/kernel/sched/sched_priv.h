@@ -186,6 +186,7 @@ struct vendor_group_property {
 	bool qos_preempt_wakeup_enable;
 	bool qos_auto_uclamp_max_enable;
 	bool qos_prefer_high_cap_enable;
+	bool qos_rampup_multiplier_enable;
 };
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -646,9 +647,22 @@ static inline bool get_prefer_high_cap(struct task_struct *p)
 	struct vendor_task_struct *vp = get_vendor_task_struct(p);
 	struct vendor_inheritance_struct *vi = get_vendor_inheritance_struct(p);
 
-	return vg[get_vendor_group(p)].prefer_high_cap || vp->auto_prefer_high_cap ||
+	return vg[vp->group].prefer_high_cap || vp->auto_prefer_high_cap ||
 	       ((vp->prefer_high_cap || vi->prefer_high_cap) &&
 	        vg[vp->group].qos_prefer_high_cap_enable);
+}
+
+static inline unsigned int get_rampup_multiplier(struct task_struct *p)
+{
+	struct vendor_task_struct *vp = get_vendor_task_struct(p);
+
+	if (get_uclamp_fork_reset(p, true))
+		return vendor_sched_adpf_rampup_multiplier;
+
+	if (vg[vp->group].qos_rampup_multiplier_enable)
+		return max(vg[vp->group].rampup_multiplier, vp->rampup_multiplier);
+	else
+		return vg[vp->group].rampup_multiplier;
 }
 
 static inline void set_auto_prefer_high_cap(struct task_struct *p, bool val)
@@ -702,6 +716,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->preempt_wakeup = false;
 	v_tsk->auto_uclamp_max = false;
 	v_tsk->prefer_high_cap = false;
+	v_tsk->rampup_multiplier = 1;
 	init_vendor_inheritance_struct(&v_tsk->vi);
 }
 
@@ -1051,10 +1066,7 @@ static inline void __update_util_est_invariance(struct rq *rq,
 	if (!fair_policy(p->policy) && !idle_policy(p->policy))
 		return;
 
-	if (get_uclamp_fork_reset(p, true))
-		rampup_multiplier = vendor_sched_adpf_rampup_multiplier;
-	else
-		rampup_multiplier = vg[get_vendor_group(p)].rampup_multiplier;
+	rampup_multiplier = get_rampup_multiplier(p);
 
 	if (unlikely(!rampup_multiplier))
 		return;

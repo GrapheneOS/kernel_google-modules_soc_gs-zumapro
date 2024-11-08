@@ -2261,6 +2261,7 @@ void initialize_vendor_group_property(void)
 		vg[i].qos_preempt_wakeup_enable = false;
 		vg[i].qos_auto_uclamp_max_enable = false;
 		vg[i].qos_prefer_high_cap_enable = false;
+		vg[i].qos_rampup_multiplier_enable = false;
 	}
 
 #if IS_ENABLED(CONFIG_USE_VENDOR_GROUP_UTIL)
@@ -2307,11 +2308,7 @@ void rvh_util_est_update_pixel_mod(void *data, struct cfs_rq *cfs_rq, struct tas
 
 	if (static_branch_likely(&auto_dvfs_headroom_enable)) {
 		struct vendor_task_struct *vp = get_vendor_task_struct(p);
-		unsigned int rampup_multiplier;
-		if (get_uclamp_fork_reset(p, true))
-			rampup_multiplier = vendor_sched_adpf_rampup_multiplier;
-		else
-			rampup_multiplier = vg[get_vendor_group(p)].rampup_multiplier;
+		unsigned int rampup_multiplier = get_rampup_multiplier(p);
 
 		if (vg[get_vendor_group(p)].disable_util_est) {
 			p->se.avg.util_est.enqueued = 0;
@@ -2758,7 +2755,7 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 	 * re-start the picking loop.
 	 */
 	rq_unpin_lock(this_rq, rf);
-	raw_spin_unlock(&this_rq->__lock);
+	raw_spin_rq_unlock(this_rq);
 
 	this_cpu = this_rq->cpu;
 	for_each_cpu(cpu, cpu_active_mask) {
@@ -2823,15 +2820,18 @@ void sched_newidle_balance_pixel_mod(void *data, struct rq *this_rq, struct rq_f
 
 		p = detach_important_task(src_rq, this_cpu);
 
-		rq_unlock_irqrestore(src_rq, &src_rf);
+		rq_unlock(src_rq, &src_rf);
 
 		if (p) {
 			attach_one_task(this_rq, p);
+			local_irq_restore(src_rf.flags);
 			break;
 		}
+
+		local_irq_restore(src_rf.flags);
 	}
 
-	raw_spin_lock(&this_rq->__lock);
+	raw_spin_rq_lock(this_rq);
 	/*
 	 * While browsing the domains, we released the rq lock, a task could
 	 * have been enqueued in the meantime. Since we're not going idle,
