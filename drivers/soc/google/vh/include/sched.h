@@ -106,6 +106,8 @@ struct vendor_task_struct {
 	bool prefer_high_cap;
 	unsigned int rampup_multiplier;
 
+	unsigned long sched_qos_user_defined_flag;
+
 	/*
 	 * A general field for time measurement in the same process context.
 	 * Be careful it should be used for stackwise, use the wrapper
