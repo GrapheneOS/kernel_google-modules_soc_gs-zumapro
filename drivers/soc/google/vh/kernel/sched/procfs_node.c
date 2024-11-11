@@ -1737,14 +1737,14 @@ error_free:
 		p = find_task_by_vpid(pid);
 		if (!p) {
 			ret = -ESRCH;
-			goto error_put_task_clear;
+			goto error_unlock_clear;
 		}
 
 		get_task_struct(p);
 
 		if (!check_cred(p)) {
 			ret = -EACCES;
-			goto error_unlock_clear;
+			goto error_put_task_clear;
 		}
 
 		vp = get_vendor_task_struct(p);
