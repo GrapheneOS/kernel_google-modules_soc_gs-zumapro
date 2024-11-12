@@ -32,6 +32,18 @@
 
 #define UCLAMP_BUCKET_DELTA DIV_ROUND_CLOSEST(SCHED_CAPACITY_SCALE, UCLAMP_BUCKETS)
 
+/*
+ * Bit definition for sched qos features.
+ */
+#define SCHED_QOS_RAMPUP_MULTIPLIER_BIT	BIT(0)
+#define SCHED_QOS_PREFER_HIGH_CAP_BIT	BIT(1)
+#define SCHED_QOS_AUTO_UCLAMP_MAX_BIT	BIT(2)
+#define SCHED_QOS_PREEMPT_WAKEUP_BIT	BIT(3)
+#define SCHED_QOS_ADPF_BIT		BIT(4)
+#define SCHED_QOS_PREFER_IDLE_BIT	BIT(5)
+#define SCHED_QOS_PREFER_FIT_BIT	BIT(6)
+#define SCHED_QOS_BOOST_PRIO_BIT	BIT(7)
+
 /* Iterate thr' all leaf cfs_rq's on a runqueue */
 #define for_each_leaf_cfs_rq_safe(rq, cfs_rq, pos)			\
 	list_for_each_entry_safe(cfs_rq, pos, &rq->leaf_cfs_rq_list,	\
@@ -659,8 +671,9 @@ static inline unsigned int get_rampup_multiplier(struct task_struct *p)
 	if (get_uclamp_fork_reset(p, true))
 		return vendor_sched_adpf_rampup_multiplier;
 
-	if (vg[vp->group].qos_rampup_multiplier_enable)
-		return max(vg[vp->group].rampup_multiplier, vp->rampup_multiplier);
+	if (vg[vp->group].qos_rampup_multiplier_enable &&
+	    (vp->sched_qos_user_defined_flag & SCHED_QOS_RAMPUP_MULTIPLIER_BIT))
+		return vp->rampup_multiplier;
 	else
 		return vg[vp->group].rampup_multiplier;
 }
@@ -717,6 +730,7 @@ static inline void init_vendor_task_struct(struct vendor_task_struct *v_tsk)
 	v_tsk->auto_uclamp_max = false;
 	v_tsk->prefer_high_cap = false;
 	v_tsk->rampup_multiplier = 1;
+	v_tsk->sched_qos_user_defined_flag = 0;
 	init_vendor_inheritance_struct(&v_tsk->vi);
 }
 

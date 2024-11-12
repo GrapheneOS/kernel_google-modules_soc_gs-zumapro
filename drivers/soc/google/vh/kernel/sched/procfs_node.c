@@ -1409,6 +1409,11 @@ static int update_prefer_idle(const char *buf, bool val)
 	vp = get_vendor_task_struct(p);
 	vp->prefer_idle = val;
 
+	if (val)
+		vp->sched_qos_user_defined_flag |= SCHED_QOS_PREFER_IDLE_BIT;
+	else
+		vp->sched_qos_user_defined_flag &= ~SCHED_QOS_PREFER_IDLE_BIT;
+
 	put_task_struct(p);
 	rcu_read_unlock();
 
@@ -1506,6 +1511,11 @@ static int update_boost_prio(const char *buf, bool val)
 		}
 	}
 
+	if (val)
+		vp->sched_qos_user_defined_flag |= SCHED_QOS_BOOST_PRIO_BIT;
+	else
+		vp->sched_qos_user_defined_flag &= ~SCHED_QOS_BOOST_PRIO_BIT;
+
 	put_task_struct(p);
 	rcu_read_unlock();
 
@@ -1538,6 +1548,11 @@ static int update_prefer_fit(const char *buf, bool val)
 
 	vp = get_vendor_task_struct(p);
 	vp->prefer_fit = val;
+
+	if (val)
+		vp->sched_qos_user_defined_flag |= SCHED_QOS_PREFER_FIT_BIT;
+	else
+		vp->sched_qos_user_defined_flag &= ~SCHED_QOS_PREFER_FIT_BIT;
 
 	put_task_struct(p);
 	rcu_read_unlock();
@@ -1572,6 +1587,11 @@ static int update_adpf(const char *buf, bool val)
 	vp = get_vendor_task_struct(p);
 	vp->adpf = val;
 
+	if (val)
+		vp->sched_qos_user_defined_flag |= SCHED_QOS_ADPF_BIT;
+	else
+		vp->sched_qos_user_defined_flag &= ~SCHED_QOS_ADPF_BIT;
+
 	put_task_struct(p);
 	rcu_read_unlock();
 
@@ -1604,6 +1624,11 @@ static int update_preempt_wakeup(const char *buf, bool val)
 
 	vp = get_vendor_task_struct(p);
 	vp->preempt_wakeup = val;
+
+	if (val)
+		vp->sched_qos_user_defined_flag |= SCHED_QOS_PREEMPT_WAKEUP_BIT;
+	else
+		vp->sched_qos_user_defined_flag &= ~SCHED_QOS_PREEMPT_WAKEUP_BIT;
 
 	put_task_struct(p);
 	rcu_read_unlock();
@@ -1638,6 +1663,11 @@ static int update_auto_uclamp_max(const char *buf, bool val)
 	vp = get_vendor_task_struct(p);
 	vp->auto_uclamp_max = val;
 
+	if (val)
+		vp->sched_qos_user_defined_flag |= SCHED_QOS_AUTO_UCLAMP_MAX_BIT;
+	else
+		vp->sched_qos_user_defined_flag &= ~SCHED_QOS_AUTO_UCLAMP_MAX_BIT;
+
 	put_task_struct(p);
 	rcu_read_unlock();
 
@@ -1670,6 +1700,11 @@ static int update_prefer_high_cap(const char *buf, bool val)
 
 	vp = get_vendor_task_struct(p);
 	vp->prefer_high_cap = val;
+
+	if (val)
+		vp->sched_qos_user_defined_flag |= SCHED_QOS_PREFER_HIGH_CAP_BIT;
+	else
+		vp->sched_qos_user_defined_flag &= ~SCHED_QOS_PREFER_HIGH_CAP_BIT;
 
 	put_task_struct(p);
 	rcu_read_unlock();
@@ -1721,6 +1756,7 @@ static int update_rampup_multiplier(const char *buf, bool set, int count)
 
 		vp = get_vendor_task_struct(p);
 		vp->rampup_multiplier = multiplier;
+		vp->sched_qos_user_defined_flag |= SCHED_QOS_RAMPUP_MULTIPLIER_BIT;
 error_put_task_set:
 		put_task_struct(p);
 error_unlock_set:
@@ -1737,18 +1773,19 @@ error_free:
 		p = find_task_by_vpid(pid);
 		if (!p) {
 			ret = -ESRCH;
-			goto error_put_task_clear;
+			goto error_unlock_clear;
 		}
 
 		get_task_struct(p);
 
 		if (!check_cred(p)) {
 			ret = -EACCES;
-			goto error_unlock_clear;
+			goto error_put_task_clear;
 		}
 
 		vp = get_vendor_task_struct(p);
 		vp->rampup_multiplier = 1;
+		vp->sched_qos_user_defined_flag &= ~SCHED_QOS_RAMPUP_MULTIPLIER_BIT;
 error_put_task_clear:
 		put_task_struct(p);
 error_unlock_clear:
